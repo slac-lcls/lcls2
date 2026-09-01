@@ -88,10 +88,6 @@ def evaluate_pixel_status(arr, title='', vmin=None, vmax=None, snrmax=8):
     return _arr1_lo, _arr1_hi, _s_lo, _s_hi
 
 
-
-
-
-
 def feature_01(block, databits=0x3FFF, snrmax=8):
 
     logger.info("""Feature 1: mean intensity of frames in good range""")
@@ -111,8 +107,6 @@ def feature_01(block, databits=0x3FFF, snrmax=8):
     logger.info('Total number of good events: %d' % arr1_good_frames.sum())
 
     return arr1_good_frames
-
-
 
 
 class EventLoopStatus(EventLoop):

@@ -1,6 +1,5 @@
 #include "CuSZpReducer.hh"
 
-#include "GpuAsyncLib.hh"
 #include "MemPool.hh"
 #include "Detector.hh"
 #include "drp/drp.hh"
@@ -45,11 +44,12 @@ CuSZpReducer::CuSZpReducer(const Parameters& para, const MemPoolGpu& pool, Detec
 
 // This routine records the graph that does the data reduction
 void CuSZpReducer::recordGraph(cudaStream_t       stream,
-                               const unsigned&    index,
+                               unsigned*    const state,
+                               unsigned*    const index,
                                float const* const calibBuffers,
-                               const size_t       calibBufCnt,
-                               uint8_t    * const dataBuffers,
-                               const size_t       dataBufCnt)
+                               size_t       const calibBufsCnt,
+                               uint8_t*     const dataBuffers,
+                               size_t       const dataBufsCnt)
 {
   //uint8_t* d_internal_compressed{nullptr};
   //auto m = psz_create_resource_manager(F4, calibBufCnt, 1, 1, stream);
@@ -60,7 +60,11 @@ void CuSZpReducer::recordGraph(cudaStream_t       stream,
   //    &calibBuffers[index], &m_header, &dataBuffers[index], &((size_t*)dataBuffers)[-1]);
 }
 
-void CuSZpReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned index, size_t* dataSize)
+void CuSZpReducer::reduce(cudaGraphExec_t graph,
+                          cudaStream_t    stream,
+                          unsigned        index,
+                          size_t*         dataSize,
+                          unsigned*       retCode)
 {
   cuszp_scoped_range r{/*"CuSZpReducer::reduce"*/}; // Expose function name via NVTX
 
@@ -75,18 +79,12 @@ void CuSZpReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned i
   auto calibBuffer = &calibBuffers[index * calibBufsCnt];
   auto dataBuffer  = &dataBuffers[index * dataBufsCnt];
 
-  size_t cmpSize1 = 0;
-  //auto t0{Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-  cuSZp_compress_plain_f32(calibBuffer, dataBuffer, calibBufsCnt, &cmpSize1, m_errorBound, stream);
+  size_t cmpSize{0};
+  cuSZp_compress_1D_plain_f32(calibBuffer, dataBuffer, calibBufsCnt, &cmpSize, m_errorBound, stream);
 
-  //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &cmpSize1, sizeof(cmpSize1), cudaMemcpyHostToDevice);
-  *dataSize = cmpSize1;
-  //auto now{Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-
-  //using us_t = std::chrono::microseconds;
-  //auto dt{std::chrono::duration_cast<us_t>(now - t0).count()};
-  //auto ratio{double(calibBufsSz)/double(cmpSize1)};
-  //printf("*** dt %lu us, in %zu / out %zu = %f\n", dt, calibBufsSz, cmpSize1, ratio);
+  //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &cmpSize, sizeof(cmpSize), cudaMemcpyHostToDevice);
+  *dataSize = cmpSize;
+  *retCode = 0;                         // @todo: TBD
 }
 
 unsigned CuSZpReducer::configure(Xtc& xtc, const void* bufEnd)

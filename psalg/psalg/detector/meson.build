@@ -8,7 +8,8 @@ detector_sources = files(
     'src/AreaDetectorPnccd.cc',
     'src/AreaDetectorOpal.cc',
     'src/AreaDetectorEpix100a.cc',
-    'src/AreaDetectorStore.cc'
+    'src/AreaDetectorStore.cc',
+    'src/FFT.cc'
 )
 
 detector_headers = files(
@@ -23,6 +24,7 @@ detector_headers = files(
     'AreaDetectorOpal.hh',
     'AreaDetectorEpix100a.hh',
     'DataSourceSimulator.hh',
+    'FFT.hh',
 )
 
 detector_shlib = shared_library(

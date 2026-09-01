@@ -1,6 +1,5 @@
 #include "CuSzReducer.hh"
 
-#include "GpuAsyncLib.hh"
 #include "MemPool.hh"
 #include "Detector.hh"
 #include "drp/drp.hh"
@@ -49,12 +48,17 @@ CuSzReducer::~CuSzReducer()
 
 // This routine records the graph that does the data reduction
 void CuSzReducer::recordGraph(cudaStream_t       stream,
-                              const unsigned&    index,
+                              unsigned*    const state,
+                              unsigned*    const index,
                               float const* const calibBuffers,
-                              const size_t       calibBufCnt,
-                              uint8_t    * const dataBuffers,
-                              const size_t       dataBufCnt)
+                              size_t       const calibBufsCnt,
+                              uint8_t*     const dataBuffers,
+                              size_t       const dataBufsCnt)
 {
+  // @todo: More work is needed here
+  logging::critical("CuSzReducer::recordGraph: To be implemented");
+  abort();
+
   //uint8_t* d_internal_compressed{nullptr};
   //auto m = psz_create_resource_manager(F4, calibBufCnt, 1, 1, stream);
   //
@@ -64,7 +68,11 @@ void CuSzReducer::recordGraph(cudaStream_t       stream,
   //    &calibBuffers[index], &m_header, &dataBuffers[index], &((size_t*)dataBuffers)[-1]);
 }
 
-void CuSzReducer::reduce(cudaGraphExec_t, cudaStream_t stream, unsigned index, size_t* dataSize)
+void CuSzReducer::reduce(cudaGraphExec_t,
+                         cudaStream_t    stream,
+                         unsigned        index,
+                         size_t*         dataSize,
+                         unsigned*       retCode)
 {
   auto calibBuffers = m_pool.calibBuffers_d();
   auto calibBufsSz  = m_pool.calibBufsSize();
@@ -81,7 +89,6 @@ void CuSzReducer::reduce(cudaGraphExec_t, cudaStream_t stream, unsigned index, s
   size_t compressed_len{0};
   if (!m_m)  m_m = psz_create_resource_manager(F4, calibBufsCnt, 1, 1, stream);
 
-  // @todo: This isn't right since it is evaluated at record time instead of event time
   psz_compress_float(
       m_m, {m_predictor, DEFAULT_HISTOGRAM, Huffman, NULL_CODEC, m_mode, m_eb, DEFAULT_RADIUS},
       calibBuffer, &m_header, &d_internal_compressed, &compressed_len);
@@ -91,6 +98,7 @@ void CuSzReducer::reduce(cudaGraphExec_t, cudaStream_t stream, unsigned index, s
   cudaMemcpy(dataBuffer, d_internal_compressed, compressed_len, cudaMemcpyDeviceToDevice);
   //cudaMemcpy((void*)&((size_t*)dataBuffer)[-1], &compressed_len, sizeof(compressed_len), cudaMemcpyHostToDevice);
   *dataSize = compressed_len;
+  *retCode  = 0;                        // @todo: TBD
 }
 
 unsigned CuSzReducer::configure(Xtc& xtc, const void* bufEnd)

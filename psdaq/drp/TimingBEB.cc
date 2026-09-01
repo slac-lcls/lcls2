@@ -43,11 +43,8 @@ void TimingBEB::connect(const json&        connect_json,
     logging::info("TimingBEB connect");
     BEBDetector::connect(connect_json, collectionId);
 
-    // returns new reference
-    PyObject* pModule = PyImport_ImportModule("psdaq.configdb.ts_connect");
-    _check(pModule);
     // returns borrowed reference
-    PyObject* pDict = PyModule_GetDict(pModule);
+    PyObject* pDict = PyModule_GetDict(m_module);
     _check(pDict);
     // returns borrowed reference
     PyObject* pFunc = PyDict_GetItemString(pDict, (char*)"ts_connect");
@@ -56,7 +53,6 @@ void TimingBEB::connect(const json&        connect_json,
     PyObject* mybytes = PyObject_CallFunction(pFunc,"s",m_connect_json.c_str());
     _check(mybytes);
 
-    Py_DECREF(pModule);
     Py_DECREF(mybytes);
 }
 

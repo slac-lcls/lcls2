@@ -1,0 +1,8 @@
+[wrap-git]
+url = https://github.com/burtscher/SLEEK.git
+revision = 00ff130d8d3182204b6b63fc22d5c85ad6b5f2e1
+depth = 1
+patch_directory = sleek
+
+[provide]
+dependency_names = sleek_dep

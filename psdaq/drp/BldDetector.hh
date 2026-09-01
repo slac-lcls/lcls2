@@ -11,6 +11,8 @@
 
 #include <chrono>
 
+static const unsigned MAX_BLD = 16;
+
 namespace Drp {
 
 class BldDescriptor : public Pds_Epics::PVBase
@@ -117,6 +119,7 @@ public:
                                     XtcData::NamesLookup&,
                                     XtcData::NamesId&);
     XtcData::VarDef&   varDef() { return _varDef; }
+    const std::string& detName() const { return _detName; }
 private:
     std::string                    _detName;
     std::string                    _detType;
@@ -138,7 +141,7 @@ public:
     Pgp(Parameters& para, DrpBase& drp, Detector* det);
 
     const Pds::TimingHeader* next();
-    void worker(const std::shared_ptr<Pds::MetricExporter> exporter);
+    void worker(std::shared_ptr<Pds::MetricExporter> exporter[], prometheus::Exposer*);
     void shutdown();
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
@@ -149,7 +152,7 @@ private:
     Parameters&                                m_para;
     DrpBase&                                   m_drp;
     Detector*                                  m_det;
-    static const int MAX_RET_CNT_C = 100;
+    static const unsigned MAX_RET_CNT_C = 100;
     std::vector<std::shared_ptr<BldFactory> >  m_config;
     std::atomic<bool>                          m_terminate;
     bool                                       m_running;
@@ -158,6 +161,8 @@ private:
     uint64_t                                   m_nevents;
     uint64_t                                   m_nmissed;
     uint64_t                                   m_nDmaRet;
+    uint64_t                                   m_damage[MAX_BLD];
+    uint64_t                                   m_events[MAX_BLD];
     enum TmoState { None, Started, Finished };
     TmoState                                   m_tmoState;
     std::chrono::time_point<Pds::fast_monotonic_clock> m_tInitial;
@@ -171,10 +176,11 @@ public:
     virtual ~BldDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
+    std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     Pgp                                  m_pgp;
     std::thread                          m_workerThread;
-    std::shared_ptr<Pds::MetricExporter> m_exporter;
+    std::shared_ptr<Pds::MetricExporter> m_exporter[MAX_BLD];
 };
 
 
@@ -190,6 +196,7 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    std::string _endrun(const nlohmann::json& phase1Info);
     void _unconfigure();
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
@@ -199,6 +206,7 @@ private:
     std::unique_ptr<Detector> m_det;
     std::unique_ptr<BldDrp>   m_drp;
     bool                      m_unconfigure;
+    std::string               m_lastKey;
 };
 
 }

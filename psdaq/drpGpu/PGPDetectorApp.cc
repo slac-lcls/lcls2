@@ -5,10 +5,7 @@
 #include <getopt.h>
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/kwargs.hh"
-
-#ifndef NVTX_DISABLE                    // Defined, or not, in drpGpu/MemPool.hh
-#include <cuda_profiler_api.h>
-#endif
+#include "xtcdata/xtc/TransitionId.hh"
 
 #define PY_RELEASE_GIL    PyEval_SaveThread()
 #define PY_ACQUIRE_GIL(x) PyEval_RestoreThread(x)
@@ -17,6 +14,7 @@
 
 using json = nlohmann::json;
 using logging = psalg::SysLog;
+using namespace XtcData;
 
 static const char* const MAG_ON  = "\033[0;35m";
 static const char* const COL_OFF = "\033[0m";
@@ -187,6 +185,7 @@ void PGPDetectorApp::initialize()
     auto& f = m_factory;   // Factory must remain in scope to avoid .so closing
     f.register_type("fakecam",   "libAreaDetector_gpu.so");
     f.register_type("epixuhremu", "libEpixUHRemu_gpu.so");
+    f.register_type("epixuhrsim", "libEpixUHRsim_gpu.so");
     //f.register_type("epixuhr",   "libEpixUHR_gpu.so");
 
     m_det = f.create(m_para.detType, m_para, m_pool);
@@ -208,7 +207,11 @@ PGPDetectorApp::~PGPDetectorApp()
     // normal path so that the most chance is given for prints to show up
     handleReset(json({}));
 
+    PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
+
     if (m_det)  delete m_det;
+
+    PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
     try {
         PyGILState_Ensure();
@@ -222,25 +225,49 @@ PGPDetectorApp::~PGPDetectorApp()
 
 void PGPDetectorApp::_disconnect()
 {
-    m_drp->disconnect();
+    if (m_drp)
+        m_drp->disconnect();
     if (m_det)
         m_det->shutdown();
 }
 
 void PGPDetectorApp::_unconfigure()
 {
-    m_drp->pool.shutdown();              // Release Tr buffer pool
-    m_drp->unconfigure();
-
+    if (m_drp) {
+        m_drp->pool.shutdown();         // Release Tr buffer pool
+        m_drp->unconfigure();
+    }
     if (m_det)
         m_det->namesLookup().clear();   // erase all elements
 
     m_unconfigure = false;
 }
 
+std::string PGPDetectorApp::_endrun(const json& phase1Info)
+{
+    std::string errorMsg = m_drp->endrun(phase1Info);
+    if (!errorMsg.empty()) {
+        logging::error("%s", errorMsg.c_str());
+    }
+    return errorMsg;
+}
+
+std::string PGPDetectorApp::_disable(Xtc& xtc, const void* const bufEnd,
+                                     const json& phase1Info)
+{
+    std::string errorMsg;
+    unsigned error = m_det->disable(xtc, bufEnd, phase1Info);
+    if (error) {
+        errorMsg = "Detector::disable()";
+        logging::error("Error in %s", errorMsg.c_str());
+    }
+    return errorMsg;
+}
+
 void PGPDetectorApp::handleConnect(const json& msg)
 {
-    json body = json({});
+    json body({});
+    m_lastKey = msg["header"]["key"];
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
@@ -274,7 +301,7 @@ void PGPDetectorApp::handleDisconnect(const json& msg)
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
-    json body = json({});
+    json body({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -284,12 +311,12 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     logging::debug("handlePhase1 for %s in Gpu::PGPDetectorApp (m_det->scanEnabled() is %s)",
                    key.c_str(), m_det->scanEnabled() ? "TRUE" : "FALSE");
 
-    json body = json({});
+    json body({});
 
     PY_ACQUIRE_GIL_GUARD(m_pysave);  // Py_END_ALLOW_THREADS
 
-    XtcData::Xtc& xtc = m_det->transitionXtc();
-    xtc = {{XtcData::TypeId::Parent, 0}, {m_det->nodeId}};
+    Xtc& xtc = m_det->transitionXtc();
+    xtc = {{TypeId::Parent, 0}, {m_det->nodeId}};
     auto bufEnd = m_det->trXtcBufEnd();
 
     bool has_names_block_hex = false;
@@ -309,56 +336,65 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     }
 
     if (key == "configure") {
-        if (m_unconfigure) {
+        // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+        if (m_unconfigure || (m_lastKey == key)) {
             _unconfigure();
         }
         if (has_names_block_hex && m_det->scanEnabled()) {
-           std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
-           unsigned hexlen = xtcHex.length();
-           if (hexlen > 0) {
-               logging::debug("configure phase1 in Gpu::PGPDetectorApp: NamesBlockHex length=%u", hexlen);
-               char *xtcBytes = new char[hexlen / 2]();
-               if (_dehex(xtcHex, xtcBytes) != 0) {
-                   logging::error("configure phase1 in Gpu::PGPDetectorApp: _dehex() failure");
-               } else {
-                   logging::debug("configure phase1 in Gpu::PGPDetectorApp: _dehex() success");
-                   // append the config xtc info to the dgram
-                   XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
-                   logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
-                                  jsonxtc.sizeofPayload());
-                   unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
-                   auto payload = xtc.alloc(copylen, bufEnd);
-                   memcpy(payload, (const void*)xtcBytes, copylen);
-               }
-               delete[] xtcBytes;
-           }
+            std::string xtcHex = msg["body"]["phase1Info"]["NamesBlockHex"];
+            unsigned hexlen = xtcHex.length();
+            if (hexlen > 0) {
+                logging::debug("configure phase1 in Gpu::PGPDetectorApp: NamesBlockHex length=%u", hexlen);
+                char *xtcBytes = new char[hexlen / 2]();
+                if (_dehex(xtcHex, xtcBytes) != 0) {
+                    logging::error("configure phase1 in Gpu::PGPDetectorApp: _dehex() failure");
+                } else {
+                    logging::debug("configure phase1 in Gpu::PGPDetectorApp: _dehex() success");
+                    // append the config xtc info to the dgram
+                    Xtc& jsonxtc = *(Xtc*)xtcBytes;
+                    logging::debug("configure phase1 jsonxtc.sizeofPayload() = %u\n",
+                                   jsonxtc.sizeofPayload());
+                    unsigned copylen = sizeof(Xtc) + jsonxtc.sizeofPayload();
+                    auto payload = xtc.alloc(copylen, bufEnd);
+                    memcpy(payload, (const void*)xtcBytes, copylen);
+                }
+                delete[] xtcBytes;
+            }
         }
 
-        // Configure the detector first
-        const std::string& config_alias = msg["body"]["config_alias"];
-        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-        if (!error) {
-            json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
-            if (!scan.empty())
-                error = m_det->configureScan(scan, xtc, bufEnd);
-        }
-        if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::configure()";
+        // Configure the DRP first
+        std::string errorMsg = m_drp->configure(msg);
+        if (!errorMsg.empty()) {
+            errorMsg = "Phase 1 error: " + errorMsg;
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
-            // Next, configure the DRP
-            std::string errorMsg = m_drp->configure(msg);
-            if (!errorMsg.empty()) {
-                errorMsg = "Phase 1 error: " + errorMsg;
+            // Next, configure the detector
+            const std::string& config_alias = msg["body"]["config_alias"];
+            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+            if (!error) {
+                json scan = _getscankeys(phase1Info, m_para.detName.c_str(), m_para.alias.c_str());
+                if (!scan.empty())
+                    error = m_det->configureScan(scan, xtc, bufEnd);
+            }
+            if (error) {
+                std::string errorMsg = "Phase 1 error in Detector::configure()";
                 body["err_info"] = errorMsg;
                 logging::error("%s", errorMsg.c_str());
             }
             else {
-                m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                m_drp->reducerConfigure(xtc, bufEnd);
+                // Next, do any remaining configuration and start up the DRP processes
+                std::string errorMsg = m_drp->startup(xtc, bufEnd);
+                if (!errorMsg.empty()) {
+                    errorMsg = "Phase 1 error: " + errorMsg;
+                    body["err_info"] = errorMsg;
+                    logging::error("%s", errorMsg.c_str());
+                }
+                else {
+                    m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                    m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
+                }
             }
         }
     }
@@ -379,10 +415,10 @@ void PGPDetectorApp::handlePhase1(const json& msg)
                     logging::error("beginstep phase1 in Gpu::PGPDetectorApp: _dehex() failure");
                 } else {
                     // append the beginstep xtc info to the dgram
-                    XtcData::Xtc& jsonxtc = *(XtcData::Xtc*)xtcBytes;
+                    Xtc& jsonxtc = *(Xtc*)xtcBytes;
                     logging::debug("beginstep phase1 jsonxtc.sizeofPayload() = %u\n",
                                    jsonxtc.sizeofPayload());
-                    unsigned copylen = sizeof(XtcData::Xtc) + jsonxtc.sizeofPayload();
+                    unsigned copylen = sizeof(Xtc) + jsonxtc.sizeofPayload();
                     auto payload = xtc.alloc(copylen, bufEnd);
                     memcpy(payload, (const void*)xtcBytes, copylen);
                 }
@@ -411,24 +447,39 @@ void PGPDetectorApp::handlePhase1(const json& msg)
         }
     }
     else if (key == "beginrun") {
+        // Clean up when BeginRun is being retried
+        if (m_lastKey == key) {
+            _endrun(phase1Info);        // Ignore possible error
+        }
+
         RunInfo runInfo;
         std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
-            body["err_info"] = errorMsg;
+            body["err_info"] = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
         else {
             m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
-    }
-    else if (key == "endrun") {
-        std::string errorMsg = m_drp->endrun(phase1Info);
-        if (!errorMsg.empty()) {
+        unsigned error = m_det->beginrun(xtc, bufEnd, phase1Info);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::beginrun()";
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
     }
+    else if (key == "endrun") {
+        std::string errorMsg = _endrun(phase1Info);
+        if (!errorMsg.empty()) {
+            body["err_info"] = "Phase 1 error: " + errorMsg;
+        }
+    }
     else if (key == "enable") {
+        // Clean up when Enable is being retried
+        if (m_lastKey == key) {
+            _disable(xtc, bufEnd, phase1Info); // Ignore possible error
+        }
+
         bool chunkRequest;
         ChunkInfo chunkInfo;
         std::string errorMsg = m_drp->enable(phase1Info, chunkRequest, chunkInfo);
@@ -445,25 +496,16 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
         }
-#ifndef NVTX_DISABLE
-        //logging::info("%sEnabling GPU Profiler data collection%s", MAG_ON, COL_OFF);
-        //cudaProfilerStart();
-#endif
         logging::debug("handlePhase1 enable complete");
     }
     else if (key == "disable") {
-#ifndef NVTX_DISABLE
-        //cudaProfilerStop();
-        //logging::info("%sDisabled GPU Profiler data collection%s", MAG_ON, COL_OFF);
-#endif
-        unsigned error = m_det->disable(xtc, bufEnd, phase1Info);
-        if (error) {
-            std::string errorMsg = "Phase 1 error in Detector::disable()";
-            body["err_info"] = errorMsg;
-            logging::error("%s", errorMsg.c_str());
+        std::string errorMsg = _disable(xtc, bufEnd, phase1Info);
+        if (!errorMsg.empty()) {
+            body["err_info"] = "Phase 1 error: " + errorMsg;
         }
         logging::debug("handlePhase1 disable complete");
     }
+    m_lastKey = key;
 
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 
@@ -471,6 +513,21 @@ void PGPDetectorApp::handlePhase1(const json& msg)
     reply(answer);
 
     logging::debug("handlePhase1 complete");
+
+    // Trigger phase 2 if we're in simulator mode
+    if (m_para.device == "/dev/null") { // Simulator mode
+        static const std::unordered_map<std::string, TransitionId::Value> keyMap
+          ({{"configure",   TransitionId::Configure},
+            {"unconfigure", TransitionId::Unconfigure},
+            {"beginrun",    TransitionId::BeginRun},
+            {"endrun",      TransitionId::EndRun},
+            {"beginstep",   TransitionId::BeginStep},
+            {"endstep",     TransitionId::EndStep},
+            {"enable",      TransitionId::Enable},
+            {"disable",     TransitionId::Disable}});
+        auto det = m_det->gpuDetector();
+        if (det)  det->issuePhase2(keyMap.at(key));
+    }
 }
 
 void PGPDetectorApp::handleReset(const json& msg)
@@ -492,7 +549,7 @@ void PGPDetectorApp::handleDealloc(const json& msg)
     PY_RELEASE_GIL_GUARD; // Py_BEGIN_ALLOW_THREADS
 }
 
-json PGPDetectorApp::connectionInfo(const nlohmann::json& msg)
+json PGPDetectorApp::connectionInfo(const json& msg)
 {
     std::string ip = m_para.kwargs.find("ep_domain") != m_para.kwargs.end()
                    ? getNicIp(m_para.kwargs["ep_domain"])
@@ -629,20 +686,28 @@ int main(int argc, char* argv[])
         if (kwargs.first == "ep_fabric")      continue;
         if (kwargs.first == "ep_domain")      continue;
         if (kwargs.first == "ep_provider")    continue;
-        if (kwargs.first == "sim_length")     continue;  // XpmDetector
+        if (kwargs.first == "sim_length")     continue;  // XpmDetector, GPU DRP Simulator
         if (kwargs.first == "timebase")       continue;  // XpmDetector
         if (kwargs.first == "pebbleBufSize")  continue;  // DrpBase
         if (kwargs.first == "pebbleBufCount") continue;  // DrpBase
         if (kwargs.first == "batching")       continue;  // DrpBase
         if (kwargs.first == "directIO")       continue;  // DrpBase
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
-        if (kwargs.first == "dmaSize")        continue;  // GPU DRP
+        if (kwargs.first == "nReaders")       continue;  // GPU DRP
+        if (kwargs.first == "dmaBufSize")     continue;  // GPU DRP
+        if (kwargs.first == "dmaBufCount")    continue;  // GPU DRP
         if (kwargs.first == "gpuId")          continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
+        if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
+        if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
+        if (kwargs.first == "sim_l1_verify")  continue;  // GPU DRP Simulator
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+
+    // Set up signal handler
+    initShutdownSignals(para.alias, [](){ exit(0); });
 
     para.batchSize = 1; // Max # of DMA buffers queued for freeing - Must be a power of 2
     para.maxTrSize = 256 * 1024;

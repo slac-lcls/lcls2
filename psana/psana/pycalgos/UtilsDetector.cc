@@ -11,6 +11,8 @@ using namespace std;
 
 namespace utilsdetector {
 
+  static ccstruct CCSV3 [NGRINDS][NPIXELS];
+
   uint16_t B15 =  040000; // 16384 or 1<<14 (15-th bit starting from 1);
   uint16_t B16 = 0100000; // 32768 or 2<<14 or 1<<15; // 16384 or 1<<14 (16-th bit starting from 1);
   uint16_t BGN = 0140000; // 49152 or 3<<14

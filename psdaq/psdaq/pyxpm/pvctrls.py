@@ -592,7 +592,7 @@ class ClockControl(object):
 
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip='0.0.0.0', xpm=None, stats=None, usTiming=None, handle=None, paddr=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3, imageName=None):
+    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, usTiming=None, handle=None, paddr=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3, imageName=None):
         global provider
         provider = p
         global lock
@@ -603,16 +603,19 @@ class PVCtrls(object):
         _fidPeriod = fidPeriod
 
         # Assign transmit link ID
-        ip_comp = ip.split('.')
         xpm_num = name.rsplit(':',1)[1]
         v = 0x0ff00000 | ((int(xpm_num)&0xff)<<12)
-        if ip_comp[3]=='0':
+
+        #  If IP was defaulted in, look it up now
+        if ip is None:
             ip = socket.gethostbyname(socket.gethostname())
+            ip_comp = ip.split('.')
             v |= ((int(ip_comp[2])&0xf)<<8) | (((int(ip_comp[3])-  0)&0xff)<<4)
         else:
+            ip_comp = ip.split('.')
             v |= ((int(ip_comp[2])&0xf)<<8) | (((int(ip_comp[3])-100)&0xff)<<4)
         xpm.XpmApp.paddr.set(v)
-        logging.info('Set PADDR to 0x{:08x}'.format(v))
+        logging.warning('Set PADDR to 0x{:08x}'.format(v))
 
         self._name  = name
         self._ip    = ip

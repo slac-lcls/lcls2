@@ -10,7 +10,7 @@
 
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/Fifo.hh"
-#include "psdaq/service/GenericPool.hh"
+#include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
@@ -175,9 +175,11 @@ namespace Pds {
   private:
     virtual void _copyDatagram(Dgram* dg, char* buf, size_t bSz)
     {
+      unsigned idx = dg->xtc.src.value();
       if (_prms.verbose >= VL_EVENT) [[unlikely]]
-        fprintf(stderr, "_copyDatagram:   dg %p, ts %u.%09u to %p\n",
-                dg, dg->time.seconds(), dg->time.nanoseconds(), buf);
+        logging::debug("_copyDatagram:    %s %2u, dg %p, ts %u.%09u, svc %s to %p, sz %zu",
+                       dg->isEvent() ? "idx" : "iTr", idx, dg, dg->time.seconds(), dg->time.nanoseconds(),
+                       TransitionId::name(dg->service()), buf, bSz);
 
       // The dg payload is a directory of contributions to the built event.
       // Iterate over the directory and construct, in shared memory, the event
@@ -201,7 +203,7 @@ namespace Pds {
         {
           logging::critical("Buffer of size %zu (%zu in use) is too small to add Xtc of size %zu",
                             bSz, oSz, iExt);
-          throw "Buffer too small";
+          abort();
         }
         buf = (char*)odg->xtc.alloc(iExt, bufEnd);
         memcpy(buf, &idg->xtc, iExt);
@@ -211,35 +213,40 @@ namespace Pds {
 
     virtual void _deleteDatagram(Dgram* dg) // Not called for transitions
     {
+      // NB: dg is the event builder's datagram, not the application's datagram
+
       unsigned idx = dg->xtc.src.value();
 
       if (_prms.verbose >= VL_EVENT) [[unlikely]]
-        fprintf(stderr, "_deleteDatagram: dg %p, ts %u.%09u, idx %u\n",
-                dg, dg->time.seconds(), dg->time.nanoseconds(), idx);
+        logging::debug("_deleteDatagram:  idx %2u, dg %p, ts %u.%09u, svc %s",
+                       idx, dg, dg->time.seconds(), dg->time.nanoseconds(),
+                       TransitionId::name(dg->service()));
 
+      // Sanity checks
       if (idx >= _bufFreeList.size()) [[unlikely]]
       {
-        logging::error("deleteDatagram: Ignoring out-of-bounds buffer index %u (>= %u)",
+        logging::error("deleteDatagram: Ignoring dg with out-of-bounds buffer index %u (>= %u)",
                        idx, _bufFreeList.size() - 1);
-        Pool::free((void*)dg);
         return;
       }
-
       for (unsigned i = 0; i < _bufFreeList.count(); ++i)
       {
         if (idx == _bufFreeList.peek(i)) [[unlikely]]
         {
           logging::error("Buffer index is already on list at %u: idx %u, dg %p, ts %u.%09u, svc %s",
                          i, idx, dg, dg->time.seconds(), dg->time.nanoseconds(), TransitionId::name(dg->service()));
-          //Pool::free((void*)dg);
           return;
         }
       }
       // Number of buffers being processed by the MEB; incremented in Meb::process()
       --_prcBufCount;                   // L1Accepts only
-      _appPrcMetric.start(idx);
-      _bufPrcMetric.accumulate(idx);
+      _appPrcMetric.start(idx);         // Measure time until buffer is requested again
+      _bufPrcMetric.accumulate(idx);    // Measure time since buffer was passed to client
 
+      // Free the event builder datagram _before_ releasing its buffer index
+      Pool::free((void*)dg);            // Transition buffers are freed in Meb::process()
+
+      // Release the buffer index
       if (_bufFreeList.push(idx)) [[unlikely]]
       {
         logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
@@ -249,22 +256,20 @@ namespace Pds {
         }
       }
       //printf("_deleteDatagram: push idx %u, cnt = %zu\n", idx, _bufFreeList.count());
-
-      Pool::free((void*)dg);
     }
 
-    virtual void _requestDatagram()
+    virtual void _requestDatagram()     // Not called for transitions
     {
-      //printf("_requestDatagram\n");
-
+      // Allocate a buffer index
       unsigned idx;
       if (_bufFreeList.pop(idx)) [[unlikely]]
       {
-        logging::error("%s:\n  No free buffers available", __PRETTY_FUNCTION__);
+        logging::error("_requestDatagram: No free buffers available");
         return;
       }
-      //printf("_requestDatagram: pop idx %u, cnt = %zu\n", data, _bufFreeList.count());
+      //printf("_requestDatagram: pop idx %u, cnt = %zu\n", idx, _bufFreeList.count());
 
+      // Sanity check
       if (idx >= _bufFreeList.size()) [[unlikely]]
       {
         logging::error("requestDatagram: Ignoring out-of-bounds buffer index %u (>= %u)",
@@ -272,37 +277,39 @@ namespace Pds {
         return;
       }
 
+      // Pack a message for the/a TEB
       auto data = ImmData::value(ImmData::Buffer, _prms.id, idx);
 
-      // Split the pool of indices across all TEBs evenly
+      // Split the pool of indices across all TEBs evenly and
+      // send the message to the/a TEB
       unsigned iTeb = idx % _mrqLinks.size();
       int rc = _mrqLinks[iTeb]->EbLfLink::post(data);
-      if (rc == 0)
+      if (rc) [[unlikely]]
       {
-        ++_requestCount;
-        if (_bufUseCnts)  _bufUseCnts->observe(double(idx));
-        _monTrgMetric.start(idx);
-        _appPrcMetric.accumulate(idx);
-      }
-      else [[unlikely]]
-      {
-        logging::error("%s:\n  Unable to post request to TEB %u: rc %d, idx %u (%08x)",
-                       __PRETTY_FUNCTION__, iTeb, rc, idx, data);
+        logging::error("_requestDatagram: Unable to post request to TEB %u: rc %d, idx %u (%08x)",
+                       iTeb, rc, idx, data);
 
         // Don't leak buffers - Revisit: XtcMonServer leaks in this case
         if (_bufFreeList.push(idx))
         {
-          logging::error("_bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
+          logging::error("_requestDatagram: _bufFreeList.push(%u) failed, count %zd", idx, _bufFreeList.count());
           for (unsigned i = 0; i < _bufFreeList.size(); ++i)
           {
             fprintf(stderr, "Free list entry %u: %u\n", i, _bufFreeList.peek(i));
           }
         }
       }
+      else
+      {
+        ++_requestCount;
+        if (_bufUseCnts)  _bufUseCnts->observe(double(idx));
+        _monTrgMetric.start(idx);       // Measure time until buffer is event built
+        _appPrcMetric.accumulate(idx);  // Measure time since buffer was freed
+      }
 
       if (_prms.verbose >= VL_EVENT) [[unlikely]]
-        fprintf(stderr, "_requestDatagram: Post EB[iTeb %u], value %08x, rc %d\n",
-                iTeb, data, rc);
+        logging::debug("_requestDatagram: idx %2u, Post EB[iTeb %u], value %08x, rc %d",
+                       idx, iTeb, data, rc);
     }
 
   private:
@@ -321,7 +328,7 @@ namespace Pds {
   class Meb : public EbAppBase
   {
   public:
-    Meb(const MebParams& prms, ZmqContext& context);
+    Meb(MebParams& prms, ZmqContext& context);
   public:
     int  resetCounters();
     int  connect(const std::shared_ptr<MetricExporter>);
@@ -338,7 +345,7 @@ namespace Pds {
   private:
     std::unique_ptr<MyXtcMonitorServer> _apps;
     std::vector<EbLfCltLink*>           _mrqLinks;
-    std::unique_ptr<GenericPool>        _pool;
+    std::unique_ptr<GenericPoolW>       _pool; // frees can occur in a different thread than allocates
     uint64_t                            _pidPrv;
     uint64_t                            _latPid;
     int64_t                             _latency;
@@ -369,8 +376,7 @@ static json createPulseIdMsg(uint64_t pulseId)
   return msg;
 }
 
-Meb::Meb(const MebParams&        prms,
-         ZmqContext&             context) :
+Meb::Meb(MebParams& prms, ZmqContext& context) :
   EbAppBase    (prms, "MEB"),
   _pidPrv      (0),
   _latPid      (0),
@@ -507,7 +513,7 @@ int Meb::configure()
   // Create pool for transferring events to MyXtcMonitorServer
   unsigned entries = std::bitset<64>(_prms.contributors).count();
   size_t   size    = sizeof(Dgram) + entries * sizeof(Dgram*);
-  _pool = std::make_unique<GenericPool>(size, 1 + _prms.numEvBuffers); // +1 for Transitions
+  _pool = std::make_unique<GenericPoolW>(size, 1 + _prms.numEvBuffers); // +1 for Transitions
 
   // MRQ links need no configuration
 
@@ -554,12 +560,12 @@ void Meb::run()
       else if (rc == -FI_ENOTCONN)
       {
         logging::critical("MEB thread lost connection with a DRP");
-        throw "Receiver thread lost connection with a DRP";
+        abort();
       }
       else if (rc == rcPrv)
       {
         logging::critical("MEB thread aborting on repeating fatal error");
-        throw "Repeating fatal error";
+        abort();
       }
     }
     rcPrv = rc;
@@ -605,7 +611,7 @@ void Meb::process(EbEvent* event)
                         __PRETTY_FUNCTION__, pid);
       // return, if we knew this PID had been fixed up before
     }
-    throw "Pulse ID did not advance";   // Can't recover from non-spit events
+    abort();                            // Can't recover from non-spit events
   }
   _pidPrv = pid;
 
@@ -669,9 +675,9 @@ void Meb::process(EbEvent* event)
 
   if (dg->service() == TransitionId::L1Accept)
   {
-    ++_prcBufCount;    // Number of buffers being processed by the MEB; decremented in _deleteDatagram
-    _bufPrcMetric.start(idx);
-    _monTrgMetric.accumulate(idx);
+    ++_prcBufCount;    // Number of buffers being processed by the XtcMonitorServer & Client; decremented in _deleteDatagram
+    _bufPrcMetric.start(idx);           // Measure time until buffer is processed by server
+    _monTrgMetric.accumulate(idx);      // Measure time since buffer was requested
 
     int env = dg->env & _prms.rogs;
     while (env)
@@ -722,6 +728,7 @@ public:                                 // For CollectionApp
 private:
   std::string
        _error(const json& msg, const std::string& errorMsg);
+  void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
   int  _parseConnectionParams(const json& msg);
@@ -734,6 +741,7 @@ private:
   std::unique_ptr<Meb>                 _meb;
   std::thread                          _appThread;
   bool                                 _unconfigFlag;
+  std::string                          _lastKey;
 };
 
 MebApp::MebApp(MebParams& prms) :
@@ -741,7 +749,7 @@ MebApp::MebApp(MebParams& prms) :
   _prms        (prms),
   _ebPortEph   (prms.ebPort.empty()),
   _exposer     (createExposer(prms.prometheusDir, getHostname())),
-  _meb         (std::make_unique<Meb>(_prms, context())),
+  _meb         (std::make_unique<Meb>(prms, context())),
   _unconfigFlag(false)
 {
   logging::info("Ready for transitions");
@@ -757,7 +765,7 @@ MebApp::~MebApp()
 std::string MebApp::_error(const json&        msg,
                            const std::string& errorMsg)
 {
-  json body = json({});
+  json body({});
   const std::string& key = msg["header"]["key"];
   body["err_info"] = errorMsg;
   logging::error("%s", errorMsg.c_str());
@@ -794,6 +802,8 @@ void MebApp::connectionShutdown()
 
 void MebApp::handleConnect(const json &msg)
 {
+  _lastKey = msg["header"]["key"];
+
   // If the exporter already exists, replace it so that previous metrics are deleted
   if (_exposer)
   {
@@ -801,7 +811,7 @@ void MebApp::handleConnect(const json &msg)
     _exposer->RegisterCollectable(_exporter);
   }
 
-  json body = json({});
+  json body({});
   int  rc   = _parseConnectionParams(msg["body"]);
   if (rc)
   {
@@ -818,6 +828,12 @@ void MebApp::handleConnect(const json &msg)
 
   // Reply to collection with transition status
   reply(createMsg("connect", msg["header"]["msg_id"], getId(), body));
+}
+
+void MebApp::_disconnect()
+{
+  if (_meb)
+    _meb->disconnect();
 }
 
 int MebApp::_configure(const json &msg)
@@ -839,20 +855,23 @@ void MebApp::_unconfigure()
   lRunning = 0;
   if (_appThread.joinable())  _appThread.join();
 
-  _meb->unconfigure();
+  if (_meb)
+    _meb->unconfigure();
 
   _unconfigFlag = false;
 }
 
 void MebApp::handlePhase1(const json& msg)
 {
-  json        body = json({});
+  json        body({});
   std::string key  = msg["header"]["key"];
 
   if (key == "configure")
   {
     // Handle a "queued" Unconfigure, if any
-    if (_unconfigFlag)  _unconfigure();
+    // Unconfigure if previous transition was Unconfigure and when Configure is being retried
+    if (_unconfigFlag || (_lastKey == key))
+      _unconfigure();
 
     int rc = _configure(msg);
     if (rc)
@@ -874,6 +893,7 @@ void MebApp::handlePhase1(const json& msg)
   {
     _meb->resetCounters();              // Same time as DRPs
   }
+  _lastKey = key;
 
   // Reply to collection with transition status
   reply(createMsg(key, msg["header"]["msg_id"], getId(), body));
@@ -884,12 +904,12 @@ void MebApp::handleDisconnect(const json &msg)
   // Carry out the queued Unconfigure, if there was one
   if (_unconfigFlag)  _unconfigure();
 
-  _meb->disconnect();
+  _disconnect();
 
   if (_exporter)  _exporter.reset();
 
   // Reply to collection with connect status
-  json body = json({});
+  json body({});
   reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -898,7 +918,7 @@ void MebApp::handleReset(const json &msg)
   unsubscribePartition();               // ZMQ_UNSUBSCRIBE
 
   _unconfigure();
-  _meb->disconnect();
+  _disconnect();
   if (_exporter)  _exporter.reset();
   connectionShutdown();
 }

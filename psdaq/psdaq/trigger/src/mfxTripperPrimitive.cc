@@ -25,7 +25,7 @@ namespace Pds {
                      const XtcData::Xtc& ctrb,
                      XtcData::Xtc&       xtc,
                      const void*         bufEnd) override;
-        size_t size() const  { return sizeof(TripperTebData); }
+        size_t size() const override { return sizeof(TripperTebData); }
     };
   };
 };

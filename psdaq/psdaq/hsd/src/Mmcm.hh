@@ -15,6 +15,9 @@ namespace Pds {
       void _setClkDiv(unsigned,unsigned);
       void _setLock  (unsigned);
       void _setFilt  (unsigned);
+    public:
+      void setPhase(unsigned);
+      void dump();
     private:
       Mmhw::Reg rsvd0[6];
       Mmhw::Reg ClkOut5_1;

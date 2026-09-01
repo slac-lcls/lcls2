@@ -1,6 +1,5 @@
 #include "PfplReducer.hh"
 
-#include "GpuAsyncLib.hh"
 #include "MemPool.hh"
 #include "Detector.hh"
 #include "drp/drp.hh"
@@ -35,7 +34,7 @@ public:
 
 
 PfplReducer::PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
-  ReducerAlgo(para, pool, det),
+  ReducerAlgo (para, pool, det),
   m_compressor(pool.calibBufsSize(), 3.)
 {
   if (para.verbose)  m_compressor.banner();
@@ -43,23 +42,30 @@ PfplReducer::PfplReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
 
 // This routine records the graph that does the data reduction
 void PfplReducer::recordGraph(cudaStream_t       stream,
-                              const unsigned&    index,
-                              float const* const calibBuffers,
-                              const size_t       calibBufCnt,
-                              uint8_t    * const dataBuffers,
-                              const size_t       dataBufCnt)
+                              unsigned*    const state_d,
+                              unsigned*    const index_d,
+                              float const* const calibBuffers_d,
+                              size_t       const calibBufsCnt,
+                              uint8_t*     const dataBuffers_d,
+                              size_t       const dataBufsCnt)
 {
   pfpl_scoped_range r{/*"PfplReducer::recordGraph"*/}; // Expose function name via NVTX
 
   m_compressor.updateGraph(stream,
-                           index,
-                           (uint8_t*)calibBuffers,
-                           calibBufCnt * sizeof(*calibBuffers),
-                           (uint8_t*)dataBuffers,
-                           dataBufCnt * sizeof(*dataBuffers));
+                           state_d,
+                           index_d,
+                           (uint8_t*)calibBuffers_d,
+                           calibBufsCnt * sizeof(*calibBuffers_d),
+                           (uint8_t*)dataBuffers_d,
+                           dataBufsCnt * sizeof(*dataBuffers_d));
+
 }
 
-void PfplReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned index, size_t* dataSize)
+void PfplReducer::reduce(cudaGraphExec_t graph,
+                         cudaStream_t    stream,
+                         unsigned        index,
+                         size_t*         dataSize,
+                         unsigned*       retCode)
 {
   pfpl_scoped_range r{/*"PfplpReducer::reduce"*/}; // Expose function name via NVTX
 
@@ -70,6 +76,7 @@ void PfplReducer::reduce(cudaGraphExec_t graph, cudaStream_t stream, unsigned in
   auto buffer  = &m_pool.reduceBuffers_d()[index * maxSize];
   auto pSize   = buffer - sizeof(*dataSize);
   chkError(cudaMemcpyAsync((void*)dataSize, pSize, sizeof(*dataSize), cudaMemcpyDeviceToHost, stream));
+  *retCode = 0;                          // @todo: TBD
 }
 
 unsigned PfplReducer::configure(Xtc& xtc, const void* bufEnd)

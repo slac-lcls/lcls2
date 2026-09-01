@@ -27,6 +27,7 @@ namespace Pds {
       std::vector<Pds_Epics::EpicsPVA*> _pv;
 
       MonTiming     _v_monTiming[2];
+      MonTrig       _v_monTrig  [2];
       MonPgp        _v_monPgp   [2];
       MonBuf        _v_monRawBuf[2];
       MonBuf        _v_monFexBuf[2];

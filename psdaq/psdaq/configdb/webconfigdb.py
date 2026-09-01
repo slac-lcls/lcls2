@@ -4,7 +4,7 @@ import requests
 from requests.auth import HTTPBasicAuth
 import json
 import logging
-from .typed_json import cdict
+from psdaq.configdb.typed_json import cdict
 
 class JSONEncoder(json.JSONEncoder):
     def default(self, o):

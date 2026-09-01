@@ -3,7 +3,7 @@ from libc.stdint cimport uint32_t
 cimport psdaq.trigger.CubeResultDgramw as dgram
 import psdaq.EbDgram as edg
 
-cdef class CubeResultDgram:
+cdef class CubeResultDgram():
     cdef Py_buffer buf
     cdef dgram.CubeResultDgram* cptr
     cdef int _bufOwner

@@ -106,9 +106,10 @@ class epix_base(AreaDetectorRaw):
         """Returns array of control bits shape=(<number-of-segments>, 352, 384) from any config object."""
         dcfg = self._config_object() # or alias self._seg_configs()
         if dcfg is None: return None
-        #print('XXX dcfg:', dcfg)
         lst_cbits = [self._cbits_config_segment(v.config) for k,v in dcfg.items()]
-        return np.stack(tuple(lst_cbits))
+        cbits = np.stack(tuple(lst_cbits))
+        logger.debug(info_ndarr(cbits, 'det.raw._cbits_config_detector():', last=10))
+        return cbits
 
 
     def _cbits_config_and_data_detector(self, evt=None):

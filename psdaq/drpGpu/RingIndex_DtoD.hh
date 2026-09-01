@@ -1,14 +1,11 @@
-#ifndef RINGINDEX_DTOD_H
-#define RINGINDEX_DTOD_H
+#ifndef RINGINDEX_DTOD_HH
+#define RINGINDEX_DTOD_HH
 
-#include "psalg/utils/SysLog.hh"
+#include <cassert>
 
 #include <cuda_runtime.h>
 #include <cuda/atomic>
-
-#ifndef __NVCC__
-#define __nanosleep(x) {}
-#endif
+#include <cuda/std/atomic>
 
 namespace Drp {
   namespace Gpu {
@@ -16,153 +13,87 @@ namespace Drp {
 class RingIndexDtoD
 {
 public:
-  __host__ RingIndexDtoD(const unsigned               capacity,
-                         const unsigned               dmaCount,
-                         const cuda::atomic<uint8_t>& terminate_d) :
-    m_capacity   (capacity),        // Range of the buffer index [0, capacity-1]
-    m_dmaBufMask (dmaCount-1),
-    m_terminate_d(terminate_d)
+  __host__ RingIndexDtoD(const unsigned capacity) :
+    m_head        (nullptr),
+    m_tail        (nullptr),
+    m_capacityMask(capacity-1)     // Range of the buffer index [0, capacity-1]
   {
-    using logging = psalg::SysLog;
-
-    if (capacity & (capacity - 1)) {
-      logging::critical("RingIndexDtoD capacity must be a power of 2, got %d\n", capacity);
-      abort();
-    }
-    if (dmaCount & (dmaCount - 1)) {
-      logging::critical("DmaBuffer count must be a power of 2, got %d\n", dmaCount);
-      abort();
-    }
+    assert((capacity & (capacity - 1)) == 0);  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
-    chkError(cudaMalloc(&m_cursor,    sizeof(*m_cursor)));  // For maintaining index ordering
-    chkError(cudaMemset( m_cursor, 0, sizeof(*m_cursor)));
-    // Head points to the next index to be allocated
-    chkError(cudaMalloc(&m_head_d,    sizeof(*m_head_d)));
-    chkError(cudaMemset( m_head_d, 0, sizeof(*m_head_d)));
-    // Tail points to the next index after the last freed one
-    chkError(cudaHostAlloc(&m_tail_h, sizeof(*m_tail_h), cudaHostAllocDefault));
-    chkError(cudaHostGetDevicePointer(&m_tail_d, m_tail_h, 0));
-    *m_tail_h = 0;
+    // Head refers to the next index to be allocated
+    chkError(cudaHostAlloc(&m_head, sizeof(*m_head), cudaHostAllocDefault));
+    *m_head = 0;    // Initialize to empty
+    // Tail refers to the next index after the last freed one
+    chkError(cudaHostAlloc(&m_tail, sizeof(*m_tail), cudaHostAllocDefault));
+    *m_tail = 0;
   }
 
   __host__ ~RingIndexDtoD()
   {
-    chkError(cudaFree(m_cursor));
-    chkError(cudaFree(m_head_d));
-    chkError(cudaFreeHost(m_tail_h));
+    if (m_tail)  chkError(cudaFreeHost(m_tail));
+    if (m_head)  chkError(cudaFreeHost(m_head));
   }
 
-  __device__ unsigned prepare(unsigned instance)         // Return next index in monotonic fashion
+  __device__ bool push(unsigned index) const           /** Move head forward when not full */
   {
-    //printf("###   DtoD rb::prepare 1, instance %d\n", instance);
-    //printf("###   DtoD rb::prepare 1, cursor %d\n", m_cursor->load());
-    //printf("###   DtoD rb::prepare 1, dmaMsk %08x\n", m_dmaBufMask);
-    auto idx = m_cursor->load(cuda::memory_order_acquire);
-    while ((idx & m_dmaBufMask) != instance) {           // Await this stream's turn
-      //printf("###   DtoD rb::prepare 1.%d idx %d\n", instance, idx);
-      if (m_terminate_d.load(cuda::memory_order_acquire))
-        break;
-      //__nanosleep(5000);                                 // Suspend the thread
-      idx = m_cursor->load(cuda::memory_order_acquire);  // Refresh idx
-    }
-    //printf("###   DtoD rb::prepare 2.%d, idx %d, dmaMsk %08x\n", instance, idx, m_dmaBufMask);
-    auto next = (idx+1)&(m_capacity-1);
-    auto tail = m_tail_d->load(cuda::memory_order_acquire);
-    //printf("###   DtoD rb::prepare 3.%d, nxt %d, tail %d\n", instance, next, tail);
-    while (next == tail) {                               // Wait for tail to advance while full
-      if (m_terminate_d.load(cuda::memory_order_acquire))
-        break;
-      //__nanosleep(5000);                                 // Suspend the thread
-      tail = m_tail_d->load(cuda::memory_order_acquire); // Refresh tail
-    }
-    //printf("###   DtoD rb::prepare 4.%d, tail %d\n", instance, m_tail_d->load());
-    m_cursor->store(next, cuda::memory_order_release);   // Let next stream go
-    //printf("###   DtoD rb::prepare 5.%d, cursor %d, tail %d, head %d, ret %d\n", instance, m_cursor->load(), tail, m_head_d->load(), idx);
-    return idx;                                          // Caller now fills buffer[idx]
+    using namespace cuda;
+    auto tail = m_tail->load(memory_order_acquire);
+    auto head = m_head->load(memory_order_acquire);
+    //if (index != head)  printf("### Expected index %u, got %u\n", head, index);
+    auto next = (head+1)  & m_capacityMask;
+    if (next == tail)  return false;                   // Full: caller retries to wait for tail to advance
+    m_head->store(next, memory_order_release);         // Publish new head
+    return true;
   }
 
-  __device__ void produce(unsigned idx)                  // Move head forward
+  __device__ bool pop(unsigned* const __restrict__ index) const /** Return current head */
   {
-    //const unsigned instance = idx & m_dmaBufMask;
-    auto head = m_head_d->load(cuda::memory_order_acquire);
-    //printf("###   DtoD rb::produce 1.%d, idx %d, head %d\n", instance, idx, head);
-    // Make sure head is published in event order so make other streams wait if they get here first
-    while (idx != head) {                                // Out-of-turn streams wait here
-      if (m_terminate_d.load(cuda::memory_order_acquire))
-        break;
-      //__nanosleep(5000);                                 // Suspend the thread
-      head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
-    }
-    //printf("###   DtoD rb::produce 2.%d, idx %d\n", instance, idx);
-    auto next = (idx+1)&(m_capacity-1);
-    //printf("###   DtoD rb::produce 3.%d, nxt %d\n", instance, next);
-    m_head_d->store(next, cuda::memory_order_release);   // Publish new head
-    //printf("###   DtoD rb::produce 4.%d, head %d\n", instance, m_head_d->load());
+    using namespace cuda;
+    auto tail = m_tail->load(memory_order_acquire);
+    auto head = m_head->load(memory_order_acquire);
+    if (tail == head)  return false;                   // Empty: caller retries to wait for head to advance
+    *index = tail;                                     // Caller now processes buffer at [tail]
+    auto next = (tail+1) & m_capacityMask;
+    m_tail->store(next, memory_order_release);         // Publish new tail
+    return true;
   }
 
-  __device__ unsigned consume()                          // Return current head
+  __host__ __device__ unsigned head() const
   {
-    //printf("###   DtoD rb::consume 1\n");
-    auto tail = m_tail_d->load(cuda::memory_order_acquire);
-    auto head = m_head_d->load(cuda::memory_order_acquire);
-    //printf("###   DtoD rb::consume 2, tail %d, head %d\n", tail, head);
-    while (tail == head) {                               // Wait for head to advance while empty
-      //printf("###   DtoD rb::consume idx %d\n", head);
-      if (m_terminate_d.load(cuda::memory_order_acquire))
-        break;
-      //__nanosleep(5000);                                 // Suspend the thread
-      head = m_head_d->load(cuda::memory_order_acquire); // Refresh head
-    }
-    //printf("###   DtoD rb::consume 3, idx %d\n", head);
-    return head;                                         // Caller now processes buffers up to [head]
+    using namespace cuda::std;
+    return m_head->load(memory_order_acquire);
   }
 
-  __host__ void release(const unsigned idx)              // Move tail forward
+  __host__ __device__ unsigned tail() const
   {
-    //printf("###   DtoD rb::release 1, idx %d\n", idx);
-    assert(idx == m_tail_h->load(cuda::memory_order_acquire)); // Require in-order freeing
-    auto next = (idx+1)&(m_capacity-1);
-    //printf("###   DtoD rb::release 2, nxt %d, cap %d\n", next, m_capacity);
-    m_tail_h->store(next, cuda::memory_order_release);   // Publish new tail
-    //printf("###   DtoD rb::release 3, tail %d\n", m_tail_h->load());
+    using namespace cuda::std;
+    return m_tail->load(memory_order_acquire);
   }
 
-  __host__ unsigned head() const
+  __host__ __device__ unsigned occupancy() const
   {
-    return m_head_d->load(cuda::memory_order_acquire);
+    using namespace cuda;
+    auto head = m_head->load(memory_order_acquire);
+    auto tail = m_tail->load(memory_order_acquire);
+    return (head - tail) & m_capacityMask;
   }
 
-  __host__ unsigned tail() const
+  __host__ __device__ size_t size() const
   {
-    return m_tail_h->load(cuda::memory_order_acquire);
+    return m_capacityMask + 1;
   }
 
-  __host__ bool empty() const
+  __host__ void reset()
   {
-    return head() == tail();
-  }
-
-  size_t size()
-  {
-    return m_capacity;
-  }
-
-  void reset()
-  {
-    chkError(cudaMemset(m_cursor, 0, sizeof(*m_cursor)));
-    chkError(cudaMemset(m_head_d, 0, sizeof(*m_head_d)));
-    *m_tail_h = 0;
+    *m_head = 0;
+    *m_tail = 0;
   }
 
 private:
-  cuda::atomic<unsigned, cuda::thread_scope_device>* m_cursor; // Must stay coherent across streams
-  cuda::atomic<unsigned, cuda::thread_scope_device>* m_head_d; // Must stay coherent across streams
-  cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_h; // Must stay coherent across streams
-  cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail_d; // Must stay coherent across streams
-  const unsigned               m_capacity;
-  const unsigned               m_dmaBufMask;
-  const cuda::atomic<uint8_t>& m_terminate_d;
+  cuda::atomic<unsigned, cuda::thread_scope_device>* m_head; // Must stay coherent across streams
+  cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail; // Must stay coherent across streams
+  const unsigned                                     m_capacityMask;
 };
 
   }

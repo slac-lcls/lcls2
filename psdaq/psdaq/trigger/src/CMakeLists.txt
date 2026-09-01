@@ -44,6 +44,26 @@ target_link_libraries(mfxTripperTeb
   epics::ca
 )
 
+add_library(mfxTripperEvSelectTeb SHARED
+  mfxTripperPrimitive.cc
+  mfxTripperPrimitive_jungfrau.cc
+  mfxTripperPrimitive_timing.cc
+  mfxTripperEvSelectTeb.cc
+)
+
+target_include_directories(mfxTripperEvSelectTeb PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+  $<INSTALL_INTERFACE:include>
+  ${PYTHON_INCLUDE_DIRS}
+)
+
+target_link_libraries(mfxTripperEvSelectTeb
+  xtcdata::xtc
+  trigger
+  nlohmann_json::nlohmann_json
+  epics::ca
+)
+
 add_library(tmoTrigger SHARED
   TriggerPrimitiveExample_cam.cc
   TriggerPrimitiveExample_xpphsd.cc
@@ -68,6 +88,7 @@ target_link_libraries(tmoTrigger
 
 add_library(tmoTeb SHARED
   tmoTebPrimitive.cc
+  tmoTebPrimitive_cpu.cc
   tmoTeb.cc
 )
 

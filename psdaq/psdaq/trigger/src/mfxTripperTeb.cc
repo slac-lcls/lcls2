@@ -3,6 +3,8 @@
 
 #include "utilities.hh"
 
+#include "xtcdata/xtc/TransitionId.hh"
+
 #include <cadef.h>
 
 #include <cstdint>
@@ -100,6 +102,9 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
                                         const Pds::EbDgram**       end,
                                         Pds::Eb::ResultDgram&      result)
 {
+    if (result.service() != XtcData::TransitionId::L1Accept) {
+        return;
+    }
     const Pds::EbDgram* const* ctrb = start;
 
     // Always write and monitor for now
@@ -119,9 +124,9 @@ void Pds::Trg::MfxTripperTrigger::event(const Pds::EbDgram* const* start,
     do {
         auto data = reinterpret_cast<TripperTebData*>((*ctrb)->xtc.payload());
         if (strcmp(data->detType, "jungfrau") == 0) {
-            hotPixelCnt += data->numHotPixels;
-            maxHotPixels = data->maxHotPixels;
-            hotPixelThresh = data->hotPixelThresh;
+            hotPixelCnt += data->smalldata.numHotPixels;
+            maxHotPixels = data->smalldata.maxHotPixels;
+            hotPixelThresh = data->smalldata.hotPixelThresh;
             foundJungfrau = true;
         }
     } while (++ctrb != end);

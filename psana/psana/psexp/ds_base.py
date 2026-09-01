@@ -373,6 +373,9 @@ class DataSourceBase(abc.ABC):
             % (self.exp, self.runnum, self.xtc_path)
         )
 
+    def _file_info_url(self, runnum):
+        return f"https://pswww.slac.stanford.edu/ws/lgbk/lgbk/{self.exp}/ws/{runnum}/current_files_for_live_mode"
+
     def _get_file_info_from_db(self, runnum):
         """Returns a list of xtc2 files as shown in the db.
 
@@ -392,7 +395,7 @@ class DataSourceBase(abc.ABC):
         file_info['dirname']
         /tmo/tmoc00118/xtc/
         """
-        url = f"https://pswww.slac.stanford.edu/ws/lgbk/lgbk/{self.exp}/ws/{runnum}/files_for_live_mode"
+        url = self._file_info_url(runnum)
         resp = requests.get(url)
         try:
             resp.raise_for_status()
@@ -404,15 +407,87 @@ class DataSourceBase(abc.ABC):
         file_info = {}
         if all_xtc_files:
             # Only take chunk 0 xtc files (matched with *-c*0.)
-            xtc_files = [
+            xtc_files = sorted(
                 os.path.basename(xtc_file)
                 for xtc_file in all_xtc_files
                 if re.search(r"-c000\.", xtc_file)
-            ]
+            )
             if xtc_files:
                 file_info["xtc_files"] = xtc_files
                 file_info["dirname"] = os.path.dirname(all_xtc_files[0])
         return file_info
+
+    def _file_info_key(self, file_info):
+        if not file_info:
+            return None
+        return (
+            file_info.get("dirname"),
+            tuple(sorted(file_info.get("xtc_files", []))),
+        )
+
+    def _file_info_stable_polls(self):
+        try:
+            stable_polls = int(os.environ.get("PS_LIVE_FILE_LIST_STABLE_POLLS", "3"))
+        except ValueError:
+            stable_polls = 3
+        return max(1, stable_polls)
+
+    def _get_file_info_from_db_with_retry(self, runnum):
+        stable_poll_target = self._file_info_stable_polls()
+        file_info = self._get_file_info_from_db(runnum)
+        file_info_key = self._file_info_key(file_info)
+        candidate_file_info_key = None
+        stable_polls = 0
+        retry_no = 0
+        while self.live:
+            if file_info_key:
+                if file_info_key == candidate_file_info_key:
+                    stable_polls += 1
+                else:
+                    candidate_file_info_key = file_info_key
+                    stable_polls = 1
+                if stable_polls >= stable_poll_target:
+                    return file_info
+            elif candidate_file_info_key is None:
+                stable_polls = 0
+
+            if retry_no >= self.dsparms.max_retries:
+                break
+
+            retry_no += 1
+            xtc_files = file_info.get("xtc_files", []) if file_info else []
+            self.logger.info(
+                "Waiting for file list from %s to settle "
+                "...(#retry:%s stable:%s/%s nfiles:%s)",
+                self._file_info_url(runnum),
+                retry_no,
+                stable_polls,
+                stable_poll_target,
+                len(xtc_files),
+            )
+            time.sleep(2)
+            file_info = self._get_file_info_from_db(runnum)
+            file_info_key = self._file_info_key(file_info)
+        return {}
+
+    def _missing_file_info_error(self, runnum):
+        if self.dsparms.max_retries > 0:
+            return FileNotFoundError(
+                "Timed out waiting for stable logbook file list for live mode "
+                "exp=%s run=%s from %s (retries=%s, interval=2s). live=True does not scan "
+                "the directory for stream discovery."
+                % (
+                    self.exp,
+                    runnum,
+                    self._file_info_url(runnum),
+                    self.dsparms.max_retries,
+                )
+            )
+        return FileNotFoundError(
+            "No stable logbook file list found for live mode exp=%s run=%s from %s. "
+            "live=True does not scan the directory for stream discovery."
+            % (self.exp, runnum, self._file_info_url(runnum))
+        )
 
     def _scan_run_files_on_disk(self, runnum):
         smd_dir = os.path.join(self.xtc_path, "smalldata")
@@ -433,16 +508,15 @@ class DataSourceBase(abc.ABC):
 
         Allowed extentions include .xtc2 and .xtc2.inprogress.
         """
-        file_info = self._get_file_info_from_db(runnum)
+        if self.live:
+            file_info = self._get_file_info_from_db_with_retry(runnum)
+        else:
+            file_info = self._get_file_info_from_db(runnum)
 
-        # If we get the list of stream ids from db (some test cases
-        # like xpptut15 run 1 are not registered in the db), these streams take
-        # priority over what found on disk. We support two cases:
-        #
-        # * Non-live mode: exit when expected stream is not found
-        # * Live mode    : wait for files and time out when max wait (s) is reached.
-        #
-        # If we don't get anything from the db, use what exist on disk.
+        # If we get the list of stream ids from db, these streams take
+        # priority over what is found on disk. In live mode the DB stream
+        # list is required; non-live mode keeps the disk fallback for old
+        # test data that is not registered in the db.
         if file_info:
             # Builds a list of expected smd files
             xtc_files_from_db = file_info["xtc_files"]
@@ -459,7 +533,7 @@ class DataSourceBase(abc.ABC):
             for i_smd, smd_file in enumerate(smd_files):
                 flag_found, true_xtc_file = self._check_file_exist_with_retry(smd_file)
                 if not flag_found:
-                    if self.dir:
+                    if self.dir and not self.live:
                         self.logger.info(
                             "Expected DB stream file %s not found under explicit dir=%s; "
                             "falling back to on-disk stream discovery for this directory.",
@@ -472,6 +546,8 @@ class DataSourceBase(abc.ABC):
                 smd_files[i_smd] = true_xtc_file
 
         else:
+            if self.live:
+                raise self._missing_file_info_error(runnum)
             smd_files = self._scan_run_files_on_disk(runnum)
 
         self.n_files = len(smd_files)

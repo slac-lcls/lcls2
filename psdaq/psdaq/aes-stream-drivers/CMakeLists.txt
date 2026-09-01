@@ -6,5 +6,6 @@ install(FILES
   DmaDriver.h
   GpuAsync.h
   GpuAsyncRegs.h
+  GpuAsyncUser.h
   DESTINATION include/psdaq/aes-stream-drivers
 )

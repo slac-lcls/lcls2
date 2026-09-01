@@ -44,13 +44,23 @@ namespace Pds {
         Mmhw::Reg _reg[4];
       } _base  [4];
 
-      Mmhw::Reg _rsvd_50[0xb0>>2];
-      // Mmhw::Reg _bram_wr_errors;
-      // Mmhw::Reg _bram_wr_sample;
-      // Mmhw::Reg _bram_rd_errors;
-      // Mmhw::Reg _bram_rd_sample;
+      Mmhw::Reg _rsvd_50[0x30>>2];
 
-      // Mmhw::Reg _rsvd_80[0x80>>2];
+      class TriggerMonitor {
+      public:
+        TriggerMonitor() {}
+      public:
+        void resetCounters();
+        void enableCorrection(bool);
+      public:
+        Mmhw::Reg apply_correction;
+        Mmhw::Reg num_ontime;
+        Mmhw::Reg num_early;
+        Mmhw::Reg num_late;
+        Mmhw::Reg clk_160;
+      } _triggerMon;
+
+      Mmhw::Reg _rsvd_94[0x6c>>2];
 
       class Stream {
       public:

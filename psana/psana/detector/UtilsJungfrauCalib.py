@@ -162,10 +162,13 @@ def open_DataSource(**kwargs):
     permit_info  = kwargs.get('info_xtc_files', True)
     batch_size   = kwargs.get('batch_size', None)
     smd_callback = kwargs.get('smd_callback', None)
+    skip_calib_load = kwargs.get('skip_calib_load', None)
     if batch_size is not None:
         dskwargs['batch_size'] = batch_size
     if smd_callback is not None:
         dskwargs['smd_callback'] = smd_callback
+    if skip_calib_load is not None:
+        dskwargs.setdefault('skip_calib_load', skip_calib_load)
     logger.info('DataSource dskwargs: %s' % (dskwargs))
     #try: ds = DataSource(exp='mfx100848724', run=49, max_events=100, batch_size=1)
     try: ds = DataSource(**dskwargs)
@@ -213,6 +216,30 @@ def jungfrau_dark_proc(parser):
     s = 'DIC_GAIN_MODE {<name> : <number>}'
     for k,v in DIC_GAIN_MODE.items(): s += '\n%16s: %d' % (k,v)
     logger.info(s)
+
+    stage1_uses_smd_callback = args.nrecs1 > 0 and args.nrecs == args.nrecs1
+
+    if stage1_uses_smd_callback:
+        def stage1_filter_callback(run):
+            logger.info('== stage1_filter_callback first call')
+            for istep_cb, step_cb in enumerate(run.steps()):
+                cond1 = True if stepmax is None else istep_cb < stepmax
+                cond2 = True if stepnum is None else istep_cb == stepnum
+                logger.info('== stage1_filter_callback begin step:%d cond1:%s cond2:%s evskip:%d nrecs:%d' %\
+                            (istep_cb, str(cond1), str(cond2), evskip, args.nrecs))
+                if cond1 and cond2:
+                    yielded = 0
+                    for ievt_cb, evt_cb in enumerate(step_cb.events()):
+                        if ievt_cb > evskip-1 and ievt_cb < args.nrecs:
+                            yielded += 1
+                            yield evt_cb
+                    logger.info('== stage1_filter_callback end step:%d yielded:%d' % (istep_cb, yielded))
+
+        kwargs['batch_size'] = 1
+        kwargs['smd_callback'] = stage1_filter_callback
+        logger.info('Stage 1 uses DataSource smd_callback')
+
+    kwargs.setdefault('skip_calib_load', 'all')
 
     ds, dskwargs = open_DataSource(**kwargs)
 
@@ -311,7 +338,7 @@ def jungfrau_dark_proc(parser):
                 nevrun += 1
                 nevtot += 1
 
-                if ievt<evskip:
+                if (not stage1_uses_smd_callback) and ievt<evskip:
                     s = 'skip event %d < --evskip=%d' % (ievt, evskip)
                     #print(s, end='\r')
                     if (selected_record(ievt+1, events) and ievt<evskip-1)\

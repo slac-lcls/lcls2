@@ -1,4 +1,4 @@
-name: Test LCLS-II
+name: Test psana
 on:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
@@ -19,25 +19,35 @@ jobs:
         shell: bash -el {0}  
     steps:
       - name: Checkout repo with submodules
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
 
       - name: Set up Conda
-        uses: conda-incubator/setup-miniconda@v3
+        uses: conda-incubator/setup-miniconda@8ee1f361103df19b6f8c8655fd3967a8ecb162d5 # v4.0.1
         with:
           auto-update-conda: true
           activate-environment: build-conda-env
           channels: lcls-ii, conda-forge
-          environment-file: .daq_20250402.txt
+          environment-file: .daq_20250402_r9.txt
 
       - name: Build
-        run: ./build_all.sh -d -c {Release, Debug, RelWithDebInfo} -p {develop, install}
+        run: |
+          # build_all.sh now requires ENV_TYPE to be set before it will run
+          # at all (normally done by sourcing setup_env.sh, which is S3DF/CDS
+          # specific and won't work on a GitHub-hosted runner). "legacy" is
+          # the same value setup_env.sh itself sets.
+          # Deliberately NOT passing -d here: in the current build_all.sh,
+          # -d turns the DAQ build ON (this flipped from the older version of
+          # the script, where -d turned it OFF) -- this workflow only tests
+          # psana, so the DAQ build should stay off.
+          export ENV_TYPE=legacy
+          ./build_all.sh
 
       - name: Run Tests
         run: |
-          cd psana
-          export PYTHONPATH=$PYTHONPATH:$(pwd)
-          cd ..
           export PATH=$(pwd)/install/bin:${PATH}
+          pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)
+          SITE_PACKAGES=$(pwd)/install/lib/python${pyver}/site-packages
+          export PYTHONPATH=${SITE_PACKAGES}:${PYTHONPATH}
           pytest psana/psana/tests/test_HBins.py \
                  psana/psana/tests/test_Time.py \
                  psana/psana/tests/test_TimeFormat.py \

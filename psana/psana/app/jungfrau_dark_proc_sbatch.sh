@@ -69,8 +69,8 @@ fi
 
 if [[ $cmd20 != "NONE" ]]; then
     t0_sec_stage2=$SECONDS
-    echo "start: mpirun --mca osc ^ucx $cmd20"
-    mpirun --mca osc ^ucx $cmd20
+    echo "start: mpirun --map-by numa:span --bind-to core --mca osc ^ucx $cmd20"
+    mpirun --map-by numa:span --bind-to core --mca osc ^ucx $cmd20
     echo "sbatch STAGE 2 IS COMPLETED time: $((SECONDS - t0_sec_stage2)) sec"
 else
     echo "skip cmd20: $cmd20"

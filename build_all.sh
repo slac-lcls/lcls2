@@ -11,15 +11,25 @@ else
   export INSTDIR="$TESTRELDIR"
 fi
 
+build_type="debugoptimized"           # debug, debugoptimized, release, minsize
 force_clean=0
 compile_only=0
 build_daq=0
+build_jobs=8
 
-if [ -d "/cds/sw/" ]; then
-  build_daq=1
+if [[ -z "${ENV_TYPE+x}" ]]; then
+  echo "Please source setup_env.sh or setup_daq.sh"
+  echo "Exiting"
+  exit 1
 fi
 
-while getopts "fdc" opt; do
+echo "Building analysis software"
+if [[ "${ENV_TYPE:-}" == "daq" ]]; then
+  build_daq=1
+  echo "Building DAQ software"
+fi
+
+while getopts "fdcj:" opt; do
   case $opt in
     d) build_daq=1
     ;;
@@ -27,13 +37,15 @@ while getopts "fdc" opt; do
     ;;
     c) compile_only=1
     ;;
+    j) build_jobs="$OPTARG"
+    ;;
     \?) echo "Invalid option -$OPTARG" >&2
         exit 1
     ;;
   esac
 done
 
-echo "INSTDIR:" $INSTDIR
+echo "Installation directory:" $INSTDIR
 
 if [ $force_clean == 1 ]; then
   echo "force_clean"
@@ -56,12 +68,16 @@ OPTIONS="-Dconda_prefix=$CONDA_PREFIX \
 
 # When building for a release (debug is default)
 #OPTIONS="$OPTIONS -Dbuildtype=release"
+OPTIONS="$OPTIONS -Dbuildtype=$build_type"
 
 if [ $build_daq == 1 ]; then
   OPTIONS="$OPTIONS -Dbuild_daq=true"
 else
   OPTIONS="$OPTIONS -Dbuild_daq=false"
 fi
+
+# Avoid 'plugin needed to handle lto object' with static libraries
+export AR=gcc-ar
 
 # Have to clear LDFLAGS set by conda if we are compiling the cuda parts too
 if command -v nvcc >/dev/null 2>&1; then
@@ -81,7 +97,7 @@ fi
 if [ ! -d "$BUILDDIR" ]; then
   meson setup "$BUILDDIR" $OPTIONS
 fi
-meson compile -C "$BUILDDIR" -j8
+meson compile -C "$BUILDDIR" -j$build_jobs
 meson install --only-changed --no-rebuild --quiet -C "$BUILDDIR"
 
 if [ $compile_only == 0 ]; then

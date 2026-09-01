@@ -3,16 +3,29 @@ from typing_extensions import Annotated
 import time
 import asyncio
 import socket
-from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries
+from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries, build_sbatch_env
 from psdaq.slurm.subproc import SubprocHelper
 import os
 import sys
-from subprocess import Popen
+from subprocess import DEVNULL, Popen
 from psdaq.slurm.config import Config
 import tempfile
 
 LOCALHOST = socket.gethostname()
 MAX_RETRIES = 30
+DAQMGR_DEBUG_TRACEBACK = "DAQMGR_DEBUG_TRACEBACK"
+DAQMGR_DEBUG_TRACEBACK_TRUE_VALUES = {"1", "true", "yes", "on"}
+
+
+def daqmgr_debug_traceback_enabled():
+    return (
+        os.environ.get(DAQMGR_DEBUG_TRACEBACK, "").lower()
+        in DAQMGR_DEBUG_TRACEBACK_TRUE_VALUES
+    )
+
+
+class DaqmgrUserError(Exception):
+    """Operator-facing error that should be printed without a traceback."""
 
 
 class Runner:
@@ -32,12 +45,16 @@ class Runner:
                 {},
                 config_dict,
             )
-        except Exception:
-            print("Error parsing configuration file:", sys.exc_info()[1])
+        except Exception as exc:
+            raise DaqmgrUserError(f"Error parsing configuration file: {exc}") from None
         self.platform = config_dict["platform"]
         self.configfilename = configfilename
         # Check if we are getting main or derived config file
         if config_dict["config"] is None:
+            if "procmgr_config" not in config_dict:
+                raise DaqmgrUserError(
+                    "Error parsing configuration file: missing procmgr_config"
+                )
             config = Config(config_dict["procmgr_config"])
             self.config = config.main_config
         else:
@@ -129,8 +146,14 @@ class Runner:
         with tempfile.NamedTemporaryFile("w", delete=True, suffix=".sh") as tmpfile:
             tmpfile.write(self.sbman.sb_script)
             tmpfile.flush()  # Make sure content is written to disk
-            cmd = f"sbatch {tmpfile.name}"
-            asyncio.run(self.proc.run(cmd, wait_output=True))
+            env = build_sbatch_env()
+            asyncio.run(
+                self.proc.run_exec(
+                    ["sbatch", tmpfile.name],
+                    env=env,
+                    echo_output=False,
+                )
+            )
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())
@@ -138,10 +161,10 @@ class Runner:
             config_ids = unique_ids.split(",")
         return config_ids
 
-    def _exists(self, unique_ids=None):
+    def _exists(self, unique_ids=None, strict=False):
         """Check if the config matches any existing jobs"""
         job_exists = False
-        job_details = self.sbman.get_job_info()
+        job_details = self.sbman.get_job_info(strict=strict)
 
         config_ids = self._select_config_ids(unique_ids)
 
@@ -214,9 +237,10 @@ class Runner:
 
     def start(self, unique_ids=None, skip_check_exist=False):
         self._check_unique_ids(unique_ids)
-        if self._exists(unique_ids=unique_ids) and not skip_check_exist:
-            msg = "Error: found one or more running jobs using the same resources"
-            raise RuntimeError(msg)
+        if not skip_check_exist:
+            if self._exists(unique_ids=unique_ids, strict=True):
+                msg = "Error: found one or more running jobs using the same resources"
+                raise RuntimeError(msg)
         if self.sbman.as_step:
             self.sbman.generate_as_step(self.sbjob, self.node_features)
             self.submit()
@@ -231,8 +255,8 @@ class Runner:
                             if details["flags"].find("x") > -1:
                                 job_state = None
                                 for i in range(MAX_RETRIES):
-                                    if self._exists(unique_ids=job_name):
-                                        job_details = self.sbman.get_job_info()
+                                    if self._exists(unique_ids=job_name, strict=True):
+                                        job_details = self.sbman.get_job_info(strict=True)
                                         job_state = job_details[details["comment"]][
                                             "state"
                                         ]
@@ -258,7 +282,7 @@ class Runner:
         by looking at the given cnf and match the comment (see below for detail) with
         comment returned by slurm."""
         self._check_unique_ids(unique_ids)
-        job_details = self.sbman.get_job_info()
+        job_details = self.sbman.get_job_info(strict=True)
 
         config_ids = []
         if unique_ids is not None:
@@ -335,8 +359,13 @@ class Runner:
                 else:
                     args = [self.PATH_XTERM, "-T", config_id, "-e", cmd]
 
-                arg_str = " ".join(args)
-                asyncio.run(self.proc.run(arg_str, wait_output=False))
+                Popen(
+                    args,
+                    stdin=DEVNULL,
+                    stdout=DEVNULL,
+                    stderr=DEVNULL,
+                    start_new_session=True,
+                )
             except Exception:
                 print("spawnConsole failed for process '%s'" % config_id)
             else:
@@ -380,7 +409,13 @@ class Runner:
                         "+F",
                         logfile,
                     ]
-                Popen(args)
+                Popen(
+                    args,
+                    stdin=DEVNULL,
+                    stdout=DEVNULL,
+                    stderr=DEVNULL,
+                    start_new_session=True,
+                )
             except Exception:
                 print("spawnLogfile failed for process '%s'" % config_id)
             else:
@@ -439,8 +474,26 @@ def main(
 
 
 def _do_main():
-    typer.run(main)
+    app = typer.Typer(
+        add_completion=False,
+        pretty_exceptions_show_locals=False,
+    )
+    app.command()(main)
+    try:
+        app()
+    except typer.Exit as exc:
+        return exc.exit_code
+    except DaqmgrUserError as exc:
+        if daqmgr_debug_traceback_enabled():
+            raise
+        print(exc, file=sys.stderr)
+        return 1
+    except Exception as exc:
+        if daqmgr_debug_traceback_enabled():
+            raise
+        print(f"Error: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":
-    _do_main()
+    sys.exit(_do_main())

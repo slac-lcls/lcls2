@@ -124,6 +124,11 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
     #time.sleep(0.1)
 
+    # Still see that occasionally a Tx reset is needed for timing feedback link.
+    # Until we fix the reset sequeunce, apply a data path reset (minimal) - mw
+    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxUserRst()
+    time.sleep(0.1)
+
     return cl
 
 def opal_init_feb(slane=None,schan=None):
@@ -397,6 +402,8 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
         # must be done after StartRun because that routine sets MasterEnable
         # to True for all lanes. That causes 100% deadtime from unused lanes.
         for i in range(4):
+            # select the XPM trigger source, not EVR
+            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].TriggerSource.set(0)
             cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
     barrier_global.wait()
     # enable our lane

@@ -12,6 +12,7 @@
 #include "spscqueue.hh"
 #include "psdaq/epicstools/PvMonitorBase.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 namespace Drp {
 
@@ -27,7 +28,7 @@ public:
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
     Detector* m_det;
-    static const int MAX_RET_CNT_C = 100;
+    static const unsigned MAX_RET_CNT_C = 100;
     int32_t m_available;
     int32_t m_current;
     uint64_t m_nDmaRet;
@@ -145,6 +146,7 @@ public:
     virtual ~PvDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
+    std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _reader();
@@ -152,12 +154,18 @@ private:
     void _handleTransition(Pds::EbDgram& evtDg, Pds::EbDgram& trDg);
     void _sendToTeb(const Pds::EbDgram& dgram, uint32_t index);
 private:
+    using tp_t = std::chrono::time_point<Pds::fast_monotonic_clock>;
+    struct it_t
+    {
+      unsigned index;
+      tp_t     t0;
+    };
     const PvParameters& m_para;
     PvDetector&         m_det;
     Pgp                 m_pgp;
     std::thread         m_readerThread;
     std::thread         m_collectorThread;
-    SPSCQueue<unsigned> m_evtQueue;
+    SPSCQueue<it_t>     m_evtQueue;
     std::atomic<bool>   m_terminate;
     uint64_t            m_nEvents;
     uint64_t            m_nUpdates;
@@ -166,6 +174,7 @@ private:
     uint64_t            m_nTooOld;
     uint64_t            m_nTimedOut;
     int64_t             m_timeDiff;
+    int64_t             m_age;
 };
 
 
@@ -181,6 +190,7 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    std::string _endrun(const nlohmann::json& phase1Info);
     void _unconfigure();
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
@@ -190,6 +200,7 @@ private:
     std::unique_ptr<PvDetector> m_det;
     std::unique_ptr<PvDrp>      m_drp;
     bool                        m_unconfigure;
+    std::string                 m_lastKey;
 };
 
 }

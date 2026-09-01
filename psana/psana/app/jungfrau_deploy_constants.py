@@ -32,7 +32,7 @@ def argument_parser():
     d_deploy  = False
     d_depfiles= False
     d_logmode = 'INFO'
-    d_ctdepl  = 'psrnx' # - for constants from dark, alternatively 'go' - if gain and offset needs to be deployed
+    d_ctdepl  = 'psr' # 'psrnx'- for constants from dark, alternatively 'go' - if gain and offset needs to be deployed
     d_paninds = None
     d_high    = None #16.40
     d_medium  = None #5.466

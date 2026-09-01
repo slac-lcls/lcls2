@@ -15,35 +15,37 @@ def usual_cdict():
     top.setAlg('tebConfig', [0,1,0])
 
     help_str  = "-- user --"
-    help_str += "\nsoname       : The trigger library the DRPs and TEBs are to use"
-    help_str += "\n               It is to be found in $TESTRELDIR"
-    help_str += "\npythonScript : Trigger script to run given a suitable trigger library"
-    help_str += "\n               Its path is given by the TEB's 'script_path' kwarg"
-    help_str += "\nbuildAll     : Event build all detector contributions vs only"
-    help_str += "\n               those listed in 'buildDets'"
-    help_str += "\nbuildDets    : Comma separated list of detNames to event build"
-    help_str += "\n               Ignored when buildAll is 0"
-    help_str += "\nprescale     : Record 1 in N events for which the persist trigger"
-    help_str += "\n               condition isn't met"
-    help_str += "\npersistValue : Trigger condition for recording an event"
-    help_str += "\nmonitorValue : Trigger condition for monitoring an event"
-    help_str += "\ntripBasePV   : Base PV for detector protection IOC (tripper)."
-    help_str += "\nrogRsrvdBuf  : Number of MEB event buffers to be held aside for"
-    help_str += "\n               events to which a slow readout group contributed"
+    help_str += "\nsoname          : The trigger library the DRPs and TEBs are to use"
+    help_str += "\n                  It is to be found in $TESTRELDIR"
+    help_str += "\npythonScript    : Trigger script to run given a suitable trigger library"
+    help_str += "\n                  Its path is given by the TEB's 'script_path' kwarg"
+    help_str += "\nbuildAll        : Event build all detector contributions vs only"
+    help_str += "\n                  those listed in 'buildDets'"
+    help_str += "\nbuildDets       : Comma separated list of detNames to event build"
+    help_str += "\n                  Ignored when buildAll is 0"
+    help_str += "\nprescale        : Record 1 in N events for which the persist trigger"
+    help_str += "\n                  condition isn't met"  # Obsolete and no longer used
+    help_str += "\npersistValue    : Trigger condition for recording an event"
+    help_str += "\nmonitorValue    : Trigger condition for monitoring an event"
+    help_str += "\ntripBasePV      : Base PV for detector protection IOC (tripper)."
+    help_str += "\nacceptEventCode : Only record and monitor data for this event code."
+    help_str += "\nrogRsrvdBuf     : Number of MEB event buffers to be held aside for"
+    help_str += "\n                  events to which a slow readout group contributed"
     top.set('help:RO', help_str, 'CHARSTR')
 
-    top.set('soname', 'libmfxTripperTeb.so', 'CHARSTR')
+    top.set('soname', 'libmfxTripperEvSelectTeb.so', 'CHARSTR')
 
     top.set('pythonScript', 'tebTstTrigger.py', 'CHARSTR')
 
     top.set('buildAll', 1, 'UINT32')
     top.set('buildDets', 'timing,bld,epics', 'CHARSTR')
 
-    top.set('prescale', 1, 'UINT32') # Required parameter
+    top.set('prescale', 1, 'UINT32') # Obsolete parameter, no longer used
 
     top.set('persistValue', 0xdeadbeef, 'UINT32')
     top.set('monitorValue', 0x12345678, 'UINT32')
-    top.set('tripBasePV', 'MFX:EPIX:BLOCKER', 'CHARSTR')
+    top.set('tripBasePV', 'MFX:JF16M:BLOCKER', 'CHARSTR')
+    top.set('acceptEventCode', 0, 'UINT32')
 
     for rog in range(8):
         top.set(f'rogRsrvdBuf[{str(rog)}]', 0, 'UINT32')
@@ -63,7 +65,7 @@ def calib_cdict():
     top.set('soname', 'libcalibTrigger.so',  'CHARSTR')
 
     top.set('buildAll:RO', 1, 'UINT32') # Required parameter
-    top.set('prescale:RO', 1, 'UINT32') # Required parameter
+    top.set('prescale:RO', 1, 'UINT32') # Obsolete parameter, no longer used
 
     return top
 

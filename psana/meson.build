@@ -66,6 +66,7 @@ py.extension_module(
     link_with: [xtc_shlib, utils_shlib],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
 )
 
 py.extension_module(
@@ -84,6 +85,7 @@ py.extension_module(
     link_with: [xtc_shlib],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
 )
 
 py.extension_module(
@@ -131,6 +133,7 @@ py.extension_module(
     link_with: [],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
 )
 
 py.extension_module(
@@ -200,6 +203,7 @@ py.extension_module(
         xtcdata_dep,
     ],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
  )
 
 py.extension_module(
@@ -243,6 +247,7 @@ py.extension_module(
     link_with: [],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
  )
 
 py.extension_module(
@@ -261,6 +266,7 @@ py.extension_module(
     link_with: [],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
  )
 
 py.extension_module(
@@ -275,6 +281,7 @@ py.extension_module(
     link_with: [],
     dependencies: [numpy_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
  )
 
 roentdek_dep = cc.find_library('Resort64c_x64', required: false)
@@ -296,6 +303,7 @@ if roentdek_dep.found()
     link_with: [],
     dependencies: [numpy_dep, roentdek_dep],
     override_options : ['cython_language=cpp'],
+    cpp_args : ['-DNPY_NO_DEPRECATED_API=NPY_1_7_API_VERSION'],
   )
 endif
 

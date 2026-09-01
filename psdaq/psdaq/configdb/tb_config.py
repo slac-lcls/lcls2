@@ -1,6 +1,7 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
+from psdaq.configdb.ts_connect import ts_connector
 from psdaq.cas.xpm_utils import timTxId
 from p4p.client.thread import Context
 import sys
@@ -23,6 +24,7 @@ base = None
 ocfg = None
 pv_prefix = None
 readout_groups = None
+connector = None
 lane = 3
 
 import pyrogue as pr
@@ -166,7 +168,12 @@ def tb_init_feb(slane=None,schan=None):
         chan = int(schan)
     print(f'init_feb lane {lane}')
 
-def tb_connect(base):
+def ts_connect(json_connect_info):
+    global connector
+    connector = ts_connector(json_connect_info)
+    return json.dumps({})
+
+def tb_connectionInfo(base):
     pbase = base['pcie']
     rxId = pbase.DevPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
     logging.info('RxId {:x}'.format(rxId))
@@ -215,6 +222,8 @@ def tb_config(base,connect_str,cfgtype,detname,detsegm,rog):
     teb.TriggerDelay.set(0)
 
     base['pcie'].StartRun()
+
+    connector.check_errors('config')
 
     return apply_config(cfg, detsegm==0)
 
@@ -392,6 +401,8 @@ def tb_update(update):
     return json.dumps(cfg)
 
 def tb_unconfig():
+    connector.check_errors('unconfig')
+
     base['pcie'].StopRun()
     return base
 

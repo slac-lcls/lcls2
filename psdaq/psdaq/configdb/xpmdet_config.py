@@ -50,7 +50,7 @@ def detect_C1100():
     except Exception as e:
         logging.error(f"Error reading file: {e}")
         return False
-    
+
 def dumpTiming(tim):
     logging.warning(f'FidCount  : {tim.FidCount.get()}')
     logging.warning(f'RxRstCount: {tim.RxRstCount.get()}')
@@ -63,13 +63,13 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
 
     args["timebase"]=timebase
     args["lanemask"]=lanemask
-    
+
     if (detect_C1100()):
        # print("Board Detected C1100")
         root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType='VariumC1100',qsa=False, xvcPort=None)
         root.__enter__()
         logging.info("Board Detected C1100")
-        
+
     else:
        # print("Board Detected KCU1500")
         root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev)
@@ -86,7 +86,6 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
 #    time.sleep(0.1)
 #    root.PcieControl.DevKcu1500.TDetTiming.TimingFrameRx.ClearRxCounters()
 
-            
     return root
 
 # called on alloc
@@ -99,10 +98,11 @@ def xpmdet_connectionInfo(alloc_json_str):
 
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json)
-    #print(f"Am I supervisor ? {supervisor} {nworker}")
+    logging.info(f'xpmdet supervisor: {supervisor}, nworkers: {nworker}')
     barrier_global.init(supervisor,nworker)
 
     if barrier_global.supervisor:
+
         tim = root.TDetTiming.TimingFrameRx
         dumpTiming(tim)
         time.sleep(0.1)
@@ -146,13 +146,10 @@ def xpmdet_connectionInfo(alloc_json_str):
             teb.ResetCounters()
             teb.FifoReset()
         xpmdet_unconfig()
-    
-        logging.info('unconfig Initial rxId {:x}'.format(rxId))
 
         rxId = xma.RxId.get()
         logging.info('rxId {:x}'.format(rxId))
 
-  
         if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
             logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
             tim = root.TDetTiming.TimingFrameRx
