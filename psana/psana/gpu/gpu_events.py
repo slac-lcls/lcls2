@@ -565,26 +565,14 @@ class GpuEventManager:
             for stream_id in stream_ids
         }
         requested_stream_ids = getattr(self.dsparms, "gpu_stream_ids", None)
-        if (requested_stream_ids is not None
-                and set(requested_stream_ids) != all_gpu_stream_ids):
+        if requested_stream_ids is None:
+            raise RuntimeError("GPU stream routing was not resolved from Configure")
+        if set(requested_stream_ids) != all_gpu_stream_ids:
             raise RuntimeError(
                 "GPU stream routing must include every stream for each "
                 f"gpu_det: expected {sorted(all_gpu_stream_ids)}, got "
                 f"{sorted(requested_stream_ids)}"
             )
-
-        selected_detectors = set(self.gpu_det_names)
-        stream_owners = getattr(self.dsparms, "stream_id_to_detnames", {})
-        for stream_id in sorted(all_gpu_stream_ids):
-            cpu_only = set(stream_owners.get(stream_id, ())) - selected_detectors
-            if cpu_only:
-                raise RuntimeError(
-                    f"GPU stream {stream_id} also contains detector(s) "
-                    f"{sorted(cpu_only)}. EventBuilder routes whole streams, "
-                    "so every detector on that stream must be selected by "
-                    "gpu_det."
-                )
-        self.dsparms.gpu_stream_ids = sorted(all_gpu_stream_ids)
 
         from psana.gpu.gpu_mpi import log_gpu_mem
 
