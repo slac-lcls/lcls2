@@ -4,6 +4,7 @@ build
 builddir
 install
 wheelhouse
+dist
 cibuildwheel_run_*.log
 build_full.log
 build_output.log
