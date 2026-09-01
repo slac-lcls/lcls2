@@ -1,13 +1,8 @@
 """
-parameter_validator.py
-
-Pure-Python JSON Schema and Parameter Validator with XTC2 Hardware Type Bounds Checking.
-Zero 3rd-party dependencies.
+DRP algorithm parameter validation utilities.
 """
 
-import re
-from typing import Any, Dict, List, Optional, Tuple, Union
-import numbers
+from typing import Any, Dict, List, Optional, Tuple
 
 # Import DAQ typerange or provide standalone fallback
 try:
@@ -118,7 +113,6 @@ def normalize_developer_schema(dev_schema: Dict[str, Any]) -> Dict[str, Any]:
             "Developer schema MUST contain a 'parameters' dictionary! Loose keys or 'properties' are not allowed."
         )
 
-    normalized: Dict[str, Any] = dict(dev_schema)
     params: Dict[str, Any] = dev_schema["parameters"]
     normalized_params: Dict[str, Any] = {}
 
@@ -155,9 +149,17 @@ def normalize_developer_schema(dev_schema: Dict[str, Any]) -> Dict[str, Any]:
 
         normalized_params[param_name] = spec
 
-    normalized["parameters"] = normalized_params
+    json_schema: Dict[str, Any] = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": f"{dev_schema['name']} Algorithm Parameters",
+        "type": "object",
+        "properties": normalized_params,
+    }
 
-    return normalized
+    if "required" in dev_schema:
+        json_schema["required"] = dev_schema["required"]
+
+    return json_schema
 
 
 def infer_xtc_type(prop_spec: Dict[str, Any]) -> str:
