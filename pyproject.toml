@@ -7,13 +7,8 @@ name = "psana"
 version="4.3"
 requires-python = ">=3.11"  # Source code supports Python 3.11+
 
-# Core dependencies identified via AST-based import analysis (2026-07-18),
-# corrected 2026-08-27: a fresh-env install test found six of these
-# (amitypes/amityping, krtc, prometheus_client, pymongo, pyzmq, kafka) are
-# imported unconditionally in the core DataSource chain, not gated behind
-# any optional feature -- five were misfied as optional extras below and
-# two (krtc, kafka) weren't declared anywhere. See stanford-knowledge-base
-# decisions/2026-08-27-wheel-dependency-classification-gaps.md.
+# Core dependencies. See NOTES_TOML.md for the 2026-08-27 classification-gap
+# rationale and the amityping pin rationale.
 # Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
 dependencies = [
     "numpy",        # 289 imports, 245 files - core array operations
@@ -23,11 +18,8 @@ dependencies = [
     "scipy",        # 27 imports, 17 files - scientific computing
     "requests",     # 10 imports, 10 files - HTTP requests
     "psutil",       # 14 imports, 12 files - system utilities
-    # amitypes is the import name; amityping is the distribution name, only
-    # published on the lcls-ii conda channel, not PyPI -- pulled directly
-    # from git instead. Pinned to the commit the 1.3.0 tag resolved to
-    # (verified 2026-08-27) rather than the tag itself, matching the
-    # rapidjson pin's reproducibility rationale below -- tags are mutable.
+    # amitypes is the import name; amityping is the distribution name.
+    # See NOTES_TOML.md for the pin rationale.
     "amityping @ git+https://github.com/slac-lcls/amityping.git@f17e33641d69e0788d3c7fbabeceb162bcfb4bba",
     "lcls-krtc",       # import name 'krtc' -- Kerberos auth for calib-web access (MDBWebUtils/CalibConstants)
     "prometheus_client",  # psexp/prometheus_manager.py, core DataSource chain
@@ -149,13 +141,13 @@ exclude = [
 ]
 
 [tool.hatch.build.sources]
-# NOTE: The build_wheel.sh script will replace this line with the correct Python version
-# Pattern: "install/lib/pythonX.Y/site-packages/..." will be set dynamically
+# build_wheel_container.sh patches this for the active Python version at
+# build time. See NOTES_TOML.md.
 "install/lib" = "lib"
 "install/bin" = "bin"
 
 [tool.hatch.build.targets.wheel]
-# NOTE: build_wheel.sh will set this to [] to use sources mapping only
+# build_wheel_container.sh sets this to [] at build time. See NOTES_TOML.md.
 packages = ["psana", "psalg"]
 
 [tool.hatch.build.targets.wheel.force-include]
@@ -169,56 +161,23 @@ packages = ["psana", "psalg"]
 "install/lib/libshmemsrv.so" = "psana/.libs/libshmemsrv.so"
 "install/lib/libshmemcli.so" = "psana/.libs/libshmemcli.so"
 
-# Container build target: cp311 only for the first Podman run (widen to
-# cp312/cp313 once this is confirmed working). See build_wheel_container.sh
-# and docs/topics/psana-wheel-packaging.md (2026-07-29 sections) for the
-# reasoning behind this before-all/before-build split -- most notably that
-# MPI is deliberately NOT installed here because psana's C++/Cython code has
-# no direct MPI linkage (mpi4py is a pure Python-level runtime dependency),
-# confirmed by a repo-wide grep of every meson.build file.
+# Build target and MPI-omission rationale: see NOTES_TOML.md.
 [tool.cibuildwheel]
 build = "cp311-*"
 skip = "pp* *-musllinux*"
-# WORKAROUND (2026-07-29): create-args added to unblock a rootless-cgroup
-# permission failure specific to sdfiana023's Weka-backed cgroup mount --
-# see PODMAN_TEST_LOG.md. cgroupns=host and disable-host-mount added per
-# review (Thorsten, via boss), matching the manually-confirmed working
-# `podman run --runtime ~/bin/crun --cgroups=disabled --cgroupns=host`
-# command, and avoiding cibuildwheel's default `--volume=/:/host` bind
-# mount of the entire host filesystem (which includes Weka-backed paths)
-# into the container. Once the node/infra team fixes proper cgroup
-# delegation, this can revert to the plain form:
-#   container-engine = "podman"
-#
-# NOTE: the explicit --runtime path below is account-specific
-# (/sdf/home/m/mavaylon/bin/crun only exists under this user's home
-# directory) and is redundant with ~/.config/containers/containers.conf,
-# which already sets crun as the default runtime and was confirmed working
-# in the prior run. Added anyway for an explicit, self-contained config.
-# Anyone else running this needs their own crun at their own path, either
-# via their own containers.conf or by changing this path to match.
+# Podman crun/cgroups workaround (2026-07-29): see NOTES_TOML.md.
 container-engine = { name = "podman", create-args = ["--runtime", "/sdf/home/m/mavaylon/bin/crun", "--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 before-all = [
     "dnf install -y libcurl-devel",
-    # AlmaLinux 8's rapidjson-devel is the stale upstream v1.1.0 tag from
-    # 2016 -- its GenericStringRef assignment operator assigns to a const
-    # member, which GCC 14 rejects as a hard error under C++20. No RPM
-    # repo (including EPEL) has ever packaged anything newer, because
-    # RapidJSON itself hasn't tagged a release since 2016. Upstream's
-    # master branch has the fix (operator= declared deleted); pulled
-    # directly from GitHub, pinned to a specific commit for
-    # reproducibility, rather than relying on the broken dnf package.
+    # RapidJSON GCC-14 fix: see NOTES_TOML.md.
     "curl -sL https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz | tar xz -C /tmp",
     "cp -r /tmp/rapidjson-24b5e7a8b27f42fa16b96fc70aade9106cf7102f/include/rapidjson /usr/include/",
 ]
 before-build = [
-    # numpy must be installed before build_wheel_container.sh runs --
-    # meson.build's numpy_inc lookup shells out to `python3 -c "import
-    # numpy; ..."` to find its include path, which silently fails/returns
-    # nothing if numpy isn't already installed in this container.
+    # numpy install ordering rationale: see NOTES_TOML.md.
     "pip install meson ninja cython hatchling numpy",
     "bash {project}/build_wheel_container.sh",
 ]
