@@ -35,8 +35,17 @@ mapping exclusively instead of auto-discovering the raw (uncompiled)
 
 ## `[tool.cibuildwheel]`
 
-**Build target:** cp311 only for the first Podman run (widen to cp312/cp313
-once confirmed working). See `build_wheel_container.sh` and
+**Build target:** cp311/cp312/cp313, widened 2026-09-01 from the original
+cp311-only first Podman run. `numpy_dep`'s include-path lookup in
+`meson.build` was hardened at the same time (resolve via the already-detected
+`py` installation object, with `check: true`, instead of a bare `'python3'`
+string with no failure check) specifically because this widening means the
+build now runs under three different interpreters per container invocation
+for the first time -- not because a version mismatch was ever observed.
+**Not yet built or verified under cp312/cp313** -- only locally reasoned
+about; run `cibuildwheel --platform linux` on a Podman-configured node and
+fresh-env-install-test each resulting wheel before trusting this. See
+`build_wheel_container.sh` and
 `docs/topics/psana-wheel-packaging.md` (2026-07-29 sections, in the
 stanford-knowledge-base repo) for the reasoning behind the before-all/
 before-build split -- most notably that MPI is deliberately NOT installed
@@ -57,13 +66,21 @@ entire host filesystem (which includes Weka-backed paths) into the
 container. Once the node/infra team fixes proper cgroup delegation, this can
 revert to the plain form: `container-engine = "podman"`.
 
-The explicit `--runtime` path is account-specific
-(`/sdf/home/m/mavaylon/bin/crun` only exists under this user's home
-directory) and is redundant with `~/.config/containers/containers.conf`,
-which already sets `crun` as the default runtime and was confirmed working
-in the prior run. Added anyway for an explicit, self-contained config.
-Anyone else running this needs their own `crun` at their own path, either
-via their own `containers.conf` or by changing this path to match.
+**2026-09-01: dropped the explicit `--runtime` path.** It was
+account-specific (`/sdf/home/m/mavaylon/bin/crun` only exists under this
+user's home directory) -- not portable in a file that's checked into git
+and meant to work for anyone building this project. It was also redundant:
+`~/.config/containers/containers.conf` (a separate, per-account Podman
+config, not checked in) already sets `crun` as the default runtime, and
+that alone was confirmed working. Anyone building locally on SDF needs
+their own `containers.conf` doing that -- that's real per-account setup,
+but it now lives where account-specific config belongs (each person's own
+environment), not hardcoded into the shared `pyproject.toml`.
+
+This whole `container-engine` block is for building locally on SDF via
+Podman only. `.github/workflows/release.yml` overrides it back to plain
+Docker via `CIBW_CONTAINER_ENGINE`, since GitHub-hosted runners have none
+of SDF's Weka/rootless-Podman issues to work around.
 
 ## `[tool.cibuildwheel.linux].before-all`
 

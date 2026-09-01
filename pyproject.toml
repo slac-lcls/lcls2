@@ -7,8 +7,7 @@ name = "psana"
 version="4.3"
 requires-python = ">=3.11"  # Source code supports Python 3.11+
 
-# Core dependencies. See NOTES_TOML.md for the 2026-08-27 classification-gap
-# rationale and the amityping pin rationale.
+# Core dependencies.
 # Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
 dependencies = [
     "numpy",        # 289 imports, 245 files - core array operations
@@ -19,7 +18,6 @@ dependencies = [
     "requests",     # 10 imports, 10 files - HTTP requests
     "psutil",       # 14 imports, 12 files - system utilities
     # amitypes is the import name; amityping is the distribution name.
-    # See NOTES_TOML.md for the pin rationale.
     "amityping @ git+https://github.com/slac-lcls/amityping.git@f17e33641d69e0788d3c7fbabeceb162bcfb4bba",
     "lcls-krtc",       # import name 'krtc' -- Kerberos auth for calib-web access (MDBWebUtils/CalibConstants)
     "prometheus_client",  # psexp/prometheus_manager.py, core DataSource chain
@@ -142,12 +140,12 @@ exclude = [
 
 [tool.hatch.build.sources]
 # build_wheel_container.sh patches this for the active Python version at
-# build time. See NOTES_TOML.md.
+# build time.
 "install/lib" = "lib"
 "install/bin" = "bin"
 
 [tool.hatch.build.targets.wheel]
-# build_wheel_container.sh sets this to [] at build time. See NOTES_TOML.md.
+# build_wheel_container.sh sets this to [] at build time.
 packages = ["psana", "psalg"]
 
 [tool.hatch.build.targets.wheel.force-include]
@@ -161,23 +159,26 @@ packages = ["psana", "psalg"]
 "install/lib/libshmemsrv.so" = "psana/.libs/libshmemsrv.so"
 "install/lib/libshmemcli.so" = "psana/.libs/libshmemcli.so"
 
-# Build target and MPI-omission rationale: see NOTES_TOML.md.
 [tool.cibuildwheel]
-build = "cp311-*"
+build = "cp311-* cp312-* cp313-*"
 skip = "pp* *-musllinux*"
-# Podman crun/cgroups workaround (2026-07-29): see NOTES_TOML.md.
-container-engine = { name = "podman", create-args = ["--runtime", "/sdf/home/m/mavaylon/bin/crun", "--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
+# Podman crun/cgroups workaround (2026-07-29). This is
+# for building locally on SDF via Podman only -- GitHub Actions CI
+# (.github/workflows/release.yml) overrides this back to plain Docker via
+# CIBW_CONTAINER_ENGINE, since none of SDF's Weka/rootless-Podman issues
+# apply there.
+container-engine = { name = "podman", create-args = ["--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 before-all = [
     "dnf install -y libcurl-devel",
-    # RapidJSON GCC-14 fix: see NOTES_TOML.md.
+    # RapidJSON GCC-14 fix.
     "curl -sL https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz | tar xz -C /tmp",
     "cp -r /tmp/rapidjson-24b5e7a8b27f42fa16b96fc70aade9106cf7102f/include/rapidjson /usr/include/",
 ]
 before-build = [
-    # numpy install ordering rationale: see NOTES_TOML.md.
+    # numpy install ordering rationale.
     "pip install meson ninja cython hatchling numpy",
     "bash {project}/build_wheel_container.sh",
 ]

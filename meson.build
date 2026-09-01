@@ -12,11 +12,7 @@ cc = meson.get_compiler('cpp')
 py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
-# Python 3.11
-#numpy_dep = dependency('numpy')
-
-# Python 3.9
-numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())']).stdout().strip()
+numpy_inc = run_command(py, ['-c', 'import numpy; print(numpy.get_include())'], check: true).stdout().strip()
 numpy_dep = declare_dependency(include_directories: include_directories(numpy_inc))
 
 # Have to set the linker flags manually, as nvcc's linker conflicts with
