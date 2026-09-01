@@ -257,10 +257,11 @@ unsigned TimingSystem::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsi
                                   double* dst, unsigned bin, XtcData::DescData& rawData)
 {
     if (rawDefIndex==0) {
+        unsigned arraySize = 0;
         switch(valueIndex) {
         case 0: // eventcodes
             {
-                unsigned arraySize = 288*sizeof(double_t);
+  	        arraySize = 288;
                 dst += bin*arraySize;
                 Array<uint16_t> seqArray = rawData.get_array<uint16_t>(TSDef.sequenceValues);
                 for(unsigned iw=0; iw<18; iw++) {
@@ -273,20 +274,19 @@ unsigned TimingSystem::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsi
                     }
                     dst+=16;
                 }
-                return arraySize;
             }
         case 1: // inhibitCounts
             {
-                unsigned arraySize = 8*sizeof(double_t);
+ 	        arraySize = 8;
                 dst += bin*arraySize;
                 Array<uint32_t> seqArray = rawData.get_array<uint32_t>(TSDef.inhibitCounts);
                 for(unsigned iw=0; iw<8; iw++)
                     dst[iw] += double(seqArray.data()[iw]);
-                return arraySize;
             }
         default:
             break;
         }
+	return arraySize*sizeof(double_t);
     }
     logging::critical("addToCube called with rawDefIndex %u and valueIndex %u",rawDefIndex,valueIndex);
     abort();

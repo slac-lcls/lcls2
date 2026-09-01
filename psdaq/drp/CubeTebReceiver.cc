@@ -298,6 +298,15 @@ void CubeTebReceiver::_queueDgram(unsigned index, const Pds::Eb::ResultDgram& re
     TransitionId::Value transitionId = result.service();
     if (transitionId != TransitionId::L1Accept) {
         auto dgram = m_pool.transitionDgrams[index];
+
+	// pass everything except L1 accepts and slow updates to control level
+	if (transitionId != TransitionId::SlowUpdate) {
+	    // send pulseId to inproc so it gets forwarded to the collection
+	    uint64_t pulseId = dgram->pulseId();
+	    json msg = createPulseIdMsg(pulseId);
+	    m_inprocSend.send(msg.dump());
+	}
+	
         if (transitionId == TransitionId::Configure) {
             //  Interpret the configure dgram for Nbins and result type
             const CubeConfigDgram& config = reinterpret_cast<const CubeConfigDgram&>(result);
@@ -624,15 +633,6 @@ void CubeTebReceiver::finalize()
             TransitionId::Value transitionId = result.service();
 	    auto dgram = transitionId == TransitionId::L1Accept ? (EbDgram*)m_pool.pebble[index]
                 : m_pool.transitionDgrams[index];
-
-	    // pass everything except L1 accepts and slow updates to control level
-	    if (transitionId != TransitionId::L1Accept &&
-		transitionId != TransitionId::SlowUpdate) {
-	        // send pulseId to inproc so it gets forwarded to the collection
- 	        uint64_t pulseId = dgram->pulseId();
-	        json msg = createPulseIdMsg(pulseId);
-		m_inprocSend.send(msg.dump());
-	    }
 
             if (!dgram->isEvent()) {
                 m_pool.freeTr(dgram);
