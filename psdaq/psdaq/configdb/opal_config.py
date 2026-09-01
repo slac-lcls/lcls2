@@ -124,6 +124,11 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
     #time.sleep(0.1)
 
+    # Still see that occasionally a Tx reset is needed for timing feedback link.
+    # Until we fix the reset sequeunce, apply a data path reset (minimal) - mw
+    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxUserRst()
+    time.sleep(0.1)
+
     return cl
 
 def opal_init_feb(slane=None,schan=None):
