@@ -3,9 +3,59 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "lcls2"
+name = "psana"
 version="4.3"
-requires-python = ">=3.8"
+requires-python = ">=3.11"  # Source code supports Python 3.11+
+
+# Core dependencies.
+# Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
+dependencies = [
+    "numpy",        # 289 imports, 245 files - core array operations
+    "h5py",         # 14 imports, 14 files - HDF5 file I/O
+    "mpi4py",       # 42 imports, 35 files - parallel processing (requires system MPI)
+    "matplotlib",   # 37 imports, 25 files - plotting
+    "scipy",        # 27 imports, 17 files - scientific computing
+    "requests",     # 10 imports, 10 files - HTTP requests
+    "psutil",       # 14 imports, 12 files - system utilities
+    # amitypes is the import name; amityping is the distribution name.
+    "amityping @ git+https://github.com/slac-lcls/amityping.git@f17e33641d69e0788d3c7fbabeceb162bcfb4bba",
+    "lcls-krtc",       # import name 'krtc' -- Kerberos auth for calib-web access (MDBWebUtils/CalibConstants)
+    "prometheus_client",  # psexp/prometheus_manager.py, core DataSource chain
+    "pymongo",         # provides bson.objectid.ObjectId, used by pscalib/calib/MDBUtils.py
+    "pyzmq",           # import name 'zmq'
+    "kafka-python",    # import name 'kafka' -- psexp/ds_base.py, core DataSource chain
+]
+
+[project.optional-dependencies]
+# GUI tools (graphqt applications)
+gui = [
+    "PyQt5",  # 231 imports, 99 files
+]
+
+# Analysis packages
+analysis = [
+    "scikit-learn",  # 3 imports, 2 files
+    "pywt",          # 1 import - wavelets
+    "opencv-python", # cv2 - Python-only, no C-level OpenCV linkage in the wheel
+]
+
+# Machine learning / advanced computing
+ml = [
+    "dask",   # 2 imports, 1 file
+    "cupy",   # 2 imports, 1 file - GPU arrays
+    "torch",  # 2 imports, 1 file - PyTorch
+]
+
+# All optional dependencies
+all = [
+    "PyQt5",
+    "scikit-learn",
+    "pywt",
+    "opencv-python",
+    "dask",
+    "cupy",
+    "torch",
+]
 
 [project.scripts]
 syslog = "psalg.utils.syslog:main"
@@ -72,6 +122,12 @@ ignore = ['E221', 'E222', 'E266']
 [tool.ruff]
 line-length = 160
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.hooks.custom]
+path = "hatch_build.py"
+
 [tool.hatch.build]
 artifacts = ["install"]
 include = [
@@ -84,8 +140,46 @@ exclude = [
 ]
 
 [tool.hatch.build.sources]
+# build_wheel_container.sh patches this for the active Python version at
+# build time.
 "install/lib" = "lib"
 "install/bin" = "bin"
 
 [tool.hatch.build.targets.wheel]
-packages = ["lcls2"]
+# build_wheel_container.sh sets this to [] at build time.
+packages = ["psana", "psalg"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"install/lib/libxtc.so" = "psana/.libs/libxtc.so"
+"install/lib/libpsalg.so" = "psana/.libs/libpsalg.so"
+"install/lib/libutils.so" = "psana/.libs/libutils.so"
+"install/lib/libgeometry.so" = "psana/.libs/libgeometry.so"
+"install/lib/libcalib.so" = "psana/.libs/libcalib.so"
+"install/lib/libdigitizer.so" = "psana/.libs/libdigitizer.so"
+"install/lib/libdetector.so" = "psana/.libs/libdetector.so"
+"install/lib/libshmemsrv.so" = "psana/.libs/libshmemsrv.so"
+"install/lib/libshmemcli.so" = "psana/.libs/libshmemcli.so"
+
+[tool.cibuildwheel]
+build = "cp311-* cp312-* cp313-*"
+skip = "pp* *-musllinux*"
+# Podman crun/cgroups workaround (2026-07-29). This is
+# for building locally on SDF via Podman only -- GitHub Actions CI
+# (.github/workflows/release.yml) overrides this back to plain Docker via
+# CIBW_CONTAINER_ENGINE, since none of SDF's Weka/rootless-Podman issues
+# apply there.
+container-engine = { name = "podman", create-args = ["--cgroups=disabled", "--cgroupns=host"], disable-host-mount = true }
+
+[tool.cibuildwheel.linux]
+manylinux-x86_64-image = "manylinux_2_28"
+before-all = [
+    "dnf install -y libcurl-devel",
+    # RapidJSON GCC-14 fix.
+    "curl -sL https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz | tar xz -C /tmp",
+    "cp -r /tmp/rapidjson-24b5e7a8b27f42fa16b96fc70aade9106cf7102f/include/rapidjson /usr/include/",
+]
+before-build = [
+    # numpy install ordering rationale.
+    "pip install meson ninja cython hatchling numpy",
+    "bash {project}/build_wheel_container.sh",
+]

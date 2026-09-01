@@ -1,0 +1,83 @@
+name: Build wheels and create release
+
+# Only build for release tags.
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build_wheels:
+    name: Build wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache pip
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@v4.1.1
+        env:
+          # pyproject.toml's [tool.cibuildwheel].container-engine is a
+          # Podman + crun config specific to SDF's Weka-related rootless
+          # cgroup workaround. None of that applies on a
+          # GitHub-hosted runner -- override back to cibuildwheel's normal
+          # default here instead of touching pyproject.toml's local-build
+          # config.
+          CIBW_CONTAINER_ENGINE: docker
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: >
+            pytest
+            {project}/psana/psana/tests/test_HBins.py
+            {project}/psana/psana/tests/test_Time.py
+            {project}/psana/psana/tests/test_TimeFormat.py
+            {project}/psana/psana/tests/test_TimeParse.py
+            {project}/psana/psana/tests/test_dgramedit.py
+            {project}/psana/psana/tests/test_dgraminit.py
+            {project}/psana/psana/tests/test_epix_calib.py
+            {project}/psana/psana/tests/test_hsd.py
+            {project}/psana/psana/tests/test_packetfooter.py
+            {project}/psana/psana/tests/test_psalg.py
+            {project}/psana/psana/tests/test_py2xtc.py
+            {project}/psana/psana/tests/test_py2xtc_scan.py
+            {project}/psana/psana/tests/test_pyalgos.py
+            {project}/psana/psana/tests/test_sample.py
+            {project}/psana/psana/tests/test_timetool.py
+            {project}/psana/psana/tests/test_ts.py
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cibw-wheels
+          path: ./wheelhouse/*.whl
+
+  create_release:
+    name: Create GitHub release and publish to PyPI
+    needs: [build_wheels]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: write
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Gather build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
