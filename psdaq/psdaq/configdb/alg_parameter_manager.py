@@ -388,11 +388,10 @@ class DrpAlgParamManager:
                 provided.
         """
         if full_schema is not None:
-            normalized = normalize_developer_schema(dev_schema=full_schema)
-            name = normalized["name"]
-            ver = normalized["version"]
-            so = normalized.get("soname", soname)
-            params = normalized["parameters"]
+            name = full_schema["name"]
+            ver = full_schema["version"]
+            so = full_schema.get("soname", soname)
+            params = normalize_developer_schema(dev_schema=full_schema)
         else:
             name = alg_name
             ver = version
@@ -403,6 +402,14 @@ class DrpAlgParamManager:
                 raise ValueError(
                     "Must provide alg_name, version, and params_schema (or full_schema dict)!"
                 )
+
+            dev_dict = {
+                "name": name,
+                "version": ver,
+                "soname": so,
+                "parameters": params_schema,
+            }
+            params = normalize_developer_schema(dev_dict)
 
         payload: Dict[str, Any] = {
             "schema": params,
