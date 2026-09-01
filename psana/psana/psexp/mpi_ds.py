@@ -901,24 +901,8 @@ class MPIDataSource(DataSourceBase):
             self.xtc_files, configs=configs, config_consumers=[self.dsparms]
         )
 
-        # Set gpu_stream_ids on ALL ranks (including EB) so EventBuilderManager
-        # routes every stream belonging to gpu_det through GPUBAT1.
-        # det_stream_segments_table was just populated by DgramManager on all
-        # ranks; its keys are the stream IDs that carry the GPU detector data.
-        if getattr(self.dsparms, 'gpu_det', None):
-            gpu_det_names = self.dsparms.gpu_det
-            if isinstance(gpu_det_names, str):
-                gpu_det_names = [gpu_det_names]
-            seg_table = getattr(self.dsparms, 'det_stream_segments_table', {})
-            ids_table  = getattr(self.dsparms, 'det_stream_ids_table', {})
-            all_gpu_ids = set()
-            for name in gpu_det_names:
-                # Prefer the detector-to-stream table and fall back to the
-                # detector-to-stream-segment table populated from Configure.
-                stream_ids = ids_table.get(name) or list(seg_table.get(name, {}).keys())
-                all_gpu_ids.update(stream_ids)
-            if all_gpu_ids:
-                self.dsparms.gpu_stream_ids = sorted(all_gpu_ids)
+        # Resolve on every rank before EventBuilder starts routing whole streams.
+        self.dsparms.resolve_gpu_stream_ids()
 
         return True
 

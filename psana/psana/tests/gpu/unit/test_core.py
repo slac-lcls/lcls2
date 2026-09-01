@@ -13,6 +13,7 @@ from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
 from psana.event import Event, EventEnvelope
 from psana.psexp import TransitionId
+from psana.psexp.ds_base import DsParms
 from psana.psexp.packet_footer import PacketFooter
 
 
@@ -41,6 +42,67 @@ def test_single_file_datasource_rejects_gpu_mode():
         match="supported only by RunSerial and RunParallel",
     ):
         SingleFileDataSource(files=[], gpu_det="jungfrau")
+
+
+def _routing_dsparms(gpu_det, ids_table, stream_owners):
+    dsparms = DsParms(
+        batch_size=1,
+        max_events=0,
+        max_retries=0,
+        live=False,
+        timestamps=None,
+        intg_det="",
+        intg_delta_t=0,
+        use_calib_cache=False,
+        cached_detectors=[],
+        fetch_calib_cache_max_retries=0,
+        skip_calib_load=[],
+        dbsuffix="",
+        gpu_det=gpu_det,
+    )
+    dsparms.det_stream_ids_table = ids_table
+    dsparms.det_stream_segments_table = {}
+    dsparms.stream_id_to_detnames = stream_owners
+    return dsparms
+
+
+def test_gpu_routing_allows_one_detector_across_multiple_streams():
+    dsparms = _routing_dsparms(
+        "jungfrau",
+        {"jungfrau": [3, 5, 7, 8, 9]},
+        {stream_id: ["jungfrau"] for stream_id in [3, 5, 7, 8, 9]},
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_stream_ids == [3, 5, 7, 8, 9]
+
+
+def test_gpu_routing_allows_detectors_on_disjoint_streams():
+    dsparms = _routing_dsparms(
+        ["jungfrau", "other"],
+        {"jungfrau": [3, 5], "other": [6]},
+        {3: ["jungfrau"], 5: ["jungfrau"], 6: ["other"]},
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_stream_ids == [3, 5, 6]
+
+
+@pytest.mark.parametrize("gpu_det", ["jungfrau", ["jungfrau", "other"]])
+def test_gpu_routing_rejects_shared_detector_stream(gpu_det):
+    dsparms = _routing_dsparms(
+        gpu_det,
+        {"jungfrau": [3], "other": [3]},
+        {3: ["jungfrau", "other"]},
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="GPUBAT1 requires exactly one normal detector per GPU stream",
+    ):
+        dsparms.resolve_gpu_stream_ids()
 
 
 def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():

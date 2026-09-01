@@ -85,6 +85,41 @@ class DsParms:
         self.smd_files = smd_files
         self.use_smds = use_smds
 
+    def resolve_gpu_stream_ids(self):
+        """Resolve and validate whole-stream GPU routing from Configure."""
+        if not self.gpu_det:
+            self.gpu_stream_ids = None
+            return
+
+        gpu_det_names = (
+            [self.gpu_det] if isinstance(self.gpu_det, str) else list(self.gpu_det)
+        )
+        ids_table = getattr(self, "det_stream_ids_table", {})
+        segments_table = getattr(self, "det_stream_segments_table", {})
+        stream_owners = getattr(self, "stream_id_to_detnames", {})
+        gpu_stream_ids = set()
+
+        for det_name in gpu_det_names:
+            stream_ids = ids_table.get(det_name) or list(
+                segments_table.get(det_name, {}).keys()
+            )
+            if not stream_ids:
+                raise RuntimeError(
+                    f"gpu_det={det_name!r} did not resolve to any stream ids"
+                )
+
+            for stream_id in stream_ids:
+                owners = set(stream_owners.get(stream_id, ()))
+                if owners != {det_name}:
+                    raise RuntimeError(
+                        f"gpu_det={det_name!r} uses stream {stream_id}, which "
+                        f"contains normal detectors {sorted(owners)}. GPUBAT1 "
+                        "requires exactly one normal detector per GPU stream."
+                    )
+                gpu_stream_ids.add(stream_id)
+
+        self.gpu_stream_ids = sorted(gpu_stream_ids)
+
     @property
     def intg_stream_id(self):
         # We only set detector related fields later (setup run files) so there
