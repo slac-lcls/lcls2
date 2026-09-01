@@ -727,7 +727,7 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
     // Combining a flushing dgram (i.e., a non-SlowUpdate transition) into an
     // expired batch can lead to downstream problems since the transition's
     // pulseId may fall outside the batch duration (epoch)
-    if (expired)                        // Post just the batch
+    if (_batch.start != dgram)          // Post just the batch
     {
       _post(_batch);                    // The batch end is the previous Dgram
 

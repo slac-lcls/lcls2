@@ -1,14 +1,15 @@
 from cpython.buffer cimport PyObject_GetBuffer, PyBuffer_Release, PyBUF_ANY_CONTIGUOUS, PyBUF_SIMPLE
 from libc.stdint cimport uint32_t
-cimport psdaq.trigger.CubeResultDgramw as dgram
+cimport psdaq.trigger.WindowResultDgramw as dgram
 import psdaq.EbDgram as edg
 
-cdef class CubeResultDgram():
+cdef class WindowResultDgram():
     cdef Py_buffer buf
-    cdef dgram.CubeResultDgram* cptr
+    cdef dgram.WindowResultDgram* cptr
     cdef int _bufOwner
 
-    def __cinit__(self, view = None, persist = True, record = True, monitor = -1, bin = 0, updateRecord = False, updateMonitor = False, flush = False):
+    def __cinit__(self, view = None, persist = True, monitor = -1,
+    		  win_add = [], win_record = [], win_monitor = [], win_flush = []):
         self._bufOwner = view is not None
         if self._bufOwner:
             #  Inheritance is not provided
@@ -17,33 +18,36 @@ cdef class CubeResultDgram():
             #
             PyObject_GetBuffer(view, &self.buf, PyBUF_SIMPLE | PyBUF_ANY_CONTIGUOUS)
             view_ptr = <char *>self.buf.buf
-            self.cptr = <dgram.CubeResultDgram *>(view_ptr)
+            self.cptr = <dgram.WindowResultDgram *>(view_ptr)
             self.cptr.persist      (persist)
-            self.cptr.record       (record)
             self.cptr.monitor      (monitor)
-            self.cptr.binIndex     (bin)
-            self.cptr.updateRecord (updateRecord)
-            self.cptr.updateMonitor(updateMonitor)
-            self.cptr.flush        (flush)
+            self.cptr.updateAdd    (self.listToMask(win_add))
+            self.cptr.updateRecord (self.listToMask(win_record))
+            self.cptr.updateMonitor(self.listToMask(win_monitor))
+            self.cptr.flush        (self.listToMask(win_flush))
 
     def __dealloc__(self):
         if self._bufOwner:
             PyBuffer_Release(&self.buf)
 
+    def listToMask(self,l):
+        m = 0
+        for w in l:
+            m |= 1<<w
+        return m
+    
     def data(self):
         return self.cptr.data()
 
     def persist(self):
         return self.cptr.persist()
 
-    def record(self):
-        return self.cptr.record()
-
     def monitor(self):
         return self.cptr.monitor()
 
-    def binIndex(self):
-        return self.cptr.binIndex()
+"""
+    def updatedAdd(self):
+        return self.cptr.updateAdd()
 
     def updateRecord(self):
         return self.cptr.updateRecord()
@@ -53,3 +57,4 @@ cdef class CubeResultDgram():
 
     def flush(self):
         return self.cptr.flush()
+"""

@@ -1,7 +1,7 @@
 #pragma once
 
 #include "TebReceiver.hh"                   // Contains base class for TebReceiver
-#include "psdaq/eb/src/CubeResultDgram.hh"
+#include "CubeResult.hh"
 
 namespace Drp {
 
@@ -16,13 +16,14 @@ public:
 protected:
     virtual void complete(unsigned index, const Pds::Eb::ResultDgram&) override;
 private:
-    void            _queueDgram(unsigned index, const Pds::Eb::CubeResultDgram& result);
-    Pds::EbDgram*   _binDgram  (Pds::EbDgram* dg, const Pds::Eb::CubeResultDgram&);
-    void            _monitorDgram(unsigned index, const Pds::Eb::CubeResultDgram& result);
-    void            _recordDgram (unsigned index, const Pds::Eb::CubeResultDgram& result);
+    void            _queueDgram(unsigned index,   const Pds::Eb::ResultDgram& result);
+    Pds::EbDgram*   _binDgram  (Pds::EbDgram* dg, const std::vector<unsigned>& bins);
+    void            _monitorDgram(unsigned index, const Pds::Eb::ResultDgram&, const std::vector<unsigned>& bins);
+    void            _recordDgram (unsigned index, const Pds::Eb::ResultDgram&, const std::vector<unsigned>& bins);
 private:
     Detector&                         m_det;
-    std::vector<Pds::Eb::CubeResultDgram>  m_result;
+    CubeResult                        m_resultParse;
+    std::vector<Pds::Eb::ResultDgram>  m_result;
     unsigned                          m_current;
     unsigned                          m_last; // index from CubeTebReceiver
     unsigned                          m_nbins;
