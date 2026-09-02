@@ -173,7 +173,10 @@ container-engine = { name = "podman", create-args = ["--cgroups=disabled", "--cg
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 before-all = [
-    "dnf install -y libcurl-devel",
+    # krb5-devel provides gssapi/gssapi.h, needed to compile pykerberos
+    # (a lcls-krtc dependency) when cibuildwheel's test step installs
+    # the built wheel.
+    "dnf install -y libcurl-devel krb5-devel",
     # RapidJSON GCC-14 fix.
     "curl -sL https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz | tar xz -C /tmp",
     "cp -r /tmp/rapidjson-24b5e7a8b27f42fa16b96fc70aade9106cf7102f/include/rapidjson /usr/include/",
