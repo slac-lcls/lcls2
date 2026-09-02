@@ -32,6 +32,14 @@ jobs:
           # default here instead of touching pyproject.toml's local-build
           # config.
           CIBW_CONTAINER_ENGINE: docker
+          # Matches run_psana_tests.yaml/run_daq_tests.yaml's job-level
+          # LCLS_CALIB_HTTP override. Several tests below fetch calibration
+          # constants; without this they hit CalibConstants.py's default,
+          # psdmint.sdf.slac.stanford.edu, which is SDF-internal and
+          # unreachable from a GitHub-hosted runner. cibuildwheel runs
+          # CIBW_TEST_COMMAND inside an isolated container, so this must be
+          # passed via CIBW_ENVIRONMENT_LINUX rather than plain job env.
+          CIBW_ENVIRONMENT_LINUX: LCLS_CALIB_HTTP=https://pswww.slac.stanford.edu/calib_ws/
           CIBW_TEST_REQUIRES: pytest
           CIBW_TEST_COMMAND: >
             pytest
