@@ -4,10 +4,12 @@ import os
 import sys
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 import psana.gpu.gpu_events as gpu_events_module
-from psana.gpu.gpu_calib import _segment_ids_in_l1_order
+from psana.gpu.dgram_layout import segment_ids_in_l1_order
+from psana.gpu.gpu_calib import _compute_calib_constants_cpu
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
@@ -117,6 +119,24 @@ def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():
     assert evt._det_segments == {}
 
 
+def test_calib_constants_follow_canonical_segment_order():
+    peds = np.arange(3 * 4, dtype=np.float32).reshape(3, 4, 1, 1)
+    gain = np.ones_like(peds)
+    det = SimpleNamespace(
+        calibconst={"pedestals": [peds], "pixel_gain": [gain]},
+        raw=SimpleNamespace(
+            _mask=lambda all_segs: np.ones((4, 1, 1), dtype=np.float32)
+        ),
+    )
+
+    peds_flat, gmask_flat = _compute_calib_constants_cpu(
+        det, canonical_segment_ids=[3, 1]
+    )
+
+    np.testing.assert_array_equal(peds_flat, [3, 1, 7, 5, 11, 9])
+    np.testing.assert_array_equal(gmask_flat, np.ones(6, dtype=np.float32))
+
+
 def test_event_owns_optional_gpu_state_once():
     evt = Event([gpu_events_module._GpuOnlyDgram(42)])
     state = object()
@@ -162,7 +182,7 @@ def test_segment_ids_preserve_l1_child_order():
         }
     )
 
-    assert _segment_ids_in_l1_order(dgram, "jungfrau") == [
+    assert segment_ids_in_l1_order(dgram, "jungfrau") == [
         17,
         13,
         9,
@@ -171,7 +191,7 @@ def test_segment_ids_preserve_l1_child_order():
         25,
         21,
     ]
-    assert _segment_ids_in_l1_order(object(), "jungfrau") == []
+    assert segment_ids_in_l1_order(object(), "jungfrau") == []
 
 
 class _FakeEvent:
@@ -296,11 +316,15 @@ def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_deco
     events.gpu_detectors = {
         "jungfrau": (
             object(),
-            SimpleNamespace(beginstep=lambda peds, gmask: log.append(("beginstep", peds, gmask))),
+            SimpleNamespace(
+                canonical_segment_ids=(0,),
+                beginstep=lambda peds, gmask: log.append(("beginstep", peds, gmask)),
+            ),
         )
     }
 
-    def fake_constants(det):
+    def fake_constants(det, canonical_segment_ids=None):
+        assert canonical_segment_ids == (0,)
         log.append("constants")
         return "peds", "gmask"
 
@@ -624,7 +648,7 @@ from psana.gpu.gpu_batch import (
     GpuBatchView,
     GpuSubbatchView,
 )
-from psana.gpu.gpu_calib import GPUDetector
+from psana.gpu.gpu_detector import GPUDetector
 
 
 def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None):

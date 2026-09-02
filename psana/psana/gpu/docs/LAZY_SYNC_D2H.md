@@ -513,7 +513,9 @@ and its CPU delivery are visible in Nsight Systems.
 | `gpu_stream.py` | `_EventSlot`, `EventPool`, slot leases, two-phase retirement |
 | `context.py` | `GPUResult`, `on_cpu`, `on_gpu`, `on_gpu_view`, host-only result state |
 | `gpu_kvikio_read.py` | Reusable per-slot raw input buffers and asynchronous reads |
-| `gpu_calib.py` | Per-slot calibration/raw buffers and result-ready producer work |
+| `gpu_detector.py` | Per-slot calibration/raw buffers and result-ready producer work |
+| `gpu_calib.py` | Calibration constants, geometry helpers, and Jungfrau kernel |
+| `dgram_layout.py` | CPU-side dgram layout and stream/segment discovery |
 | `gpu_budget.py` | Committed device-memory accounting |
 | `gpu_batch.py` | GPU batch and byte-bounded subbatch views |
 

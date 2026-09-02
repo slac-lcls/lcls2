@@ -91,7 +91,10 @@ def cpu_reference():
         # Canonicalize to the GPU result dtype and detach from psana's event
         # buffers before the iterator advances.
         calib = np.asarray(calib, dtype=np.float32).copy()
-        reference[timestamp] = calib
+        reference[timestamp] = {
+            "raw": np.asarray(raw, dtype=np.uint16).copy(),
+            "calib": calib,
+        }
         gain_modes.update(int(value) for value in np.unique(raw >> 14))
         has_nonzero_calib = has_nonzero_calib or bool(np.any(calib != 0))
 
@@ -140,6 +143,93 @@ def _assert_pixel_exact(timestamp, cpu_calib, gpu_calib):
     )
 
 
+def _assert_result_is_slot_backed(run, arr, result_type="calib"):
+    """The integrated result must remain a view of a budgeted slot buffer."""
+    manager = getattr(run._evt_iter, "gpu_manager", run._evt_iter)
+    gpu_detector = manager.gpu_detectors[_DET_NAME][1]
+    result_start = int(arr.data.ptr)
+    result_end = result_start + int(arr.nbytes)
+
+    slot_buffers = getattr(gpu_detector, f"_{result_type}_slot_bufs")
+    for slot_buf in slot_buffers:
+        if slot_buf is None:
+            continue
+        slot_start = int(slot_buf.data.ptr)
+        slot_end = slot_start + int(slot_buf.nbytes)
+        if slot_start <= result_start and result_end <= slot_end:
+            return
+
+    pytest.fail(
+        f"GPU {result_type} result is not backed by a budgeted slot buffer"
+    )
+
+
+@pytest.mark.gpu
+@requires_gpu
+def test_canonical_raw_gather_precedes_ordinary_calibration():
+    """Logical buffer gaps and stream order end at canonical raw assembly."""
+    import cupy as cp
+
+    from psana.gpu.gpu_calib import fused_calib_gpu
+    from psana.gpu.gpu_detector import _gather_strided_rows_gpu
+
+    # Two logical panels start at elements 2 and 7. Prefix and inter-panel
+    # bytes model a future coalesced physical read without implementing one.
+    src = cp.asarray([90, 91, 1, 2, 3, 80, 81, 7, 8, 9], dtype=cp.uint16)
+    output_rows = cp.asarray([2, 0], dtype=cp.uint32)
+    raw = cp.full((3, 1, 3), 0, dtype=cp.uint16)
+
+    result = _gather_strided_rows_gpu(
+        src,
+        pix_start=2,
+        stride_pixels=5,
+        n_segments=2,
+        pixels_per_segment=3,
+        output_rows=output_rows,
+        out=raw,
+    )
+    peds = cp.zeros(3 * raw.size, dtype=cp.float32)
+    gmask = cp.ones(3 * raw.size, dtype=cp.float32)
+    calib = fused_calib_gpu(raw, peds, gmask)
+    cp.cuda.Stream.null.synchronize()
+
+    assert result is raw
+    np.testing.assert_array_equal(
+        cp.asnumpy(raw[:, 0]),
+        [[7, 8, 9], [0, 0, 0], [1, 2, 3]],
+    )
+    np.testing.assert_array_equal(cp.asnumpy(calib), cp.asnumpy(raw))
+
+
+@pytest.mark.gpu
+@requires_gpu
+def test_mapped_passthrough_copy_writes_canonical_rows():
+    """Strided pre-calibrated panels use the same canonical destination."""
+    import cupy as cp
+
+    from psana.gpu.gpu_detector import _gather_strided_rows_gpu
+
+    src = cp.asarray([99, 1, 2, 3, 88, 7, 8, 9], dtype=cp.float32)
+    output_rows = cp.asarray([2, 0], dtype=cp.uint32)
+    out = cp.full((3, 3), -1, dtype=cp.float32)
+
+    result = _gather_strided_rows_gpu(
+        src,
+        pix_start=1,
+        stride_pixels=4,
+        n_segments=2,
+        pixels_per_segment=3,
+        output_rows=output_rows,
+        out=out,
+    )
+    cp.cuda.Stream.null.synchronize()
+
+    assert result is out
+    np.testing.assert_array_equal(cp.asnumpy(out[2]), [1, 2, 3])
+    np.testing.assert_array_equal(cp.asnumpy(out[0]), [7, 8, 9])
+    np.testing.assert_array_equal(cp.asnumpy(out[1]), [-1, -1, -1])
+
+
 @pytest.mark.slow
 @pytest.mark.gpu
 @pytest.mark.data
@@ -175,10 +265,22 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
             f"GPU produced timestamp {timestamp} absent from CPU reference"
         )
 
-        # Copy immediately, before advancing the iterator can recycle the
-        # EventPool slot that owns this result.
-        gpu_calib = np.asarray(evt.gpu.get("calib").on_cpu).copy()
-        _assert_pixel_exact(timestamp, cpu_reference[timestamp], gpu_calib)
+        # Verify the canonical result is still the budgeted slot view, then
+        # copy before advancing the iterator can recycle that slot.
+        calib_result = evt.gpu.get("calib")
+        raw_result = evt.gpu.get("raw")
+        _assert_result_is_slot_backed(run, calib_result._arr)
+        _assert_result_is_slot_backed(run, raw_result._arr, result_type="raw")
+        gpu_raw = np.asarray(raw_result.on_cpu).copy()
+        gpu_calib = np.asarray(calib_result.on_cpu).copy()
+        np.testing.assert_array_equal(
+            gpu_raw,
+            cpu_reference[timestamp]["raw"],
+            err_msg=f"timestamp={timestamp}: canonical raw mismatch",
+        )
+        _assert_pixel_exact(
+            timestamp, cpu_reference[timestamp]["calib"], gpu_calib
+        )
         seen.add(timestamp)
 
     expected = set(cpu_reference)
