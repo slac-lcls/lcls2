@@ -110,7 +110,7 @@ use that same order.
 
 During GPU detector setup, on CPU:
 
-1. `build_stream_seg_map()` opens each detector-bearing bigdata stream.
+1. `build_stream_segment_map()` opens each detector-bearing bigdata stream.
 2. It scans to the first L1Accept containing Jungfrau data.
 3. Psana joins each ShapesData `names_id` to Configure and exposes physical
    segment IDs in XTC traversal order.
@@ -281,8 +281,11 @@ Useful performance/debug entry points are:
 - `gpu_batch.py`: GPUBAT1 ABI and descriptor views.
 - `gpu_events.py`: serial/MPI batch orchestration and timestamp join.
 - `gpu_kvikio_read.py`: per-slot bigdata reads and descriptor table.
-- `gpu_calib.py`, `cuda/fused_calib.cuh`: ordering, raw gathering, constants,
-  geometry, and Jungfrau calibration.
+- `dgram_layout.py`: CPU-side dgram layout and stream/segment discovery.
+- `gpu_detector.py`: canonical raw gathering, detector processing, slot buffers,
+  and detector memory accounting.
+- `gpu_calib.py`, `cuda/fused_calib.cuh`: constants, geometry helpers, and
+  Jungfrau calibration.
 - `gpu_stream.py`: reusable CUDA streams and slot lifetime.
 - `context.py`: user-facing GPU result/context wrappers.
 - `gpu_mpi.py`: GPU pinning, CUDA IPC calibration sharing, and fatal-error

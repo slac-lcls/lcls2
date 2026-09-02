@@ -137,7 +137,7 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     only on BeginStep transitions via GPUDetector.beginstep().  Leaders
     update the shared buffer in-place; followers see the change automatically.
     Followers are marked with ``_is_calib_follower=True`` so their
-    ``beginstep()`` skips the redundant H→D write and only clears caches.
+    ``beginstep()`` skips the redundant H→D write.
 
     Parameters
     ----------
@@ -263,8 +263,6 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
                 ),
             )
             gpu_det._is_calib_follower = True
-            gpu_det._stream_peds.clear()
-            gpu_det._stream_gmask.clear()
 
     n_followers = len(follower_bd_ranks) if is_leader else 1
     logger.debug(
