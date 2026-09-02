@@ -542,7 +542,7 @@ class EpixMonitoringIOC(PVGroup):
                 await getattr(self, name).write(value=value)
 
 
-if __name__ == '__main__':
+def main():
     # Parse standard EPICS IOC command-line options
     parser, split_args = template_arg_parser(
         default_prefix="DET:EPIX:CMP004:",
@@ -591,3 +591,7 @@ if __name__ == '__main__':
     # Start the server
     ioc = EpixMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, regvc=args.regvc, **ioc_options)
     run(ioc.pvdb, **run_options, startup_hook=ioc.__ainit__)
+
+
+if __name__ == '__main__':
+    main()
