@@ -1,7 +1,7 @@
 unset LD_LIBRARY_PATH
 unset PYTHONPATH
 
-ANA_CONDA_ENVIRONMENT=psana_20260405
+ANA_CONDA_ENVIRONMENT=psana_20260902
 
 if [[ "${ENV_TYPE:-}" == "daq" ]]; then
   echo "Please do not mix ana and daq setup scripts"
