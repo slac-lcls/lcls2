@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "psana"
 version="4.3"
-requires-python = ">=3.11"  # Source code supports Python 3.11+
+requires-python = ">=3.9"
 
 # Core dependencies.
 # Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
