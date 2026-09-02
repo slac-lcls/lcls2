@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "psana"
 version="4.3"
-requires-python = ">=3.11"  # Source code supports Python 3.11+
+requires-python = ">=3.9"
 
 # Core dependencies.
 # Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
@@ -173,11 +173,18 @@ container-engine = { name = "podman", create-args = ["--cgroups=disabled", "--cg
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
 before-all = [
-    "dnf install -y libcurl-devel",
+    # krb5-devel provides gssapi/gssapi.h, needed to compile pykerberos
+    # (a lcls-krtc dependency) when cibuildwheel's test step installs
+    # the built wheel. openmpi provides the MPI runtime mpi4py needs to
+    # dlopen at import time (the wheel intentionally doesn't bundle it).
+    "dnf install -y libcurl-devel krb5-devel openmpi",
     # RapidJSON GCC-14 fix.
     "curl -sL https://github.com/Tencent/rapidjson/archive/24b5e7a8b27f42fa16b96fc70aade9106cf7102f.tar.gz | tar xz -C /tmp",
     "cp -r /tmp/rapidjson-24b5e7a8b27f42fa16b96fc70aade9106cf7102f/include/rapidjson /usr/include/",
 ]
+# openmpi's libmpi.so lands in a non-default lib path; mpi4py dlopens it
+# at import time and needs this to find it, both during build and test.
+environment = { LD_LIBRARY_PATH = "/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH" }
 before-build = [
     # numpy install ordering rationale.
     "pip install meson ninja cython hatchling numpy",
