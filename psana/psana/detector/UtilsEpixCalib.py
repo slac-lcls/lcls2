@@ -458,11 +458,11 @@ def deploy_constants(ctypes, gainmodes, **kwa):
 
         try:
           data = data_from_file(fname, ctype, dtype, True)
-          logger.info(info_ndarr(data, 'constants loaded from file', last=10))
+          logger.info(info_ndarr(data, 'constants loaded from file', last=5))
         except AssertionError as err:
           logger.warning(err)
           data = np.zeros(shape_as_daq, np.uint16)
-          logger.info(info_ndarr(data, 'substitute array with', last=10))
+          logger.info(info_ndarr(data, 'substitute array with', last=5))
         dic_nda[gm] = reshape_to_3d(data)
 
       nda = np.stack([dic_nda[gm] for gm in gainmodes])
