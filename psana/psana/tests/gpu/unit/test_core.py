@@ -654,6 +654,7 @@ from psana.gpu.gpu_batch import (
     GPU_DESC_NBYTES,
     GPU_EVENT_NBYTES,
     GPU_HEADER_NBYTES,
+    GpuBatchFormatError,
     GpuBatchView,
     GpuSubbatchView,
 )
@@ -1135,3 +1136,91 @@ class TestKvikioSlotBufferBudget:
         rdr._ensure_slot_buffer(0, 128)
         assert calls == [128]
         assert rdr._slot_bufs[0].nbytes == 128
+
+
+class TestDescTableDensity:
+    """GPUBAT1 desc rows must be dense: contiguous, fully owned, all VALID.
+
+    GPUDetector.process_batch indexes the reader's desc table positionally as
+    desc_table[event.first_desc + i], and GpuSubbatchView re-indexes by
+    subtraction.  iter_read_descs() drops non-VALID rows.  If the table is
+    sparse in either sense the two views disagree and events silently
+    calibrate another event's payload, so the parser must reject it.
+    """
+
+    @staticmethod
+    def _batch(event_ranges, desc_owners, flags=None, n_desc=None,
+               stream_mask=0b11):
+        """Build a GPUBAT1 with explicit (first_desc, n_desc) per event."""
+        n_events = len(event_ranges)
+        if n_desc is None:
+            n_desc = len(desc_owners)
+        if flags is None:
+            flags = [GPU_DESC_FLAG_VALID] * len(desc_owners)
+        evt_off = GPU_HEADER_NBYTES
+        dsc_off = evt_off + n_events * GPU_EVENT_NBYTES
+        total = dsc_off + n_desc * GPU_DESC_NBYTES
+        buf = bytearray(total)
+        struct.pack_into('<11Q', buf, 0,
+            GPU_BATCH_MAGIC, GPU_BATCH_VERSION, GPU_HEADER_NBYTES,
+            GPU_EVENT_NBYTES, GPU_DESC_NBYTES, n_events, n_desc,
+            stream_mask, evt_off, dsc_off, total)
+        for i, (first_desc, cnt) in enumerate(event_ranges):
+            struct.pack_into('<5Q', buf, evt_off + i * GPU_EVENT_NBYTES,
+                             i, 1000 + i, first_desc, cnt, 0)
+        for i, owner in enumerate(desc_owners):
+            struct.pack_into('<7Q', buf, dsc_off + i * GPU_DESC_NBYTES,
+                             owner, owner, 0, 1024, 0, flags[i], 0)
+        return bytes(buf)
+
+    def test_dense_table_is_accepted(self):
+        gv = GpuBatchView(
+            self._batch([(0, 2), (2, 2)], [0, 0, 1, 1]), validate=True
+        )
+        assert gv.header.n_events == 2
+
+    def test_gap_between_events_is_rejected(self):
+        # event 0 -> descs 0,1 ; event 1 -> descs 3,4 ; desc 2 orphaned.
+        with pytest.raises(GpuBatchFormatError, match="not contiguous"):
+            GpuBatchView(
+                self._batch([(0, 2), (3, 2)], [0, 0, 0, 1, 1]), validate=True
+            )
+
+    def test_trailing_unowned_rows_are_rejected(self):
+        # Events cover 4 rows but the header declares 5.
+        with pytest.raises(GpuBatchFormatError, match="events account for"):
+            GpuBatchView(
+                self._batch([(0, 2), (2, 2)], [0, 0, 1, 1, 1], n_desc=5),
+                validate=True,
+            )
+
+    def test_overlapping_event_ranges_are_rejected(self):
+        # event 1 restarts at 1, so row 1 would be read by both events.
+        with pytest.raises(GpuBatchFormatError, match="not contiguous"):
+            GpuBatchView(
+                self._batch([(0, 2), (1, 2)], [0, 0, 1]), validate=True
+            )
+
+    def test_non_valid_desc_is_rejected(self):
+        """A skipped row would shift every later event's descriptors."""
+        with pytest.raises(GpuBatchFormatError, match="not marked VALID"):
+            GpuBatchView(
+                self._batch(
+                    [(0, 2), (2, 2)], [0, 0, 1, 1],
+                    flags=[GPU_DESC_FLAG_VALID, 0,
+                           GPU_DESC_FLAG_VALID, GPU_DESC_FLAG_VALID],
+                ),
+                validate=True,
+            )
+
+    def test_stream_absent_from_mask_still_rejected(self):
+        # Regression: the mask/stream checks used to sit under an
+        # `if flags & VALID` branch; they must still run unconditionally.
+        with pytest.raises(GpuBatchFormatError, match="not present in gpu_stream_mask"):
+            GpuBatchView(
+                self._batch([(0, 1)], [0], stream_mask=0b10), validate=True
+            )
+
+    def test_empty_batch_passes_density_check(self):
+        gv = GpuBatchView(self._batch([], [], n_desc=0), validate=True)
+        assert gv.has_work is False
