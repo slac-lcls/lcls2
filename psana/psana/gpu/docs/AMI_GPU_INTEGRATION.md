@@ -12,8 +12,9 @@ The GPU pipeline handles two data modes transparently:
   pre-calibrated pixels written by the DRP; `GPUDetector` skips the calibration
   kernel and reshapes the data directly.  No calibration constants are loaded.
 
-Both modes expose the identical `GpuEventContext` API — `ctx.get("det.calib").on_gpu`
-returns a float32 CuPy array in either case.
+Both modes expose the identical API: `run.events()` yields a plain
+`psana.Event`, and GPU results hang off `evt.gpu`, so
+`evt.gpu.get("det.calib").on_gpu` returns a float32 CuPy array in either case.
 
 ---
 
@@ -45,11 +46,11 @@ inside the AMI worker process.
 
 ## The fundamental gap
 
-The psana2 GPU event pipeline (`GpuEvents`) currently lives entirely
+The psana2 GPU event pipeline (`GpuEventManager`) currently lives entirely
 inside the MPI fan-out:
 
 ```
-EB rank ──► BD rank (GpuEvents, GPU processing) ──► SRV rank
+EB rank ──► BD rank (GpuEventManager, GPU processing) ──► SRV rank
                                                        ↑ NullRun.events() = iter([])
                                                        AMI never sees this path
 ```
@@ -60,7 +61,7 @@ mode.  There are **two gaps** to close:
 
 | Gap | Description |
 |---|---|
-| **Gap 1** | GPU event pipeline (`GpuEvents`) does not run in the single-process path used by AMI workers |
+| **Gap 1** | GPU event pipeline (`GpuEventManager`) does not run in the single-process path used by AMI workers |
 | **Gap 2** | No GPU-accessible equivalent of the DAQ shared-memory ring; DAQ writes to CPU POSIX shmem |
 
 ---
@@ -69,15 +70,15 @@ mode.  There are **two gaps** to close:
 
 ### Phase 1 — GPU processing in the single-process path (files=)
 
-`RunSerial` already wires `GpuEvents` when `gpu_det=` is set
-(`run.py:741`).  AMI workers using offline XTC2 files can use GPU event
+`RunSerial` already wires `GpuEventManager` when `gpu_det=` is set
+(`run.py:753`).  AMI workers using offline XTC2 files can use GPU event
 processing today with almost no changes.  Both normal (raw→calib) and
 passthrough (pre-calibrated fex) modes work automatically.
 
 **Data flow:**
 
 ```
-XTC2 files ──SMDReaderManager──► GpuEvents
+XTC2 files ──SMDReaderManager──► GpuEventManager
                  │  smdr_man.next_with_gpu() → (cpu_smd_batch, GPUBAT1 bytes)
                  │
                  ├── GpuBatchView (GPUBAT1 parser)
@@ -93,9 +94,9 @@ XTC2 files ──SMDReaderManager──► GpuEvents
                             │    (normal mode: uint16 → fused_calib_gpu → float32)
                             │    (passthrough: float32 reshaped directly, no kernel)
                             ▼
-                      GpuEventContext  ← yielded to AMI worker
-                        ctx.get("jungfrau.calib").on_gpu  → cp.ndarray float32
-                        ctx.get("jungfrau.calib").on_cpu  → np.ndarray float32
+                      Event  ← yielded to AMI worker (a plain psana.Event)
+                        evt.gpu.get("jungfrau.calib").on_gpu → cp.ndarray float32
+                        evt.gpu.get("jungfrau.calib").on_cpu → np.ndarray float32
 ```
 
 **Available GPU keys per event:**
@@ -104,37 +105,37 @@ XTC2 files ──SMDReaderManager──► GpuEvents
 |---|---|---|
 | `{det}.calib` | ✓ always | float32, normal and passthrough mode |
 | `{det}.image` | ✓ if geometry loaded | float32 assembled image |
-| `{det}.raw` | ✗ not yet | See note below |
+| `{det}.raw` | ✓ normal mode only | uint16 canonical raw; absent in passthrough |
 
-> **Raw data via the GPU pipeline is not currently exposed — but the plumbing
-> is already in place.**
+> **Raw data is exposed in normal mode.**
 >
-> `gpu_stream.py:121–122` already checks `if ec.raw_gpu is not None` and would
-> propagate `{det_name}.raw` into `gpu_results` (and on to `GpuEventContext.get()`)
-> automatically.  The wiring is complete.  The only missing step is that
-> `process_batch` discards the raw array with `_`:
+> `GPUDetector.process_batch` gathers the canonical uint16 raw array into a
+> per-slot buffer and sets `EventContext.raw_gpu`; `gpu_stream.py:162–163`
+> propagates it as `{det_name}.raw`.  Read it exactly like calib:
+>
 > ```python
-> calib, _ = self._extract_and_calibrate(...)   # raw_u16 thrown away here
+> raw = evt.gpu.get("jungfrau.raw").on_gpu   # cp.ndarray uint16
 > ```
-> `EventContext.raw_gpu` is defined in the dataclass but never populated.
-> `ctx.raw('det')` accesses CPU detectors only — GPU-routed detectors are
-> excluded from the CPU-detector registry so it raises `KeyError`.
 >
-> **To enable raw GPU data in normal mode** (`drp_class='raw'`): keep the
-> `raw_u16` return value alive in a separate per-event slot buffer (similar to
-> `_calib_slot_bufs`), set `EventContext.raw_gpu`, and `gpu_stream.py` will
-> propagate it automatically.  No changes to `GpuEventContext` or `context.py`
-> are required.  There are currently no test cases for this path.
+> `tests/gpu/integration/test_pixel_exact.py` compares this array against
+> `det.raw.raw(evt)` from a separate CPU-only reference run, for every event,
+> so the canonical segment ordering is covered.
+>
+> Note that within a GPU run the ordinary `det.raw.raw(evt)` accessor returns
+> **None** for a GPU-routed detector rather than raising: splitting removes
+> those streams from the CPU batch, so `DetectorImpl._segments()` finds no
+> entry in `evt._det_segments` and `AreaDetector.raw()` propagates the None.
+> Raw for a GPU-routed detector must therefore be read through `evt.gpu`.
 >
 > **In passthrough mode** (`drp_class='fex'`) raw data is **structurally
 > unavailable**: the DRP applied calibration and never wrote raw ADC values to
-> bigdata.  This is a DAQ-level constraint, not a psana2 limitation.
+> bigdata, so `raw_gpu` is None and the `{det}.raw` key is simply absent.
+> This is a DAQ-level constraint, not a psana2 limitation.
 >
 > **Does AMI need raw data?**  Standard AMI graph nodes (ROI, peak-finding,
 > binning, projection) operate on calibrated float32 arrays.  Raw ADU values
 > are occasionally useful — noise statistics, gain-mode debugging, pre-pedestal
-> hit-finding — but are not a typical online-monitoring use case.  The feature
-> is straightforward to add when a concrete AMI use case requires it.
+> hit-finding — but are not a typical online-monitoring use case.
 
 **AMI worker call:**
 
@@ -146,7 +147,8 @@ ds = psana.DataSource(
     n_gpu_streams=2,
 )
 for run in ds.runs():
-    for evt in run.events():    # yields GpuEventContext
+    for evt in run.events():          # yields a plain psana.Event
+        calib = evt.gpu.get("jungfrau.calib").on_cpu
         ...
 ```
 
@@ -186,7 +188,7 @@ GPUDetector.calibrate(det_gpu)        ← single-event entry point (already exis
     │  normal mode:     applies pedestals + gain → float32
     │  passthrough mode: reshapes float32 directly, no kernel
     ▼
-GpuEventContext                       ← identical API to Phase 1
+Event + evt.gpu                       ← identical API to Phase 1
 ```
 
 **batch_size in shmem mode is always 1.**
@@ -217,7 +219,7 @@ Shmem path, batch_size=20:
 | `EventPool` | ✓ optional | Overlaps processing of event N with H→D of event N+1 |
 | `_D2hPipeline` | ✓ optional | Async D→H hides transfer behind next event |
 | `_GpuBudget` | ✓ | OOM prevention still needed |
-| `GpuEventContext` / `GPUResult` | ✓ | Unchanged API |
+| `evt.gpu` (`GpuEventState`) / `GPUResult` | ✓ | Unchanged API |
 | `on_gpu`, `on_gpu_view`, `on_cpu` | ✓ | Unchanged |
 | `KvikioGpuReader` | ✗ | Needs file handles + byte offsets |
 | `GpuBatchView` / GPUBAT1 | ✗ | No EventBuilder in shmem path |
@@ -228,14 +230,14 @@ Shmem path, batch_size=20:
 
 ### Phase 3 — GPU-native AMI graph nodes (CuPy throughout)
 
-In Phases 1 and 2, `GpuEventContext.on_cpu` is called to convert CuPy arrays
+In Phases 1 and 2, `evt.gpu.get(...).on_cpu` is called to convert CuPy arrays
 to numpy before they enter the AMI graph.  Phase 3 allows AMI graph nodes to
 operate on CuPy arrays directly, with D→H deferred to the explicit `GpuToHost`
 node.
 
 ```
-GpuEventContext
-    │  ctx.get("jungfrau.calib").on_gpu → cp.ndarray  (stays on GPU)
+Event (evt.gpu)
+    │  evt.gpu.get("jungfrau.calib").on_gpu → cp.ndarray  (stays on GPU)
     ▼
 AMI Worker graph (CuPy-aware nodes)
     │
@@ -258,13 +260,13 @@ The `GpuToHost` node is the explicit D→H gate.  The AMI type system enforces i
 
 ## Changes required in psana2
 
-### 1. `RunShmem` — add GPU path  (`run.py:551`)
+### 1. `RunShmem` — add GPU path  (`run.py:553`)
 
 `RunShmem.__init__` currently always creates a CPU `Events` iterator.  Mirror
 `RunSerial`'s pattern:
 
 ```python
-# run.py:551  RunShmem.__init__  (add GPU branch)
+# run.py:559  RunShmem.__init__  (add GPU branch)
 if self.dsparms.gpu_det:
     # Shmem GPU path: data arrives as complete XTC2 dgrams.
     # No KvikioGpuReader / GPUBAT1 — uses ShmemGpuBatchAdapter.
@@ -293,13 +295,16 @@ class GpuShmemEvents:
       2. Copy to GPU VRAM via cudaMemcpyAsync (H→D).
       3. Run GPUDetector.calibrate() — applies calibration kernel (normal)
          or reshapes directly without any kernel (passthrough).
-      4. Yield GpuEventContext with float32 calib output in both cases.
+      4. Yield an EventEnvelope carrying a GpuEventState with the float32
+         calib output in both cases.  Run.events() turns that into the
+         public Event.
 
     batch_size is always effectively 1 — buffering multiple shmem events
     adds latency without any throughput benefit (no GDS reads to amortize).
     """
 
-    is_gpu_events = True    # Run.events() dispatches to this iterator
+    # No dispatch flag is needed: every event iterator yields EventEnvelope,
+    # and Run._materialize_event() builds the public Event at the API boundary.
 
     def __init__(self, configs, dm, dsparms, run, smdr_man=None):
         self.configs    = configs
@@ -321,9 +326,8 @@ class GpuShmemEvents:
 
     def _events(self):
         for dgrams in self._evt_iter:
-            evt = Event(dgrams=dgrams, run=self.run._run_ctx)
-            if not TransitionId.isEvent(evt.service()):
-                yield from self._handle_transition(evt)
+            if not TransitionId.isEvent(utils.first_service(dgrams)):
+                yield from self._handle_transition(dgrams)
                 continue
 
             gpu_results = {}
@@ -339,19 +343,20 @@ class GpuShmemEvents:
                 calib_gpu = gpu_det.calibrate(det_gpu)  # normal: uint16→calib kernel
                                                         # passthrough: reshape only
                 gpu_results[f"{det_name}.calib"] = calib_gpu
-                # NOTE: {det_name}.raw is not populated here (raw_gpu=None).
-                # gpu_stream.py already handles ec.raw_gpu when non-None, so no
-                # further wiring is needed — just set EventContext.raw_gpu above.
-                # In passthrough mode raw data is unavailable (DRP discarded it).
+                # Add {det_name}.raw here from the gathered uint16 array to
+                # match the files path.  Unavailable in passthrough mode, where
+                # the DRP discarded raw ADC values.
 
-            yield GpuEventContext(
-                evt=evt,
-                gpu_results=gpu_results,
-                cpu_dets=self.cpu_dets,
+            yield EventEnvelope(
+                dgrams=dgrams,
+                gpu_state=GpuEventState(
+                    gpu_results=gpu_results,
+                    detector_names=list(self.gpu_detectors),
+                ),
             )
 ```
 
-### 3. `GpuEvents._next_batch()` — improve error message  (`gpu_events.py:843`)
+### 3. `GpuEventManager._next_batch()` — improve error message  (`gpu_events.py:886`)
 
 ```python
 # Current: silent StopIteration
@@ -363,13 +368,13 @@ def _next_batch(self):
 def _next_batch(self):
     if self.smdr_man is None:
         raise RuntimeError(
-            "GpuEvents requires an SMDReaderManager (smdr_man). "
+            "GpuEventManager requires an SMDReaderManager (smdr_man). "
             "For DataSource(files=..., gpu_det=...) this is set automatically. "
             "For DataSource(shmem=..., gpu_det=...) use GpuShmemEvents instead."
         )
 ```
 
-### 4. `GpuEvents.gpu_detinfo` — new property for AMI type discovery
+### 4. `GpuEventManager.gpu_detinfo` — new property for AMI type discovery
 
 AMI's `_update()` inspects `inspect.signature(det.raw.calib)` to find the
 return type annotation.  For GPU detectors this returns `numpy.ndarray` (CPU
@@ -416,7 +421,7 @@ def gpu_detinfo(self) -> dict:
 | File | Change | Lines |
 |---|---|---|
 | `psana/psexp/run.py` | `RunShmem.__init__`: add `gpu_det` branch routing to `GpuShmemEvents` | ~10 |
-| `psana/psexp/run.py` | `Run.gpu_detinfo`: new property forwarding to `GpuEvents.gpu_detinfo` | ~8 |
+| `psana/psexp/run.py` | `Run.gpu_detinfo`: new property forwarding to `GpuEventManager.gpu_detinfo` | ~8 |
 | `psana/gpu/gpu_events.py` | `_next_batch()`: replace silent `StopIteration` with `RuntimeError` | ~6 |
 | `psana/gpu/gpu_events.py` | `gpu_detinfo`: new property returning `{det: {calib: GpuArray3d}}` | ~12 |
 | `psana/gpu/gpu_shmem_events.py` | **New file**: `GpuShmemEvents` — H→D copy + single-event GPU processing (calibration or passthrough) | ~100 |
@@ -494,10 +499,10 @@ event[name] = obj(evt)        # det.raw.calib(evt) → numpy
 # Add GPU branch before the existing path:
 if name in self._gpu_keys:
     # GPU path: name is "jungfrau:gpu:calib"
-    # evt is a GpuEventContext from GpuEvents or GpuShmemEvents
+    # evt is a plain psana.Event; GPU results live on evt.gpu
     psana_key = name.replace(":", ".", 1).replace(":gpu:", ".")
     # "jungfrau:gpu:calib" → "jungfrau.calib"
-    result = evt.get(psana_key)
+    result = evt.gpu.get(psana_key)
     event[name] = result.on_gpu      # Phase 3: cp.ndarray (stays on GPU)
     # event[name] = result.on_cpu   # Phase 1/2: np.ndarray (for immediate AMI compat)
 else:
@@ -586,7 +591,7 @@ def buffer_callback(obj):
 | `amitypes/__init__.py` | Export `GpuArray`, `GpuArray1d/2d/3d` | ~5 |
 | `ami/data.py` (ds_keys) | Add `gpu_det`, `n_gpu_streams`, `gpu_d2h_chunk_size` | ~5 |
 | `ami/data.py` (_update) | Discover GPU detector types from `run.gpu_detinfo` | ~15 |
-| `ami/data.py` (_process) | Route `_gpu_keys` to `ctx.get(key).on_gpu` | ~10 |
+| `ami/data.py` (_process) | Route `_gpu_keys` to `evt.gpu.get(key).on_gpu` | ~10 |
 | `ami/comm.py` | `Store.get_type()`: handle `cp.ndarray` | ~8 |
 | `ami/flowchart/library/` | New `GpuToHost` node | ~15 |
 | `ami/flowchart/library/Numpy.py` | `np.xxx` → `xp.xxx` using `get_array_module` | ~30 |
@@ -610,7 +615,7 @@ DAQ/DRP ──POSIX shmem──► ShmemDataSource ──► XTC2 dgram (CPU DRA
                                      GpuShmemEvents (new)
                                      cudaMemcpyAsync(cpu → GPU VRAM)
                                                     │
-                                     GpuEventContext (CuPy float32)
+                                     Event + evt.gpu (CuPy float32)
                                      (calibration kernel or passthrough
                                       depending on drp_class)
 
@@ -653,14 +658,14 @@ Option A is the practical choice for Phase 2.
   or shmem ring ──► │                                                     │
                     │  DataSource(gpu_det="jungfrau", ...)                │
                     │       │                                             │
-                     │  Phase 1 (files):  GpuEvents                       │
+                     │  Phase 1 (files):  GpuEventManager                │
                      │  Phase 2 (shmem):  GpuShmemEvents                  │
                      │       │  GPU processing (CuPy)                     │
                      │       │  normal:      uint16 → calibration kernel  │
                      │       │  passthrough: float32 reshape, no kernel   │
                     │       │                                             │
-                    │  GpuEventContext                                    │
-                    │       │  ctx.get("jungfrau.calib").on_cpu           │
+                    │  Event (evt.gpu)                                    │
+                    │       │  evt.gpu.get("jungfrau.calib").on_cpu       │
                     │       ▼                                             │
                     │  PsanaSource._process(evt)                         │
                     │       │  {"jungfrau:gpu:calib": numpy_array}        │
@@ -679,11 +684,11 @@ Option A is the practical choice for Phase 2.
                     ┌─────────────────────────────────────────────────────┐
   shmem / files ──► │  AMI Worker process                                 │
                     │                                                     │
-                    │  GpuShmemEvents / GpuEvents                        │
-                    │       │  GpuEventContext                           │
+                    │  GpuShmemEvents / GpuEventManager                  │
+                    │       │  Event (evt.gpu)                           │
                     │       │                                             │
                     │  PsanaSource._process()                            │
-                    │       │  ctx.get("jungfrau.calib").on_gpu          │
+                    │       │  evt.gpu.get("jungfrau.calib").on_gpu      │
                     │       │  → {"jungfrau:gpu:calib": cp.ndarray}      │
                     │       ▼                                             │
                     │  ┌─────────────────────────────────────┐           │
@@ -711,7 +716,7 @@ Option A is the practical choice for Phase 2.
 
 | Phase | What | Effort | When |
 |---|---|---|---|
-| **1** | Files= path already works; add `gpu_detinfo` property to `GpuEvents` and `Run`; add `gpu_det` to AMI `ds_keys`; add `isinstance(GpuEventContext)` branch to `_process()` calling `.on_cpu` | Small | Now |
+| **1** | Files= path already works; add `gpu_detinfo` property to `GpuEventManager` and `Run`; add `gpu_det` to AMI `ds_keys`; add an `evt.gpu is not None` branch to `_process()` calling `.on_cpu` | Small | Now |
 | **2** | `GpuShmemEvents` new class; `RunShmem` GPU branch; shmem-path H→D copy | Medium | After Phase 1 validated |
 | **3** | `GpuArray1d/2d/3d` in amitypes; `GpuToHost` node; array-module-agnostic operators; `Store.get_type()` CuPy support; `_process()` returns `.on_gpu` instead of `.on_cpu` | Large | After Phase 2 validated |
 | **RDMA** | DAQ-side changes (CUDA IPC or GPUDirect RDMA) | Very large | Future |
