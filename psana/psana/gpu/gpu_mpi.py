@@ -477,14 +477,15 @@ class gpu_error_handler:
                     in eb_manager.batches_with_gpu():
                 ...
 
+    Every exception is fatal here.  Nothing is retried: by the time __exit__
+    runs, the generator frame that issued the failing read is gone, so a retry
+    could only skip the batch and yield silently wrong results.  Live-mode
+    retry of a partially written XTC2 file belongs at the KvikIO call site.
+
     Parameters
     ----------
     comm : mpi4py.MPI.Comm
         Communicator to abort on fatal GPU errors.
-    max_kvikio_retries : int
-        Number of KvikIO read retries before aborting.  Retries are intended
-        for live-mode reads where the XTC2 file may still be written by the
-        DAQ.  Each retry waits 100 ms × retry_count.
     """
 
     def __init__(self, comm):
