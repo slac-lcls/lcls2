@@ -135,7 +135,7 @@ class Runner:
     def get_unique_prefix(self):
         return f"x{self.xpm_id}_p{self.platform}_s{self.station}"
 
-    def submit(self):
+    def submit(self, verbose=False):
         """
         Submits the sbatch script using a temporary file.
 
@@ -143,17 +143,19 @@ class Runner:
         and automatically cleaned up after submission. The script file persists just
         long enough for sbatch to read it.
         """
+        rc = 0
         with tempfile.NamedTemporaryFile("w", delete=True, suffix=".sh") as tmpfile:
             tmpfile.write(self.sbman.sb_script)
             tmpfile.flush()  # Make sure content is written to disk
             env = build_sbatch_env()
-            asyncio.run(
+            rc = asyncio.run(
                 self.proc.run_exec(
                     ["sbatch", tmpfile.name],
                     env=env,
-                    echo_output=False,
+                    echo_output=verbose,
                 )
             )
+        return rc
 
     def _select_config_ids(self, unique_ids):
         config_ids = list(self.config.keys())
@@ -235,7 +237,7 @@ class Runner:
     def _cancel(self, slurm_job_id):
         run_slurm_with_retries("scancel", str(slurm_job_id))
 
-    def start(self, unique_ids=None, skip_check_exist=False):
+    def start(self, unique_ids=None, skip_check_exist=False, verbose=False):
         self._check_unique_ids(unique_ids)
         if not skip_check_exist:
             if self._exists(unique_ids=unique_ids, strict=True):
@@ -243,15 +245,17 @@ class Runner:
                 raise RuntimeError(msg)
         if self.sbman.as_step:
             self.sbman.generate_as_step(self.sbjob, self.node_features)
-            self.submit()
+            if self.submit(verbose=verbose) != 0:
+                print(f"Submitting slurm job {job_name} failed")
         else:
             config_ids = self._select_config_ids(unique_ids)
             for node, job_details in self.sbjob.items():
                 for job_name, details in job_details.items():
                     if job_name in config_ids:
                         self.sbman.generate(node, job_name, details, self.node_features)
-                        self.submit()
-                        if "flags" in details:
+                        if self.submit(verbose=verbose) != 0:
+                            print(f"Submitting slurm job {job_name} failed")
+                        elif "flags" in details:
                             if details["flags"].find("x") > -1:
                                 job_state = None
                                 for i in range(MAX_RETRIES):
@@ -462,7 +466,7 @@ def main(
 ):
     runner = Runner(cnf_file, as_step=as_step, verbose=verbose, output=output)
     if subcommand == "start":
-        runner.start(unique_ids=unique_ids)
+        runner.start(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "stop":
         runner.stop(unique_ids=unique_ids, verbose=verbose)
     elif subcommand == "restart":
