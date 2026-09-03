@@ -17,8 +17,8 @@ boilerplate:
 # fragile, verbose, repeated in every analysis script
 import cupy as cp
 kernel = cp.RawKernel(open("my_kernel.cu").read(), "my_kernel")
-for ctx in run.events():
-    with ctx.get("jungfrau.calib").on_gpu_view(stream) as calib:
+for evt in run.events():
+    with evt.gpu.get("jungfrau.calib").on_gpu_view(stream) as calib:
         n   = calib.size
         out = cp.empty(n, dtype=cp.float32)
         grid = ((n + 255) // 256,)
@@ -170,8 +170,8 @@ import numpy as np
 
 stream = cp.cuda.Stream(non_blocking=True)
 
-for ctx in run.events():
-    with ctx.get("jungfrau.calib").on_gpu_view(stream) as calib:
+for evt in run.events():
+    with evt.gpu.get("jungfrau.calib").on_gpu_view(stream) as calib:
         n   = calib.size
         out = cp.empty(n, dtype=cp.float32)
 
@@ -251,7 +251,7 @@ at module import time, before the event loop starts.
 The registry is **decoupled from psana internals**.  It operates on any
 CuPy ndarray — from `on_gpu`, `on_gpu_view`, raw bigdata reads, or a
 user-allocated buffer — and has no dependency on `DataSource`, `GPUDetector`,
-or `GpuEvents`.
+or `GpuEventManager`.
 
 ### Recommended pattern
 
@@ -279,8 +279,8 @@ import cupy as cp
 stream    = cp.cuda.Stream(non_blocking=True)
 THRESHOLD = np.float32(5.0)
 
-for ctx in run.events():
-    with ctx.get("jungfrau.calib").on_gpu_view(stream) as calib:
+for evt in run.events():
+    with evt.gpu.get("jungfrau.calib").on_gpu_view(stream) as calib:
         n    = calib.size
         hits = cp.empty(n, dtype=cp.float32)
         gpu_kernel_registry.launch_1d(
@@ -309,7 +309,7 @@ order automatically.
 
 1. **Raw bigdata access** — should the registry also expose pre-calibration
    data (uint16 ADC values) directly, or is post-calibration float32 via
-   `ctx.get` sufficient for the initial version?
+   `evt.gpu.get` sufficient for the initial version?
 
 2. **Output buffer management** — should `launch_1d` accept an optional
    `out` parameter and allocate a CuPy array when omitted, or should callers
