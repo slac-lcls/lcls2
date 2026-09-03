@@ -364,6 +364,15 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
     assert events.event_pool.flush_calls == 0
 
 
+def test_empty_gpu_only_smd_event_is_not_dispatched(fake_transition_decode):
+    log = []
+    events = _new_gpu_events(log)
+    step_dict = _transition_batch(0, TransitionId.Enable)
+
+    assert list(events._handle_steps(step_dict)) == []
+    assert log == [("transition", TransitionId.Enable)]
+
+
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     log = []
     timestamp = 123
