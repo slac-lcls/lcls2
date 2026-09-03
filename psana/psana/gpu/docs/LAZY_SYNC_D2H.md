@@ -171,7 +171,7 @@ CPU code. This permits work in another execution slot to overlap with that H2D.
 
 The normally retired context is explicitly marked `device_released`:
 
-- Result keys remain available through `ctx.get()`.
+- Result keys remain available through `evt.gpu.get()`.
 - `on_cpu` consumes the pending pinned token or cached CPU result.
 - The context does not retain the old slot-backed CuPy array or its lease.
 - `on_gpu` and `on_gpu_view` raise a clear error.
@@ -282,7 +282,7 @@ array could otherwise read a newer event after slot reuse.
 With automatic D2H disabled, `on_gpu` returns an independent D2D copy:
 
 ```python
-arr = ctx.get("jungfrau.calib").on_gpu
+arr = evt.gpu.get("jungfrau.calib").on_gpu
 ```
 
 The copy should be requested during the current event iteration on the CuPy
@@ -301,8 +301,8 @@ This is the explicit zero-copy external-consumer API:
 ```python
 stream = cp.cuda.Stream(non_blocking=True)
 
-for ctx in run.events():
-    with ctx.get("jungfrau.calib").on_gpu_view(stream) as arr:
+for evt in run.events():
+    with evt.gpu.get("jungfrau.calib").on_gpu_view(stream) as arr:
         downstream_kernel(arr, stream=stream)
 ```
 
@@ -422,7 +422,7 @@ ahead of CPU event processing. Because automatic mode can issue replacement
 H2D before yielding a CPU event, the generator may be closed while that read
 is still in flight.
 
-`GpuEvents` therefore:
+`GpuEventManager` therefore:
 
 - Stores the owned pending read in `_pending_gpu_read`.
 - Rejects a second pre-issued read while one is outstanding.
