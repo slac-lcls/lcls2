@@ -1032,3 +1032,106 @@ def test_gpu_event_manager_defaults_to_one_bd_per_gpu():
 
     sig = inspect.signature(GpuEventManager.__init__)
     assert sig.parameters["n_bd_per_gpu"].default == 1
+
+
+class TestKvikioSlotBufferBudget:
+    """Input-slot growth must charge the budget exactly what it holds.
+
+    Regression guard: the reader used to release the whole old size and then
+    reserve the whole new size.  The old buffer was still allocated at that
+    point, so the committed total under-reported it, and a failed allocation
+    left the budget permanently wrong.
+    """
+
+    class _FakeArr:
+        def __init__(self, nbytes):
+            self.nbytes = nbytes
+
+    def _reader(self, budget, n_slots=2, fail_at=None):
+        """Build a reader without importing cupy/kvikio."""
+        from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+
+        calls = []
+
+        def _empty(nbytes, dtype=None):
+            calls.append(nbytes)
+            if fail_at is not None and nbytes >= fail_at:
+                raise RuntimeError("simulated cudaMalloc failure")
+            return TestKvikioSlotBufferBudget._FakeArr(nbytes)
+
+        rdr = object.__new__(KvikioGpuReader)
+        rdr.cp = SimpleNamespace(empty=_empty, uint8="uint8")
+        rdr._slot_bufs = [None] * n_slots
+        rdr._n_slots = n_slots
+        rdr._budget = budget
+        return rdr, calls
+
+    def test_first_allocation_charges_full_size(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, _ = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 400)
+        assert budget.committed() == 400
+
+    def test_growth_charges_only_the_delta(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, _ = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 400)
+        rdr._ensure_slot_buffer(0, 700)
+        # Holds one 700-byte buffer, not 400 + 700 and not 700 - 400.
+        assert budget.committed() == 700
+        assert rdr._slot_bufs[0].nbytes == 700
+
+    def test_repeated_growth_tracks_bytes_held(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        rdr, _ = self._reader(budget, n_slots=2)
+        for size in (100, 250, 900, 1300):
+            rdr._ensure_slot_buffer(0, size)
+        rdr._ensure_slot_buffer(1, 500)
+        held = sum(b.nbytes for b in rdr._slot_bufs if b is not None)
+        assert budget.committed() == held == 1800
+
+    def test_shrink_is_a_noop_and_keeps_the_buffer(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, calls = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 800)
+        rdr._ensure_slot_buffer(0, 200)   # smaller — must reuse, not realloc
+        assert calls == [800]
+        assert budget.committed() == 800
+
+    def test_failed_allocation_rolls_back_the_reservation(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        rdr, _ = self._reader(budget, fail_at=5_000)
+        rdr._ensure_slot_buffer(0, 400)
+        with pytest.raises(RuntimeError, match="simulated"):
+            rdr._ensure_slot_buffer(0, 6_000)
+        # Still holding only the original 400 bytes.
+        assert budget.committed() == 400
+        assert rdr._slot_bufs[0].nbytes == 400
+
+    def test_budget_pressure_error_leaves_committed_intact(self):
+        from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, calls = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 900)
+        with pytest.raises(GpuMemoryPressureError):
+            rdr._ensure_slot_buffer(1, 900)
+        # Rejected before allocating; the held 900 is still counted once.
+        assert calls == [900]
+        assert budget.committed() == 900
+
+    def test_works_without_a_budget(self):
+        rdr, calls = self._reader(budget=None)
+        rdr._ensure_slot_buffer(0, 128)
+        assert calls == [128]
+        assert rdr._slot_bufs[0].nbytes == 128
