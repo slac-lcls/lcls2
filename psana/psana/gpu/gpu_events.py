@@ -9,18 +9,13 @@ import numpy as np
 
 _log = logging.getLogger(__name__)
 
-from psana import dgram
-from psana.event import Event
-from psana.gpu.context import GpuEventContext
-from psana.gpu.detector_router import DetectorRouter
+from psana import dgram, utils
+from psana.event import EventEnvelope
+from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
-from psana.gpu.gpu_calib import (
-    GPUDetector,
-    _compute_calib_constants_cpu,
-    build_stream_seg_map,
-    optimal_kernel_batch_size,
-    prep_calib_constants,
-)
+from psana.gpu.dgram_layout import build_stream_segment_map
+from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
+from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpu_stream import EventPool
 from psana.psexp import TransitionId
@@ -28,25 +23,25 @@ from psana.psexp.event_manager import EventManager
 from psana.psexp.packet_footer import PacketFooter
 
 
-def _apply_full_routing(gpu_results, evt, gpu_detectors, router):
-    if not router:
-        return gpu_results
+class _GpuOnlyDgram:
+    """Minimal L1Accept metadata for an event whose streams all went to GPU.
 
-    for det_name, det_info in gpu_detectors.items():
-        if not router.has_full_routing(det_name):
-            continue
-        calib_key = f"{det_name}.calib"
-        gpu_calib = gpu_results.get(calib_key)
-        if gpu_calib is None:
-            continue
+    GPU splitting intentionally removes GPU-stream SMD dgrams from the CPU
+    batch.  When every selected stream is a GPU stream, EventManager therefore
+    returns an all-None dgram list. EventEnvelope still needs timestamp/service
+    metadata so Run.events() can preserve the normal API without causing a
+    redundant CPU BigData read.
+    """
 
-        det = det_info[0]
-        cpu_calib = router.compute_cpu_calib(det_name, det, evt)
-        combined = router.assemble_full_calib(det_name, gpu_calib, cpu_calib)
-        if combined is not None:
-            gpu_results[calib_key] = combined
+    def __init__(self, timestamp):
+        self._timestamp = int(timestamp)
+        self._env = int(TransitionId.L1Accept) << 24
 
-    return gpu_results
+    def timestamp(self):
+        return self._timestamp
+
+    def env(self):
+        return self._env
 
 
 def _iter_step_events(batch_bytes, configs):
@@ -181,7 +176,7 @@ class _PinnedSlot:
 
 
 class _D2hPipeline:
-    """Internal GpuEvents D→H pipeline (not user-facing).
+    """Internal GpuEventManager D→H pipeline (not user-facing).
 
     Issues async D→H from an EventPool slot as soon as its final GPU work is
     submitted.  Result delivery remains separate: GPUResult.on_cpu later waits
@@ -223,8 +218,8 @@ class _D2hPipeline:
         """
         items = []
         key = self._key
-        for evt in slot_record.cpu_evts:
-            ts = evt.timestamp
+        for envelope in slot_record.event_envelopes:
+            ts = utils.first_timestamp(envelope.dgrams)
             arr = slot_record.gpu_results_by_ts.get(ts, {}).get(key)
             if arr is None:
                 continue
@@ -242,7 +237,7 @@ class _D2hPipeline:
     def pinned_bytes(self) -> int:
         """Return bytes of pinned (page-locked) host memory currently
         allocated by this pipeline's _PinnedSlot pool.
-        Used by GpuEvents.log_memory() for Phase-0 accounting.
+        Used by GpuEventManager.log_memory() for Phase-0 accounting.
         """
         return sum(s.arr.nbytes for s in self._pinned_pool)
 
@@ -338,7 +333,7 @@ def _fmt_mib(n: int) -> str:
 class _GpuMemStats:
     """Snapshot of GPU and pinned-host memory broken down by owner.
 
-    All values are bytes.  Recorded by GpuEvents.log_memory() and used
+    All values are bytes.  Recorded by GpuEventManager.log_memory() and used
     to update per-category high-water marks.
 
     GPU categories (device VRAM):
@@ -397,15 +392,13 @@ class _GpuMemStats:
         )
 
 
-class GpuEvents:
-    """GPU-aware event iterator for the existing serial psana read path.
+class GpuEventManager:
+    """Run-scoped GPU event processor.
 
-    This mirrors Events, but consumes the GPU split batch produced by the
-    existing SmdReaderManager/BatchIterator/EventBuilder stack.  It does not
-    create DsParms, SmdReaderManager, DgramManager, or EventBuilderManager.
+    The serial path still drives this object through its iterator compatibility
+    interface. The MPI path supplies coherent SMD/GPU batches directly through
+    ``process_batch``; the manager never owns MPI communication.
     """
-
-    is_gpu_events = True
 
     def __init__(
         self,
@@ -436,11 +429,12 @@ class GpuEvents:
         self._batch_iter = iter([])
         self._iter = None
         self._has_gpu_batch_iter = False   # cached in beginrun; avoids per-batch hasattr
+        self._n_events = 0
+        self._done = False
+        self._closed = False
 
         self.gpu_det_names = self._normalize_gpu_det(dsparms.gpu_det)
         self.gpu_detectors = {}
-        self.cpu_dets = {}
-        self.router = DetectorRouter()
         self.event_pool = None
         self.gpu_reader = None
         # At most one KvikIO read is pre-issued ahead of the CPU event loop.
@@ -461,7 +455,7 @@ class GpuEvents:
     def _snapshot_memory(self, label: str) -> _GpuMemStats:
         """Collect a _GpuMemStats snapshot from all pipeline components."""
         s = _GpuMemStats(label=label)
-        for name, (_, det, _) in self.gpu_detectors.items():
+        for name, (_, det) in self.gpu_detectors.items():
             m = det.memory_bytes()
             s.det_constants[name] = m["constants"]
             s.det_geometry[name] = m["geometry"]
@@ -475,6 +469,12 @@ class GpuEvents:
         cupy_mod = sys.modules.get("cupy")
         if cupy_mod is not None:
             try:
+                # Probe the runtime before constructing/accessing CuPy's
+                # device-local memory pool.  On CPU-only hosts, touching the
+                # pool first can leave a partially initialized object whose
+                # destructor raises an unraisable CUDA driver exception.
+                if cupy_mod.cuda.runtime.getDeviceCount() <= 0:
+                    return s
                 s.cupy_pool = cupy_mod.get_default_memory_pool().total_bytes()
                 free, total = cupy_mod.cuda.Device().mem_info
                 s.device_used = total - free
@@ -539,10 +539,36 @@ class GpuEvents:
             n_bd = max(1, int(os.environ.get("PS_BD_NODES", 1)))
             self._gpu_budget = _GpuBudget.auto(n_bd_ranks=n_bd)
 
-        all_gpu_stream_ids = set()
         opt_batch_sizes = []
+        ids_table = getattr(self.dsparms, "det_stream_ids_table", {})
+        segments_table = getattr(
+            self.dsparms, "det_stream_segments_table", {}
+        )
+        streams_by_detector = {
+            name: sorted(ids_table.get(name) or segments_table.get(name, {}).keys())
+            for name in self.gpu_det_names
+        }
+        missing = [name for name, stream_ids in streams_by_detector.items()
+                   if not stream_ids]
+        if missing:
+            raise RuntimeError(
+                f"gpu_det did not resolve to any stream ids: {missing}"
+            )
+
+        all_gpu_stream_ids = {
+            stream_id
+            for stream_ids in streams_by_detector.values()
+            for stream_id in stream_ids
+        }
         requested_stream_ids = getattr(self.dsparms, "gpu_stream_ids", None)
-        requested_stream_ids = set(requested_stream_ids) if requested_stream_ids is not None else None
+        if requested_stream_ids is None:
+            raise RuntimeError("GPU stream routing was not resolved from Configure")
+        if set(requested_stream_ids) != all_gpu_stream_ids:
+            raise RuntimeError(
+                "GPU stream routing must include every stream for each "
+                f"gpu_det: expected {sorted(all_gpu_stream_ids)}, got "
+                f"{sorted(requested_stream_ids)}"
+            )
 
         from psana.gpu.gpu_mpi import log_gpu_mem
 
@@ -571,9 +597,9 @@ class GpuEvents:
                     "via passthrough mode regardless of detector type."
                 )
 
+            peds_gpu = None
+            gmask_gpu = None
             if is_pre_calibrated:
-                peds_gpu  = None
-                gmask_gpu = None
                 _log.info(
                     "gpu_det=%r: drp_classes=%s — using passthrough mode "
                     "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
@@ -585,26 +611,14 @@ class GpuEvents:
                 # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
                 # share_calib_between_gpu_peers() will populate them later via
                 # CUDA IPC handles from the leader — at zero allocation cost.
-                peds_gpu  = None
-                gmask_gpu = None
                 _log.info(
                     "gpu_det=%r: follower BD rank — skipping prep_calib_constants; "
                     "calibration constants will be shared from leader via CUDA IPC",
                     det_name,
                 )
-            else:
-                peds_gpu, gmask_gpu = prep_calib_constants(det)
-                log_gpu_mem(f"after prep_calib_constants ({det_name})", rank=_rank)
-            det_shape = det.calibconst["pedestals"][0].shape[1:]
 
-            stream_segments = dict(getattr(self.dsparms, "det_stream_segments_table", {}).get(det_name, {}))
-            det_stream_ids = sorted(getattr(self.dsparms, "det_stream_ids_table", {}).get(det_name, stream_segments.keys()))
-            if requested_stream_ids is None:
-                gpu_stream_ids = det_stream_ids
-            else:
-                gpu_stream_ids = [stream_id for stream_id in det_stream_ids if stream_id in requested_stream_ids]
-            if not gpu_stream_ids:
-                raise RuntimeError(f"gpu_det={det_name!r} did not resolve to any stream ids")
+            stream_segments = dict(segments_table.get(det_name, {}))
+            gpu_stream_ids = streams_by_detector[det_name]
 
             # Configure identifies which physical segments belong to each
             # stream, but its dictionary order is not necessarily the order
@@ -615,7 +629,7 @@ class GpuEvents:
             if xtc_files is None:
                 xtc_files = getattr(self.dsparms, "xtc_files", [])
             stream_files = {stream_id: xtc_files[stream_id] for stream_id in gpu_stream_ids if stream_id < len(xtc_files)}
-            stream_seg_map = build_stream_seg_map(stream_files, det_name)
+            stream_seg_map = build_stream_segment_map(stream_files, det_name)
 
             for stream_id in gpu_stream_ids:
                 segment_ids = stream_seg_map.get(stream_id)
@@ -624,14 +638,60 @@ class GpuEvents:
                 configured = set(stream_segments.get(stream_id, []))
                 if configured and set(segment_ids) != configured:
                     raise RuntimeError(f"gpu_det={det_name!r} stream {stream_id} segment mismatch: Configure={sorted(configured)} L1Accept={segment_ids}")
-            cpu_stream_seg_map = {stream_id: sorted(segment_ids) for stream_id, segment_ids in stream_segments.items() if stream_id not in gpu_stream_ids}
-            all_gpu_stream_ids.update(gpu_stream_ids)
+            configured_segment_ids = sorted({
+                segment_id
+                for stream_id in gpu_stream_ids
+                for segment_id in stream_segments.get(stream_id, ())
+            })
+            detector_api = next(
+                (
+                    getattr(det, drp_class, None)
+                    for drp_class in sorted(drp_classes)
+                    if hasattr(
+                        getattr(det, drp_class, None),
+                        "_sorted_segment_inds",
+                    )
+                ),
+                None,
+            )
+            canonical_segment_ids = list(
+                getattr(detector_api, "_sorted_segment_inds", configured_segment_ids)
+            )
+            routed_segment_ids = {
+                segment_id
+                for stream_id in gpu_stream_ids
+                for segment_id in stream_seg_map.get(stream_id, ())
+            }
+            if routed_segment_ids != set(canonical_segment_ids):
+                raise RuntimeError(
+                    f"gpu_det={det_name!r} must route all detector segments: "
+                    f"configured={canonical_segment_ids}, "
+                    f"routed={sorted(routed_segment_ids)}"
+                )
+
+            # Canonical ordering is established before constants are copied.
+            # Raw, calibration constants, geometry, and every downstream
+            # operation therefore share the same detector-row contract.
+            source_shape = det.calibconst["pedestals"][0].shape
+            det_shape = (
+                len(canonical_segment_ids),
+                int(source_shape[-2]),
+                int(source_shape[-1]),
+            )
+            if not is_pre_calibrated and calib_leader:
+                peds_gpu, gmask_gpu = prep_calib_constants(
+                    det, canonical_segment_ids=canonical_segment_ids
+                )
+                log_gpu_mem(
+                    f"after prep_calib_constants ({det_name})", rank=_rank
+                )
 
             gpu_detector = GPUDetector(
                 det_shape=det_shape,
                 peds_gpu=peds_gpu,
                 gmask_gpu=gmask_gpu,
                 stream_seg_map=stream_seg_map or None,
+                canonical_segment_ids=canonical_segment_ids,
                 n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
                 budget=self._gpu_budget,
                 passthrough=is_pre_calibrated,
@@ -644,38 +704,10 @@ class GpuEvents:
             log_gpu_mem(f"after setup_geometry ({det_name})", rank=_rank)
 
             opt_batch_sizes.append(optimal_kernel_batch_size(det_shape))
-            self.gpu_detectors[det_name] = (det, gpu_detector, cpu_stream_seg_map)
-            self.router.register_gpu(det_name)
-
-            gpu_seg_ids = []
-            for stream_id in sorted(stream_seg_map):
-                gpu_seg_ids.extend(stream_seg_map[stream_id])
-            cpu_seg_ids = []
-            for stream_id in sorted(cpu_stream_seg_map):
-                cpu_seg_ids.extend(cpu_stream_seg_map[stream_id])
-
-            self.router.setup_full_routing(
-                det_name=det_name,
-                gpu_seg_ids=gpu_seg_ids,
-                cpu_seg_ids=cpu_seg_ids,
-                calibconst_n_segs=det_shape[0],
-                nrows=det_shape[1],
-                ncols=det_shape[2],
-                gpu_det_obj=gpu_detector,
-            )
-
-        if all_gpu_stream_ids:
-            self.dsparms.gpu_stream_ids = sorted(all_gpu_stream_ids)
+            self.gpu_detectors[det_name] = (det, gpu_detector)
 
         if not self.dsparms.batch_size:
             self.dsparms.batch_size = min(opt_batch_sizes) if opt_batch_sizes else 1
-
-        gpu_det_set = set(self.gpu_det_names)
-        for det_name in self.run.detnames:
-            if det_name in gpu_det_set:
-                continue
-            self.cpu_dets[det_name] = self.run.Detector(det_name)
-            self.router.register_cpu(det_name)
 
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
         self.event_pool = EventPool(n=pool_depth)
@@ -688,7 +720,7 @@ class GpuEvents:
 
         # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
         # Transfers calibrated results to pinned host memory in chunks so that
-        # ctx.get('det.calib').on_cpu returns immediately without triggering
+        # evt.gpu.get('det.calib').on_cpu returns without triggering
         # an additional synchronous D→H at the user's call site.
         chunk_size = getattr(self.dsparms, "gpu_d2h_chunk_size", 0) or 0
         if chunk_size > 0 and self.gpu_det_names:
@@ -711,7 +743,7 @@ class GpuEvents:
         _path = self.gpu_reader.io_path
         if self.gpu_reader._compat_mode:
             _log.warning(
-                "GpuEvents: kvikio I/O path = %s "
+                "GpuEventManager: kvikio I/O path = %s "
                 "(NVMe → CPU DRAM → GPU VRAM via cudaMemcpy). "
                 "True GDS is not available — likely Lustre/GPFS filesystem "
                 "or cuFile driver not loaded.  GDS would give NVMe → GPU VRAM "
@@ -719,7 +751,7 @@ class GpuEvents:
                 _path,
             )
         else:
-            _log.info("GpuEvents: kvikio I/O path = %s (NVMe → GPU VRAM direct)", _path)
+            _log.info("GpuEventManager: kvikio I/O path = %s (NVMe → GPU VRAM direct)", _path)
 
         # Phase-0 accounting: high-water marks reset each run.
         self._high_water: dict = {}
@@ -745,9 +777,9 @@ class GpuEvents:
         The budget is:
           (total_limit - fixed_bytes - 10% margin) / n_slots
 
-        where fixed_bytes = calibration constants + geometry arrays already
-        reserved in _gpu_budget._committed.  The 10% margin covers CuPy
-        allocator overhead, input buffers (KvikioGpuReader), and rounding.
+        where fixed_bytes = calibration constants + geometry arrays + routing
+        maps already reserved in _gpu_budget._committed.  The 10% margin covers
+        CuPy allocator overhead, input buffers (KvikioGpuReader), and rounding.
 
         Configurable override: set DsParms.gpu_subbatch_budget_bytes > 0.
 
@@ -767,9 +799,9 @@ class GpuEvents:
 
         try:
             fixed_bytes = 0
-            for _, (_, det, _) in self.gpu_detectors.items():
+            for _, (_, det) in self.gpu_detectors.items():
                 mb = det.memory_bytes()
-                fixed_bytes += mb['constants'] + mb['geometry']
+                fixed_bytes += mb['constants'] + mb['geometry'] + mb.get('routing', 0)
         except Exception:
             fixed_bytes = 0
 
@@ -811,7 +843,7 @@ class GpuEvents:
         # Estimate calibration bytes per event (sum across all GPU detectors).
         calib_bytes_per_event = sum(
             det_obj.estimate_subbatch_bytes(1)
-            for _, (_, det_obj, _) in self.gpu_detectors.items()
+            for _, (_, det_obj) in self.gpu_detectors.items()
         )
 
         # Per-event raw input bytes from the desc table (varies by event).
@@ -871,7 +903,10 @@ class GpuEvents:
                 # no calibration constants, and beginstep() is a no-op for them.
                 if getattr(gpu_detector, '_passthrough', False):
                     continue
-                peds, gmask = _compute_calib_constants_cpu(det)
+                peds, gmask = _compute_calib_constants_cpu(
+                    det,
+                    canonical_segment_ids=gpu_detector.canonical_segment_ids,
+                )
                 gpu_detector.beginstep(peds, gmask)
 
         self.run._handle_transition(dgrams)
@@ -884,6 +919,11 @@ class GpuEvents:
         pending_transitions = []
         for step_batch, _ in step_dict.values():
             for service, dgrams in _iter_step_events(step_batch, self.configs):
+                if service == 0:
+                    # A GPU-only L1 has no dgrams in the CPU/SMD packet.
+                    continue
+                if TransitionId.isEvent(service):
+                    continue
                 pending_transitions.append((service, dgrams))
 
         needs_drain = any(service in (TransitionId.BeginStep, TransitionId.EndRun) for service, _ in pending_transitions)
@@ -902,41 +942,26 @@ class GpuEvents:
 
         return end_run_seen
 
-    def _make_context(self, evt, gpu_results, leases=None,
-                      pending_d2h=None, cached_cpu_results=None,
-                      device_released=False):
-        return GpuEventContext(
-            evt=evt,
+    def _attach_gpu(self, envelope, gpu_results, leases=None,
+                    pending_d2h=None, cached_cpu_results=None,
+                    device_released=False):
+        state = GpuEventState(
             gpu_results=gpu_results,
-            cpu_dets=self.cpu_dets,
-            router=self.router,
+            detector_names=self.gpu_det_names,
             leases=leases,
             pending_d2h=pending_d2h,
             cached_cpu_results=cached_cpu_results,
             device_released=device_released,
         )
+        return EventEnvelope(dgrams=envelope.dgrams, gpu_state=state)
 
-    def _finalize_slot_results(self, gpu_results_by_ts, cpu_evts, stream):
-        """Queue full-result routing on the slot's producer stream."""
-        with stream:
-            for evt in cpu_evts:
-                ts = evt.timestamp
-                gpu_results_by_ts[ts] = _apply_full_routing(
-                    gpu_results_by_ts.get(ts, {}),
-                    evt,
-                    self.gpu_detectors,
-                    self.router,
-                )
-        return gpu_results_by_ts
-
-    def _submit_gpu(self, subbatch, gpu_read, cpu_evts):
+    def _submit_gpu(self, subbatch, gpu_read, event_envelopes):
         """Submit one device slot and arm its automatic D→H immediately."""
         record = self.event_pool.submit(
             subbatch,
             gpu_read,
-            cpu_evts,
+            event_envelopes,
             self.gpu_detectors,
-            finalize_results=self._finalize_slot_results,
         )
         for pipe in self._d2h_pipelines.values():
             pipe.schedule(record)
@@ -963,18 +988,18 @@ class GpuEvents:
             return
         # Log after the first batch: slot buffers have grown to their
         # initial sizes so this shows the steady-state allocation.
-        if not self._first_batch_logged and ready.cpu_evts:
+        if not self._first_batch_logged and ready.event_envelopes:
             self._first_batch_logged = True
             self.log_memory("first_batch")
-        for evt in ready.cpu_evts:
-            ts = evt.timestamp
+        for envelope in ready.event_envelopes:
+            ts = utils.first_timestamp(envelope.dgrams)
             gpu_results = ready.gpu_results_by_ts.get(ts, {})
             if device_released:
                 # Preserve the result-key API but never retain a stale view
                 # into a slot which the replacement H2D may now overwrite.
                 gpu_results = {key: None for key in gpu_results}
-            yield self._make_context(
-                evt,
+            yield self._attach_gpu(
+                envelope,
                 gpu_results,
                 leases={} if device_released else ready.leases_by_ts.get(ts, {}),
                 pending_d2h=ready.pending_d2h_by_ts.pop(ts, {}),
@@ -1041,16 +1066,10 @@ class GpuEvents:
         for slot_data in self.event_pool.flush():
             yield from self._yield_ready(slot_data)
 
-    def _events(self):
-        n_events = 0
+    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
+        n_events = self._n_events
         try:
             while True:
-                try:
-                    batch_dict, gpu_batch_dict, step_dict = self._next_batch()
-                except StopIteration:
-                    yield from self._flush_event_pool()
-                    return
-
                 end_run_seen = yield from self._handle_steps(step_dict)
 
                 # ── Phase 3: GPU path — split batch into subbatches ──────────
@@ -1078,7 +1097,7 @@ class GpuEvents:
                 # ── CPU path ─────────────────────────────────────────────────
                 # EventManager loop runs while subbatch 0 reads are in-flight.
                 stop_after = False
-                cpu_evts   = []
+                event_envelopes = []
                 for smd_batch, _ in batch_dict.values():
                     if not smd_batch:
                         continue
@@ -1089,53 +1108,142 @@ class GpuEvents:
                         self.max_retries,
                         self.use_smds,
                     )
-                    for dgrams in event_manager:
-                        evt = Event(dgrams=dgrams, run=self.run._run_ctx)
-                        if not TransitionId.isEvent(evt.service()):
+                    for envelope in event_manager:
+                        dgrams = envelope.dgrams
+                        # All GPU streams are represented in GPUBAT1, not the
+                        # CPU batch.  A GPU-only dataset therefore has no CPU
+                        # dgram from which the envelope could obtain service/time.
+                        # Synthesize that metadata below from GPUBAT1 instead.
+                        if not any(dgrams):
                             continue
-                        cpu_evts.append(evt)
-                        n_events += 1
-                        if self.dsparms.max_events > 0 and n_events >= self.dsparms.max_events:
-                            stop_after = True
-                            break
+                        if not TransitionId.isEvent(utils.first_service(dgrams)):
+                            continue
+                        event_envelopes.append(envelope)
                     if event_manager.exit_id:
                         raise RuntimeError(f"EventManager exit {event_manager.exit_id}")
-                    if stop_after:
-                        break
 
                 # ── Submit subbatches ─────────────────────────────────────────
                 if all_subbatches:
-                    # Build a timestamp → cpu_event lookup for fast partitioning.
-                    ts_to_cpu = {evt.timestamp: evt for evt in cpu_evts}
+                    # Build a timestamp → envelope lookup, filling GPU-only
+                    # events from GPUBAT1 timestamps without reading BigData
+                    # through the CPU path.
+                    ts_to_envelope = {
+                        utils.first_timestamp(envelope.dgrams): envelope
+                        for envelope in event_envelopes
+                    }
+                    selected_envelopes = []
+                    for subbatch in all_subbatches:
+                        for timestamp in subbatch.timestamps:
+                            if (
+                                self.dsparms.max_events > 0
+                                and n_events >= self.dsparms.max_events
+                            ):
+                                stop_after = True
+                                break
+                            timestamp = int(timestamp)
+                            envelope = ts_to_envelope.get(timestamp)
+                            if envelope is None:
+                                dgrams = [None] * len(self.configs)
+                                dgrams[0] = _GpuOnlyDgram(timestamp)
+                                envelope = EventEnvelope(dgrams=dgrams)
+                            selected_envelopes.append(envelope)
+                            n_events += 1
+                        if stop_after:
+                            break
+                    event_envelopes = selected_envelopes
+                    ts_to_envelope = {
+                        utils.first_timestamp(envelope.dgrams): envelope
+                        for envelope in event_envelopes
+                    }
 
                     for i, subbatch in enumerate(all_subbatches):
-                        # CPU events whose timestamps appear in this subbatch.
+                        # Event envelopes whose timestamps appear in this subbatch.
                         sb_ts  = subbatch.timestamps
-                        sb_cpu = [ts_to_cpu[ts] for ts in sb_ts if ts in ts_to_cpu]
+                        sb_envelopes = [
+                            ts_to_envelope[ts]
+                            for ts in sb_ts
+                            if ts in ts_to_envelope
+                        ]
 
                         if i == 0 and first_pending is not None:
                             # Subbatch 0: reads were already issued before the
                             # CPU loop.  Just wait for them to complete.
                             _, pending_0 = first_pending
                             gpu_read = self._wait_gpu_read(pending_0)
-                            self._submit_gpu(subbatch, gpu_read, sb_cpu)
+                            self._submit_gpu(subbatch, gpu_read, sb_envelopes)
                         else:
                             pending = yield from self._retire_issue_and_yield(
                                 subbatch
                             )
                             gpu_read = self._wait_gpu_read(pending)
-                            self._submit_gpu(subbatch, gpu_read, sb_cpu)
+                            self._submit_gpu(subbatch, gpu_read, sb_envelopes)
                 else:
                     # No GPU batch — yield CPU-only events directly.
-                    for evt in cpu_evts:
-                        yield self._make_context(evt, {})
+                    for envelope in event_envelopes:
+                        if (
+                            self.dsparms.max_events > 0
+                            and n_events >= self.dsparms.max_events
+                        ):
+                            stop_after = True
+                            break
+                        n_events += 1
+                        yield self._attach_gpu(envelope, {})
 
                 if stop_after or end_run_seen:
                     yield from self._flush_event_pool()
-                    break
+                    self._done = True
+                return
+        finally:
+            self._n_events = n_events
+
+    def process_batch(self, smd_batch, gpu_batch=None):
+        """Process one coherent EB-to-BD batch and yield EventEnvelopes."""
+        if self._done:
+            return
+        if self.gpu_reader is not None:
+            self.gpu_reader.reset_io_stats()
+        batch_dict = {0: (smd_batch, [])}
+        gpu_batch_dict = {0: (gpu_batch, [])} if gpu_batch else {}
+        # MPI transition history is embedded in the SMD packet itself.
+        step_dict = {0: (smd_batch, [])}
+        yield from self._process_batch(batch_dict, gpu_batch_dict, step_dict)
+
+    def get_bd_read_stats(self):
+        """Return bytes and seconds spent in GPU big-data reads this batch."""
+        if self.gpu_reader is None:
+            return 0, 0.0
+        stats = self.gpu_reader.io_stats()
+        return int(stats["total_bytes"]), stats["total_ns"] / 1e9
+
+    def finish(self):
+        """Drain in-flight work and close GPU reader resources once."""
+        if self._closed:
+            return
+        try:
+            yield from self._flush_event_pool()
+            self._drain_pending_gpu_read()
         finally:
             if self.gpu_reader is not None:
+                self.gpu_reader.close()
+            self._closed = True
+
+    def close(self):
+        """Discard remaining deliveries while safely retiring their slots."""
+        for _ in self.finish():
+            pass
+
+    def _events(self):
+        try:
+            while not self._done:
                 try:
-                    self._drain_pending_gpu_read()
-                finally:
-                    self.gpu_reader.close()
+                    batch_dict, gpu_batch_dict, step_dict = self._next_batch()
+                except StopIteration:
+                    break
+                yield from self._process_batch(
+                    batch_dict, gpu_batch_dict, step_dict
+                )
+        except BaseException:
+            self.close()
+            raise
+        else:
+            yield from self.finish()

@@ -57,15 +57,14 @@ class DsParms:
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
     # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau') or
-    # DataSource(gpu_det=['jungfrau', 'epix']).  When set, Run.events()
-    # yields GpuEventContext objects instead of Event objects.
+    # DataSource(gpu_det=['jungfrau', 'epix']). Run.events() still yields
+    # Event; per-event GPU results are available through evt.gpu.
     gpu_det: object = None  # str | list[str] | None
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
     gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
-    # GPU-routed bigdata stream indices.  Populated from the Configure dgrams
-    # already parsed by DgramManager.  Forwarded to EventBuilder so it can
-    # split those streams into GPUBAT1 without relying on PS_TEST_GPU_STREAM_IDS.
+    # Whole bigdata stream indices for gpu_det. Populated from the Configure
+    # dgrams already parsed by DgramManager and forwarded to EventBuilder.
     gpu_stream_ids: list = None  # list[int] | None
 
     def set_det_class_table(
@@ -85,6 +84,41 @@ class DsParms:
     def update_smd_state(self, smd_files, use_smds):
         self.smd_files = smd_files
         self.use_smds = use_smds
+
+    def resolve_gpu_stream_ids(self):
+        """Resolve and validate whole-stream GPU routing from Configure."""
+        if not self.gpu_det:
+            self.gpu_stream_ids = None
+            return
+
+        gpu_det_names = (
+            [self.gpu_det] if isinstance(self.gpu_det, str) else list(self.gpu_det)
+        )
+        ids_table = getattr(self, "det_stream_ids_table", {})
+        segments_table = getattr(self, "det_stream_segments_table", {})
+        stream_owners = getattr(self, "stream_id_to_detnames", {})
+        gpu_stream_ids = set()
+
+        for det_name in gpu_det_names:
+            stream_ids = ids_table.get(det_name) or list(
+                segments_table.get(det_name, {}).keys()
+            )
+            if not stream_ids:
+                raise RuntimeError(
+                    f"gpu_det={det_name!r} did not resolve to any stream ids"
+                )
+
+            for stream_id in stream_ids:
+                owners = set(stream_owners.get(stream_id, ()))
+                if owners != {det_name}:
+                    raise RuntimeError(
+                        f"gpu_det={det_name!r} uses stream {stream_id}, which "
+                        f"contains normal detectors {sorted(owners)}. GPUBAT1 "
+                        "requires exactly one normal detector per GPU stream."
+                    )
+                gpu_stream_ids.add(stream_id)
+
+        self.gpu_stream_ids = sorted(gpu_stream_ids)
 
     @property
     def intg_stream_id(self):
@@ -222,7 +256,7 @@ class DataSourceBase(abc.ABC):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
         # Final sanity check.
-        # batch_size=0 is allowed when gpu_det is set: GpuEvents will
+        # batch_size=0 is allowed when gpu_det is set: GpuEventManager will
         # auto-compute the optimal value from GPU detector properties.
         if self.batch_size == 0 and not kwargs.get("gpu_det"):
             self.batch_size = 1  # default for CPU path

@@ -327,7 +327,7 @@ class GpuShmemEvents:
                 continue
 
             gpu_results = {}
-            for det_name, (_, gpu_det, _) in self.gpu_detectors.items():
+            for det_name, (_, gpu_det) in self.gpu_detectors.items():
                 # Extract detector pixels from the XTC2 dgram.
                 # drp_class='raw': uint16 ADC values  (gpu_det._passthrough=False)
                 # drp_class='fex': float32 pre-calibrated (gpu_det._passthrough=True)
@@ -348,7 +348,6 @@ class GpuShmemEvents:
                 evt=evt,
                 gpu_results=gpu_results,
                 cpu_dets=self.cpu_dets,
-                router=self.router,
             )
 ```
 

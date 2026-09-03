@@ -137,12 +137,12 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     only on BeginStep transitions via GPUDetector.beginstep().  Leaders
     update the shared buffer in-place; followers see the change automatically.
     Followers are marked with ``_is_calib_follower=True`` so their
-    ``beginstep()`` skips the redundant H→D write and only clears caches.
+    ``beginstep()`` skips the redundant H→D write.
 
     Parameters
     ----------
     gpu_detectors : dict  {det_name: (psana_det, GPUDetector)}
-        From GpuEvents.gpu_detectors — already initialised with peds/gmask
+        From GpuEventManager.gpu_detectors — already initialised with peds/gmask
         on the leader, and with peds_gpu=gmask_gpu=None on followers
         (is_calib_leader() returned False before _setup_detectors() ran).
     bd_comm       : mpi4py.MPI.Comm
@@ -213,8 +213,6 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     # ── Phase 2: CUDA IPC handle exchange ───────────────────────────────────
     IPC_LAZY = cp.cuda.runtime.cudaIpcMemLazyEnablePeerAccess
 
-    # gpu_detectors values may be 2-tuples (det, gpu_det) or 3-tuples
-    # (det, gpu_det, stream_seg_map) — use index access to handle both.
     for det_name, det_info in gpu_detectors.items():
         gpu_det = det_info[1]
         if is_leader:
@@ -265,8 +263,6 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
                 ),
             )
             gpu_det._is_calib_follower = True
-            gpu_det._stream_peds.clear()
-            gpu_det._stream_gmask.clear()
 
     n_followers = len(follower_bd_ranks) if is_leader else 1
     logger.debug(

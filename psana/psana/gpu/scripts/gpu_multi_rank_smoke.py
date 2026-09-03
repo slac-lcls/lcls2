@@ -178,15 +178,15 @@ if ds.is_bd():
 
     _t_start = None
     for run in ds.runs():
-        for ctx in run.events():
+        for evt in run.events():
             if _t_start is None:
                 _t_start = time.perf_counter()
-            calib = ctx.get(_DET_NAME + '.calib').on_gpu   # CuPy array
+            calib = evt.gpu.get(_DET_NAME + '.calib').on_gpu   # CuPy array
             has_nan  = bool(cp.any(cp.isnan(calib)))
             n_segs, nrows, ncols = calib.shape
 
             bd_results.append({
-                'ts':       ctx.timestamp,
+                'ts':       evt.timestamp,
                 'shape':    (int(n_segs), int(nrows), int(ncols)),
                 'dtype':    str(calib.dtype),
                 'has_nan':  has_nan,

@@ -431,7 +431,7 @@ class RunParallel(Run):
 
         The resulting numpy arrays are stored as
             self._gpu_geometry_arrays = {det_name: (ix_all, iy_all)}
-        and passed to GpuEvents(prebuilt_geometry=...) so that
+        and passed to GpuEventManager(prebuilt_geometry=...) so that
         _setup_detectors() calls gpu_detector.setup_geometry_from_arrays()
         instead of setup_geometry(det), avoiding a shmem collective during
         the event loop.
@@ -563,14 +563,63 @@ class RunParallel(Run):
         targets.sort(key=lambda item: (item[0], item[1]))
         return targets
 
-    def events(self):
-        # GPU BD rank: delegate to the MPI-aware GPU event loop which drives
-        # BigDataNode.start_gpu() instead of the CPU Events iterator.
-        if getattr(self.dsparms, 'gpu_det', None) and nodetype == 'bd':
-            yield from self._gpu_events_mpi()
-            return
+    def _make_gpu_event_manager(self):
+        """Create the run-scoped GPU manager after MPI calibration setup."""
+        from psana.gpu.gpu_events import GpuEventManager
 
-        evt_iter = self.start()
+        try:
+            import cupy as cp
+            import gc
+            gc.collect()
+            cp.get_default_memory_pool().free_all_blocks()
+        except Exception:
+            pass
+
+        physical_gpu = int(
+            os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
+        )
+        try:
+            from psana.gpu.gpu_mpi import is_calib_leader
+            calib_leader = is_calib_leader(
+                self.comms.bd_comm, physical_gpu
+            )
+        except Exception:
+            calib_leader = True
+
+        manager = GpuEventManager(
+            self.configs,
+            self.dm,
+            self.dsparms.max_retries,
+            self.dsparms.use_smds,
+            self.shared_state,
+            self.dsparms,
+            self,
+            prebuilt_geometry=getattr(self, "_gpu_geometry_arrays", None),
+            setup_geometry=not bool(
+                getattr(self, "_gpu_geometry_arrays", None)
+            ),
+            calib_leader=calib_leader,
+        )
+
+        try:
+            from psana.gpu.gpu_mpi import share_calib_between_gpu_peers
+            share_calib_between_gpu_peers(
+                manager.gpu_detectors,
+                self.comms.bd_comm,
+                physical_gpu,
+            )
+        except Exception as exc:
+            self.logger.debug(
+                "share_calib_between_gpu_peers skipped: %s", exc
+            )
+        return manager
+
+    def _events_impl(self):
+        gpu_manager = None
+        if getattr(self.dsparms, "gpu_det", None) and nodetype == "bd":
+            gpu_manager = self._make_gpu_event_manager()
+
+        evt_iter = self.start(gpu_manager=gpu_manager)
         st = time.time()
         try:
             ana_interval = int(os.environ.get("PS_BD_ANA_INTERVAL", "1000"))
@@ -578,11 +627,10 @@ class RunParallel(Run):
             ana_interval = 1000
         if ana_interval <= 0:
             ana_interval = 1000
-        for i, dgrams in enumerate(evt_iter):
-            if self._handle_transition(dgrams):
+        for i, envelope in enumerate(evt_iter):
+            if self._handle_transition(envelope.dgrams):
                 continue  # swallow non-L1 transitions in events() stream
-            # L1Accept: construct Event at the Run level
-            yield Event(dgrams=dgrams, run=self._run_ctx)
+            yield self._materialize_event(envelope)
             if i % ana_interval == 0:
                 en = time.time()
                 interval = en - st
@@ -605,273 +653,23 @@ class RunParallel(Run):
                 self.ana_t_gauge.set(ana_rate)
                 st = time.time()
 
-    def _gpu_events_mpi(self):
-        """GPU BD rank event loop driven by MPI batches from EB.
-
-        Uses GpuEvents (the same class that RunSerial uses for the
-        single-process GPU path) with a thin _MpiGpuBatchSource adapter that
-        translates the MPI batch pairs from self.start() / start_gpu() into
-        the smdr_man interface that GpuEvents._next_batch() expects.
-
-        This reuses all of GpuEvents' logic:
-          - GPU detector setup from dsparms tables (populated by Configure dgrams)
-          - EventPool, KvikioGpuReader, DetectorRouter creation
-          - Transition handling, max_events, EndRun, EventPool flush
-          - GpuEventContext creation via _yield_ready / _flush_event_pool
-
-        Notes
-        -----
-        * Calibration constants are already distributed to all BD ranks by
-          RunParallel._setup_run_calibconst() → _distribute_calib_xtc().
-          self.Detector(det_name) therefore returns calibconst without
-          opening additional DataSource instances.
-        * GPU pinning (init_gpu_rank) was already called in
-          MPIDataSource.__init__() before this method can run.
-        * self.start() dispatches to bd_node.start_gpu() (GPU BD path in
-          RunParallel.start()), which handles terminate_flag and per-batch
-          EB load-accounting stats via set_batch_stats().
-        """
-        from psana.gpu.gpu_events import GpuEvents
-        from psana.gpu.gpu_mpi import gpu_error_handler
-
-        class _MpiGpuBatchSource:
-            """Adapts self.start() (smd_batch, gpubat1_bytes) pairs into the
-            smdr_man interface expected by GpuEvents._next_batch().
-
-            smdr_man.__next__() must return a batch iterator.  Each batch
-            iterator must support next_with_gpu() returning the 3-tuple
-            (batch_dict, gpu_batch_dict, step_dict) that GpuEvents._events()
-            consumes.  When start_gen is exhausted, __next__() raises
-            StopIteration, which GpuEvents._events() catches and uses to
-            flush the EventPool and terminate.
-            """
-
-            class _OneBatch:
-                """Single-use iterator for one (smd_batch, gpubat1_bytes) pair."""
-                def __init__(self, smd_batch, gpubat1_bytes):
-                    self._smd       = smd_batch
-                    self._gpu       = gpubat1_bytes
-                    self._yielded   = False
-
-                def next_with_gpu(self):
-                    if self._yielded:
-                        raise StopIteration
-                    self._yielded = True
-                    batch_dict     = {0: (self._smd, [])}
-                    gpu_batch_dict = {0: (self._gpu, [])} if self._gpu else {}
-                    return batch_dict, gpu_batch_dict, {}
-
-            def __init__(self, start_gen, bd_node):
-                self._gen      = start_gen
-                self._bd_node  = bd_node
-                self._t_start  = None   # wall time at start of current batch
-                self._n_events = 0      # events yielded by current batch
-
-            def __next__(self):
-                # Report stats for the batch that just finished.
-                # This is called at the START of each new batch request,
-                # i.e. immediately after GpuEvents has consumed all events
-                # from the previous batch — matching the timing of the CPU
-                # path's on_batch_end() callback inside Events.
-                if self._t_start is not None:
-                    proc_ns = int((time.monotonic() - self._t_start) * 1e9)
-                    self._bd_node.set_batch_stats(
-                        read_bytes=0,       # GDS bytes tracked separately
-                        read_time_ns=0,
-                        proc_events=self._n_events,
-                        proc_time_ns=proc_ns,
-                    )
-                smd_batch, gpubat1_bytes = next(self._gen)   # StopIteration propagates
-                self._t_start  = time.monotonic()
-                self._n_events = 0
-                return _MpiGpuBatchSource._OneBatch(smd_batch, gpubat1_bytes)
-
-        comm = self.comms.psana_comm
-
-        with gpu_error_handler(comm):
-            # Compact CuPy pool at the start of each GPU event loop.
-            # When multiple batch-size runs execute sequentially (benchmark
-            # sweep), data_gpu slot buffers of different sizes from previous
-            # runs accumulate as idle pool fragments.  Returning them to CUDA
-            # here prevents OOM at larger batch sizes.
-            try:
-                import cupy as _cp
-                import gc as _gc
-                _gc.collect()
-                _cp.get_default_memory_pool().free_all_blocks()
-            except Exception:
-                pass
-
-            # NUMA load-balance sync: ensure all BD ranks reach this point
-            # before any of them sends the first EB request.
-            #
-            # On sdfampere nodes (8 NUMA nodes, NPS=4) the two BD ranks land
-            # on different NUMA domains.  The rank on NUMA 0 exits _setup_run()
-            # up to ~30–40 s faster, sends its initial look-ahead request to EB
-            # first, and wins the round-robin for every subsequent batch —
-            # starving the slower BD rank for the entire run.
-            #
-            # bd_comm contains BOTH EB and BD ranks (rank 0 = EB, ranks 1..N =
-            # BD workers), so bd_comm.Barrier() would deadlock because EB ranks
-            # are not inside this code path.  Instead we use a manual centralized
-            # barrier that only BD ranks (bd_rank > 0) participate in:
-            #   • BD rank 1 waits to hear from every other BD rank, then signals
-            #     all-clear to each of them.
-            # This is equivalent to MPI_Barrier restricted to the BD sub-group.
-            try:
-                bd_comm    = self.comms.bd_comm
-                my_bd_rank = self.comms.bd_rank          # 0=EB, 1..N=BD
-                n_bd       = bd_comm.Get_size() - 1  # always 1 EB at rank 0
-                if n_bd > 1 and my_bd_rank > 0:
-                    from mpi4py import MPI as _MPI
-                    _buf = bytearray(1)
-                    if my_bd_rank == 1:
-                        # Coordinator: collect a ready-byte from every peer.
-                        for peer in range(2, n_bd + 1):
-                            bd_comm.Recv([_buf, _MPI.BYTE], source=peer)
-                        # Then release all peers simultaneously.
-                        for peer in range(2, n_bd + 1):
-                            bd_comm.Send([b'\x01', _MPI.BYTE], dest=peer)
-                    else:
-                        # Worker: signal coordinator and wait for release.
-                        bd_comm.Send([b'\x00', _MPI.BYTE], dest=1)
-                        bd_comm.Recv([_buf, _MPI.BYTE], source=1)
-            except Exception:
-                pass   # non-fatal: if sync fails, continue without it
-
-            # self.start() → RunParallel.start() → bd_node.start_gpu()
-            # The _MpiGpuBatchSource adapter makes start_gpu() look like a
-            # smdr_man so GpuEvents can drive its own batch loop.
-            # Determine whether this BD rank should allocate calibration
-            # constants (leader) or skip allocation and receive a CUDA IPC
-            # view from the leader (follower).
-            # Must be called BEFORE GpuEvents() to avoid the peak-allocation
-            # window where N × ~400 MiB exist simultaneously on one GPU.
-            _phys_gpu = int(os.environ.get('CUDA_VISIBLE_DEVICES', '0')
-                            .split(',')[0])
-            try:
-                from psana.gpu.gpu_mpi import is_calib_leader as _is_calib_leader
-                _calib_leader = _is_calib_leader(self.comms.bd_comm, _phys_gpu)
-            except Exception:
-                _calib_leader = True   # safe default: every rank allocates
-
-            adapter = _MpiGpuBatchSource(self.start(), self.bd_node)
-            gpu_ev = GpuEvents(
-                self.configs,
-                self.dm,
-                self.dsparms.max_retries,
-                self.dsparms.use_smds,
-                self.shared_state,
-                self.dsparms,
-                self,
-                smdr_man=adapter,
-                # Pixel coordinate arrays were pre-computed in
-                # _setup_gpu_geometry() during RunParallel.__init__() while
-                # all ranks were still synchronising — safe to call
-                # _pixel_coord_indexes() there.  Pass them here so
-                # _setup_detectors() uses setup_geometry_from_arrays()
-                # instead of the lazy setup_geometry(det) call that would
-                # trigger a shmem collective during the event loop.
-                prebuilt_geometry=getattr(self, '_gpu_geometry_arrays', None),
-                setup_geometry=not bool(
-                    getattr(self, '_gpu_geometry_arrays', None)
-                ),
-                calib_leader=_calib_leader,
-            )
-            # Share peds_gpu/gmask_gpu between BD ranks on the same physical
-            # GPU via CUDA IPC.  When N_BD_PER_GPU > 1, multiple BD ranks
-            # share one A100; this saves ~400 MB per follower rank.
-            try:
-                from psana.gpu.gpu_mpi import share_calib_between_gpu_peers
-                share_calib_between_gpu_peers(
-                    gpu_ev.gpu_detectors,
-                    self.comms.bd_comm,
-                    _phys_gpu,
-                )
-            except Exception as _share_exc:
-                # Non-fatal: e.g. only one BD rank per GPU, or IPC unavailable.
-                self.logger.debug(
-                    'share_calib_between_gpu_peers skipped: %s', _share_exc
-                )
-
-            # Rate logging mirrors the CPU events() loop: report throughput
-            # every ana_interval events using the same self.ana_t_gauge gauge.
-            try:
-                _ana_interval = int(os.environ.get("PS_BD_ANA_INTERVAL", "1000"))
-            except ValueError:
-                _ana_interval = 1000
-            if _ana_interval <= 0:
-                _ana_interval = 1000
-            _ana_i = 0
-            _ana_st = time.time()
-
-            try:
-                # GpuEvents._events() flushes the EventPool internally
-                # (on StopIteration from _next_batch or on EndRun/stop_after).
-                for _gpu_ctx in gpu_ev:
-                    # Track batch event count for set_batch_stats().
-                    adapter._n_events += 1
-                    yield _gpu_ctx
-                    # Rate logging — same logic as CPU events() loop.
-                    _ana_i += 1
-                    if _ana_i % _ana_interval == 0:
-                        _ana_en = time.time()
-                        _interval = _ana_en - _ana_st
-                        _ana_rate = _ana_interval / _interval if _interval > 0 else 0.0
-                        _rss_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss
-                        self.logger.debug(
-                            "bd gpu analysis stats rate_hz=%.2f interval_s=%.2f "
-                            "events=%d rss_kb=%d",
-                            _ana_rate, _interval, _ana_interval, _rss_kb,
-                        )
-                        self.ana_t_gauge.set(_ana_rate)
-                        _ana_st = time.time()
-            finally:
-                # Flush the last batch's proc_events to EB before draining.
-                # The _MpiGpuBatchSource.__next__() reports stats for the
-                # *previous* batch at the start of each new request; the final
-                # batch's stats are never reported because __next__() is not
-                # called again after the last event.  Report them here so EB
-                # receives accurate accounting for every batch.
-                if adapter._t_start is not None and adapter._n_events > 0:
-                    try:
-                        proc_ns = int((time.monotonic() - adapter._t_start) * 1e9)
-                        self.bd_node.set_batch_stats(
-                            read_bytes=0,
-                            read_time_ns=0,
-                            proc_events=adapter._n_events,
-                            proc_time_ns=proc_ns,
-                        )
-                    except Exception:
-                        pass
-
-                # Drain any remaining EB batches so EB can terminate cleanly.
-                #
-                # GpuEvents._events() may break early when max_events is
-                # reached or EndRun is seen, closing the adapter generator
-                # before EB has sent its termination signal (empty batch).
-                # Without this drain, EB blocks waiting for a BD request that
-                # never arrives — a deadlock.
-                #
-                # Draining keeps sending requests to EB until EB sends the
-                # empty-batch termination signal, then both sides exit cleanly.
-                try:
-                    for _ in adapter._gen:
-                        pass
-                except Exception:
-                    pass
+    def events(self):
+        if getattr(self.dsparms, "gpu_det", None) and nodetype == "bd":
+            from psana.gpu.gpu_mpi import gpu_error_handler
+            with gpu_error_handler(self.comms.psana_comm):
+                yield from self._events_impl()
+            return
+        yield from self._events_impl()
 
     def steps(self):
-        # GPU BD ranks handle BeginStep internally via GpuEvents._dispatch_transition().
-        # start() yields (smd_batch, gpubat1_bytes) tuples for GPU BD ranks, not dgrams,
-        # so utils.first_service() below would crash.  BeginStep triggers a calibconst
-        # refresh on the GPU via GPUDetector.beginstep() — there is nothing for user
-        # step-iteration code to do on a GPU BD rank.
+        # GPU step iteration remains outside this first MPI events refactor.
+        # GpuEventManager handles BeginStep while processing run.events().
         if getattr(self.dsparms, 'gpu_det', None) and nodetype == 'bd':
             return
 
         evt_iter = self.start()
-        for dgrams in evt_iter:
+        for envelope in evt_iter:
+            dgrams = envelope.dgrams
             svc = utils.first_service(dgrams)
             if TransitionId.isEvent(svc):
                 # steps() only yields on BeginStep transitions; ignore L1
@@ -881,7 +679,7 @@ class RunParallel(Run):
 
             if svc == TransitionId.BeginStep:
                 yield Step(
-                    Event(dgrams=dgrams, run=self._run_ctx),
+                    self._materialize_event(envelope),
                     evt_iter,
                     self._run_ctx,
                     esm=self.esm,
@@ -896,20 +694,14 @@ class RunParallel(Run):
         except Exception:
             pass
 
-    def start(self):
+    def start(self, gpu_manager=None):
         """Request data for this run"""
         if nodetype == "smd0":
             self.smd0.start()
         elif nodetype == "eb":
             self.eb_node.start()
         elif nodetype == "bd":
-            if getattr(self.dsparms, 'gpu_det', None):
-                # GPU BD rank: yield (smd_batch, gpubat1_bytes) pairs.
-                # _gpu_events_mpi() calls self.start() to drive this path,
-                # keeping start() as the single dispatch point for all BD work.
-                yield from self.bd_node.start_gpu()
-            else:
-                yield from self.bd_node.start()
+            yield from self.bd_node.start(gpu_manager=gpu_manager)
         elif nodetype == "srv":
             return
 
@@ -1109,24 +901,8 @@ class MPIDataSource(DataSourceBase):
             self.xtc_files, configs=configs, config_consumers=[self.dsparms]
         )
 
-        # Set gpu_stream_ids on ALL ranks (including EB) so that
-        # EventBuilderManager enables GPU splitting for the right streams.
-        # det_stream_segments_table was just populated by DgramManager on all
-        # ranks; its keys are the stream IDs that carry the GPU detector data.
-        if getattr(self.dsparms, 'gpu_det', None):
-            gpu_det_names = self.dsparms.gpu_det
-            if isinstance(gpu_det_names, str):
-                gpu_det_names = [gpu_det_names]
-            seg_table = getattr(self.dsparms, 'det_stream_segments_table', {})
-            ids_table  = getattr(self.dsparms, 'det_stream_ids_table', {})
-            all_gpu_ids = set()
-            for name in gpu_det_names:
-                # Mirror GpuEvents._setup_detectors(): prefer det_stream_ids_table,
-                # fall back to det_stream_segments_table keys.
-                stream_ids = ids_table.get(name) or list(seg_table.get(name, {}).keys())
-                all_gpu_ids.update(stream_ids)
-            if all_gpu_ids:
-                self.dsparms.gpu_stream_ids = sorted(all_gpu_ids)
+        # Resolve on every rank before EventBuilder starts routing whole streams.
+        self.dsparms.resolve_gpu_stream_ids()
 
         return True
 

@@ -23,13 +23,15 @@ ds = DataSource(
 )
 run = next(ds.runs())
 
-for ctx in run.events():
-    calib_gpu = ctx.get("calib").on_gpu
-    # calib_cpu = ctx.get("calib").on_cpu  # explicit synchronous D2H
-    # energy = ctx.raw("gmd").energy       # normal CPU detector access
+gmd = run.Detector("gmd")
+for evt in run.events():
+    calib_gpu = evt.gpu.get("calib").on_gpu
+    # calib_cpu = evt.gpu.get("calib").on_cpu
+    # energy = gmd.raw.energy(evt)
 ```
 
-`ctx.get("calib").on_gpu` is a CuPy view into a reusable EventPool slot. It
+`evt.gpu.get("calib").on_gpu` returns an independent CuPy copy. The
+`on_gpu_view(stream)` context manager exposes a reusable EventPool slot and
 must be consumed before that slot is recycled. `.on_cpu` returns an independent
 NumPy copy.
 
@@ -45,20 +47,20 @@ EventBuilder
   builds a GPUBAT1 descriptor batch for GPU-routed streams
   sends CPU, GPU, and step batches to BD
 
-BD / GpuEvents
+BD / Events / GpuEventManager
   issues KvikIO reads for the GPUBAT1 descriptors
   builds normal CPU Event objects through EventManager
   waits for the KvikIO futures
   launches Jungfrau raw gathering and calibration
   joins CPU events and GPU results by timestamp
-  yields GpuEventContext objects
+  attaches GpuEventState and yields Event objects
 ```
 
-The same `GpuEvents` implementation is used by both execution modes:
+The same `GpuEventManager` implementation is used by both execution modes:
 
 - `RunSerial` uses it directly when `DataSource(..., gpu_det=...)` is set.
-- MPI BD ranks use `RunParallel._gpu_events_mpi()` and
-  `BigDataNode.start_gpu()` as the batch source.
+- MPI BD ranks receive `BatchEnvelope` objects through the common
+  `BigDataNode.start()` and `Events` path.
 
 Smd0, EventBuilder, and service ranks do not need CUDA contexts.
 
@@ -78,9 +80,9 @@ Here `stream_id` indexes psana's stream/file list, while `segment_id` is the
 physical detector segment from Configure. An event ShapesData `names_id` links
 the event payload back to its Configure Names record.
 
-For normal integrated use, `gpu_det="jungfrau"` selects streams through these
-Configure-derived tables. `PS_TEST_GPU_STREAM_IDS` remains only as a legacy
-direct-test override.
+`gpu_det="jungfrau"` selects every stream for that detector through these
+Configure-derived tables. A detector cannot be split between CPU and GPU
+streams; EventBuilder routes each selected stream as a whole.
 
 EventBuilder's GPU split produces:
 
@@ -108,7 +110,7 @@ use that same order.
 
 During GPU detector setup, on CPU:
 
-1. `build_stream_seg_map()` opens each detector-bearing bigdata stream.
+1. `build_stream_segment_map()` opens each detector-bearing bigdata stream.
 2. It scans to the first L1Accept containing Jungfrau data.
 3. Psana joins each ShapesData `names_id` to Configure and exposes physical
    segment IDs in XTC traversal order.
@@ -216,9 +218,9 @@ share read-only detector calibration buffers through CUDA IPC, avoiding one
 full constant allocation per follower rank. Event read, raw gather, and output
 slot buffers remain owned by each BD process.
 
-Mixed CPU/GPU routing of one large detector remains available through
-`DetectorRouter` as a correctness/debug bridge. It can copy CPU-calibrated
-segments back to GPU and is not the preferred performance path.
+`GPUDetector` restores L1 child-XTC panel order to the canonical psana segment
+order before exposing a result. `GpuEventState` resolves unqualified keys such
+as `evt.gpu.get("calib")` when exactly one GPU detector is configured.
 
 ## D2H and Backpressure Status
 
@@ -279,8 +281,11 @@ Useful performance/debug entry points are:
 - `gpu_batch.py`: GPUBAT1 ABI and descriptor views.
 - `gpu_events.py`: serial/MPI batch orchestration and timestamp join.
 - `gpu_kvikio_read.py`: per-slot bigdata reads and descriptor table.
-- `gpu_calib.py`, `cuda/fused_calib.cuh`: ordering, raw gathering, constants,
-  geometry, and Jungfrau calibration.
+- `dgram_layout.py`: CPU-side dgram layout and stream/segment discovery.
+- `gpu_detector.py`: canonical raw gathering, detector processing, slot buffers,
+  and detector memory accounting.
+- `gpu_calib.py`, `cuda/fused_calib.cuh`: constants, geometry helpers, and
+  Jungfrau calibration.
 - `gpu_stream.py`: reusable CUDA streams and slot lifetime.
 - `context.py`: user-facing GPU result/context wrappers.
 - `gpu_mpi.py`: GPU pinning, CUDA IPC calibration sharing, and fatal-error

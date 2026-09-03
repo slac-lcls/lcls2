@@ -320,7 +320,7 @@ class GpuSubbatchView:
     table.  This re-indexing is computed on-the-fly in iter_events() as the
     cumulative sum of n_desc for preceding events in the subbatch.
 
-    Created by GpuEvents._split_subbatches().
+    Created by GpuEventManager._split_subbatches().
     """
 
     def __init__(self, parent: GpuBatchView, event_start: int, event_end: int):
@@ -376,7 +376,7 @@ class GpuSubbatchView:
     def timestamps(self) -> 'frozenset[int]':
         """Frozen set of event timestamps in this subbatch.
 
-        Used by GpuEvents._events() to partition cpu_evts by subbatch.
+        Used by GpuEventManager to partition CPU events by subbatch.
         """
         return frozenset(
             int(self._parent.events[i]['timestamp'])

@@ -4,21 +4,27 @@ import os
 import sys
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 import psana.gpu.gpu_events as gpu_events_module
-from psana.gpu.detector_router import DetectorRouter
-from psana.gpu.gpu_calib import _segment_ids_in_l1_order
-from psana.gpu.gpu_events import GpuEvents
+from psana.gpu.dgram_layout import segment_ids_in_l1_order
+from psana.gpu.gpu_calib import _compute_calib_constants_cpu
+from psana.gpu.context import GpuEventState
+from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
+from psana.event import Event, EventEnvelope
 from psana.psexp import TransitionId
+from psana.psexp.ds_base import DsParms
 from psana.psexp.packet_footer import PacketFooter
 
 
 def test_public_gpu_api_is_minimal():
     import psana.gpu as gpu
 
-    # D→H join is now internal to GpuEvents — no join class in public API.
+    assert "GpuEventState" in gpu.__all__
+    assert "GpuEventContext" not in gpu.__all__
+    # D→H join is internal to GpuEventManager — no join class in public API.
     assert "EventJoiner" not in gpu.__all__, "EventJoiner was made internal"
     assert "CalibJoiner" not in gpu.__all__, "CalibJoiner was renamed then made internal"
     # These implementation-detail names must never be public.
@@ -28,6 +34,139 @@ def test_public_gpu_api_is_minimal():
         "verify_gpu_pinning",
     }
     assert internal_names.isdisjoint(gpu.__all__)
+
+
+def test_single_file_datasource_rejects_gpu_mode():
+    from psana.psexp.singlefile_ds import SingleFileDataSource
+
+    with pytest.raises(
+        NotImplementedError,
+        match="supported only by RunSerial and RunParallel",
+    ):
+        SingleFileDataSource(files=[], gpu_det="jungfrau")
+
+
+def _routing_dsparms(gpu_det, ids_table, stream_owners):
+    dsparms = DsParms(
+        batch_size=1,
+        max_events=0,
+        max_retries=0,
+        live=False,
+        timestamps=None,
+        intg_det="",
+        intg_delta_t=0,
+        use_calib_cache=False,
+        cached_detectors=[],
+        fetch_calib_cache_max_retries=0,
+        skip_calib_load=[],
+        dbsuffix="",
+        gpu_det=gpu_det,
+    )
+    dsparms.det_stream_ids_table = ids_table
+    dsparms.det_stream_segments_table = {}
+    dsparms.stream_id_to_detnames = stream_owners
+    return dsparms
+
+
+def test_gpu_routing_allows_one_detector_across_multiple_streams():
+    dsparms = _routing_dsparms(
+        "jungfrau",
+        {"jungfrau": [3, 5, 7, 8, 9]},
+        {stream_id: ["jungfrau"] for stream_id in [3, 5, 7, 8, 9]},
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_stream_ids == [3, 5, 7, 8, 9]
+
+
+def test_gpu_routing_allows_detectors_on_disjoint_streams():
+    dsparms = _routing_dsparms(
+        ["jungfrau", "other"],
+        {"jungfrau": [3, 5], "other": [6]},
+        {3: ["jungfrau"], 5: ["jungfrau"], 6: ["other"]},
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_stream_ids == [3, 5, 6]
+
+
+@pytest.mark.parametrize("gpu_det", ["jungfrau", ["jungfrau", "other"]])
+def test_gpu_routing_rejects_shared_detector_stream(gpu_det):
+    dsparms = _routing_dsparms(
+        gpu_det,
+        {"jungfrau": [3], "other": [3]},
+        {3: ["jungfrau", "other"]},
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="GPUBAT1 requires exactly one normal detector per GPU stream",
+    ):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():
+    """A GPU-only event must not require a CPU BigData dgram."""
+    timestamp = (1_234_567 << 32) | 890
+    dgram = gpu_events_module._GpuOnlyDgram(timestamp)
+    evt = Event([dgram, None])
+
+    assert evt.timestamp == timestamp
+    assert evt.service() == TransitionId.L1Accept
+    assert evt.env == TransitionId.L1Accept << 24
+    assert evt._det_segments == {}
+
+
+def test_calib_constants_follow_canonical_segment_order():
+    peds = np.arange(3 * 4, dtype=np.float32).reshape(3, 4, 1, 1)
+    gain = np.ones_like(peds)
+    det = SimpleNamespace(
+        calibconst={"pedestals": [peds], "pixel_gain": [gain]},
+        raw=SimpleNamespace(
+            _mask=lambda all_segs: np.ones((4, 1, 1), dtype=np.float32)
+        ),
+    )
+
+    peds_flat, gmask_flat = _compute_calib_constants_cpu(
+        det, canonical_segment_ids=[3, 1]
+    )
+
+    np.testing.assert_array_equal(peds_flat, [3, 1, 7, 5, 11, 9])
+    np.testing.assert_array_equal(gmask_flat, np.ones(6, dtype=np.float32))
+
+
+def test_event_owns_optional_gpu_state_once():
+    evt = Event([gpu_events_module._GpuOnlyDgram(42)])
+    state = object()
+
+    assert evt.gpu is None
+    assert evt._attach_gpu(state) is evt
+    assert evt.gpu is state
+    with pytest.raises(RuntimeError, match="already attached"):
+        evt._attach_gpu(object())
+
+
+def test_run_events_materializes_event_envelope():
+    from psana.psexp.run import Run
+
+    gpu_state = object()
+    envelope = EventEnvelope(
+        [gpu_events_module._GpuOnlyDgram(43)],
+        gpu_state=gpu_state,
+    )
+    run = Run.__new__(Run)
+    run._evt_iter = iter([envelope])
+    run._run_ctx = object()
+
+    events = list(run.events())
+
+    assert len(events) == 1
+    assert isinstance(events[0], Event)
+    assert events[0].timestamp == 43
+    assert events[0].gpu is gpu_state
+    assert events[0].run() is run._run_ctx
 
 
 def test_segment_ids_preserve_l1_child_order():
@@ -43,7 +182,7 @@ def test_segment_ids_preserve_l1_child_order():
         }
     )
 
-    assert _segment_ids_in_l1_order(dgram, "jungfrau") == [
+    assert segment_ids_in_l1_order(dgram, "jungfrau") == [
         17,
         13,
         9,
@@ -52,7 +191,7 @@ def test_segment_ids_preserve_l1_child_order():
         25,
         21,
     ]
-    assert _segment_ids_in_l1_order(object(), "jungfrau") == []
+    assert segment_ids_in_l1_order(object(), "jungfrau") == []
 
 
 class _FakeEvent:
@@ -104,7 +243,7 @@ class _FakeFlushPool:
             leases = item[2] if len(item) > 2 else {}
             yield SimpleNamespace(
                 gpu_results_by_ts=results,
-                cpu_evts=evts,
+                event_envelopes=evts,
                 leases_by_ts=leases,
                 pending_d2h_by_ts={},
                 cached_cpu_results_by_ts={},
@@ -126,15 +265,18 @@ def _transition_batch(*services):
 
 
 def _new_gpu_events(log, pending=()):
-    events = GpuEvents.__new__(GpuEvents)
+    events = GpuEventManager.__new__(GpuEventManager)
     events.configs = []
     events.event_pool = _FakeFlushPool(log, pending=pending)
     events.gpu_detectors = {}
-    events.router = None
-    events.cpu_dets = {}
+    events.gpu_det_names = []
     events._d2h_pipelines = {}
     events._high_water = {}
     events._first_batch_logged = True  # suppress first-batch log in tests
+    events._n_events = 0
+    events._done = False
+    events._closed = False
+    events._pending_gpu_read = None
     from psana.gpu.gpu_budget import _GpuBudget
 
     events._gpu_budget = _GpuBudget(limit_bytes=1024**4)  # 1 TiB sentinel
@@ -158,7 +300,7 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
 
     record = pool.begin_retire_next()
     assert record.gpu_results_by_ts == {}
-    assert record.cpu_evts == ["event-0"]
+    assert record.event_envelopes == ["event-0"]
     assert record.leases_by_ts == {}
     assert pool._streams[0].synchronize_calls == 1
     with pytest.raises(RuntimeError, match="before retirement finished"):
@@ -174,11 +316,15 @@ def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_deco
     events.gpu_detectors = {
         "jungfrau": (
             object(),
-            SimpleNamespace(beginstep=lambda peds, gmask: log.append(("beginstep", peds, gmask))),
+            SimpleNamespace(
+                canonical_segment_ids=(0,),
+                beginstep=lambda peds, gmask: log.append(("beginstep", peds, gmask)),
+            ),
         )
     }
 
-    def fake_constants(det):
+    def fake_constants(det, canonical_segment_ids=None):
+        assert canonical_segment_ids == (0,)
         log.append("constants")
         return "peds", "gmask"
 
@@ -218,6 +364,15 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
     assert events.event_pool.flush_calls == 0
 
 
+def test_empty_gpu_only_smd_event_is_not_dispatched(fake_transition_decode):
+    log = []
+    events = _new_gpu_events(log)
+    step_dict = _transition_batch(0, TransitionId.Enable)
+
+    assert list(events._handle_steps(step_dict)) == []
+    assert log == [("transition", TransitionId.Enable)]
+
+
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     log = []
     timestamp = 123
@@ -225,10 +380,11 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
 
     # Use a real ndarray so on_gpu (which now returns a copy) works correctly.
     gpu_result = np.ones((4, 8, 8), dtype=np.float32) * 42.0
-    cpu_evt = SimpleNamespace(timestamp=timestamp)
+    from psana.gpu.gpu_events import _GpuOnlyDgram
+    envelope = EventEnvelope([_GpuOnlyDgram(timestamp)])
     events = _new_gpu_events(
         log,
-        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [cpu_evt])],
+        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [envelope])],
     )
     events.gpu_reader = SimpleNamespace(close=lambda: log.append("close"))
 
@@ -238,7 +394,7 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
         nonlocal request_count
         request_count += 1
         if request_count > 1:
-            raise AssertionError("GpuEvents requested a batch after EndRun")
+            raise AssertionError("GpuEventManager requested a batch after EndRun")
         return {}, {}, _transition_batch(TransitionId.EndRun)
 
     events._next_batch = next_batch
@@ -247,9 +403,9 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
 
     assert request_count == 1
     assert len(results) == 1
-    assert results[0].timestamp == timestamp
+    assert results[0].dgrams[0].timestamp() == timestamp
     # on_gpu returns a copy — verify the value not identity
-    copy = results[0].get("jungfrau.calib").on_gpu
+    copy = results[0].gpu_state.get("jungfrau.calib").on_gpu
     np.testing.assert_array_equal(copy, gpu_result)
     assert events.event_pool.yield_count == 1
     assert ("transition", TransitionId.EndRun) in log
@@ -276,6 +432,9 @@ def test_mpi_transport_unpacking():
         (bytearray(), b"", b""),
         (_pack_transport(b"smd", b"GPUBAT1\0gpu"), b"smd", b"GPUBAT1\0gpu"),
         (_pack_transport(b"cpu-only", b""), b"cpu-only", b""),
+        # A legacy two-packet step batch is not a GPU transport envelope.
+        (_pack_transport(b"step-one", b"step-two"),
+         bytes(_pack_transport(b"step-one", b"step-two")), b""),
         (bytearray(b"legacy-without-footer"), b"legacy-without-footer", b""),
     ]
 
@@ -283,6 +442,152 @@ def test_mpi_transport_unpacking():
         smd, gpu = _unpack_transport(packed)
         assert bytes(smd) == expected_smd
         assert bytes(gpu) == expected_gpu
+
+
+def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+    from psana.psexp import node as node_module
+    from psana.psexp.node import BigDataNode
+
+    responses = [_pack_transport(b"smd", b""), bytearray()]
+    calls = []
+
+    class _Request:
+        def Wait(self):
+            calls.append("wait")
+
+    class _Status:
+        def Get_elements(self, _datatype):
+            return len(responses[0])
+
+    class _Comm:
+        def Isend(self, _payload, dest):
+            calls.append(("send", dest))
+            return _Request()
+
+        def Probe(self, source, tag, status):
+            calls.append(("probe", source, tag))
+
+        def Irecv(self, target, source):
+            calls.append(("recv", source))
+            target[:] = responses.pop(0)
+            return _Request()
+
+    monkeypatch.setattr(
+        node_module,
+        "MPI",
+        SimpleNamespace(Status=_Status, ANY_TAG=-1, BYTE=object()),
+    )
+
+    bd = BigDataNode.__new__(BigDataNode)
+    bd.comms = SimpleNamespace(
+        bd_comm=_Comm(), bd_rank=1, world_rank=2
+    )
+    bd.wait_gauge = SimpleNamespace(set=lambda _value: None)
+    bd._last_bd_read_bytes = 0
+    bd._last_bd_read_time_ns = 0
+    bd._last_bd_wait_time_ns = 0
+    bd._last_bd_proc_events = 0
+    bd._last_bd_proc_time_ns = 0
+
+    batches = bd._batch_envelopes()
+    envelope = next(batches)
+
+    assert bytes(envelope.smd) == b"smd"
+    assert [call for call in calls if call == ("send", 0)] == [
+        ("send", 0),
+        ("send", 0),
+    ]
+    with pytest.raises(StopIteration):
+        next(batches)
+
+
+def test_mpi_events_yield_envelope_for_cpu_and_gpu(monkeypatch):
+    from psana.psexp import events as events_module
+    from psana.psexp.events import BatchEnvelope, Events
+
+    class _FakeEventManager:
+        def __init__(self, view, *_args):
+            self._items = iter(view)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return EventEnvelope(next(self._items))
+
+        def get_bd_read_stats(self):
+            return 0, 0.0
+
+    monkeypatch.setattr(events_module, "EventManager", _FakeEventManager)
+    dgrams = [[gpu_events_module._GpuOnlyDgram(11)]]
+    envelopes = iter([BatchEnvelope(smd=dgrams)])
+    common = dict(
+        configs=[],
+        dm=SimpleNamespace(),
+        max_retries=0,
+        use_smds=[],
+        shared_state=SimpleNamespace(),
+        batch_source=envelopes,
+    )
+
+    cpu_events = Events(**common)
+    cpu_envelope = next(cpu_events)
+    assert isinstance(cpu_envelope, EventEnvelope)
+    assert cpu_envelope.dgrams[0].timestamp() == 11
+    assert cpu_envelope.gpu_state is None
+    with pytest.raises(StopIteration):
+        next(cpu_events)
+
+    gpu_state = object()
+
+    class _FakeGpuManager:
+        def __init__(self):
+            self.finished = False
+
+        def process_batch(self, _smd, _gpu):
+            yield EventEnvelope(
+                [gpu_events_module._GpuOnlyDgram(12)],
+                gpu_state=gpu_state,
+            )
+
+        def finish(self):
+            self.finished = True
+            return iter(())
+
+    gpu_envelopes = iter([BatchEnvelope(smd=[], gpu=b"gpu")])
+    common["batch_source"] = gpu_envelopes
+    gpu_manager = _FakeGpuManager()
+    common["gpu_manager"] = gpu_manager
+    gpu_events = Events(**common)
+    gpu_envelope = next(gpu_events)
+    assert isinstance(gpu_envelope, EventEnvelope)
+    assert gpu_envelope.dgrams[0].timestamp() == 12
+    assert gpu_envelope.gpu_state is gpu_state
+    with pytest.raises(StopIteration):
+        next(gpu_events)
+    assert gpu_manager.finished
+
+
+def test_mpi_events_stop_before_requesting_another_batch():
+    from psana.psexp.events import Events
+
+    def fail_if_consumed():
+        pytest.fail("requested a batch after terminate")
+        yield
+
+    events = Events(
+        configs=[],
+        dm=SimpleNamespace(),
+        max_retries=0,
+        use_smds=[],
+        shared_state=SimpleNamespace(
+            terminate_flag=SimpleNamespace(value=True)
+        ),
+        batch_source=fail_if_consumed(),
+    )
+
+    with pytest.raises(StopIteration):
+        next(events)
 
 
 @pytest.mark.parametrize(
@@ -315,11 +620,25 @@ def test_gpu_io_error_aborts_mpi_job():
     assert abort_calls == [1]
 
 
-def test_default_result_routing():
-    router = DetectorRouter()
-    router.register_gpu("jungfrau")
-    assert router.resolve_key("calib") == "jungfrau.calib"
-    assert router.resolve_key("jungfrau.calib") == "jungfrau.calib"
+def test_unqualified_result_key_resolves_for_one_gpu_detector():
+    arr = object()
+    state = GpuEventState(
+        {"jungfrau.calib": arr},
+        detector_names=["jungfrau"],
+    )
+
+    assert state.get("calib")._arr is arr
+    assert state.get("jungfrau.calib")._arr is arr
+
+
+def test_unqualified_result_key_rejects_multiple_gpu_detectors():
+    state = GpuEventState(
+        {"jungfrau.calib": object(), "epix.calib": object()},
+        detector_names=["jungfrau", "epix"],
+    )
+
+    with pytest.raises(KeyError, match="ambiguous"):
+        state.get("calib")
 
 
 # ---------------------------------------------------------------------------
@@ -338,7 +657,7 @@ from psana.gpu.gpu_batch import (
     GpuBatchView,
     GpuSubbatchView,
 )
-from psana.gpu.gpu_calib import GPUDetector
+from psana.gpu.gpu_detector import GPUDetector
 
 
 def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None):
@@ -387,9 +706,9 @@ class _FakeDetForEstimate:
 
 
 def _new_splitting_gpu_events(det, budget_bytes):
-    """Create a minimal GpuEvents with just enough state for _split_subbatches."""
-    events = GpuEvents.__new__(GpuEvents)
-    events.gpu_detectors         = {'jungfrau': (None, det, {})}
+    """Create a minimal manager with enough state for _split_subbatches."""
+    events = GpuEventManager.__new__(GpuEventManager)
+    events.gpu_detectors         = {'jungfrau': (None, det)}
     events._subbatch_budget_bytes = budget_bytes
     return events
 
