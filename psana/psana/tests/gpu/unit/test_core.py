@@ -890,3 +890,110 @@ class TestSplitSubbatches:
                 f"subbatch has {sb.n_events} events, "
                 f"estimated {sb_est} bytes > budget {budget}"
             )
+
+
+class TestBdRanksSharingGpu:
+    """Per-GPU BD-worker count that sizes the auto VRAM budget.
+
+    Regression guard: the auto budget previously divided by an env var
+    (``PS_BD_NODES``) that psana never sets, so every BD worker sharing a GPU
+    was allowed to commit the entire device.
+    """
+
+    @staticmethod
+    def _bd_comm(n_bd_workers):
+        # bd_rank 0 is the EB, so size = workers + 1.
+        return SimpleNamespace(Get_size=lambda: n_bd_workers + 1)
+
+    def test_single_worker_single_gpu(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        assert bd_ranks_sharing_gpu(self._bd_comm(1), 0, n_gpus=1) == 1
+
+    def test_all_workers_share_one_gpu(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # 4 BD workers, 1 GPU — every worker lands on GPU 0.
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0, n_gpus=1) == 4
+
+    def test_round_robin_across_gpus(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # 4 workers over 2 GPUs: bd_local 0,2 -> gpu0 and 1,3 -> gpu1.
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0, n_gpus=2) == 2
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 1, n_gpus=2) == 2
+
+    def test_uneven_split_counts_per_gpu(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # 5 workers over 2 GPUs: bd_local 0,2,4 -> gpu0; 1,3 -> gpu1.
+        assert bd_ranks_sharing_gpu(self._bd_comm(5), 0, n_gpus=2) == 3
+        assert bd_ranks_sharing_gpu(self._bd_comm(5), 1, n_gpus=2) == 2
+
+    def test_peers_on_a_gpu_agree_on_the_count(self):
+        """Ranks sharing a GPU must derive the same budget without talking."""
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        comm = self._bd_comm(6)
+        # bd_local 0, 3 both map to gpu 0 when n_gpus=3.
+        assert (bd_ranks_sharing_gpu(comm, 0, n_gpus=3)
+                == bd_ranks_sharing_gpu(comm, 3, n_gpus=3))
+
+    def test_gpu_count_from_slurm_env(self, monkeypatch):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        monkeypatch.setenv("SLURM_GPUS_ON_NODE", "2")
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0) == 2
+
+    def test_malformed_gpu_count_falls_back_to_one_gpu(self, monkeypatch):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        monkeypatch.setenv("SLURM_GPUS_ON_NODE", "not-a-number")
+        assert bd_ranks_sharing_gpu(self._bd_comm(3), 0) == 3
+
+    def test_eb_only_comm_never_returns_zero(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # size 1 => EB only, no BD workers.  Must not divide a budget by 0.
+        assert bd_ranks_sharing_gpu(self._bd_comm(0), 0, n_gpus=1) == 1
+
+    def test_unusable_comm_falls_back_to_one(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        broken = SimpleNamespace(Get_size=lambda: (_ for _ in ()).throw(RuntimeError))
+        assert bd_ranks_sharing_gpu(broken, 0, n_gpus=1) == 1
+
+
+class TestAutoGpuBudgetDivides:
+    """_GpuBudget.auto() must split the device between co-resident ranks."""
+
+    def test_auto_divides_device_total(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        total = 40 * 1024**3
+        monkeypatch.setitem(
+            sys.modules,
+            "cupy",
+            SimpleNamespace(
+                cuda=SimpleNamespace(
+                    Device=lambda: SimpleNamespace(mem_info=(total, total))
+                )
+            ),
+        )
+        assert _GpuBudget.auto(n_bd_ranks=1).limit() == total
+        assert _GpuBudget.auto(n_bd_ranks=4).limit() == total // 4
+
+    def test_auto_falls_back_when_cuda_missing(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        monkeypatch.setitem(sys.modules, "cupy", None)
+        # Sentinel limit keeps reserve() usable on CPU-only nodes.
+        assert _GpuBudget.auto(n_bd_ranks=4).limit() == 1024**4
+
+
+def test_gpu_event_manager_defaults_to_one_bd_per_gpu():
+    """The serial path has a single rank, so it keeps the whole device."""
+    import inspect
+
+    sig = inspect.signature(GpuEventManager.__init__)
+    assert sig.parameters["n_bd_per_gpu"].default == 1

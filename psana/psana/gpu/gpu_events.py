@@ -1,6 +1,5 @@
 import logging
 import math
-import os
 import sys
 from dataclasses import dataclass, field
 from queue import Empty, SimpleQueue
@@ -413,6 +412,7 @@ class GpuEventManager:
         setup_geometry=True,
         prebuilt_geometry=None,
         calib_leader=True,
+        n_bd_per_gpu=1,
     ):
         self.configs = configs
         self.dm = dm
@@ -425,6 +425,9 @@ class GpuEventManager:
         self.smdr_man = smdr_man
         self._setup_geometry = setup_geometry
         self._prebuilt_geometry = prebuilt_geometry  # {det_name: (ix_all, iy_all)}
+        # BD workers sharing this rank's physical GPU.  Sizes the auto VRAM
+        # budget so N ranks on one device do not each claim the whole device.
+        self._n_bd_per_gpu = max(1, int(n_bd_per_gpu or 1))
 
         self._batch_iter = iter([])
         self._iter = None
@@ -536,8 +539,10 @@ class GpuEventManager:
         if budget_gb > 0:
             self._gpu_budget = _GpuBudget(limit_bytes=int(budget_gb * 1024**3))
         else:
-            n_bd = max(1, int(os.environ.get("PS_BD_NODES", 1)))
-            self._gpu_budget = _GpuBudget.auto(n_bd_ranks=n_bd)
+            # Divide the device between the BD workers that share it.  The
+            # count comes from the caller (bd_ranks_sharing_gpu on the MPI
+            # path); the serial path has a single rank and so keeps 1.
+            self._gpu_budget = _GpuBudget.auto(n_bd_ranks=self._n_bd_per_gpu)
 
         opt_batch_sizes = []
         ids_table = getattr(self.dsparms, "det_stream_ids_table", {})
