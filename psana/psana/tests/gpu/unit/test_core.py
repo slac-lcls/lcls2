@@ -1224,3 +1224,68 @@ class TestDescTableDensity:
     def test_empty_batch_passes_density_check(self):
         gv = GpuBatchView(self._batch([], [], n_desc=0), validate=True)
         assert gv.has_work is False
+
+
+class TestGpuRequiresSingleEventBuilder:
+    """gpu_det must be refused when more than one EventBuilder is configured.
+
+    bd_comm is split per EB group, so bd_rank restarts at 1 in each group and
+    GPU pinning (bd_rank - 1) puts the first worker of every group on GPU 0.
+    Each group would then elect its own calibration leader for that device and
+    allocate a duplicate copy of the constants, while bd_ranks_sharing_gpu()
+    counts only intra-group peers and so sizes the VRAM budget too generously.
+    """
+
+    @staticmethod
+    def _comms():
+        # The guard is reached after node_type()/Get_rank(), before any of the
+        # heavier MPI setup, so these stubs are enough.
+        return SimpleNamespace(
+            psana_comm=SimpleNamespace(Get_rank=lambda: 0, Get_size=lambda: 8),
+            node_type=lambda: "bd",
+        )
+
+    def test_rejects_gpu_det_with_two_event_builders(self, monkeypatch):
+        from psana.psexp.mpi_ds import MPIDataSource
+
+        monkeypatch.setenv("PS_EB_NODES", "2")
+        with pytest.raises(NotImplementedError, match="PS_EB_NODES=2"):
+            MPIDataSource(self._comms(), exp="xpptut15", run=1,
+                          gpu_det="jungfrau")
+
+    def test_error_names_the_remedy(self, monkeypatch):
+        from psana.psexp.mpi_ds import MPIDataSource
+
+        monkeypatch.setenv("PS_EB_NODES", "4")
+        with pytest.raises(NotImplementedError, match="Set PS_EB_NODES=1"):
+            MPIDataSource(self._comms(), exp="xpptut15", run=1,
+                          gpu_det="jungfrau")
+
+    def test_single_event_builder_does_not_trip_the_guard(self, monkeypatch):
+        """PS_EB_NODES=1 is the supported configuration and must pass through."""
+        from psana.psexp.mpi_ds import MPIDataSource
+
+        monkeypatch.setenv("PS_EB_NODES", "1")
+        try:
+            MPIDataSource(self._comms(), exp="xpptut15", run=1,
+                          gpu_det="jungfrau")
+        except NotImplementedError as exc:
+            assert "PS_EB_NODES" not in str(exc), (
+                f"guard fired for the supported single-EB case: {exc}"
+            )
+        except Exception:
+            pass  # later setup needs real MPI/files; only the guard matters here
+
+    def test_cpu_runs_are_unaffected_by_multiple_event_builders(self, monkeypatch):
+        """No gpu_det means no GPU leader election, so many EBs stay legal."""
+        from psana.psexp.mpi_ds import MPIDataSource
+
+        monkeypatch.setenv("PS_EB_NODES", "4")
+        try:
+            MPIDataSource(self._comms(), exp="xpptut15", run=1)
+        except NotImplementedError as exc:
+            assert "PS_EB_NODES" not in str(exc), (
+                f"guard fired for a CPU-only run: {exc}"
+            )
+        except Exception:
+            pass

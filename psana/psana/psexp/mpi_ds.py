@@ -784,6 +784,32 @@ class MPIDataSource(DataSourceBase):
         global nodetype
         nodetype = self.comms.node_type()
 
+        # GPU mode requires a single EventBuilder.  bd_comm is split per EB
+        # group (node.py: bd_main_comm.Split(rank % PS_EB_NODES)), so bd_rank
+        # restarts at 1 inside every group.  GPU pinning derives the device
+        # from bd_rank - 1, which means group 0 and group 1 both put their
+        # first BD worker on GPU 0.  Each group then elects its own calibration
+        # leader for that device and allocates a second copy of the constants,
+        # with no IPC sharing across groups, and bd_ranks_sharing_gpu() counts
+        # only the peers inside one group so the VRAM budget is too generous by
+        # the same factor.  Fixing it properly means pinning from a node-wide
+        # BD index rather than a per-group one; until then, refuse rather than
+        # silently over-commit the device.
+        #
+        # This check reads only the environment and kwargs, so every rank
+        # evaluates it identically and raises together — a rank-dependent
+        # check here would hang the job instead of failing it.
+        if getattr(self.dsparms, "gpu_det", None):
+            _n_eb = int(os.environ.get("PS_EB_NODES", 1))
+            if _n_eb > 1:
+                raise NotImplementedError(
+                    f"gpu_det is not supported with PS_EB_NODES={_n_eb}. "
+                    "Multiple EventBuilders each elect their own GPU "
+                    "calibration leader on the same physical device, "
+                    "duplicating calibration constants and over-committing "
+                    "VRAM. Set PS_EB_NODES=1 for GPU runs."
+                )
+
         # Non-BD / non-GPU ranks (smd0, EB) must not allocate GPU memory.
         # _distribute_calib_xtc() and _setup_jungfrau_shared_caches() import
         # CuPy and allocate ~1.8 GB on the default CUDA device for ALL ranks
