@@ -38,15 +38,13 @@ bool CudaContext::init(int device, bool quiet) {
         return false;
     }
 
-    // Spew device name
-    char name[256];
-    if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
-        return false;
-    logging::info("Selected GPU device %d: %s", device, name);
-
-    cudaDeviceProp deviceProp;
-    chkError(cudaGetDeviceProperties(&deviceProp, device_));
-    logging::info("Compute Capability: %d.%d", deviceProp.major, deviceProp.minor);
+    // Spew device name, compute capability and PCIe bus ID
+    cudaDeviceProp prop;
+    chkError(cudaGetDeviceProperties(&prop, device_));
+    char pciBusId[16];
+    chkError(cudaDeviceGetPCIBusId(pciBusId, sizeof(pciBusId), device_));
+    logging::info("GPU device %d: %s, CC: %d.%d, Bus-Id: %s",
+                  device, prop.name, prop.major, prop.minor, pciBusId);
 
     // Report memory totals
     size_t global_mem = 0;
