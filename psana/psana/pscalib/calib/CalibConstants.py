@@ -28,10 +28,14 @@ import os
 import sys
 import numpy as np
 
+import logging
+logger = logging.getLogger(__name__)
+
 #import kerberos
 from krtc import KerberosTicket
 from urllib.parse import urlparse
 import getpass
+import json
 
 # CLI set SIT_PSDM_OFFSITE for test:
 # export SIT_PSDM_OFFSITE="is set"
@@ -39,19 +43,44 @@ import getpass
 # curl -s "https://psextapi.slac.stanford.edu/calib_ws/cdb_ascdaq023"
 #...detector/test_issues_2025.py 45
 
-IS_OFFSITE = os.environ.get('SIT_PSDM_OFFSITE', None) is not None
-URL_ENV    = os.environ.get('LCLS_CALIB_HTTP', None)
-CALIB_JWT  = os.environ.get('CALIB_JWT', None) is not None
+# TWO WARIABLES:
+# 1) LCLS_CALIB_HTTP for URL
+# 2) CALIB_JWT
+# 'https://pswww.slac.stanford.edu/ws-jwt/calib_ws/' # DEFAULT
 
-#print('IS_OFFSITE:', IS_OFFSITE)
-URL = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
-      'https://psextapi.slac.stanford.edu/calib_ws/' if IS_OFFSITE else\
-      'https://psdmint.sdf.slac.stanford.edu/calib_ws/' if URL_ENV is None else URL_ENV
-URL_KRB = 'https://psdm.slac.stanford.edu/ws-jwt/calib_ws/' if CALIB_JWT else\
-          'https://psextapi.slac.stanford.edu/ws-kerb/calib_ws/' if IS_OFFSITE else\
-          'https://psdmint.sdf.slac.stanford.edu/ws-kerb/calib_ws/'
-URL_KRB_HEADERS = URL_KRB if IS_OFFSITE else\
-                  'https://pswww.slac.stanford.edu/ws-kerb/calib_ws/'
+#curl -s "https://psdm.slac.stanford.edu/ws/calib_ws/"
+#curl -s "https://pswww.slac.stanford.edu/calib_ws/"
+#curl -s "https://pswww.slac.stanford.edu/ws/calib_ws/"
+#curl -s "https://psdmint.sdf.slac.stanford.edu/calib_ws/"
+#curl -s "https://psdmint.sdf.slac.stanford.edu/ws/calib_ws/"
+
+URL_DEV     = 'https://psdm.slac.stanford.edu/ws'
+URL_PRO     = 'https://pswww.slac.stanford.edu/ws'
+URL_PRO_INT = 'https://psdmint.sdf.slac.stanford.edu/ws'
+URL_KRBHEADERS = 'HTTP@pswww.slac.stanford.edu'
+
+URL_ENV    = os.environ.get('LCLS_CALIB_HTTP', URL_DEV) #URL_DEV or URL_PRO or URL_PRO_INT
+CALIB_JWT  = os.environ.get('CALIB_JWT', None) is not None
+JWT_OR_KRB = '-jwt/' if CALIB_JWT else '-kerb/'
+
+URL = URL_ENV + '/calib_ws/'
+URL_KRB = URL_ENV + JWT_OR_KRB + 'calib_ws/'
+
+print(f'URL CALIB DB RO: {URL}')
+print(f'URL CALIB DB RW: {URL_KRB}')
+
+def krbheaders():
+    try:
+        krbh = KerberosTicket(URL_KRBHEADERS).getAuthHeaders()
+    except Exception as e:
+        logger.warning(f'WARNING: kerberos ticket is not valid - use commands klist, kinit\nException: {str(e)}')
+        return None
+    krbh = dict(krbh)
+    krbh['Content-Type'] = 'application/octet-stream'
+    logger.debug(f'krbheaders:\n {json.dumps(krbh, indent=2)}')
+    return krbh
+
+KRBHEADERS = krbheaders()
 
 HOST = 'psdb02' # psdb01/02/03/04 'psdbdev01' # 'psanaphi103'
 PORT = 9307
@@ -59,19 +88,9 @@ USERLOGIN = getpass.getuser()
 USERNAME = USERLOGIN
 USERPW = 'pw-should-be-provided-somehow'
 DBNAME_PREFIX = 'cdb_'
-DETNAMESDB = '%sdetnames' % DBNAME_PREFIX
-#MAX_DETNAME_SIZE = 55
-#MAX_DETNAME_SIZE = 40
-MAX_DETNAME_SIZE = 20
+DETNAMESDB = f'{DBNAME_PREFIX}detnames'
+MAX_DETNAME_SIZE = 20 # DEPRECATED
 OPER = os.getenv('CALIBDB_AUTH')
-
-try: KRBHEADERS = KerberosTicket("HTTP@" + urlparse(URL_KRB_HEADERS).hostname).getAuthHeaders()
-#except kerberos.GSSError as e:
-except Exception as e:
-    #msg = e.message if hasattr(e, 'message') else str(e)
-    #print('Exception:', msg)
-    #sys.exit('Fix kerberos ticket - use command kinit')
-    KRBHEADERS = None
 
 TSFORMAT = '%Y-%m-%dT%H:%M:%S%z' # e.g. 2018-02-07T08:40:28-0800
 TSFORMAT_SHORT = '%Y%m%d%H%M%S'  # e.g. 20180207084028
