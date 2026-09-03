@@ -373,15 +373,27 @@ class GpuSubbatchView:
         return total
 
     @property
-    def timestamps(self) -> 'frozenset[int]':
-        """Frozen set of event timestamps in this subbatch.
+    def timestamps(self) -> 'tuple[int, ...]':
+        """Event timestamps in this subbatch, in GPUBAT1 event order.
 
-        Used by GpuEventManager to partition CPU events by subbatch.
+        Used by GpuEventManager to pair GPU events with their CPU envelopes.
+
+        Order is part of the contract, not an incidental detail: the manager
+        yields events in the sequence returned here, and psana delivers events
+        in timestamp order.  This was previously a frozenset, which iterates in
+        hash order — for realistic 64-bit timestamps that scrambles delivery
+        order and makes max_events keep an arbitrary subset of the batch rather
+        than its first N events.  Small consecutive test timestamps happen to
+        iterate sorted, which hid the effect.
+
+        Deduplicated so it remains a faithful replacement for the set: a
+        repeated timestamp within one batch is malformed input and must not be
+        counted or delivered twice.
         """
-        return frozenset(
+        return tuple(dict.fromkeys(
             int(self._parent.events[i]['timestamp'])
             for i in range(self._start, self._end)
-        )
+        ))
 
     # ------------------------------------------------------------------
     # iter_events — yields GpuBatchEvent with re-indexed first_desc
