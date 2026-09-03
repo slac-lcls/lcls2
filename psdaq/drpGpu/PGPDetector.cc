@@ -905,10 +905,6 @@ void PGPDrp::_collector()
           memcpy(buf, &timingHeader[1], tpSz);
         }
       } else {  // Transition
-        logging::info("Collector  saw %12s @ %u.%09u (%014lx)",
-                      TransitionId::name(transitionId),
-                      dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
-
         // Store the empty transition dgram allocated above in the pebble
         pool.transitionDgrams[pebbleIndex] = trDgram;
 
@@ -916,11 +912,19 @@ void PGPDrp::_collector()
         memcpy((void*)trDgram, dgram, sizeof(*dgram) - sizeof(dgram->xtc));
 
         if (transitionId == TransitionId::SlowUpdate) {
+          logging::debug("Collector  saw %12s @ %u.%09u (%014lx)",
+                         TransitionId::name(transitionId),
+                         dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+
           // Store the SlowUpdate's payload in the transition datagram
           const void* bufEnd = (char*)trDgram + m_para.maxTrSize;
           m_det.slowupdate(trDgram->xtc, bufEnd);
           //printf("*** Collector: slowUpdate xtc extent %u\n", trDgram->xtc.extent);
         } else {                // Transition
+          logging::info("Collector  saw %12s @ %u.%09u (%014lx)",
+                        TransitionId::name(transitionId),
+                        dgram->time.seconds(), dgram->time.nanoseconds(), dgram->pulseId());
+
           // copy the temporary xtc created on phase 1 of the transition
           // into the real location
           Xtc& trXtc = m_det.transitionXtc();
