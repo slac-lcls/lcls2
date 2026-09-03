@@ -660,15 +660,25 @@ from psana.gpu.gpu_batch import (
 from psana.gpu.gpu_detector import GPUDetector
 
 
-def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None):
+def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None,
+                timestamps=None):
     """Build a minimal valid GPUBAT1 binary for unit testing.
 
     All events share the same layout: ``descs_per_event`` descriptors each,
     with bd_size bytes of bigdata per descriptor.  Stream IDs default to
     [0, 1, ..., descs_per_event-1].
+
+    ``timestamps`` overrides the default ``1000 + i`` values.  Pass realistic
+    64-bit values when the behaviour under test depends on timestamp ordering:
+    small consecutive ints iterate in sorted order inside a set, so they hide
+    hash-order bugs.
     """
     if stream_ids is None:
         stream_ids = list(range(descs_per_event))
+    if timestamps is None:
+        timestamps = [1000 + i for i in range(n_events)]
+    elif len(timestamps) != n_events:
+        raise ValueError("timestamps must have exactly n_events entries")
     n_desc     = n_events * descs_per_event
     evt_offset = GPU_HEADER_NBYTES
     dsc_offset = evt_offset + n_events * GPU_EVENT_NBYTES
@@ -683,7 +693,7 @@ def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None):
     )
     for i in range(n_events):
         struct.pack_into('<5Q', buf, evt_offset + i * GPU_EVENT_NBYTES,
-            i, 1000 + i, i * descs_per_event, descs_per_event, 0)
+            i, timestamps[i], i * descs_per_event, descs_per_event, 0)
     for i in range(n_desc):
         stream_i = stream_ids[i % descs_per_event]
         struct.pack_into('<7Q', buf, dsc_offset + i * GPU_DESC_NBYTES,
@@ -739,7 +749,32 @@ class TestGpuSubbatchView:
     def test_timestamps(self):
         gv = GpuBatchView(_make_batch(5))
         sb = GpuSubbatchView(gv, 2, 5)
-        assert sb.timestamps == frozenset({1002, 1003, 1004})
+        assert sb.timestamps == (1002, 1003, 1004)
+
+    def test_timestamps_keep_event_order_for_real_timestamps(self):
+        """Delivery order must follow GPUBAT1 event order, not hash order.
+
+        Regression guard: timestamps was a frozenset.  Small consecutive test
+        values iterate sorted by luck, so only realistic (seconds << 32 |
+        nanoseconds) values expose the scrambling.
+        """
+        sec = 1788471481
+        real_ts = [(sec << 32) | (n * 8_333_333) for n in range(12)]
+        assert list(frozenset(real_ts)) != real_ts, (
+            "precondition: these timestamps must iterate out of order in a set, "
+            "otherwise this test cannot detect the regression"
+        )
+
+        gv = GpuBatchView(_make_batch(12, timestamps=real_ts))
+        sb = GpuSubbatchView(gv, 0, 12)
+        assert sb.timestamps == tuple(real_ts)
+        # iter_events() is the independently-ordered path; the two must agree.
+        assert [e.timestamp for e in sb.iter_events()] == list(sb.timestamps)
+
+    def test_timestamps_dedupe_without_losing_order(self):
+        gv = GpuBatchView(_make_batch(4, timestamps=[7, 9, 7, 8]))
+        sb = GpuSubbatchView(gv, 0, 4)
+        assert sb.timestamps == (7, 9, 8)
 
     def test_iter_events_first_desc_reindexed(self):
         """first_desc must be relative to the subbatch's own desc_table."""
