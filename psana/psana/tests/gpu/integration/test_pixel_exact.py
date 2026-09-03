@@ -144,7 +144,13 @@ def _assert_pixel_exact(timestamp, cpu_calib, gpu_calib):
 
 
 def _assert_result_is_slot_backed(run, arr, result_type="calib"):
-    """The integrated result must remain a view of a budgeted slot buffer."""
+    """The integrated result must remain a view of a budgeted slot buffer.
+
+    Only meaningful while the event still owns its device slot.  With
+    gpu_d2h_chunk_size > 0 the manager may free the slot before yielding, in
+    which case there is deliberately no device array left to check — see
+    _result_still_on_device().
+    """
     manager = getattr(run._evt_iter, "gpu_manager", run._evt_iter)
     gpu_detector = manager.gpu_detectors[_DET_NAME][1]
     result_start = int(arr.data.ptr)
@@ -162,6 +168,15 @@ def _assert_result_is_slot_backed(run, arr, result_type="calib"):
     pytest.fail(
         f"GPU {result_type} result is not backed by a budgeted slot buffer"
     )
+
+
+def _result_still_on_device(result):
+    """True when this result kept its device slot through delivery.
+
+    False in the automatic-D2H early-release case, where _arr is cleared and
+    the host copy is the only valid view.
+    """
+    return getattr(result, "_arr", None) is not None
 
 
 @pytest.mark.gpu
@@ -236,13 +251,25 @@ def test_mapped_passthrough_copy_writes_canonical_rows():
 @requires_gpu
 @requires_data
 @pytest.mark.parametrize(
-    "batch_size,pool_depth",
+    "batch_size,pool_depth,d2h_chunk_size",
     [
-        pytest.param(1, 1, id="single-event"),
-        pytest.param(5, 2, id="batched-slot-reuse-partial-tail"),
+        pytest.param(1, 1, 0, id="single-event"),
+        pytest.param(5, 2, 0, id="batched-slot-reuse-partial-tail"),
+        # gpu_d2h_chunk_size > 0 activates _D2hPipeline: results are copied to
+        # pinned host memory on a separate stream and the device slot may be
+        # freed before the event is yielded.  Exercising it here is the only
+        # check of that path against a real CUDA stream — the unit tests fake
+        # cupy with a synchronous memmove, which cannot detect a missing
+        # synchronization because the data has already landed.
+        pytest.param(5, 2, 1, id="d2h-chunk-per-event"),
+        pytest.param(5, 2, 3, id="d2h-chunk-spans-events"),
+        # Chunk larger than the batch: exercises the partial-chunk path.
+        pytest.param(5, 2, 8, id="d2h-chunk-exceeds-batch"),
     ],
 )
-def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
+def test_integrated_jungfrau_pixel_exact(
+    cpu_reference, batch_size, pool_depth, d2h_chunk_size
+):
     """Integrated GPU calibration exactly matches normal psana by timestamp."""
     from psana import DataSource
 
@@ -253,6 +280,7 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
         gpu_det=_DET_NAME,
         batch_size=batch_size,
         n_gpu_streams=pool_depth,
+        gpu_d2h_chunk_size=d2h_chunk_size,
         max_events=_N_EVENTS,
     )
     run = next(ds.runs())
@@ -269,8 +297,19 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
         # copy before advancing the iterator can recycle that slot.
         calib_result = evt.gpu.get("calib")
         raw_result = evt.gpu.get("raw")
-        _assert_result_is_slot_backed(run, calib_result._arr)
-        _assert_result_is_slot_backed(run, raw_result._arr, result_type="raw")
+        if _result_still_on_device(calib_result):
+            _assert_result_is_slot_backed(run, calib_result._arr)
+        else:
+            # Early release only happens once every result has a host handoff,
+            # so on_cpu must still work and the device view must be refused
+            # rather than silently returning a recycled buffer.
+            assert d2h_chunk_size > 0, (
+                "device slot was released without the D2H pipeline enabled"
+            )
+            with pytest.raises(RuntimeError):
+                calib_result.on_gpu
+        if _result_still_on_device(raw_result):
+            _assert_result_is_slot_backed(run, raw_result._arr, result_type="raw")
         gpu_raw = np.asarray(raw_result.on_cpu).copy()
         gpu_calib = np.asarray(calib_result.on_cpu).copy()
         np.testing.assert_array_equal(
