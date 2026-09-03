@@ -199,6 +199,15 @@ class GpuBatchView:
     def _validate_tables(self):
         h = self.header
 
+        # Running end of the previous event's desc range.  Consumers index the
+        # desc table by arithmetic rather than by search, so the layout must be
+        # gapless: GpuSubbatchView re-indexes an event into the reader's own
+        # desc table as (first_desc - subbatch_first_desc), which is only
+        # correct when every row between the two belongs to an event in
+        # between.  A gap would silently shift every later event onto the wrong
+        # descriptors, so reject it here rather than mis-read pixel data.
+        expected_first_desc = 0
+
         for i_evt, event_row in enumerate(self.events):
             batch_event_index = int(event_row["batch_event_index"])
             first_desc = int(event_row["first_desc"])
@@ -215,6 +224,13 @@ class GpuBatchView:
                     f"first_desc={first_desc} n_desc={n_desc} n_desc_total={h.n_desc}"
                 )
 
+            if first_desc != expected_first_desc:
+                raise GpuBatchFormatError(
+                    f"event {i_evt} desc range is not contiguous: "
+                    f"first_desc={first_desc} expected={expected_first_desc}"
+                )
+            expected_first_desc += n_desc
+
             for desc_row in self.descs[first_desc:first_desc + n_desc]:
                 desc_event_index = int(desc_row["batch_event_index"])
                 stream_id = int(desc_row["stream_id"])
@@ -226,16 +242,37 @@ class GpuBatchView:
                         f"event={batch_event_index}"
                     )
 
-                if flags & GPU_DESC_FLAG_VALID:
-                    if stream_id >= 64:
-                        raise GpuBatchFormatError(
-                            f"stream_id too large for mask: {stream_id}"
-                        )
+                # iter_read_descs() drops non-VALID rows, so the descriptor
+                # table the reader builds would be shorter than n_desc while
+                # iter_events() still reports the unfiltered count and a
+                # first_desc derived by subtraction.  Every event would then
+                # read from a shifted offset and silently calibrate the wrong
+                # payload.  The EventBuilder always sets VALID, so rejecting
+                # anything else costs nothing and keeps the two views aligned.
+                if not (flags & GPU_DESC_FLAG_VALID):
+                    raise GpuBatchFormatError(
+                        f"event {i_evt} desc {stream_id} is not marked VALID "
+                        f"(flags={flags}); descriptor tables must be dense "
+                        "because consumers index them positionally"
+                    )
 
-                    if not (h.gpu_stream_mask & (1 << stream_id)):
-                        raise GpuBatchFormatError(
-                            f"desc stream {stream_id} not present in gpu_stream_mask"
-                        )
+                if stream_id >= 64:
+                    raise GpuBatchFormatError(
+                        f"stream_id too large for mask: {stream_id}"
+                    )
+
+                if not (h.gpu_stream_mask & (1 << stream_id)):
+                    raise GpuBatchFormatError(
+                        f"desc stream {stream_id} not present in gpu_stream_mask"
+                    )
+
+        # Catch trailing rows owned by no event.  The per-event contiguity
+        # check above cannot see them: it only walks as far as the last event.
+        if expected_first_desc != h.n_desc:
+            raise GpuBatchFormatError(
+                f"desc table has {h.n_desc} rows but events account for "
+                f"{expected_first_desc}"
+            )
 
     @property
     def has_work(self):
