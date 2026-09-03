@@ -679,7 +679,6 @@ def issue_2026_06_03(args):
     if not jwt:
         raise Exception('Cannot determine the JWT\n'\
                         +'Use command: source psana/psana/pscalib/calib/get_JWT_from_s3df.sh')
-
     session = Session()
     session.headers.update({'Authorization': 'Bearer ' + jwt })
 
@@ -762,6 +761,76 @@ def issue_2026_06_03(args):
     r.raise_for_status()
     print(json.dumps(r.json())[:1000])
 
+    print('\n12. Test json using the JWT')
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_xpptut15/cspad_0001"
+    r = session.get(ws_url, json={"run": 270, "ctype": "pedestals"})
+    r.raise_for_status()
+    print(json.dumps(r.json())[:1000])
+
+    print("\n13. Test put JSON into a collection")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/testcoll/"
+    r = session.post(ws_url, json={"Hello": "World"})
+    r.raise_for_status()
+    print(len(r.json()))
+
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/testcoll"
+    r = session.get(ws_url)
+    r.raise_for_status()
+    ins_doc = r.json()[0]
+    print(ins_doc)
+
+    print("\n14. Test update an existing object")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/testcoll/" + ins_doc["_id"]
+    r = session.put(ws_url, json={"Hello": "World 2"})
+    r.raise_for_status()
+    print(r.json())
+
+    print("\n16. Test query after update")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/testcoll"
+    r = session.get(ws_url)
+    r.raise_for_status()
+    ins_doc = r.json()[0]
+    print(ins_doc)
+
+    print("\n17. Test delete an existing object")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/testcoll/" + ins_doc["_id"]
+    r = session.delete(ws_url)
+    r.raise_for_status()
+    print(r.json())
+
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/testcoll"
+    r = session.get(ws_url)
+    r.raise_for_status()
+    print(r.json())
+
+    print("\n18. Test put binary data into a GridFS object")
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/gridfs/"
+    with open("data.txt", "rb") as f:
+        data = f.read()
+        r = session.post(ws_url, data=data, headers={"Content-Type": "application/octet-stream"})
+        r.raise_for_status()
+        insfile = r.json()
+        print('type(insfile):', type(insfile))
+        print('str(insfile): ', str(insfile))
+
+        ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/gridfs/" + insfile["_id"]
+        r = session.get(ws_url)
+        r.raise_for_status()
+        print(r.text)
+
+        ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_testdet_1234/gridfs/" + insfile["_id"]
+        print("Delete the GridFS object")
+        r = session.delete(ws_url)
+        r.raise_for_status()
+        print(r.json())
+
+    print("\n19. Test delete db")
+    #ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_epixuhr3x2_000001"
+    ws_url = "https://psdm.slac.stanford.edu/ws-jwt/calib_ws/cdb_mfx101628626"
+    r = session.delete(ws_url)
+    r.raise_for_status()
+    print(r.json())
+
 
 def issue_2026_07_01(args):
     """ISSUE: Mona - epixquad1kfps ghost pixels. exp=ued1015980,run=5 (also 6 and 7).
@@ -775,8 +844,7 @@ def issue_2026_07_01(args):
     from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
     import psana.detector.UtilsEpix10ka as ue
 
-    subtest = args.subtest
-    isubtest = 0o7777 if subtest is None else int(subtest)
+    isubtest = 0o7777 if args.subtest is None else int(args.subtest)
 
     dskwargs={'exp': 'ued1015980', 'run': 5, 'max_events': 100000}
     ds = DataSource(**dskwargs)
@@ -909,6 +977,76 @@ def issue_2026_07_23(args):
                 if flimg is None:
                     flimg = fleximagespec(img, h_in=8, w_in=12, amin=None, amax=None)
                     gr.plt.ion()
+
+
+def issue_2026_07_25(args):
+    """ISSUE: 2026-07-25 1:50 PM O'Grady, Paul Christopher
+       Yanwen Sun  [8:38 PM]
+       one experiment is xppx49520 which is lcls run 20, the other is xpp101570426 lcls run 26 (edited)
+       christopher o'grady  [1:50 PM]
+       OK, so I am guessing the precise question you would like @Mikhail
+       to answer is 'what are the differences between the default psana masks for a jungfrau 1M
+       in xppx49520 (psana1, 2022) and xpp101570426 (psana2, 2026)'?
+       REASON:
+       FIX:
+
+       datinfo -k exp=xpp101570426,run=26 -d jungfrau1M
+    """
+    import os
+    import numpy as np
+    from psana import DataSource
+    from psana.detector.UtilsGraphics import gr, fleximage, fleximagespec
+    import psana.detector.NDArrUtils as ndu # info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
+    #from time import sleep
+
+    events = 5
+
+    ds = DataSource(exp='xpp101570426', run=26, **{'max_events':events})
+    run = next(ds.runs())
+    det = run.Detector('jungfrau1M')
+
+    peds = det.raw._pedestals()
+    mask = det.raw._mask();
+    mask_default = det.raw._mask_default()
+    mask_calib_or_default = det.raw._mask_calib_or_default()
+    mask_edges = det.raw._mask_edges(edge_rows=0, edge_cols=0)
+    mask_center = det.raw._mask_center()
+    #mask_neighbors = det.raw._mask_neighbors(mask_default)
+    stat = det.raw._status() #; stat.shape = (3*512, 1024)
+    mask_stat = det.raw._mask_from_status(gain_range_inds=(0,)) #; mask_stat.shape = (512, 1024)
+    print(ndu.info_ndarr(peds,                  'XXX peds', last=10))
+    print(ndu.info_ndarr(stat,                  'XXX stat', last=10))
+    print(ndu.info_ndarr(mask_stat,             'XXX _mask_stat', last=10))
+    print(ndu.info_ndarr(mask_default,          'XXX _mask_default', last=10))
+    print(ndu.info_ndarr(mask_calib_or_default, 'XXX _mask_calib_or_default', last=10))
+    print(ndu.info_ndarr(mask_edges,            'XXX _mask_edges', last=10))
+    print(ndu.info_ndarr(mask_center,           'XXX _mask_center', last=10))
+    #print(ndu.info_ndarr(mask_neighbors,        'XXX _mask_neighbors', last=10))
+    print(ndu.info_ndarr(mask,                  'XXX _mask', last=10))
+
+    plot_image = True # False
+
+    if True:
+        flimg = None
+        for nevt,evt in enumerate(run.events()):
+            #if nevt>events-1: break
+            raw   = det.raw.raw(evt)
+
+            print('=== evt:%03d'%nevt)
+            print(ndu.info_ndarr(raw, '=== evt:%03d raw' % nevt, last=10))
+            img = raw[0,:]
+
+            mask = det.raw._mask();
+            print(ndu.info_ndarr(mask, 'XXX _mask', last=10))
+            #img = mask
+
+            print(ndu.info_ndarr(img, '            img', last=10))
+
+            if plot_image:
+                if flimg is None:
+                    flimg = fleximagespec(img, h_in=7, w_in=20)
+                    gr.plt.ion()
+                #print('    image:', img.shape)
                 title = 'evt %02d test image'%nevt
                 #flimg.fig.suptitle(title, fontsize=16)
                 gr.set_win_title(flimg.fig, titwin=title)
@@ -934,6 +1072,210 @@ def issue_2026_07_31(args):
     evt = next(myrun.events())
     cal = det.raw.calib(evt)
     print(ndu.info_ndarr(cal, '  cal'))
+
+
+def issue_2026_08_13():
+    """ISSUE: 2026-08-13 6:35 PM Shankar, Murali
+              code example to get kerberos ticket
+       REASON:
+       FIX:
+    """
+    import sys
+    import json
+    from krtc import KerberosTicket
+    try:
+        krbheaders = KerberosTicket("HTTP@pswww.slac.stanford.edu").getAuthHeaders()
+        print(json.dumps(krbheaders, indent=2))
+    except Exception as e:
+        print("Exception getting a Kerberos header from the server:", e)
+
+
+def issue_2026_08_19():
+    """ISSUE: for Murali
+       curl -s "https://psdm.slac.stanford.edu/ws-kerb/calib_ws/cdb_detnames/epixuhr3x2/"
+       lcls2/psana/psana/detector/test_issues_2026.py 17 -s3
+       REASON:
+       FIX:
+    """
+    import json
+    from krtc import KerberosTicket
+    import requests as req
+    url = 'https://psdm.slac.stanford.edu/ws-kerb/calib_ws/cdb_detnames/epixuhr3x2/'
+    doc = {'long': 'epixuhr3x2_0050528256-2522015926796331009-14051230972882189825', 'short': 'epixuhr3x2_000001', 'seqnumber': 1, 'uid': 'dubrovin', 'host': 'sdfiana023', 'cwd': '/sdf/home/d/dubrovin/LCLS/con-lcls2/lcls2', 'time_sec': 1787157647.8339636, 'time_stamp': '2026-08-19T09:40:47-0700'}
+    krbheaders = KerberosTicket("HTTP@pswww.slac.stanford.edu").getAuthHeaders()
+    print(json.dumps(krbheaders, indent=2))
+    for i in range(3):
+        print('\n==== loop %d' % i)
+        resp = req.post(url, headers=krbheaders, json=doc)
+        print(f'resp: {resp.text}')
+
+
+def issue_2026_08_25(args):
+    """ISSUE: for Murali access to DB with kerberos
+       curl -s "https://psdm.slac.stanford.edu/ws-kerb/calib_ws/cdb_testdet_1234"
+       REASON:
+       FIX:
+    """
+    isubtest = 0 if args.subtest is None else int(args.subtest)
+    print(f'isubtest: {isubtest}'
+          '\n == 0 -     new low level code with req.post / req.get / req.delete - kerberos ONLY'
+          '\n == 1 - current low level code with req.post / req.get / req.delete - kerberos ONLY'
+          '\n == 2 - wu.post(ws_url, data=d) / wu.get / wu.delete_cmd - for JWT OR kerberos'
+          '\n == 3 - wu.add_data(dbname, data) / wu.get_data_for_id(dbname, id)'
+          '\n == 10- DOES NOT WORK - vers new low level code with req.post / req.get / req.delete - kerberos ONLY'
+          '\n'
+          )
+
+    import numpy as np
+    import psana.pscalib.calib.MDBWebUtils as wu
+    from psana.detector.NDArrUtils import info_ndarr
+    req, cc, io, mu, jsonmet= wu.req, wu.cc, wu.io, wu.mu, wu.jsonmet
+
+    def get_headers():
+        headers = dict(cc.krbheaders())
+        headers['Content-Type'] = 'application/octet-stream'
+        print(f'get_headers:\n {jsonmet.dumps(headers, indent=2)}')
+        return headers
+
+    dbname = 'cdb_testdet_1234'
+    ws_url = f'https://psdm.slac.stanford.edu/ws-kerb/calib_ws/{dbname}/gridfs/'
+    print("\n18a. Test put / get / delete ndarray data into a GridFS urs: {ws_url}")
+
+    nda = 10. + 2.*np.random.standard_normal(size=(8, 1, 336, 576)).astype(dtype=np.float32)
+    print(info_ndarr(nda, 'input nda:', last=5))
+    data = nda
+    doc = {'data_type':'ndarray', 'data_dtype':nda.dtype, 'data_shape':str(nda.shape)}
+
+    id = None
+    if True:
+        print(f'\nADD np.array to GridFS  isubtest:{isubtest}')
+        print(f'post url: {ws_url}')
+
+        r = None
+        if isubtest == 0:
+            b = io.BytesIO()
+            np.save(b, nda)
+            b.seek(0)
+            r = req.post(ws_url, headers=cc.krbheaders(), data=b.read())
+
+        elif isubtest == 1:
+            b = io.BytesIO(mu.encode_data(data))
+            r = req.post(ws_url, headers=cc.krbheaders(), data=b.read()) #, json=dict(doc))
+
+        elif isubtest == 2:
+            b = io.BytesIO(mu.encode_data(data))
+            r = wu.post(ws_url, data=b.read())
+
+        elif isubtest == 3:
+            id = wu.add_data('cdb_testdet_1234', data) #, **kwa)
+
+        elif isubtest == 10: # DOES NOT WORK
+            b = io.BytesIO(nda.tobytes())
+            r = req.post(ws_url, headers=cc.krbheaders(), data=b.read())
+
+        if r is not None:
+            print(f'>>> post resp: {r.text}')
+            id = r.json().get('_id',None)
+        print(f'id: {id}')
+
+
+    if True:
+        print(f'\nGET np.array from GridFS  isubtest:{isubtest}')
+        r = None
+        nda_out = None
+        url = ws_url+id
+        query = None
+        print(f'get url: {url}')
+        if isubtest == 0:
+            r = req.get(url, query, timeout=180, headers=cc.krbheaders()) # requests.Response Object
+            b = io.BytesIO(r.content)
+            b.seek(0)
+            nda_out = np.load(b)
+
+        elif isubtest == 1:
+            r = req.get(url, query, timeout=180, headers=cc.krbheaders())
+            nda_out = mu.object_from_data_string(r.content, doc)
+
+        elif isubtest == 2:
+            r = wu.get(url)
+            nda_out = mu.object_from_data_string(r.content, doc)
+
+        elif isubtest == 3:
+            r = wu.get_data_for_id(dbname, id) # , **kwa) s = resp.content
+            nda_out = mu.object_from_data_string(r.content, doc)
+
+        if isubtest == 10:
+            r = req.get(url, query, timeout=180, headers=cc.krbheaders()) # requests.Response Object
+            b = io.BytesIO(r.content)
+            b.seek(0)
+            nda_out = np.load(b)
+
+        r.raise_for_status()
+        print(f'resp.ok: {r.ok}')
+        print(info_ndarr(nda_out, 'output nda:', last=5))
+        print(f'input and output ARRAYS ARE EQUAL: {np.array_equal(nda, nda_out)}')
+
+    if True:
+        print(f'\nDELETE the GridFS object  isubtest:{isubtest}')
+        url = ws_url+id
+        print(f'delete url: {url}')
+        if isubtest in (0,1):
+             r = req.delete(url, headers=cc.krbheaders())
+
+        elif isubtest == 2:
+             r = wu.delete_cmd(url)
+
+        elif isubtest == 3:
+            r = wu.delete_data(dbname, id) #, **kwa)
+
+        r.raise_for_status()
+        print(f'resp.ok: {r.ok}')
+
+
+def issue_2026_08_31(args):
+    """ISSUE: delete_document_and_data
+       curl -s "https://psdm.slac.stanford.edu/ws/calib_ws/cdb_epixuhr3x2_000001/epixuhr3x2_000001"
+       PROBLEM:
+       FIX:
+    """
+    print('delete_document_and_data')
+
+    #import psana.pscalib.calib.CalibConstants as cc
+    #r = wu.delete_document_and_data(dbname, colname, doc_id)
+
+    #uri = f'{cc.URL.rstrip("/")}/{dbname}/{colname}'
+    #ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":doc_id}))
+    #r = req.get(uri, params={"query_string": query_string})
+
+    import requests as req
+    from krtc import KerberosTicket
+
+    dbname, colname, doc_id = 'cdb_epixuhr3x2_000001', 'epixuhr3x2_000001', '6a959fe443d697f99e4a8eca'
+    uri = f'https://psdm.slac.stanford.edu/ws/calib_ws/{dbname}/{colname}'
+
+    query = None
+    print(f'\nTEST 1 WORKS: find_docs uri: {uri} query: {str(query)}')
+    #krbh = KerberosTicket('HTTP@pswww.slac.stanford.edu').getAuthHeaders()
+    #r = req.get(uri, params=query, timeout=180, headers=krbh)
+    r = req.get(uri, params=query, timeout=180)
+    docs = r.json()
+    print(f'resp:{docs}')
+
+    doc_id = docs[0]['_id']
+
+    query = {'_id': f'ObjectId({doc_id})'}
+    query_string=str(query).replace("'",'"')
+    print(f'\nTEST 2 WORKS: find_docs uri: {uri} query: {str(query)}')
+    r = req.get(uri, params={"query_string": query_string})
+    print(f'resp:{r.json()}')
+
+    from bson.objectid import ObjectId
+    query = {"_id": ObjectId(doc_id)}
+    print(f'\nTEST 3 DOES NOT WORK: find_docs uri: {uri} query: {str(query)}')
+    krbh = dict(KerberosTicket('HTTP@pswww.slac.stanford.edu').getAuthHeaders())
+    krbh['Content-Type'] = 'application/octet-stream'
+    r = req.get(uri, params=query, headers=krbh)
+    print(f'resp:{r.json()}')
 
 #===
 
@@ -980,23 +1322,26 @@ def selector():
 
     TNAME = args.tname # sys.argv[1] if len(sys.argv)>1 else '0'
 
-    if   TNAME in ('0',): issue_2026_mm_dd() # template
-    elif TNAME in ('1',): issue_2026_02_04()
-    elif TNAME in ('2',): issue_2026_02_26()
-    elif TNAME in ('3',): issue_2026_03_16()
-    elif TNAME in ('4',): issue_2026_03_27(args)
-    elif TNAME in ('5',): issue_2026_04_01(args)
-    elif TNAME in ('6',): issue_2026_04_10(args)
+    if   TNAME in ('0',): issue_2026_mm_dd()     # template
+    elif TNAME in ('1',): issue_2026_02_04()     # jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau ... does not work in the step loop
+    elif TNAME in ('2',): issue_2026_02_26()     # jungfrau_dark_proc -k exp=xppc00125,run=6 -d jungfrau1M -o work1 --stepnum 0 does not work
+    elif TNAME in ('3',): issue_2026_03_16()     # gabriel or phil(?) deployed pedestal constants have the wrong dtype: float64 instead of float32
+    elif TNAME in ('4',): issue_2026_03_27(args) # Vincent sees unusual looking images for the jungfrau 1M in xppc00125 run 77
+    elif TNAME in ('5',): issue_2026_04_01(args) # test of emulated data for epixuhr3x2
+    elif TNAME in ('6',): issue_2026_04_10(args) # Philip test epixquad1kfps raw
     elif TNAME in ('7',): issue_2026_04_15(args) # various images selected by -s [#]
-    elif TNAME in ('8',): issue_2026_05_01(args)
-    elif TNAME in ('9',): issue_2026_05_04(args)
-    elif TNAME in ('10',):issue_2026_05_05(args)
-    elif TNAME in ('11',):issue_2026_06_03(args)
-    elif TNAME in ('12',):issue_2026_07_01(args)
-    elif TNAME in ('13',):issue_2026_07_08(args)
-    elif TNAME in ('14',):issue_2026_07_23(args)
-    elif TNAME in ('15',):issue_2026_07_31(args) # Vincent - jungfrau mask
-    elif TNAME in ('99',):issue_2026_MM_DD(args)
+    elif TNAME in ('8',): issue_2026_05_01(args) # test epixquad1kfps raw
+    elif TNAME in ('9',): issue_2026_05_04(args) # JWT example fro murali
+    elif TNAME in ('10',):issue_2026_05_05(args) # test for datinfo
+    elif TNAME in ('11',):issue_2026_06_03(args) # JWT tests (Murali)
+    elif TNAME in ('12',):issue_2026_07_01(args) # Mona - epixquad1kfps ghost pixels. exp=ued1015980,run=5
+    elif TNAME in ('13',):issue_2026_07_08(args) # gabriel cm correction for epix100 needs in 3d array
+    elif TNAME in ('14',):issue_2026_07_25(args) # Yanwen Sun: masks for a jungfrau 1M in xppx49520 (psana1, 2022) and xpp101570426 (psana2, 2026)'?
+    elif TNAME in ('15',):issue_2026_08_13()     # Print the Kerberos headers
+    elif TNAME in ('16',):issue_2026_08_19()     # for Murali can't add document to psdm DB
+    elif TNAME in ('17',):issue_2026_08_25(args) # kerberos access to DB (for Murali), see --subtest
+    elif TNAME in ('18',):issue_2026_08_31(args) # delete documents
+    elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())
         exit('\nTEST "%s" IS NOT IMPLEMENTED'%TNAME)
