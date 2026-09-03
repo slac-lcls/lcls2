@@ -17,7 +17,7 @@ The **scheduled execution path** removes that burden by mirroring how psana
 already handles calibration: the user declares *what* to run and *on what
 data*; psana dispatches the kernels as part of its internal batch pipeline,
 manages per-slot output buffers, and makes results available through the same
-`ctx.get()` / `GPUResult` API that calibrated data uses.
+`evt.gpu.get()` / `GPUResult` API that calibrated data uses.
 
 ### Comparison
 
@@ -27,7 +27,7 @@ manages per-slot output buffers, and makes results available through the same
 | User declares intent at | `DataSource(gpu_det=...)` | `register_cuda(...)` | `register_cuda(...)` + `schedule_for(...)` |
 | Dispatch | psana owns it | user calls `launch_1d()` in loop | **psana owns it** |
 | Output buffer | per-slot VRAM, slot-leased | user allocates with `cp.empty()` | **per-slot VRAM, slot-leased** |
-| Result access | `ctx.get('det.calib')` | raw `cp.ndarray` variable | **`ctx.get('output_key')`** |
+| Result access | `evt.gpu.get('det.calib')` | raw `cp.ndarray` variable | **`evt.gpu.get('output_key')`** |
 | Multiple events in-flight | two-slot double-buffering | user must handle manually | **same two-slot pipeline** |
 
 ---
@@ -49,8 +49,8 @@ GpuKernelRegistry
 
 KernelBinding  (NEW dataclass)
 ├── kernel_name:    str          name in the registry
-├── input_key:      str          ctx.get() key that provides the input array
-├── output_key:     str          ctx.get() key written by this kernel
+├── input_key:      str          evt.gpu.get() key that provides the input array
+├── output_key:     str          evt.gpu.get() key written by this kernel
 ├── output_dtype:   dtype        output element type
 ├── output_shape_fn: callable    input_shape → output_shape  (None = same)
 └── args_fn:        callable     (inp_gpu, out_gpu, stream) → args tuple
@@ -67,7 +67,7 @@ and manages the per-slot VRAM output buffers for it.
 ### 3.1 Single kernel — threshold filter
 
 The simplest case: one custom kernel that zeroes pixels below a threshold,
-producing a same-shape result available as `ctx.get('threshold')`.
+producing a same-shape result available as `evt.gpu.get('threshold')`.
 
 ```python
 # ── Module level ─────────────────────────────────────────────────────────────
@@ -95,7 +95,7 @@ gpu_kernel_registry.register_cuda(
 gpu_kernel_registry.schedule_for(
     'threshold',
     input_key    = 'jungfrau.calib',
-    output_key   = 'threshold',     # accessed as ctx.get('threshold')
+    output_key   = 'threshold',     # accessed as evt.gpu.get('threshold')
     output_dtype = np.float32,
     output_shape = 'same',          # same shape as jungfrau.calib
     args_fn      = lambda inp, out, stream: (
@@ -111,8 +111,8 @@ ds  = DataSource(exp='mfxl1016122', run=77, gpu_det='jungfrau')
 run = next(ds.runs())
 
 # ── Event loop ───────────────────────────────────────────────────────────────
-for ctx in run.events():
-    result = ctx.get('threshold')    # GPUResult — same API as jungfrau.calib
+for evt in run.events():
+    result = evt.gpu.get('threshold')  # GPUResult — same API as jungfrau.calib
     arr    = result.on_cpu           # np.ndarray, blocks until D→H complete
     print(arr.shape, arr.max())
 ```
@@ -157,9 +157,9 @@ gpu_kernel_registry.schedule_for(
 )
 
 # ── Event loop ───────────────────────────────────────────────────────────────
-for ctx in run.events():
-    thresh_result = ctx.get('threshold')
-    means_result  = ctx.get('panel_mean')
+for evt in run.events():
+    thresh_result = evt.gpu.get('threshold')
+    means_result  = evt.gpu.get('panel_mean')
 
     thresh_arr = thresh_result.on_cpu   # np.float32 (n_segs, nrows, ncols)
     means_arr  = means_result.on_cpu    # np.float32 (n_segs,)
@@ -212,12 +212,12 @@ gpu_kernel_registry.schedule_for(
 )
 
 # ── Event loop ───────────────────────────────────────────────────────────────
-for ctx in run.events():
-    peaks = ctx.get('peaks').on_cpu
+for evt in run.events():
+    peaks = evt.gpu.get('peaks').on_cpu
     n_peaks = int((peaks > 0).sum())
 ```
 
-psana resolves the dependency graph at `GpuEvents` setup time and
+psana resolves the dependency graph at `GpuEventManager` setup time and
 validates that `threshold` is scheduled before `peak_finder`.
 
 ---
@@ -254,9 +254,9 @@ gpu_kernel_registry.schedule_for(
 # DataSource with two GPU detectors
 ds = DataSource(exp='mfxl1016122', run=77, gpu_det=['jungfrau', 'epix10k2m'])
 
-for ctx in run.events():
-    jf_thresh  = ctx.get('jungfrau_threshold').on_cpu
-    ep_thresh  = ctx.get('epix_threshold').on_cpu
+for evt in run.events():
+    jf_thresh  = evt.gpu.get('jungfrau_threshold').on_cpu
+    ep_thresh  = evt.gpu.get('epix_threshold').on_cpu
 ```
 
 ---
@@ -284,8 +284,8 @@ gpu_kernel_registry.schedule_for(
     output_shape = lambda s: (s[0],),   # (n_segs,)
 )
 
-for ctx in run.events():
-    roi_vals = ctx.get('roi_sum').on_cpu   # np.float32 (n_segs,)
+for evt in run.events():
+    roi_vals = evt.gpu.get('roi_sum').on_cpu   # np.float32 (n_segs,)
 ```
 
 ---
@@ -295,8 +295,8 @@ for ctx in run.events():
 All scheduled kernel outputs support the same three accessors as `jungfrau.calib`:
 
 ```python
-for ctx in run.events():
-    result = ctx.get('threshold')
+for evt in run.events():
+    result = evt.gpu.get('threshold')
 
     # ── Option A: independent GPU copy (can outlive the event) ───────────────
     arr_gpu = result.on_gpu           # cp.ndarray, D→D copy; slot freed immediately
@@ -325,7 +325,7 @@ calibration pipeline without any explicit synchronization.
 
 psana processes events in *batches* (groups of N events packed by EventBuilder
 into a GPUBAT1 wire-format message).  The batch is further split into
-*subbatches* by `GpuEvents._split_subbatches()` based on available VRAM.
+*subbatches* by `GpuEventManager._split_subbatches()` based on available VRAM.
 
 For each subbatch `EventPool.submit()` queues all GPU work on one non-blocking
 CUDA stream, then records a single `result_ready` CUDA event that gates
@@ -368,7 +368,7 @@ Key properties:
 ### 4.2 `EventPool.submit()` control flow
 
 ```
-EventPool.submit(gv, gpu_read, cpu_evts, gpu_detectors, kernel_executors)
+EventPool.submit(gv, gpu_read, event_envelopes, gpu_detectors, kernel_executors)
 │
 ├── [1] Calibration loop  (existing)
 │       for det_name, det_info in gpu_detectors:
@@ -376,10 +376,7 @@ EventPool.submit(gv, gpu_read, cpu_evts, gpu_detectors, kernel_executors)
 │               gpu_results_by_ts[ec.timestamp]['det.calib'] = ec.calib_gpu
 │               gpu_results_by_ts[ec.timestamp]['det.raw']   = ec.raw_gpu   # if present
 │
-├── [2] finalize_results hook  (existing — DetectorRouter image assembly)
-│       gpu_results_by_ts = finalize_results(gpu_results_by_ts, cpu_evts, stream)
-│
-├── [3] Scheduled kernel loop  (NEW)
+├── [2] Scheduled kernel loop  (NEW)
 │       for output_key, executor in kernel_executors.items():
 │           binding = executor.binding
 │           for ts, ts_dict in gpu_results_by_ts.items():
@@ -389,14 +386,18 @@ EventPool.submit(gv, gpu_read, cpu_evts, gpu_detectors, kernel_executors)
 │               out = executor.process_event(inp, stream, slot)
 │               ts_dict[output_key] = out
 │
-├── [4] result_ready.record(stream)   ← AFTER all work (calib + scheduled kernels)
+├── [3] result_ready.record(stream)   ← AFTER all work (calib + scheduled kernels)
 │
-└── [5] Create SlotLease per (ts, key)
+└── [4] Create SlotLease per (ts, key)
         all results in ts_dict get the same result_ready event
         each gets its own SlotLease for independent consumer tracking
 ```
 
-`kernel_executors` is an `OrderedDict` built by `GpuEvents._setup_kernel_executors()`
+`GPUDetector.process_batch()` already emits canonical raw, calibrated, and
+optional image results, so scheduled kernels consume those arrays directly;
+there is no separate detector-routing or final-assembly hook.
+
+`kernel_executors` is an `OrderedDict` built by `GpuEventManager._setup_kernel_executors()`
 in dependency order (§4.4), so a binding whose `input_key` is another kernel's
 `output_key` always runs after that producer.
 
@@ -426,7 +427,7 @@ signalled completion.
 
 ### 4.4 Dependency resolution at setup time
 
-`GpuEvents._setup_kernel_executors()` runs once per run (called from
+`GpuEventManager._setup_kernel_executors()` runs once per run (called from
 `_setup_detectors()`).  It:
 
 1. Reads all bindings from `gpu_kernel_registry.get_bindings()`.
@@ -445,17 +446,19 @@ behaviour of calibration itself.
 
 ## 5. Result Access Reference
 
-### 5.1 `ctx.get(key)` — GPUResult
+### 5.1 `evt.gpu.get(key)` — GPUResult
 
 All scheduled-kernel results are accessed identically to calib results:
 
 ```python
-result = ctx.get('threshold')   # GPUResult
+result = evt.gpu.get('threshold')   # GPUResult
 ```
 
-`GpuEventContext.get()` does a dictionary lookup on `gpu_results_by_ts[ts]`;
-no code change is needed there because scheduled kernel outputs are written
-into the same dict as calib outputs.
+`GpuEventState.get()` resolves a result key in the per-event GPU result map.
+No public `Event` construction is needed inside the GPU pipeline: scheduled
+outputs are added to the same timestamp-keyed result dictionary as calibration,
+then attached to the `EventEnvelope` as `GpuEventState` and materialized as an
+`Event` only at the `Run.events()` or `Step.events()` boundary.
 
 ### 5.2 GPUResult accessors
 
@@ -468,12 +471,13 @@ into the same dict as calib outputs.
 ### 5.3 Checking whether a result exists
 
 A scheduled kernel only writes a result when its `input_key` was present for
-the event.  Use `ctx.has('threshold')` to check before `ctx.get()`:
+the event.  The proposed `GpuEventState.has()` helper allows checking before
+`get()`:
 
 ```python
-for ctx in run.events():
-    if ctx.has('threshold'):
-        arr = ctx.get('threshold').on_cpu
+for evt in run.events():
+    if evt.gpu.has('threshold'):
+        arr = evt.gpu.get('threshold').on_cpu
 ```
 
 ### 5.4 Introspecting scheduled bindings
@@ -501,10 +505,10 @@ for b in bindings:
 | `GpuKernelRegistry.get_bindings()` | `gpu_kernel_registry.py` | Return all bindings (all input keys) |
 | `GpuKernelRegistry.get_bindings_for(key)` | `gpu_kernel_registry.py` | Return bindings whose `input_key == key` |
 | `GpuKernelExecutor` | `gpu_kernel_registry.py` | Per-binding executor; holds `_output_slot_bufs[n_slots]`; calls `process_event()` |
-| `GpuEvents._setup_kernel_executors()` | `gpu_events.py` | DAG sort; validate input keys; build `OrderedDict[key → executor]` |
-| `EventPool.submit(..., kernel_executors)` | `gpu_stream.py` | New loop (step 3 above); writes outputs into `gpu_results_by_ts` |
-| `GpuEventContext.get()` | `context.py` | Unchanged — dict lookup works for both calib and scheduled-kernel outputs |
-| `GpuEventContext.has()` | `context.py` | New helper: `return key in self._gpu_results` |
+| `GpuEventManager._setup_kernel_executors()` | `gpu_events.py` | DAG sort; validate input keys; build `OrderedDict[key → executor]` |
+| `EventPool.submit(..., kernel_executors)` | `gpu_stream.py` | New loop (step 2 above); writes outputs into `gpu_results_by_ts` |
+| `GpuEventState.get()` | `context.py` | Existing lookup for calib/raw/image; also resolves scheduled-kernel outputs |
+| `GpuEventState.has()` | `context.py` | Proposed helper: resolve the key and test membership without raising |
 
 ---
 
@@ -590,9 +594,9 @@ correct and adds zero extra synchronization.
 ### Why not a separate stream per scheduled kernel?
 
 Using the slot's existing stream for all work (calib + scheduled kernels)
-preserves the ordering guarantee without cross-stream events.  The GPU's
-hardware scheduler overlaps independent kernels even on a single stream when
-the occupancy headroom exists.
+preserves the ordering guarantee without cross-stream events. Kernels within
+one slot stream execute in order; concurrency can still come from other
+EventPool slot streams or other BD CUDA contexts.
 
 ### `on_gpu_view` for scheduled-kernel outputs
 
@@ -614,11 +618,13 @@ today.
 2. **Runtime args** — `args_fn` captures constants at schedule time.  If a
    user needs to change a threshold between runs (e.g. from a BeginRun
    configuration object), there is currently no path to update it.  Should
-   `KernelBinding` support a `dynamic_args_fn(ctx) → tuple` variant that
-   receives the `GpuEventContext` and can read per-run configuration?
+   `KernelBinding` support a `dynamic_args_fn(run_state) → tuple` variant?
+   Kernel execution precedes public `Event` construction, so dynamic arguments
+   should come from run/transition state rather than requiring an `Event`
+   inside `GpuEventManager`.
 
 3. **Eager binding validation** — `schedule_for()` currently records the
-   binding but cannot validate `input_key` until `GpuEvents._setup_detectors()`
+   binding but cannot validate `input_key` until `GpuEventManager._setup_detectors()`
    runs (when the actual detector list is known).  Should `schedule_for()`
    accept an optional `run` argument to validate immediately?
 
@@ -627,5 +633,6 @@ today.
    scheduled-kernel outputs so `result.on_cpu` is backed by pinned async
    transfers (rather than blocking `arr.get()`) would be a natural follow-on.
 
-5. **`ctx.has()` vs `ctx.get()` returning `None`** — which convention is
-   preferable for missing results when a kernel's input was absent for an event?
+5. **`evt.gpu.has()` vs `evt.gpu.get()` returning `None`** — which convention
+   is preferable for missing results when a kernel's input was absent for an
+   event?
