@@ -689,3 +689,157 @@ class TestD2hPipeline:
         assert slot._refs == 0
         assert available.get_nowait() is slot
         assert available.empty(), "slot must be returned exactly once"
+
+
+# ---------------------------------------------------------------------------
+# Device-release handoff
+#
+# When automatic D2H has already copied every slot-backed result to pinned
+# host memory, GpuEventManager frees the EventPool slot BEFORE yielding the
+# event, so the replacement H2D can start earlier.  That is only safe if
+# every result has a host handoff and no stale device view is ever exposed.
+# ---------------------------------------------------------------------------
+
+
+class TestIsFullyHostBacked:
+    """Gate that decides whether the slot may be freed before yielding."""
+
+    @staticmethod
+    def _ready(results, pending=None, cached=None):
+        return SimpleNamespace(
+            gpu_results_by_ts=results,
+            pending_d2h_by_ts=pending or {},
+            cached_cpu_results_by_ts=cached or {},
+        )
+
+    def test_empty_slot_is_host_backed(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        assert GpuEventManager._is_fully_host_backed(None) is True
+
+    def test_pending_d2h_for_every_key(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        ready = self._ready(
+            {7: {"jungfrau.calib": object()}},
+            pending={7: {"jungfrau.calib": object()}},
+        )
+        assert GpuEventManager._is_fully_host_backed(ready) is True
+
+    def test_cached_cpu_fallback_also_counts(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        # Pinned-slot exhaustion path: arr.get() already materialized a copy.
+        ready = self._ready(
+            {7: {"jungfrau.calib": object()}},
+            cached={7: {"jungfrau.calib": np.zeros(1)}},
+        )
+        assert GpuEventManager._is_fully_host_backed(ready) is True
+
+    def test_mixed_pending_and_cached_across_timestamps(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        ready = self._ready(
+            {7: {"jungfrau.calib": object()}, 8: {"jungfrau.calib": object()}},
+            pending={7: {"jungfrau.calib": object()}},
+            cached={8: {"jungfrau.calib": np.zeros(1)}},
+        )
+        assert GpuEventManager._is_fully_host_backed(ready) is True
+
+    def test_unpipelined_key_blocks_early_release(self):
+        """A .raw/.image result has no D2H pipeline, so the slot must be held.
+
+        _d2h_pipelines only covers '<det>.calib'.  Releasing the slot here
+        would hand the user a recycled device buffer.
+        """
+        from psana.gpu.gpu_events import GpuEventManager
+
+        ready = self._ready(
+            {7: {"jungfrau.calib": object(), "jungfrau.raw": object()}},
+            pending={7: {"jungfrau.calib": object()}},
+        )
+        assert GpuEventManager._is_fully_host_backed(ready) is False
+
+    def test_timestamp_with_no_handoff_at_all_blocks_release(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        ready = self._ready({7: {"jungfrau.calib": object()}})
+        assert GpuEventManager._is_fully_host_backed(ready) is False
+
+
+class TestDeviceReleasedResults:
+    """A released slot must never surface as a usable device array."""
+
+    def test_on_gpu_raises_with_actionable_message(self):
+        from psana.gpu.context import GPUResult
+
+        r = GPUResult(None, lease=None, device_released=True)
+        with pytest.raises(RuntimeError, match="gpu_d2h_chunk_size=0"):
+            r.on_gpu
+
+    def test_on_gpu_view_raises_when_device_released(self):
+        from psana.gpu.context import GPUResult, SlotLease
+
+        r = GPUResult(None, lease=SlotLease(None), device_released=True)
+        with pytest.raises(RuntimeError, match="automatic D2H completed"):
+            r.on_gpu_view()
+
+    def test_on_cpu_still_works_through_pending_token(self):
+        """The whole point: host data remains available after slot release."""
+        from psana.gpu.context import GPUResult
+
+        expected = np.arange(4, dtype=np.float32)
+
+        class _Token:
+            def get(self):
+                return expected
+
+        r = GPUResult(None, lease=None, device_released=True)
+        r._pending_d2h = _Token()
+        np.testing.assert_array_equal(r.on_cpu, expected)
+        # Token is consumed once and the result cached.
+        assert r._pending_d2h is None
+        np.testing.assert_array_equal(r.on_cpu, expected)
+
+    def test_on_cpu_reports_incomplete_handoff_rather_than_stale_data(self):
+        from psana.gpu.context import GPUResult
+
+        r = GPUResult(None, lease=None, device_released=True)
+        with pytest.raises(RuntimeError, match="incomplete automatic-D2H handoff"):
+            r.on_cpu
+
+    def test_on_gpu_view_rejected_once_automatic_d2h_is_scheduled(self):
+        """Zero-copy view and automatic D2H are mutually exclusive."""
+        from psana.gpu.context import GPUResult, SlotLease
+
+        r = GPUResult(_FakeGPUArr(np.zeros(2, dtype=np.float32)),
+                      lease=SlotLease(None))
+        r._pending_d2h = object()
+        with pytest.raises(RuntimeError, match="unavailable after automatic D2H"):
+            r.on_gpu_view()
+
+    def test_state_propagates_device_released_to_each_result(self):
+        from psana.gpu.context import GpuEventState
+
+        state = GpuEventState(
+            gpu_results={"jungfrau.calib": None},
+            detector_names=["jungfrau"],
+            device_released=True,
+        )
+        result = state.get("calib")           # unqualified key resolves
+        assert result._device_released is True
+        with pytest.raises(RuntimeError, match="automatic D2H completed"):
+            result.on_gpu
+
+    def test_state_without_release_keeps_device_access(self):
+        from psana.gpu.context import GpuEventState
+
+        arr = _FakeGPUArr(np.arange(3, dtype=np.float32))
+        state = GpuEventState(
+            gpu_results={"jungfrau.calib": arr},
+            detector_names=["jungfrau"],
+        )
+        # on_gpu hands back an independent D→D copy, not the slot-backed array.
+        copy = state.get("jungfrau.calib").on_gpu
+        assert copy is not arr
+        np.testing.assert_array_equal(copy.get(), arr.get())
