@@ -59,7 +59,7 @@ URL_PRO     = 'https://pswww.slac.stanford.edu/ws'
 URL_PRO_INT = 'https://psdmint.sdf.slac.stanford.edu/ws'
 URL_KRBHEADERS = 'HTTP@pswww.slac.stanford.edu'
 
-URL_ENV    = os.environ.get('LCLS_CALIB_HTTP', URL_DEV) #URL_DEV or URL_PRO or URL_PRO_INT
+URL_ENV    = os.environ.get('LCLS_CALIB_HTTP', URL_PRO) #URL_DEV or URL_PRO or URL_PRO_INT
 CALIB_JWT  = os.environ.get('CALIB_JWT', None) is not None
 JWT_OR_KRB = '-jwt/' if CALIB_JWT else '-kerb/'
 
