@@ -18,8 +18,7 @@ echo $CALIB_JWT
 
 if [[ -z "${CALIB_JWT}" ]]
 then
-   echo "The JWT environment variable is not set"
-   exit 1
+   echo "The JWT environment variable is not set, try kinit first"
 fi
 
 echo "Successfully obtained a JWT"
