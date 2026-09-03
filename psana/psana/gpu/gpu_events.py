@@ -919,6 +919,9 @@ class GpuEventManager:
         pending_transitions = []
         for step_batch, _ in step_dict.values():
             for service, dgrams in _iter_step_events(step_batch, self.configs):
+                if service == 0:
+                    # A GPU-only L1 has no dgrams in the CPU/SMD packet.
+                    continue
                 if TransitionId.isEvent(service):
                     continue
                 pending_transitions.append((service, dgrams))
