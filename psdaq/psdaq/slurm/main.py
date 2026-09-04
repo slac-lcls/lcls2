@@ -3,7 +3,7 @@ from typing_extensions import Annotated
 import time
 import asyncio
 import socket
-from psdaq.slurm.utils import SbatchManager, run_slurm_with_retries, build_sbatch_env
+from psdaq.slurm.utils import SbatchManager, run_slurm, run_slurm_with_retries, build_sbatch_env
 from psdaq.slurm.subproc import SubprocHelper
 import os
 import sys
@@ -234,8 +234,8 @@ class Runner:
             result_list.append(statusdict)
         return result_list
 
-    def _cancel(self, slurm_job_id):
-        run_slurm_with_retries("scancel", str(slurm_job_id))
+    def _cancel(self, slurm_job_ids):
+        run_slurm("scancel", *slurm_job_ids)
 
     def start(self, unique_ids=None, skip_check_exist=False, verbose=False):
         self._check_unique_ids(unique_ids)
@@ -246,7 +246,7 @@ class Runner:
         if self.sbman.as_step:
             self.sbman.generate_as_step(self.sbjob, self.node_features)
             if self.submit(verbose=verbose) != 0:
-                print(f"Submitting slurm job {job_name} failed")
+                print(f"Error: Submitting slurm job {job_name} failed")
         else:
             config_ids = self._select_config_ids(unique_ids)
             for node, job_details in self.sbjob.items():
@@ -254,8 +254,12 @@ class Runner:
                     if job_name in config_ids:
                         self.sbman.generate(node, job_name, details, self.node_features)
                         if self.submit(verbose=verbose) != 0:
-                            print(f"Submitting slurm job {job_name} failed")
-                        elif "flags" in details:
+                            print(f"Error: Submitting slurm job {job_name} failed")
+                            config_ids.remove(job_name)
+            for node, job_details in self.sbjob.items():
+                for job_name, details in job_details.items():
+                    if job_name in config_ids:
+                        if "flags" in details:
                             if details["flags"].find("x") > -1:
                                 job_state = None
                                 for i in range(MAX_RETRIES):
@@ -264,17 +268,17 @@ class Runner:
                                         job_state = job_details[details["comment"]][
                                             "state"
                                         ]
+                                        if i == 0:
+                                            print(
+                                                f"Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm..."
+                                            )
                                         if job_state == "RUNNING":
                                             break
-                                    if i == 0:
-                                        print(
-                                            f"Waiting for slurm job {job_name} ({job_state}) to start for attaching xterm..."
-                                        )
-                                    time.sleep(3)
+                                    time.sleep(1)
                                 if job_state is not None:
-                                    time.sleep(
-                                        1
-                                    )  # Still need to wait! even if job is already in RUNNING state
+                                    #time.sleep(
+                                    #    1
+                                    #)  # Still need to wait! even if job is already in RUNNING state
                                     ldProcStatus = self.show_status(quiet=True)
                                     self.spawnConsole(job_name, ldProcStatus, False)
 
@@ -294,31 +298,44 @@ class Runner:
 
         unique_prefix = self.get_unique_prefix()
 
-        job_states = {}
+        job_ids = []
         for comment, job_detail in job_details.items():
             if comment.startswith(unique_prefix) and (
                 job_detail["job_name"] in config_ids or not config_ids
             ):
-                self._cancel(job_detail["job_id"])
-                job_states[job_detail["job_id"]] = None
+                job_ids.append(str(job_detail["job_id"]))
+        if len(job_ids) == 0:
+            print("Error: Found no jobs to cancel")
+            return
+        self._cancel(job_ids)
 
-        # Wait until all cancelled jobs reach CANCELLED state
         if not skip_wait:
             for i in range(MAX_RETRIES):
-                for job_id, _ in job_states.items():
-                    results = self.sbman.get_job_info_byid(job_id, ["JobState"])
-                    if "JobState" in results:
-                        job_states[job_id] = results["JobState"]
-                active_jobs = [
-                    job_id
-                    for job_id, job_state in job_states.items()
-                    if job_state != "CANCELLED"
-                ]
-                if len(active_jobs) == 0:
-                    break
-                if i == 0 and verbose:
-                    print("Waiting for slurm jobs to complete...")
-                time.sleep(3)
+                result = run_slurm("squeue",
+                                   "--noheader",
+                                   "--jobs",
+                                   ",".join(sorted(job_ids)),
+                                   "--format=%i|%T",
+                                   check=True,
+                                   capture_output=True)
+                if verbose and result.returncode == 0:
+                    if i == 0:
+                        print("Waiting for job IDs:")
+                    print([x.split('|')[0] for x in result.stdout.splitlines()])
+
+                active = {}
+                for line in result.stdout.splitlines():
+                    if not line.strip():
+                        continue
+                    job_id, state = line.split("|", 1)
+                    active[job_id.strip()] = state.strip()
+
+                # Jobs missing from squeue are no longer active.
+                if not active:
+                    return
+
+                time.sleep(1.0)
+
 
     def restart(self, unique_ids=None, verbose=False):
         self.stop(unique_ids=unique_ids, skip_wait=True, verbose=verbose)

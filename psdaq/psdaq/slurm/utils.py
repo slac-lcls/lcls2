@@ -66,6 +66,32 @@ def daqmgr_debug_env_enabled(source_env=None):
     return source_env.get(DAQMGR_DEBUG_ENV, "").lower() in DAQMGR_DEBUG_ENV_TRUE_VALUES
 
 
+def run_slurm(*args, check=False, capture_output=False):
+    """
+    Calls a subprocess without retries.
+
+    Parameters:
+    - *args: Command and arguments to pass to subprocess.
+    - check: 'check' argument for subprocess.run()
+    - capture_output: 'capture_output' argument for subprocess.run()
+
+    Returns:
+    - Decoded output string from the subprocess call.
+    """
+    if capture_output:
+        # stdout and stderr arguments may not be used with capture_output
+        output = subprocess.run(args, text=True, check=check,
+                                capture_output=capture_output)
+    else:
+        output = subprocess.run(args, text=True, check=check,
+                                stdout=PIPE, stderr=PIPE)
+    if output.returncode != 0:
+        cmd_str = " ".join(args)
+        logger.error(f"Subprocess call '{cmd_str}' failed.\n"
+                     "Error: {output.stderr.decode('utf-8').strip()}")
+    return output
+
+
 def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
     """
     Calls a subprocess, with retries for specific Slurm commands,
