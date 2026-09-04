@@ -1,11 +1,9 @@
 from psdaq.utils import enable_l2si_drp
 import l2si_drp
-from psdaq.configdb.barrier import Barrier
+from psdaq.configdb.barrier import *
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from p4p.client.thread import Context
-import os
-import socket
 import json
 import time
 import logging
@@ -22,29 +20,13 @@ configVersion = [3,3,0]
 barrier_global = Barrier()
 args = {}
 
-def supervisor_info(json_msg):
-    nworker = 0
-    supervisor=None
-    mypid = os.getpid()
-    myhostname = socket.gethostname()
-    for drp in json_msg['body']['drp'].values():
-        proc_info = drp['proc_info']
-        host = proc_info['host']
-        pid = proc_info['pid']
-        if host==myhostname and drp['active']:
-            if supervisor is None:
-                # we are supervisor if our pid is the first entry
-                supervisor = pid==mypid
-            else:
-                # only count workers for second and subsequent entries on this host
-                nworker+=1
-    return supervisor,nworker
-
 def hsd_init(prefix, dev='dev/datadev_0'):
     global args
     global epics_prefix
     epics_prefix = prefix
 
+    args['dev'] = dev
+    
     if True:   # Until SUBMODULES is updated
         root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev)
         root.__enter__()
@@ -77,7 +59,7 @@ def hsd_connect(msg):
     root = args['root']
 
     alloc_json = json.loads(msg)
-    supervisor,nworker = supervisor_info(alloc_json)
+    supervisor,nworker = supervisor_info(alloc_json,args['dev'])
     print(f'hsd_connect: supervisor [{supervisor}] nworker [{nworker}]')
     
     barrier_global.init(supervisor,nworker)
