@@ -319,6 +319,11 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
                 ),
             )
             gpu_det._is_calib_follower = True
+            # Deliberately not charged against gpu_det._budget: these are
+            # non-owning views of the leader's buffers, so they cost this rank
+            # no VRAM.  Charging them would shrink each follower's budget by
+            # the size of memory it does not own -- which is the whole point of
+            # sharing the constants in the first place.
 
     n_followers = len(follower_bd_ranks) if is_leader else 1
     logger.debug(

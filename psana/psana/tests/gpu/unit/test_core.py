@@ -1289,3 +1289,131 @@ class TestGpuRequiresSingleEventBuilder:
             )
         except Exception:
             pass
+
+
+class TestFixedAllocationBudget:
+    """Calibration constants and geometry must be charged to _GpuBudget.
+
+    Regression guard: prep_calib_constants() and prepare_geometry*() allocate
+    with bare cp.asarray and never called reserve(), so the committed total
+    omitted both.  For a 32-segment Jungfrau that is ~402 MiB of constants and
+    ~268 MiB of int64 scatter maps invisible to the limit that exists to stop
+    several BD ranks over-committing one device.
+    """
+
+    class _Arr:
+        """Minimal stand-in for a cp.ndarray: the budget only reads .nbytes."""
+        def __init__(self, nbytes):
+            self.nbytes = nbytes
+
+    def _det(self, budget, peds=None, gmask=None):
+        # stream_seg_map=None keeps the routing map — and therefore cupy — out
+        # of construction, so this runs on a CPU-only node.
+        return GPUDetector(
+            det_shape=(2, 4, 8),
+            peds_gpu=peds,
+            gmask_gpu=gmask,
+            canonical_segment_ids=[0, 1],
+            stream_seg_map=None,
+            budget=budget,
+        )
+
+    @staticmethod
+    def _patch_geometry(monkeypatch, ix_bytes, iy_bytes):
+        import psana.gpu.gpu_detector as gd
+        arr = TestFixedAllocationBudget._Arr
+        monkeypatch.setattr(
+            gd, "prepare_geometry_from_arrays",
+            lambda *a, **k: (arr(ix_bytes), arr(iy_bytes), (4, 8)),
+        )
+
+    def test_constants_charged_at_construction(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        self._det(budget, self._Arr(400), self._Arr(600))
+        assert budget.committed() == 1000
+
+    def test_follower_without_constants_is_not_charged(self):
+        """Followers get non-owning IPC views, which cost this rank no VRAM."""
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        det = self._det(budget, None, None)
+        assert budget.committed() == 0
+        # Simulate share_calib_between_gpu_peers() handing over shared views.
+        det.peds_gpu = self._Arr(400)
+        det.gmask_gpu = self._Arr(600)
+        det._is_calib_follower = True
+        assert budget.committed() == 0, (
+            "shared IPC constants must never be charged to the follower"
+        )
+
+    def test_geometry_charged_after_setup(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        det = self._det(budget)
+        self._patch_geometry(monkeypatch, 300, 300)
+        det.setup_geometry_from_arrays(None, None)
+        assert budget.committed() == 600
+
+    def test_repeat_setup_recharges_only_the_delta(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        det = self._det(budget)
+        self._patch_geometry(monkeypatch, 300, 300)
+        det.setup_geometry_from_arrays(None, None)
+        self._patch_geometry(monkeypatch, 500, 500)
+        det.setup_geometry_from_arrays(None, None)
+        # Holds one 1000-byte pair, not 600 + 1000.
+        assert budget.committed() == 1000
+
+    def test_smaller_geometry_releases_the_difference(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        det = self._det(budget)
+        self._patch_geometry(monkeypatch, 500, 500)
+        det.setup_geometry_from_arrays(None, None)
+        self._patch_geometry(monkeypatch, 100, 100)
+        det.setup_geometry_from_arrays(None, None)
+        assert budget.committed() == 200
+
+    def test_failed_geometry_leaves_nothing_charged(self, monkeypatch):
+        """prepare_geometry* returns None on bad segment indices."""
+        from psana.gpu.gpu_budget import _GpuBudget
+        import psana.gpu.gpu_detector as gd
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        det = self._det(budget)
+        monkeypatch.setattr(gd, "prepare_geometry_from_arrays",
+                            lambda *a, **k: None)
+        det.setup_geometry_from_arrays(None, None)
+        assert budget.committed() == 0
+
+    def test_committed_total_matches_the_reported_breakdown(self, monkeypatch):
+        """The budget and log_memory() accounting must agree."""
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        det = self._det(budget, self._Arr(400), self._Arr(600))
+        self._patch_geometry(monkeypatch, 300, 300)
+        det.setup_geometry_from_arrays(None, None)
+
+        m = det.memory_bytes()
+        assert budget.committed() == m["constants"] + m["geometry"] == 1600
+
+    def test_works_without_a_budget(self, monkeypatch):
+        det = self._det(None, self._Arr(400), self._Arr(600))
+        self._patch_geometry(monkeypatch, 300, 300)
+        det.setup_geometry_from_arrays(None, None)   # must not raise
+        assert det.memory_bytes()["geometry"] == 600
+
+    def test_constants_over_limit_are_refused(self):
+        from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
+
+        budget = _GpuBudget(limit_bytes=500)
+        with pytest.raises(GpuMemoryPressureError):
+            self._det(budget, self._Arr(400), self._Arr(600))

@@ -171,6 +171,31 @@ class GPUDetector:
         }
         self._budget = budget  # _GpuBudget | None
 
+        # Calibration constants are allocated by prep_calib_constants() before
+        # this object exists, so they are charged here, where the budget is
+        # first reachable.  Without this the committed total omitted them
+        # entirely (~400 MiB for a 32-segment Jungfrau).
+        #
+        # Follower ranks arrive with None: they skip prep_calib_constants() and
+        # later receive non-owning CUDA IPC views of the leader's buffers from
+        # share_calib_between_gpu_peers().  Those consume no additional VRAM on
+        # this rank, so they are deliberately never charged -- charging them
+        # would shrink each follower's real budget by the size of memory it
+        # does not own.
+        if self._budget is not None:
+            const_bytes = sum(
+                int(arr.nbytes)
+                for arr in (self.peds_gpu, self.gmask_gpu)
+                if arr is not None
+            )
+            if const_bytes:
+                self._budget.reserve(const_bytes)
+
+        # Bytes currently charged for the geometry scatter maps.  Tracked so
+        # repeated setup_geometry* calls re-charge the difference rather than
+        # accumulating.
+        self._geometry_bytes = 0
+
         # Stream dgrams group panels in L1 child order. Cache the mapping from
         # each stream-local input row to the canonical detector row. Raw
         # assembly is the only stage that knows this routing; calibration and
@@ -281,6 +306,7 @@ class GPUDetector:
         geometry = prepare_geometry(det, self._canonical_segment_ids)
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
+            self._charge_geometry()
 
     def setup_geometry_from_arrays(self, ix_all, iy_all):
         """Build the GPU image-scatter map from coordinate-index arrays."""
@@ -291,6 +317,34 @@ class GPUDetector:
         )
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
+            self._charge_geometry()
+
+    def _charge_geometry(self):
+        """Charge the scatter maps against the budget after assignment.
+
+        The maps are int64, so they are not small: a 32-segment Jungfrau needs
+        roughly 268 MiB across the two arrays.  They were previously invisible
+        to the budget.
+
+        Charged after allocation rather than before, because prepare_geometry*
+        allocates internally and the size is not known until it returns.  The
+        arrays are therefore already resident if this raises
+        GpuMemoryPressureError -- acceptable, since geometry is built once
+        during setup and exceeding the limit there is fatal to the run anyway.
+        """
+        if self._budget is None:
+            return
+        nbytes = sum(
+            int(arr.nbytes)
+            for arr in (self._scatter_ix, self._scatter_iy)
+            if arr is not None
+        )
+        delta = nbytes - self._geometry_bytes
+        if delta > 0:
+            self._budget.reserve(delta)
+        elif delta < 0:
+            self._budget.release(-delta)
+        self._geometry_bytes = nbytes
 
     def assemble_image(self, calib_gpu, stream=None):
         """Scatter canonical calibrated segments into a 2-D GPU image."""
