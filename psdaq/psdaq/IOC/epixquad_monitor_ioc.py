@@ -141,49 +141,49 @@ CHANNEL_DEFS: dict[int, Any] = {
         unit="°C",
         conv=EpixQuadMonitorUtils.getNctTempLoc,
         pv_signal_="nct_loc_temp",
-    )
+    ),
     3: dict(
         name="NCT218 Remote Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getNctTempRem,
         pv_signal_="nct_fpga_temp",
-    )
+    ),
     4: dict(
         name="ASIC_A0_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
         pv_signal_="asic_a0_2v5_cur",
-    )
+    ),
     5: dict(
         name="ASIC_A1_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
         pv_signal_="asic_a1_2v5_cur",
-    )
+    ),
     6: dict(
         name="ASIC_A2_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
         pv_signal_="asic_a2_2v5_cur",
-    )
+    ),
     7: dict(
         name="ASIC_A3_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
         pv_signal_="asic_a3_2v5_cur",
-    )
+    ),
     8: dict(
         name="ASIC_D0_2V5 Curr.",
         unit="mA",
         conv=EpixQuadMonitorUtils.getLt3086SingleCurr,
         pv_signal_="asic_d0_2v5_cur",
-    )
+    ),
     9: dict(
         name="ASIC_D1_2V5 Curr.",
         unit="mA",
         conv=EpixQuadMonitorUtils.getLt3086SingleCurr,
         pv_signal_="asic_d1_2v5_cur",
-    )
+    ),
     10: dict(
         name="Therm0 Temp.",
         unit="°C",
@@ -201,157 +201,157 @@ CHANNEL_DEFS: dict[int, Any] = {
         unit="A",
         conv=EpixQuadMonitorUtils.getPwrCurr,
         pv_signal="asic_dig_cur",
-    )
+    ),
     13: dict(
         name="PwrDigVin",
         unit="V",
         conv=EpixQuadMonitorUtils.getPwrVin,
         pv_signal="dig_in_v",
-    )
+    ),
     14: dict(
         name="PwrDigTemp",
         unit="°C",
         conv=EpixQuadMonitorUtils.getPwrTemp,
         pv_signal_="dig_temp",
-    )
+    ),
     15: dict(
         name="PwrAnaCurr",
         unit="A",
         conv=EpixQuadMonitorUtils.getPwrCurr,
         pv_signal="asic_ana_cur",
-    )
+    ),
     16: dict(
         name="PwrAnaVin",
         unit="V",
         conv=EpixQuadMonitorUtils.getPwrVin,
         pv_signal="ana_in_v",
-    )
+    ),
     17: dict(
         name="PwrAnaTemp",
         unit="°C",
         conv=EpixQuadMonitorUtils.getPwrTemp,
         pv_signal_="ana_temp",
-    )
+    ),
     18: dict(
         name="A0_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a0_2v5_h_temp",
-    )
+    ),
     19: dict(
         name="A0_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a0_2v5_l_temp",
-    )
+    ),
     20: dict(
         name="A1_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a1_2v5_h_temp",
-    )
+    ),
     21: dict(
         name="A1_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a1_2v5_l_temp",
-    )
+    ),
     22: dict(
         name="A2_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a2_2v5_h_temp",
-    )
+    ),
     23: dict(
         name="A2_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a2_2v5_l_temp",
-    )
+    ),
     24: dict(
         name="A3_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a3_2v5_h_temp",
-    )
+    ),
     25: dict(
         name="A3_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a3_2v5_l_temp",
-    )
+    ),
     26: dict(
         name="D0_2_5V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_d0_2v5_temp",
-    )
+    ),
     27: dict(
         name="D1_2_5V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_d1_2v5_temp",
-    )
+    ),
     28: dict(
         name="A0_1_8V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a0_1v8_temp",
-    )
+    ),
     29: dict(
         name="A1_1_8V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a1_1v8_temp",
-    )
+    ),
     30: dict(
         name="A2_1_8V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
         pv_signal_="asic_a2_1v8_temp",
-    )
+    ),
     31: dict(
         name="PcbAnaTemp0",
         unit="°C",
         conv=EpixQuadMonitorUtils.getAnaTemp,
         pv_signal_="pcb_ana_temp0",
-    )
+    ),
     32: dict(
         name="PcbAnaTemp1",
         unit="°C",
         conv=EpixQuadMonitorUtils.getAnaTemp,
         pv_signal_="pcb_ana_temp1",
-    )
+    ),
     33: dict(
         name="PcbAnaTemp2",
         unit="°C",
         conv=EpixQuadMonitorUtils.getAnaTemp,
         pv_signal_="pcb_ana_temp2",
-    )
+    ),
     34: dict(
         name="TrOptTemp",
         unit="°C",
         conv=EpixQuadMonitorUtils.getTrOptTemp,
         pv_signal_="tropt_temp",
-    )
+    ),
     35: dict(
         name="TrOptVcc",
         unit="V",
         conv=EpixQuadMonitorUtils.getTrOptVolt,
         pv_signal_="tropt_volt",
-    )
+    ),
     36: dict(
         name="TrOptTxPwr",
         unit="uW",
         conv=EpixQuadMonitorUtils.getTrOptPwr,
         pv_signal_="tropt_txpwr",
-    )
+    ),
     37: dict(
         name="TrOptRxPwr",
         unit="uW",
         conv=EpixQuadMonitorUtils.getTrOptPwr,
         pv_signal_="tropt_rxpwr",
-    )
+    ),
 }
 
 
@@ -560,17 +560,21 @@ class EpixQuadMonitoringIOC(PVGroup):
         self.lane = lane
         self.vc = vc
         self.regvc = regvc
-        self.monrateconv = 100000000
+        self.lastmontime = None
         self.trigrateconv = 1000
         super().__init__(*args, **kwargs)
         self.log = logging.getLogger(f"caproto.{__name__}")
 
     @property
-    def monitor_period(self):
+    def monitor_prescale(self):
         """
-        Monitor rate converted to period
+        Monitor rate converted to a prescale value. Set to a minimum of 1.
+        E.g.: a prescale of 10 means the monitoring will fire on every tenth trigger
         """
-        return int(self.monrateconv / self.set_monitor_rate.value)
+        prescale = self.set_auto_trig_rate.value // self.set_monitor_rate.value
+        if prescale == 0:
+            prescale = 1
+        return prescale
 
     @property
     def auto_trigger_period(self):
@@ -790,7 +794,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                               units="C",
                               doc="NCT218 Local Temp.")
     nct_fpga_temp = pvproperty(name="NCT_FPGA_TEMP",
-a                              value=-99.0,
+                               value=-99.0,
                                dtype=PvpropertyDouble[AiFields],
                                record=AiFields,
                                upper_alarm_limit=1000.0,
@@ -866,7 +870,7 @@ a                              value=-99.0,
                                  precision=3,
                                  units="mA",
                                  doc="ASIC_D1_2V5 Curr.")
-    asic_a0_2v5_h_temp = pvproperty(name="ASIC_A0_2V5_H_TEMP"
+    asic_a0_2v5_h_temp = pvproperty(name="ASIC_A0_2V5_H_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -877,7 +881,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A0_2V5_H Temp.")
-    asic_a0_2v5_l_temp = pvproperty(name="ASIC_A0_2V5_L_TEMP"
+    asic_a0_2v5_l_temp = pvproperty(name="ASIC_A0_2V5_L_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -888,7 +892,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A0_2V5_L Temp.")
-    asic_a1_2v5_h_temp = pvproperty(name="ASIC_A1_2V5_H_TEMP"
+    asic_a1_2v5_h_temp = pvproperty(name="ASIC_A1_2V5_H_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -899,7 +903,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A1_2V5_H Temp.")
-    asic_a1_2v5_l_temp = pvproperty(name="ASIC_A1_2V5_L_TEMP"
+    asic_a1_2v5_l_temp = pvproperty(name="ASIC_A1_2V5_L_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -910,7 +914,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A1_2V5_L Temp.")
-    asic_a2_2v5_h_temp = pvproperty(name="ASIC_A2_2V5_H_TEMP"
+    asic_a2_2v5_h_temp = pvproperty(name="ASIC_A2_2V5_H_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -921,7 +925,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A2_2V5_H Temp.")
-    asic_a2_2v5_l_temp = pvproperty(name="ASIC_A2_2V5_L_TEMP"
+    asic_a2_2v5_l_temp = pvproperty(name="ASIC_A2_2V5_L_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -932,7 +936,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A2_2V5_L Temp.")
-    asic_a3_2v5_h_temp = pvproperty(name="ASIC_A3_2V5_H_TEMP"
+    asic_a3_2v5_h_temp = pvproperty(name="ASIC_A3_2V5_H_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -943,7 +947,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A3_2V5_H Temp.")
-    asic_a3_2v5_l_temp = pvproperty(name="ASIC_A3_2V5_L_TEMP"
+    asic_a3_2v5_l_temp = pvproperty(name="ASIC_A3_2V5_L_TEMP",
                                     value=-99.0,
                                     dtype=PvpropertyDouble[AiFields],
                                     record=AiFields,
@@ -954,7 +958,7 @@ a                              value=-99.0,
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A3_2V5_L Temp.")
-    asic_d0_2v5_temp = pvproperty(name="ASIC_D0_2V5_TEMP"
+    asic_d0_2v5_temp = pvproperty(name="ASIC_D0_2V5_TEMP",
                                   value=-99.0,
                                   dtype=PvpropertyDouble[AiFields],
                                   record=AiFields,
@@ -965,7 +969,7 @@ a                              value=-99.0,
                                   precision=2,
                                   units="C",
                                   doc="ASIC_D0_2V5 Temp.")
-    asic_d1_2v5_temp = pvproperty(name="ASIC_D1_2V5_TEMP"
+    asic_d1_2v5_temp = pvproperty(name="ASIC_D1_2V5_TEMP",
                                   value=-99.0,
                                   dtype=PvpropertyDouble[AiFields],
                                   record=AiFields,
@@ -976,7 +980,7 @@ a                              value=-99.0,
                                   precision=2,
                                   units="C",
                                   doc="ASIC_D1_2V5 Temp.")
-    asic_a0_1v8_temp = pvproperty(name="ASIC_A0_1V8_TEMP"
+    asic_a0_1v8_temp = pvproperty(name="ASIC_A0_1V8_TEMP",
                                   value=-99.0,
                                   dtype=PvpropertyDouble[AiFields],
                                   record=AiFields,
@@ -987,7 +991,7 @@ a                              value=-99.0,
                                   precision=2,
                                   units="C",
                                   doc="ASIC_A0_1V8 Temp.")
-    asic_a1_1v8_temp = pvproperty(name="ASIC_A1_1V8_TEMP"
+    asic_a1_1v8_temp = pvproperty(name="ASIC_A1_1V8_TEMP",
                                   value=-99.0,
                                   dtype=PvpropertyDouble[AiFields],
                                   record=AiFields,
@@ -998,7 +1002,7 @@ a                              value=-99.0,
                                   precision=2,
                                   units="C",
                                   doc="ASIC_A1_1V8 Temp.")
-    asic_a2_1v8_temp = pvproperty(name="ASIC_A2_1V8_TEMP"
+    asic_a2_1v8_temp = pvproperty(name="ASIC_A2_1V8_TEMP",
                                   value=-99.0,
                                   dtype=PvpropertyDouble[AiFields],
                                   record=AiFields,
@@ -1009,7 +1013,7 @@ a                              value=-99.0,
                                   precision=2,
                                   units="C",
                                   doc="ASIC_A2_1V8 Temp.")
-    pcb_ana_temp0 = pvproperty(name="PCB_ANA_TEMP0"
+    pcb_ana_temp0 = pvproperty(name="PCB_ANA_TEMP0",
                                value=-99.0,
                                dtype=PvpropertyDouble[AiFields],
                                record=AiFields,
@@ -1020,7 +1024,7 @@ a                              value=-99.0,
                                precision=2,
                                units="C",
                                doc="PcbAnaTemp0")
-    pcb_ana_temp1 = pvproperty(name="PCB_ANA_TEMP1"
+    pcb_ana_temp1 = pvproperty(name="PCB_ANA_TEMP1",
                                value=-99.0,
                                dtype=PvpropertyDouble[AiFields],
                                record=AiFields,
@@ -1031,7 +1035,7 @@ a                              value=-99.0,
                                precision=2,
                                units="C",
                                doc="PcbAnaTemp1")
-    pcb_ana_temp2 = pvproperty(name="PCB_ANA_TEMP2"
+    pcb_ana_temp2 = pvproperty(name="PCB_ANA_TEMP2",
                                value=-99.0,
                                dtype=PvpropertyDouble[AiFields],
                                record=AiFields,
@@ -1042,7 +1046,7 @@ a                              value=-99.0,
                                precision=2,
                                units="C",
                                doc="PcbAnaTemp2")
-    tropt_temp = pvproperty(name="TROPT_TEMP"
+    tropt_temp = pvproperty(name="TROPT_TEMP",
                             value=-99.0,
                             dtype=PvpropertyDouble[AiFields],
                             record=AiFields,
@@ -1109,9 +1113,10 @@ a                              value=-99.0,
         """
         Scan this record
         """
-        curtime = time.time()
-        checkval = curtime-self.lastmontime > self.monchkdelay.value
-        await instance.write(value=checkval)
+        if self.lastmontime is not None:
+            curtime = time.time()
+            checkval = curtime-self.lastmontime > self.monchkdelay.value
+            await instance.write(value=checkval)
 
     @set_monitor.putter
     async def set_monitor(self, instance, flag):
@@ -1120,7 +1125,7 @@ a                              value=-99.0,
         else:
             state = 'off'
         self.log.info(f"Requested epix register configure - monitoring {state}")
-        data = await self.async_lib.library.to_thread(self.configure, bool(flag), self.monitor_period, self.auto_trigger_period)
+        data = await self.async_lib.library.to_thread(self.configure, bool(flag), self.monitor_prescale, self.auto_trigger_period)
         self.log.info("Epix register configuration completed")
         for name, value in data.items():
             if hasattr(self, name):
