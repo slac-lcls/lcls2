@@ -1,9 +1,7 @@
 from psdaq.utils import enable_l2si_drp
 import l2si_drp
-from psdaq.configdb.barrier import Barrier
+from psdaq.configdb.barrier import *
 from psdaq.cas.xpm_utils import timTxId
-import os
-import socket
 import rogue
 import time
 import json
@@ -12,25 +10,6 @@ import logging
 barrier_global = Barrier()
 args = {}
 #logging.basicConfig(level=logging.INFO)
-
-def supervisor_info(json_msg):
-    nworker = 0
-    supervisor=None
-    mypid = os.getpid()
-    myhostname = socket.gethostname()
-    for drp in json_msg['body']['drp'].values():
-        proc_info = drp['proc_info']
-        host = proc_info['host']
-        pid = proc_info['pid']
-        if host==myhostname and drp['active']:
-            if supervisor is None:
-                # we are supervisor if our pid is the first entry
-                supervisor = pid==mypid
-            else:
-                # only count workers for second and subsequent entries on this host
-                nworker+=1
-    return supervisor,nworker
-
 
 def detect_C1100():
     ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
@@ -61,6 +40,7 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     global args
     logging.info('xpmdet_init')
 
+    args["dev"]     =dev
     args["timebase"]=timebase
     args["lanemask"]=lanemask
 
@@ -97,7 +77,7 @@ def xpmdet_connectionInfo(alloc_json_str):
    # time.sleep(1)
 
     alloc_json = json.loads(alloc_json_str)
-    supervisor,nworker = supervisor_info(alloc_json)
+    supervisor,nworker = supervisor_info(alloc_json,args['dev'])
     logging.info(f'xpmdet supervisor: {supervisor}, nworkers: {nworker}')
     barrier_global.init(supervisor,nworker)
 
