@@ -81,7 +81,16 @@ import rogue.protocols.srp
 import pyrogue
 # caproto imports
 from caproto import config_caproto_logging
-from caproto.server import PVGroup, PvpropertyDouble, PvpropertyInteger, PvpropertyString, PvpropertyChar, PvpropertyEnum, template_arg_parser, pvproperty, run
+from caproto.server import (
+        PVGroup,
+        PvpropertyDouble,
+        PvpropertyInteger,
+        PvpropertyString, PvpropertyChar,
+        PvpropertyEnum,
+        template_arg_parser,
+        pvproperty,
+        run
+)
 from caproto.server.records import AoFields, AiFields, LongoutFields, LonginFields, StringinFields, WaveformFields, MbbiFields
 
 
@@ -304,6 +313,7 @@ class EpixMonitoringIOC(PVGroup):
         self.lane = lane
         self.vc = vc
         self.regvc = regvc
+        self.lastmontime = None
         self.monrateconv = 100000000
         self.trigrateconv = 1000
         super().__init__(*args, **kwargs)
@@ -524,9 +534,10 @@ class EpixMonitoringIOC(PVGroup):
         """
         Scan this record
         """
-        curtime = time.time()
-        checkval = curtime-self.lastmontime > self.monchkdelay.value
-        await instance.write(value=checkval)
+        if self.lastmontime is not None:
+            curtime = time.time()
+            checkval = curtime-self.lastmontime > self.monchkdelay.value
+            await instance.write(value=checkval)
 
     @set_monitor.putter
     async def set_monitor(self, instance, flag):
