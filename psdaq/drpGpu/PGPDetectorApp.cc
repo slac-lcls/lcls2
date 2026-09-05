@@ -183,10 +183,10 @@ void PGPDetectorApp::initialize()
 
     // Register Detector types and the .so library that provides them
     auto& f = m_factory;   // Factory must remain in scope to avoid .so closing
-    f.register_type("fakecam",   "libAreaDetector_gpu.so");
+    f.register_type("fakecam",    "libAreaDetector_gpu.so");
     f.register_type("epixuhremu", "libEpixUHRemu_gpu.so");
     f.register_type("epixuhrsim", "libEpixUHRsim_gpu.so");
-    //f.register_type("epixuhr",   "libEpixUHR_gpu.so");
+    f.register_type("epixuhr3x2", "libEpixUHR3x2_gpu.so");
 
     m_det = f.create(m_para.detType, m_para, m_pool);
     if (m_det == nullptr) {

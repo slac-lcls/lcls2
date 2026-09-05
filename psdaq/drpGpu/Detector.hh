@@ -69,6 +69,23 @@ public:
   virtual float const* pedestals_d() const = 0;
   virtual float const* gains_d()     const = 0;
 
+  // The number of AxiStream Batcher sub-frames an L1Accept's payload comprises,
+  // i.e. the highest tdest plus one.  This sizes the Reader's tdest-indexed
+  // sub-frame table, so it counts the leading trigger/event/timing sub-frames as
+  // well as the ones bearing detector data.
+  //
+  // Non-zero: the batch is at the beginning of the DMA payload and the
+  // TimingHeader is sub-frame 0.
+  // Zero:     the DMA payload starts with the TimingHeader, followed by the data
+  //           as one contiguous block.
+  // In both cases a transition's payload is a bare TimingHeader.
+  virtual unsigned     subframeCount()     const { return 0; }
+  // The tdest of the first sub-frame bearing detector data.  Only consulted when
+  // subframeCount() is non-zero.  The Reader concatenates the data sub-frames
+  // into the calibrated buffer in tdest order, so any detector-specific
+  // reordering of them is the Detector's business.
+  virtual unsigned     firstDataSubframe() const { return 0; }
+
   //virtual void recordGraph(cudaStream_t          stream,
   //                         const unsigned&       index_d,
   //                         uint16_t const* const data) = 0;

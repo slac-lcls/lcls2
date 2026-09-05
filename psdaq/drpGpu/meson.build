@@ -178,6 +178,26 @@ cuda_inc_dir = include_directories([
     ],
   )
 
+  EpixUHR3x2_gpu_lib = shared_library('EpixUHR3x2_gpu',
+    [
+      'Detector.cc',
+      'EpixUHR3x2.cu',
+      '../drp/EpixUHR3x2.cc',
+    ],
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    cuda_args: cuda_args,
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      cuda_dep,
+      python_dep,
+      nlohmann_json_dep,
+    ],
+  )
+
   EpixUHRsim_gpu_lib = shared_library('EpixUHRsim_gpu',
     [
       'Detector.cc',
