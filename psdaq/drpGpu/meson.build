@@ -198,6 +198,28 @@ cuda_inc_dir = include_directories([
     ],
   )
 
+  Jungfrau_gpu_lib = shared_library('Jungfrau_gpu',
+    [
+      'Detector.cc',
+      'Jungfrau.cu',
+      '../drp/Jungfrau.cc',
+      '../drp/JungfrauDetectorId.cc',
+    ],
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    cuda_args: cuda_args,
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      cuda_dep,
+      python_dep,
+      nlohmann_json_dep,
+      sls_dep,
+    ],
+  )
+
   EpixUHRsim_gpu_lib = shared_library('EpixUHRsim_gpu',
     [
       'Detector.cc',

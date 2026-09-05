@@ -86,23 +86,23 @@ struct EventPayload
 // device pointers it needs.
 template<class Calib>
 __global__
-void _event(EventKernelArgs const a, Calib const calib)
+void _event(EventKernelArgs const args, Calib const calib)
 {
-  if (*a.state != 2)  return;
+  if (*args.state != 2)  return;
 
   auto const tid    = blockIdx.x * blockDim.x + threadIdx.x;
   auto const stride = blockDim.x * gridDim.x;
 
-  auto const dmaBufIdx{*a.dmaBufferIdx}; // All threads load these into a register
-  auto const pblBufIdx{*a.pebbleIdx};    // from global memory
+  auto const dmaBufIdx{*args.dmaBufferIdx}; // All threads load these into a register
+  auto const pblBufIdx{*args.pebbleIdx};    // from global memory
 
-  auto const __restrict__ in  = (uint32_t const*)a.dmaBuffers[dmaBufIdx];
-  auto const __restrict__ hdr = a.hdrBuffers + pblBufIdx * a.hdrBufsCnt;
+  auto const __restrict__ in  = (uint32_t const*)args.dmaBuffers[dmaBufIdx];
+  auto const __restrict__ hdr = args.hdrBuffers + pblBufIdx * args.hdrBufsCnt;
 
   constexpr auto nDscWds = sizeof(DmaDsc)/sizeof(uint32_t);
   constexpr auto nHdrWds = sizeof(Pds::TimingHeader)/sizeof(uint32_t);
   constexpr auto nLdrWds = nDscWds + nHdrWds;
-  auto const     nFrmWds = a.frameSize/sizeof(uint32_t);
+  auto const     nFrmWds = args.frameSize/sizeof(uint32_t);
 
   // Where the TimingHeader sits depends on whether the Detector presents
   // sub-frames: without them the payload starts with it; with them the payload
@@ -110,25 +110,25 @@ void _event(EventKernelArgs const a, Calib const calib)
   // a transition's payload is a bare TimingHeader, which is what tells the two
   // apart.
   auto const              dmaSize = in[1];
-  auto const              batched = a.subFrames && (dmaSize != sizeof(Pds::TimingHeader));
+  auto const              batched = args.subFrames && (dmaSize != sizeof(Pds::TimingHeader));
   auto const __restrict__ payload = (uint8_t const*)&in[nFrmWds];
-  auto const __restrict__ th      = (uint32_t const*)(batched ? (*a.subFrames)[0].data(payload)
+  auto const __restrict__ th      = (uint32_t const*)(batched ? (*args.subFrames)[0].data(payload)
                                                               : payload);
   if      (tid < nDscWds)  { hdr[tid] = in[tid]; }
   else if (tid < nLdrWds)  { hdr[tid] = th[tid - nDscWds]; }
 
-  EventPayload const p{payload,
-                       dmaSize,
-                       &a.calibBuffers[pblBufIdx * a.calibBufsCnt],
-                       a.calibBufsCnt,
-                       a.subFrames,
-                       batched,
-                       pblBufIdx};
-  calib.process(p, tid, stride);
+  EventPayload const pyld{payload,
+                          dmaSize,
+                          &args.calibBuffers[pblBufIdx * args.calibBufsCnt],
+                          args.calibBufsCnt,
+                          args.subFrames,
+                          batched,
+                          pblBufIdx};
+  calib.process(pyld, tid, stride);
 
   // The state variable is likely set before the last thread is done, but the
   // next kernel won't check it before all threads of this kernel complete
-  if (tid == 0)  *a.state = 3;
+  if (tid == 0)  *args.state = 3;
 }
 
 // Grid-stride pedestal/gain calibration of one contiguous run of raw elements.
@@ -181,20 +181,20 @@ struct PedGainCalib
   unsigned     rangeBits;
 
   __device__
-  void process(const EventPayload& p, unsigned tid, unsigned stride) const
+  void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
   {
-    if (p.size <= sizeof(Pds::TimingHeader))  return;   // Transition: no payload
+    if (pyld.size <= sizeof(Pds::TimingHeader))  return;   // Transition: no payload
 
-    auto const __restrict__ raw = (uint16_t const*)(p.data + sizeof(Pds::TimingHeader));
-    auto const payloadCnt = (p.size - sizeof(Pds::TimingHeader))/sizeof(uint16_t);
-    auto const elementCnt = payloadCnt > p.outCnt ? p.outCnt : payloadCnt;
-    auto const __restrict__ r = ref && refBufCnt
-                              ? &ref[(p.pebbleIdx % refBufCnt) * p.outCnt]
-                              : (float const*)nullptr;
+    auto const __restrict__ raw = (uint16_t const*)(pyld.data + sizeof(Pds::TimingHeader));
+    auto const payloadCnt = (pyld.size - sizeof(Pds::TimingHeader))/sizeof(uint16_t);
+    auto const elementCnt = payloadCnt > pyld.outCnt ? pyld.outCnt : payloadCnt;
+    auto const __restrict__ refBuf = ref && refBufCnt
+                                   ? &ref[(pyld.pebbleIdx % refBufCnt) * pyld.outCnt]
+                                   : (float const*)nullptr;
     // pgStride is the pedestal/gain plane stride, i.e. the detector's frame
     // size, not this event's element count, which may be short
-    pedGainCalibrate(p.out, raw, elementCnt, rangeOffset, rangeBits,
-                     peds, gains, p.outCnt, 0, r, tid, stride);
+    pedGainCalibrate(pyld.out, raw, elementCnt, rangeOffset, rangeBits,
+                     peds, gains, pyld.outCnt, 0, refBuf, tid, stride);
   }
 };
 

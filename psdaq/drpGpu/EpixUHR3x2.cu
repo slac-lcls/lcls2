@@ -130,25 +130,25 @@ void EpixUHR3x2::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
 struct EpixUHR3x2Calib
 {
   __device__
-  void process(const EventPayload& p, unsigned tid, unsigned stride) const
+  void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
   {
-    if (!p.batched)  return;            // A transition: payload is a TimingHeader
+    if (!pyld.batched)  return;            // A transition: payload is a TimingHeader
     // A failed scan means the payload is unintelligible, so don't interpret it.
     // _waitForDMA has reported it and the host sees the latched status.
-    if (!p.subFrames->ok())  return;
+    if (!pyld.subFrames->ok())  return;
 
-    auto const strideCnt = p.outCnt / EpixUHR3x2::NumAsics;
+    auto const strideCnt = pyld.outCnt / EpixUHR3x2::NumAsics;
     for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {
-      auto const& sub = (*p.subFrames)[EpixUHR3x2::FirstDataTdest + k];
+      auto const& sub = (*pyld.subFrames)[EpixUHR3x2::FirstDataTdest + k];
       auto const  off = k * strideCnt;
       auto const  cnt = sub.size / sizeof(__half);
       if (cnt == 0) {                   // Withheld ASIC: clear the hole it leaves
-        for (auto i = tid; i < strideCnt; i += stride)  p.out[off + i] = 0.f;
+        for (auto i = tid; i < strideCnt; i += stride)  pyld.out[off + i] = 0.f;
         continue;
       }
-      auto const __restrict__ src = (__half const*)sub.data(p.data);
-      auto const              n   = cnt > strideCnt ? strideCnt : cnt;
-      for (auto i = tid; i < n; i += stride)  p.out[off + i] = __half2float(src[i]);
+      auto const __restrict__ src = (__half const*)sub.data(pyld.data);
+      auto const              nElem = cnt > strideCnt ? strideCnt : cnt;
+      for (auto i = tid; i < nElem; i += stride)  pyld.out[off + i] = __half2float(src[i]);
     }
   }
 };

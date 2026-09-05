@@ -187,6 +187,7 @@ void PGPDetectorApp::initialize()
     f.register_type("epixuhremu", "libEpixUHRemu_gpu.so");
     f.register_type("epixuhrsim", "libEpixUHRsim_gpu.so");
     f.register_type("epixuhr3x2", "libEpixUHR3x2_gpu.so");
+    f.register_type("jungfrau",   "libJungfrau_gpu.so");
 
     m_det = f.create(m_para.detType, m_para, m_pool);
     if (m_det == nullptr) {
