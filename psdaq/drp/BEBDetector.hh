@@ -35,6 +35,8 @@ public:  // Implementation of Detector
     void           connectionShutdown() override;
     void           connect       (const nlohmann::json&, const std::string& collectionId) override;
     unsigned       configure     (const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
+    // Avoid "overloaded virtual function "Drp::Detector::event" is only partially overridden" warning
+    using Detector::event;
     void           event         (XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
     void           shutdown      () override;
 
