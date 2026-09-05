@@ -1,6 +1,7 @@
 #include "Reader.hh"
 
 #include "Detector.hh"
+#include "ReaderKernels.cuh"            // For EventKernelArgs
 #include "drp/spscqueue.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -315,47 +316,6 @@ int Reader::_setupGraph(unsigned reader)
   return 0;
 }
 
-// Calibrate one contiguous run of raw elements into 'calib'.
-//
-// The pedestal and gain arrays are laid out as [range][pgStride], covering the
-// detector's whole frame, so a caller that calibrates the frame a piece at a
-// time (as the AxiStream Batcher path does, one sub-frame per call) passes the
-// frame's element count as pgStride and the piece's position within the frame as
-// pgOffset.  A caller handling the frame in one go passes pgStride = nElements
-// and pgOffset = 0.
-static __device__
-void _calibrate(float*        const        __restrict__ calib,
-                uint16_t      const* const __restrict__ raw,
-                unsigned      const                     nElements,
-                unsigned      const                     rangeOffset,
-                unsigned      const                     rangeBits,
-                float         const* const __restrict__ pedArray,
-                float         const* const __restrict__ gainArray,
-                unsigned      const                     pgStride,
-                unsigned      const                     pgOffset,
-                float         const* const __restrict__ ref)
-{
-  auto const tid    = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const stride = blockDim.x * gridDim.x;
-
-  auto const rangeMask{(1 << rangeBits) - 1};
-  auto const dataMask {(1 << rangeOffset) - 1};
-  for (auto i = tid; i < nElements; i += stride) {
-    auto const              range = (raw[i] >> rangeOffset) & rangeMask;
-    auto const __restrict__ peds  = &pedArray [range * pgStride + pgOffset];
-    auto const __restrict__ gains = &gainArray[range * pgStride + pgOffset];
-    auto const              data  = raw[i] & dataMask;
-    calib[i] = (float(data) - peds[i]) * gains[i];
-
-    //if (i < 4) {
-    //  printf("### Reader: tid %u, i %u: raw %p: %04x, dat %u, rng %u, ped %f, gn %f, cal %f, ref %p: %f\n",
-    //         tid, i, &raw[i], raw[i], data, range, peds[i], gains[i], calib[i], &ref[i], ref ? ref[i] : 0.f);
-    //}
-    //if (ref && (calib[i] != ref[i])) {
-    //  printf("### Reader: blk %d, thr %d, Mismatch @ %u: calib %f != ref %f\n", blockIdx.x, threadIdx.x, i, calib[i], ref[i]);
-    //}
-  }
-}
 
 // Wait for the DMA size word to become non-zero
 static __global__
@@ -436,124 +396,6 @@ void _waitForDMA(unsigned  const                            reader,
     //       pebbleQueue->head(), pebbleQueue->tail(), pebbleQueue->occupancy());
     *state = 2;
     DBG(*stateMon = 5; ++(*pblWtCtr);)
-  }
-}
-
-// This copies the DmaDsc and TimingHeader into a host-visible buffer
-static __global__
-void _event(unsigned  const                            reader,
-            unsigned* const               __restrict__ state,
-            unsigned* const               __restrict__ dmaBufferIdx,
-            unsigned* const               __restrict__ pebbleIdx,
-            uint8_t   const* const* const __restrict__ dmaBuffers,    // [dmaCount][maxDmaSize]
-            size_t    const                            frameSize,
-            uint32_t* const               __restrict__ hdrBuffers,    // [nBuffers * hdrBufsCnt]
-            size_t    const                            hdrBufsCnt,
-            float*    const               __restrict__ calibBuffers,  // [nBuffers * calibBufsCnt]
-            size_t    const                            calibBufsCnt,
-            float     const* const        __restrict__ pedArray,
-            float     const* const        __restrict__ gainArray,
-            //auto      const                            calibFn,       // Not working
-            unsigned  const                            rangeOffset,
-            unsigned  const                            rangeBits,
-            EvtBatcherSubFrames const* const __restrict__ subFrames,   // nullptr if not batched
-            unsigned  const                            firstDataSubFrame,
-            float     const* const        __restrict__ refBuffers,
-            unsigned  const                            refBufCnt,
-            uint64_t* const               __restrict__ stateMon)
-{
-  if (*state == 2) {
-    auto const tid = blockIdx.x * blockDim.x + threadIdx.x;
-    auto const __restrict__ dmaBufs = &dmaBuffers[0];
-
-    auto const dmaBufIdx{*dmaBufferIdx}; // All threads load DMA idx into a register from global memory
-    auto const pblBufIdx{*pebbleIdx};    // All threads load pebble idx into a register from global memory
-
-    // Save the DMA descriptor and TimingHeader in pinned memory
-    //if (tid == 0)  printf("### Reader[%u]: dmaIdx %3u, dmaBuf %p, pblIdx %4u\n", reader, dmaBufIdx, dmaBufs, pblBufIdx);
-    auto const __restrict__ in  = (uint32_t*)dmaBufs[dmaBufIdx];
-    //if (threadIdx.x == 0)  printf("### Reader[%u]: blk %3d, dmaIdx %2u, pblIdx %4u, in %p, in[1] %u, in[9:8] %08x, %08x\n",
-    //                              reader, blockIdx.x, dmaBufIdx, pblBufIdx, in, in[1], in[9], in[8]);
-    //if (tid == 0)  printf("### Reader[%u]: hdrBufs %p\n", reader, hdrBuffers);
-    auto const __restrict__ hdr = hdrBuffers + pblBufIdx * hdrBufsCnt;
-    //if (threadIdx.x == 0 && blockIdx.x == 88)  printf("### Reader[%u]: blk %3d, ob %p, pblIdx %u, hdrBufsCnt %lu, hdr %p\n", reader, blockIdx.x, hdrBuffers, pblBufIdx, hdrBufsCnt, hdr);
-    constexpr auto nDscWds = sizeof(DmaDsc)/sizeof(*in);
-    constexpr auto nHdrWds = sizeof(TimingHeader)/sizeof(*in);
-    constexpr auto nLdrWds = nDscWds + nHdrWds;
-    const     auto nFrmWds = frameSize/sizeof(*in);
-
-    // The DMA payload follows the line bearing the DmaDsc.  Where the
-    // TimingHeader sits within it depends on whether the Detector presents
-    // sub-frames:
-    // - it doesn't: the payload starts with the TimingHeader;
-    // - it does:    the payload starts with the AxiStream Batcher batch, which
-    //               _waitForDMA has already scanned, and the TimingHeader is
-    //               sub-frame 0, as on the CPU side.
-    // Either way a transition's payload is a bare TimingHeader, which is what
-    // distinguishes it from an L1Accept's batch.
-    auto const              dmaSize = in[1];
-    auto const              batched = subFrames && (dmaSize != sizeof(TimingHeader));
-    auto const __restrict__ payload = (uint8_t const*)&in[nFrmWds];
-    auto const __restrict__ th      = (uint32_t const*)(batched ? (*subFrames)[0].data(payload)
-                                                               : payload);
-    //if (tid == 0)  printf("### Reader[%u]: nDscWds %lu, nLdrWds %lu\n", reader, nDscWds, nLdrWds);
-    if      (tid < nDscWds)  { hdr[tid] = in[tid]; } //printf("### Reader[%u]: tid %d, hdr %08x\n", reader, tid, hdr[tid]); }
-    else if (tid < nLdrWds)  { hdr[tid] = th[tid - nDscWds]; } //printf("### Reader[%u]: tid %d, hdr %08x\n", reader, tid, hdr[tid]); }
-
-    // Calibrate
-    //if (threadIdx.x == 0 && blockIdx.x == 88)  printf("### Reader[%u]: blk %3d, in[1] %u, th sz %lu\n",
-    //                                                  reader, blockIdx.x, in[1], sizeof(TimingHeader));
-    auto const __restrict__ out = &calibBuffers[pblBufIdx * calibBufsCnt];
-    auto const __restrict__ ref = refBuffers ? &refBuffers[(pblBufIdx % refBufCnt) * calibBufsCnt] : (float*)0;
-
-    if (batched) {
-      // A failed scan means the payload is unintelligible, so don't calibrate it.
-      // _waitForDMA has already reported it and the host sees the latched status.
-      if (subFrames->ok()) {
-        // Concatenate the data sub-frames into the calibrated buffer in tdest
-        // order, each at a fixed position so that a withheld sub-frame (e.g. a
-        // disabled ASIC) leaves a hole rather than shifting its successors, as
-        // on the CPU side.  Any detector-specific reordering of the sub-frames
-        // is the Detector's business, not the Reader's.
-        auto const nData     = subFrames->capacity() - firstDataSubFrame;
-        auto const strideCnt = calibBufsCnt / nData;
-        auto const stride    = blockDim.x * gridDim.x;
-        for (unsigned sf = firstDataSubFrame; sf < subFrames->capacity(); ++sf) {
-          auto const& sub = (*subFrames)[sf];
-          auto const  off = (sf - firstDataSubFrame) * strideCnt;
-          auto const  cnt = sub.size / sizeof(uint16_t);
-          if (cnt == 0) {               // Withheld: clear the hole it leaves
-            for (auto i = tid; i < strideCnt; i += stride)  out[off + i] = 0.f;
-            continue;
-          }
-          //if (tid == 0)  printf("### Reader[%u]: sf %u, off %lu, cnt %u of %lu\n", reader, sf, off, cnt, strideCnt);
-          _calibrate(&out[off], (uint16_t const*)sub.data(payload),
-                     cnt > strideCnt ? strideCnt : cnt,
-                     rangeOffset, rangeBits, pedArray, gainArray,
-                     calibBufsCnt, off, ref ? &ref[off] : ref);
-        }
-      }
-    } else if (dmaSize > sizeof(TimingHeader)) { // Calibrate only when there's a payload
-      auto const __restrict__ raw = (uint16_t*)&in[nFrmWds + nHdrWds];
-      //if (tid == 0)  printf("### Reader[%u]: raw %p\n", reader, raw);
-      auto const payloadCnt = (dmaSize - sizeof(TimingHeader))/sizeof(*raw);
-      //if (tid == 0)  printf("### Reader[%u]: payloadCnt %ld, calibBufsCnt %lu\n", reader, payloadCnt, calibBufsCnt);
-      auto const elementCnt = payloadCnt > calibBufsCnt ? calibBufsCnt : payloadCnt;
-      //if (tid == 0)  printf("### Reader[%u]: idx %u, refBuffers %p, ref %p\n", reader, pblBufIdx%refBufCnt, refBuffers, ref);
-
-      //if (tid == 0) *stateMon = 11;
-      // pgStride is the pedestal/gain plane stride, i.e. the detector's frame
-      // size, not this event's element count, which may be short
-      _calibrate(out, raw, elementCnt, rangeOffset, rangeBits, pedArray, gainArray,
-                 calibBufsCnt, 0, ref);
-      //if (calibFn) (*calibFn)(out, raw, elementCnt); // Not working
-      //if (tid == 0) *stateMon = 12;
-    }
-
-    // Advance to the next state
-    // State variable is likely set before the last thread is done, but the
-    // next kernel won't check it before all threads of this kernel complete
-    if (tid == 0) *state = 3;
   }
 }
 
@@ -642,14 +484,6 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto const calibBuffers_d = m_pool.calibBuffers_d();
   auto const calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers_d);
-  auto const rangeOffset    = m_det.rangeOffset();
-  auto const rangeBits      = m_det.rangeBits();
-  auto const refBuffers_d   = m_det.referenceBuffers();
-  auto const refBufCnt      = m_det.referenceBufCnt();
-  auto const pedArray_d     = m_det.pedestals_d();
-  auto const gainArray_d    = m_det.gains_d();
-  auto const firstDataSubFrame = m_det.firstDataSubframe();
-  //auto const calibFn_d      = m_det.getCalibFn(); // Not working
   auto const nRdrShft = ffs(m_nReaders) - 1; // log2(nReaders)
 
   // Determine how many processing resources to reserve for the Reader kernel
@@ -694,29 +528,25 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                                    m_metrics.dmaWtCtrs[reader]);
   chkError(cudaGetLastError(), "Launch of _waitForDMA kernel failed");
 
-  // Copy the DMA descriptor and the timing header to host-visible pinned memory buffers
-  // Calibrate the raw data from the DMA buffers into the calibrated data buffers
-  //constexpr auto iPayload { (sizeof(DmaDsc)+sizeof(TimingHeader))/sizeof(uint32_t) };
-  _event<<<nBlocks, nThreads, 0, stream>>>(reader,
-                                           m_states_d[reader],
-                                           m_dmaBufferIdxes[reader],
-                                           m_pebbleIdxes[reader],
-                                           dmaBuffers_d,
-                                           frameSize,
-                                           hostWrtBufs,
-                                           hostWrtBufsCnt,
-                                           calibBuffers_d,
-                                           calibBufsCnt,
-                                           pedArray_d,
-                                           gainArray_d,
-                                           //calibFn_d, // Not working
-                                           rangeOffset,
-                                           rangeBits,
-                                           m_subFrames[reader].d,
-                                           firstDataSubFrame,
-                                           refBuffers_d,
-                                           refBufCnt,
-                                           m_metrics.states[reader]);
+  // Copy the DMA descriptor and the timing header to host-visible pinned memory
+  // buffers, and let the Detector interpret the payload into the calibrated data
+  // buffers.  The kernel is launched by the Detector, from its own .so, because
+  // its per-element work cannot be called across a CUDA module boundary; see
+  // ReaderKernels.cuh.  The virtual dispatch happens here, on the host, once per
+  // graph recording.
+  EventKernelArgs const args{reader,
+                             m_states_d[reader],
+                             m_dmaBufferIdxes[reader],
+                             m_pebbleIdxes[reader],
+                             dmaBuffers_d,
+                             frameSize,
+                             hostWrtBufs,
+                             hostWrtBufsCnt,
+                             calibBuffers_d,
+                             calibBufsCnt,
+                             m_subFrames[reader].d,
+                             m_metrics.states[reader]};
+  m_det.recordEvent(stream, nBlocks, nThreads, args);
   chkError(cudaGetLastError(), "Launch of _event kernel failed");
 
   // Publish the current head index and re-launch

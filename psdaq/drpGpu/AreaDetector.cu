@@ -1,5 +1,7 @@
 #include "AreaDetector.hh"
 
+#include "ReaderKernels.cuh"
+
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -156,6 +158,22 @@ void AreaDetector::recordGraph(cudaStream_t          stream,
   _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, m_nPixels);
 }
 #endif
+
+// Instantiating the kernel template here puts the calibration in the same CUDA
+// module as the kernel, so it inlines.  See ReaderKernels.cuh.
+void AreaDetector::recordEvent(cudaStream_t           stream,
+                               unsigned               blocks,
+                               unsigned               threads,
+                               const EventKernelArgs& args)
+{
+  PedGainCalib const calib{pedestals_d(),
+                           gains_d(),
+                           referenceBuffers(),
+                           referenceBufCnt(),
+                           rangeOffset(),
+                           rangeBits()};
+  _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
+}
 
 // The class factory
 

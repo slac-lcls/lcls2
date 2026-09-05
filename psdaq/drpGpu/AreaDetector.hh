@@ -25,6 +25,10 @@ public:
   unsigned     rangeBits()   const override { return 2; }
   float const* pedestals_d() const override { return nullptr; }; // @todo: TBD
   float const* gains_d()     const override { return nullptr; }; // @todo: TBD
+  // Launches the _event kernel template instantiated with PedGainCalib, from
+  // this .so, so that the calibration is inlined into the kernel
+  void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
+                   const EventKernelArgs&) override;
 
 //  void recordGraph(cudaStream_t          stream,
 //                   const unsigned&       index,

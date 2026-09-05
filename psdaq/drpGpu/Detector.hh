@@ -11,6 +11,10 @@
 namespace Drp {
   namespace Gpu {
 
+// Defined in ReaderKernels.cuh, which only .cu files include: Detector.cc is
+// compiled by the host compiler and must not see __global__ code
+struct EventKernelArgs;
+
 enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
 enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
        EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
@@ -86,10 +90,18 @@ public:
   // reordering of them is the Detector's business.
   virtual unsigned     firstDataSubframe() const { return 0; }
 
-  //virtual void recordGraph(cudaStream_t          stream,
-  //                         const unsigned&       index_d,
-  //                         uint16_t const* const data) = 0;
-  //virtual CalibrateFn_t* getCalibFn() const { return nullptr; } // Not working
+  // Record this detector's per-event kernel into the given stream.
+  //
+  // Host-side and called once per graph recording, so the virtual costs nothing.
+  // The implementation launches its own instantiation of the _event kernel
+  // template, which is why the detector's per-element work must live in the
+  // detector's .so: device code cannot be called across CUDA module boundaries,
+  // so a device function pointer handed to a kernel in the executable does not
+  // work.  See ReaderKernels.cuh for the details and the measurements.
+  virtual void recordEvent(cudaStream_t    stream,
+                           unsigned        blocks,
+                           unsigned        threads,
+                           const EventKernelArgs&) = 0;
 
   virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
   virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only

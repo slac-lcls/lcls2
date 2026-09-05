@@ -1,5 +1,9 @@
 #include "EpixUHR3x2.hh"
 
+#include "ReaderKernels.cuh"
+
+#include <cuda_fp16.h>
+
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -50,7 +54,7 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   // assert(): the GPU DRP is built with NDEBUG, which would compile it out.
   constexpr size_t maxLineWidth{64};     // Widest AXI stream this can arrive on
   constexpr size_t batchOverhead{(1 + NumSubFrames) * maxLineWidth};
-  constexpr size_t minDmaSize{NPixels * sizeof(uint16_t) + sizeof(TimingHeader) + batchOverhead};
+  constexpr size_t minDmaSize{NPixels * sizeof(__half) + sizeof(TimingHeader) + batchOverhead};
   if (minDmaSize > pool.dmaSize()) {
     logging::critical("DMA buffer of %zu bytes is too small for %u pixels in %u sub-frames: need %zu",
                       pool.dmaSize(), NPixels, NumSubFrames, minDmaSize);
@@ -59,18 +63,11 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
 
   // Set up buffers
   pool.createCalibBuffers(NPixels);
-
-  // Allocate space for the calibration constants
-  chkError(cudaMalloc(&m_pedsVec_d,  NRanges * NPixels * sizeof(*m_pedsVec_d)));
-  chkError(cudaMalloc(&m_gainsVec_d, NRanges * NPixels * sizeof(*m_gainsVec_d)));
 }
 
 EpixUHR3x2::~EpixUHR3x2()
 {
   auto pool = m_pool->getAs<MemPoolGpu>();
-  if (m_gainsVec_d)  chkError(cudaFree(m_gainsVec_d));
-  if (m_pedsVec_d)   chkError(cudaFree(m_pedsVec_d));
-
   pool->destroyCalibBuffers();
 }
 
@@ -107,19 +104,7 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     return rc;
   }
 
-  // Load the calibration constants onto the GPU
-  // @todo: Fetch calibration constants
-  std::vector<float> peds(NPixels, 0.0);
-  std::vector<float> gains(NPixels, 1.0);
-  auto peds_d  = m_pedsVec_d;
-  auto gains_d = m_gainsVec_d;
-  for (unsigned range = 0; range < NRanges; ++range) {
-    chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
-    chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
-    peds_d  += NPixels;
-    gains_d += NPixels;
-  }
-
+  // Nothing to upload: the panel's data is calibrated in the detector's firmware
   return rc;
 }
 
@@ -131,11 +116,51 @@ void EpixUHR3x2::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
 
   // The batched payload is at least the pixel data plus the TimingHeader; the
   // batcher's own header, tails and line padding make it somewhat larger
-  constexpr auto minEventSize{sizeof(TimingHeader) + NPixels * sizeof(uint16_t)};
+  constexpr auto minEventSize{sizeof(TimingHeader) + NPixels * sizeof(__half)};
   if      (size  < minEventSize)       dgram.xtc.damage.increase(Damage::MissingData);
   else if (size == m_pool->dmaSize())  dgram.xtc.damage.increase(Damage::Truncated);
 
   // @todo: Deal with prescaled raw for the panel here?
+}
+
+// The panel's data is calibrated fp16 from firmware, so the per-element work is
+// a width conversion.  The policy also owns the placement of each ASIC's
+// sub-frame within the calibrated buffer, because sub-frame tdests are not
+// necessarily a contiguous run and only the Detector knows the mapping.
+struct EpixUHR3x2Calib
+{
+  __device__
+  void process(const EventPayload& p, unsigned tid, unsigned stride) const
+  {
+    if (!p.batched)  return;            // A transition: payload is a TimingHeader
+    // A failed scan means the payload is unintelligible, so don't interpret it.
+    // _waitForDMA has reported it and the host sees the latched status.
+    if (!p.subFrames->ok())  return;
+
+    auto const strideCnt = p.outCnt / EpixUHR3x2::NumAsics;
+    for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {
+      auto const& sub = (*p.subFrames)[EpixUHR3x2::FirstDataTdest + k];
+      auto const  off = k * strideCnt;
+      auto const  cnt = sub.size / sizeof(__half);
+      if (cnt == 0) {                   // Withheld ASIC: clear the hole it leaves
+        for (auto i = tid; i < strideCnt; i += stride)  p.out[off + i] = 0.f;
+        continue;
+      }
+      auto const __restrict__ src = (__half const*)sub.data(p.data);
+      auto const              n   = cnt > strideCnt ? strideCnt : cnt;
+      for (auto i = tid; i < n; i += stride)  p.out[off + i] = __half2float(src[i]);
+    }
+  }
+};
+
+// Instantiating the kernel template here puts the conversion in the same CUDA
+// module as the kernel, so it inlines.  See ReaderKernels.cuh.
+void EpixUHR3x2::recordEvent(cudaStream_t           stream,
+                             unsigned               blocks,
+                             unsigned               threads,
+                             const EventKernelArgs& args)
+{
+  _event<EpixUHR3x2Calib><<<blocks, threads, 0, stream>>>(args, EpixUHR3x2Calib{});
 }
 
 // The class factory

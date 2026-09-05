@@ -1,5 +1,7 @@
 #include "EpixUHRsim.hh"
 
+#include "ReaderKernels.cuh"
+
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/VarDef.hh"
 #include "xtcdata/xtc/DescData.hh"
@@ -40,6 +42,10 @@ public:
   unsigned     rangeBits()   const override { return 0; /* Not used */ }
   float const* pedestals_d() const override { return nullptr; /* Not used */ }
   float const* gains_d()     const override { return nullptr; /* Not used */ }
+
+  // This class only sets the panel up; EpixUHRsim launches the event kernel
+  void recordEvent(cudaStream_t, unsigned, unsigned,
+                   const EventKernelArgs&) override { /* Not used */ }
 
 //  void recordGraph(cudaStream_t          stream,
 //                   const unsigned&       index,
@@ -382,6 +388,22 @@ void EpixUHRsim::recordGraph(cudaStream_t          stream,
   _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, peds, gains);
 }
 #endif
+
+// Instantiating the kernel template here puts the calibration in the same CUDA
+// module as the kernel, so it inlines.  See ReaderKernels.cuh.
+void EpixUHRsim::recordEvent(cudaStream_t           stream,
+                             unsigned               blocks,
+                             unsigned               threads,
+                             const EventKernelArgs& args)
+{
+  PedGainCalib const calib{pedestals_d(),
+                           gains_d(),
+                           referenceBuffers(),
+                           referenceBufCnt(),
+                           rangeOffset(),
+                           rangeBits()};
+  _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
+}
 
 // The class factory
 

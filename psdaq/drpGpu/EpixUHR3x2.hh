@@ -20,14 +20,6 @@ public:  // ePixUHR3x2 parameters:
   static const unsigned NumCols     {   192 };  // elemRowSize in drp/EpixUHR3x2.cc
   static const unsigned AsicPixels  { NumRows*NumCols };
   static const unsigned NPixels     { NumAsics*AsicPixels };
-  // @todo: Confirm these against the firmware.  Taken from the ePixUHR values in
-  //        EpixUHRemu/EpixUHRsim, i.e. gain-expanded 14-bit data with 2 gain
-  //        bits above it.  drp/EpixUHR3x2.cc notes that 4 of the 16 bits are
-  //        unused when the data is *not* gain-expanded, which would make these
-  //        12 and 2 instead.
-  static const unsigned RangeOffset {    14 };
-  static const unsigned RangeBits   {     2 };
-  static const unsigned NRanges     {     4 };
 
   // The payload is AxiStream Batcher formatted:
   //   tdest 0: Trigger (XPM), which is where the TimingHeader lives
@@ -50,15 +42,21 @@ public:
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-  unsigned     rangeOffset()       const override { return RangeOffset; }
-  unsigned     rangeBits()         const override { return RangeBits; }
-  float const* pedestals_d()       const override { return m_pedsVec_d; };
-  float const* gains_d()           const override { return m_gainsVec_d; };
+  // The panel's data arrives already calibrated to fp16 by the detector's
+  // firmware, so there is no pedestal or gain correction to do on the GPU and no
+  // gain range encoded in the data: the per-element work is an fp16 -> fp32
+  // conversion.  These four exist only to satisfy the base class.
+  unsigned     rangeOffset()       const override { return 0;       /* Not used */ }
+  unsigned     rangeBits()         const override { return 0;       /* Not used */ }
+  float const* pedestals_d()       const override { return nullptr; /* Not used */ }
+  float const* gains_d()           const override { return nullptr; /* Not used */ }
   unsigned     subframeCount()     const override { return NumSubFrames; }
   unsigned     firstDataSubframe() const override { return FirstDataTdest; }
-private:
-  float* m_pedsVec_d;                   // [NRanges * NPixels]
-  float* m_gainsVec_d;                  // [NRanges * NPixels]
+
+  // Launches the _event kernel template instantiated with this detector's
+  // fp16 -> fp32 policy, from this .so, so that it is inlined into the kernel
+  void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
+                   const EventKernelArgs&) override;
 };
 
   } // Gpu
