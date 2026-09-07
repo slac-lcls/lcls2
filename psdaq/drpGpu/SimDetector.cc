@@ -144,7 +144,7 @@ size_t SimDetector::_genTimingHeader(uint8_t* buffer, TransitionId::Value tid)
 
 void SimDetector::_trigger(uint8_t* dmaBuffer, uint32_t dmaSize) const
 {
-  DmaDsc dmaDsc{0, dmaSize};
+  DmaDsc dmaDsc{0x02000000, dmaSize};
 
   // Write the dmaSize to the 2nd word of the DMA buffer
   chkError(cudaMemcpyAsync((void*)dmaBuffer, &dmaDsc, sizeof(dmaDsc), cudaMemcpyDefault, m_stream));
