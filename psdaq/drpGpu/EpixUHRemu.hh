@@ -32,15 +32,11 @@ public:
   unsigned     rangeBits()   const override { return RangeBits; }
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
+
   // Launches the _event kernel template instantiated with PedGainCalib, from
   // this .so, so that the calibration is inlined into the kernel
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
-
-  //void recordGraph(cudaStream_t          stream,
-  //                 const unsigned&       index,
-  //                 uint16_t const* const data) override;
-  //CalibrateFn_t* getCalibFn() const override; // Not working
 private:
   float* m_pedsVec_d;                   // [NRanges * NPixels]
   float* m_gainsVec_d;                  // [NRanges * NPixels]

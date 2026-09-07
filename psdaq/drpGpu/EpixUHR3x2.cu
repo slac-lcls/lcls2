@@ -50,8 +50,10 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
 
   // Check there is enough space in the DMA buffers for this many pixels.  The
   // AxiStream Batcher adds a header line plus a tail line per sub-frame, and
-  // pads each sub-frame up to a line boundary, so allow for that.  Not an
-  // assert(): the GPU DRP is built with NDEBUG, which would compile it out.
+  // pads each sub-frame up to a line boundary, so allow for that.  The line
+  // size is in the header's 4-bit width field.  It is not necessarily the
+  // same as the PCIe frame size.  Not an assert(): the GPU DRP is built with
+  // NDEBUG, which would compile it out.
   constexpr size_t maxLineWidth{64};     // Widest AXI stream this can arrive on
   constexpr size_t batchOverhead{(1 + NumSubFrames) * maxLineWidth};
   constexpr size_t minDmaSize{NPixels * sizeof(__half) + sizeof(TimingHeader) + batchOverhead};

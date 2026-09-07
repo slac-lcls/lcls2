@@ -18,21 +18,15 @@ public:
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-//  __device__ void calibrate(float*    const calib,
-//                            uint16_t* const raw,
-//                            unsigned  const count) const;
   unsigned     rangeOffset() const override { return 14; }
   unsigned     rangeBits()   const override { return 2; }
-  float const* pedestals_d() const override { return nullptr; }; // @todo: TBD
-  float const* gains_d()     const override { return nullptr; }; // @todo: TBD
+  float const* pedestals_d() const override { return nullptr; };
+  float const* gains_d()     const override { return nullptr; };
+
   // Launches the _event kernel template instantiated with PedGainCalib, from
   // this .so, so that the calibration is inlined into the kernel
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
-
-//  void recordGraph(cudaStream_t          stream,
-//                   const unsigned&       index,
-//                   uint16_t const* const data) override;
 private:
   unsigned m_nPixels;
 };

@@ -75,7 +75,8 @@ Jungfrau::Jungfrau(Parameters& para, MemPoolGpu& pool) :
 
   // Check there is enough space in the DMA buffers for the batched payload.  Each
   // of the two batcher levels adds a header line, and a tail line plus padding to
-  // a line boundary per sub-frame.
+  // a line boundary per sub-frame.  The line size is in the header's 4-bit width
+  // field.  It is not necessarily the same as the PCIe frame size.
   constexpr size_t maxLineWidth{64};    // Widest AXI stream this can arrive on
   size_t const outerSubFrames{subframeCount()};
   size_t const innerSubFrames{size_t(m_nModules) * PacketNum};

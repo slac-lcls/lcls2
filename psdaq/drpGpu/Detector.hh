@@ -62,12 +62,6 @@ public:
     return reinterpret_cast<Pds::TimingHeader*>(&dmaDsc[1]);
   }
 
-  //// Device methods can't be virtual due to the vtable not containing device pointers
-  //__device__ void calibrate(float*    const calib,
-  //                          uint16_t* const raw,
-  //                          unsigned  const count,
-  //                          unsigned  const rangeOffset,
-  //                          unsigned  const rangeBits) const;
   virtual unsigned     rangeOffset() const = 0;
   virtual unsigned     rangeBits()   const = 0;
   virtual float const* pedestals_d() const = 0;

@@ -65,21 +65,21 @@ private:
   int         _setupGraph(unsigned reader);
   cudaGraph_t _recordGraph(unsigned reader);
 private:
-  MemPoolGpu&                        m_pool;
-  Detector&                          m_det;
-  const cudaExecutionContext_t&      m_ctx;
-  const cuda::std::atomic<unsigned>& m_terminate_d;
-  std::vector<cudaStream_t>          m_streams;
-  std::vector<unsigned*>             m_dmaBufferIdxes;
-  std::vector<unsigned*>             m_pebbleIdxes;
-  std::vector<cudaGraphExec_t>       m_graphExecs;
-  Ptr<RingIndexHtoD>                 m_pebbleQueue;
-  std::vector< Ptr<RingIndexDtoD> >  m_readerQueues;
+  MemPoolGpu&                             m_pool;
+  Detector&                               m_det;
+  const cudaExecutionContext_t&           m_ctx;
+  const cuda::std::atomic<unsigned>&      m_terminate_d;
+  std::vector<cudaStream_t>               m_streams;
+  std::vector<unsigned*>                  m_dmaBufferIdxes;
+  std::vector<unsigned*>                  m_pebbleIdxes;
+  std::vector<cudaGraphExec_t>            m_graphExecs;
+  Ptr<RingIndexHtoD>                      m_pebbleQueue;
+  std::vector< Ptr<RingIndexDtoD> >       m_readerQueues;
   std::vector< Ptr<EvtBatcherSubFrames> > m_subFrames; // Cached scan, per Reader
-  std::vector<unsigned*>             m_states_d;
-  unsigned                           m_nReaders;
-  const Parameters&                  m_para;
-  ReaderMetrics                      m_metrics;
+  std::vector<unsigned*>                  m_states_d;
+  unsigned                                m_nReaders;
+  const Parameters&                       m_para;
+  ReaderMetrics                           m_metrics;
 };
 
   } // Gpu

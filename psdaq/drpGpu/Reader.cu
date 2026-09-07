@@ -335,7 +335,8 @@ void _waitForDMA(unsigned  const                            reader,
   auto lclState{*state};
   if (lclState == 0) {
     DBG(*stateMon = 1;)
-    // Wait for data to be DMAed into the GPU
+
+    // Wait for data to be DMAed into the GPU.
     const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBuffers[*dmaBufferIdx] + 4);
     unsigned ns{8};
     //printf("### Reader[%u]: Wait for dmaBuffers[%u] %p\n", reader, *dmaBufferIdx, mem);
@@ -367,7 +368,7 @@ void _waitForDMA(unsigned  const                            reader,
         auto const status = subFrames->scan(payload, dmaSize);
         if (status != EvtBatcherOk) {
           // The host reports this via the scan's pinned mirror; _event will see
-          // the failed status and skip calibrating an unintelligible payload
+          // the failed status and skip processing an unintelligible payload
           printf("*** Reader[%u]: AxiStream Batcher scan of %zu bytes failed: %s\n",
                  reader, dmaSize, evtBatcherStatusName(status));
         }
@@ -379,7 +380,8 @@ void _waitForDMA(unsigned  const                            reader,
     DBG(*stateMon = 3; ++(*dmaWtCtr);)
   }
   if (lclState == 1) {
-    // Allocate the index of the next set of intermediate buffers to be used
+    // Allocate the index of the next set of intermediate buffers to be used.
+    // If an index is not available, wait here until one is.
     unsigned ns{8};
     unsigned idx;
     while (!(((pebbleQueue->tail() & (nReaders-1)) == reader) && // Preserve allocation order by stream
@@ -417,6 +419,9 @@ void _readerLoop(unsigned  const                            reader,
 {
   if (*state == 3) {
     DBG(*stateMon = 13;)
+
+    // Attempt to pass the pebble index to the Trigger Input Generator.
+    // If it is busy, we will wait here until a queue slot is available.
     bool rc;
     unsigned ns{8};
     auto const pblIdx{(*pebbleIdx) >> nRdrShft};
@@ -429,6 +434,10 @@ void _readerLoop(unsigned  const                            reader,
       }
     }
     if (!rc) {
+      // Once the pebble buffer index has been passed on to the next link in the
+      // processing chain, we can release the DMA buffer and prepare for another
+      // event.
+
       //printf("### Reader[%u]: pushed pblIdx %u, hd %u, tl %u, occ %u\n", reader, *pebbleIdx,
       //       readerQueue->head(), readerQueue->tail(), readerQueue->occupancy());
 
@@ -484,7 +493,7 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto const calibBuffers_d = m_pool.calibBuffers_d();
   auto const calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers_d);
-  auto const nRdrShft = ffs(m_nReaders) - 1; // log2(nReaders)
+  auto const nRdrShft       = ffs(m_nReaders) - 1; // log2(nReaders)
 
   // Determine how many processing resources to reserve for the Reader kernel
   // @todo: The maybe should be done in PgpDetector in conjunction with the other components

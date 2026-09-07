@@ -51,10 +51,6 @@ public:
   } // Gpu
 } // Drp
 
-// Not working:
-//static __device__ float const* __restrict__ lPedsArray;
-//static __device__ float const* __restrict__ lGainsArray;
-
 EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   Drp::Gpu::Detector(&para, &pool)
 {
@@ -62,7 +58,12 @@ EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   _initialize<Drp::Gpu::XpmDetector>(para, pool);
 
   // Check there is enough space in the DMA buffers for this many pixels
-  assert(NPixels <= (pool.dmaSize() - sizeof(TimingHeader)) / sizeof(uint16_t));
+  constexpr size_t minDmaSize{NPixels * sizeof(uint16_t) + sizeof(TimingHeader)};
+  if (minDmaSize > pool.dmaSize()) {
+    logging::critical("DMA buffer of %zu bytes is too small for %u pixels: need %zu",
+                      pool.dmaSize(), NPixels, minDmaSize);
+    abort();
+  }
 
   // Set up buffers
   pool.createCalibBuffers(NPixels);
@@ -70,30 +71,23 @@ EpixUHRemu::EpixUHRemu(Parameters& para, MemPoolGpu& pool) :
   // Allocate space for the calibration constants
   chkError(cudaMalloc(&m_pedsVec_d,  NRanges * NPixels * sizeof(*m_pedsVec_d)));
   chkError(cudaMalloc(&m_gainsVec_d, NRanges * NPixels * sizeof(*m_gainsVec_d)));
-  // Not working:
-  //chkError(cudaMemcpy((void*)&lPedsArray,  &m_pedsVec_d,  sizeof(m_pedsVec_d),  cudaMemcpyDefault));
-  //chkError(cudaMemcpy((void*)&lGainsArray, &m_gainsVec_d, sizeof(m_gainsVec_d), cudaMemcpyDefault));
 }
 
 EpixUHRemu::~EpixUHRemu()
 {
-  printf("*** EpixUHRemu dtor 1\n");
   auto pool = m_pool->getAs<MemPoolGpu>();
   if (m_gainsVec_d)  chkError(cudaFree(m_gainsVec_d));
   if (m_pedsVec_d)   chkError(cudaFree(m_pedsVec_d));
-  printf("*** EpixUHRemu dtor 2\n");
 
   pool->destroyCalibBuffers();
-  printf("*** EpixUHRemu dtor 3\n");
 }
 
 unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
   logging::info("Gpu::EpixUHRemu configure");
-  unsigned rc = 0;
 
   // Configure the XpmDetector for the panel
-  rc = m_det->configure(config_alias, xtc, bufEnd);
+  unsigned rc = m_det->configure(config_alias, xtc, bufEnd);
   if (rc) {
     logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_para->device);
   }
@@ -114,9 +108,7 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
 
 unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 {
-  // Do beginRun
-  unsigned rc = 0;
-  rc = m_det->beginrun(xtc, bufEnd, runInfo);
+  unsigned rc = m_det->beginrun(xtc, bufEnd, runInfo);
   if (rc) {
     logging::error("Gpu::EpixUHRemu::beginrun failed for %s\n", m_para->device);
   }
@@ -140,8 +132,6 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 
 void EpixUHRemu::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count)
 {
-  //logging::info("Gpu::EpixUHRemu event");
-
   constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
   DmaBuffer* buffer = &event->buffers[lane];
   size_t size = buffer->size;
@@ -151,110 +141,6 @@ void EpixUHRemu::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
 
   // @todo: Deal with prescaled raw for the panel here?
 }
-
-#if 0 // Not working
-static __device__
-void _calibrate(float*    const __restrict__ calib,
-                uint16_t* const __restrict__ raw,
-                unsigned  const              nElements)
-{
-  auto const tid     = blockIdx.x * blockDim.x + threadIdx.x;
-  auto const stride  = blockDim.x * gridDim.x;
-  printf("### EpixUHRemu _calibrate: calib %p, raw %p, nElements: %u\n", calib, raw, nElements);
-
-  constexpr unsigned rangeOffset{EpixUHRemu::RangeOffset};
-  constexpr unsigned rangeMask{(1 << EpixUHRemu::RangeBits) - 1};
-  constexpr unsigned dataMask{(1 << EpixUHRemu::RangeOffset) - 1};
-  auto const pedArr  = lPedsArray;
-  auto const gainArr = lGainsArray;
-  for (auto i = tid; i < nElements; i += stride) {
-    auto const              range = (raw[i] >> rangeOffset) & rangeMask;
-    auto const __restrict__ peds  = &pedArr [range * nElements];
-    auto const __restrict__ gains = &gainArr[range * nElements];
-    auto const              data  = raw[i] & dataMask;
-    calib[i] = (float(data) - peds[i]) * gains[i];
-
-    if (i < 4) {
-      printf("### Reader: tid %u, i %u: raw %p: %04x, dat %u, rng %u, ped %f, gn %f, cal %f\n", //, ref %p: %f\n",
-             tid, i, &raw[i], raw[i], data, range, peds[i], gains[i], calib[i]); //, &ref[i], ref ? ref[i] : 0.f);
-    }
-  }
-
-  printf("### EpixUHRemu _calibrate: done\n");
-}
-
-CalibrateFn_t* EpixUHRemu::getCalibFn() const
-{
-  return &_calibrate;
-}
-#endif
-
-#if 0
-// This kernel performs the data calibration
-static __global__
-void _calibrate(float*   const        __restrict__ calibBuffers,
-                size_t   const                     calibBufsCnt,
-                uint16_t const* const __restrict__ in,
-                unsigned const&                    index,
-                float    const* const __restrict__ peds_,
-                float    const* const __restrict__ gains_)
-{
-  // Place the calibrated data in the calibBuffers array at the appropriate offset
-  auto const __restrict__ out = &calibBuffers[index * calibBufsCnt];
-  int stride = gridDim.x * blockDim.x;
-  int pixel  = blockIdx.x * blockDim.x + threadIdx.x;
-
-  // @todo: Pass these arrays of nGains pointers in
-  const float* const* __restrict__ peds [1 << EpixUHRemu::RangeBits];
-  const float* const* __restrict__ gains[1 << EpixUHRemu::RangeBits];
-  //  #pragma unroll ?
-  for (unsigned i = 0; i < 1 << EpixUHRemu::RangeBits; ++i) {
-    peds[i]  = &peds_ [i * EpixUHRemu::NPixels];
-    gains[i] = &gains_[i * EpixUHRemu::NPixels];
-  }
-
-  __shared__ uint8_t gnMask[stride/warpSize];    // or 2048/32: discover this
-  __shared__ float   sPeds[EpixUHRemu::RangeBits][stride];
-  __shared__ float   sGains[EpixUHRemu::RangeBits][stride];
-
-  constexpr auto gm{(1 << EpixUHRemu::RangeBits) - 1};
-  gnMask[0] = gm;
-  for (int i = pixel; i < EpixUHRemu::NPixels; gnMask[i/warpSize] = gm, i += stride) {
-    const auto data  = in[i];
-    const auto gain  = (data >> EpixUHRemu::RangeOffset) & gm;
-    data &= (1 << EpixUHRemu::RangeOffset) - 1;
-    const auto wid = i / warpSize;
-    if (gnMask[wid] & (1 << gain)) {
-      sPeds[i]  = peds[gain][i];
-      sGains[i] = gains[gain][i];
-      gnMask[wid] ^= 1 << gain;         // Need atomic here
-    }
-    out[i] = (float(data) - sPeds[gain][i]) * sGains[gain][i];
-  }
-}
-#endif
-
-#if 0 // Not currently used
-// This routine records the graph that calibrates the data
-void EpixUHRemu::recordGraph(cudaStream_t          stream,
-                             const unsigned&       index_d,
-                             uint16_t const* const rawBuffer)
-{
-  uhr_scoped_range r{/*"EpixUHRemu::recordGraph"*/}; // Expose function name via NVTX
-
-  auto pool    = m_pool->getAs<MemPoolGpu>();
-
-  // @todo: want 3 blocks of 512 threads to handle 126 pixels each
-  unsigned   chunks{128};               // Number of pixels handled per thread
-  unsigned   tpb   {256};               // Threads per block
-  unsigned   bpg   {(NPixels + chunks * tpb - 1) / (chunks * tpb)}; // Blocks per grid
-  const auto peds         = m_pedsVec_d;
-  const auto gains        = m_gainsVec_d;
-  auto const calibBuffers = pool->calibBuffers_d();
-  auto const calibBufsCnt = pool->calibBufsSize() / sizeof(*calibBuffers);
-  _calibrate<<<bpg, tpb, 0, stream>>>(calibBuffers, calibBufsCnt, rawBuffer, index_d, peds, gains);
-}
-#endif
 
 // Instantiating the kernel template here puts the calibration in the same CUDA
 // module as the kernel, so it inlines.  See ReaderKernels.cuh.

@@ -139,18 +139,18 @@ void _event(EventKernelArgs const args, Calib const calib)
 // the frame as pgOffset.  Handling the frame in one go means pgStride == the
 // frame's element count and pgOffset == 0.
 __device__
-inline void pedGainCalibrate(float*        const        __restrict__ calib,
-                             uint16_t      const* const __restrict__ raw,
-                             unsigned      const                     nElements,
-                             unsigned      const                     rangeOffset,
-                             unsigned      const                     rangeBits,
-                             float         const* const __restrict__ pedArray,
-                             float         const* const __restrict__ gainArray,
-                             unsigned      const                     pgStride,
-                             unsigned      const                     pgOffset,
-                             float         const* const __restrict__ ref,
-                             unsigned      const                     tid,
-                             unsigned      const                     stride)
+inline void pedGainCalibrate(float*   const        __restrict__ calib,
+                             uint16_t const* const __restrict__ raw,
+                             unsigned const                     nElements,
+                             unsigned const                     rangeOffset,
+                             unsigned const                     rangeBits,
+                             float    const* const __restrict__ pedArray,
+                             float    const* const __restrict__ gainArray,
+                             unsigned const                     pgStride,
+                             unsigned const                     pgOffset,
+                             float    const* const __restrict__ ref,
+                             unsigned const                     tid,
+                             unsigned const                     stride)
 {
   auto const rangeMask{(1u << rangeBits) - 1u};
   auto const dataMask {(1u << rangeOffset) - 1u};
