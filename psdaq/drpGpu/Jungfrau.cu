@@ -195,8 +195,9 @@ struct JungfrauCalib
   __device__
   void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
   {
-    if (!pyld.batched)  return;         // A transition: payload is a TimingHeader
-    if (!pyld.subFrames->ok())  return; // Corrupt batch: already reported
+    // hasData is false for a transition -- whose batch has no data sub-frames --
+    // and for any payload whose size or layout the Reader did not recognise
+    if (!pyld.hasData)  return;
 
     // Which input packet holds which output packet slot.  Rebuilt per module;
     // NotPresent marks a slot no packet claimed, whose pixels are zeroed.

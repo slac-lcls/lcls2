@@ -101,7 +101,7 @@ Reader::Reader(const Parameters&                  para,
       abort();
     }
     for (unsigned i = 0; i < m_nReaders; ++i) {
-      m_subFrames[i].h = new EvtBatcherSubFrames(subframeCount);
+      m_subFrames[i].h = new EvtBatcherSubFrames(subframeCount, m_det.firstDataSubframe());
       chkError(cudaMalloc(&m_subFrames[i].d,                    sizeof(*m_subFrames[i].d)));
       chkError(cudaMemcpy( m_subFrames[i].d, m_subFrames[i].h,  sizeof(*m_subFrames[i].d), cudaMemcpyDefault));
     }
@@ -125,8 +125,20 @@ Reader::Reader(const Parameters&                  para,
   }
 
   // Prepare buffers visible to the host for receiving headers
-  const size_t bufSz = sizeof(DmaDsc) + sizeof(TimingHeader) + trgPrimitiveSize;
+  // Room for the DmaDsc, the TimingHeader and the trigger primitive, plus one
+  // word at the end in which the Reader hands TrgInpGen::_receiver() a per-event
+  // EventStatus.  Rounded up so that the status word lands on a word boundary.
+  size_t bufSz = sizeof(DmaDsc) + sizeof(TimingHeader) + trgPrimitiveSize;
+  bufSz  = ((bufSz + sizeof(uint32_t) - 1) / sizeof(uint32_t)) * sizeof(uint32_t);
+  bufSz += sizeof(uint32_t);
   m_pool.createHostBuffers(bufSz);
+
+  // Per-Reader per-event status, written by _waitForDMA and copied out by _event
+  m_evtStatus_d.resize(m_nReaders);
+  for (unsigned i = 0; i < m_nReaders; ++i) {
+    chkError(cudaMalloc(&m_evtStatus_d[i],    sizeof(*m_evtStatus_d[i])));
+    chkError(cudaMemset( m_evtStatus_d[i], 0, sizeof(*m_evtStatus_d[i])));
+  }
 
   // Set up a state variable
   m_states_d.resize(m_nReaders);
@@ -194,6 +206,12 @@ Reader::~Reader()
     m_states_d[i] = nullptr;
   }
   m_states_d.clear();
+
+  for (unsigned i = 0; i < m_nReaders; ++i) {
+    if (m_evtStatus_d[i])  chkError(cudaFree(m_evtStatus_d[i]));
+    m_evtStatus_d[i] = nullptr;
+  }
+  m_evtStatus_d.clear();
 
   m_pool.destroyHostBuffers();
 
@@ -327,6 +345,7 @@ void _waitForDMA(unsigned  const                            reader,
                  uint8_t   const* const* const __restrict__ dmaBuffers,    // [dmaCount][maxDmaSize]
                  size_t    const                            frameSize,
                  EvtBatcherSubFrames* const    __restrict__ subFrames,     // nullptr if not batched
+                 unsigned* const               __restrict__ evtStatus,
                  RingIndexHtoD*   const        __restrict__ pebbleQueue,
                  uint64_t* const               __restrict__ stateMon,
                  uint64_t* const               __restrict__ pblWtCtr,
@@ -350,30 +369,29 @@ void _waitForDMA(unsigned  const                            reader,
     }
     //printf("### Reader[%u]: dma[%u] %p: sz %u\n", reader, *dmaBufferIdx, mem, *mem);
 
-    // Correctly operating hardware produces two kinds of DMA: a transition,
-    // whose payload is a bare TimingHeader, and an L1Accept, whose payload is an
-    // AxiStream Batcher batch that is much larger.  Anything else is an error.
-    // The batch layout repeats from event to event, so the (serial) sub-frame
-    // walk is done here, in this single-threaded kernel, and only when the
-    // payload size differs from the one that produced the cached scan.
-    if (subFrames) {
-      auto const dmaSize{size_t(*mem)};
-      if (dmaSize == sizeof(TimingHeader)) {
-        // A transition: no batch to scan
-      } else if (dmaSize < sizeof(TimingHeader)) {
-        printf("*** Reader[%u]: DMA of %zu bytes is shorter than a TimingHeader (%zu)\n",
-               reader, dmaSize, sizeof(TimingHeader));
-      } else if (!subFrames->matches(dmaSize)) {
+    // A Detector that has the AxiStream Batcher implemented batches everything it
+    // sends, transitions included: a transition's batch is simply one with no data
+    // sub-frames.  Drp::BEBDetector::getTimingHeader() shows this, stepping over a
+    // batcher header for every DMA rather than only for L1Accepts.  So two batch
+    // shapes are expected, of different sizes; each is scanned once and thereafter
+    // recognised by its size.  The walk is serial, which is why it happens here in
+    // this single-threaded kernel rather than in _event.
+    //
+    // A kernel can neither log nor throw, so anything amiss is recorded as a code
+    // for TrgInpGen::_receiver() to report.
+    unsigned status{EventStatusOk};
+    auto const dmaSize{size_t(*mem)};
+    if (dmaSize < sizeof(TimingHeader)) {
+      status = EventStatusDmaSizeTooSmall;
+    } else if (subFrames) {
+      if (!subFrames->matches(dmaSize) && !subFrames->matchesNoData(dmaSize)) {
         auto const __restrict__ payload = dmaBuffers[*dmaBufferIdx] + frameSize;
-        auto const status = subFrames->scan(payload, dmaSize);
-        if (status != EvtBatcherOk) {
-          // The host reports this via the scan's pinned mirror; _event will see
-          // the failed status and skip processing an unintelligible payload
-          printf("*** Reader[%u]: AxiStream Batcher scan of %zu bytes failed: %s\n",
-                 reader, dmaSize, evtBatcherStatusName(status));
+        if (subFrames->scan(payload, dmaSize) != EvtBatcherOk) {
+          status = EventStatusBatchUnintelligible;
         }
       }
     }
+    *evtStatus = status;
 
     lclState = 1;
     *state = lclState;
@@ -531,6 +549,7 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                                    dmaBuffers_d,
                                    frameSize,
                                    m_subFrames[reader].d,
+                                   m_evtStatus_d[reader],
                                    m_pebbleQueue.d,
                                    m_metrics.states[reader],
                                    m_metrics.pblWtCtrs[reader],
@@ -554,6 +573,7 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                              calibBuffers_d,
                              calibBufsCnt,
                              m_subFrames[reader].d,
+                             m_evtStatus_d[reader],
                              m_metrics.states[reader]};
   m_det.recordEvent(stream, nBlocks, nThreads, args);
   chkError(cudaGetLastError(), "Launch of _event kernel failed");

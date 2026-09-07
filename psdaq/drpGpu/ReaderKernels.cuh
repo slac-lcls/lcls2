@@ -48,6 +48,22 @@
 namespace Drp {
   namespace Gpu {
 
+// Per-event status, handed to the host in the last word of the event's
+// host-visible buffer.  A kernel can neither log nor throw, and device-side
+// printf is for debugging only, so the Reader records a code and
+// TrgInpGen::_receiver() does the reporting, alongside the other data integrity
+// checks it already makes.
+enum EventStatus : uint32_t {
+  EventStatusOk = 0,
+  EventStatusDmaSizeTooSmall,           // DMA shorter than a TimingHeader
+  EventStatusBatchUnintelligible,       // Sub-frame scan failed; the reason is in
+                                        // Reader::batcherStatus()
+};
+
+// Where that code sits within one event's host-visible buffer
+__host__ __device__
+inline size_t eventStatusIndex(size_t hdrBufsCnt) { return hdrBufsCnt - 1; }
+
 // What the _event kernel needs that no detector has to know about.  Assembled by
 // Reader::_recordGraph and handed to Gpu::Detector::recordEvent().
 struct EventKernelArgs
@@ -63,6 +79,7 @@ struct EventKernelArgs
   float*                       calibBuffers;  // [nBuffers * calibBufsCnt]
   size_t                       calibBufsCnt;
   EvtBatcherSubFrames const*   subFrames;     // nullptr when the data isn't batched
+  unsigned const*              evtStatus;     // An EventStatus, set by _waitForDMA
   uint64_t*                    stateMon;
 };
 
@@ -74,8 +91,11 @@ struct EventPayload
   float*                     out;        // This event's calibrated buffer
   size_t                     outCnt;     // Elements available in 'out'
   EvtBatcherSubFrames const* subFrames;  // The cached scan; null when not batched
-  bool                       batched;    // False for a transition, whose payload
-                                         // is a bare TimingHeader
+  bool                       batched;    // The Detector presents sub-frames
+  bool                       hasData;    // This event bears detector data, which
+                                         // the cached scan describes.  False for
+                                         // a transition, and for a payload whose
+                                         // size or layout was not understood.
   unsigned                   pebbleIdx;  // For indexing per-event side buffers
 };
 
@@ -105,17 +125,29 @@ void _event(EventKernelArgs const args, Calib const calib)
   auto const     nFrmWds = args.frameSize/sizeof(uint32_t);
 
   // Where the TimingHeader sits depends on whether the Detector presents
-  // sub-frames: without them the payload starts with it; with them the payload
-  // starts with the batch and it is sub-frame 0, as on the CPU side.  Either way
-  // a transition's payload is a bare TimingHeader, which is what tells the two
-  // apart.
+  // sub-frames.  Without them, the payload starts with it.  With them, the
+  // payload starts with the batch and the TimingHeader is sub-frame 0's data,
+  // which is the line straight after the batcher header -- exactly what
+  // Drp::BEBDetector::getTimingHeader() computes with ebh->next().  Note that
+  // that is done for every DMA, transitions included: a Detector that batches
+  // batches its transitions too, and a transition's batch is simply one with no
+  // data sub-frames.  Deriving the TimingHeader from the header's line width
+  // rather than from the cached scan therefore works for both, and needs no scan.
   auto const              dmaSize = in[1];
-  auto const              batched = args.subFrames && (dmaSize != sizeof(Pds::TimingHeader));
+  auto const              batched = args.subFrames != nullptr;
   auto const __restrict__ payload = (uint8_t const*)&in[nFrmWds];
-  auto const __restrict__ th      = (uint32_t const*)(batched ? (*args.subFrames)[0].data(payload)
-                                                              : payload);
-  if      (tid < nDscWds)  { hdr[tid] = in[tid]; }
-  else if (tid < nLdrWds)  { hdr[tid] = th[tid - nDscWds]; }
+  auto const __restrict__ th      = (uint32_t const*)
+    (batched ? payload + ((EvtBatcherHeader const*)payload)->lineWidth()
+             : payload);
+  // Whether there is anything for the policy to interpret.  For a batched
+  // Detector that means the cached scan describes this payload; otherwise it
+  // means the payload holds more than just the TimingHeader.
+  auto const hasData = batched ? args.subFrames->matches(dmaSize)
+                               : dmaSize > sizeof(Pds::TimingHeader);
+  if      (tid < nDscWds)   { hdr[tid] = in[tid]; }
+  else if (tid < nLdrWds)   { hdr[tid] = th[tid - nDscWds]; }
+  // Pass _waitForDMA's verdict on this event to the host to report
+  else if (tid == nLdrWds)  { hdr[eventStatusIndex(args.hdrBufsCnt)] = *args.evtStatus; }
 
   EventPayload const pyld{payload,
                           dmaSize,
@@ -123,6 +155,7 @@ void _event(EventKernelArgs const args, Calib const calib)
                           args.calibBufsCnt,
                           args.subFrames,
                           batched,
+                          hasData,
                           pblBufIdx};
   calib.process(pyld, tid, stride);
 
@@ -183,7 +216,7 @@ struct PedGainCalib
   __device__
   void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
   {
-    if (pyld.size <= sizeof(Pds::TimingHeader))  return;   // Transition: no payload
+    if (!pyld.hasData)  return;         // A transition, or nothing intelligible
 
     auto const __restrict__ raw = (uint16_t const*)(pyld.data + sizeof(Pds::TimingHeader));
     auto const payloadCnt = (pyld.size - sizeof(Pds::TimingHeader))/sizeof(uint16_t);

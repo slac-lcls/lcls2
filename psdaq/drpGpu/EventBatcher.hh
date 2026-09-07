@@ -205,6 +205,14 @@ namespace Drp {
     // the payload size differs from the one that produced the cached scan;
     // Reader::_waitForDMA() decides that via matches().
     //
+    // A Detector that has the AxiStream Batcher implemented batches its
+    // transitions too, not just its L1Accepts -- see Drp::BEBDetector::
+    // getTimingHeader(), which steps over a batcher header unconditionally.  A
+    // transition's batch simply has no data sub-frames.  Its size therefore
+    // differs from an L1Accept's, so the size of the last such batch is latched
+    // separately, in noDataBytes; without that, every transition would evict the
+    // L1Accept scan and the two would rescan alternately forever.
+    //
     // Holes are left where a tdest is absent (offset == 0, size == 0), matching
     // the indexing of Drp::BEBDetector::_subframes().
     //
@@ -218,15 +226,20 @@ namespace Drp {
     public:
       struct Scan {
         size_t   bytes;                 // Payload size that produced this scan; 0 = none yet
+        size_t   noDataBytes;           // Size of the last batch bearing no data
         unsigned count;                 // Highest tdest present, plus one
         unsigned status;                // An EvtBatcherStatus
       };
     public:
-      __host__ EvtBatcherSubFrames(unsigned capacity) :
-        m_sub     (nullptr),
-        m_scan    (nullptr),
-        m_mirror  (nullptr),
-        m_capacity(capacity)
+      // 'firstData' is Gpu::Detector::firstDataSubframe(): a batch whose highest
+      // tdest is below it carries no detector data, which is how a transition is
+      // told from an L1Accept.
+      __host__ EvtBatcherSubFrames(unsigned capacity, unsigned firstData) :
+        m_sub      (nullptr),
+        m_scan     (nullptr),
+        m_mirror   (nullptr),
+        m_capacity (capacity),
+        m_firstData(firstData)
       {
         chkError(cudaMalloc(&m_sub,    capacity * sizeof(*m_sub)));
         chkError(cudaMemset( m_sub, 0, capacity * sizeof(*m_sub)));
@@ -248,17 +261,18 @@ namespace Drp {
       // on (re-)Configure, since the payload layout may have changed.
       __host__ void reset()
       {
-        const Scan empty{0, 0, EvtBatcherOk};
+        const Scan empty{0, 0, 0, EvtBatcherOk};
         *m_mirror = empty;
         chkError(cudaMemcpy(m_scan, &empty, sizeof(empty), cudaMemcpyDefault));
         chkError(cudaMemset(m_sub, 0, m_capacity * sizeof(*m_sub)));
       }
 
       // How the last scan fared, read straight out of pinned memory
-      __host__ unsigned lastStatus() const { return m_mirror->status; }
-      __host__ unsigned lastCount()  const { return m_mirror->count; }
-      __host__ size_t   lastBytes()  const { return m_mirror->bytes; }
-      __host__ bool     lastOk()     const { return m_mirror->status == EvtBatcherOk; }
+      __host__ unsigned lastStatus()      const { return m_mirror->status; }
+      __host__ unsigned lastCount()       const { return m_mirror->count; }
+      __host__ size_t   lastBytes()       const { return m_mirror->bytes; }
+      __host__ size_t   lastNoDataBytes() const { return m_mirror->noDataBytes; }
+      __host__ bool     lastOk()          const { return m_mirror->status == EvtBatcherOk; }
 
     public:
       // True when the cached scan describes a payload of this size.  One load
@@ -266,10 +280,16 @@ namespace Drp {
       __device__ bool matches(size_t bytes) const
       { return (bytes == m_scan->bytes) && (m_scan->status == EvtBatcherOk); }
 
-      __device__ unsigned status()   const { return m_scan->status; }
-      __device__ unsigned count()    const { return m_scan->count; }
-      __device__ unsigned capacity() const { return m_capacity; }
-      __device__ bool     ok()       const { return m_scan->status == EvtBatcherOk; }
+      // True when a batch of this size has already been found to bear no data, so
+      // there is nothing to rescan and nothing for a policy to interpret
+      __device__ bool matchesNoData(size_t bytes) const
+      { return (bytes != 0) && (bytes == m_scan->noDataBytes); }
+
+      __device__ unsigned status()    const { return m_scan->status; }
+      __device__ unsigned count()     const { return m_scan->count; }
+      __device__ unsigned capacity()  const { return m_capacity; }
+      __device__ unsigned firstData() const { return m_firstData; }
+      __device__ bool     ok()        const { return m_scan->status == EvtBatcherOk; }
 
       __device__ const EvtBatcherSubFrame& operator[](unsigned tdest) const
       { return m_sub[tdest]; }
@@ -281,36 +301,64 @@ namespace Drp {
       // the DmaDsc, which this code deliberately knows nothing about.  For a
       // Detector that presents sub-frames the batch begins there, so the batcher
       // header is at payload[0] and the TimingHeader is sub-frame 0's data.
+      //
+      // Walked twice: once to count the sub-frames, and again to record them only
+      // if the batch bears data.  That keeps a transition's batch from evicting
+      // the L1Accept layout that the data path depends on.  Both passes are a
+      // handful of iterations over the tails, and happen only when a size is met
+      // for the first time.
       __device__
       unsigned scan(const uint8_t* const __restrict__ payload, size_t bytes)
       {
+        // Pass one: how many sub-frames, and is the batch intelligible?
+        unsigned count  = 0;
+        unsigned status = EvtBatcherOk;
+        {
+          EvtBatcherIterator            it((const EvtBatcherHeader*)payload, bytes);
+          const EvtBatcherSubFrameTail* tail;
+          while ((tail = it.next())) {
+            const unsigned tdest = tail->tdest();
+            if (tdest >= m_capacity) {
+              _EB_WARN("tdest %u exceeds the expected sub-frame count %u", tdest, m_capacity);
+              status = EvtBatcherOverflow;
+              break;
+            }
+            // Tails are walked highest tdest first, so this settles immediately
+            if (tdest + 1 > count)  count = tdest + 1;
+          }
+          if (status == EvtBatcherOk)  status = it.status();
+        }
+
+        if (status != EvtBatcherOk) {   // Unintelligible: latch neither size
+          m_scan->count  = count;
+          m_scan->status = status;
+          *m_mirror      = *m_scan;
+          return status;
+        }
+
+        if (count <= m_firstData) {     // A transition: no data sub-frames
+          m_scan->noDataBytes = bytes;
+          m_scan->count       = count;
+          m_scan->status      = status;
+          *m_mirror           = *m_scan;
+          return status;
+        }
+
+        // Pass two: record the data layout, which is what a policy reads
         for (unsigned i = 0; i < m_capacity; ++i) {
           m_sub[i].offset = 0;
           m_sub[i].size   = 0;
         }
-
-        unsigned count  = 0;
-        unsigned status = EvtBatcherOk;
-
         EvtBatcherIterator            it((const EvtBatcherHeader*)payload, bytes);
         const EvtBatcherSubFrameTail* tail;
         while ((tail = it.next())) {
           const unsigned tdest = tail->tdest();
-          if (tdest >= m_capacity) {
-            _EB_WARN("tdest %u exceeds the expected sub-frame count %u", tdest, m_capacity);
-            status = EvtBatcherOverflow;
-            break;
-          }
           m_sub[tdest].offset = uint32_t(tail->data() - payload);
           m_sub[tdest].size   = tail->size();
-          // Tails are walked highest tdest first, so this settles immediately
-          if (tdest + 1 > count)  count = tdest + 1;
         }
-        if (status == EvtBatcherOk)  status = it.status();
 
-        // Cache for reuse, and publish to the host.  Leave bytes at 0 on
-        // failure so that a bad batch is never mistaken for a usable scan.
-        m_scan->bytes  = status == EvtBatcherOk ? bytes : 0;
+        // Cache for reuse, and publish to the host
+        m_scan->bytes  = bytes;
         m_scan->count  = count;
         m_scan->status = status;
         *m_mirror      = *m_scan;
@@ -322,6 +370,7 @@ namespace Drp {
       Scan*               m_scan;       // Device global memory: the hot path
       Scan*               m_mirror;     // Pinned: the host's view of the above
       unsigned            m_capacity;   // Gpu::Detector::subframeCount()
+      unsigned            m_firstData;  // Gpu::Detector::firstDataSubframe()
     };
 
   } // Gpu

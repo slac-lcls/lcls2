@@ -134,10 +134,9 @@ struct EpixUHR3x2Calib
   __device__
   void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
   {
-    if (!pyld.batched)  return;            // A transition: payload is a TimingHeader
-    // A failed scan means the payload is unintelligible, so don't interpret it.
-    // _waitForDMA has reported it and the host sees the latched status.
-    if (!pyld.subFrames->ok())  return;
+    // hasData is false for a transition -- whose batch has no data sub-frames --
+    // and for any payload whose size or layout the Reader did not recognise
+    if (!pyld.hasData)  return;
 
     auto const strideCnt = pyld.outCnt / EpixUHR3x2::NumAsics;
     for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {

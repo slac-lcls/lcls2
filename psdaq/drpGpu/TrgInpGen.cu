@@ -1,6 +1,7 @@
 #include "TrgInpGen.hh"
 
 #include "Reader.hh"
+#include "ReaderKernels.cuh"     // For EventStatus
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -181,6 +182,9 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.nTmgHdrError = 0;
   exporter->add("drp_num_th_error", labels, MetricType::Gauge,
                 [&](){return m_metrics.nTmgHdrError;});
+  m_metrics.nEvtStatusError = 0;
+  exporter->add("drp_num_evt_status_error", labels, MetricType::Gauge,
+                [&](){return m_metrics.nEvtStatusError;});
   m_metrics.nPgpJumps = 0;
   exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
                 [&](){return m_metrics.nPgpJumps;});
@@ -464,6 +468,29 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       if (timingHeader->error()) [[unlikely]] {
         if (m_metrics.nTmgHdrError++ < 5) { // Limit prints at rate
           logging::error("Timing header error bit is set");
+        }
+      }
+
+      // The Reader's verdict on this event.  A kernel can't log, so it hands us a
+      // code in the last word of the event's buffer and we do the reporting.
+      const auto evtStatus = hostWrtBufs[index * hostWrtBufsCnt +
+                                         eventStatusIndex(hostWrtBufsCnt)];
+      if (evtStatus != EventStatusOk) [[unlikely]] {
+        if (m_metrics.nEvtStatusError++ < 5) { // Limit prints at rate
+          switch (evtStatus) {
+            case EventStatusDmaSizeTooSmall:
+              logging::error("DMA of %u B is shorter than a TimingHeader (%zu B)",
+                             dmaDsc->size, sizeof(TimingHeader));
+              break;
+            case EventStatusBatchUnintelligible:
+              logging::error("Corrupt AxiStream Batcher payload of %u B: %s",
+                             dmaDsc->size,
+                             evtBatcherStatusName(m_reader->batcherStatus()));
+              break;
+            default:
+              logging::error("Unrecognized Reader event status %u", evtStatus);
+              break;
+          }
         }
       }
 

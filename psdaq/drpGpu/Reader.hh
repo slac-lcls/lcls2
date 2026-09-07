@@ -57,6 +57,16 @@ public:
   // Returns EvtBatcherOk when the Detector's data isn't batched.
   unsigned batcherStatus(unsigned reader) const
   { return m_subFrames[reader].h ? m_subFrames[reader].h->lastStatus() : EvtBatcherOk; }
+  // The first non-Ok status across all Readers, for a caller that doesn't know
+  // which Reader an event came from
+  unsigned batcherStatus() const
+  {
+    for (unsigned i = 0; i < m_nReaders; ++i) {
+      auto status = batcherStatus(i);
+      if (status != EvtBatcherOk)  return status;
+    }
+    return EvtBatcherOk;
+  }
   // Logs anything the device found wrong with the batch layout.  Returns true on
   // error.  @todo: Provisional.  Whether scan results should reach the host this
   // way or through the per-event hostWrtBufs is still to be settled.
@@ -75,8 +85,9 @@ private:
   std::vector<cudaGraphExec_t>            m_graphExecs;
   Ptr<RingIndexHtoD>                      m_pebbleQueue;
   std::vector< Ptr<RingIndexDtoD> >       m_readerQueues;
-  std::vector< Ptr<EvtBatcherSubFrames> > m_subFrames; // Cached scan, per Reader
+  std::vector< Ptr<EvtBatcherSubFrames> > m_subFrames;   // Cached scan, per Reader
   std::vector<unsigned*>                  m_states_d;
+  std::vector<unsigned*>                  m_evtStatus_d; // Per-event EventStatus
   unsigned                                m_nReaders;
   const Parameters&                       m_para;
   ReaderMetrics                           m_metrics;
