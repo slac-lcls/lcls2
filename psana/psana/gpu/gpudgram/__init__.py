@@ -1,6 +1,16 @@
-"""Detector-independent GPU views over XTC dgrams."""
+"""Detector-independent, device-resident XTC parsing primitives."""
 
-from .parser import GPUDgramBatch
-from .schema import GpuNamesSchema
+from .config import (
+    DeviceConfigTables,
+    GpuFieldHandle,
+    GpuStreamConfigTable,
+)
+from .parser import DeviceFieldLocators, GpuEventBatch
 
-__all__ = ["GPUDgramBatch", "GpuNamesSchema"]
+__all__ = [
+    "DeviceConfigTables",
+    "DeviceFieldLocators",
+    "GpuEventBatch",
+    "GpuFieldHandle",
+    "GpuStreamConfigTable",
+]

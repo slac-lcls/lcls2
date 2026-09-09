@@ -1,38 +1,50 @@
-"""One-thread-per-dgram GPU XTC walker and debug-facing field views."""
+"""Device-resident XTC walk and field-location primitives.
+
+Stage 1 deliberately exposes numeric device tables rather than Python dgram
+views.  A run owner uploads :class:`DeviceConfigTables` once.  A batch owner
+provides raw bytes and dgram records already resident on the GPU; all XTC walk
+results stay there for direct consumption by later CUDA kernels.
+"""
 
 from dataclasses import dataclass
 from functools import lru_cache
 
 import numpy as np
 
-from .schema import (
+from .batch import (
+    DGRAM_DAMAGE,
+    DGRAM_ENV,
+    DGRAM_NCOLS,
+    DGRAM_OFFSET,
+    DGRAM_SERVICE,
+    DGRAM_SIZE,
+    DGRAM_STATUS,
+    DGRAM_STREAM_ID,
+    DGRAM_TIMESTAMP,
+    DGRAM_TYPE,
+)
+from .config import (
     FIELD_ELEMENT_SIZE,
-    FIELD_KEY,
     FIELD_NCOLS,
     FIELD_RANK,
     FIELD_SHAPE_INDEX,
     FIELD_TYPE,
+    NAMES_FIRST_FIELD,
+    NAMES_ID,
+    NAMES_NCOLS,
+    NAMES_N_FIELDS,
+    GpuFieldHandle,
 )
 
 
-DGRAM_OFFSET = 0
-DGRAM_SIZE = 1
-DGRAM_TIMESTAMP = 2
-DGRAM_ENV = 3
-DGRAM_SERVICE = 4
-DGRAM_DAMAGE = 5
-DGRAM_TYPE = 6
-DGRAM_STATUS = 7
-DGRAM_NCOLS = 8
-
 REF_DGRAM_INDEX = 0
-REF_NAMES_ID = 1
+REF_CONFIG_NAMES_INDEX = 1
 REF_OFFSET = 2
 REF_EXTENT = 3
 REF_DAMAGE = 4
 REF_NCOLS = 5
 
-LOC_FIELD_KEY = 0
+LOC_CONFIG_FIELD_INDEX = 0
 LOC_TYPE = 1
 LOC_RANK = 2
 LOC_DIM0 = 3
@@ -45,22 +57,24 @@ LOC_NCOLS = LOC_STATUS + 1
 STATUS_OK = 0
 STATUS_FOUND = 1
 STATUS_NOT_PRESENT = 2
-STATUS_PARTIAL_DGRAM = 3
-STATUS_BAD_DGRAM = 4
-STATUS_BAD_XTC = 5
-STATUS_CORRUPTED = 6
-STATUS_CAPACITY = 7
-STATUS_MISSING_SHAPES = 8
-STATUS_MISSING_DATA = 9
-STATUS_BAD_SHAPE = 10
-STATUS_DATA_OVERFLOW = 11
-STATUS_DUPLICATE = 12
+STATUS_BAD_DGRAM = 3
+STATUS_BAD_XTC = 4
+STATUS_CORRUPTED = 5
+STATUS_CAPACITY = 6
+STATUS_MISSING_SHAPES = 7
+STATUS_MISSING_DATA = 8
+STATUS_BAD_SHAPE = 9
+STATUS_DATA_OVERFLOW = 10
+STATUS_DUPLICATE = 11
+STATUS_BAD_STREAM = 12
+STATUS_UNKNOWN_NAMES = 13
+STATUS_BAD_CONFIG = 14
+STATUS_CLAIMED = 15
 
 STATUS_NAMES = {
     STATUS_OK: "ok",
     STATUS_FOUND: "found",
     STATUS_NOT_PRESENT: "not_present",
-    STATUS_PARTIAL_DGRAM: "partial_dgram",
     STATUS_BAD_DGRAM: "bad_dgram",
     STATUS_BAD_XTC: "bad_xtc",
     STATUS_CORRUPTED: "corrupted",
@@ -70,276 +84,191 @@ STATUS_NAMES = {
     STATUS_BAD_SHAPE: "bad_shape",
     STATUS_DATA_OVERFLOW: "data_overflow",
     STATUS_DUPLICATE: "duplicate",
-}
-
-_TYPE_DTYPES = {
-    0: np.dtype("u1"),
-    1: np.dtype("<u2"),
-    2: np.dtype("<u4"),
-    3: np.dtype("<u8"),
-    4: np.dtype("i1"),
-    5: np.dtype("<i2"),
-    6: np.dtype("<i4"),
-    7: np.dtype("<i8"),
-    8: np.dtype("<f4"),
-    9: np.dtype("<f8"),
-    10: np.dtype("u1"),
-    11: np.dtype("<u4"),
-    12: np.dtype("<u4"),
+    STATUS_BAD_STREAM: "bad_stream",
+    STATUS_UNKNOWN_NAMES: "unknown_names",
+    STATUS_BAD_CONFIG: "bad_config",
+    STATUS_CLAIMED: "claimed",
 }
 
 
 @dataclass(frozen=True)
-class GpuFieldView:
-    name: str
-    type: int
-    shape: tuple
-    device_offset: int
-    nbytes: int
-    array: object
+class DeviceFieldLocators:
+    """One locator row per batch dgram for a resolved field handle.
 
+    ``rows_gpu`` is a ``uint64[n_dgrams, LOC_NCOLS]`` CuPy array.  A consumer
+    on another CUDA stream must call :meth:`wait_on` before launching work.
+    """
 
-class GpuAlgView:
-    def __init__(self, schema, fields):
-        self.det_name = schema.det_name
-        self.det_type = schema.det_type
-        self.det_id = schema.det_id
-        self.segment = schema.segment
-        self.alg_name = schema.alg_name
-        self.alg_version = schema.alg_version
-        self.names_id = schema.names_id
-        self.fields = dict(fields)
-
-    def get(self, field_name):
-        return self.fields[str(field_name)]
-
-    def __getitem__(self, field_name):
-        return self.get(field_name)
-
-
-class GPUDgram:
-    """One indexed dgram within a :class:`GPUDgramBatch`."""
-
-    def __init__(self, batch, index):
-        self._batch = batch
-        self.index = int(index)
+    handle: GpuFieldHandle
+    rows_gpu: object
+    ready: object
 
     @property
-    def info(self):
-        return self._batch.dgram_info[self.index]
+    def n_dgrams(self):
+        return int(self.rows_gpu.shape[0])
 
-    @property
-    def timestamp(self):
-        return int(self.info[DGRAM_TIMESTAMP])
-
-    @property
-    def service(self):
-        return int(self.info[DGRAM_SERVICE])
-
-    def get(self, det_name, segment, alg_name):
-        """Return GPU field views for one detector/segment/algorithm."""
-        return self._batch._get(self.index, det_name, segment, alg_name)
+    def wait_on(self, stream):
+        stream.wait_event(self.ready)
+        return self.rows_gpu
 
 
-class GPUDgramBatch:
-    """Parse consecutive GPU-resident dgrams without CPU event parsing.
+class GpuEventBatch:
+    """Own device-side XTC parse state for one collection of stream dgrams.
 
-    ``data_gpu`` begins at a dgram boundary and may end with an incomplete
-    trailing dgram.  A one-thread index pass discovers complete dgram extents;
-    one CUDA thread per complete dgram then walks nested Parent records and
-    records every ShapesData location.
+    Parameters
+    ----------
+    data_gpu : cupy.ndarray, uint8[nbytes]
+        Batch bytes produced by the read path.
+    device_configs : DeviceConfigTables
+        Run-scoped Configure tables already uploaded to the GPU.
+    dgram_records_gpu : cupy.ndarray, uint64[n_dgrams, DGRAM_NCOLS]
+        Device records.  Event index, stream id, byte offset, and byte size are
+        inputs; the walker fills timestamp, env, service, damage, type, and
+        status in place.
+
+    Notes
+    -----
+    This object never copies parser metadata to the CPU.  Its buffers must
+    eventually become EventPool-slot-owned when Stage 2 integrates the parser
+    with the existing read/lease pipeline.
     """
 
     def __init__(
         self,
         data_gpu,
-        schema,
+        device_configs,
+        dgram_records_gpu,
         *,
-        max_dgrams=4096,
-        max_shapes_per_dgram=None,
+        max_shapes_per_dgram=64,
         threads=128,
+        stream=None,
     ):
         cp = _cupy()
-        if data_gpu.dtype != cp.uint8 or data_gpu.ndim != 1:
-            raise TypeError("data_gpu must be a one-dimensional CuPy uint8 array")
+        _require_device_array(data_gpu, cp.uint8, 1, "data_gpu")
+        _require_device_array(
+            dgram_records_gpu, cp.uint64, 2, "dgram_records_gpu"
+        )
+        if dgram_records_gpu.shape[1] != DGRAM_NCOLS:
+            raise ValueError(
+                "dgram_records_gpu must have shape "
+                f"(n, {DGRAM_NCOLS}), got {dgram_records_gpu.shape}"
+            )
+        _validate_device_configs(device_configs, cp)
+
         self.data_gpu = data_gpu
-        self.schema = schema
-        self.device_schema = schema.to_device(cp)
-        self.max_dgrams = int(max_dgrams)
-        if self.max_dgrams <= 0:
-            raise ValueError("max_dgrams must be positive")
-        if max_shapes_per_dgram is None:
-            max_shapes_per_dgram = max(1, len(schema.names))
+        self.device_configs = device_configs
+        self.dgram_records_gpu = dgram_records_gpu
+        self.n_dgrams = int(dgram_records_gpu.shape[0])
         self.max_shapes_per_dgram = int(max_shapes_per_dgram)
+        self.threads = int(threads)
         if self.max_shapes_per_dgram <= 0:
             raise ValueError("max_shapes_per_dgram must be positive")
-        self.threads = int(threads)
         if self.threads <= 0:
             raise ValueError("threads must be positive")
 
-        dgram_info_gpu = cp.zeros(
-            (self.max_dgrams, DGRAM_NCOLS), dtype=cp.uint64
-        )
-        index_meta_gpu = cp.zeros(3, dtype=cp.uint64)
-        _index_kernel()(
-            (1,),
-            (1,),
-            (
-                data_gpu,
-                np.uint64(data_gpu.nbytes),
-                dgram_info_gpu,
-                np.uint64(self.max_dgrams),
-                index_meta_gpu,
-            ),
-        )
-        index_meta = cp.asnumpy(index_meta_gpu)
-        self.n_dgrams = int(index_meta[0])
-        self.index_status = int(index_meta[1])
-        self.indexed_nbytes = int(index_meta[2])
-        self.trailing_nbytes = int(data_gpu.nbytes) - self.indexed_nbytes
-        self.dgram_info_gpu = dgram_info_gpu[: self.n_dgrams]
-        self.dgram_info = cp.asnumpy(self.dgram_info_gpu)
-
-        self.shape_counts_gpu = cp.zeros(self.n_dgrams, dtype=cp.uint64)
-        self.walk_status_gpu = cp.zeros(self.n_dgrams, dtype=cp.uint64)
-        self.shape_refs_gpu = cp.zeros(
-            (self.n_dgrams, self.max_shapes_per_dgram, REF_NCOLS),
-            dtype=cp.uint64,
-        )
-        if self.n_dgrams:
-            blocks = (self.n_dgrams + self.threads - 1) // self.threads
-            _walk_kernel()(
-                (blocks,),
-                (self.threads,),
-                (
-                    data_gpu,
-                    self.dgram_info_gpu,
-                    np.uint64(self.n_dgrams),
-                    self.shape_refs_gpu,
-                    self.shape_counts_gpu,
-                    self.walk_status_gpu,
-                    np.uint64(self.max_shapes_per_dgram),
-                ),
+        self.stream = stream if stream is not None else cp.cuda.get_current_stream()
+        with self.stream:
+            self.shape_counts_gpu = cp.empty(self.n_dgrams, dtype=cp.uint64)
+            self.shape_refs_gpu = cp.empty(
+                (self.n_dgrams, self.max_shapes_per_dgram, REF_NCOLS),
+                dtype=cp.uint64,
             )
-        self.shape_counts = cp.asnumpy(self.shape_counts_gpu)
-        self.walk_status = cp.asnumpy(self.walk_status_gpu)
-        self._decoded = {}
+            if self.n_dgrams:
+                blocks = (self.n_dgrams + self.threads - 1) // self.threads
+                _walk_kernel()(
+                    (blocks,),
+                    (self.threads,),
+                    (
+                        self.data_gpu,
+                        np.uint64(self.data_gpu.nbytes),
+                        self.dgram_records_gpu,
+                        np.uint64(self.n_dgrams),
+                        self.device_configs.stream_names_index,
+                        self.device_configs.names,
+                        np.uint64(self.device_configs.n_streams),
+                        self.shape_refs_gpu,
+                        self.shape_counts_gpu,
+                        np.uint64(self.max_shapes_per_dgram),
+                    ),
+                    stream=self.stream,
+                )
+            self.walk_done = cp.cuda.Event()
+            self.walk_done.record(self.stream)
+        self._locators = {}
 
-    def __len__(self):
-        return self.n_dgrams
+    def locate(self, handle, *, stream=None):
+        """Launch or return the device locator table for ``handle``."""
+        if not isinstance(handle, GpuFieldHandle):
+            raise TypeError("handle must be a GpuFieldHandle")
+        if not 0 <= handle.stream_id < self.device_configs.n_streams:
+            raise ValueError("field handle has an invalid stream id")
+        if not 0 <= handle.config_names_index < self.device_configs.n_names:
+            raise ValueError("field handle has an invalid Configure Names index")
+        if not 0 <= handle.config_field_index < self.device_configs.n_fields:
+            raise ValueError("field handle has an invalid Configure field index")
 
-    def __getitem__(self, index):
-        index = int(index)
-        if index < 0:
-            index += self.n_dgrams
-        if index < 0 or index >= self.n_dgrams:
-            raise IndexError(index)
-        return GPUDgram(self, index)
-
-    def __iter__(self):
-        for index in range(self.n_dgrams):
-            yield GPUDgram(self, index)
-
-    def _decode(self, names_schema):
-        cached = self._decoded.get(names_schema.names_id)
+        cached = self._locators.get(handle)
         if cached is not None:
             return cached
 
         cp = _cupy()
-        n_fields = len(names_schema.fields)
-        locators_gpu = cp.zeros(
-            (self.n_dgrams, n_fields, LOC_NCOLS), dtype=cp.uint64
+        launch_stream = stream if stream is not None else self.stream
+        if launch_stream is not self.stream:
+            launch_stream.wait_event(self.walk_done)
+        with launch_stream:
+            rows_gpu = cp.zeros((self.n_dgrams, LOC_NCOLS), dtype=cp.uint64)
+            if self.n_dgrams:
+                rows_gpu[:, LOC_STATUS] = STATUS_NOT_PRESENT
+                n_work = self.n_dgrams * self.max_shapes_per_dgram
+                blocks = (n_work + self.threads - 1) // self.threads
+                _locate_kernel()(
+                    (blocks,),
+                    (self.threads,),
+                    (
+                        self.data_gpu,
+                        self.shape_refs_gpu,
+                        self.shape_counts_gpu,
+                        self.dgram_records_gpu,
+                        np.uint64(self.n_dgrams),
+                        np.uint64(self.max_shapes_per_dgram),
+                        self.device_configs.names,
+                        self.device_configs.fields,
+                        np.uint64(self.device_configs.n_names),
+                        np.uint64(handle.config_names_index),
+                        np.uint64(handle.config_field_index),
+                        rows_gpu,
+                    ),
+                    stream=launch_stream,
+                )
+            ready = cp.cuda.Event()
+            ready.record(launch_stream)
+
+        result = DeviceFieldLocators(handle=handle, rows_gpu=rows_gpu, ready=ready)
+        self._locators[handle] = result
+        return result
+
+
+def _require_device_array(array, dtype, ndim, name):
+    if array.dtype != dtype or array.ndim != ndim:
+        raise TypeError(
+            f"{name} must be a {ndim}-dimensional CuPy {dtype} array"
         )
-        if n_fields:
-            locators_gpu[:, :, LOC_STATUS] = STATUS_NOT_PRESENT
-        n_refs = self.n_dgrams * self.max_shapes_per_dgram
-        if n_refs and n_fields:
-            blocks = (n_refs + self.threads - 1) // self.threads
-            _decode_kernel()(
-                (blocks,),
-                (self.threads,),
-                (
-                    self.data_gpu,
-                    self.shape_refs_gpu,
-                    self.shape_counts_gpu,
-                    np.uint64(self.n_dgrams),
-                    np.uint64(self.max_shapes_per_dgram),
-                    self.device_schema.fields,
-                    np.uint64(names_schema.first_field),
-                    np.uint64(n_fields),
-                    np.uint64(names_schema.names_id),
-                    locators_gpu,
-                ),
-            )
-        locators = cp.asnumpy(locators_gpu)
-        cached = (locators_gpu, locators)
-        self._decoded[names_schema.names_id] = cached
-        return cached
+    if not array.flags.c_contiguous:
+        raise ValueError(f"{name} must be C-contiguous")
 
-    def _get(self, dgram_index, det_name, segment, alg_name):
-        walk_status = int(self.walk_status[dgram_index])
-        if walk_status != STATUS_OK:
-            raise RuntimeError(
-                f"GPU XTC walk failed for dgram {dgram_index}: "
-                f"{STATUS_NAMES.get(walk_status, walk_status)}"
-            )
-        matches = []
-        for names_schema in self.schema.find_all(det_name, segment, alg_name):
-            result = self._get_names_id(dgram_index, names_schema)
-            if result is not None:
-                matches.append(result)
-        if len(matches) > 1:
-            names_ids = ", ".join(f"0x{match.names_id:x}" for match in matches)
-            raise RuntimeError(
-                f"dgram contains multiple NamesIds for "
-                f"{det_name}[{segment}].{alg_name}: {names_ids}"
-            )
-        return matches[0] if matches else None
 
-    def _get_names_id(self, dgram_index, names_schema):
-        _, locators = self._decode(names_schema)
-        rows = locators[dgram_index]
-        statuses = rows[:, LOC_STATUS]
-        if np.all(statuses == STATUS_NOT_PRESENT):
-            return None
-
-        fields = {}
-        cp = _cupy()
-        for field_schema, row in zip(names_schema.fields, rows):
-            status = int(row[LOC_STATUS])
-            if status != STATUS_FOUND:
-                raise RuntimeError(
-                    f"GPU field parse failed for {names_schema.det_name}"
-                    f"[{names_schema.segment}].{names_schema.alg_name}."
-                    f"{field_schema.name}: "
-                    f"{STATUS_NAMES.get(status, status)}"
-                )
-            rank = int(row[LOC_RANK])
-            shape = tuple(
-                int(value) for value in row[LOC_DIM0 : LOC_DIM0 + rank]
-            )
-            offset = int(row[LOC_OFFSET])
-            nbytes = int(row[LOC_NBYTES])
-            dtype = _TYPE_DTYPES[int(row[LOC_TYPE])]
-            expected = int(np.prod(shape, dtype=np.uint64) if shape else 1)
-            expected *= dtype.itemsize
-            if expected != nbytes:
-                raise RuntimeError(
-                    f"locator size {nbytes} does not match shape {shape} "
-                    f"and dtype {dtype} ({expected} bytes)"
-                )
-            array = self.data_gpu[offset : offset + nbytes].view(dtype).reshape(
-                shape
-            )
-            fields[field_schema.name] = GpuFieldView(
-                name=field_schema.name,
-                type=int(row[LOC_TYPE]),
-                shape=shape,
-                device_offset=offset,
-                nbytes=nbytes,
-                array=array,
-            )
-        return GpuAlgView(names_schema, fields)
+def _validate_device_configs(configs, cp):
+    _require_device_array(
+        configs.stream_names_index, cp.uint64, 1, "stream_names_index"
+    )
+    _require_device_array(configs.names, cp.uint64, 2, "names")
+    _require_device_array(configs.fields, cp.uint64, 2, "fields")
+    if configs.stream_names_index.shape != (configs.n_streams + 1,):
+        raise ValueError("stream_names_index shape does not match n_streams")
+    if configs.names.shape != (configs.n_names, NAMES_NCOLS):
+        raise ValueError("names shape does not match n_names")
+    if configs.fields.shape != (configs.n_fields, FIELD_NCOLS):
+        raise ValueError("fields shape does not match n_fields")
 
 
 @lru_cache(maxsize=1)
@@ -350,18 +279,13 @@ def _cupy():
 
 
 @lru_cache(maxsize=1)
-def _index_kernel():
-    return _cupy().RawKernel(_kernel_source(), "index_dgrams")
-
-
-@lru_cache(maxsize=1)
 def _walk_kernel():
     return _cupy().RawKernel(_kernel_source(), "walk_xtc")
 
 
 @lru_cache(maxsize=1)
-def _decode_kernel():
-    return _cupy().RawKernel(_kernel_source(), "decode_fields")
+def _locate_kernel():
+    return _cupy().RawKernel(_kernel_source(), "locate_field")
 
 
 @lru_cache(maxsize=1)
@@ -394,95 +318,92 @@ __device__ __forceinline__ unsigned int load_u32(const unsigned char* p)
            (static_cast<unsigned int>(p[3]) << 24);
 }}
 
-__device__ __forceinline__ unsigned long long load_timestamp(
-    const unsigned char* p)
+__device__ __forceinline__ unsigned long long load_u64(const unsigned char* p)
 {{
     return static_cast<unsigned long long>(load_u32(p)) |
            (static_cast<unsigned long long>(load_u32(p + 4)) << 32);
 }}
 
+__device__ __forceinline__ unsigned long long find_names(
+    unsigned long long stream_id,
+    unsigned int names_id,
+    const unsigned long long* stream_names_index,
+    const unsigned long long* names)
+{{
+    unsigned long long lo = stream_names_index[stream_id];
+    unsigned long long hi = stream_names_index[stream_id + 1];
+    while (lo < hi) {{
+        const unsigned long long mid = lo + (hi - lo) / 2;
+        const unsigned long long value =
+            names[mid * {NAMES_NCOLS} + {NAMES_ID}];
+        if (value < names_id) lo = mid + 1;
+        else hi = mid;
+    }}
+    if (lo == stream_names_index[stream_id + 1] ||
+        names[lo * {NAMES_NCOLS} + {NAMES_ID}] != names_id) {{
+        return ~0ull;
+    }}
+    return lo;
+}}
+
+__device__ __forceinline__ void finish_locator(
+    unsigned long long* locator,
+    unsigned long long status)
+{{
+    atomicCAS(locator + {LOC_STATUS},
+              static_cast<unsigned long long>({STATUS_CLAIMED}),
+              status);
+}}
+
 }} // namespace
 
 extern "C" __global__
-void index_dgrams(const unsigned char* data,
-                  unsigned long long nbytes,
-                  unsigned long long* dgrams,
-                  unsigned long long capacity,
-                  unsigned long long* meta)
-{{
-    if (blockIdx.x != 0 || threadIdx.x != 0) return;
-
-    unsigned long long offset = 0;
-    unsigned long long count = 0;
-    unsigned long long status = {STATUS_OK};
-    while (offset < nbytes) {{
-        if (nbytes - offset < DGRAM_HEADER) {{
-            status = {STATUS_PARTIAL_DGRAM};
-            break;
-        }}
-        if (count == capacity) {{
-            status = {STATUS_CAPACITY};
-            break;
-        }}
-
-        const unsigned char* dgram = data + offset;
-        const unsigned int extent = load_u32(dgram + 20);
-        if (extent < XTC_HEADER) {{
-            status = {STATUS_BAD_DGRAM};
-            break;
-        }}
-        const unsigned long long total = 12ull + extent;
-        if (total > nbytes - offset) {{
-            status = {STATUS_PARTIAL_DGRAM};
-            break;
-        }}
-
-        unsigned long long* row = dgrams + count * {DGRAM_NCOLS};
-        const unsigned int env = load_u32(dgram + 8);
-        row[{DGRAM_OFFSET}] = offset;
-        row[{DGRAM_SIZE}] = total;
-        row[{DGRAM_TIMESTAMP}] = load_timestamp(dgram);
-        row[{DGRAM_ENV}] = env;
-        row[{DGRAM_SERVICE}] = (env >> 24) & 0x0f;
-        row[{DGRAM_DAMAGE}] = load_u16(dgram + 16);
-        row[{DGRAM_TYPE}] = load_u16(dgram + 18) & TYPE_MASK;
-        row[{DGRAM_STATUS}] = {STATUS_OK};
-        ++count;
-        offset += total;
-    }}
-
-    meta[0] = count;
-    meta[1] = status;
-    meta[2] = offset;
-}}
-
-extern "C" __global__
 void walk_xtc(const unsigned char* data,
-              const unsigned long long* dgrams,
+              unsigned long long data_nbytes,
+              unsigned long long* dgrams,
               unsigned long long n_dgrams,
+              const unsigned long long* stream_names_index,
+              const unsigned long long* names,
+              unsigned long long n_streams,
               unsigned long long* refs,
               unsigned long long* counts,
-              unsigned long long* statuses,
               unsigned long long ref_capacity)
 {{
     const unsigned long long index =
         static_cast<unsigned long long>(blockIdx.x) * blockDim.x + threadIdx.x;
     if (index >= n_dgrams) return;
 
-    const unsigned long long* dgram = dgrams + index * {DGRAM_NCOLS};
+    unsigned long long* dgram = dgrams + index * {DGRAM_NCOLS};
+    dgram[{DGRAM_STATUS}] = {STATUS_BAD_DGRAM};
+    counts[index] = 0;
     const unsigned long long dgram_offset = dgram[{DGRAM_OFFSET}];
     const unsigned long long dgram_size = dgram[{DGRAM_SIZE}];
+    if (dgram_offset > data_nbytes ||
+        dgram_size < DGRAM_HEADER ||
+        dgram_size > data_nbytes - dgram_offset) return;
+
     const unsigned char* base = data + dgram_offset;
-    if (dgram_size < DGRAM_HEADER) {{
-        statuses[index] = {STATUS_BAD_DGRAM};
+    const unsigned int root_extent = load_u32(base + 20);
+    if (root_extent < XTC_HEADER || 12ull + root_extent != dgram_size) return;
+
+    const unsigned int env = load_u32(base + 8);
+    dgram[{DGRAM_TIMESTAMP}] = load_u64(base);
+    dgram[{DGRAM_ENV}] = env;
+    dgram[{DGRAM_SERVICE}] = (env >> 24) & 0x0f;
+    dgram[{DGRAM_DAMAGE}] = load_u16(base + 16);
+    dgram[{DGRAM_TYPE}] = load_u16(base + 18) & TYPE_MASK;
+
+    const unsigned long long stream_id = dgram[{DGRAM_STREAM_ID}];
+    if (stream_id >= n_streams) {{
+        dgram[{DGRAM_STATUS}] = {STATUS_BAD_STREAM};
         return;
     }}
     if (load_u16(base + 16) & DAMAGE_CORRUPTED) {{
-        statuses[index] = {STATUS_CORRUPTED};
+        dgram[{DGRAM_STATUS}] = {STATUS_CORRUPTED};
         return;
     }}
     if ((load_u16(base + 18) & TYPE_MASK) != TYPE_PARENT) {{
-        statuses[index] = {STATUS_BAD_XTC};
+        dgram[{DGRAM_STATUS}] = {STATUS_BAD_XTC};
         return;
     }}
 
@@ -530,10 +451,19 @@ void walk_xtc(const unsigned char* data,
                 status = {STATUS_CAPACITY};
                 break;
             }}
+            const unsigned long long names_index = find_names(
+                stream_id,
+                load_u32(node),
+                stream_names_index,
+                names);
+            if (names_index == ~0ull) {{
+                status = {STATUS_UNKNOWN_NAMES};
+                break;
+            }}
             unsigned long long* row =
                 refs + (index * ref_capacity + count) * {REF_NCOLS};
             row[{REF_DGRAM_INDEX}] = index;
-            row[{REF_NAMES_ID}] = load_u32(node);
+            row[{REF_CONFIG_NAMES_INDEX}] = names_index;
             row[{REF_OFFSET}] = dgram_offset + node_offset;
             row[{REF_EXTENT}] = extent;
             row[{REF_DAMAGE}] = load_u16(node + 4);
@@ -542,20 +472,22 @@ void walk_xtc(const unsigned char* data,
     }}
 
     counts[index] = count;
-    statuses[index] = status;
+    dgram[{DGRAM_STATUS}] = status;
 }}
 
 extern "C" __global__
-void decode_fields(const unsigned char* data,
-                   const unsigned long long* refs,
-                   const unsigned long long* counts,
-                   unsigned long long n_dgrams,
-                   unsigned long long ref_capacity,
-                   const unsigned long long* fields,
-                   unsigned long long first_field,
-                   unsigned long long n_fields,
-                   unsigned long long target_names_id,
-                   unsigned long long* locators)
+void locate_field(const unsigned char* data,
+                  const unsigned long long* refs,
+                  const unsigned long long* counts,
+                  const unsigned long long* dgrams,
+                  unsigned long long n_dgrams,
+                  unsigned long long ref_capacity,
+                  const unsigned long long* names,
+                  const unsigned long long* fields,
+                  unsigned long long n_names,
+                  unsigned long long target_names_index,
+                  unsigned long long target_field_index,
+                  unsigned long long* locators)
 {{
     const unsigned long long work =
         static_cast<unsigned long long>(blockIdx.x) * blockDim.x + threadIdx.x;
@@ -563,19 +495,42 @@ void decode_fields(const unsigned char* data,
     if (work >= n_work) return;
     const unsigned long long dgram_index = work / ref_capacity;
     const unsigned long long ref_index = work - dgram_index * ref_capacity;
+    unsigned long long* locator = locators + dgram_index * {LOC_NCOLS};
+    const unsigned long long dgram_status =
+        dgrams[dgram_index * {DGRAM_NCOLS} + {DGRAM_STATUS}];
+    if (dgram_status != {STATUS_OK}) {{
+        atomicExch(locator + {LOC_STATUS}, dgram_status);
+        return;
+    }}
     if (ref_index >= counts[dgram_index]) return;
 
     const unsigned long long* ref = refs + work * {REF_NCOLS};
-    if (ref[{REF_NAMES_ID}] != target_names_id) return;
-    unsigned long long* first_loc =
-        locators + dgram_index * n_fields * {LOC_NCOLS};
+    if (ref[{REF_CONFIG_NAMES_INDEX}] != target_names_index) return;
     const unsigned long long previous = atomicCAS(
-        first_loc + {LOC_STATUS},
+        locator + {LOC_STATUS},
         static_cast<unsigned long long>({STATUS_NOT_PRESENT}),
-        static_cast<unsigned long long>({STATUS_OK})
-    );
+        static_cast<unsigned long long>({STATUS_CLAIMED}));
     if (previous != {STATUS_NOT_PRESENT}) {{
-        first_loc[{LOC_STATUS}] = {STATUS_DUPLICATE};
+        atomicExch(locator + {LOC_STATUS},
+                   static_cast<unsigned long long>({STATUS_DUPLICATE}));
+        return;
+    }}
+    if (target_names_index >= n_names) {{
+        finish_locator(locator, {STATUS_BAD_CONFIG});
+        return;
+    }}
+    if (ref[{REF_DAMAGE}] & DAMAGE_CORRUPTED) {{
+        finish_locator(locator, {STATUS_CORRUPTED});
+        return;
+    }}
+
+    const unsigned long long* names_row =
+        names + target_names_index * {NAMES_NCOLS};
+    const unsigned long long first_field = names_row[{NAMES_FIRST_FIELD}];
+    const unsigned long long n_fields = names_row[{NAMES_N_FIELDS}];
+    if (target_field_index < first_field ||
+        target_field_index - first_field >= n_fields) {{
+        finish_locator(locator, {STATUS_BAD_CONFIG});
         return;
     }}
 
@@ -588,13 +543,13 @@ void decode_fields(const unsigned char* data,
     unsigned long long data_nbytes = 0;
     while (child < node_end) {{
         if (node_end - child < XTC_HEADER) {{
-            first_loc[{LOC_STATUS}] = {STATUS_BAD_XTC};
+            finish_locator(locator, {STATUS_BAD_XTC});
             return;
         }}
         const unsigned char* child_ptr = data + child;
         const unsigned int child_extent = load_u32(child_ptr + 8);
         if (child_extent < XTC_HEADER || child_extent > node_end - child) {{
-            first_loc[{LOC_STATUS}] = {STATUS_BAD_XTC};
+            finish_locator(locator, {STATUS_BAD_XTC});
             return;
         }}
         const unsigned int type = load_u16(child_ptr + 6) & TYPE_MASK;
@@ -608,50 +563,47 @@ void decode_fields(const unsigned char* data,
         child += child_extent;
     }}
     if (!data_payload) {{
-        first_loc[{LOC_STATUS}] = {STATUS_MISSING_DATA};
+        finish_locator(locator, {STATUS_MISSING_DATA});
         return;
     }}
 
     unsigned long long field_offset = 0;
-    for (unsigned long long i = 0; i < n_fields; ++i) {{
-        const unsigned long long* field =
-            fields + (first_field + i) * {FIELD_NCOLS};
-        unsigned long long* loc = first_loc + i * {LOC_NCOLS};
-        loc[{LOC_FIELD_KEY}] = field[{FIELD_KEY}];
-        loc[{LOC_TYPE}] = field[{FIELD_TYPE}];
-        loc[{LOC_RANK}] = field[{FIELD_RANK}];
+    for (unsigned long long field_index = first_field;
+         field_index <= target_field_index;
+         ++field_index) {{
+        const unsigned long long* field = fields + field_index * {FIELD_NCOLS};
         unsigned long long field_nbytes = field[{FIELD_ELEMENT_SIZE}];
         const unsigned long long rank = field[{FIELD_RANK}];
         if (rank > {LOC_MAX_RANK}) {{
-            loc[{LOC_STATUS}] = {STATUS_BAD_SHAPE};
+            finish_locator(locator, {STATUS_BAD_SHAPE});
             return;
         }}
         if (rank) {{
             if (!shapes_payload) {{
-                loc[{LOC_STATUS}] = {STATUS_MISSING_SHAPES};
+                finish_locator(locator, {STATUS_MISSING_SHAPES});
                 return;
             }}
             const unsigned long long shape_index = field[{FIELD_SHAPE_INDEX}];
-            if (shape_index == ~0ull ||
-                shape_index >= (~0ull) / SHAPE_BYTES) {{
-                loc[{LOC_STATUS}] = {STATUS_BAD_SHAPE};
+            if (shape_index == ~0ull || shape_index >= (~0ull) / SHAPE_BYTES) {{
+                finish_locator(locator, {STATUS_BAD_SHAPE});
                 return;
             }}
             const unsigned long long shape_offset = shape_index * SHAPE_BYTES;
             if (shape_offset > shapes_nbytes ||
                 SHAPE_BYTES > shapes_nbytes - shape_offset) {{
-                loc[{LOC_STATUS}] = {STATUS_BAD_SHAPE};
+                finish_locator(locator, {STATUS_BAD_SHAPE});
                 return;
             }}
             for (unsigned long long dim_index = 0;
                  dim_index < rank;
                  ++dim_index) {{
                 const unsigned long long dim = load_u32(
-                    data + shapes_payload + shape_offset + dim_index * 4
-                );
-                loc[{LOC_DIM0} + dim_index] = dim;
+                    data + shapes_payload + shape_offset + dim_index * 4);
+                if (field_index == target_field_index) {{
+                    locator[{LOC_DIM0} + dim_index] = dim;
+                }}
                 if (dim && field_nbytes > (~0ull) / dim) {{
-                    loc[{LOC_STATUS}] = {STATUS_BAD_SHAPE};
+                    finish_locator(locator, {STATUS_BAD_SHAPE});
                     return;
                 }}
                 field_nbytes *= dim;
@@ -659,13 +611,45 @@ void decode_fields(const unsigned char* data,
         }}
         if (field_offset > data_nbytes ||
             field_nbytes > data_nbytes - field_offset) {{
-            loc[{LOC_STATUS}] = {STATUS_DATA_OVERFLOW};
+            finish_locator(locator, {STATUS_DATA_OVERFLOW});
             return;
         }}
-        loc[{LOC_OFFSET}] = data_payload + field_offset;
-        loc[{LOC_NBYTES}] = field_nbytes;
-        loc[{LOC_STATUS}] = {STATUS_FOUND};
+        if (field_index == target_field_index) {{
+            locator[{LOC_CONFIG_FIELD_INDEX}] = field_index;
+            locator[{LOC_TYPE}] = field[{FIELD_TYPE}];
+            locator[{LOC_RANK}] = rank;
+            locator[{LOC_OFFSET}] = data_payload + field_offset;
+            locator[{LOC_NBYTES}] = field_nbytes;
+            finish_locator(locator, {STATUS_FOUND});
+            return;
+        }}
         field_offset += field_nbytes;
     }}
+    finish_locator(locator, {STATUS_BAD_CONFIG});
 }}
 """
+
+
+__all__ = [
+    "DeviceFieldLocators",
+    "GpuEventBatch",
+    "LOC_CONFIG_FIELD_INDEX",
+    "LOC_DIM0",
+    "LOC_MAX_RANK",
+    "LOC_NBYTES",
+    "LOC_NCOLS",
+    "LOC_OFFSET",
+    "LOC_RANK",
+    "LOC_STATUS",
+    "LOC_TYPE",
+    "REF_CONFIG_NAMES_INDEX",
+    "REF_DAMAGE",
+    "REF_DGRAM_INDEX",
+    "REF_EXTENT",
+    "REF_NCOLS",
+    "REF_OFFSET",
+    "STATUS_FOUND",
+    "STATUS_NAMES",
+    "STATUS_NOT_PRESENT",
+    "STATUS_OK",
+]
