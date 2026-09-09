@@ -1,15 +1,17 @@
 import numpy as np
 import pytest
 
-from psana.gpu.gpudgram.schema import (
+from psana.gpu.gpudgram.config import (
     FIELD_ELEMENT_SIZE,
     FIELD_RANK,
     FIELD_SHAPE_INDEX,
     NAMES_FIRST_FIELD,
     NAMES_ID,
     NAMES_N_FIELDS,
+    NAMES_STREAM_ID,
     SCALAR_SHAPE_INDEX,
-    GpuNamesSchema,
+    GpuFieldHandle,
+    GpuStreamConfigTable,
 )
 
 
@@ -45,57 +47,93 @@ def _field(name, type_id, element_size, rank, field_index, shape_index):
     }
 
 
-def test_schema_is_detector_independent_and_deterministic():
-    entries = [
-        _entry(
-            "det_b",
-            3,
-            "raw",
-            20,
-            [_field("pixels", 1, 2, 2, 0, 0)],
-        ),
-        _entry(
-            "det_a",
-            0,
-            "fex",
-            10,
-            [
-                _field("energy", 8, 4, 0, 0, -1),
-                _field("waveform", 5, 2, 1, 1, 0),
+def test_config_table_is_stream_indexed_and_deterministic():
+    configs = GpuStreamConfigTable.from_configs(
+        [
+            _Config(
+                [
+                    _entry(
+                        "det_b",
+                        3,
+                        "raw",
+                        20,
+                        [_field("pixels", 1, 2, 2, 0, 0)],
+                    ),
+                    _entry(
+                        "det_a",
+                        0,
+                        "fex",
+                        10,
+                        [
+                            _field("energy", 8, 4, 0, 0, -1),
+                            _field("waveform", 5, 2, 1, 1, 0),
+                        ],
+                    ),
+                ]
+            ),
+            _Config([_entry("det_c", 1, "raw", 10, [])]),
+        ]
+    )
+
+    assert configs.stream_names_index.tolist() == [0, 2, 3]
+    assert configs.names_table[:, NAMES_STREAM_ID].tolist() == [0, 0, 1]
+    assert configs.names_table[:, NAMES_ID].tolist() == [10, 20, 10]
+    assert configs.names_table[:, NAMES_FIRST_FIELD].tolist() == [0, 2, 3]
+    assert configs.names_table[:, NAMES_N_FIELDS].tolist() == [2, 1, 0]
+    assert configs.fields_table[:, FIELD_ELEMENT_SIZE].tolist() == [4, 2, 2]
+    assert configs.fields_table[:, FIELD_RANK].tolist() == [0, 1, 2]
+    assert configs.fields_table[0, FIELD_SHAPE_INDEX] == SCALAR_SHAPE_INDEX
+    assert configs.fields_table[1:, FIELD_SHAPE_INDEX].tolist() == [0, 0]
+    assert configs.det_keys == {"det_a": 0, "det_b": 1, "det_c": 2}
+    assert configs.alg_keys == {"fex": 0, "raw": 1}
+    assert configs.names_for_id(1, 10).det_name == "det_c"
+
+
+def test_field_selector_resolves_to_numeric_device_handle():
+    configs = GpuStreamConfigTable(
+        {
+            0: [_entry("other", 0, "raw", 10, [])],
+            1: [
+                _entry(
+                    "det",
+                    2,
+                    "raw",
+                    0x10C,
+                    [
+                        _field("counter", 3, 8, 0, 0, -1),
+                        _field("array", 1, 2, 2, 1, 0),
+                    ],
+                )
             ],
-        ),
-    ]
-    schema = GpuNamesSchema.from_config(_Config(entries))
+        }
+    )
 
-    # Input order follows an unordered Configure lookup; packed order does not.
-    assert schema.names_table[:, NAMES_ID].tolist() == [10, 20]
-    fex = schema.find("det_a", 0, "fex")
-    raw = schema.find("det_b", 3, "raw")
-    assert fex.names_id == 10
-    assert raw.names_id == 20
-    assert schema.names_table[0, NAMES_FIRST_FIELD] == 0
-    assert schema.names_table[0, NAMES_N_FIELDS] == 2
-    assert schema.names_table[1, NAMES_FIRST_FIELD] == 2
-    assert schema.names_table[1, NAMES_N_FIELDS] == 1
-
-    fields = schema.fields_table
-    assert fields[:, FIELD_ELEMENT_SIZE].tolist() == [4, 2, 2]
-    assert fields[:, FIELD_RANK].tolist() == [0, 1, 2]
-    assert fields[0, FIELD_SHAPE_INDEX] == SCALAR_SHAPE_INDEX
-    assert fields[1:, FIELD_SHAPE_INDEX].tolist() == [0, 0]
-    assert schema.det_keys == {"det_a": 0, "det_b": 1}
-    assert schema.alg_keys == {"fex": 0, "raw": 1}
+    handle = configs.resolve("det", 2, "raw", "array")
+    assert isinstance(handle, GpuFieldHandle)
+    assert handle == GpuFieldHandle(
+        stream_id=1,
+        names_id=0x10C,
+        config_names_index=1,
+        config_field_index=1,
+        field_index=1,
+        type=1,
+        element_size=2,
+        rank=2,
+        shape_index=0,
+    )
+    assert configs[1].resolve("det", 2, "raw", "array") == handle
 
 
-def test_schema_preserves_multiple_names_ids_for_one_selector():
-    entries = [
-        _entry("det", 0, "raw", 10, []),
-        _entry("det", 0, "raw", 11, []),
-    ]
-    schema = GpuNamesSchema(entries)
-    assert [entry.names_id for entry in schema.find_all("det", 0, "raw")] == [10, 11]
-    with pytest.raises(ValueError, match="multiple NamesIds"):
-        schema.find("det", 0, "raw")
+def test_resolve_all_preserves_detector_ownership_across_streams():
+    entry = _entry(
+        "det", 0, "raw", 10, [_field("array", 1, 2, 1, 0, 0)]
+    )
+    configs = GpuStreamConfigTable({0: [entry], 1: [entry]})
+
+    handles = configs.resolve_all("det", 0, "raw", "array")
+    assert [handle.stream_id for handle in handles] == [0, 1]
+    with pytest.raises(ValueError, match="multiple matches"):
+        configs.resolve("det", 0, "raw", "array")
 
 
 @pytest.mark.parametrize(
@@ -106,14 +144,43 @@ def test_schema_preserves_multiple_names_ids_for_one_selector():
         ([_field("x", 2, 4, 1, 0, -1)], "shape_index"),
     ],
 )
-def test_schema_rejects_inconsistent_field_metadata(fields, match):
+def test_config_table_rejects_inconsistent_field_metadata(fields, match):
     with pytest.raises(ValueError, match=match):
-        GpuNamesSchema([_entry("det", 0, "raw", 10, fields)])
+        GpuStreamConfigTable({0: [_entry("det", 0, "raw", 10, fields)]})
 
 
-def test_find_reports_available_selectors():
-    schema = GpuNamesSchema(
-        [_entry("det", 2, "raw", 10, [_field("x", 2, 4, 0, 0, -1)])]
+def test_config_table_rejects_duplicate_names_id_within_stream():
+    with pytest.raises(ValueError, match="duplicate Configure NamesId"):
+        GpuStreamConfigTable(
+            {
+                0: [
+                    _entry("det", 0, "raw", 10, []),
+                    _entry("other", 0, "raw", 10, []),
+                ]
+            }
+        )
+
+
+def test_to_device_records_host_counts_without_copying_strings():
+    configs = GpuStreamConfigTable(
+        {
+            0: [
+                _entry(
+                    "det",
+                    0,
+                    "raw",
+                    10,
+                    [_field("array", 1, 2, 1, 0, 0)],
+                )
+            ],
+            1: [],
+        }
     )
-    with pytest.raises(KeyError, match=r"det\[2\]\.raw"):
-        schema.find("missing", 0, "raw")
+    device = configs.to_device(np)
+
+    assert device.n_streams == 2
+    assert device.n_names == 1
+    assert device.n_fields == 1
+    assert device.stream_names_index.dtype == np.uint64
+    assert device.names.shape == (1, 7)
+    assert device.fields.shape == (1, 5)
