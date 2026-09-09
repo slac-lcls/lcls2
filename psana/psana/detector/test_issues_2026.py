@@ -1277,6 +1277,27 @@ def issue_2026_08_31(args):
     r = req.get(uri, params=query, headers=krbh)
     print(f'resp:{r.json()}')
 
+
+def issue_2026_09_09(args):
+    """ISSUE:
+       curl -s "https://pswww.slac.stanford.edu/ws/calib_ws/cdb_mfx101628626/epixuhr3x2_000004"
+       It works with query as a string, but DOES NOT work with regular query: {'detector': 'epixuhr3x2_000004', 'run': {'$lte': 163}} 
+       PROBLEM:
+       FIX:
+    """
+    #from json import json as jsonmeth
+    #from krtc import KerberosTicket
+    #krbh = dict(KerberosTicket('HTTP@pswww.slac.stanford.edu').getAuthHeaders())
+    import requests as req
+    query = {'detector': 'epixuhr3x2_000004', 'run': {'$lte': 163}, 'ctype':'pedestals'}
+    print(f'query: {query}')
+    uri = 'https://pswww.slac.stanford.edu/ws/calib_ws/cdb_mfx101628626/epixuhr3x2_000004'
+    r = req.get(uri, json=query, timeout=180)#, headers=krbh)
+    print(f'uri: {uri}\n')
+    ldocs = r.json()
+    s = '\n\n  '.join([str(d) for d in ldocs])
+    print(f'resp\n\n{s}')
+    
 #===
 
 def issue_2026_MM_DD(args):
@@ -1341,6 +1362,7 @@ def selector():
     elif TNAME in ('16',):issue_2026_08_19()     # for Murali can't add document to psdm DB
     elif TNAME in ('17',):issue_2026_08_25(args) # kerberos access to DB (for Murali), see --subtest
     elif TNAME in ('18',):issue_2026_08_31(args) # delete documents
+    elif TNAME in ('19',):issue_2026_09_09(args) # kerberos access to DB with query (for Murali), see --subtest
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())
