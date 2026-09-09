@@ -3,6 +3,12 @@
 #include "PGPDetector.hh"
 
 #include <getopt.h>
+#include <climits>                      // For PATH_MAX
+#include <cstdio>                       // For fopen, fread
+#include <cstring>                      // For memcmp
+#include <cstdlib>                      // For getenv
+#include <sys/stat.h>
+#include <unistd.h>                     // For readlink
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/kwargs.hh"
 #include "xtcdata/xtc/TransitionId.hh"
@@ -583,6 +589,123 @@ void PGPDetectorApp::connectionShutdown()
 } // Drp
 
 
+// Compare two files byte for byte.  Returns false on any read error, so that a
+// problem reading either one is reported as a mismatch rather than passing quietly.
+static bool _sameContent(const char* lhsPath, const char* rhsPath)
+{
+    FILE* lhs = fopen(lhsPath, "rb");
+    if (!lhs)  return false;
+    FILE* rhs = fopen(rhsPath, "rb");
+    if (!rhs) { fclose(lhs); return false; }
+
+    bool same = true;
+    char lhsBuf[64*1024];
+    char rhsBuf[sizeof(lhsBuf)];
+    for (;;) {
+        size_t lhsGot = fread(lhsBuf, 1, sizeof(lhsBuf), lhs);
+        size_t rhsGot = fread(rhsBuf, 1, sizeof(rhsBuf), rhs);
+        if ((lhsGot != rhsGot) || memcmp(lhsBuf, rhsBuf, lhsGot)) { same = false; break; }
+        if (lhsGot == 0)  break;                // Both at EOF
+    }
+    if (ferror(lhs) || ferror(rhs))  same = false;
+    fclose(rhs);
+    fclose(lhs);
+    return same;
+}
+
+// Check that the running image is the one in the user's release tree.
+//
+// The privilege needed to let GPU kernels rearm DMA buffers cannot be given to an
+// executable on wekafs (see drpGpu/MemPool.hh), so the deployed drp_gpu is a copy
+// on a node-local file system carrying a file capability.  That copy can fall out
+// of step with the release it was taken from -- most easily when someone replaces
+// it during development and does not put the production one back.
+//
+// A stale copy is worse than an old binary.  meson bakes an absolute RPATH into
+// drp_gpu pointing at the tree it was built in, so a copy loads its shared
+// libraries, and dlopens its detector and reducer plugins, from *that* tree
+// whatever TESTRELDIR says.  A copy of someone's development build therefore drags
+// in that entire tree, silently.  When the running image matches
+// $TESTRELDIR/bin/drp_gpu, TESTRELDIR is the tree the image was built in and the
+// libraries and plugins are consistent with it.
+//
+// A mismatch refuses to start, since it is never intended in normal operation;
+// -k imageCheck=warn downgrades that to a warning for anyone who means it.  Not
+// being able to check at all -- no TESTRELDIR, or an unreadable file -- only warns,
+// since that is a setup problem rather than a mismatched image.
+//
+// Costs about 10 ms for a 7 MB image, once, before any DAQ activity.
+static void _checkImage(const Drp::Parameters& para)
+{
+    char self[PATH_MAX];
+    ssize_t len = readlink("/proc/self/exe", self, sizeof(self) - 1);
+    if (len < 0) {
+        logging::warning("Cannot read /proc/self/exe (%m); not checking the image "
+                         "against TESTRELDIR");
+        return;
+    }
+    self[len] = '\0';
+
+    const char* relDir = getenv("TESTRELDIR");
+    if (!relDir || !*relDir) {
+        logging::warning("TESTRELDIR is not set; not checking that %s is the image "
+                         "it was built as", self);
+        return;
+    }
+    std::string release = std::string(relDir) + "/bin/drp_gpu";
+
+    struct stat selfSt;
+    struct stat relSt;
+    if (stat(self, &selfSt) || stat(release.c_str(), &relSt)) {
+        logging::warning("Cannot compare %s with %s (%m)", self, release.c_str());
+        return;
+    }
+    if ((selfSt.st_dev == relSt.st_dev) && (selfSt.st_ino == relSt.st_ino)) {
+        logging::debug("Running %s, which is the image in TESTRELDIR", self);
+        return;                             // The same file; nothing to compare
+    }
+
+    bool const same = (selfSt.st_size == relSt.st_size) &&
+                      _sameContent(self, release.c_str());
+    if (same) {
+        logging::info("Running %s, a copy of %s", self, release.c_str());
+        return;
+    }
+
+    // Strict by default: a mismatch is never intended in normal operation, and a
+    // warning in a log is weak protection against production quietly running
+    // someone's development build.  Developers who mean it can say so.
+    bool strict = true;
+    auto const check = para.kwargs.find("imageCheck");
+    if (check != para.kwargs.end()) {
+        if      (check->second == "warn")    strict = false;
+        else if (check->second == "strict")  strict = true;
+        else {
+            logging::critical("Unrecognized imageCheck value '%s': expected "
+                              "'strict' or 'warn'", check->second.c_str());
+            abort();
+        }
+    }
+
+    logging::error("Running %s, which differs from %s", self, release.c_str());
+    logging::error("A deployed copy has an absolute RPATH to the tree it was built "
+                   "in, so this process would load its libraries, and dlopen its "
+                   "detector and reducer plugins, from that tree rather than from "
+                   "TESTRELDIR");
+    logging::error("To refresh the deployed copy:");
+    logging::error("  sudo install -m 0755 %s %s", release.c_str(), self);
+    logging::error("  sudo setcap cap_sys_admin+ep %s", self);
+    logging::error("To check what it ended up with:");
+    logging::error("  getcap %s", self);
+    logging::error("Alternatively, point TESTRELDIR at the tree %s was built in", self);
+    if (strict) {
+        logging::critical("Refusing to start on an image mismatch.  Pass "
+                          "-k imageCheck=warn to continue anyway");
+        abort();
+    }
+    logging::warning("Continuing anyway because imageCheck=warn");
+}
+
 int main(int argc, char* argv[])
 {
     Drp::Parameters para;
@@ -698,6 +821,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "dmaBufSize")     continue;  // GPU DRP
         if (kwargs.first == "dmaBufCount")    continue;  // GPU DRP
         if (kwargs.first == "gpuId")          continue;  // GPU DRP
+        if (kwargs.first == "imageCheck")     continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
@@ -706,6 +830,10 @@ int main(int argc, char* argv[])
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+
+    // Check this is the image TESTRELDIR holds before doing anything else, since a
+    // deployed copy loads its libraries and plugins from the tree it was built in
+    _checkImage(para);
 
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });
