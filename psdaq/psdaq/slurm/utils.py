@@ -344,40 +344,6 @@ class SbatchManager:
                     rtprio = details["rtprio"]
         return rtprio
 
-    def get_caps(self, details):
-        """Return '' or a setpriv prefix granting the requested capabilities.
-
-        'caps' is a comma separated list of capability names without the cap_
-        prefix, e.g. 'sys_admin'.  They are granted as ambient capabilities from a
-        privileged parent, so the process itself needs no setuid bit and no file
-        capability -- the latter cannot be used anyway when the executable lives on
-        a file system that does not support the security.capability extended
-        attribute, as wekafs does not.
-
-        Because the capabilities are inherited rather than gained at exec, the
-        process does not enter secure-execution mode and so LD_LIBRARY_PATH keeps
-        working, which the conda environment depends on.  --securebits is needed to
-        stop the kernel clearing the capabilities when the uid drops from 0, and
-        sudo needs -E, and a SETENV: tag in sudoers, to preserve the environment.
-
-        Running this requires a NOPASSWD:SETENV: sudoers rule for the launching
-        account on the node the process runs on.  Gpu::MemPool's header comment
-        explains why drp_gpu needs CAP_SYS_ADMIN.
-        """
-        caps = ""
-        if "caps" in details:
-            names = [name.strip() for name in details["caps"].split(",")]
-            for name in names:
-                if not name or not re.fullmatch(r"[a-z0-9_]+", name):
-                    raise ValueError("malformed caps value: %s" % details["caps"])
-            spec = "-all," + ",".join("+" + name for name in names)
-            caps = (
-                "sudo -E setpriv --reuid=$(id -u) --regid=$(id -g) --init-groups "
-                "--securebits=+no_setuid_fixup "
-                f"--inh-caps={spec} --ambient-caps={spec} "
-            )
-        return caps
-
     def get_jobstep_cmd(
         self, node, job_name, details, het_group=-1, with_output=False, as_step=False
     ):
@@ -482,11 +448,6 @@ class SbatchManager:
         rtprio = self.get_rtprio(details)
         rtattr = f"/usr/bin/chrt -f {rtprio} " if rtprio else ""
 
-        # Outside chrt, so that chrt still runs as the unprivileged user and still
-        # depends on that user's RLIMIT_RTPRIO exactly as it does without caps:
-        # CAP_SYS_NICE is deliberately not granted here
-        capattr = self.get_caps(details)
-
         debug_env = daqmgr_debug_env_enabled()
 
         step_env_dump = ""
@@ -496,7 +457,7 @@ class SbatchManager:
                 f"{DAQMGR_DEBUG_ENV_DUMP_CMD}; "
                 f'echo "===== END STEP ENV AFTER SRUN ({job_name}) ====="; '
             )
-        cmd = f"{step_env_dump}{daqlog_header} ; {capattr}{rtattr}{daq_cmd}"
+        cmd = f"{step_env_dump}{daqlog_header} ; {rtattr}{daq_cmd}"
         if "conda_env" in details:
             if details["conda_env"] != "":
                 CONDA_EXE = os.environ.get("CONDA_EXE", "")
