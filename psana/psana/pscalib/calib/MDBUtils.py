@@ -401,7 +401,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     query['run'] = {'$lte': runq} #query['run_end'] = {'$gte': runq}
     if time_sec is not None: query['time_sec'] = {'$lte': int(time_sec)}
     if vers is not None: query['version'] = vers
-    logger.debug('query: %s' % str(query))
+    logger.debug('dbnames_collection_query query: %s' % str(query))
     db_det, db_exp = db_prefixed_name(_det), db_prefixed_name(str(exp))
     if None in (db_det, db_exp):
         logger.debug('WARNING: dbnames_collection_query: db_det:%s db_exp:%s' % (db_det, db_exp))
@@ -552,10 +552,10 @@ def _short_for_partial_name(detname, ldocs):
 #    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
 def _pro_detector_name(detname, add_shortname=False, **kwa): # DEPRECATED: maxsize=cc.MAX_DETNAME_SIZE
-    #import psana.pscalib.calib.MDBWebUtils as mwu
-    from psana.pscalib.calib.MDBWebUtils import pro_detector_name
-    return pro_detector_name(detname, add_shortname)
-
+    # 2026-09-09 DOES NOT WORK (circular dependency???)
+    #from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+    #return pro_detector_name(detname, add_shortname)
+    return detname
 
 if __name__ == "__main__":
     sys.exit('\nFor test use ./ex_%s <test-number> <mode> <...>' % sys.argv[0].rsplit('/')[-1])
