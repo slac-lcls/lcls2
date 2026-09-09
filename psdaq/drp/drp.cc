@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "hsd_epics_prefix")  continue;  // Digitizer
             if (kwargs.first == "strm_limit")        continue;  // Digitizer
         }
-        if (para.detType == "wave8")
+        if (para.detType == "wave8" || para.detType == "wave8he")
             if (kwargs.first == "epics_prefix")      continue;  // Wave8
         if (para.detType == "epixhremu") {
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
