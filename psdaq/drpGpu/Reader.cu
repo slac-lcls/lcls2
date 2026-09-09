@@ -427,6 +427,7 @@ void _readerLoop(unsigned  const                            reader,
                  unsigned* const               __restrict__ state,
                  unsigned* const               __restrict__ dmaBufferIdx,
                  unsigned* const               __restrict__ pebbleIdx,
+                 [[maybe_unused]]
                  uint8_t*  const               __restrict__ wrEnReg,
                  uint8_t   const* const* const __restrict__ dmaBuffers,    // [dmaCount][maxDmaSize]
                  size_t    const                            dmaCount,
@@ -461,7 +462,12 @@ void _readerLoop(unsigned  const                            reader,
 
       auto const dmaIdx{*dmaBufferIdx};
       *(volatile uint32_t*)(dmaBuffers[dmaIdx] + 4) = 0;   // Clear the handshake space
+#ifndef HOST_REARMS_DMA
       *(volatile uint32_t*)(wrEnReg + dmaIdx * 4) = 1;     // Return buffer index to FPGA
+#else
+      // The host rearms this buffer, from TrgInpGen::_receiver().  wrEnReg is not
+      // mapped for GPU access in this build, so it must not be written here.
+#endif
       *dmaBufferIdx = (dmaIdx + nReaders) & (dmaCount-1);  // Prepare for the next DMA buffer
       //printf("### Reader[%u]: idx %u, next %u, hand shake %p, next write enable %p\n",
       //       reader, dmaIdx, *dmaBufferIdx, dmaBuffers[dmaIdx] + 4, wrEnReg + dmaIdx * 4);
@@ -638,9 +644,9 @@ bool Reader::startup()                  // Called during phase 1 of Configure
 #ifndef HOST_REARMS_DMA
     panel->coreRegs.returnFreeListIndex(dmaBufIdx);
 #else
-    auto rc = gpuSetWriteEn(panel->datadev.fd(), dmaIdx);
+    auto rc = gpuSetWriteEn(panel->datadev.fd(), dmaBufIdx);
     if (rc < 0) {
-      logging::error("Failed to reenable buffer %u for write: %zd: %m", dmaIdx, rc);
+      logging::error("Failed to reenable buffer %u for write: %zd: %m", dmaBufIdx, rc);
       return true;
     }
 #endif // HOST_REARMS_DMA

@@ -22,14 +22,89 @@
 // If the HOST_REARMS_DMA macro is defined, the GPU DRP can be run without
 // privileges.  The CPU rearms the DMA buffers for writing as early as possible,
 // but necessarily later than when the GPU can rearm them.  This will impact
-// performance so this definition is normally commented out.  In order to have
-// the GPU rearm the DMA buffers, the process must run with an as yet to be
-// determined privilege (cap_sys_rawio, perhaps?), but I've not had success yet
-// doing that.  Instead, set the executable up with root ownership and suid:
+// performance so this definition is normally commented out.
 //
-// sudo chown root $TESTRELDIR/bin/drp_gpu; sudo chmod u+s $TESTRELDIR/bin/drp_gpu
+// For the GPU to rearm the DMA buffers, its kernels must be able to write the
+// GpuAsyncCore FPGA registers, which means cuMemHostRegister() has to map them
+// with CU_MEMHOSTREGISTER_IOMEMORY (see MemPool.cc).  That mapping is privileged:
+// without the privilege it fails with CUDA_ERROR_NOT_PERMITTED.
 //
-//#define HOST_REARMS_DMA                 // Commented out => need sudo
+// The privilege needed is CAP_SYS_ADMIN.  Measured on drp-srcf-gpu008 (Rocky 9):
+// CAP_SYS_ADMIN alone suffices, and neither CAP_SYS_RAWIO nor CAP_IPC_LOCK is
+// needed.
+//
+// Beware of older recipes: CAP_SYS_RAWIO used to be enough.  The same test
+// program, with 'setcap cap_sys_rawio+ep' and run from a local file system, made
+// this call succeed under RHEL 7 and gets CUDA_ERROR_NOT_PERMITTED under Rocky 9.
+// The check is not in the aes-stream-drivers datadev driver, so it lies either in
+// the NVIDIA driver or in the kernel's hardening of PFN lookup for VM_PFNMAP
+// mappings, which tightened between those two kernels.
+//
+// Two ways of granting it are known to work, both leaving the process running as
+// an ordinary user rather than as root.
+//
+// Preferred, an ambient capability.  Nothing is stored on the file system, so the
+// executable can stay where it is built, and because the privilege is inherited
+// from the parent rather than gained at exec, the process does not enter
+// secure-execution mode and LD_LIBRARY_PATH keeps working:
+//
+//   sudo -E setpriv --reuid=$(id -u) --regid=$(id -g) --init-groups
+//        --securebits=+no_setuid_fixup
+//        --inh-caps=-all,+sys_admin --ambient-caps=-all,+sys_admin
+//        $TESTRELDIR/bin/drp_gpu <args>
+//
+// (all one command; no line continuations here because a backslash at the end of
+// a // comment makes it a multi-line comment, which -Wcomment objects to)
+//
+// --securebits=+no_setuid_fixup matters: without it the kernel clears the
+// capabilities when the uid drops from 0.
+//
+// Or a file capability, which needs the executable on a local file system:
+//
+//   sudo setcap cap_sys_admin+ep /home/<user>/install/bin/drp_gpu
+//
+// This works, including the fact that a file capability does put the process into
+// secure-execution mode, where the loader ignores LD_LIBRARY_PATH: the absolute
+// RPATHs meson bakes in are sufficient on their own.  The costs are copying the
+// executable to a local file system after every build, and that setcap fails
+// outright on wekafs, which supports user.* extended attributes but not
+// security.capability.
+//
+// The remaining alternative is root ownership and setuid, which grants a great
+// deal more than is needed and also has to be redone after every build:
+//
+//   sudo chown root $TESTRELDIR/bin/drp_gpu; sudo chmod u+s $TESTRELDIR/bin/drp_gpu
+//
+// HOST_REARMS_DMA works, but read this before relying on it.
+//
+// It first needed a driver fix.  GpuAsyncCore ownership is claimed by whichever
+// thread calls gpuAddNvidiaMemory() -- MemPoolGpu's constructor -- but the datadev
+// driver's ownership checks compared against current->pid, the thread id, rather
+// than current->tgid.  Every gpuSetWriteEn() from another thread, which is where
+// the rearming happens, failed with EBUSY:
+//
+//   datadev 0000:04:00.0: Gpu_SetWriteEn: Called by non-owner PID (3417898)
+//
+// even though that is a thread of the owning process.  It defeated the initial
+// arming in Reader::startup() too, so it failed immediately rather than under load.
+// Fixed by aes-stream-drivers PR #317: this path needs a driver built with that.
+//
+// With that fix it reaches the same 33 kHz as the GPU-rearm path on
+// drp-srcf-gpu008, though the rate is measurably less steady.
+//
+// The remaining concern is structural rather than immediate.  A DMA buffer is
+// finished with as soon as Gpu::_event() has copied its headers out and calibrated
+// its payload, which is where the GPU rearms it.  But TrgInpGen::_receiver() runs
+// downstream of the trigger kernels, so rearming there holds the buffer for however
+// long the dynamically loaded trigger library takes.  That is user code, perhaps
+// doing pattern recognition or machine learning, so its latency is unbounded: a
+// dmaBufCount that suffices for a trivial trigger need not suffice for a real one.
+// Decoupling the two means moving the rearm to a stage immediately after the Reader
+// and before the trigger -- a device-to-host queue, per RingQueue_DtoH.hh, feeding
+// a thread whose only job is the ioctl.  A bulk form of gpuSetWriteEn() would help
+// as well, since one ioctl per buffer is ~33k/s at these rates.
+//
+//#define HOST_REARMS_DMA                 // Commented out => need CAP_SYS_ADMIN
 
 // The HOST_LAUNCHED_REDUCERS macro is used to determine when the Reducer GPU
 // code is launched.  Without this macro defined, Reducers constructed using a

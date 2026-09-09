@@ -6,6 +6,11 @@
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/aes-stream-drivers/GpuAsyncUser.h"
 
+#include <cstdio>                       // For fopen, fgets, sscanf
+#include <cstring>                      // For strncmp
+#include <unistd.h>                     // For getuid, geteuid
+#include <linux/capability.h>           // For CAP_SYS_ADMIN (no libcap needed)
+
 using logging = psalg::SysLog;
 using namespace Pds;
 using namespace Drp;
@@ -39,6 +44,46 @@ DataDev::DataDev(const char* path)
     abort();
   }
 }
+
+
+#ifndef HOST_REARMS_DMA                 // Only this build needs the privilege
+// Report how the process came by the privilege that the mapping below needs, so
+// that a log shows whether the intended mechanism is the one actually in force.
+// Several mechanisms work, and they are not equally desirable: a leftover setuid
+// bit or file capability on the executable would let the mapping succeed while
+// granting far more than is wanted, and would do so silently.  See the comment in
+// MemPool.hh for how the privilege is meant to be granted.
+static void _reportPrivilege()
+{
+  // Read the effective capability set rather than link against libcap for one value
+  uint64_t capEff{0};
+  bool     capEffKnown{false};
+  if (FILE* status = fopen("/proc/self/status", "r")) {
+    char line[256];
+    while (fgets(line, sizeof(line), status)) {
+      if (strncmp(line, "CapEff:", 7) == 0) {
+        capEffKnown = sscanf(line + 7, "%lx", &capEff) == 1;
+        break;
+      }
+    }
+    fclose(status);
+  }
+  bool const hasSysAdmin{capEffKnown && (capEff & (1UL << CAP_SYS_ADMIN))};
+
+  logging::info("Privilege: uid %u, euid %u, CapEff 0x%016lx, CAP_SYS_ADMIN %s",
+                getuid(), geteuid(), capEff,
+                capEffKnown ? (hasSysAdmin ? "yes" : "no") : "unknown");
+
+  if (geteuid() == 0) {
+    logging::warning("Running with euid 0, which grants far more than the "
+                     "CAP_SYS_ADMIN this needs.  If that was not intended, look for "
+                     "a leftover setuid bit on the executable "
+                     "('chmod u-s' to clear it); see the comment in MemPool.hh");
+  } else if (hasSysAdmin) {
+    logging::debug("Holding CAP_SYS_ADMIN without being root, as intended");
+  }
+}
+#endif
 
 
 MemPoolGpu::MemPoolGpu(Parameters& para) :
@@ -147,12 +192,25 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     m_panel->coreRegs.initialize(false, fpgaRegs);
 
 #ifndef HOST_REARMS_DMA
+    _reportPrivilege();
+
     // Map the GpuAsyncCore FPGA registers into the CUDA address space to allow the GPU to access them
-    // This causes 'operation not permitted' when the process doesn't have sufficient privileges
-    if ((cuMemHostRegister(fpgaRegs, GPU_ASYNC_CORE_SIZE, CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP)) != CUDA_SUCCESS) {
-      logging::critical("cuMemHostRegister failed: %m");
-      logging::info("You may have to run the application as root or consider "
-                    "rebuilding with HOST_REARMS_DMA defined in MemPool.hh");
+    // CU_MEMHOSTREGISTER_IOMEMORY requires a privileged process; without the
+    // privilege this fails with CUDA_ERROR_NOT_PERMITTED.  Report the CUresult
+    // rather than errno, which has nothing to do with it, so that NOT_PERMITTED --
+    // a privilege problem, which a capability may be enough to solve -- can be
+    // told from NOT_SUPPORTED, which means the kernel or platform cannot do this
+    // at all and no amount of privilege will help.
+    if (chkError(cuMemHostRegister(fpgaRegs, GPU_ASYNC_CORE_SIZE,
+                                   CU_MEMHOSTREGISTER_IOMEMORY | CU_MEMHOSTREGISTER_DEVICEMAP),
+                 "Mapping the GpuAsyncCore FPGA registers for GPU access failed")) {
+      logging::info("The GPU rearms DMA buffers by writing these registers, which "
+                    "needs CAP_SYS_ADMIN.  Grant it without running as root by "
+                    "launching under 'setpriv --ambient-caps=-all,+sys_admin' -- see "
+                    "the comment in MemPool.hh for the full command.  Failing that, "
+                    "rebuild with HOST_REARMS_DMA defined in MemPool.hh to have the "
+                    "CPU do the rearming, at the cost of a longer delay before a DMA "
+                    "buffer can be reused.");
       abort();
     }
 
@@ -300,6 +358,7 @@ int MemPoolGpu::setMaskBytes(uint8_t laneMask, unsigned virtChan)
   }
   return retval;
 }
+
 
 void MemPoolGpu::createHostBuffers(size_t size)
 {
