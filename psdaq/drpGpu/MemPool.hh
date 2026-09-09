@@ -17,7 +17,16 @@
 // nominally adds very little overhead but the documentation warns against
 // instrumenting code that takes less than 1 us to run.  The NVTX_DISABLE macro
 // is used by NVTX header files to disable NVTX calls in the codebase.
-#define NVTX_DISABLE
+//
+// Left enabled: the ranges are what give an nsys trace of this application any
+// application-level structure, and without a collector attached NVTX resolves to
+// little more than a check, which is why it is meant to be left compiled in.  This
+// cannot be a runtime kwarg -- NVTX_DISABLE is read by the NVTX headers, so
+// defining it compiles the ranges out altogether -- but it can still be turned off
+// for a build with -DNVTX_DISABLE if one of them ever proves too costly.  Note
+// that nsys needs --cuda-graph-trace=node to show anything inside a CUDA graph,
+// which is nearly everything here.
+//#define NVTX_DISABLE
 
 // If the HOST_REARMS_DMA macro is defined, the GPU DRP can be run without
 // privileges.  The CPU rearms the DMA buffers for writing as early as possible,
