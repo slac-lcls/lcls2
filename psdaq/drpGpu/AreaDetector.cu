@@ -116,10 +116,12 @@ void AreaDetector::recordEvent(cudaStream_t           stream,
                                unsigned               threads,
                                const EventKernelArgs& args)
 {
+  // No reference buffers: only the simulator controls the raw data it generates,
+  // so only it can supply something to verify the calibration against
   PedGainCalib const calib{pedestals_d(),
                            gains_d(),
-                           referenceBuffers(),
-                           referenceBufCnt(),
+                           nullptr,
+                           0,
                            rangeOffset(),
                            rangeBits()};
   _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
