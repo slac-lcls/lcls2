@@ -9,6 +9,7 @@ import socket
 import json
 import time
 import logging
+import datetime
 
 ocfg = None
 partitionDelay = None
@@ -129,9 +130,24 @@ def hsd_connect(msg):
     for i in range(4):
         getattr(root,f'TxLinkId[{i}]').set(linkId | i<<16)
 
+    #
+    # Check that the hsdioc process is alive
+    #
+    if True:
+        ctxt = Context('pva',nt=False)
+        seconds = ctxt.get(epics_prefix+':FEXOOR').timeStamp.secondsPastEpoch
+        dt  = datetime.datetime.fromtimestamp(seconds, tz=datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        diff = now-dt
+        diff_s = diff.total_seconds()
+        print(f'FEXOOR latency is {diff_s} seconds')
+        if diff_s > 100:
+            raise ValueError(f'hsdioc process may be dead.')
+    
     # Retrieve connection information from EPICS
     # May need to wait for other processes here {PVA Server, hsdioc}, so poll
     ctxt = Context('pva')
+
     for i in range(50):
         values = ctxt.get(epics_prefix+':PADDR_U')
         if values!=0:
@@ -222,7 +238,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     # fetch the freesz
     rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
     fexBuffSize = ctxt.get(epics_prefix+':MONFEXBUF').freesz
-
+    print(f'rawBuffSize {rawBuffSize}  fexBuffSize {fexBuffSize}')
+    
     ocfg = cfg
     user_to_expert(cfg)
 
@@ -276,7 +293,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     fwbld = ctxt.get(epics_prefix+':FWBUILD'  ).value
     cfg['firmwareVersion'] = fwver
     cfg['firmwareBuild'  ] = fwbld
-    print(f'fwver: {fwver}')
+    print(f'fwver: {fwver:x}')
     print(f'fwbld: {fwbld}')
 
     ctxt.close()
@@ -502,3 +519,16 @@ if __name__ == '__main__':
                                      'proc_info': {'host':socket.gethostname(),
                                                    'pid' : os.getpid()}}}}}
     hsd_connect(json.dumps(alloc))
+    print(f'connect complete')
+
+    #  To lookup configuration
+    conn = {'body': {'control' : {'0': {'active': 1,
+                                        'control_info': {'cfg_dbase': 'https://psdmint.sdf.slac.stanford.edu/ws-auth/configdb/ws/configDB',
+                                                         'instrument': 'xpp',
+                                                         'pv_base': 'DAQ:FEH',
+                                                         'slow_update_rate': 1,
+                                                         'xpm_master': 4}}}}}
+    print(f'conn {conn}')
+    
+    hsd_config(json.dumps(conn),pargs.P,'BEAM','hsd',2,0)
+    
