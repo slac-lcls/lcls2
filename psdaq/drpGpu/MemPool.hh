@@ -96,7 +96,10 @@
 //
 // even though that is a thread of the owning process.  It defeated the initial
 // arming in Reader::startup() too, so it failed immediately rather than under load.
-// Fixed by aes-stream-drivers PR #317: this path needs a driver built with that.
+// Fixed in aes-stream-drivers by PR #318, which compares against current->tgid in
+// Gpu_AddNvidia(), Gpu_RemNvidia(), Gpu_SetWriteEn(), Gpu_EnableTx() and
+// Gpu_EnableRx(), and is merged to its pre-release branch.  This path needs a
+// driver built from that or later.
 //
 // With that fix it reaches the same 33 kHz as the GPU-rearm path on
 // drp-srcf-gpu008, though the rate is measurably less steady.
