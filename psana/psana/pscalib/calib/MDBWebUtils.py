@@ -71,6 +71,8 @@ import json as jsonmet
 import psana.detector.Utils as ut
 #import psana.detector.utils_psana as up # dict_filter
 
+USE_QUERY_STR = True # True # False # True - for old version of query
+
 jwt = os.getenv('CALIB_JWT', None)
 has_jwt = bool(jwt)
 info_jwt = 'using jwt' if has_jwt else 'using kerberos, NO jwt available'
@@ -109,7 +111,10 @@ info_document = info_dict_for_keys
 
 def info_ldocs(ldocs, nmax=4, sep='\n  '):
     if ldocs is None: return 'None'
-    return f'ndocs={len(ldocs)}' + sep + sep.join([info_document(d) for i,d in enumerate(ldocs) if i<nmax])
+    ndocs = len(ldocs)
+    s = f'ndocs={ndocs}'
+    if ndocs>0: s += sep + sep.join([info_document(d) for i,d in enumerate(ldocs) if i<nmax])
+    return s
 
 def info_docs_list(docs, strlen=150):
     if not isinstance(docs, list):
@@ -154,11 +159,14 @@ def put(url, doc, **kwa):
 
 
 def get(url, query=None, timeout=180, **kwa):
-    krbh = cc.krbheaders() # inside: krbh['Content-Type'] = 'application/octet-stream'
     logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_jwt}')
-    logger.debug(f'\nget: krbheaders {jsonmet.dumps(krbh, indent=2)}')
-    return session.get(url, json=query, timeout=timeout) if has_jwt else\
-           req.get(url, params=query, timeout=timeout, headers=krbh)
+    if has_jwt:
+        return session.get(url, json=query, timeout=timeout)
+    else:
+        krbh = cc.krbheaders() # inside: krbh['Content-Type'] = 'application/octet-stream'
+        logger.debug(f'\nget: krbheaders {jsonmet.dumps(krbh, indent=2)}')
+        return req.get(url, params=query, timeout=timeout, headers=krbh) if USE_QUERY_STR else\
+               req.get(url, json=query, timeout=timeout, headers=krbh)
 
 
 def delete_cmd(url):
@@ -194,6 +202,7 @@ def query_id_pro_str(query):
 
 
 def query_id_pro(query):
+    if USE_QUERY_STR: return query_id_pro_str(query)
     id = query.get('_id', None)
     if isinstance(id, str):
         query['_id'] = mu.ObjectId(id)
@@ -208,6 +217,7 @@ def request(url, query=None, timeout=180, **kwa):
     r = get(url, query=query, timeout=timeout)
     #dt = time()-t0_sec # ~30msec
     #logger.debug('CONSUMED TIME by request %.3f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
+    logger.debug(f'ZZZZ request for url: {url}  query: {str(query)}')
     if r.ok:
         logger.debug(f'request resp is ok: {str(r.content)[:100]}')
         return r
@@ -242,19 +252,20 @@ def find_docs(dbname, colname, query={}, **kwa):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}."""
     uri = f'{cc.URL.rstrip("/")}/{dbname}/{colname}'
 
-    # WORKING OLD VERSION using query as str:
-    #query_string=str(query).replace("'",'"')
-    #logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
-    #r = request(uri, {"query_string": query_string})
+    r = None
+    if USE_QUERY_STR: # WORKING OLD VERSION using query as str:
+        query_string=str(query).replace("'",'"')
+        logger.debug(f'find_docs uri: {uri} query: {query_string}')
+        r = request(uri, {"query_string": query_string})
 
-    # NEW VERSION using query as dict/json:
-    logger.debug(f'find_docs uri: {uri} query: {str(query)}')
-    r = request(uri, query=query) # query = {'_id': bson.ObjectId(doc_id), ...}
+    else: # NEW VERSION using query as dict/json:
+        logger.info(f'XXXX find_docs uri: {uri} query: {str(query)}')
+        r = request(uri, query=query) # query = {'_id': bson.ObjectId(doc_id), ...}
 
     if ut.is_true(r is None, 'find_docs resp is None for url: {uri}', logger_method=logger.debug): return None
     ldocs = r.json()
-    s = '\n\n  '.join([str(d) for d in ldocs])
-    logger.debug(f"find_docs res.ok:{r.ok}  docs:\n\n  {s}")
+    s = '\n  '.join([str(d) for d in ldocs])
+    logger.debug(f'find_docs res.ok:{r.ok}  docs:\n  {s}')
 
     try:
         return r.json()
@@ -367,12 +378,12 @@ def dbnames_collection_query(detname, exp=None, ctype='pedestals', run=None, tim
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
-    logger.info('dbnames_collection_query input parameters:\n' +\
-                 '    detname:%s exp:%s ctype:%s run:%s time_sec:%s vers:%s dtype:%s dbsuffix:%s kwa:%s' %\
-                 (detname, exp, ctype, str(run), str(time_sec), vers, str(dtype), dbsuffix, str(kwa)))
+    logger.debug('dbnames_collection_query input pars:\n' +\
+                f'   detname:{detname} exp:{exp} ctype:{ctype} run:{str(run)} time_sec:{str(time_sec)} vers:{vers} dtype:{str(dtype)} dbsuffix:{dbsuffix} kwa:{str(kwa)}')
     short = pro_detector_name(detname)
-    logger.debug(f'short: {short} dbsuffix: {dbsuffix}')
+    logger.debug(f'dbnames_collection_query detname: {detname}  short: {short}  dbsuffix: {dbsuffix}  exp: {exp}')
     resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
+    logger.debug(f'mu.dbnames_collection_query resp: {str(resp)}')
     if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
     return resp
 
@@ -440,22 +451,24 @@ def print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002'):
 
 
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, dbsuffix='', **kwa):
-    """ USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+    """ USED BY psana/psexp/ds_base.py, psana/psana/psexp/run.py TO RETRIEVE ALL CONSTANTS FROM DB
         Returns constants for all ctype-s."""
     t0_sec = time()
     ctype=None
     longname = det
-    logger.debug('detlongname: %s exp: %s run: %s time_sec: %s vers: %s' % (longname, exp, str(run), time_sec, vers))
+
+    #if not ('epixuhr3x2' in longname): return None
+
+    logger.debug(f'calib_constants_all_types longname: {longname}  exp: {exp}  run: {str(run)}  time_sec: {time_sec}  vers: {vers}')
 
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
 
-    logger.debug('dbname: %s db_det: %s db_exp: %s colname: %s query: %s dbsuffix: %s'%\
-                (dbname, db_det, db_exp, colname, query, dbsuffix))
-    logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
+    logger.debug(f'XXXX dbname: {dbname}  db_det: {db_det}  db_exp: {db_exp}  colname: {colname}  query: {query}  dbsuffix: {dbsuffix}')
+    #logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
 
     docs = find_docs(dbname, colname, query)
-    logger.debug('find_docs: number of docs found: %s' % (str(len(docs)) if docs is not None else None))
+    logger.debug('XXXX calib_constants_all_types after find_docs: number of docs found: %s\n\n' % (str(len(docs)) if docs is not None else None))
     #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))
 
     resp = {}
@@ -479,7 +492,6 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
         #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))
 
     resp = calib_constants_of_missing_types(resp, det, time_sec, vers)
-
     #print('time 4: %.6f sec - check for missing types in the det DB' % (time()-t0_sec))
 
     return resp
@@ -717,10 +729,11 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     """Returns short detector name for long input name detname."""
     colname = detname.split('_',1)[0]
     # find a single doc for long detname
+
     query = {'long':detname}
     ldocs = find_docs(dbname, colname, query=query)
 
-    logger.debug(f'_short_detector_name: db/collection {dbname}/{colname} query={query} list of docs: {info_ldocs(ldocs)}')
+    logger.debug(f'ZZZZ _short_detector_name: db/collection {dbname}/{colname} query={query} list of docs: {info_ldocs(ldocs)}')
 
     if ldocs is None:
         logger.warning(f'db/collection {dbname}/{colname} NO DOCUMENT FOUND FOR long detname {detname}')
@@ -772,7 +785,7 @@ def pro_detector_name(detname, add_shortname=False, **kwa): # DEPRECATED: maxsiz
     assert isinstance(detname, str), f'non-string detname: {str(detname)}'
     short = _short_detector_name(detname, add_shortname=add_shortname)
 
-    logger.debug(f'pro_detector_name detname: {detname} short: {short} add_shortname: {add_shortname}')
+    logger.debug(f'ZZZZ pro_detector_name detname: {detname} short: {short} add_shortname: {add_shortname}')
 
     return short
     #return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
