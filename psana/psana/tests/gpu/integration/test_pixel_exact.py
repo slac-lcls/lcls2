@@ -286,6 +286,7 @@ def test_integrated_jungfrau_pixel_exact(
     run = next(ds.runs())
 
     seen = set()
+    validated_xtc_batches = set()
     for evt in run.events():
         timestamp = int(evt.timestamp)
         assert timestamp not in seen, f"duplicate GPU timestamp {timestamp}"
@@ -297,6 +298,46 @@ def test_integrated_jungfrau_pixel_exact(
         # copy before advancing the iterator can recycle that slot.
         calib_result = evt.gpu.get("calib")
         raw_result = evt.gpu.get("raw")
+        manager = getattr(run._evt_iter, "gpu_manager", run._evt_iter)
+        if d2h_chunk_size == 0:
+            # Shadow-mode acceptance: while the slot is exposed between the
+            # two retirement phases, verify the integrated parser actually
+            # decoded every routed dgram and located detector data in it.
+            slot_record = manager.event_pool._retiring
+            if slot_record is None:
+                # End-of-input/max-events delivery comes from flush(), whose
+                # yield window retains the record in _slots without using the
+                # incremental-retirement latch.
+                slot_record = next(
+                    (
+                        record
+                        for record in manager.event_pool._slots
+                        if record is not None
+                        and timestamp in record.gpu_results_by_ts
+                    ),
+                    None,
+                )
+            assert slot_record is not None
+            xtc_batch = slot_record.xtc_batch
+            assert xtc_batch is not None
+            if id(xtc_batch) not in validated_xtc_batches:
+                import cupy as cp
+
+                from psana.gpu.gpudgram.batch import DGRAM_STATUS, LOC_STATUS
+                from psana.gpu.gpudgram.parser import STATUS_FOUND, STATUS_OK
+
+                dgram_status = cp.asnumpy(
+                    xtc_batch.dgram_records_gpu[:, DGRAM_STATUS]
+                )
+                assert np.all(dgram_status == STATUS_OK)
+                found = np.zeros(xtc_batch.n_dgrams, dtype=bool)
+                for handle in manager.gpu_xtc_parser.field_handles:
+                    locator_status = cp.asnumpy(
+                        xtc_batch.locate(handle).rows_gpu[:, LOC_STATUS]
+                    )
+                    found |= locator_status == STATUS_FOUND
+                assert np.all(found), "a routed dgram had no located detector array"
+                validated_xtc_batches.add(id(xtc_batch))
         if _result_still_on_device(calib_result):
             _assert_result_is_slot_backed(run, calib_result._arr)
         else:

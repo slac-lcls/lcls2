@@ -1,10 +1,12 @@
 # GPU XTC parser
 
-## Stage 1 boundary
+## Stage 1 contract and Stage 2 integration
 
 Stage 1 defines a detector-independent, device-resident parser contract. It
-is intentionally isolated from `DataSource`, `EventPool`, and `GPUDetector`.
-Those integrations are later review stages.
+can still be exercised independently of `DataSource`. Stage 2 connects that
+contract to the existing KvikIO and `EventPool` path in shadow mode: the GPU
+XTC parser runs, but `GPUDetector` still consumes its legacy raw-data ABI so
+the parser can be validated without changing calibration results.
 
 The ownership model is:
 
@@ -27,8 +29,8 @@ Read slot / GPU
     -> detector CUDA kernel       dereference locator and consume field bytes
 ```
 
-There is no parser metadata D2H copy and no CPU event/stream regrouping in
-this stage. Tests copy result rows to the CPU only after parsing to assert
+There is no parser metadata D2H copy and no CPU event/stream regrouping.
+Tests copy result rows to the CPU only after parsing to assert
 correctness. The former standalone `gpudgram_driver.py`, `GPUDgramBatch`, and
 Python `GpuDgramRef`/`GpuFieldView` compatibility API were removed because
 they encouraged a CPU round trip that the integrated design will not use.
@@ -93,8 +95,8 @@ logical detector has segments supplied by more than one stream.
 
 ## Device dgram records and XTC walk
 
-The read/EventBuilder side will eventually create one device row for every
-physical dgram in a GPU batch:
+The read/EventBuilder side creates one device row for every physical dgram in
+a GPU batch:
 
 ```text
 [event_index, stream_id, offset, size,
@@ -185,13 +187,49 @@ Run the real device test on a GPU node with the xpptut file present:
 pytest -q psana/psana/tests/gpu/integration/test_gpudgram_device.py
 ```
 
+## Integrated ownership and execution order
+
+`GpuEventManager` compiles `GpuStreamConfigTable` from `Run.configs` and
+constructs one `GpuXtcBatchPool` for the run. The pool uploads the three
+numeric Configure tables once and records a CUDA completion event for that
+upload. Each EventPool stream waits on this event before its first parse.
+
+After KvikIO completes a read, its CPU descriptor table has one dense row per
+valid dgram:
+
+```text
+[event_index, stream_id, timestamp, file_offset, read_size, device_offset]
+```
+
+`build_dgram_records()` copies only `event_index`, `stream_id`, `read_size`,
+and `device_offset` into a small CPU staging table. That table is uploaded on
+the selected slot stream. It does not inspect XTC bytes and it does not
+contain field offsets. The GPU walker produces those results.
+
+Each `GpuXtcBatchPool` slot owns reusable high-water buffers for:
+
+```text
+dgram records
+ShapesData counts and references
+one locator table per registered field handle
+```
+
+Their allocations are charged to the same `_GpuBudget` as KvikIO input,
+calibration, raw, and geometry buffers. Parser bytes are also included in
+subbatch sizing. `EventPool.submit()` queues the parser before the existing
+detector kernel on the same non-blocking slot stream and retains the
+`GpuEventBatch` in `_EventSlot.xtc_batch`. Two-phase retirement synchronizes
+the producer and waits for consumer leases before the object is released and
+the slot buffers may be overwritten.
+
+The Stage 2 integration is intentionally shadow-only. The current detector
+kernel output and the public `evt.gpu` result API are unchanged.
+
 ## Later integration stages
 
-Stage 2 will translate the existing GPUBAT1/KvikIO descriptors directly into
-`dgram_records_gpu` and make parser scratch buffers EventPool-slot-owned and
-budgeted. Stage 3 will switch `GPUDetector` from `_raw_data_offset` and fixed
-segment stride addressing to field locators, then remove that old GPU ABI.
-Stage 4 will expose general `on_gpu`, `on_gpu_view`, and `on_cpu` field access.
+Stage 3 will switch `GPUDetector` from `_raw_data_offset` and fixed segment
+stride addressing to field locators, then remove that old GPU ABI. Stage 4
+will expose general `on_gpu`, `on_gpu_view`, and `on_cpu` field access.
 
 The run-scoped Configure allocation must outlive every batch. Batch bytes,
 dgram records, ShapesData references, locators, and downstream detector work

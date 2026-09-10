@@ -24,6 +24,7 @@ class _EventSlot:
     stream: object
     leases: list
     leases_by_ts: dict
+    xtc_batch: object = None
     pending_d2h_by_ts: dict = field(default_factory=dict)
     cached_cpu_results_by_ts: dict = field(default_factory=dict)
 
@@ -117,9 +118,17 @@ class EventPool:
             raise
 
         self._slots[old.slot_id] = None
+        old.xtc_batch = None
         self._retiring = None
 
-    def submit(self, gv, gpu_read, event_envelopes: list, gpu_detectors: dict):
+    def submit(
+        self,
+        gv,
+        gpu_read,
+        event_envelopes: list,
+        gpu_detectors: dict,
+        xtc_parser=None,
+    ):
         """Queue calibration into the already-retired next slot.
 
         Records a result-ready CUDA event after detector processing is queued,
@@ -151,7 +160,21 @@ class EventPool:
         except Exception:
             pass
 
-        # Launch calibration on this slot's non-blocking stream.
+        # Translate the completed read descriptors and walk XTC on this slot's
+        # stream.  The resulting device tables remain slot-owned until every
+        # downstream consumer has completed and retirement releases the slot.
+        xtc_batch = None
+        if xtc_parser is not None:
+            xtc_batch = xtc_parser.parse(
+                slot,
+                gpu_read.data_gpu,
+                gpu_read.desc_table,
+                stream,
+            )
+
+        # Launch calibration on this slot's non-blocking stream.  During the
+        # shadow stage it still uses the legacy addressing ABI, but ordering it
+        # after the walker makes the eventual consumer switch race-free.
         gpu_results_by_ts: dict = {}
         for det_name, det_info in gpu_detectors.items():
             gpu_det_obj = det_info[1]
@@ -196,6 +219,7 @@ class EventPool:
             stream=stream,
             leases=all_leases,
             leases_by_ts=leases_by_ts,
+            xtc_batch=xtc_batch,
         )
         self._slots[slot] = record
         self._write_idx += 1
@@ -222,6 +246,7 @@ class EventPool:
                 for lease in record.leases:
                     lease.wait_until_safe_to_reuse()
                 self._slots[slot] = None
+                record.xtc_batch = None
 
     # ------------------------------------------------------------------
     # Inspection

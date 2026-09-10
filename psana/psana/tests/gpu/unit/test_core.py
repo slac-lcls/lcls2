@@ -310,6 +310,45 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     pool.submit(None, None, ["event-1"], detectors)
 
 
+def test_event_pool_owns_shadow_xtc_batch_until_slot_retirement(monkeypatch):
+    monkeypatch.setitem(
+        sys.modules,
+        "cupy",
+        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream, Event=_FakeEvent)),
+    )
+    log = []
+    xtc_batch = object()
+
+    class _Parser:
+        def parse(self, slot_id, data_gpu, desc_table, stream):
+            log.append(("parse", slot_id, data_gpu, desc_table, stream))
+            return xtc_batch
+
+    class _Detector:
+        def process_batch(self, *args, **kwargs):
+            log.append(("detector", kwargs["slot_id"], kwargs["stream"]))
+            return iter(())
+
+    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table="descriptors")
+    pool = EventPool(n=1)
+    record = pool.submit(
+        None,
+        gpu_read,
+        ["event"],
+        {"det": (None, _Detector())},
+        xtc_parser=_Parser(),
+    )
+
+    assert record.xtc_batch is xtc_batch
+    assert [entry[0] for entry in log] == ["parse", "detector"]
+    assert log[0][4] is log[1][2] is pool._streams[0]
+
+    pool.begin_retire_next()
+    assert record.xtc_batch is xtc_batch
+    pool.finish_retire_next()
+    assert record.xtc_batch is None
+
+
 def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_decode):
     log = []
     events = _new_gpu_events(log)
@@ -874,6 +913,25 @@ class TestSplitSubbatches:
         assert len(sbs) == 2
         assert sbs[0]._start == 0 and sbs[0]._end == 2
         assert sbs[1]._start == 2 and sbs[1]._end == 4
+
+    def test_parser_slot_metadata_counts_toward_subbatch_budget(self):
+        det = _FakeDetForEstimate(1, 1, 1)
+        per_dgram = 100
+        per_event = det.estimate_subbatch_bytes(1) + 2 * per_dgram
+        events = _new_splitting_gpu_events(det, per_event * 2)
+        events.gpu_xtc_parser = SimpleNamespace(
+            estimate_batch_bytes=lambda n_dgrams: n_dgrams * per_dgram
+        )
+
+        gv = GpuBatchView(
+            _make_batch(4, descs_per_event=2, bd_size=0)
+        )
+        subbatches = events._split_subbatches(gv)
+
+        assert [(batch._start, batch._end) for batch in subbatches] == [
+            (0, 2),
+            (2, 4),
+        ]
 
     def test_single_oversized_event_not_split(self):
         """An event that alone exceeds budget must still be included."""
