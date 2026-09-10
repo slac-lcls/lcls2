@@ -6,8 +6,8 @@ usage() {
 build_psana.sh [options]
 
 Build and install the analysis-only psana stack (xtcdata, psalg, and psana)
-with the repository's root Meson build.  psdaq is not built; CUDA subprojects
-are disabled unless --with-cuda is requested.
+with the repository's root Meson build.  psdaq is not built; CUDA compiler
+discovery is suppressed unless --with-cuda is requested.
 
 Run this from an activated development environment containing the psana build
 dependencies.  The completed install includes an activate.sh helper.
@@ -22,7 +22,7 @@ Options:
                           before building
       --python-only       Refresh installed Python files and entry points from
                           an existing native build without compiling
-      --with-cuda         Allow nvcc detection and CUDA subprojects
+      --with-cuda         Allow the root Meson project to discover nvcc
       --perlmutter-setup FILE
                           After a successful build, write a sourceable
                           Perlmutter runtime setup script to FILE
@@ -95,7 +95,10 @@ validate_clean_targets() {
     "$repo_dir" \
     "$default_install_prefix" \
     "$default_build_dir" \
-    "${HOME:-}" <<'PY'
+    "${HOME:-}" \
+    "$conda_prefix" \
+    "$install_marker" \
+    "$build_marker" <<'PY'
 from pathlib import Path
 import sys
 
@@ -114,15 +117,28 @@ def within(path, parent):
 
 install, build, repo, default_install, default_build = map(resolved, sys.argv[1:6])
 home = resolved(sys.argv[6]) if sys.argv[6] else None
+conda = resolved(sys.argv[7]) if sys.argv[7] else None
 targets = (
-    ("install prefix", install, default_install),
-    ("build directory", build, default_build),
+    ("install prefix", install, default_install, Path(sys.argv[8]), "install"),
+    ("build directory", build, default_build, Path(sys.argv[9]), "build"),
 )
 protected = [("source repository", repo)]
 if home is not None and home != Path(home.anchor):
     protected.append(("home directory", home))
 
-for label, target, allowed_repo_target in targets:
+def has_managed_marker(marker, kind, target):
+    try:
+        contents = marker.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeError):
+        return False
+    return contents == [
+        "lcls2 build_psana managed root v1",
+        kind,
+        str(target),
+    ]
+
+
+for label, target, allowed_repo_target, marker, marker_kind in targets:
     if target == Path(target.anchor):
         raise SystemExit(f"Refusing to clean unsafe {label}: {target}")
     for protected_label, protected_path in protected:
@@ -134,12 +150,41 @@ for label, target, allowed_repo_target in targets:
         raise SystemExit(
             f"Refusing to clean {label} inside the source repository: {target}"
         )
+    if conda is not None and (within(target, conda) or within(conda, target)):
+        raise SystemExit(
+            f"Refusing to clean {label} overlapping the active environment: {target}"
+        )
+    if (
+        target.exists()
+        and not has_managed_marker(marker, marker_kind, target)
+    ):
+        raise SystemExit(
+            f"Refusing to clean existing unmanaged {label}: {target}. "
+            "Choose a new path or remove it explicitly after verifying its contents."
+        )
 
 if within(install, build) or within(build, install):
     raise SystemExit(
         f"Refusing overlapping clean targets: install={install}, build={build}"
     )
 PY
+}
+
+write_managed_marker() {
+  local marker="$1"
+  local kind="$2"
+  local target="$3"
+  local resolved_target marker_tmp
+
+  resolved_target="$("$python_bin" -c \
+    'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' \
+    "$target")"
+  mkdir -p "$(dirname "$marker")"
+  marker_tmp="$(mktemp "${marker}.tmp.XXXXXX")"
+  printf 'lcls2 build_psana managed root v1\n%s\n%s\n' \
+    "$kind" "$resolved_target" >"$marker_tmp"
+  chmod 0644 "$marker_tmp"
+  mv "$marker_tmp" "$marker"
 }
 
 while [[ $# -gt 0 ]]; do
@@ -232,6 +277,12 @@ command -v ninja >/dev/null 2>&1 || die "ninja was not found in PATH."
 
 install_prefix="$("$python_bin" -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$install_prefix")"
 build_dir="$("$python_bin" -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$build_dir")"
+install_marker="${install_prefix}.build_psana-install-root"
+build_marker="${build_dir}.build_psana-build-root"
+install_needs_marker=0
+build_needs_marker=0
+[[ -e "$install_prefix" || -L "$install_prefix" ]] || install_needs_marker=1
+[[ -e "$build_dir" || -L "$build_dir" ]] || build_needs_marker=1
 if [[ -n "$perlmutter_setup" ]]; then
   perlmutter_setup="$("$python_bin" -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$perlmutter_setup")"
   [[ ! -d "$perlmutter_setup" ]] || \
@@ -247,6 +298,8 @@ if [[ "$clean_first" -eq 1 ]]; then
   validate_clean_targets
   log "Cleaning previous build outputs"
   rm -rf "$install_prefix" "$build_dir"
+  install_needs_marker=1
+  build_needs_marker=1
 fi
 
 if [[ "$python_only" -eq 1 ]]; then
@@ -268,6 +321,12 @@ PY
 fi
 
 mkdir -p "$install_prefix"
+if [[ "$install_needs_marker" -eq 1 ]]; then
+  write_managed_marker "$install_marker" install "$install_prefix"
+fi
+if [[ "$build_needs_marker" -eq 1 ]]; then
+  write_managed_marker "$build_marker" build "$build_dir"
+fi
 
 pyver="$("$python_bin" - <<'PY'
 import sys
@@ -293,7 +352,11 @@ fi
 
 # Root Meson builds psalg sources that include headers supplied by the active
 # environment (RapidJSON in the active build environment).
-build_cpath="${CPATH:-}"
+python_include="$("$python_bin" -c \
+  'import sysconfig; print(sysconfig.get_path("include") or "")')"
+[[ -n "$python_include" && -f "$python_include/Python.h" ]] || \
+  die "Python headers were not found for $python_bin."
+build_cpath="$python_include${CPATH:+:$CPATH}"
 if [[ -n "$conda_prefix" ]]; then
   build_cpath="$conda_prefix/include${build_cpath:+:$build_cpath}"
 fi
@@ -354,15 +417,24 @@ printf '#include <rapidjson/document.h>\n' | \
   run_with_build_env "$cxx_bin" -E -x c++ - >/dev/null 2>&1 || \
   die "RapidJSON headers were not found by $cxx_bin. Add them to CPATH or the active environment."
 
-if command -v nvcc >/dev/null 2>&1 && [[ "$with_cuda" -eq 1 ]]; then
+cuda_compiler=""
+if [[ "$with_cuda" -eq 1 ]]; then
+  if [[ -n "${CUDA_ROOT:-}" ]]; then
+    [[ -d "$CUDA_ROOT" ]] || die "CUDA_ROOT is not a directory: $CUDA_ROOT"
+    cuda_root="$(cd -P "$CUDA_ROOT" && pwd)"
+    [[ -x "$cuda_root/bin/nvcc" ]] || \
+      die "CUDA_ROOT does not contain an executable bin/nvcc: $cuda_root"
+    build_path="$cuda_root/bin:$build_path"
+    meson_options+=("-Dcustom_cuda_path=$cuda_root")
+  fi
+  cuda_compiler="$(PATH="$build_path" command -v nvcc || true)"
+  [[ -n "$cuda_compiler" ]] || \
+    die "--with-cuda requires nvcc in PATH or under CUDA_ROOT/bin."
   restore_linker_env=1
   export BUILD_PSANA_OLD_LDFLAGS="${LDFLAGS:-}"
   export BUILD_PSANA_OLD_CXXFLAGS="${CXXFLAGS:-}"
   export LDFLAGS=""
   export CXXFLAGS=""
-  if [[ -n "${CUDA_ROOT:-}" && -e "$CUDA_ROOT" ]]; then
-    meson_options+=("-Dcustom_cuda_path=$CUDA_ROOT")
-  fi
 elif PATH="$build_path" command -v nvcc >/dev/null 2>&1; then
   mask_nvcc_from_path
 fi
@@ -387,7 +459,7 @@ log "Parallel jobs    : $jobs"
 log "Python           : $(command -v "$python_bin")"
 log "Conda prefix     : $conda_prefix"
 log "Python only      : $python_only"
-log "CUDA enabled     : $with_cuda"
+log "CUDA discovery   : $with_cuda${cuda_compiler:+ ($cuda_compiler)}"
 if [[ -n "$perlmutter_setup" ]]; then
   log "Perlmutter setup: $perlmutter_setup"
 fi
@@ -396,10 +468,10 @@ if [[ "$python_only" -eq 0 ]]; then
   if [[ -d "$build_dir/meson-info" ]]; then
     log "Reconfiguring Meson build"
     run_with_build_env \
-      meson setup --reconfigure "$build_dir" "${meson_options[@]}"
+      meson setup --reconfigure "$build_dir" "$repo_dir" "${meson_options[@]}"
   else
     log "Configuring Meson build"
-    run_with_build_env meson setup "$build_dir" "${meson_options[@]}"
+    run_with_build_env meson setup "$build_dir" "$repo_dir" "${meson_options[@]}"
   fi
 
   log "Compiling Meson targets"
@@ -457,11 +529,14 @@ run_with_build_env "$python_bin" -m pip install "$package_dir" \
 
 activation_file="$install_prefix/activate.sh"
 log "Writing runtime activation helper: $activation_file"
+printf -v install_bin_quoted '%q' "$install_prefix/bin"
+printf -v site_packages_quoted '%q' "$site_packages_dir"
+printf -v install_lib_quoted '%q' "$install_prefix/lib"
 cat >"$activation_file" <<EOF
 # Source this file after activating the Python environment used to build psana.
-export PATH="$install_prefix/bin"\${PATH:+:\$PATH}
-export PYTHONPATH="$site_packages_dir"\${PYTHONPATH:+:\$PYTHONPATH}
-export LD_LIBRARY_PATH="$install_prefix/lib"\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
+export PATH=$install_bin_quoted\${PATH:+:\$PATH}
+export PYTHONPATH=$site_packages_quoted\${PYTHONPATH:+:\$PYTHONPATH}
+export LD_LIBRARY_PATH=$install_lib_quoted\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
 EOF
 
 log "Verifying the installed package"
@@ -516,7 +591,7 @@ unset SIT_PSDM_OFFSITE
 export LCLS_CALIB_HTTP=https://pswww.slac.stanford.edu/ws
 export MPICH_GPU_SUPPORT_ENABLED=0
 EOF
-  chmod 0644 "$perlmutter_setup_tmp"
+  chmod 0755 "$perlmutter_setup_tmp"
   mv "$perlmutter_setup_tmp" "$perlmutter_setup"
 fi
 

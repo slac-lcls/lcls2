@@ -38,8 +38,8 @@ python -c "import psana; import psana.dgram; print(psana.__file__)"
 `build_psana.sh` uses the root Meson project, installs xtcdata, psalg, and
 psana into `./install_psana`, creates all Python command-line entry points,
 and verifies the installed package. Run `./build_psana.sh --help` for custom
-prefixes, incremental Python-only refreshes, CUDA builds, and generation of a
-Perlmutter runtime setup script.
+prefixes, incremental Python-only refreshes, CUDA compiler discovery, and
+generation of a Perlmutter runtime setup script.
 
 #### Shared Perlmutter build and activation
 
