@@ -5,6 +5,7 @@ from .config import (
     GpuFieldHandle,
     GpuStreamConfigTable,
 )
+from .batch import GpuXtcBatchPool
 from .parser import DeviceFieldLocators, GpuEventBatch
 
 __all__ = [
@@ -13,4 +14,5 @@ __all__ = [
     "GpuEventBatch",
     "GpuFieldHandle",
     "GpuStreamConfigTable",
+    "GpuXtcBatchPool",
 ]

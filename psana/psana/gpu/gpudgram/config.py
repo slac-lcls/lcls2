@@ -474,20 +474,50 @@ class GpuStreamConfigTable:
             field_name,
             stream_id=stream_id,
         ):
-            handles.append(
-                GpuFieldHandle(
-                    stream_id=names.stream_id,
-                    names_id=names.names_id,
-                    config_names_index=names.config_names_index,
-                    config_field_index=field.config_field_index,
-                    field_index=field.config_field_index - names.first_field,
-                    type=field.type,
-                    element_size=field.element_size,
-                    rank=field.rank,
-                    shape_index=field.shape_index,
-                )
-            )
+            handles.append(self._field_handle(names, field))
         return tuple(handles)
+
+    def field_handles(
+        self,
+        *,
+        det_names=None,
+        stream_ids=None,
+        arrays_only=False,
+    ):
+        """Return deterministic handles matching optional run-level filters."""
+        det_names = (
+            None if det_names is None else {str(name) for name in det_names}
+        )
+        stream_ids = (
+            None
+            if stream_ids is None
+            else {int(stream_id) for stream_id in stream_ids}
+        )
+        handles = []
+        for names in self.names:
+            if det_names is not None and names.det_name not in det_names:
+                continue
+            if stream_ids is not None and names.stream_id not in stream_ids:
+                continue
+            for field in names.fields:
+                if arrays_only and field.rank == 0:
+                    continue
+                handles.append(self._field_handle(names, field))
+        return tuple(handles)
+
+    @staticmethod
+    def _field_handle(names, field):
+        return GpuFieldHandle(
+            stream_id=names.stream_id,
+            names_id=names.names_id,
+            config_names_index=names.config_names_index,
+            config_field_index=field.config_field_index,
+            field_index=field.config_field_index - names.first_field,
+            type=field.type,
+            element_size=field.element_size,
+            rank=field.rank,
+            shape_index=field.shape_index,
+        )
 
     def resolve(
         self,

@@ -28,13 +28,15 @@ There is no separate `start_gpu()`, `_gpu_events_mpi()`, or
 | Stage | CPU | GPU | Purpose |
 |---|---|---|---|
 | Public iterator | `RunParallel.events()` | Same | User-facing event generator. |
-| GPU setup | None | `_make_gpu_event_manager()` | Creates one run-scoped GPU manager and shares calibration through CUDA IPC. |
+| GPU setup | None | `_make_gpu_event_manager()` | Creates one run-scoped GPU manager, uploads Configure-derived XTC tables, and shares calibration through CUDA IPC. |
 | Run dispatch | `RunParallel.start(None)` | `RunParallel.start(manager)` | Passes the optional processor into the common BD path. |
 | MPI receive | `BigDataNode._batch_envelopes()` | Same | Receives the two-packet EB message and posts one-batch look-ahead. |
 | Transport value | `BatchEnvelope(smd, None)` | `BatchEnvelope(smd, gpubat1)` | Keeps the coherent CPU/GPU communication unit together. |
 | Stream controller | `Events.__next__()` | Same | Requests another batch only after the active event-envelope iterator is exhausted. |
+| GPU read issue | None | `KvikioGpuReader.issue_batch()` | Starts reads from GPUBAT1 bigdata descriptors into the selected slot's VRAM buffer. |
 | CPU materialization | `EventManager` | `EventManager` inside `GpuEventManager` | Reads CPU bigdata and constructs `EventEnvelope(dgrams)`. |
-| GPU processing | None | `GpuEventManager.process_batch()` | Issues KvikIO reads, launches detector work, and correlates timestamps. |
+| GPU XTC parse | None | `GpuXtcBatchPool.parse()` | Uploads dgram records, walks XTC, and locates registered array fields on the slot stream. |
+| GPU detector | None | `GPUDetector.process_batch()` | Produces raw, calibrated, and optional image results; Stage 2 still uses legacy addressing. |
 | Internal result | `EventEnvelope(dgrams)` | `EventEnvelope(dgrams, gpu_state)` | Carries one event without owning RunCtx. |
 | Public result | `RunParallel` creates `Event(gpu=None)` | `RunParallel` creates `Event(gpu=GpuEventState)` | The same public object is returned in both modes. |
 | User GPU access | N/A | `evt.gpu.get("calib")` | Returns a lease-aware `GPUResult`. |
@@ -56,10 +58,14 @@ BatchEnvelope.smd
 BatchEnvelope(smd, gpubat1)
   -> GpuEventManager.process_batch()
        inspect transitions from the SMD packet
+       split GPU work into byte-bounded subbatches when necessary
        retire the next reusable slot when necessary
        issue the first GPU read before CPU EventManager work
        run EventManager for CPU-routed streams
-       wait for GPU reads and submit detector kernels
+       wait for the GPU read to finish
+       translate read descriptors into device dgram records
+       walk XTC and locate registered fields on the slot stream
+       submit detector kernels on the same stream
        correlate CPU and GPU records by timestamp
        attach GpuEventState to each EventEnvelope
   -> Events
@@ -68,10 +74,21 @@ BatchEnvelope(smd, gpubat1)
   -> yield Event
 ```
 
-`GpuEventManager` is run-scoped because streams, KvikIO buffers, detector
-constants, D2H pipelines, and EventPool slots span batches. `GpuEventState`
-is event-scoped and contains only that event's results, leases, pending D2H
-tokens, and cached host results. It does not reference the manager.
+`GpuEventManager` is run-scoped. It owns the CPU `GpuStreamConfigTable`, the
+`GpuXtcBatchPool`, KvikIO reader, GPU detectors, D2H pipelines, shared VRAM
+budget, and EventPool. `GpuXtcBatchPool` uploads its numeric Configure tables
+once and owns reusable parser buffers indexed by EventPool slot. EventPool
+retains each subbatch's `GpuEventBatch` until that slot is safely retired.
+
+`GpuEventState` is event-scoped and contains only that event's detector
+results, leases, pending D2H tokens, and cached host results. Stage 2 does not
+expose XTC dgram or field-locator tables through the public Event API.
+
+Stage 2 runs the GPU XTC parser in shadow mode: it produces device dgram and
+field-locator tables before detector processing, but `GPUDetector` continues
+to use legacy raw-array addressing until the Stage 3 consumer switch.
+
+See [GPU XTC parser](gpu_xtc_parser.md) for table layouts and parser details.
 
 ## Look-ahead
 

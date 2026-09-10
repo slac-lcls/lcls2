@@ -16,6 +16,7 @@ from psana.gpu.dgram_layout import build_stream_segment_map
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
 from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from psana.gpu.gpudgram import GpuStreamConfigTable, GpuXtcBatchPool
 from psana.gpu.gpu_stream import EventPool
 from psana.psexp import TransitionId
 from psana.psexp.event_manager import EventManager
@@ -341,6 +342,8 @@ class _GpuMemStats:
         calib_slots  per-slot calibrated-output buffers (grow lazily)
         raw_slots    per-slot raw-gather buffers (grow lazily)
         raw_input    KvikioGpuReader per-slot input buffers
+        xtc_config   run-scoped flattened Configure tables
+        xtc_slots    per-slot dgram, ShapesData, and field-locator tables
         cupy_pool    CuPy memory-pool total committed bytes
         device_used  bytes in use according to CUDA (total - free)
         device_total total device memory
@@ -356,6 +359,8 @@ class _GpuMemStats:
     det_raw_slots: dict = field(default_factory=dict)
     # aggregate GPU
     raw_input: int = 0
+    xtc_config: int = 0
+    xtc_slots: int = 0
     cupy_pool: int = 0
     device_used: int = 0
     device_total: int = 0
@@ -381,9 +386,12 @@ class _GpuMemStats:
                 self._mb(self.det_raw_slots.get(name, 0)),
             )
         _log.info(
-            "GPU mem [%s] raw_input=%s  cupy_pool=%s  device_used=%s / %s  pinned=%s",
+            "GPU mem [%s] raw_input=%s  xtc_config=%s  xtc_slots=%s  "
+            "cupy_pool=%s  device_used=%s / %s  pinned=%s",
             self.label,
             self._mb(self.raw_input),
+            self._mb(self.xtc_config),
+            self._mb(self.xtc_slots),
             self._mb(self.cupy_pool),
             self._mb(self.device_used),
             self._mb(self.device_total),
@@ -440,6 +448,8 @@ class GpuEventManager:
         self.gpu_detectors = {}
         self.event_pool = None
         self.gpu_reader = None
+        self.gpu_xtc_configs = None
+        self.gpu_xtc_parser = None
         # At most one KvikIO read is pre-issued ahead of the CPU event loop.
         # Keep explicit ownership so generator close/early termination can
         # drain it before gpu_reader.close() releases its buffers.
@@ -466,6 +476,10 @@ class GpuEventManager:
             s.det_raw_slots[name] = m["raw_slots"]
         if self.gpu_reader is not None and hasattr(self.gpu_reader, "memory_bytes"):
             s.raw_input = self.gpu_reader.memory_bytes()["raw_input_slots"]
+        if self.gpu_xtc_parser is not None:
+            parser_memory = self.gpu_xtc_parser.memory_bytes()
+            s.xtc_config = parser_memory["config"]
+            s.xtc_slots = parser_memory["batch_slots"]
         s.pinned = sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
         # Query CuPy pool and CUDA device info only when a GPU is active.
         # These calls fail on CPU-only nodes and are skipped silently.
@@ -504,6 +518,8 @@ class GpuEventManager:
             hw["calib_slots"] = max(hw.get("calib_slots", 0), s.det_calib_slots.get(name, 0))
             hw["raw_slots"] = max(hw.get("raw_slots", 0), s.det_raw_slots.get(name, 0))
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
+        hw["xtc_config"] = max(hw.get("xtc_config", 0), s.xtc_config)
+        hw["xtc_slots"] = max(hw.get("xtc_slots", 0), s.xtc_slots)
         hw["cupy_pool"] = max(hw.get("cupy_pool", 0), s.cupy_pool)
         hw["device_used"] = max(hw.get("device_used", 0), s.device_used)
         hw["pinned"] = max(hw.get("pinned", 0), s.pinned)
@@ -512,12 +528,16 @@ class GpuEventManager:
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
         _log.info(
-            "GPU mem high-water  constants=%s  geometry=%s  calib_slots=%s  raw_slots=%s  raw_input=%s  cupy_pool=%s  device_used=%s  pinned=%s",
+            "GPU mem high-water  constants=%s  geometry=%s  calib_slots=%s  "
+            "raw_slots=%s  raw_input=%s  xtc_config=%s  xtc_slots=%s  "
+            "cupy_pool=%s  device_used=%s  pinned=%s",
             _fmt_mib(hw.get("constants", 0)),
             _fmt_mib(hw.get("geometry", 0)),
             _fmt_mib(hw.get("calib_slots", 0)),
             _fmt_mib(hw.get("raw_slots", 0)),
             _fmt_mib(hw.get("raw_input", 0)),
+            _fmt_mib(hw.get("xtc_config", 0)),
+            _fmt_mib(hw.get("xtc_slots", 0)),
             _fmt_mib(hw.get("cupy_pool", 0)),
             _fmt_mib(hw.get("device_used", 0)),
             _fmt_mib(hw.get("pinned", 0)),
@@ -717,6 +737,23 @@ class GpuEventManager:
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
         self.event_pool = EventPool(n=pool_depth)
 
+        # Compile every stream Configure once so descriptor stream ids remain
+        # direct table indices.  Stage 2 locates all array fields for selected
+        # GPU detectors in shadow mode; existing GPUDetector consumers still
+        # use their legacy raw-data ABI until the Stage 3 switch.
+        self.gpu_xtc_configs = GpuStreamConfigTable.from_configs(self.configs)
+        xtc_field_handles = self.gpu_xtc_configs.field_handles(
+            det_names=self.gpu_det_names,
+            stream_ids=requested_stream_ids,
+            arrays_only=True,
+        )
+        self.gpu_xtc_parser = GpuXtcBatchPool(
+            self.gpu_xtc_configs,
+            field_handles=xtc_field_handles,
+            n_slots=pool_depth,
+            budget=self._gpu_budget,
+        )
+
         # KvikioGpuReader: pre-allocate one data_gpu buffer per slot.
         # _gpu_budget was already created in _setup_detectors() above and
         # is shared with every GPUDetector so all allocations are counted
@@ -807,6 +844,8 @@ class GpuEventManager:
             for _, (_, det) in self.gpu_detectors.items():
                 mb = det.memory_bytes()
                 fixed_bytes += mb['constants'] + mb['geometry'] + mb.get('routing', 0)
+            if self.gpu_xtc_parser is not None:
+                fixed_bytes += self.gpu_xtc_parser.memory_bytes()['config']
         except Exception:
             fixed_bytes = 0
 
@@ -853,12 +892,16 @@ class GpuEventManager:
 
         # Per-event raw input bytes from the desc table (varies by event).
         per_event_raw = []
+        per_event_dgrams = []
         for i in range(n_events):
             raw_bytes = 0
+            n_dgrams = 0
             for desc in gpu_view.desc_rows_for_event(i):
                 if int(desc['flags']) & GPU_DESC_FLAG_VALID:
                     raw_bytes += int(desc['bd_size'])
+                    n_dgrams += 1
             per_event_raw.append(raw_bytes)
+            per_event_dgrams.append(n_dgrams)
 
         # Greedy bin-packing: accumulate events until budget exceeded.
         subbatches = []
@@ -866,7 +909,13 @@ class GpuEventManager:
         current_bytes = 0
 
         for i in range(n_events):
-            event_bytes = calib_bytes_per_event + per_event_raw[i]
+            parser = getattr(self, 'gpu_xtc_parser', None)
+            parser_bytes = (
+                parser.estimate_batch_bytes(per_event_dgrams[i])
+                if parser is not None
+                else 0
+            )
+            event_bytes = calib_bytes_per_event + per_event_raw[i] + parser_bytes
 
             if i == start:
                 # Always include at least one event (even if over budget).
@@ -967,6 +1016,7 @@ class GpuEventManager:
             gpu_read,
             event_envelopes,
             self.gpu_detectors,
+            xtc_parser=self.gpu_xtc_parser,
         )
         for pipe in self._d2h_pipelines.values():
             pipe.schedule(record)

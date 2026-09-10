@@ -22,6 +22,21 @@ from .batch import (
     DGRAM_STREAM_ID,
     DGRAM_TIMESTAMP,
     DGRAM_TYPE,
+    LOC_CONFIG_FIELD_INDEX,
+    LOC_DIM0,
+    LOC_MAX_RANK,
+    LOC_NBYTES,
+    LOC_NCOLS,
+    LOC_OFFSET,
+    LOC_RANK,
+    LOC_STATUS,
+    LOC_TYPE,
+    REF_CONFIG_NAMES_INDEX,
+    REF_DAMAGE,
+    REF_DGRAM_INDEX,
+    REF_EXTENT,
+    REF_NCOLS,
+    REF_OFFSET,
 )
 from .config import (
     FIELD_ELEMENT_SIZE,
@@ -35,24 +50,6 @@ from .config import (
     NAMES_N_FIELDS,
     GpuFieldHandle,
 )
-
-
-REF_DGRAM_INDEX = 0
-REF_CONFIG_NAMES_INDEX = 1
-REF_OFFSET = 2
-REF_EXTENT = 3
-REF_DAMAGE = 4
-REF_NCOLS = 5
-
-LOC_CONFIG_FIELD_INDEX = 0
-LOC_TYPE = 1
-LOC_RANK = 2
-LOC_DIM0 = 3
-LOC_MAX_RANK = 5
-LOC_OFFSET = LOC_DIM0 + LOC_MAX_RANK
-LOC_NBYTES = LOC_OFFSET + 1
-LOC_STATUS = LOC_NBYTES + 1
-LOC_NCOLS = LOC_STATUS + 1
 
 STATUS_OK = 0
 STATUS_FOUND = 1
@@ -129,8 +126,7 @@ class GpuEventBatch:
     Notes
     -----
     This object never copies parser metadata to the CPU.  Its buffers must
-    eventually become EventPool-slot-owned when Stage 2 integrates the parser
-    with the existing read/lease pipeline.
+    remain owned by its EventPool slot until that slot is safely retired.
     """
 
     def __init__(
@@ -142,6 +138,9 @@ class GpuEventBatch:
         max_shapes_per_dgram=64,
         threads=128,
         stream=None,
+        shape_counts_gpu=None,
+        shape_refs_gpu=None,
+        locator_allocator=None,
     ):
         cp = _cupy()
         _require_device_array(data_gpu, cp.uint8, 1, "data_gpu")
@@ -167,12 +166,37 @@ class GpuEventBatch:
             raise ValueError("threads must be positive")
 
         self.stream = stream if stream is not None else cp.cuda.get_current_stream()
+        self._locator_allocator = locator_allocator
         with self.stream:
-            self.shape_counts_gpu = cp.empty(self.n_dgrams, dtype=cp.uint64)
-            self.shape_refs_gpu = cp.empty(
-                (self.n_dgrams, self.max_shapes_per_dgram, REF_NCOLS),
-                dtype=cp.uint64,
-            )
+            if shape_counts_gpu is None:
+                shape_counts_gpu = cp.empty(self.n_dgrams, dtype=cp.uint64)
+            else:
+                _require_device_array(
+                    shape_counts_gpu, cp.uint64, 1, "shape_counts_gpu"
+                )
+                if shape_counts_gpu.shape != (self.n_dgrams,):
+                    raise ValueError("shape_counts_gpu shape does not match n_dgrams")
+            if shape_refs_gpu is None:
+                shape_refs_gpu = cp.empty(
+                    (self.n_dgrams, self.max_shapes_per_dgram, REF_NCOLS),
+                    dtype=cp.uint64,
+                )
+            else:
+                _require_device_array(
+                    shape_refs_gpu, cp.uint64, 3, "shape_refs_gpu"
+                )
+                expected = (
+                    self.n_dgrams,
+                    self.max_shapes_per_dgram,
+                    REF_NCOLS,
+                )
+                if shape_refs_gpu.shape != expected:
+                    raise ValueError(
+                        f"shape_refs_gpu must have shape {expected}, "
+                        f"got {shape_refs_gpu.shape}"
+                    )
+            self.shape_counts_gpu = shape_counts_gpu
+            self.shape_refs_gpu = shape_refs_gpu
             if self.n_dgrams:
                 blocks = (self.n_dgrams + self.threads - 1) // self.threads
                 _walk_kernel()(
@@ -216,7 +240,16 @@ class GpuEventBatch:
         if launch_stream is not self.stream:
             launch_stream.wait_event(self.walk_done)
         with launch_stream:
-            rows_gpu = cp.zeros((self.n_dgrams, LOC_NCOLS), dtype=cp.uint64)
+            if self._locator_allocator is None:
+                rows_gpu = cp.empty(
+                    (self.n_dgrams, LOC_NCOLS), dtype=cp.uint64
+                )
+            else:
+                rows_gpu = self._locator_allocator(handle, self.n_dgrams)
+                _require_device_array(rows_gpu, cp.uint64, 2, "locator rows")
+                if rows_gpu.shape != (self.n_dgrams, LOC_NCOLS):
+                    raise ValueError("locator allocator returned the wrong shape")
+            rows_gpu.fill(0)
             if self.n_dgrams:
                 rows_gpu[:, LOC_STATUS] = STATUS_NOT_PRESENT
                 n_work = self.n_dgrams * self.max_shapes_per_dgram
