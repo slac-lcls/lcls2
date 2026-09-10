@@ -36,7 +36,7 @@ There is no separate `start_gpu()`, `_gpu_events_mpi()`, or
 | GPU read issue | None | `KvikioGpuReader.issue_batch()` | Starts reads from GPUBAT1 bigdata descriptors into the selected slot's VRAM buffer. |
 | CPU materialization | `EventManager` | `EventManager` inside `GpuEventManager` | Reads CPU bigdata and constructs `EventEnvelope(dgrams)`. |
 | GPU XTC parse | None | `GpuXtcBatchPool.parse()` | Uploads dgram records, walks XTC, and locates registered array fields on the slot stream. |
-| GPU detector | None | `GPUDetector.process_batch()` | Produces raw, calibrated, and optional image results; Stage 2 still uses legacy addressing. |
+| GPU detector | None | `GPUDetector.process_batch()` | Uses Configure-selected handles and device locator rows to produce canonical raw, calibrated, and optional image results. |
 | Internal result | `EventEnvelope(dgrams)` | `EventEnvelope(dgrams, gpu_state)` | Carries one event without owning RunCtx. |
 | Public result | `RunParallel` creates `Event(gpu=None)` | `RunParallel` creates `Event(gpu=GpuEventState)` | The same public object is returned in both modes. |
 | User GPU access | N/A | `evt.gpu.get("calib")` | Returns a lease-aware `GPUResult`. |

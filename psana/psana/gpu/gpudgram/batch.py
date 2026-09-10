@@ -208,6 +208,9 @@ class GpuXtcBatchPool:
             shape_counts_gpu=shape_counts,
             shape_refs_gpu=shape_refs,
             locator_allocator=slot.locator_rows,
+            stream_ids_by_dgram=np.array(
+                desc_table[:, DESC_STREAM_ID], dtype=np.uint64, copy=True
+            ),
         )
         for handle in self.field_handles:
             batch.locate(handle, stream=stream)

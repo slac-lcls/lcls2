@@ -1,12 +1,12 @@
 # GPU XTC parser
 
-## Stage 1 contract and Stage 2 integration
+## Parser contract and event-loop integration
 
 Stage 1 defines a detector-independent, device-resident parser contract. It
-can still be exercised independently of `DataSource`. Stage 2 connects that
-contract to the existing KvikIO and `EventPool` path in shadow mode: the GPU
-XTC parser runs, but `GPUDetector` still consumes its legacy raw-data ABI so
-the parser can be validated without changing calibration results.
+can still be exercised independently of `DataSource`. Stage 2 connected that
+contract to the existing KvikIO and `EventPool` path in shadow mode. Stage 3
+replaced the detector kernel's legacy inferred raw offset and fixed-stride ABI
+with parser-produced field locators.
 
 The ownership model is:
 
@@ -29,11 +29,13 @@ Read slot / GPU
     -> detector CUDA kernel       dereference locator and consume field bytes
 ```
 
-There is no parser metadata D2H copy and no CPU event/stream regrouping.
-Tests copy result rows to the CPU only after parsing to assert
-correctness. The former standalone `gpudgram_driver.py`, `GPUDgramBatch`, and
-Python `GpuDgramRef`/`GpuFieldView` compatibility API were removed because
-they encouraged a CPU round trip that the integrated design will not use.
+There is no parser-produced metadata D2H copy. CPU descriptor metadata still
+maps an event and stream to its dense dgram index, but it does not inspect XTC
+or calculate payload addresses. Tests copy result rows to the CPU only after
+parsing to assert correctness. The former standalone `gpudgram_driver.py`,
+`GPUDgramBatch`, and Python `GpuDgramRef`/`GpuFieldView` compatibility API were
+removed because they encouraged a CPU round trip that the integrated design
+will not use.
 
 ## Configure tables
 
@@ -216,20 +218,45 @@ one locator table per registered field handle
 
 Their allocations are charged to the same `_GpuBudget` as KvikIO input,
 calibration, raw, and geometry buffers. Parser bytes are also included in
-subbatch sizing. `EventPool.submit()` queues the parser before the existing
-detector kernel on the same non-blocking slot stream and retains the
-`GpuEventBatch` in `_EventSlot.xtc_batch`. Two-phase retirement synchronizes
-the producer and waits for consumer leases before the object is released and
-the slot buffers may be overwritten.
+subbatch sizing. `EventPool.submit()` queues the parser before detector work
+on the same non-blocking slot stream and retains the `GpuEventBatch` in
+`_EventSlot.xtc_batch`. Two-phase retirement synchronizes the producer and
+waits for consumer leases before the object is released and the slot buffers
+may be overwritten.
 
-The Stage 2 integration is intentionally shadow-only. The current detector
-kernel output and the public `evt.gpu` result API are unchanged.
+`GpuEventManager` resolves one unambiguous Configure array handle for every
+routed detector segment. `GPUDetector.process_batch()` uses the CPU descriptor
+metadata only to map `(event, stream_id)` to a dense dgram index. Its CUDA
+gather reads the corresponding device locator row, validates type, rank,
+payload size, and bounds, and copies the field into canonical segment order.
+No XTC bytes or locator results make a GPU-to-CPU round trip.
+
+## Current integration scope
+
+The parser and its field locators are detector-independent. The integrated
+consumer is not yet a general GPU detector interface: `GPUDetector` currently
+materializes one array field per segment into a dense, fixed-shape detector
+tensor and either calibrates `uint16` Jungfrau raw data or passes through
+pre-calibrated `float32` data. Its row and column dimensions are still derived
+from pedestal calibration constants, so detectors without pedestals and
+fields with dynamic, nonuniform, or non-2D shapes are not yet supported by
+this adapter.
+
+General detector support is a separate integration stage. It should expose
+the shared `data_gpu` and device locator metadata through an event-scoped GPU
+detector interface. That interface will add detector membership and canonical
+segment ordering while allowing each consumer to choose a shape policy:
+direct locator-backed kernel access, variable/ragged fields, or optional dense
+materialization. Calibration remains one consumer of that interface rather
+than a requirement of GPU field access.
 
 ## Later integration stages
 
-Stage 3 will switch `GPUDetector` from `_raw_data_offset` and fixed segment
-stride addressing to field locators, then remove that old GPU ABI. Stage 4
-will expose general `on_gpu`, `on_gpu_view`, and `on_cpu` field access.
+Stage 3 switched `GPUDetector` from `_raw_data_offset` and fixed segment
+stride addressing to field locators. Remaining cleanup can remove the now
+unused legacy layout helper and its tests. Stage 4 will separate the shared
+GPU input batch from detector-specific layout and calibration adapters, then
+expose general `on_gpu`, `on_gpu_view`, and `on_cpu` field access.
 
 The run-scoped Configure allocation must outlive every batch. Batch bytes,
 dgram records, ShapesData references, locators, and downstream detector work

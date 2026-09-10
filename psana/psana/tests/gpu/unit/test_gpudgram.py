@@ -193,6 +193,73 @@ def test_field_handles_filter_detectors_streams_and_scalars():
     assert handles[0] == configs.resolve("wanted", 0, "raw", "array")
 
 
+def test_detector_array_handles_follow_configure_stream_ownership():
+    configs = GpuStreamConfigTable(
+        {
+            0: [
+                _entry(
+                    "det",
+                    4,
+                    "raw",
+                    10,
+                    [
+                        _field("counter", 3, 8, 0, 0, -1),
+                        _field("pixels", 1, 2, 2, 1, 0),
+                    ],
+                )
+            ],
+            1: [
+                _entry(
+                    "det",
+                    9,
+                    "raw",
+                    11,
+                    [_field("arrayRaw", 1, 2, 3, 0, 0)],
+                )
+            ],
+        }
+    )
+
+    handles = configs.detector_array_handles(
+        "det",
+        stream_segments={0: [4], 1: [9]},
+        alg_names={"raw"},
+        element_size=2,
+    )
+
+    assert handles == {
+        4: configs.resolve("det", 4, "raw", "pixels", stream_id=0),
+        9: configs.resolve("det", 9, "raw", "arrayRaw", stream_id=1),
+    }
+
+
+def test_detector_array_handles_reject_ambiguous_array_payload():
+    configs = GpuStreamConfigTable(
+        {
+            0: [
+                _entry(
+                    "det",
+                    0,
+                    "raw",
+                    10,
+                    [
+                        _field("first", 1, 2, 1, 0, 0),
+                        _field("second", 1, 2, 1, 1, 1),
+                    ],
+                )
+            ]
+        }
+    )
+
+    with pytest.raises(ValueError, match="exactly one event array"):
+        configs.detector_array_handles(
+            "det",
+            stream_segments={0: [0]},
+            alg_names={"raw"},
+            element_size=2,
+        )
+
+
 def test_kvikio_descriptors_translate_to_device_dgram_records():
     desc = np.zeros((2, DESC_NCOLS), dtype=np.uint64)
     desc[:, DESC_EVENT_INDEX] = [7, 7]

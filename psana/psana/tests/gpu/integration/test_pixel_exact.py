@@ -181,27 +181,43 @@ def _result_still_on_device(result):
 
 @pytest.mark.gpu
 @requires_gpu
-def test_canonical_raw_gather_precedes_ordinary_calibration():
-    """Logical buffer gaps and stream order end at canonical raw assembly."""
+def test_locator_raw_gather_precedes_ordinary_calibration():
+    """A parser locator, rather than an inferred stride, addresses raw data."""
     import cupy as cp
 
     from psana.gpu.gpu_calib import fused_calib_gpu
-    from psana.gpu.gpu_detector import _gather_strided_rows_gpu
+    from psana.gpu.gpu_detector import _gather_locator_field_gpu
+    from psana.gpu.gpudgram.batch import (
+        LOC_NBYTES,
+        LOC_NCOLS,
+        LOC_OFFSET,
+        LOC_RANK,
+        LOC_STATUS,
+        LOC_TYPE,
+    )
+    from psana.gpu.gpudgram.config import GpuFieldHandle
+    from psana.gpu.gpudgram.parser import STATUS_FOUND
 
-    # Two logical panels start at elements 2 and 7. Prefix and inter-panel
-    # bytes model a future coalesced physical read without implementing one.
-    src = cp.asarray([90, 91, 1, 2, 3, 80, 81, 7, 8, 9], dtype=cp.uint16)
-    output_rows = cp.asarray([2, 0], dtype=cp.uint32)
+    src = cp.asarray([90, 91, 1, 2, 3], dtype=cp.uint16).view(cp.uint8)
+    handle = GpuFieldHandle(0, 10, 0, 0, 0, 1, 2, 1, 0)
+    locators = cp.zeros((1, LOC_NCOLS), dtype=cp.uint64)
+    locators[0, LOC_TYPE] = handle.type
+    locators[0, LOC_RANK] = handle.rank
+    locators[0, LOC_OFFSET] = 2 * 2
+    locators[0, LOC_NBYTES] = 3 * 2
+    locators[0, LOC_STATUS] = STATUS_FOUND
     raw = cp.full((3, 1, 3), 0, dtype=cp.uint16)
+    present = cp.zeros(3, dtype=cp.uint8)
 
-    result = _gather_strided_rows_gpu(
+    result = _gather_locator_field_gpu(
         src,
-        pix_start=2,
-        stride_pixels=5,
-        n_segments=2,
+        locators,
+        dgram_index=0,
+        handle=handle,
+        output_row=2,
         pixels_per_segment=3,
-        output_rows=output_rows,
         out=raw,
+        present=present,
     )
     peds = cp.zeros(3 * raw.size, dtype=cp.float32)
     gmask = cp.ones(3 * raw.size, dtype=cp.float32)
@@ -211,37 +227,56 @@ def test_canonical_raw_gather_precedes_ordinary_calibration():
     assert result is raw
     np.testing.assert_array_equal(
         cp.asnumpy(raw[:, 0]),
-        [[7, 8, 9], [0, 0, 0], [1, 2, 3]],
+        [[0, 0, 0], [0, 0, 0], [1, 2, 3]],
     )
+    np.testing.assert_array_equal(cp.asnumpy(present), [0, 0, 1])
     np.testing.assert_array_equal(cp.asnumpy(calib), cp.asnumpy(raw))
 
 
 @pytest.mark.gpu
 @requires_gpu
-def test_mapped_passthrough_copy_writes_canonical_rows():
-    """Strided pre-calibrated panels use the same canonical destination."""
+def test_locator_passthrough_copy_writes_canonical_row():
+    """A float32 field locator feeds the passthrough destination directly."""
     import cupy as cp
 
-    from psana.gpu.gpu_detector import _gather_strided_rows_gpu
+    from psana.gpu.gpu_detector import _gather_locator_field_gpu
+    from psana.gpu.gpudgram.batch import (
+        LOC_NBYTES,
+        LOC_NCOLS,
+        LOC_OFFSET,
+        LOC_RANK,
+        LOC_STATUS,
+        LOC_TYPE,
+    )
+    from psana.gpu.gpudgram.config import GpuFieldHandle
+    from psana.gpu.gpudgram.parser import STATUS_FOUND
 
-    src = cp.asarray([99, 1, 2, 3, 88, 7, 8, 9], dtype=cp.float32)
-    output_rows = cp.asarray([2, 0], dtype=cp.uint32)
+    src = cp.asarray([99, 1, 2, 3], dtype=cp.float32).view(cp.uint8)
+    handle = GpuFieldHandle(0, 10, 0, 0, 0, 2, 4, 1, 0)
+    locators = cp.zeros((1, LOC_NCOLS), dtype=cp.uint64)
+    locators[0, LOC_TYPE] = handle.type
+    locators[0, LOC_RANK] = handle.rank
+    locators[0, LOC_OFFSET] = 4
+    locators[0, LOC_NBYTES] = 3 * 4
+    locators[0, LOC_STATUS] = STATUS_FOUND
     out = cp.full((3, 3), -1, dtype=cp.float32)
+    present = cp.zeros(3, dtype=cp.uint8)
 
-    result = _gather_strided_rows_gpu(
+    result = _gather_locator_field_gpu(
         src,
-        pix_start=1,
-        stride_pixels=4,
-        n_segments=2,
+        locators,
+        dgram_index=0,
+        handle=handle,
+        output_row=2,
         pixels_per_segment=3,
-        output_rows=output_rows,
         out=out,
+        present=present,
     )
     cp.cuda.Stream.null.synchronize()
 
     assert result is out
     np.testing.assert_array_equal(cp.asnumpy(out[2]), [1, 2, 3])
-    np.testing.assert_array_equal(cp.asnumpy(out[0]), [7, 8, 9])
+    np.testing.assert_array_equal(cp.asnumpy(out[0]), [-1, -1, -1])
     np.testing.assert_array_equal(cp.asnumpy(out[1]), [-1, -1, -1])
 
 
@@ -300,9 +335,9 @@ def test_integrated_jungfrau_pixel_exact(
         raw_result = evt.gpu.get("raw")
         manager = getattr(run._evt_iter, "gpu_manager", run._evt_iter)
         if d2h_chunk_size == 0:
-            # Shadow-mode acceptance: while the slot is exposed between the
-            # two retirement phases, verify the integrated parser actually
-            # decoded every routed dgram and located detector data in it.
+            # While the slot is exposed between the two retirement phases,
+            # verify the parser decoded every routed dgram and located the
+            # arrays now consumed by GPUDetector.
             slot_record = manager.event_pool._retiring
             if slot_record is None:
                 # End-of-input/max-events delivery comes from flush(), whose
