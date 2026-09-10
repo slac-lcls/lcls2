@@ -4,12 +4,6 @@ option('build_daq',
   description: 'Build DAQ too',
 )
 
-option('build_cuda',
-  type: 'boolean',
-  value: true,
-  description: 'Enable CUDA language and subproject discovery',
-)
-
 option('conda_prefix',
   type: 'string',
   description: 'Path to conda env directory',

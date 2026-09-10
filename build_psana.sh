@@ -283,11 +283,6 @@ meson_options=(
   "-Dpython.bytecompile=-1"
   "--buildtype=$build_type"
 )
-if [[ "$with_cuda" -eq 1 ]]; then
-  meson_options+=("-Dbuild_cuda=true")
-else
-  meson_options+=("-Dbuild_cuda=false")
-fi
 
 if [[ -n "${EPICS_BASE:-}" ]]; then
   meson_options+=("-Depics_base=$EPICS_BASE")
@@ -305,6 +300,38 @@ fi
 python_dir="$(dirname "$python_bin")"
 build_path="$python_dir${PATH:+:$PATH}"
 restore_linker_env=0
+masked_path_root=""
+
+mask_nvcc_from_path() {
+  local entry entry_dir item item_name masked_entry path_index=0
+  local filtered_path=""
+
+  masked_path_root="$(mktemp -d "${TMPDIR:-/tmp}/build-psana-path.XXXXXX")"
+  while IFS= read -r entry; do
+    [[ -n "$entry" ]] || continue
+    entry_dir="$(cd -P "$entry" 2>/dev/null && pwd)" || entry_dir="$entry"
+    masked_entry="$entry_dir"
+
+    if [[ -x "$entry_dir/nvcc" ]]; then
+      masked_entry="$masked_path_root/$path_index"
+      mkdir -p "$masked_entry"
+      for item in "$entry_dir"/*; do
+        [[ -e "$item" || -L "$item" ]] || continue
+        item_name="$(basename "$item")"
+        [[ "$item_name" == nvcc ]] || ln -s "$item" "$masked_entry/$item_name"
+      done
+    fi
+
+    if [[ -z "$filtered_path" ]]; then
+      filtered_path="$masked_entry"
+    else
+      filtered_path="$filtered_path:$masked_entry"
+    fi
+    path_index=$((path_index + 1))
+  done < <(printf '%s' "$build_path" | tr ':' '\n')
+
+  build_path="$filtered_path"
+}
 
 run_with_build_env() {
   if [[ -n "$build_cpath" ]]; then
@@ -336,6 +363,8 @@ if command -v nvcc >/dev/null 2>&1 && [[ "$with_cuda" -eq 1 ]]; then
   if [[ -n "${CUDA_ROOT:-}" && -e "$CUDA_ROOT" ]]; then
     meson_options+=("-Dcustom_cuda_path=$CUDA_ROOT")
   fi
+elif PATH="$build_path" command -v nvcc >/dev/null 2>&1; then
+  mask_nvcc_from_path
 fi
 
 cleanup_linker_env() {
@@ -343,6 +372,9 @@ cleanup_linker_env() {
     export LDFLAGS="$BUILD_PSANA_OLD_LDFLAGS"
     export CXXFLAGS="$BUILD_PSANA_OLD_CXXFLAGS"
     unset BUILD_PSANA_OLD_LDFLAGS BUILD_PSANA_OLD_CXXFLAGS
+  fi
+  if [[ -n "$masked_path_root" && -d "$masked_path_root" ]]; then
+    rm -rf -- "$masked_path_root"
   fi
 }
 trap cleanup_linker_env EXIT
