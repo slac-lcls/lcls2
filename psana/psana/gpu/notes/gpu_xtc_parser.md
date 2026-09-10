@@ -225,11 +225,33 @@ waits for consumer leases before the object is released and the slot buffers
 may be overwritten.
 
 `GpuEventManager` resolves one unambiguous Configure array handle for every
-routed detector segment. `GPUDetector.process_batch()` uses the CPU descriptor
-metadata only to map `(event, stream_id)` to a dense dgram index. Its CUDA
-gather reads the corresponding device locator row, validates type, rank,
-payload size, and bounds, and copies the field into canonical segment order.
-No XTC bytes or locator results make a GPU-to-CPU round trip.
+routed detector segment. `EventPool` uses CPU descriptor metadata to construct
+one immutable `GpuEventDgrams` mapping per event. The same stream-indexed
+mapping is passed to every detector adapter, so event/stream ownership is not
+rebuilt per detector. `GPUDetector.process_batch()` reads the corresponding
+device locator row, validates type, rank, payload size, and bounds, and copies
+the field into canonical segment order. No XTC bytes or locator results make a
+GPU-to-CPU round trip.
+
+Stage 4A introduces the input-to-detector ownership contracts in
+`gpu_input.py`:
+
+```text
+GpuEventDgrams
+  dgrams[stream_id] -> GpuStreamDgramView(batch, dgram_index)
+
+GpuDetectorBinding
+  canonical segment -> Configure field handle
+  canonical segment -> output row
+  Configure field handle -> owning stream
+```
+
+`GpuDetectorBinding` is created once during run setup. It owns detector
+membership and canonical segment routing but deliberately has no shape,
+dtype-materialization, or calibration policy. `GpuEventDgrams` and its parsed
+batch are retained by the EventPool slot and cleared together at retirement.
+These contracts remain internal until general field access and an input-buffer
+consumer lease are added.
 
 ## Current integration scope
 
@@ -253,10 +275,12 @@ than a requirement of GPU field access.
 ## Later integration stages
 
 Stage 3 switched `GPUDetector` from `_raw_data_offset` and fixed segment
-stride addressing to field locators. Remaining cleanup can remove the now
-unused legacy layout helper and its tests. Stage 4 will separate the shared
-GPU input batch from detector-specific layout and calibration adapters, then
-expose general `on_gpu`, `on_gpu_view`, and `on_cpu` field access.
+stride addressing to field locators. Stage 4A moved stream/dgram ownership and
+canonical segment binding out of the calibration adapter. Remaining Stage 4
+work will add general field selection, shape/materialization policies, and an
+input-buffer lease before exposing `on_gpu`, `on_gpu_view`, and `on_cpu` field
+access. Remaining cleanup can then remove the unused legacy layout helper and
+its tests.
 
 The run-scoped Configure allocation must outlive every batch. Batch bytes,
 dgram records, ShapesData references, locators, and downstream detector work

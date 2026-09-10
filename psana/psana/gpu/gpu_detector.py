@@ -12,6 +12,7 @@ from psana.gpu.gpu_calib import (
     prepare_geometry,
     prepare_geometry_from_arrays,
 )
+from psana.gpu.gpu_input import GpuDetectorBinding
 from psana.gpu.gpudgram.batch import (
     LOC_NBYTES,
     LOC_NCOLS,
@@ -131,16 +132,13 @@ class GPUDetector:
                        read from calibconst e.g. ``peds.shape[1:]``.
     peds_gpu         : cp.ndarray float32, flat, length 3 * prod(det_shape)
     gmask_gpu        : cp.ndarray float32, flat, same length
-    field_handles_by_segment : mapping[int, GpuFieldHandle]
-        Exact Configure field selected for each physical detector segment.
-    canonical_segment_ids : sequence[int] or None
-        Segment order expected by the normal psana detector API. Configure
-        segment identities map each located field directly to this order.
+    binding : GpuDetectorBinding
+        Run-scoped detector membership, field handles, and canonical segment
+        order. The binding is independent of calibration and payload shape.
     """
 
     def __init__(self, det_shape, peds_gpu, gmask_gpu,
-                 field_handles_by_segment,
-                 canonical_segment_ids=None,
+                 binding,
                  cmpars=None,
                  n_slots=2,
                  budget=None,
@@ -152,53 +150,26 @@ class GPUDetector:
         self._nrows            = int(det_shape[1])
         self._ncols            = int(det_shape[2])
         self._n_pix_seg        = self._nrows * self._ncols
-        self._canonical_segment_ids = tuple(
-            range(self._n_segs_calib)
-            if canonical_segment_ids is None else canonical_segment_ids
-        )
+        if not isinstance(binding, GpuDetectorBinding):
+            raise TypeError("binding must be a GpuDetectorBinding")
+        self.binding = binding
+        self._canonical_segment_ids = binding.canonical_segment_ids
         if len(self._canonical_segment_ids) != self._n_segs_calib:
             raise ValueError(
                 "canonical_segment_ids must contain one entry per detector "
                 f"segment: got {len(self._canonical_segment_ids)}, "
                 f"expected {self._n_segs_calib}"
             )
-        if len(set(self._canonical_segment_ids)) != len(self._canonical_segment_ids):
-            raise ValueError("canonical_segment_ids contains duplicates")
-        self._canonical_segment_rows = {
-            segment_id: row
-            for row, segment_id in enumerate(self._canonical_segment_ids)
-        }
+        self._canonical_segment_rows = binding.canonical_segment_rows
         self._budget = budget  # _GpuBudget | None
 
-        field_handles_by_segment = {
-            int(segment): handle
-            for segment, handle in field_handles_by_segment.items()
-        }
-        if set(field_handles_by_segment) != set(self._canonical_segment_ids):
-            raise ValueError(
-                "field_handles_by_segment must identify every canonical "
-                f"segment exactly once: handles={sorted(field_handles_by_segment)}, "
-                f"canonical={sorted(self._canonical_segment_ids)}"
-            )
-        self._field_handles_by_segment = field_handles_by_segment
-        self._sources_by_stream = {}
-        for segment_id in self._canonical_segment_ids:
-            handle = field_handles_by_segment[segment_id]
-            if not isinstance(handle, GpuFieldHandle):
-                raise TypeError(
-                    "field_handles_by_segment values must be GpuFieldHandle"
-                )
+        self._field_handles_by_segment = binding.field_handles_by_segment
+        self._sources_by_stream = binding.sources_by_stream
+        for segment_id, handle in self._field_handles_by_segment.items():
             if handle.rank <= 0:
                 raise ValueError(
                     f"segment {segment_id} handle must select an array field"
                 )
-            self._sources_by_stream.setdefault(handle.stream_id, []).append(
-                (self._canonical_segment_rows[segment_id], handle)
-            )
-        self._sources_by_stream = {
-            stream_id: tuple(sources)
-            for stream_id, sources in self._sources_by_stream.items()
-        }
         # Passthrough mode: bigdata is already calibrated float32 from the DRP.
         # Skip fused_calib_gpu entirely; just read and reshape the float32 pixels.
         self._passthrough = bool(passthrough)
@@ -440,40 +411,21 @@ class GPUDetector:
                 )
         return buf[:nitems].reshape(shape)
 
-    def process_batch(self, gpu_view, xtc_batch,
+    def process_batch(self, gpu_events,
                       stream=None, slot_id=None) -> Iterator[EventContext]:
         """Assemble canonical detector arrays from device field locators.
 
-        CPU work is limited to mapping an event's stream ids to dense dgram
-        indices.  Configure-selected handles and GPU-produced locator rows
-        provide every payload address; pixel bytes remain on the device.
+        ``GpuEventDgrams`` maps event streams to dense dgram indices once for
+        every detector consumer. Configure-selected handles and GPU-produced
+        locator rows provide every payload address; pixel bytes remain on the
+        device.
         """
         cp = _cupy()
-        data_gpu = xtc_batch.data_gpu
-        stream_ids = xtc_batch.stream_ids_by_dgram
-        if stream_ids is None:
-            raise ValueError(
-                "GPUDetector.process_batch requires stream_ids_by_dgram"
-            )
-
-        events_info = []  # (GpuBatchEvent, {stream_id: dgram_index})
-        for event in gpu_view.iter_events():
-            dgrams_by_stream = {}
-            for dgram_index in range(
-                int(event.first_desc),
-                int(event.first_desc) + int(event.n_desc),
-            ):
-                stream_id = int(stream_ids[dgram_index])
-                if stream_id not in self._sources_by_stream:
-                    continue
-                if stream_id in dgrams_by_stream:
-                    raise RuntimeError(
-                        f"event {event.timestamp} has duplicate GPU dgrams "
-                        f"for stream {stream_id}"
-                    )
-                dgrams_by_stream[stream_id] = dgram_index
-            if dgrams_by_stream:
-                events_info.append((event, dgrams_by_stream))
+        events_info = [
+            event_dgrams
+            for event_dgrams in gpu_events
+            if self.binding.has_sources(event_dgrams)
+        ]
 
         if not events_info:
             return
@@ -503,7 +455,7 @@ class GPUDetector:
         )
 
         sctx = stream if stream is not None else cp.cuda.Stream.null
-        for event_index, (event, dgrams_by_stream) in enumerate(events_info):
+        for event_index, event_dgrams in enumerate(events_info):
             lo = event_index * self._n_segs_calib
             hi = lo + self._n_segs_calib
             calib_out = calib_slot[lo:hi]
@@ -514,21 +466,22 @@ class GPUDetector:
                 target = calib_out if self._passthrough else raw_out
                 target.fill(0)
                 present.fill(0)
-                for stream_id, dgram_index in dgrams_by_stream.items():
-                    for output_row, handle in self._sources_by_stream[stream_id]:
-                        locator_rows = xtc_batch.locate(
-                            handle, stream=sctx
-                        ).wait_on(sctx)
-                        _gather_locator_field_gpu(
-                            data_gpu,
-                            locator_rows,
-                            dgram_index=dgram_index,
-                            handle=handle,
-                            output_row=output_row,
-                            pixels_per_segment=self._n_pix_seg,
-                            out=target,
-                            present=present,
-                        )
+                for dgram, output_row, _segment_id, handle in (
+                    self.binding.iter_sources(event_dgrams)
+                ):
+                    locator_rows = dgram.locate(
+                        handle, stream=sctx
+                    ).wait_on(sctx)
+                    _gather_locator_field_gpu(
+                        dgram.data_gpu,
+                        locator_rows,
+                        dgram_index=dgram.dgram_index,
+                        handle=handle,
+                        output_row=output_row,
+                        pixels_per_segment=self._n_pix_seg,
+                        out=target,
+                        present=present,
+                    )
 
                 if not self._passthrough:
                     fused_calib_gpu(
@@ -537,7 +490,7 @@ class GPUDetector:
                     _zero_missing_rows_gpu(calib_out, present)
 
             yield EventContext(
-                timestamp=event.timestamp,
+                timestamp=event_dgrams.timestamp,
                 calib_gpu=calib_out,
                 raw_gpu=raw_out,
             )

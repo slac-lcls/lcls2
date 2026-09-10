@@ -317,7 +317,19 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
         SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream, Event=_FakeEvent)),
     )
     log = []
-    xtc_batch = object()
+    xtc_batch = SimpleNamespace(
+        data_gpu=object(),
+        stream_ids_by_dgram=np.asarray([7], dtype=np.uint64),
+        n_dgrams=1,
+    )
+    gpu_event = SimpleNamespace(
+        timestamp=42,
+        first_desc=0,
+        n_desc=1,
+        batch_event_index=3,
+    )
+    gpu_view = SimpleNamespace(iter_events=lambda: iter((gpu_event,)))
+    detector_events = []
 
     class _Parser:
         def parse(self, slot_id, data_gpu, desc_table, stream):
@@ -325,28 +337,43 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
             return xtc_batch
 
     class _Detector:
-        def process_batch(self, *args, **kwargs):
-            log.append(("detector", kwargs["slot_id"], kwargs["stream"]))
+        def __init__(self, name):
+            self.name = name
+
+        def process_batch(self, gpu_events, **kwargs):
+            detector_events.append(gpu_events)
+            log.append((self.name, kwargs["slot_id"], kwargs["stream"]))
             return iter(())
 
     gpu_read = SimpleNamespace(data_gpu="bytes", desc_table="descriptors")
     pool = EventPool(n=1)
     record = pool.submit(
-        None,
+        gpu_view,
         gpu_read,
         ["event"],
-        {"det": (None, _Detector())},
+        {
+            "det-a": (None, _Detector("detector-a")),
+            "det-b": (None, _Detector("detector-b")),
+        },
         xtc_parser=_Parser(),
     )
 
     assert record.xtc_batch is xtc_batch
-    assert [entry[0] for entry in log] == ["parse", "detector"]
-    assert log[0][4] is log[1][2] is pool._streams[0]
+    assert record.gpu_event_dgrams is detector_events[0]
+    assert record.gpu_event_dgrams is detector_events[1]
+    assert record.gpu_event_dgrams[0].dgrams[7].dgram_index == 0
+    assert [entry[0] for entry in log] == [
+        "parse",
+        "detector-a",
+        "detector-b",
+    ]
+    assert log[0][4] is log[1][2] is log[2][2] is pool._streams[0]
 
     pool.begin_retire_next()
     assert record.xtc_batch is xtc_batch
     pool.finish_retire_next()
     assert record.xtc_batch is None
+    assert record.gpu_event_dgrams == ()
 
 
 def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_decode):
@@ -1202,11 +1229,11 @@ class TestKvikioSlotBufferBudget:
 class TestDescTableDensity:
     """GPUBAT1 desc rows must be dense: contiguous, fully owned, all VALID.
 
-    GPUDetector.process_batch indexes the reader's desc table positionally as
+    GpuEventDgrams indexes the reader's desc table positionally as
     desc_table[event.first_desc + i], and GpuSubbatchView re-indexes by
-    subtraction.  iter_read_descs() drops non-VALID rows.  If the table is
-    sparse in either sense the two views disagree and events silently
-    calibrate another event's payload, so the parser must reject it.
+    subtraction. iter_read_descs() drops non-VALID rows. If the table is sparse
+    in either sense the two views disagree and detector consumers could read
+    another event's payload, so the parser must reject it.
     """
 
     @staticmethod

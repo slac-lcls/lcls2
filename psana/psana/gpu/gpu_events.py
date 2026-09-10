@@ -14,6 +14,7 @@ from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
 from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
+from psana.gpu.gpu_input import GpuDetectorBinding
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpudgram import GpuStreamConfigTable, GpuXtcBatchPool
 from psana.gpu.gpu_stream import EventPool
@@ -695,6 +696,12 @@ class GpuEventManager:
             )
             xtc_field_handles.extend(field_handles_by_segment.values())
 
+            detector_binding = GpuDetectorBinding(
+                det_name,
+                canonical_segment_ids=canonical_segment_ids,
+                field_handles_by_segment=field_handles_by_segment,
+            )
+
             # Canonical ordering is established before constants are copied.
             # Raw, calibration constants, geometry, and every downstream
             # operation therefore share the same detector-row contract.
@@ -716,8 +723,7 @@ class GpuEventManager:
                 det_shape=det_shape,
                 peds_gpu=peds_gpu,
                 gmask_gpu=gmask_gpu,
-                field_handles_by_segment=field_handles_by_segment,
-                canonical_segment_ids=canonical_segment_ids,
+                binding=detector_binding,
                 n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
                 budget=self._gpu_budget,
                 passthrough=is_pre_calibrated,
