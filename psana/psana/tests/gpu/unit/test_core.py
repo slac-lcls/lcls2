@@ -310,7 +310,7 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     pool.submit(None, None, ["event-1"], detectors)
 
 
-def test_event_pool_owns_shadow_xtc_batch_until_slot_retirement(monkeypatch):
+def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "cupy",
@@ -745,8 +745,12 @@ class _FakeDetForEstimate:
     """Minimal stand-in for GPUDetector used in estimate_subbatch_bytes tests."""
     _passthrough = False   # normal (uint16) mode — matches GPUDetector default
 
-    def __init__(self, n_segs, nrows, ncols, stream_seg_map=None):
-        self._stream_seg_map = stream_seg_map
+    def __init__(self, n_segs, nrows, ncols, n_routed_segs=None):
+        if n_routed_segs is None:
+            n_routed_segs = n_segs
+        self._field_handles_by_segment = {
+            segment: object() for segment in range(n_routed_segs)
+        }
         self._n_segs_calib   = n_segs
         self._nrows          = nrows
         self._ncols          = ncols
@@ -868,17 +872,16 @@ class TestEstimateSubbatchBytes:
         e10 = det.estimate_subbatch_bytes(10)
         assert e10 == 10 * e1
 
-    def test_formula_with_stream_seg_map(self):
-        # stream_seg_map: 2 GPU streams, 5 and 7 segs respectively → 12 total GPU segs
+    def test_formula_uses_routed_field_handles(self):
         det = _FakeDetForEstimate(
             n_segs=32, nrows=512, ncols=1024,
-            stream_seg_map={6: list(range(5)), 8: list(range(7))},
+            n_routed_segs=12,
         )
         n_segs_gpu = 5 + 7
         expected   = 1 * n_segs_gpu * 512 * 1024 * (4 + 2)
         assert det.estimate_subbatch_bytes(1) == expected
 
-    def test_formula_without_stream_seg_map_uses_n_segs_calib(self):
+    def test_formula_defaults_to_all_calib_segments(self):
         det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
         expected = 1 * 8 * 256 * 512 * (4 + 2)
         assert det.estimate_subbatch_bytes(1) == expected

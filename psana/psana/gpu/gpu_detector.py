@@ -6,17 +6,26 @@ from typing import Iterator
 
 import numpy as np
 
-from psana.gpu.dgram_layout import detect_dgram_layout
 from psana.gpu.gpu_calib import (
     assemble_image as assemble_calib_image,
     fused_calib_gpu,
     prepare_geometry,
     prepare_geometry_from_arrays,
 )
-from psana.gpu.gpu_kvikio_read import DESC_DEVICE_OFFSET, DESC_READ_SIZE, DESC_STREAM_ID
+from psana.gpu.gpudgram.batch import (
+    LOC_NBYTES,
+    LOC_NCOLS,
+    LOC_OFFSET,
+    LOC_RANK,
+    LOC_STATUS,
+    LOC_TYPE,
+)
+from psana.gpu.gpudgram.config import GpuFieldHandle
+from psana.gpu.gpudgram.parser import STATUS_FOUND
 
-_GATHER_U16_KERNEL_NAME = "gather_strided_u16_rows_kernel"
-_GATHER_F32_KERNEL_NAME = "gather_strided_f32_rows_kernel"
+_GATHER_U16_KERNEL_NAME = "gather_locator_u16_kernel"
+_GATHER_F32_KERNEL_NAME = "gather_locator_f32_kernel"
+_ZERO_MISSING_KERNEL_NAME = "zero_missing_rows_kernel"
 
 
 def optimal_kernel_batch_size(det_shape, threads_per_block=256,
@@ -109,12 +118,12 @@ class EventContext:
 
 
 class GPUDetector:
-    """Per-event GPU calibration for an uncompressed Jungfrau detector.
+    """Per-event GPU calibration fed by GPU XTC field locators.
 
-    Handles both single-segment test fixtures and multi-segment real bigdata
-    dgrams.  The XTC header overhead (raw_data_offset) and per-segment stride
-    (seg_stride_bytes) are auto-detected from the first bigdata dgram seen,
-    so no detector-specific constants need to be hard-coded by the caller.
+    Configure-derived field handles identify one array payload per physical
+    segment.  Event locators provide the byte offset for each handle in each
+    dgram, so extraction does not depend on detector-specific XTC layout,
+    recursive CPU parsing, fixed panel strides, or L1 child order.
 
     Parameters
     ----------
@@ -122,21 +131,15 @@ class GPUDetector:
                        read from calibconst e.g. ``peds.shape[1:]``.
     peds_gpu         : cp.ndarray float32, flat, length 3 * prod(det_shape)
     gmask_gpu        : cp.ndarray float32, flat, same length
-    raw_data_offset  : int or None
-        Bytes from the dgram start to the first raw pixel.  None (default)
-        means auto-detect from the XTC tree on the first batch.
-    seg_stride_bytes : int or None
-        Bytes between consecutive segment starts inside a multi-segment
-        bigdata dgram.  None (default) means auto-detect.
+    field_handles_by_segment : mapping[int, GpuFieldHandle]
+        Exact Configure field selected for each physical detector segment.
     canonical_segment_ids : sequence[int] or None
-        Segment order expected by the normal psana detector API. GPU input is
-        gathered in L1 child-XTC order and reordered before it is exposed.
+        Segment order expected by the normal psana detector API. Configure
+        segment identities map each located field directly to this order.
     """
 
     def __init__(self, det_shape, peds_gpu, gmask_gpu,
-                 raw_data_offset=None,
-                 seg_stride_bytes=None,
-                 stream_seg_map=None,
+                 field_handles_by_segment,
                  canonical_segment_ids=None,
                  cmpars=None,
                  n_slots=2,
@@ -145,14 +148,10 @@ class GPUDetector:
         self.det_shape         = tuple(det_shape)
         self.peds_gpu          = peds_gpu
         self.gmask_gpu         = gmask_gpu
-        self._raw_data_offset  = None if raw_data_offset is None else int(raw_data_offset)
-        self._seg_stride_bytes = None if seg_stride_bytes is None else int(seg_stride_bytes)
         self._n_segs_calib     = int(det_shape[0])
         self._nrows            = int(det_shape[1])
         self._ncols            = int(det_shape[2])
         self._n_pix_seg        = self._nrows * self._ncols
-        # {stream_id: [seg_ids]}
-        self._stream_seg_map   = stream_seg_map  # type: dict | None
         self._canonical_segment_ids = tuple(
             range(self._n_segs_calib)
             if canonical_segment_ids is None else canonical_segment_ids
@@ -171,50 +170,35 @@ class GPUDetector:
         }
         self._budget = budget  # _GpuBudget | None
 
-        # Stream dgrams group panels in L1 child order. Cache the mapping from
-        # each stream-local input row to the canonical detector row. Raw
-        # assembly is the only stage that knows this routing; calibration and
-        # downstream user kernels consume an ordinary canonical detector array.
-        self._canonical_rows_by_stream = {}
-        routed_rows = set()
-        for stream_id, segment_ids in (self._stream_seg_map or {}).items():
-            unknown = set(segment_ids) - set(self._canonical_segment_rows)
-            if unknown:
-                raise ValueError(
-                    f"stream {stream_id} contains segments absent from "
-                    f"canonical_segment_ids: {sorted(unknown)}"
+        field_handles_by_segment = {
+            int(segment): handle
+            for segment, handle in field_handles_by_segment.items()
+        }
+        if set(field_handles_by_segment) != set(self._canonical_segment_ids):
+            raise ValueError(
+                "field_handles_by_segment must identify every canonical "
+                f"segment exactly once: handles={sorted(field_handles_by_segment)}, "
+                f"canonical={sorted(self._canonical_segment_ids)}"
+            )
+        self._field_handles_by_segment = field_handles_by_segment
+        self._sources_by_stream = {}
+        for segment_id in self._canonical_segment_ids:
+            handle = field_handles_by_segment[segment_id]
+            if not isinstance(handle, GpuFieldHandle):
+                raise TypeError(
+                    "field_handles_by_segment values must be GpuFieldHandle"
                 )
-            rows = tuple(self._canonical_segment_rows[s] for s in segment_ids)
-            duplicates = routed_rows.intersection(rows)
-            if duplicates:
+            if handle.rank <= 0:
                 raise ValueError(
-                    "detector segments appear in more than one GPU stream: "
-                    f"canonical rows {sorted(duplicates)}"
+                    f"segment {segment_id} handle must select an array field"
                 )
-            routed_rows.update(rows)
-            self._canonical_rows_by_stream[int(stream_id)] = rows
-
-        # These maps are tiny (one uint32 per panel), fixed for the run, and
-        # explicitly budgeted.  Keeping them on device avoids rebuilding an
-        # advanced-index array for every event.
-        self._canonical_rows_gpu_by_stream = {}
-        self._routing_map_bytes = sum(
-            len(rows) * np.dtype(np.uint32).itemsize
-            for rows in self._canonical_rows_by_stream.values()
-        )
-        if self._routing_map_bytes:
-            if self._budget is not None:
-                self._budget.reserve(self._routing_map_bytes)
-            try:
-                cp = _cupy()
-                self._canonical_rows_gpu_by_stream = {
-                    stream_id: cp.asarray(rows, dtype=cp.uint32)
-                    for stream_id, rows in self._canonical_rows_by_stream.items()
-                }
-            except Exception:
-                if self._budget is not None:
-                    self._budget.release(self._routing_map_bytes)
-                raise
+            self._sources_by_stream.setdefault(handle.stream_id, []).append(
+                (self._canonical_segment_rows[segment_id], handle)
+            )
+        self._sources_by_stream = {
+            stream_id: tuple(sources)
+            for stream_id, sources in self._sources_by_stream.items()
+        }
         # Passthrough mode: bigdata is already calibrated float32 from the DRP.
         # Skip fused_calib_gpu entirely; just read and reshape the float32 pixels.
         self._passthrough = bool(passthrough)
@@ -225,6 +209,16 @@ class GPUDetector:
         #   drp_class_name == 'fex'  → float32 (4 bytes) → passthrough=True
         # This is always known at construction time; no bigdata inspection needed.
         self._pixel_bytes = 4 if passthrough else 2
+        incompatible = {
+            segment_id: handle.element_size
+            for segment_id, handle in self._field_handles_by_segment.items()
+            if handle.element_size != self._pixel_bytes
+        }
+        if incompatible:
+            raise ValueError(
+                "Configure field element sizes do not match detector mode: "
+                f"expected {self._pixel_bytes}, got {incompatible}"
+            )
         # CPU-side cache for beginstep() change detection.
         self._peds_cpu_cache   = None
         self._gmask_cpu_cache  = None
@@ -250,6 +244,7 @@ class GPUDetector:
         self._n_slots         = int(n_slots)
         self._raw_slot_bufs   = [None] * self._n_slots   # uint16 per slot
         self._calib_slot_bufs = [None] * self._n_slots   # cp.ndarray per slot
+        self._present_slot_bufs = [None] * self._n_slots  # uint8 per slot
         # Common-mode correction — not yet implemented on GPU.
         if cmpars is not None:
             raise NotImplementedError(
@@ -258,15 +253,6 @@ class GPUDetector:
                 "omit the argument.  Implement Phase F3 (common-mode CUDA "
                 "kernel) before using cmpars with GPUDetector."
             )
-
-    # Expose detected values as read-only properties for inspection / testing.
-    @property
-    def raw_data_offset(self):
-        return self._raw_data_offset
-
-    @property
-    def seg_stride_bytes(self):
-        return self._seg_stride_bytes
 
     @property
     def canonical_segment_ids(self):
@@ -302,21 +288,6 @@ class GPUDetector:
             stream=stream,
         )
 
-    # Layout auto-detection
-    # ------------------------------------------------------------------
-
-    def _ensure_layout(self, sample_bytes):
-        """Auto-detect seg_stride_bytes and raw_data_offset from the first bigdata dgram.
-
-        The pixel dtype (uint16 vs float32) is NOT derived here — it comes from
-        the Configure-dgram drp_class_name and is already set as _pixel_bytes in
-        __init__ via the passthrough flag.
-        """
-        if self._raw_data_offset is None or self._seg_stride_bytes is None:
-            self._seg_stride_bytes, self._raw_data_offset = \
-                detect_dgram_layout(bytes(sample_bytes))
-
-    # ------------------------------------------------------------------
     # BeginStep hook
     # ------------------------------------------------------------------
 
@@ -383,7 +354,7 @@ class GPUDetector:
         ----------
         constants   peds_gpu + gmask_gpu (calibration constants)
         geometry    scatter_ix + scatter_iy (pixel coordinate maps)
-        routing     canonical output-row maps
+        routing     reserved for run-scoped detector routing metadata
         calib_slots sum of allocated per-slot calibrated-output buffers
         raw_slots   sum of allocated per-slot raw-gather buffers
         total       sum of the above
@@ -393,9 +364,12 @@ class GPUDetector:
 
         constants   = _nb(self.peds_gpu) + _nb(self.gmask_gpu)
         geometry    = _nb(self._scatter_ix) + _nb(self._scatter_iy)
-        routing     = sum(_nb(m) for m in self._canonical_rows_gpu_by_stream.values())
+        routing     = 0
         calib_slots = sum(_nb(b) for b in (self._calib_slot_bufs or []))
-        raw_slots   = sum(_nb(b) for b in self._raw_slot_bufs)
+        raw_slots   = (
+            sum(_nb(b) for b in self._raw_slot_bufs)
+            + sum(_nb(b) for b in self._present_slot_bufs)
+        )
         total       = constants + geometry + routing + calib_slots + raw_slots
         return {
             'constants':   constants,
@@ -416,10 +390,6 @@ class GPUDetector:
         Calibration constants and geometry scatter maps are fixed allocations
         that are excluded here (they are already committed in _GpuBudget).
 
-        Uses stream_seg_map when available to count only the GPU-routed
-        segments (not the full calibconst segment count which includes
-        CPU-routed segments).
-
         Parameters
         ----------
         n_events : int
@@ -431,11 +401,7 @@ class GPUDetector:
         """
         if n_events <= 0:
             return 0
-        # Count only GPU-routed segments (stream_seg_map keys) if available.
-        if self._stream_seg_map:
-            n_segs = sum(len(segs) for segs in self._stream_seg_map.values())
-        else:
-            n_segs = self._n_segs_calib
+        n_segs = len(self._field_handles_by_segment)
         n_pix_per_event = n_segs * self._nrows * self._ncols
         # float32 calib output: 4 bytes/pixel in both modes.
         # Normal (uint16) mode also needs a raw-gather scratch buffer: +2 bytes/pixel.
@@ -474,111 +440,52 @@ class GPUDetector:
                 )
         return buf[:nitems].reshape(shape)
 
-    def process_batch(self, gpu_view, gpu_read,
+    def process_batch(self, gpu_view, xtc_batch,
                       stream=None, slot_id=None) -> Iterator[EventContext]:
-        """Assemble canonical detector arrays and yield one result per event.
+        """Assemble canonical detector arrays from device field locators.
 
-        The reader controls where each logical dgram lands in ``data_gpu``.
-        This method honors every explicit ``DESC_DEVICE_OFFSET`` and therefore
-        does not require one physical read per dgram or tightly packed input.
-        Stream/segment routing ends at canonical raw assembly; Jungfrau
-        calibration consumes the same canonical raw array exposed to users.
-
-        Parameters
-        ----------
-        gpu_view : GpuBatchView
-        gpu_read : KvikioBatchRead with ``data_gpu`` populated
-        stream   : cp.cuda.Stream or None
-            CUDA stream on which to run calibration kernels.  When None the
-            CuPy default stream is used.  EventPool supplies a non-blocking
-            stream to overlap batches and avoid default-stream serialisation.
+        CPU work is limited to mapping an event's stream ids to dense dgram
+        indices.  Configure-selected handles and GPU-produced locator rows
+        provide every payload address; pixel bytes remain on the device.
         """
-        cp         = _cupy()
-        data_gpu   = gpu_read.data_gpu
-        desc_table = gpu_read.desc_table   # NumPy CPU array — no D2H needed
-
-        relevant_rows = [
-            row for row in desc_table
-            if (not self._stream_seg_map
-                or int(row[DESC_STREAM_ID]) in self._stream_seg_map)
-        ]
-        if not relevant_rows:
-            return
-
-        # Detect from this detector's first logical dgram, not data_gpu[0]. A
-        # future coalesced reader may leave gaps in the physical input buffer.
-        if self._raw_data_offset is None or self._seg_stride_bytes is None:
-            sample_offset = int(relevant_rows[0][DESC_DEVICE_OFFSET])
-            self._ensure_layout(
-                data_gpu[sample_offset:sample_offset + 512].get()
+        cp = _cupy()
+        data_gpu = xtc_batch.data_gpu
+        stream_ids = xtc_batch.stream_ids_by_dgram
+        if stream_ids is None:
+            raise ValueError(
+                "GPUDetector.process_batch requires stream_ids_by_dgram"
             )
 
-        # ── Phase 1: pre-scan all events ─────────────────────────────────────
-        # Collect descriptor rows and segment counts for every non-empty event
-        # so we can size the slot buffer to hold the ENTIRE batch in one shot.
-        # This is required to give each event a unique, non-overlapping slice:
-        # with batch_size > 1 all events share the same det shape, so the old
-        # per-event resize check would reuse (and overwrite) the same buffer
-        # for every event in the batch — all timestamps would alias the last
-        # event's calibration result.
-        events_info = []   # (GpuBatchEvent, desc_rows, seg_counts, segment_ids)
+        events_info = []  # (GpuBatchEvent, {stream_id: dgram_index})
         for event in gpu_view.iter_events():
-            if event.n_desc == 0:
-                continue
-            desc_rows = [desc_table[event.first_desc + i]
-                         for i in range(int(event.n_desc))
-                         if (not self._stream_seg_map
-                             or int(desc_table[event.first_desc + i][DESC_STREAM_ID])
-                             in self._stream_seg_map)]
-            if not desc_rows:
-                continue
-            seg_counts = [
-                max(1, (int(row[DESC_READ_SIZE]) - 24) // self._seg_stride_bytes)
-                for row in desc_rows
-            ]
-            segment_ids = []
-            for row, n_segs in zip(desc_rows, seg_counts):
-                stream_id = int(row[DESC_STREAM_ID])
-                stream_segment_ids = (
-                    self._stream_seg_map.get(stream_id)
-                    if self._stream_seg_map else None
-                )
-                if stream_segment_ids is None:
-                    stream_segment_ids = list(range(n_segs))
-                if len(stream_segment_ids) != n_segs:
+            dgrams_by_stream = {}
+            for dgram_index in range(
+                int(event.first_desc),
+                int(event.first_desc) + int(event.n_desc),
+            ):
+                stream_id = int(stream_ids[dgram_index])
+                if stream_id not in self._sources_by_stream:
+                    continue
+                if stream_id in dgrams_by_stream:
                     raise RuntimeError(
-                        f"GPU stream {stream_id} contains {n_segs} segments, "
-                        "but Configure/L1 metadata identifies "
-                        f"{len(stream_segment_ids)}: {stream_segment_ids}"
+                        f"event {event.timestamp} has duplicate GPU dgrams "
+                        f"for stream {stream_id}"
                     )
-                segment_ids.extend(stream_segment_ids)
-            unknown = set(segment_ids) - set(self._canonical_segment_rows)
-            if unknown:
-                raise RuntimeError(
-                    "GPU batch contains detector segments absent from "
-                    f"Configure: {sorted(unknown)}"
-                )
-            if len(set(segment_ids)) != len(segment_ids):
-                raise RuntimeError(
-                    "GPU batch contains duplicate detector segments: "
-                    f"{segment_ids}"
-                )
-            events_info.append((event, desc_rows, seg_counts, segment_ids))
+                dgrams_by_stream[stream_id] = dgram_index
+            if dgrams_by_stream:
+                events_info.append((event, dgrams_by_stream))
 
         if not events_info:
             return
+        if slot_id is None:
+            raise ValueError("GPUDetector.process_batch requires an EventPool slot_id")
 
-        # Both result slots cover the whole batch. Per-event views remain valid
-        # until EventPool retires this execution slot.
+        slot = int(slot_id) % self._n_slots
         batch_shape = (
             len(events_info) * self._n_segs_calib,
             self._nrows,
             self._ncols,
         )
-
-        if slot_id is None:
-            raise ValueError("GPUDetector.process_batch requires an EventPool slot_id")
-        slot = int(slot_id) % self._n_slots
         calib_slot = self._slot_buffer(
             self._calib_slot_bufs, slot, batch_shape, np.float32, "calib"
         )
@@ -587,67 +494,47 @@ class GPUDetector:
             raw_slot = self._slot_buffer(
                 self._raw_slot_bufs, slot, batch_shape, np.uint16, "raw"
             )
+        present_slot = self._slot_buffer(
+            self._present_slot_bufs,
+            slot,
+            (len(events_info), self._n_segs_calib),
+            np.uint8,
+            "field-presence",
+        )
 
         sctx = stream if stream is not None else cp.cuda.Stream.null
-        for event_index, event_info in enumerate(events_info):
-            event, desc_rows, seg_counts, segment_ids = event_info
+        for event_index, (event, dgrams_by_stream) in enumerate(events_info):
             lo = event_index * self._n_segs_calib
             hi = lo + self._n_segs_calib
             calib_out = calib_slot[lo:hi]
             raw_out = None if raw_slot is None else raw_slot[lo:hi]
-            complete = len(segment_ids) == self._n_segs_calib
+            present = present_slot[event_index]
 
             with sctx:
                 target = calib_out if self._passthrough else raw_out
-                if not complete:
-                    target.fill(0)
-
-                for desc_row, n_segs in zip(desc_rows, seg_counts):
-                    stream_id = int(desc_row[DESC_STREAM_ID])
-                    seg_ids = (
-                        self._stream_seg_map.get(stream_id)
-                        if self._stream_seg_map else list(range(n_segs))
-                    )
-                    output_rows = self._canonical_rows_gpu_by_stream.get(stream_id)
-                    if output_rows is None and (
-                        n_segs != self._n_segs_calib
-                        or tuple(seg_ids) != self._canonical_segment_ids
-                    ):
-                        raise RuntimeError(
-                            f"GPU stream {stream_id} has no canonical output-row map"
+                target.fill(0)
+                present.fill(0)
+                for stream_id, dgram_index in dgrams_by_stream.items():
+                    for output_row, handle in self._sources_by_stream[stream_id]:
+                        locator_rows = xtc_batch.locate(
+                            handle, stream=sctx
+                        ).wait_on(sctx)
+                        _gather_locator_field_gpu(
+                            data_gpu,
+                            locator_rows,
+                            dgram_index=dgram_index,
+                            handle=handle,
+                            output_row=output_row,
+                            pixels_per_segment=self._n_pix_seg,
+                            out=target,
+                            present=present,
                         )
-
-                    device_offset = int(desc_row[DESC_DEVICE_OFFSET])
-                    if self._passthrough:
-                        src = data_gpu.view(cp.float32)
-                        pixel_bytes = 4
-                    else:
-                        src = data_gpu.view(cp.uint16)
-                        pixel_bytes = 2
-                    _gather_strided_rows_gpu(
-                        src,
-                        pix_start=(device_offset + self._raw_data_offset)
-                            // pixel_bytes,
-                        stride_pixels=self._seg_stride_bytes // pixel_bytes,
-                        n_segments=n_segs,
-                        pixels_per_segment=self._n_pix_seg,
-                        output_rows=output_rows,
-                        out=target,
-                    )
 
                 if not self._passthrough:
                     fused_calib_gpu(
                         raw_out, self.peds_gpu, self.gmask_gpu, out=calib_out
                     )
-                    # Missing raw rows contain zero, which would calibrate to
-                    # -pedestal. Preserve the established zero-result behavior.
-                    if not complete:
-                        present_rows = {
-                            self._canonical_segment_rows[s]
-                            for s in segment_ids
-                        }
-                        for row in set(range(self._n_segs_calib)) - present_rows:
-                            calib_out[row].fill(0)
+                    _zero_missing_rows_gpu(calib_out, present)
 
             yield EventContext(
                 timestamp=event.timestamp,
@@ -655,182 +542,70 @@ class GPUDetector:
                 raw_gpu=raw_out,
             )
 
-    # ------------------------------------------------------------------
-    # Test / validation API
-    # ------------------------------------------------------------------
 
-    def calibrate(self, data_gpu, device_offset=0):
-        """Calibrate a single dgram already resident in data_gpu.
-
-        Infers the number of segments from the dgram size so this entry point
-        works for any uncompressed area detector without detector-specific
-        configuration.
-
-        Parameters
-        ----------
-        data_gpu      : cp.ndarray uint8, the raw bigdata dgram bytes
-        device_offset : int, byte offset of the dgram start within data_gpu
-                        (default 0 when the buffer holds exactly one dgram)
-
-        Returns
-        -------
-        cp.ndarray float32, shape (n_segs, nrows, ncols)
-        """
-        read_size = int(data_gpu.nbytes) - device_offset
-        # Auto-detect layout from first 512 bytes of this dgram.
-        if self._raw_data_offset is None or self._seg_stride_bytes is None:
-            self._ensure_layout(data_gpu[device_offset:device_offset + 512].get())
-        calib, _ = self._extract_and_calibrate(data_gpu, device_offset, read_size)
-        return calib
-
-    # ------------------------------------------------------------------
-    # Internal helpers
-    # ------------------------------------------------------------------
-
-    def _extract_and_calibrate(self, data_gpu, device_offset, read_size,
-                               out=None):
-        """Gather and calibrate one full-detector validation dgram.
-
-        In normal mode, gathers raw uint16 ADC pixels and calls fused_calib_gpu.
-        In passthrough mode (pre-calibrated float32 bigdata from the DRP),
-        reads the float32 pixels directly and skips the calibration kernel.
-
-        Parameters
-        ----------
-        data_gpu      : cp.ndarray uint8 — the full raw bigdata GPU buffer.
-                        A uint16 or float32 view is created internally based
-                        on self._passthrough.
-        device_offset : byte offset of this dgram within data_gpu
-        read_size     : size in bytes of this dgram
-        _ensure_layout() must have been called before this method.
-        """
-        cp = _cupy()
-
-        n_segs = max(1, (read_size - 24) // self._seg_stride_bytes)
-
-        # ── Passthrough mode: pre-calibrated float32 — no kernel needed ──────
-        if self._passthrough:
-            data_f32  = data_gpu.view(cp.float32)
-            pix_start = (device_offset + self._raw_data_offset) // 4
-            if out is not None:
-                _gather_strided_rows_gpu(
-                    data_f32,
-                    pix_start=pix_start,
-                    stride_pixels=self._seg_stride_bytes // 4,
-                    n_segments=n_segs,
-                    pixels_per_segment=self._n_pix_seg,
-                    output_rows=None,
-                    out=out,
-                )
-                return out, None
-            if n_segs == 1:
-                src = data_f32[pix_start:pix_start + self._n_pix_seg].reshape(
-                    1, self._nrows, self._ncols
-                )
-            else:
-                stride_f32 = self._seg_stride_bytes // 4
-                span_f32   = (n_segs - 1) * stride_f32 + self._n_pix_seg
-                src = cp.lib.stride_tricks.as_strided(
-                    data_f32[pix_start:pix_start + span_f32],
-                    shape=(n_segs, self._nrows, self._ncols),
-                    strides=(self._seg_stride_bytes, self._ncols * 4, 4),
-                )
-            if out is not None:
-                out[:] = src
-                return out, None
-            # No pre-allocated output slot — copy to prevent aliasing with the
-            # reader's slot buffer, which will be overwritten on the next batch.
-            return src.copy(), None
-
-        # Build canonical raw first, then calibrate it exactly as any user
-        # kernel would consume it. This validation entry point is only
-        # unambiguous when one dgram covers the full detector.
-        if n_segs != self._n_segs_calib:
-            raise ValueError(
-                "calibrate() requires a full-detector dgram; production "
-                "multi-stream assembly is handled by process_batch()"
-            )
-        raw_u16 = cp.empty(
-            (self._n_segs_calib, self._nrows, self._ncols), dtype=cp.uint16
-        )
-        _gather_strided_rows_gpu(
-            data_gpu.view(cp.uint16),
-            pix_start=(device_offset + self._raw_data_offset) // 2,
-            stride_pixels=self._seg_stride_bytes // 2,
-            n_segments=n_segs,
-            pixels_per_segment=self._n_pix_seg,
-            output_rows=None,
-            out=raw_u16,
-        )
-        calib = fused_calib_gpu(
-            raw_u16, self.peds_gpu, self.gmask_gpu, out=out
-        )
-        return calib, raw_u16
-
-
-def _gather_strided_rows_gpu(
-    src,
-    pix_start,
-    stride_pixels,
-    n_segments,
+def _gather_locator_field_gpu(
+    data_gpu,
+    locator_rows,
+    dgram_index,
+    handle,
+    output_row,
     pixels_per_segment,
-    output_rows,
     out,
+    present,
     threads=256,
 ):
-    """Gather one logical dgram's panels into canonical detector rows.
-
-    ``pix_start`` is the logical payload location within the reader-owned GPU
-    buffer. It may contain arbitrary leading or inter-dgram gaps, which keeps
-    raw assembly independent of future physical-read coalescing.
-    """
+    """Copy one located field into its canonical detector row."""
     cp = _cupy()
-    if src.dtype not in (cp.uint16, cp.float32):
-        raise TypeError(f"src must be uint16 or float32, got {src.dtype}")
-    if out.dtype != src.dtype:
-        raise TypeError(f"out dtype {out.dtype} does not match src {src.dtype}")
-    if output_rows is not None and output_rows.dtype != cp.uint32:
-        raise TypeError(f"output_rows must be uint32, got {output_rows.dtype}")
-    if output_rows is not None and int(output_rows.size) != int(n_segments):
-        raise ValueError(
-            f"output_rows length {output_rows.size} != n_segments {n_segments}"
+    if data_gpu.dtype != cp.uint8 or data_gpu.ndim != 1:
+        raise TypeError("data_gpu must be a 1-dimensional uint8 array")
+    if locator_rows.dtype != cp.uint64 or locator_rows.ndim != 2:
+        raise TypeError("locator_rows must be a 2-dimensional uint64 array")
+    if locator_rows.shape[1] != LOC_NCOLS:
+        raise ValueError("locator_rows has the wrong column count")
+    if not isinstance(handle, GpuFieldHandle):
+        raise TypeError("handle must be a GpuFieldHandle")
+    expected_dtype = cp.float32 if handle.element_size == 4 else cp.uint16
+    if handle.element_size not in (2, 4) or out.dtype != expected_dtype:
+        raise TypeError(
+            f"field element_size={handle.element_size} is incompatible with "
+            f"output dtype {out.dtype}"
         )
-    source_end = (
-        int(pix_start)
-        + (int(n_segments) - 1) * int(stride_pixels)
-        + int(pixels_per_segment)
-    )
-    if source_end > int(src.size):
-        raise ValueError(
-            f"strided source ends at {source_end}, buffer has {src.size} elements"
-        )
+    if present.dtype != cp.uint8 or present.ndim != 1:
+        raise TypeError("present must be a 1-dimensional uint8 array")
 
-    if output_rows is None:
-        itemsize = int(src.dtype.itemsize)
-        src_view = cp.lib.stride_tricks.as_strided(
-            src[int(pix_start):source_end],
-            shape=(int(n_segments), int(pixels_per_segment)),
-            strides=(int(stride_pixels) * itemsize, itemsize),
-        )
-        out.reshape(out.shape[0], -1)[:n_segments] = src_view
-        return out
-
-    blocks_per_segment = (pixels_per_segment + threads - 1) // threads
+    blocks = (int(pixels_per_segment) + threads - 1) // threads
     kernel = (
-        _gather_u16_kernel() if src.dtype == cp.uint16
+        _gather_u16_kernel() if out.dtype == cp.uint16
         else _gather_f32_kernel()
     )
     kernel(
-        (blocks_per_segment, n_segments),
+        (blocks,),
         (threads,),
         (
-            src,
-            output_rows,
+            data_gpu,
+            np.uint64(data_gpu.nbytes),
+            locator_rows,
+            np.uint64(dgram_index),
             out.ravel(),
-            np.uint64(pix_start),
-            np.uint64(stride_pixels),
+            present,
+            np.uint64(output_row),
             np.uint64(pixels_per_segment),
+            np.uint64(handle.type),
+            np.uint64(handle.rank),
         ),
+    )
+    return out
+
+
+def _zero_missing_rows_gpu(out, present, threads=256):
+    """Restore zero output for fields absent or rejected by the locator copy."""
+    n_segments = int(out.shape[0])
+    pixels_per_segment = int(np.prod(out.shape[1:]))
+    blocks = (pixels_per_segment + threads - 1) // threads
+    _zero_missing_kernel()(
+        (blocks, n_segments),
+        (threads,),
+        (out.ravel(), present, np.uint64(pixels_per_segment)),
     )
     return out
 
@@ -863,50 +638,104 @@ def _gather_f32_kernel():
 
 
 @lru_cache(maxsize=1)
+def _zero_missing_kernel():
+    cp = _cupy()
+    return cp.RawKernel(
+        _gather_kernel_source(),
+        _ZERO_MISSING_KERNEL_NAME,
+        options=("--std=c++17",),
+    )
+
+
+@lru_cache(maxsize=1)
 def _gather_kernel_source():
     return f"""
 
-extern "C" __global__
-void {_GATHER_U16_KERNEL_NAME}(
-    const unsigned short* src,
-    const unsigned int*   output_rows,
-    unsigned short*       out,
-    unsigned long long    pix_start,
-    unsigned long long    stride_pixels,
-    unsigned long long    pixels_per_segment)
+namespace {{
+
+template <typename T>
+__device__ __forceinline__ void gather_locator_field(
+    const unsigned char* data,
+    unsigned long long data_nbytes,
+    const unsigned long long* locators,
+    unsigned long long dgram_index,
+    T* out,
+    unsigned char* present,
+    unsigned long long output_row,
+    unsigned long long pixels_per_segment,
+    unsigned long long expected_type,
+    unsigned long long expected_rank)
 {{
+    const unsigned long long* locator =
+        locators + dgram_index * {LOC_NCOLS};
+    const unsigned long long nbytes = locator[{LOC_NBYTES}];
+    const unsigned long long offset = locator[{LOC_OFFSET}];
+    const unsigned long long expected_nbytes =
+        pixels_per_segment * sizeof(T);
+    if (locator[{LOC_STATUS}] != {STATUS_FOUND} ||
+        locator[{LOC_TYPE}] != expected_type ||
+        locator[{LOC_RANK}] != expected_rank ||
+        nbytes != expected_nbytes ||
+        offset > data_nbytes || nbytes > data_nbytes - offset) {{
+        return;
+    }}
+
     const unsigned long long pixel =
         (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned long long input_segment = blockIdx.y;
-    if (pixel >= pixels_per_segment)
-        return;
+    if (pixel >= pixels_per_segment) return;
+    const T* src = reinterpret_cast<const T*>(data + offset);
+    out[output_row * pixels_per_segment + pixel] = src[pixel];
+    if (pixel == 0) present[output_row] = 1;
+}}
 
-    const unsigned long long input_index =
-        pix_start + input_segment * stride_pixels + pixel;
-    const unsigned long long output_index =
-        (unsigned long long)output_rows[input_segment] * pixels_per_segment + pixel;
-    out[output_index] = src[input_index];
+}} // namespace
+
+extern "C" __global__
+void {_GATHER_U16_KERNEL_NAME}(
+    const unsigned char* data,
+    unsigned long long data_nbytes,
+    const unsigned long long* locators,
+    unsigned long long dgram_index,
+    unsigned short* out,
+    unsigned char* present,
+    unsigned long long output_row,
+    unsigned long long pixels_per_segment,
+    unsigned long long expected_type,
+    unsigned long long expected_rank)
+{{
+    gather_locator_field<unsigned short>(
+        data, data_nbytes, locators, dgram_index, out, present, output_row,
+        pixels_per_segment, expected_type, expected_rank);
 }}
 
 extern "C" __global__
 void {_GATHER_F32_KERNEL_NAME}(
-    const float*          src,
-    const unsigned int*   output_rows,
-    float*                out,
-    unsigned long long    pix_start,
-    unsigned long long    stride_pixels,
-    unsigned long long    pixels_per_segment)
+    const unsigned char* data,
+    unsigned long long data_nbytes,
+    const unsigned long long* locators,
+    unsigned long long dgram_index,
+    float* out,
+    unsigned char* present,
+    unsigned long long output_row,
+    unsigned long long pixels_per_segment,
+    unsigned long long expected_type,
+    unsigned long long expected_rank)
+{{
+    gather_locator_field<float>(
+        data, data_nbytes, locators, dgram_index, out, present, output_row,
+        pixels_per_segment, expected_type, expected_rank);
+}}
+
+extern "C" __global__
+void {_ZERO_MISSING_KERNEL_NAME}(
+    float* out,
+    const unsigned char* present,
+    unsigned long long pixels_per_segment)
 {{
     const unsigned long long pixel =
         (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
-    const unsigned long long input_segment = blockIdx.y;
-    if (pixel >= pixels_per_segment)
-        return;
-
-    const unsigned long long input_index =
-        pix_start + input_segment * stride_pixels + pixel;
-    const unsigned long long output_index =
-        (unsigned long long)output_rows[input_segment] * pixels_per_segment + pixel;
-    out[output_index] = src[input_index];
+    const unsigned long long segment = blockIdx.y;
+    if (pixel >= pixels_per_segment || present[segment]) return;
+    out[segment * pixels_per_segment + pixel] = 0.0f;
 }}
 """

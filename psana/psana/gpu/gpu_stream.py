@@ -172,13 +172,12 @@ class EventPool:
                 stream,
             )
 
-        # Launch calibration on this slot's non-blocking stream.  During the
-        # shadow stage it still uses the legacy addressing ABI, but ordering it
-        # after the walker makes the eventual consumer switch race-free.
+        # Launch detector processing on this slot's non-blocking stream.  It
+        # consumes the parser's device locators directly, in stream order.
         gpu_results_by_ts: dict = {}
         for det_name, det_info in gpu_detectors.items():
             gpu_det_obj = det_info[1]
-            for ec in gpu_det_obj.process_batch(gv, gpu_read, stream=stream,
+            for ec in gpu_det_obj.process_batch(gv, xtc_batch, stream=stream,
                                                 slot_id=slot):
                 ts_dict = gpu_results_by_ts.setdefault(ec.timestamp, {})
                 ts_dict[f'{det_name}.calib'] = ec.calib_gpu

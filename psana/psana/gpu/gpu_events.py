@@ -12,7 +12,6 @@ from psana import dgram, utils
 from psana.event import EventEnvelope
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
-from psana.gpu.dgram_layout import build_stream_segment_map
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
 from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
@@ -604,6 +603,12 @@ class GpuEventManager:
         except Exception:
             _rank = None
 
+        # Compile all stream Configures once, then resolve the exact field
+        # consumed by each detector segment.  This replaces the legacy first-L1
+        # CPU probe and its inferred raw offset/panel stride.
+        self.gpu_xtc_configs = GpuStreamConfigTable.from_configs(self.configs)
+        xtc_field_handles = []
+
         log_gpu_mem("_setup_detectors entry", rank=_rank)
         for det_name in self.gpu_det_names:
             det = self.run.Detector(det_name)
@@ -644,25 +649,6 @@ class GpuEventManager:
 
             stream_segments = dict(segments_table.get(det_name, {}))
             gpu_stream_ids = streams_by_detector[det_name]
-
-            # Configure identifies which physical segments belong to each
-            # stream, but its dictionary order is not necessarily the order
-            # of ShapesData children in L1Accept.  The fixed-stride GPU gather
-            # preserves L1 child order, so discover that order from the first
-            # detector event in each routed bigdata stream.
-            xtc_files = getattr(self.dm, "xtc_files", None)
-            if xtc_files is None:
-                xtc_files = getattr(self.dsparms, "xtc_files", [])
-            stream_files = {stream_id: xtc_files[stream_id] for stream_id in gpu_stream_ids if stream_id < len(xtc_files)}
-            stream_seg_map = build_stream_segment_map(stream_files, det_name)
-
-            for stream_id in gpu_stream_ids:
-                segment_ids = stream_seg_map.get(stream_id)
-                if not segment_ids:
-                    raise RuntimeError(f"gpu_det={det_name!r} could not determine L1Accept segment order for stream {stream_id}")
-                configured = set(stream_segments.get(stream_id, []))
-                if configured and set(segment_ids) != configured:
-                    raise RuntimeError(f"gpu_det={det_name!r} stream {stream_id} segment mismatch: Configure={sorted(configured)} L1Accept={segment_ids}")
             configured_segment_ids = sorted({
                 segment_id
                 for stream_id in gpu_stream_ids
@@ -682,17 +668,32 @@ class GpuEventManager:
             canonical_segment_ids = list(
                 getattr(detector_api, "_sorted_segment_inds", configured_segment_ids)
             )
-            routed_segment_ids = {
-                segment_id
-                for stream_id in gpu_stream_ids
-                for segment_id in stream_seg_map.get(stream_id, ())
-            }
+            routed_segment_ids = set(configured_segment_ids)
             if routed_segment_ids != set(canonical_segment_ids):
                 raise RuntimeError(
                     f"gpu_det={det_name!r} must route all detector segments: "
                     f"configured={canonical_segment_ids}, "
                     f"routed={sorted(routed_segment_ids)}"
                 )
+
+            routed_stream_segments = {
+                stream_id: tuple(stream_segments.get(stream_id, ()))
+                for stream_id in gpu_stream_ids
+            }
+            source_alg_names = (
+                {"raw"}
+                if not is_pre_calibrated
+                else set(drp_classes) - {"config"}
+            )
+            field_handles_by_segment = (
+                self.gpu_xtc_configs.detector_array_handles(
+                    det_name,
+                    stream_segments=routed_stream_segments,
+                    alg_names=source_alg_names,
+                    element_size=4 if is_pre_calibrated else 2,
+                )
+            )
+            xtc_field_handles.extend(field_handles_by_segment.values())
 
             # Canonical ordering is established before constants are copied.
             # Raw, calibration constants, geometry, and every downstream
@@ -715,7 +716,7 @@ class GpuEventManager:
                 det_shape=det_shape,
                 peds_gpu=peds_gpu,
                 gmask_gpu=gmask_gpu,
-                stream_seg_map=stream_seg_map or None,
+                field_handles_by_segment=field_handles_by_segment,
                 canonical_segment_ids=canonical_segment_ids,
                 n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
                 budget=self._gpu_budget,
@@ -737,16 +738,9 @@ class GpuEventManager:
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
         self.event_pool = EventPool(n=pool_depth)
 
-        # Compile every stream Configure once so descriptor stream ids remain
-        # direct table indices.  Stage 2 locates all array fields for selected
-        # GPU detectors in shadow mode; existing GPUDetector consumers still
-        # use their legacy raw-data ABI until the Stage 3 switch.
-        self.gpu_xtc_configs = GpuStreamConfigTable.from_configs(self.configs)
-        xtc_field_handles = self.gpu_xtc_configs.field_handles(
-            det_names=self.gpu_det_names,
-            stream_ids=requested_stream_ids,
-            arrays_only=True,
-        )
+        # Eagerly locate only fields consumed by configured detector adapters.
+        # Deduplication preserves canonical detector order across detectors.
+        xtc_field_handles = tuple(dict.fromkeys(xtc_field_handles))
         self.gpu_xtc_parser = GpuXtcBatchPool(
             self.gpu_xtc_configs,
             field_handles=xtc_field_handles,

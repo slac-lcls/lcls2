@@ -122,6 +122,9 @@ class GpuEventBatch:
         Device records.  Event index, stream id, byte offset, and byte size are
         inputs; the walker fills timestamp, env, service, damage, type, and
         status in place.
+    stream_ids_by_dgram : numpy.ndarray, optional
+        Metadata-only CPU view used to map an event's stream dgrams to dense
+        locator rows. It is derived from read descriptors, not GPU parsing.
 
     Notes
     -----
@@ -141,6 +144,7 @@ class GpuEventBatch:
         shape_counts_gpu=None,
         shape_refs_gpu=None,
         locator_allocator=None,
+        stream_ids_by_dgram=None,
     ):
         cp = _cupy()
         _require_device_array(data_gpu, cp.uint8, 1, "data_gpu")
@@ -158,6 +162,15 @@ class GpuEventBatch:
         self.device_configs = device_configs
         self.dgram_records_gpu = dgram_records_gpu
         self.n_dgrams = int(dgram_records_gpu.shape[0])
+        if stream_ids_by_dgram is None:
+            self.stream_ids_by_dgram = None
+        else:
+            stream_ids_by_dgram = np.asarray(stream_ids_by_dgram)
+            if stream_ids_by_dgram.shape != (self.n_dgrams,):
+                raise ValueError(
+                    "stream_ids_by_dgram shape does not match n_dgrams"
+                )
+            self.stream_ids_by_dgram = stream_ids_by_dgram
         self.max_shapes_per_dgram = int(max_shapes_per_dgram)
         self.threads = int(threads)
         if self.max_shapes_per_dgram <= 0:

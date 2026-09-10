@@ -505,6 +505,82 @@ class GpuStreamConfigTable:
                 handles.append(self._field_handle(names, field))
         return tuple(handles)
 
+    def detector_array_handles(
+        self,
+        det_name,
+        *,
+        stream_segments,
+        alg_names,
+        element_size=None,
+    ):
+        """Resolve the primary event array for each routed detector segment.
+
+        This is the run-setup adapter used by the integrated GPU detector
+        path.  The parser itself remains fully general and can resolve any
+        named field.  A detector processor, however, needs one unambiguous
+        array payload per canonical segment.  Configure supplies the stream,
+        segment, algorithm, field type, and rank needed to establish that
+        mapping without inspecting an L1Accept dgram on the CPU.
+
+        ``stream_segments`` maps stream ids to the physical segment ids owned
+        by that stream.  ``alg_names`` limits candidates to the detector
+        algorithms exposed by the selected detector interface.  Ambiguous
+        layouts must be selected explicitly by a future detector adapter;
+        guessing a field here would recreate detector-specific raw addressing.
+        """
+        det_name = str(det_name)
+        alg_names = {str(name) for name in alg_names}
+        if not alg_names:
+            raise ValueError("alg_names must contain at least one algorithm")
+        if element_size is not None:
+            element_size = int(element_size)
+
+        handles = {}
+        for stream_id in sorted(stream_segments):
+            stream_id = int(stream_id)
+            for segment in stream_segments[stream_id]:
+                segment = int(segment)
+                candidates = []
+                for names in self.names:
+                    if (
+                        names.stream_id != stream_id
+                        or names.det_name != det_name
+                        or names.segment != segment
+                        or names.alg_name not in alg_names
+                    ):
+                        continue
+                    for field in names.fields:
+                        if field.rank == 0:
+                            continue
+                        if (
+                            element_size is not None
+                            and field.element_size != element_size
+                        ):
+                            continue
+                        candidates.append(
+                            (names, field, self._field_handle(names, field))
+                        )
+
+                if len(candidates) != 1:
+                    descriptions = ", ".join(
+                        f"{names.alg_name}.{field.name}"
+                        f"(type={field.type},rank={field.rank},"
+                        f"element_size={field.element_size})"
+                        for names, field, _ in candidates
+                    ) or "none"
+                    raise ValueError(
+                        f"Configure must identify exactly one event array for "
+                        f"{det_name}[{segment}] in stream {stream_id}; "
+                        f"candidates: {descriptions}"
+                    )
+                if segment in handles:
+                    raise ValueError(
+                        f"segment {det_name}[{segment}] is owned by more than "
+                        "one routed stream"
+                    )
+                handles[segment] = candidates[0][2]
+        return handles
+
     @staticmethod
     def _field_handle(names, field):
         return GpuFieldHandle(
