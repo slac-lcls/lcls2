@@ -159,7 +159,7 @@ def epix100_connectionInfo(base, alloc_json_str):
     d["serno"] = epixhrid
 
     # Check that the timing link is up from XPM-side
-    if rxId != 0xFFFFFFFE:
+    if rxId != 0xFFFFFFFE and 0: # disabled by chan01  
         from p4p.client.thread import Context
         from p4p.nt.scalar import ntint
         xpm: int = (rxId >> 16) & 0xFF
