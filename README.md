@@ -23,9 +23,7 @@ You can read the above build_all.sh script to see how to build individual packag
 ### Analysis-only psana build
 
 For a local psana development install without psdaq, create and activate the
-repository's locked Linux environment (or use an equivalent environment that
-provides Meson, Ninja, Cython, NumPy, Hatchling, RapidJSON, and psana's runtime
-dependencies), then run:
+repository's locked Conda environment, then run:
 
 ```bash
 conda create --prefix ./.conda-psana --file .daq_20250402_r9.txt
@@ -72,6 +70,10 @@ activate the same runtime with one command:
 source /global/cfs/cdirs/lcls/users/psana2_build/setup_env_perlmutter.sh
 python -c "import psana; print(psana.__file__)"
 ```
+
+For safety, `--clean` accepts custom targets only below the documented
+`$base/releases` and `$base/build` directories. The checkout-local
+`install_psana` and `builddir_psana` defaults are also accepted.
 
 This is separate from the repository's `setup_env.sh`, which prepares the
 SLAC/full-repository build environment. Regenerating the Perlmutter script with

@@ -38,9 +38,14 @@ Examples:
 EOF
 }
 
-repo_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+repo_dir="$(cd -P "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 install_prefix="$repo_dir/install_psana"
 build_dir="$repo_dir/builddir_psana"
+default_install_prefix="$install_prefix"
+default_build_dir="$build_dir"
+perlmutter_base=/global/cfs/cdirs/lcls/users/psana2_build
+shared_install_root="$perlmutter_base/releases"
+shared_build_root="$perlmutter_base/build"
 build_type="debugoptimized"
 jobs=""
 clean_first=0
@@ -104,14 +109,49 @@ remove_path_entry() {
   printf '%s' "$updated_path"
 }
 
-validate_clean_target() {
-  local target="$1"
-  local label="$2"
-  case "$target" in
-    ""|/|"$repo_dir"|"${HOME:-__unset_home__}")
-      die "Refusing to clean unsafe $label path: $target"
-      ;;
-  esac
+validate_clean_targets() {
+  "$python_bin" - \
+    "$install_prefix" \
+    "$build_dir" \
+    "$default_install_prefix" \
+    "$default_build_dir" \
+    "$shared_install_root" \
+    "$shared_build_root" <<'PY'
+from pathlib import Path
+import sys
+
+
+def resolved(value):
+    return Path(value).resolve()
+
+
+def below(path, root):
+    try:
+        path.relative_to(root)
+        return path != root
+    except ValueError:
+        return False
+
+
+install, build, default_install, default_build, shared_install, shared_build = map(
+    resolved, sys.argv[1:]
+)
+
+if install != default_install and not below(install, shared_install):
+    raise SystemExit(
+        "Refusing to clean install prefix outside the documented locations: "
+        f"{install}"
+    )
+if build != default_build and not below(build, shared_build):
+    raise SystemExit(
+        "Refusing to clean build directory outside the documented locations: "
+        f"{build}"
+    )
+if below(install, build) or below(build, install) or install == build:
+    raise SystemExit(
+        f"Refusing overlapping clean targets: install={install}, build={build}"
+    )
+PY
 }
 
 while [[ $# -gt 0 ]]; do
@@ -193,16 +233,17 @@ if [[ "$clean_first" -eq 1 && "$python_only" -eq 1 ]]; then
   die "--python-only cannot be combined with --clean."
 fi
 
-python_bin="${PYTHON:-python3}"
-command -v "$python_bin" >/dev/null 2>&1 || \
-  die "Python interpreter '$python_bin' was not found. Set PYTHON to override."
+python_request="${PYTHON:-python3}"
+command -v "$python_request" >/dev/null 2>&1 || \
+  die "Python interpreter '$python_request' was not found. Set PYTHON to override."
+python_bin="$("$python_request" -c 'import os, sys; print(os.path.realpath(sys.executable))')"
 command -v meson >/dev/null 2>&1 || die "meson was not found in PATH."
 command -v ninja >/dev/null 2>&1 || die "ninja was not found in PATH."
 "$python_bin" -m pip --version >/dev/null 2>&1 || \
   die "pip was not found for $python_bin."
 
-install_prefix="$("$python_bin" -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$install_prefix")"
-build_dir="$("$python_bin" -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$build_dir")"
+install_prefix="$("$python_bin" -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$install_prefix")"
+build_dir="$("$python_bin" -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$build_dir")"
 if [[ -n "$perlmutter_setup" ]]; then
   perlmutter_setup="$("$python_bin" -c 'import os, sys; print(os.path.abspath(sys.argv[1]))' "$perlmutter_setup")"
   [[ ! -d "$perlmutter_setup" ]] || \
@@ -212,12 +253,19 @@ fi
 conda_prefix="${CONDA_PREFIX:-}"
 [[ -n "$conda_prefix" ]] || \
   die "CONDA_PREFIX is not set. Activate the psana development environment first."
+conda_prefix="$("$python_bin" -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve())' "$conda_prefix")"
+case "$python_bin" in
+  "$conda_prefix"/*)
+    ;;
+  *)
+    die "Python $python_bin is outside the active Conda environment $conda_prefix."
+    ;;
+esac
 [[ -f "$conda_prefix/include/rapidjson/document.h" ]] || \
   die "RapidJSON headers were not found under $conda_prefix/include."
 
 if [[ "$clean_first" -eq 1 ]]; then
-  validate_clean_target "$install_prefix" "install prefix"
-  validate_clean_target "$build_dir" "build directory"
+  validate_clean_targets
   log "Cleaning previous build outputs"
   rm -rf "$install_prefix" "$build_dir"
 fi
@@ -240,7 +288,7 @@ PY
     die "Meson build prefix is $configured_prefix, not $install_prefix; rerun with the matching --prefix or use --clean."
 fi
 
-mkdir -p "$install_prefix"
+mkdir -p "$install_prefix" "$(dirname "$build_dir")"
 
 pyver="$("$python_bin" - <<'PY'
 import sys
@@ -267,7 +315,7 @@ fi
 # Root Meson builds psalg sources that include headers supplied by the active
 # environment (RapidJSON in the active build environment).
 build_cpath="$conda_prefix/include${CPATH:+:$CPATH}"
-build_path="$PATH"
+build_path="$(dirname "$python_bin"):$PATH"
 restore_linker_env=0
 
 if command -v nvcc >/dev/null 2>&1 && [[ "$with_cuda" -eq 1 ]]; then
@@ -310,11 +358,11 @@ if [[ "$python_only" -eq 0 ]]; then
   if [[ -d "$build_dir/meson-info" ]]; then
     log "Reconfiguring Meson build"
     PATH="$build_path" CPATH="$build_cpath" \
-      meson setup --reconfigure "$build_dir" "${meson_options[@]}"
+      meson setup --reconfigure "$build_dir" "$repo_dir" "${meson_options[@]}"
   else
     log "Configuring Meson build"
     PATH="$build_path" CPATH="$build_cpath" \
-      meson setup "$build_dir" "${meson_options[@]}"
+      meson setup "$build_dir" "$repo_dir" "${meson_options[@]}"
   fi
 
   log "Compiling Meson targets"
@@ -340,6 +388,20 @@ cp "$repo_dir/pyproject.toml" \
    "$repo_dir/LICENSE.md" \
    "$package_dir/"
 
+# Meson has already installed the Python packages. The staged wheel supplies
+# metadata, entry points, and native libraries only.
+"$python_bin" - "$package_dir/pyproject.toml" <<'PY'
+from pathlib import Path
+import sys
+
+path = Path(sys.argv[1])
+text = path.read_text(encoding="utf-8")
+declaration = 'packages = ["psana", "psalg"]'
+if text.count(declaration) != 1:
+    raise SystemExit(f"Expected one Hatch package declaration in {path}")
+path.write_text(text.replace(declaration, "packages = []"), encoding="utf-8")
+PY
+
 shopt -s nullglob
 installed_libraries=("$install_prefix"/lib/*.so*)
 shopt -u nullglob
@@ -361,19 +423,17 @@ activation_file="$install_prefix/activate.sh"
 log "Writing runtime activation helper: $activation_file"
 cat >"$activation_file" <<EOF
 # Source this file after activating the Python environment used to build psana.
-export PATH="$install_prefix/bin":\${PATH:-}
-export PYTHONPATH="$site_packages_dir":\${PYTHONPATH:-}
-export LD_LIBRARY_PATH="$install_prefix/lib":\${LD_LIBRARY_PATH:-}
+export PATH="$install_prefix/bin"\${PATH:+:\$PATH}
+export PYTHONPATH="$site_packages_dir"\${PYTHONPATH:+:\$PYTHONPATH}
+export LD_LIBRARY_PATH="$install_prefix/lib"\${LD_LIBRARY_PATH:+:\$LD_LIBRARY_PATH}
 EOF
 
 log "Verifying the installed package"
-{
+(
   cd "$install_prefix"
-  PATH="$install_prefix/bin:$PATH" \
-  PYTHONPATH="$site_packages_dir${PYTHONPATH:+:$PYTHONPATH}" \
-  LD_LIBRARY_PATH="$install_prefix/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-  BUILD_PSANA_EXPECTED_SITE="$site_packages_dir" \
-    "$python_bin" - <<'PY'
+  source "$activation_file"
+  export BUILD_PSANA_EXPECTED_SITE="$site_packages_dir"
+  "$python_bin" - <<'PY'
 import os
 from pathlib import Path
 
@@ -386,7 +446,7 @@ if expected_site not in location.parents:
     raise SystemExit(f"Imported psana from an unexpected path: {location}")
 print(f"Verified psana: {location}")
 PY
-}
+)
 
 if [[ -n "$perlmutter_setup" ]]; then
   [[ "$perlmutter_setup" != "$activation_file" ]] || \
