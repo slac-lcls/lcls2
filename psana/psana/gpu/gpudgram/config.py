@@ -581,6 +581,54 @@ class GpuStreamConfigTable:
                 handles[segment] = candidates[0][2]
         return handles
 
+    def detector_field_handles(
+        self,
+        det_name,
+        *,
+        stream_segments,
+        alg_names=None,
+    ):
+        """Return every routed event field grouped by ``(alg, field)``.
+
+        The returned mapping is suitable for an event-scoped detector
+        interface: each named field maps physical segment ids to exact
+        Configure handles. Fields need not exist for every detector segment;
+        consumers retain segment identity instead of forcing a dense layout.
+        """
+        det_name = str(det_name)
+        if alg_names is not None:
+            alg_names = {str(name) for name in alg_names}
+
+        routed = {
+            int(stream_id): {int(segment) for segment in segments}
+            for stream_id, segments in stream_segments.items()
+        }
+        handles = {}
+        for names in self.names:
+            segments = routed.get(names.stream_id)
+            if (
+                segments is None
+                or names.det_name != det_name
+                or names.segment not in segments
+                or (alg_names is not None and names.alg_name not in alg_names)
+            ):
+                continue
+            for field in names.fields:
+                key = (names.alg_name, field.name)
+                by_segment = handles.setdefault(key, {})
+                if names.segment in by_segment:
+                    raise ValueError(
+                        f"field {det_name}.{names.alg_name}.{field.name} "
+                        f"segment {names.segment} is owned by more than one "
+                        "routed Configure Names record"
+                    )
+                by_segment[names.segment] = self._field_handle(names, field)
+
+        return {
+            key: dict(by_segment)
+            for key, by_segment in sorted(handles.items())
+        }
+
     @staticmethod
     def _field_handle(names, field):
         return GpuFieldHandle(

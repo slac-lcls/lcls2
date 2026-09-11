@@ -247,40 +247,75 @@ GpuDetectorBinding
 ```
 
 `GpuDetectorBinding` is created once during run setup. It owns detector
-membership and canonical segment routing but deliberately has no shape,
-dtype-materialization, or calibration policy. `GpuEventDgrams` and its parsed
-batch are retained by the EventPool slot and cleared together at retirement.
-These contracts remain internal until general field access and an input-buffer
-consumer lease are added.
+membership, canonical segment routing, and all `(algorithm, field)` handles,
+but deliberately has no dense-shape or calibration policy. `GpuEventDgrams`
+and its parsed batch are retained by the EventPool slot and cleared together
+at retirement.
+
+Stage 4B exposes those contracts through the public event state:
+
+```python
+field = evt.gpu.detector("jungfrau").field("raw", "raw")
+
+# Segment-preserving independent host values.
+host_segments = field.on_cpu
+panel_3 = host_segments[3]
+
+# Independent device copies. The EventPool input slot may be reused.
+gpu_segments = field.on_gpu
+
+# Zero-copy views into the KvikIO input buffer.
+with field.on_gpu_view(user_stream) as segment_views:
+    my_kernel(segment_views[3], stream=user_stream)
+
+# Select one segment while retaining an explicit segment mapping.
+frame_count = evt.gpu.detector("jungfrau").field(
+    "raw", "frame_cnt", segment=3
+).on_cpu.only()
+```
+
+`GpuFieldData` is always keyed by physical segment id. It does not implicitly
+stack, squeeze, pad, or reorder arbitrary field shapes. `.only()` is a
+convenience for an explicitly selected single segment. Array rank, dimensions,
+type, byte offset, and byte count come from the GPU locator row; copying that
+small row to the CPU when the user first accesses a field does not parse or
+copy the XTC payload on the CPU.
+
+Every configured event field for the selected GPU detectors is located
+eagerly so parser memory remains part of subbatch admission. A per-event
+`InputSlotLease` accepts multiple CUDA completion events, allowing more than
+one field or consumer stream to use the same input safely. Parsed input has no
+automatic host handoff, so the EventPool preserves the yield-before-release
+window even when automatic calibrated-result D2H is enabled.
 
 ## Current integration scope
 
-The parser and its field locators are detector-independent. The integrated
-consumer is not yet a general GPU detector interface: `GPUDetector` currently
+The parser, field locators, and event field interface are detector-independent.
+They can be used without a CPU detector implementation, calibration constants,
+or a pedestal-derived shape. `GPUDetector` still
 materializes one array field per segment into a dense, fixed-shape detector
 tensor and either calibrates `uint16` Jungfrau raw data or passes through
 pre-calibrated `float32` data. Its row and column dimensions are still derived
-from pedestal calibration constants, so detectors without pedestals and
-fields with dynamic, nonuniform, or non-2D shapes are not yet supported by
-this adapter.
+from pedestal calibration constants. Detectors that do not meet those adapter
+requirements expose named parser fields but do not produce legacy
+`det.raw`/`det.calib` GPU result keys.
 
-General detector support is a separate integration stage. It should expose
-the shared `data_gpu` and device locator metadata through an event-scoped GPU
-detector interface. That interface will add detector membership and canonical
-segment ordering while allowing each consumer to choose a shape policy:
-direct locator-backed kernel access, variable/ragged fields, or optional dense
-materialization. Calibration remains one consumer of that interface rather
-than a requirement of GPU field access.
+The event interface intentionally leaves dense materialization as an adapter
+policy. Variable/ragged fields remain separate segment arrays. Calibration is
+one consumer of the shared input interface rather than a requirement of GPU
+field access.
 
 ## Later integration stages
 
 Stage 3 switched `GPUDetector` from `_raw_data_offset` and fixed segment
 stride addressing to field locators. Stage 4A moved stream/dgram ownership and
-canonical segment binding out of the calibration adapter. Remaining Stage 4
-work will add general field selection, shape/materialization policies, and an
-input-buffer lease before exposing `on_gpu`, `on_gpu_view`, and `on_cpu` field
-access. Remaining cleanup can then remove the unused legacy layout helper and
-its tests.
+canonical segment binding out of the calibration adapter. Stage 4B added
+general field selection, segment-preserving shape materialization, and the
+input-buffer lease used by `on_gpu`, `on_gpu_view`, and `on_cpu`. Remaining
+cleanup can remove the unused legacy layout helper and its tests. Whole-stream
+routing still rejects a selected GPU stream containing an unselected detector;
+shared streams where every owner is selected will be enabled separately after
+Stage 4B.
 
 The run-scoped Configure allocation must outlive every batch. Batch bytes,
 dgram records, ShapesData references, locators, and downstream detector work

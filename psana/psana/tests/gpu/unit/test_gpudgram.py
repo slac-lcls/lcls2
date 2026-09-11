@@ -233,6 +233,38 @@ def test_detector_array_handles_follow_configure_stream_ownership():
     }
 
 
+def test_detector_field_handles_group_all_fields_by_name_and_segment():
+    configs = GpuStreamConfigTable({
+        0: [_entry(
+            "det", 4, "raw", 10,
+            [
+                _field("image", 1, 2, 2, 0, 0),
+                _field("counter", 3, 8, 0, 1, -1),
+            ],
+        )],
+        1: [_entry(
+            "det", 9, "raw", 11,
+            [
+                _field("image", 1, 2, 2, 0, 0),
+                _field("counter", 3, 8, 0, 1, -1),
+            ],
+        )],
+    })
+
+    fields = configs.detector_field_handles(
+        "det",
+        stream_segments={0: [4], 1: [9]},
+        alg_names={"raw"},
+    )
+
+    assert tuple(fields) == (("raw", "counter"), ("raw", "image"))
+    assert fields[("raw", "image")] == {
+        4: configs.resolve("det", 4, "raw", "image", stream_id=0),
+        9: configs.resolve("det", 9, "raw", "image", stream_id=1),
+    }
+    assert fields[("raw", "counter")][4].rank == 0
+
+
 def test_detector_array_handles_reject_ambiguous_array_payload():
     configs = GpuStreamConfigTable(
         {

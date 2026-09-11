@@ -26,6 +26,8 @@ class _EventSlot:
     leases_by_ts: dict
     xtc_batch: object = None
     gpu_event_dgrams: tuple = ()
+    input_dgrams_by_ts: dict = field(default_factory=dict)
+    input_leases_by_ts: dict = field(default_factory=dict)
     pending_d2h_by_ts: dict = field(default_factory=dict)
     cached_cpu_results_by_ts: dict = field(default_factory=dict)
 
@@ -119,6 +121,8 @@ class EventPool:
             raise
 
         self._slots[old.slot_id] = None
+        old.input_dgrams_by_ts = {}
+        old.input_leases_by_ts = {}
         old.gpu_event_dgrams = ()
         old.xtc_batch = None
         self._retiring = None
@@ -143,6 +147,7 @@ class EventPool:
         """
         import cupy as cp
         from psana.gpu.context import SlotLease
+        from psana.gpu.gpu_input import InputSlotLease
 
         slot   = self.next_slot_id
         if self._slots[slot] is not None:
@@ -215,6 +220,17 @@ class EventPool:
                 all_leases.append(lease)
             leases_by_ts[ts] = ts_leases
 
+        # Parsed input is another slot-backed product. One multi-consumer
+        # lease per event protects every detector field view the user may open.
+        input_dgrams_by_ts = {}
+        input_leases_by_ts = {}
+        for event_dgrams in gpu_event_dgrams:
+            ts = event_dgrams.timestamp
+            input_lease = InputSlotLease(result_ready)
+            input_dgrams_by_ts[ts] = event_dgrams
+            input_leases_by_ts[ts] = input_lease
+            all_leases.append(input_lease)
+
         if os.environ.get('PSANA_GPU_MEM_DEBUG'):
             try:
                 from psana.gpu.gpu_mpi import log_gpu_mem
@@ -232,6 +248,8 @@ class EventPool:
             leases_by_ts=leases_by_ts,
             xtc_batch=xtc_batch,
             gpu_event_dgrams=gpu_event_dgrams,
+            input_dgrams_by_ts=input_dgrams_by_ts,
+            input_leases_by_ts=input_leases_by_ts,
         )
         self._slots[slot] = record
         self._write_idx += 1
@@ -258,6 +276,8 @@ class EventPool:
                 for lease in record.leases:
                     lease.wait_until_safe_to_reuse()
                 self._slots[slot] = None
+                record.input_dgrams_by_ts = {}
+                record.input_leases_by_ts = {}
                 record.gpu_event_dgrams = ()
                 record.xtc_batch = None
 
