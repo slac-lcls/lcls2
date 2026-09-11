@@ -2,6 +2,7 @@
 
 import os
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -38,17 +39,24 @@ def test_public_gpu_api_is_minimal():
     assert internal_names.isdisjoint(gpu.__all__)
 
 
-def test_single_file_datasource_rejects_gpu_mode():
+@pytest.mark.parametrize("argument", ["gpu_det", "hybrid_det"])
+def test_single_file_datasource_rejects_gpu_mode(argument):
     from psana.psexp.singlefile_ds import SingleFileDataSource
 
     with pytest.raises(
         NotImplementedError,
         match="supported only by RunSerial and RunParallel",
     ):
-        SingleFileDataSource(files=[], gpu_det="jungfrau")
+        SingleFileDataSource(files=[], **{argument: "jungfrau"})
 
 
-def _routing_dsparms(gpu_det, ids_table, stream_owners):
+def _routing_dsparms(
+    gpu_det,
+    ids_table,
+    stream_owners,
+    hybrid_det=None,
+    smd_callback=0,
+):
     dsparms = DsParms(
         batch_size=1,
         max_events=0,
@@ -62,12 +70,32 @@ def _routing_dsparms(gpu_det, ids_table, stream_owners):
         fetch_calib_cache_max_retries=0,
         skip_calib_load=[],
         dbsuffix="",
+        smd_callback=smd_callback,
         gpu_det=gpu_det,
+        hybrid_det=hybrid_det,
     )
     dsparms.det_stream_ids_table = ids_table
     dsparms.det_stream_segments_table = {}
     dsparms.stream_id_to_detnames = stream_owners
     return dsparms
+
+
+@pytest.mark.parametrize(
+    ("gpu_det", "hybrid_det"),
+    [("jungfrau", None), (None, "qadc_ch0")],
+)
+def test_gpu_routing_rejects_smd_callback(gpu_det, hybrid_det):
+    with pytest.raises(
+        NotImplementedError,
+        match="callback batching does not produce GPUBAT1 descriptors",
+    ):
+        _routing_dsparms(
+            gpu_det,
+            {},
+            {},
+            hybrid_det=hybrid_det,
+            smd_callback=lambda run: None,
+        )
 
 
 def test_gpu_routing_allows_one_detector_across_multiple_streams():
@@ -80,6 +108,7 @@ def test_gpu_routing_allows_one_detector_across_multiple_streams():
     dsparms.resolve_gpu_stream_ids()
 
     assert dsparms.gpu_stream_ids == [3, 5, 7, 8, 9]
+    assert dsparms.hybrid_stream_ids == []
 
 
 def test_gpu_routing_allows_detectors_on_disjoint_streams():
@@ -92,6 +121,7 @@ def test_gpu_routing_allows_detectors_on_disjoint_streams():
     dsparms.resolve_gpu_stream_ids()
 
     assert dsparms.gpu_stream_ids == [3, 5, 6]
+    assert dsparms.hybrid_stream_ids == []
 
 
 @pytest.mark.parametrize("gpu_det", ["jungfrau", ["jungfrau", "other"]])
@@ -107,6 +137,120 @@ def test_gpu_routing_rejects_shared_detector_stream(gpu_det):
         match="GPUBAT1 requires exactly one normal detector per GPU stream",
     ):
         dsparms.resolve_gpu_stream_ids()
+
+
+def test_hybrid_routing_allows_detectors_to_share_a_stream():
+    dsparms = _routing_dsparms(
+        None,
+        {"qadc_ch0": [2], "qadc_ch1": [2]},
+        {2: ["qadc_ch0", "qadc_ch1"]},
+        hybrid_det="qadc_ch0",
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_enabled
+    assert dsparms.gpu_detector_names == ["qadc_ch0"]
+    assert dsparms.gpu_stream_ids == [2]
+    assert dsparms.hybrid_stream_ids == [2]
+
+
+def test_hybrid_routing_deduplicates_shared_stream_descriptors():
+    dsparms = _routing_dsparms(
+        None,
+        {"qadc_ch0": [2], "qadc_ch1": [2], "timing": [4]},
+        {2: ["qadc_ch0", "qadc_ch1"], 4: ["timing"]},
+        hybrid_det=["qadc_ch0", "qadc_ch1", "timing"],
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_detector_names == ["qadc_ch0", "qadc_ch1", "timing"]
+    assert dsparms.gpu_stream_ids == [2, 4]
+    assert dsparms.hybrid_stream_ids == [2, 4]
+
+
+def test_exclusive_and_hybrid_routing_can_use_disjoint_streams():
+    dsparms = _routing_dsparms(
+        "large",
+        {"large": [1], "small": [2], "other": [2]},
+        {1: ["large"], 2: ["small", "other"]},
+        hybrid_det="small",
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_detector_names == ["large", "small"]
+    assert dsparms.gpu_stream_ids == [1, 2]
+    assert dsparms.hybrid_stream_ids == [2]
+
+
+def test_routing_rejects_detector_in_both_gpu_modes():
+    dsparms = _routing_dsparms(
+        "qadc_ch0",
+        {"qadc_ch0": [2]},
+        {2: ["qadc_ch0"]},
+        hybrid_det="qadc_ch0",
+    )
+
+    with pytest.raises(RuntimeError, match="both gpu_det and hybrid_det"):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def test_routing_rejects_exclusive_hybrid_physical_stream_overlap():
+    dsparms = _routing_dsparms(
+        "large",
+        {"large": [2], "small": [2]},
+        {2: ["large", "small"]},
+        hybrid_det="small",
+    )
+
+    with pytest.raises(RuntimeError, match="same physical streams: \\[2\\]"):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def _split_one_stream_batch(hybrid):
+    from psana.psexp.smdreader_manager import SmdReaderManager
+
+    smd_path = (
+        Path(__file__).resolve().parents[2]
+        / "test_data/intg_det/smalldata/xpptut15-r0014-s000-c000.smd.xtc2"
+    )
+    dsparms = _routing_dsparms(None, {}, {})
+    dsparms.batch_size = 2
+    dsparms.timestamps = np.empty(0, dtype=np.uint64)
+    dsparms.gpu_stream_ids = [0]
+    dsparms.hybrid_stream_ids = [0] if hybrid else []
+
+    fd = os.open(smd_path, os.O_RDONLY)
+    try:
+        manager = SmdReaderManager(np.array([fd], dtype=np.int32), dsparms)
+        assert manager.get_next_dgrams()[0].service() == TransitionId.Configure
+        assert manager.get_next_dgrams()[0].service() == TransitionId.BeginRun
+        batch_iter = next(manager)
+        batch_iter.next_with_gpu()  # BeginStep-only batch
+        cpu_batches, gpu_batches, _ = batch_iter.next_with_gpu()
+        cpu_bytes, cpu_event_sizes = cpu_batches[0]
+        gpu_bytes, _ = gpu_batches[0]
+        return bytes(cpu_bytes), cpu_event_sizes, bytes(gpu_bytes)
+    finally:
+        os.close(fd)
+
+
+def test_eventbuilder_hybrid_stream_is_present_in_cpu_and_gpu_batches():
+    exclusive_cpu, exclusive_sizes, exclusive_gpu = _split_one_stream_batch(False)
+    hybrid_cpu, hybrid_sizes, hybrid_gpu = _split_one_stream_batch(True)
+
+    # Both modes generate identical GPUBAT1 descriptors for the GPU reader.
+    assert hybrid_gpu == exclusive_gpu
+    # The transition remains identical. Each exclusive L1 contains only its
+    # one-stream PacketFooter (8 bytes); hybrid L1s retain the SMD proxy bytes.
+    assert len(exclusive_sizes) == len(hybrid_sizes)
+    assert len(exclusive_sizes) >= 2
+    assert hybrid_sizes[0] == exclusive_sizes[0]
+    assert all(size == 8 for size in exclusive_sizes[1:])
+    assert all(size > 8 for size in hybrid_sizes[1:])
+    assert len(hybrid_cpu) > len(exclusive_cpu)
 
 
 def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():
