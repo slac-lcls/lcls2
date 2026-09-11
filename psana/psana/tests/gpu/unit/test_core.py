@@ -23,6 +23,8 @@ def test_public_gpu_api_is_minimal():
     import psana.gpu as gpu
 
     assert "GpuEventState" in gpu.__all__
+    assert "GpuFieldData" in gpu.__all__
+    assert "GpuFieldResult" in gpu.__all__
     assert "GpuEventContext" not in gpu.__all__
     # D→H join is internal to GpuEventManager — no join class in public API.
     assert "EventJoiner" not in gpu.__all__, "EventJoiner was made internal"
@@ -362,6 +364,8 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     assert record.gpu_event_dgrams is detector_events[0]
     assert record.gpu_event_dgrams is detector_events[1]
     assert record.gpu_event_dgrams[0].dgrams[7].dgram_index == 0
+    assert record.input_dgrams_by_ts[42] is record.gpu_event_dgrams[0]
+    assert record.input_leases_by_ts[42] in record.leases
     assert [entry[0] for entry in log] == [
         "parse",
         "detector-a",
@@ -374,6 +378,8 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     pool.finish_retire_next()
     assert record.xtc_batch is None
     assert record.gpu_event_dgrams == ()
+    assert record.input_dgrams_by_ts == {}
+    assert record.input_leases_by_ts == {}
 
 
 def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_decode):

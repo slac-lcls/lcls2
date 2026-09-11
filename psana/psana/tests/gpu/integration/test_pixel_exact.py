@@ -291,8 +291,9 @@ def test_locator_passthrough_copy_writes_canonical_row():
         pytest.param(1, 1, 0, id="single-event"),
         pytest.param(5, 2, 0, id="batched-slot-reuse-partial-tail"),
         # gpu_d2h_chunk_size > 0 activates _D2hPipeline: results are copied to
-        # pinned host memory on a separate stream and the device slot may be
-        # freed before the event is yielded.  Exercising it here is the only
+        # pinned host memory on a separate stream. Parsed field access now
+        # keeps the input slot through the event yield window. Exercising the
+        # D2H here is the only
         # check of that path against a real CUDA stream — the unit tests fake
         # cupy with a synchronous memmove, which cannot detect a missing
         # synchronization because the data has already landed.
@@ -322,6 +323,7 @@ def test_integrated_jungfrau_pixel_exact(
 
     seen = set()
     validated_xtc_batches = set()
+    validated_general_field_access = False
     for evt in run.events():
         timestamp = int(evt.timestamp)
         assert timestamp not in seen, f"duplicate GPU timestamp {timestamp}"
@@ -388,6 +390,43 @@ def test_integrated_jungfrau_pixel_exact(
             _assert_result_is_slot_backed(run, raw_result._arr, result_type="raw")
         gpu_raw = np.asarray(raw_result.on_cpu).copy()
         gpu_calib = np.asarray(calib_result.on_cpu).copy()
+        if not validated_general_field_access:
+            import cupy as cp
+
+            detector = evt.gpu.detector(_DET_NAME)
+            parsed_raw_result = detector.field("raw", "raw")
+            parsed_raw = parsed_raw_result.on_cpu
+            binding = manager.gpu_detector_bindings[_DET_NAME]
+            assert parsed_raw.segment_ids == binding.canonical_segment_ids
+            for row, segment in enumerate(binding.canonical_segment_ids):
+                np.testing.assert_array_equal(
+                    np.asarray(parsed_raw[segment]).reshape(gpu_raw[row].shape),
+                    gpu_raw[row],
+                )
+            frame_count = detector.field(
+                "raw", "frame_cnt", segment=binding.canonical_segment_ids[0]
+            ).on_cpu.only()
+            assert frame_count.shape == ()
+            assert frame_count.dtype == np.uint64
+
+            first_segment = binding.canonical_segment_ids[0]
+            one_segment = detector.field(
+                "raw", "raw", segment=first_segment
+            )
+            gpu_copy = one_segment.on_gpu.only()
+            np.testing.assert_array_equal(
+                cp.asnumpy(gpu_copy).reshape(gpu_raw[0].shape),
+                gpu_raw[0],
+            )
+            user_stream = cp.cuda.Stream(non_blocking=True)
+            with one_segment.on_gpu_view(user_stream) as views:
+                with user_stream:
+                    view_copy = views.only().copy()
+            np.testing.assert_array_equal(
+                cp.asnumpy(view_copy).reshape(gpu_raw[0].shape),
+                gpu_raw[0],
+            )
+            validated_general_field_access = True
         np.testing.assert_array_equal(
             gpu_raw,
             cpu_reference[timestamp]["raw"],

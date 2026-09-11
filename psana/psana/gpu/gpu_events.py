@@ -446,6 +446,7 @@ class GpuEventManager:
 
         self.gpu_det_names = self._normalize_gpu_det(dsparms.gpu_det)
         self.gpu_detectors = {}
+        self.gpu_detector_bindings = {}
         self.event_pool = None
         self.gpu_reader = None
         self.gpu_xtc_configs = None
@@ -612,41 +613,27 @@ class GpuEventManager:
 
         log_gpu_mem("_setup_detectors entry", rank=_rank)
         for det_name in self.gpu_det_names:
-            det = self.run.Detector(det_name)
-            det_type = getattr(det, "_dettype", None)
+            try:
+                det = self.run.Detector(det_name)
+            except Exception as exc:
+                det = None
+                _log.info(
+                    "gpu_det=%r: no CPU Detector implementation; parser field "
+                    "access remains available (%s)",
+                    det_name,
+                    exc,
+                )
+            det_info_table = getattr(self.dsparms, "det_info_table", {})
+            det_type = getattr(
+                det,
+                "_dettype",
+                det_info_table.get(det_name, (None, None))[0],
+            )
 
             # Determine whether bigdata carries raw uint16 ADC data ('raw'
             # drp_class) or DRP-calibrated float32 data ('fex' or similar).
             drp_classes = {k[1] for k in self.run.detinfo if k[0] == det_name}
             is_pre_calibrated = 'raw' not in drp_classes
-
-            if not is_pre_calibrated and det_type != "jungfrau":
-                raise NotImplementedError(
-                    f"gpu_det={det_name!r} has detector type {det_type!r}; "
-                    "the integrated GPU calibration path currently supports "
-                    "only Jungfrau.  Pre-calibrated (fex) data can be used "
-                    "via passthrough mode regardless of detector type."
-                )
-
-            peds_gpu = None
-            gmask_gpu = None
-            if is_pre_calibrated:
-                _log.info(
-                    "gpu_det=%r: drp_classes=%s — using passthrough mode "
-                    "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
-                    det_name, sorted(drp_classes),
-                )
-            elif not calib_leader:
-                # Follower BD rank sharing a GPU with the leader.
-                # is_calib_leader() returned False before _setup_detectors() was
-                # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
-                # share_calib_between_gpu_peers() will populate them later via
-                # CUDA IPC handles from the leader — at zero allocation cost.
-                _log.info(
-                    "gpu_det=%r: follower BD rank — skipping prep_calib_constants; "
-                    "calibration constants will be shared from leader via CUDA IPC",
-                    det_name,
-                )
 
             stream_segments = dict(segments_table.get(det_name, {}))
             gpu_stream_ids = streams_by_detector[det_name]
@@ -659,6 +646,7 @@ class GpuEventManager:
                 (
                     getattr(det, drp_class, None)
                     for drp_class in sorted(drp_classes)
+                    if det is not None
                     if hasattr(
                         getattr(det, drp_class, None),
                         "_sorted_segment_inds",
@@ -681,31 +669,99 @@ class GpuEventManager:
                 stream_id: tuple(stream_segments.get(stream_id, ()))
                 for stream_id in gpu_stream_ids
             }
-            source_alg_names = (
+            adapter_alg_names = (
                 {"raw"}
                 if not is_pre_calibrated
                 else set(drp_classes) - {"config"}
             )
-            field_handles_by_segment = (
-                self.gpu_xtc_configs.detector_array_handles(
+            field_handles_by_name = (
+                self.gpu_xtc_configs.detector_field_handles(
                     det_name,
                     stream_segments=routed_stream_segments,
-                    alg_names=source_alg_names,
-                    element_size=4 if is_pre_calibrated else 2,
                 )
             )
-            xtc_field_handles.extend(field_handles_by_segment.values())
+            # Configure may describe event algorithms for which psana has no
+            # CPU detector class.  Keep those fields available through the
+            # detector-independent parser interface; only Configure payloads
+            # themselves are outside the event-field contract.
+            field_handles_by_name = {
+                key: handles
+                for key, handles in field_handles_by_name.items()
+                if key[0] != "config"
+            }
+            for handles in field_handles_by_name.values():
+                xtc_field_handles.extend(handles.values())
+
+            calibconst = getattr(det, "calibconst", {}) or {}
+            pedestals = calibconst.get("pedestals")
+            source_shape = None
+            if (
+                pedestals is not None
+                and len(pedestals) > 0
+                and pedestals[0] is not None
+            ):
+                source_shape = getattr(pedestals[0], "shape", None)
+            adapter_supported = det is not None and source_shape is not None and (
+                is_pre_calibrated or det_type == "jungfrau"
+            )
+            field_handles_by_segment = {}
+            if adapter_supported:
+                field_handles_by_segment = (
+                    self.gpu_xtc_configs.detector_array_handles(
+                        det_name,
+                        stream_segments=routed_stream_segments,
+                        alg_names=adapter_alg_names,
+                        element_size=4 if is_pre_calibrated else 2,
+                    )
+                )
 
             detector_binding = GpuDetectorBinding(
                 det_name,
                 canonical_segment_ids=canonical_segment_ids,
                 field_handles_by_segment=field_handles_by_segment,
+                field_handles_by_name=field_handles_by_name,
             )
+            self.gpu_detector_bindings[det_name] = detector_binding
+
+            if not adapter_supported:
+                reason = (
+                    "no pedestal-derived dense shape"
+                    if source_shape is None
+                    else f"no calibration adapter for detector type {det_type!r}"
+                )
+                _log.info(
+                    "gpu_det=%r: exposing parser fields without calib/raw "
+                    "result materialization (%s)",
+                    det_name,
+                    reason,
+                )
+                continue
+
+            xtc_field_handles.extend(field_handles_by_segment.values())
+
+            peds_gpu = None
+            gmask_gpu = None
+            if is_pre_calibrated:
+                _log.info(
+                    "gpu_det=%r: drp_classes=%s — using passthrough mode "
+                    "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
+                    det_name, sorted(drp_classes),
+                )
+            elif not calib_leader:
+                # Follower BD rank sharing a GPU with the leader.
+                # is_calib_leader() returned False before _setup_detectors() was
+                # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
+                # share_calib_between_gpu_peers() will populate them later via
+                # CUDA IPC handles from the leader — at zero allocation cost.
+                _log.info(
+                    "gpu_det=%r: follower BD rank — skipping prep_calib_constants; "
+                    "calibration constants will be shared from leader via CUDA IPC",
+                    det_name,
+                )
 
             # Canonical ordering is established before constants are copied.
             # Raw, calibration constants, geometry, and every downstream
             # operation therefore share the same detector-row contract.
-            source_shape = det.calibconst["pedestals"][0].shape
             det_shape = (
                 len(canonical_segment_ids),
                 int(source_shape[-2]),
@@ -744,7 +800,8 @@ class GpuEventManager:
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
         self.event_pool = EventPool(n=pool_depth)
 
-        # Eagerly locate only fields consumed by configured detector adapters.
+        # Eagerly locate every event field exposed by configured GPU detectors.
+        # This makes arbitrary field access a budgeted part of each parser slot.
         # Deduplication preserves canonical detector order across detectors.
         xtc_field_handles = tuple(dict.fromkeys(xtc_field_handles))
         self.gpu_xtc_parser = GpuXtcBatchPool(
@@ -765,7 +822,7 @@ class GpuEventManager:
         # evt.gpu.get('det.calib').on_cpu returns without triggering
         # an additional synchronous D→H at the user's call site.
         chunk_size = getattr(self.dsparms, "gpu_d2h_chunk_size", 0) or 0
-        if chunk_size > 0 and self.gpu_det_names:
+        if chunk_size > 0 and self.gpu_detectors:
             # One pipeline per GPU detector key.
             self._d2h_pipelines = {
                 f"{det_name}.calib": _D2hPipeline(
@@ -773,7 +830,7 @@ class GpuEventManager:
                     chunk_size=chunk_size,
                     n_pinned_slots=pool_depth,
                 )
-                for det_name in self.gpu_det_names
+                for det_name in self.gpu_detectors
             }
         else:
             self._d2h_pipelines = {}
@@ -998,6 +1055,7 @@ class GpuEventManager:
 
     def _attach_gpu(self, envelope, gpu_results, leases=None,
                     pending_d2h=None, cached_cpu_results=None,
+                    event_dgrams=None, input_lease=None,
                     device_released=False):
         state = GpuEventState(
             gpu_results=gpu_results,
@@ -1005,6 +1063,9 @@ class GpuEventManager:
             leases=leases,
             pending_d2h=pending_d2h,
             cached_cpu_results=cached_cpu_results,
+            detector_bindings=getattr(self, "gpu_detector_bindings", {}),
+            event_dgrams=event_dgrams,
+            input_lease=input_lease,
             device_released=device_released,
         )
         return EventEnvelope(dgrams=envelope.dgrams, gpu_state=state)
@@ -1031,6 +1092,10 @@ class GpuEventManager:
         """
         if ready is None:
             return True
+        # Parsed input has no automatic host handoff. Preserve the yield window
+        # so detector-independent field access can register its own consumer.
+        if getattr(ready, "input_dgrams_by_ts", {}):
+            return False
         for ts, results in ready.gpu_results_by_ts.items():
             pending = ready.pending_d2h_by_ts.get(ts, {})
             cached = ready.cached_cpu_results_by_ts.get(ts, {})
@@ -1059,6 +1124,12 @@ class GpuEventManager:
                 leases={} if device_released else ready.leases_by_ts.get(ts, {}),
                 pending_d2h=ready.pending_d2h_by_ts.pop(ts, {}),
                 cached_cpu_results=ready.cached_cpu_results_by_ts.get(ts, {}),
+                event_dgrams=(None if device_released else getattr(
+                    ready, "input_dgrams_by_ts", {}
+                ).get(ts)),
+                input_lease=(None if device_released else getattr(
+                    ready, "input_leases_by_ts", {}
+                ).get(ts)),
                 device_released=device_released,
             )
 

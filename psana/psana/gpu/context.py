@@ -14,7 +14,8 @@ SlotLease
     attached to GPUResult when the event is later delivered.
 
 GpuEventState
-    Per-event GPU results attached to :class:`psana.Event`.
+    Per-event GPU results and parsed detector fields attached to
+    :class:`psana.Event`.
 """
 
 from __future__ import annotations
@@ -257,17 +258,22 @@ class GpuEventState:
     """GPU results and leases owned by one :class:`psana.Event`.
 
     This state intentionally has no reference back to its Event or to the
-    run-wide GPU manager. Normal detector access remains ``det.raw.raw(evt)``.
+    run-wide GPU manager. Normal detector access remains ``det.raw.raw(evt)``;
+    parsed GPU fields are selected with ``detector(name).field(alg, field)``.
     """
 
     __slots__ = ('_gpu_results', '_detector_names', '_cache', '_leases',
                  '_pending_d2h', '_cached_cpu_results',
-                 '_device_released')
+                 '_device_released', '_detector_bindings', '_event_dgrams',
+                 '_input_lease', '_detector_cache')
 
     def __init__(self, gpu_results: dict, detector_names=None,
                  leases: dict | None = None,
                  pending_d2h: dict | None = None,
                  cached_cpu_results: dict | None = None,
+                 detector_bindings: dict | None = None,
+                 event_dgrams=None,
+                 input_lease=None,
                  device_released: bool = False):
         """
         Parameters
@@ -296,7 +302,36 @@ class GpuEventState:
         self._pending_d2h = pending_d2h or {}
         self._cached_cpu_results = cached_cpu_results or {}
         self._device_released = device_released
+        self._detector_bindings = detector_bindings or {}
+        self._event_dgrams = event_dgrams
+        self._input_lease = input_lease
+        self._detector_cache = {}
         self._cache: dict = {}
+
+    def detector(self, det_name):
+        """Return Configure-backed field access for one GPU detector.
+
+        Use ``evt.gpu.detector(name).field(alg, field, segment=...)`` for
+        detector-independent access to fields decoded by the GPU XTC parser.
+        """
+        det_name = str(det_name)
+        try:
+            binding = self._detector_bindings[det_name]
+        except KeyError:
+            raise KeyError(
+                f"GPU detector {det_name!r} is not configured; available: "
+                f"{sorted(self._detector_bindings)}"
+            ) from None
+        if det_name not in self._detector_cache:
+            from psana.gpu.gpu_input import GpuDetectorEvent
+
+            self._detector_cache[det_name] = GpuDetectorEvent(
+                binding,
+                self._event_dgrams,
+                self._input_lease,
+                device_released=self._device_released,
+            )
+        return self._detector_cache[det_name]
 
     def get(self, key: str) -> GPUResult:
         """Return the GPU result for key, with its SlotLease attached.
@@ -345,4 +380,5 @@ class GpuEventState:
 
     def __repr__(self) -> str:
         keys = sorted(self._gpu_results)
-        return f'GpuEventState(gpu_keys={keys})'
+        detectors = sorted(self._detector_bindings)
+        return f'GpuEventState(gpu_keys={keys}, detectors={detectors})'

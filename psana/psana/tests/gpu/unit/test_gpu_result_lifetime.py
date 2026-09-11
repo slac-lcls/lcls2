@@ -726,6 +726,17 @@ class TestIsFullyHostBacked:
         )
         assert GpuEventManager._is_fully_host_backed(ready) is True
 
+    def test_parsed_input_blocks_release_before_event_yield(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        ready = self._ready(
+            {7: {"jungfrau.calib": object()}},
+            pending={7: {"jungfrau.calib": object()}},
+        )
+        ready.input_dgrams_by_ts = {7: object()}
+
+        assert GpuEventManager._is_fully_host_backed(ready) is False
+
     def test_cached_cpu_fallback_also_counts(self):
         from psana.gpu.gpu_events import GpuEventManager
 
