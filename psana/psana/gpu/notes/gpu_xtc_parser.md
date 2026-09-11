@@ -305,6 +305,33 @@ policy. Variable/ragged fields remain separate segment arrays. Calibration is
 one consumer of the shared input interface rather than a requirement of GPU
 field access.
 
+### Exclusive and mirrored stream routing
+
+The detector selection has two intentionally simple modes:
+
+- `gpu_det="detname"` gives the GPU path exclusive ownership of every stream
+  containing that detector. EventBuilder emits GPUBAT1 offset/size descriptors
+  and removes those stream proxies from the CPU batch. This retains the
+  existing no-duplicate-read behavior and still requires the detector to be
+  the stream's only normal detector.
+- `hybrid_det="detname"` emits the same GPUBAT1 descriptors but also retains
+  those stream proxies in the CPU batch. The normal EventManager and the GPU
+  KvikIO reader therefore read the complete bigdata dgram independently. This
+  permits a GPU-selected detector to share a stream with other detectors, at
+  the explicit cost of duplicate bigdata I/O for that stream.
+
+Both arguments accept a detector-name list. Several hybrid detectors may map
+to the same stream; the stream is represented once in each batch. A detector
+cannot appear in both arguments, and an exclusive stream cannot overlap a
+hybrid stream, because either case would silently change `gpu_det` ownership.
+No detector-size policy is inferred: callers choose whether the duplicated I/O
+of `hybrid_det` is appropriate.
+
+`smd_callback` is not supported with either GPU routing mode. Callback batching
+currently produces only the CPU and step batches, so psana rejects this
+combination at DataSource parameter construction rather than silently dropping
+the GPUBAT1 descriptors.
+
 ## Later integration stages
 
 Stage 3 switched `GPUDetector` from `_raw_data_offset` and fixed segment
@@ -312,10 +339,9 @@ stride addressing to field locators. Stage 4A moved stream/dgram ownership and
 canonical segment binding out of the calibration adapter. Stage 4B added
 general field selection, segment-preserving shape materialization, and the
 input-buffer lease used by `on_gpu`, `on_gpu_view`, and `on_cpu`. Remaining
-cleanup can remove the unused legacy layout helper and its tests. Whole-stream
-routing still rejects a selected GPU stream containing an unselected detector;
-shared streams where every owner is selected will be enabled separately after
-Stage 4B.
+cleanup can remove the unused legacy layout helper and its tests. Exclusive
+`gpu_det` routing continues to reject shared streams; `hybrid_det` is the
+explicit mirrored-I/O path for those streams.
 
 The run-scoped Configure allocation must outlive every batch. Batch bytes,
 dgram records, ShapesData references, locators, and downstream detector work

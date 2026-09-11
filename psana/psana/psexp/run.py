@@ -749,7 +749,7 @@ class RunSerial(Run):
         self.configs = configs
         super()._setup_envstore()
         self._setup_run_calibconst()
-        if self.dsparms.gpu_det:
+        if self.dsparms.gpu_enabled:
             from psana.gpu.gpu_events import GpuEventManager
             self._evt_iter = GpuEventManager(
                 configs,

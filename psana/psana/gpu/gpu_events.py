@@ -24,13 +24,13 @@ from psana.psexp.packet_footer import PacketFooter
 
 
 class _GpuOnlyDgram:
-    """Minimal L1Accept metadata for an event whose streams all went to GPU.
+    """Minimal L1Accept metadata for an event whose streams all went GPU-only.
 
-    GPU splitting intentionally removes GPU-stream SMD dgrams from the CPU
-    batch.  When every selected stream is a GPU stream, EventManager therefore
-    returns an all-None dgram list. EventEnvelope still needs timestamp/service
-    metadata so Run.events() can preserve the normal API without causing a
-    redundant CPU BigData read.
+    Exclusive gpu_det routing removes its SMD dgrams from the CPU batch. When
+    every selected stream is exclusive, EventManager therefore returns an
+    all-None dgram list. EventEnvelope still needs timestamp/service metadata
+    so Run.events() can preserve the normal API without causing a redundant
+    CPU BigData read. hybrid_det streams remain present on the CPU path.
     """
 
     def __init__(self, timestamp):
@@ -444,7 +444,7 @@ class GpuEventManager:
         self._done = False
         self._closed = False
 
-        self.gpu_det_names = self._normalize_gpu_det(dsparms.gpu_det)
+        self.gpu_det_names = list(dsparms.gpu_detector_names)
         self.gpu_detectors = {}
         self.gpu_detector_bindings = {}
         self.event_pool = None
@@ -544,14 +544,6 @@ class GpuEventManager:
             _fmt_mib(hw.get("pinned", 0)),
         )
 
-    @staticmethod
-    def _normalize_gpu_det(gpu_det):
-        if gpu_det is None:
-            return []
-        if isinstance(gpu_det, str):
-            return [gpu_det]
-        return list(gpu_det)
-
     def _setup_detectors(self, calib_leader=True):
         # Budget must exist before constructing GPUDetector objects.
         from psana.gpu.gpu_budget import _GpuBudget
@@ -578,7 +570,7 @@ class GpuEventManager:
                    if not stream_ids]
         if missing:
             raise RuntimeError(
-                f"gpu_det did not resolve to any stream ids: {missing}"
+                f"GPU detectors did not resolve to any stream ids: {missing}"
             )
 
         all_gpu_stream_ids = {
@@ -592,7 +584,7 @@ class GpuEventManager:
         if set(requested_stream_ids) != all_gpu_stream_ids:
             raise RuntimeError(
                 "GPU stream routing must include every stream for each "
-                f"gpu_det: expected {sorted(all_gpu_stream_ids)}, got "
+                f"GPU detector selection: expected {sorted(all_gpu_stream_ids)}, got "
                 f"{sorted(requested_stream_ids)}"
             )
 
@@ -618,7 +610,7 @@ class GpuEventManager:
             except Exception as exc:
                 det = None
                 _log.info(
-                    "gpu_det=%r: no CPU Detector implementation; parser field "
+                    "GPU detector %r: no CPU Detector implementation; parser field "
                     "access remains available (%s)",
                     det_name,
                     exc,
@@ -660,7 +652,7 @@ class GpuEventManager:
             routed_segment_ids = set(configured_segment_ids)
             if routed_segment_ids != set(canonical_segment_ids):
                 raise RuntimeError(
-                    f"gpu_det={det_name!r} must route all detector segments: "
+                    f"GPU detector {det_name!r} must route all detector segments: "
                     f"configured={canonical_segment_ids}, "
                     f"routed={sorted(routed_segment_ids)}"
                 )
@@ -730,7 +722,7 @@ class GpuEventManager:
                     else f"no calibration adapter for detector type {det_type!r}"
                 )
                 _log.info(
-                    "gpu_det=%r: exposing parser fields without calib/raw "
+                    "GPU detector %r: exposing parser fields without calib/raw "
                     "result materialization (%s)",
                     det_name,
                     reason,
@@ -743,7 +735,7 @@ class GpuEventManager:
             gmask_gpu = None
             if is_pre_calibrated:
                 _log.info(
-                    "gpu_det=%r: drp_classes=%s — using passthrough mode "
+                    "GPU detector %r: drp_classes=%s — using passthrough mode "
                     "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
                     det_name, sorted(drp_classes),
                 )
@@ -754,7 +746,7 @@ class GpuEventManager:
                 # share_calib_between_gpu_peers() will populate them later via
                 # CUDA IPC handles from the leader — at zero allocation cost.
                 _log.info(
-                    "gpu_det=%r: follower BD rank — skipping prep_calib_constants; "
+                    "GPU detector %r: follower BD rank — skipping prep_calib_constants; "
                     "calibration constants will be shared from leader via CUDA IPC",
                     det_name,
                 )
@@ -1236,9 +1228,9 @@ class GpuEventManager:
                     )
                     for envelope in event_manager:
                         dgrams = envelope.dgrams
-                        # All GPU streams are represented in GPUBAT1, not the
-                        # CPU batch.  A GPU-only dataset therefore has no CPU
-                        # dgram from which the envelope could obtain service/time.
+                        # Exclusive GPU streams are absent from the CPU batch.
+                        # An all-exclusive dataset therefore has no CPU dgram
+                        # from which the envelope could obtain service/time.
                         # Synthesize that metadata below from GPUBAT1 instead.
                         if not any(dgrams):
                             continue

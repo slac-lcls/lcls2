@@ -436,12 +436,12 @@ class RunParallel(Run):
         instead of setup_geometry(det), avoiding a shmem collective during
         the event loop.
 
-        Non-BD ranks and runs without gpu_det set are a no-op.
+        Non-BD ranks and runs without a GPU detector mode are a no-op.
         """
-        # Only needed when gpu_det is set — skip entirely for CPU-only runs.
+        # Only needed for GPU detector modes — skip for CPU-only runs.
         # _pixel_coord_indexes(all_segs=True) is slow (~seconds for large
         # detectors) and adds unnecessary overhead to CPU production jobs.
-        if not getattr(self.dsparms, "gpu_det", None):
+        if not self.dsparms.gpu_enabled:
             return
 
         # _pixel_coord_indexes(all_segs=True) was seeded in
@@ -453,11 +453,9 @@ class RunParallel(Run):
 
         is_gpu_bd = (
             nodetype == "bd"
-            and bool(getattr(self.dsparms, "gpu_det", None))
+            and self.dsparms.gpu_enabled
         )
-        gpu_det_names = self.dsparms.gpu_det if is_gpu_bd else []
-        if isinstance(gpu_det_names, str):
-            gpu_det_names = [gpu_det_names]
+        gpu_det_names = self.dsparms.gpu_detector_names if is_gpu_bd else []
         gpu_det_set = set(gpu_det_names)
 
         calibc_cache = getattr(self, "_shared_calibc_cache", None)
@@ -632,7 +630,7 @@ class RunParallel(Run):
 
     def _events_impl(self):
         gpu_manager = None
-        if getattr(self.dsparms, "gpu_det", None) and nodetype == "bd":
+        if self.dsparms.gpu_enabled and nodetype == "bd":
             gpu_manager = self._make_gpu_event_manager()
 
         evt_iter = self.start(gpu_manager=gpu_manager)
@@ -670,7 +668,7 @@ class RunParallel(Run):
                 st = time.time()
 
     def events(self):
-        if getattr(self.dsparms, "gpu_det", None) and nodetype == "bd":
+        if self.dsparms.gpu_enabled and nodetype == "bd":
             from psana.gpu.gpu_mpi import gpu_error_handler
             with gpu_error_handler(self.comms.psana_comm):
                 yield from self._events_impl()
@@ -680,7 +678,7 @@ class RunParallel(Run):
     def steps(self):
         # GPU step iteration remains outside this first MPI events refactor.
         # GpuEventManager handles BeginStep while processing run.events().
-        if getattr(self.dsparms, 'gpu_det', None) and nodetype == 'bd':
+        if self.dsparms.gpu_enabled and nodetype == 'bd':
             return
 
         evt_iter = self.start()
@@ -794,7 +792,7 @@ class MPIDataSource(DataSourceBase):
         # _setup_jungfrau_shared_calib() / _setup_jungfrau_shared_caches()
         # already guard against GPU failures with try/except, so disabling
         # the GPU for smd0/EB causes graceful fallback, not a crash.
-        if getattr(self.dsparms, 'gpu_det', None) and nodetype not in ('bd',):
+        if self.dsparms.gpu_enabled and nodetype not in ('bd',):
             os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
         # GPU BD ranks: pin each rank to the correct GPU device BEFORE any
@@ -809,8 +807,8 @@ class MPIDataSource(DataSourceBase):
         # bd_local_rank = bd_rank - 1  gives a 0-indexed BD worker index.
         # n_gpus is read from SLURM_GPUS_ON_NODE (set by --gres=gpu:a100:N).
         #
-        # This is a no-op when gpu_det is not set (standard CPU-only jobs).
-        if getattr(self.dsparms, 'gpu_det', None) and nodetype == 'bd':
+        # This is a no-op when no GPU detector mode is set (CPU-only jobs).
+        if self.dsparms.gpu_enabled and nodetype == 'bd':
             from psana.gpu.gpu_mpi import init_gpu_rank
             bd_local_rank = self.comms.bd_rank - 1   # 0-indexed BD worker
             n_gpus = int(os.environ.get('SLURM_GPUS_ON_NODE', 1))
