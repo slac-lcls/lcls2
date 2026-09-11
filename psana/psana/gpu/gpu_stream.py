@@ -1,13 +1,15 @@
 """Reusable CUDA stream slots for the integrated GPU event path.
 
-EventPool manages N in-flight calibration batches.  Each slot follows
-the state machine from gpu_memory_backpressure_and_async_join.md:
+EventPool manages N in-flight GPU subbatches. Each slot follows the
+state machine documented in docs/memory_backpressure_and_results.md:
 
     FREE → READING/COMPUTING → RESULT_READY → CONSUMER_IN_FLIGHT → FREE
 
-Slot leases and CUDA completion tokens connect the producer to its terminal
-consumer.  A slot may not be recycled until every consumer (automatic D2H or
-a downstream GPU kernel) has registered and completed its work.
+Slot leases and CUDA completion tokens connect the producer to terminal
+consumers. The intended rule is that a slot cannot be recycled until all of
+them complete. Parsed-input leases collect multiple consumers; a normal result
+lease currently records one terminal consumer, as documented in
+docs/known_issues.md.
 """
 
 import os

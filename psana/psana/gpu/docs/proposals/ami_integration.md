@@ -1,7 +1,14 @@
 # AMI + PSANA2 GPU Integration Design
 
-This document describes the design for GPU-accelerated detector data processing in
-LCLS-II AMI (Analysis Monitoring Interface) via the psana2 GPU pipeline.
+**Status:** Proposed; retained for evaluation, not an implementation commitment.
+
+This document describes a possible design for GPU-accelerated detector data
+processing in LCLS-II AMI (Analysis Monitoring Interface) via the psana2 GPU
+pipeline. All AMI types, nodes, and shmem GPU classes named below are proposed.
+The current psana boundary was rechecked while organizing these documents;
+line numbers and code sketches are illustrative rather than patch instructions.
+Current implementation constraints are maintained in
+[Known problems and limitations](../known_issues.md).
 
 The GPU pipeline handles two data modes transparently:
 
@@ -12,9 +19,11 @@ The GPU pipeline handles two data modes transparently:
   pre-calibrated pixels written by the DRP; `GPUDetector` skips the calibration
   kernel and reshapes the data directly.  No calibration constants are loaded.
 
-Both modes expose the identical API: `run.events()` yields a plain
+For supported file and MPI paths, both modes expose the same API:
+`run.events()` yields a plain
 `psana.Event`, and GPU results hang off `evt.gpu`, so
 `evt.gpu.get("det.calib").on_gpu` returns a float32 CuPy array in either case.
+GPU-native consumption should configure `gpu_d2h_chunk_size=0` explicitly.
 
 ---
 
@@ -46,34 +55,37 @@ inside the AMI worker process.
 
 ## The fundamental gap
 
-The psana2 GPU event pipeline (`GpuEventManager`) currently lives entirely
-inside the MPI fan-out:
+The psana2 GPU event pipeline (`GpuEventManager`) currently runs in the MPI BD
+path and in `RunSerial` for normal experiment/run file input. It does not run
+in `RunShmem`, and AMI does not currently publish `evt.gpu` values into its
+type system or graph:
 
 ```
-EB rank ──► BD rank (GpuEventManager, GPU processing) ──► SRV rank
-                                                       ↑ NullRun.events() = iter([])
-                                                       AMI never sees this path
+exp/run file input ─► RunSerial ─► GpuEventManager ─► Event(evt.gpu)
+MPI   ──► BD rank   ──► GpuEventManager ──► Event(evt.gpu)
+shmem ─► RunShmem  ──► Events (CPU only today)
 ```
 
-AMI workers never participate in psana2's MPI fan-out.  They always call
-`DataSource(shmem=..., ...)` or `DataSource(files=..., ...)` in single-process
-mode.  There are **two gaps** to close:
+AMI workers do not participate in psana2's MPI fan-out. They call a
+single-process file or shmem data source. There are two integration gaps:
 
 | Gap | Description |
 |---|---|
-| **Gap 1** | GPU event pipeline (`GpuEventManager`) does not run in the single-process path used by AMI workers |
-| **Gap 2** | No GPU-accessible equivalent of the DAQ shared-memory ring; DAQ writes to CPU POSIX shmem |
+| **Gap 1** | AMI source/type/graph code does not discover or carry current `evt.gpu` results; explicit `DataSource(files=...)` also selects `RunSingleFile`, which rejects GPU routing |
+| **Gap 2** | `RunShmem` has no GPU staging path; DAQ writes complete XTC dgrams to CPU POSIX shmem |
 
 ---
 
 ## Three-phase design
 
-### Phase 1 — GPU processing in the single-process path (files=)
+### Phase 1 — GPU processing in the serial experiment/run path
 
-`RunSerial` already wires `GpuEventManager` when `gpu_det=` is set
-(`run.py:753`).  AMI workers using offline XTC2 files can use GPU event
-processing today with almost no changes.  Both normal (raw→calib) and
-passthrough (pre-calibrated fex) modes work automatically.
+`RunSerial` already wires `GpuEventManager` when GPU routing is enabled. This
+is the normal `DataSource(exp=..., run=..., dir=...)` serial path. Explicit
+`DataSource(files=...)` uses `RunSingleFile` and currently rejects `gpu_det`
+and `hybrid_det`, so an AMI file source must either use the experiment/run path
+or add equivalent GPU support. Both normal raw-to-calib and pre-calibrated
+passthrough modes are implemented in `RunSerial`.
 
 **Data flow:**
 
@@ -104,13 +116,13 @@ XTC2 files ──SMDReaderManager──► GpuEventManager
 | Key | Available? | Notes |
 |---|---|---|
 | `{det}.calib` | ✓ always | float32, normal and passthrough mode |
-| `{det}.image` | ✓ if geometry loaded | float32 assembled image |
+| `{det}.image` | ✗ currently | Geometry helpers exist, but `GPUDetector.process_batch()` does not publish this key |
 | `{det}.raw` | ✓ normal mode only | uint16 canonical raw; absent in passthrough |
 
 > **Raw data is exposed in normal mode.**
 >
 > `GPUDetector.process_batch` gathers the canonical uint16 raw array into a
-> per-slot buffer and sets `EventContext.raw_gpu`; `gpu_stream.py:162–163`
+> per-slot buffer and sets `EventContext.raw_gpu`; `gpu_stream.py`
 > propagates it as `{det_name}.raw`.  Read it exactly like calib:
 >
 > ```python
@@ -142,7 +154,9 @@ XTC2 files ──SMDReaderManager──► GpuEventManager
 ```python
 # ami/data.py  PsanaSource
 ds = psana.DataSource(
-    files=["/path/to/run.smd.xtc2"],
+    exp="mfx100848724",
+    run=51,
+    dir="/path/to/xtc",
     gpu_det="jungfrau",
     n_gpu_streams=2,
 )
@@ -167,64 +181,47 @@ I/O are all invalid here:
 | `KvikioGpuReader.issue_batch()` | Calls `kvikio.CuFile(path).pread(offset)` — no files; data is in CPU DRAM |
 | `_split_subbatches(gpu_view)` | Splitting based on GPUBAT1 desc_table; no desc_table in shmem |
 
-The shmem GPU path is therefore **simpler** — it replaces four components with
-a single H→D copy:
+The shmem path needs a different input adapter, but it should preserve the
+current parser and detector contracts. It can copy each complete selected XTC
+dgram to a reusable device slot and build the small descriptor rows expected by
+`GpuXtcBatchPool`; it should not parse detector pixels on the CPU:
 
 ```
 Shmem ring (CPU DRAM, complete XTC2)
     │
-    │  one datagram per event, bigdata embedded
+    │  selected complete dgram bytes
     ▼
-extract detector pixels from dgram    ← replaces GpuBatchView + KvikioGpuReader
-    │  drp_class='raw':  dgram.<det>.raw._rawdata  (uint16)
-    │  drp_class='fex':  dgram.<det>.fex._rawdata  (float32, pre-calibrated)
-    │  already in CPU DRAM, no file I/O
+cudaMemcpyAsync(CPU shmem -> reusable GPU input slot)
     ▼
-cudaMemcpyAsync(cpu → GPU VRAM)       ← single H→D per event
-    │  ~0.5 ms for uint16 (19-seg Jungfrau, ~19 MB)
-    │  ~1.0 ms for float32 passthrough (same pixels, 2× size)
+GpuXtcBatchPool.parse()
+    │  GPU XTC walk and Configure-derived field locators
     ▼
-GPUDetector.calibrate(det_gpu)        ← single-event entry point (already exists)
+GPUDetector.process_batch()
     │  normal mode:     applies pedestals + gain → float32
-    │  passthrough mode: reshapes float32 directly, no kernel
+    │  passthrough mode: gathers float32 directly, no calibration kernel
     ▼
 Event + evt.gpu                       ← identical API to Phase 1
 ```
 
-**batch_size in shmem mode is always 1.**
-
-`batch_size > 1` adds queuing latency (20 events × 8 ms = 160 ms at 120 Hz)
-with no throughput benefit, because:
-- There are no file I/O setup costs to amortize
-- Each H→D copy is independent
-- Online monitoring requires minimal latency
-
-```
-Files path, batch_size=20:
-  GDS read setup cost amortized over 20 events:  0.05 ms / event
-  50 MB read overlapped with CPU EventManager loop
-  → batching gives 3–5× throughput improvement
-
-Shmem path, batch_size=20:
-  No GDS reads — no setup cost to amortize
-  Added latency: 20 × 8 ms = 160 ms
-  → batching gives zero benefit, harmful latency
-```
+Start with one event per shmem submission to minimize monitoring latency. A
+small micro-batch may still improve H2D or kernel efficiency, so its
+latency/throughput tradeoff should be measured rather than declared to have no
+benefit.
 
 **What remains valid in shmem GPU mode:**
 
 | Component | Valid? | Notes |
 |---|---|---|
-| `GPUDetector.calibrate(det_gpu)` | ✓ | Single-event entry point; handles both raw uint16 and pre-calibrated float32 |
+| `GpuXtcBatchPool` / `GpuEventDgrams` | ✓ reuse | Preserve GPU parsing and general field access |
+| `GPUDetector.process_batch()` | ✓ reuse | Existing locator-driven calibration/passthrough entry point |
 | `EventPool` | ✓ optional | Overlaps processing of event N with H→D of event N+1 |
 | `_D2hPipeline` | ✓ optional | Async D→H hides transfer behind next event |
-| `_GpuBudget` | ✓ | OOM prevention still needed |
+| `_GpuBudget` | ✓ with known gaps | Reuse slot accounting; fixed allocations still need full accounting |
 | `evt.gpu` (`GpuEventState`) / `GPUResult` | ✓ | Unchanged API |
 | `on_gpu`, `on_gpu_view`, `on_cpu` | ✓ | Unchanged |
 | `KvikioGpuReader` | ✗ | Needs file handles + byte offsets |
 | `GpuBatchView` / GPUBAT1 | ✗ | No EventBuilder in shmem path |
-| `_split_subbatches` | ✗ | No desc_table to split |
-| `batch_size > 1` | ✗ practical | Adds latency, zero throughput benefit |
+| `_split_subbatches` | ✗ as written | Needs a shmem-specific byte admission unit |
 
 ---
 
@@ -267,7 +264,7 @@ The `GpuToHost` node is the explicit D→H gate.  The AMI type system enforces i
 
 ```python
 # run.py:559  RunShmem.__init__  (add GPU branch)
-if self.dsparms.gpu_det:
+if self.dsparms.gpu_enabled:
     # Shmem GPU path: data arrives as complete XTC2 dgrams.
     # No KvikioGpuReader / GPUBAT1 — uses ShmemGpuBatchAdapter.
     from psana.gpu.gpu_shmem_events import GpuShmemEvents
@@ -280,81 +277,39 @@ else:
 
 ### 2. `GpuShmemEvents` — new class  (`psana/gpu/gpu_shmem_events.py`)
 
-A simplified GPU event loop for the shmem path.  Replaces
-`GpuBatchView + KvikioGpuReader` with a direct H→D copy:
+A GPU event loop for the shmem path. It replaces file offsets and KvikIO with a
+direct H2D input adapter while reusing Configure tables, GPU XTC parsing,
+detector bindings, EventPool, and result lifetimes:
 
 ```python
 class GpuShmemEvents:
     """GPU event processing for the POSIX shared-memory (online) path.
 
-    The shmem ring provides complete XTC2 datagrams — bigdata already
-    in CPU DRAM.  For each L1Accept event:
-      1. Extract detector pixels from the XTC2 dgram.
-         drp_class='raw': uint16 ADC data  (normal mode)
-         drp_class='fex': float32 pre-calibrated data  (passthrough mode)
-      2. Copy to GPU VRAM via cudaMemcpyAsync (H→D).
-      3. Run GPUDetector.calibrate() — applies calibration kernel (normal)
-         or reshapes directly without any kernel (passthrough).
-      4. Yield an EventEnvelope carrying a GpuEventState with the float32
-         calib output in both cases.  Run.events() turns that into the
-         public Event.
-
-    batch_size is always effectively 1 — buffering multiple shmem events
-    adds latency without any throughput benefit (no GDS reads to amortize).
+    For each admitted event or small micro-batch:
+      1. Copy selected complete XTC dgram bytes from shmem into a budgeted
+         reusable device input slot.
+      2. Build event/stream/offset/size descriptor metadata.
+      3. Run GpuXtcBatchPool.parse() and construct GpuEventDgrams.
+      4. Run existing GPUDetector.process_batch() adapters.
+      5. Publish EventEnvelope/GpuEventState using EventPool leases.
     """
 
-    # No dispatch flag is needed: every event iterator yields EventEnvelope,
-    # and Run._materialize_event() builds the public Event at the API boundary.
-
-    def __init__(self, configs, dm, dsparms, run, smdr_man=None):
-        self.configs    = configs
-        self.dm         = dm
-        self.dsparms    = dsparms
-        self.run        = run
-        self._setup_detectors()   # creates GPUDetector per det_name;
-                                  # sets _passthrough based on run.detinfo drp_class
-        self._evt_iter  = smdr_man  # the shmem iterator (yields XTC2 dgrams)
-        self._iter      = None
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        if self._iter is None:
-            self._iter = self._events()
-        return next(self._iter)
-
-    def _events(self):
-        for dgrams in self._evt_iter:
-            if not TransitionId.isEvent(utils.first_service(dgrams)):
-                yield from self._handle_transition(dgrams)
-                continue
-
-            gpu_results = {}
-            for det_name, (_, gpu_det) in self.gpu_detectors.items():
-                # Extract detector pixels from the XTC2 dgram.
-                # drp_class='raw': uint16 ADC values  (gpu_det._passthrough=False)
-                # drp_class='fex': float32 pre-calibrated (gpu_det._passthrough=True)
-                det_bytes = self._extract_det_data(dgrams, det_name)
-                if det_bytes is None:
-                    continue
-                import cupy as cp
-                det_gpu   = cp.asarray(det_bytes)       # H→D copy
-                calib_gpu = gpu_det.calibrate(det_gpu)  # normal: uint16→calib kernel
-                                                        # passthrough: reshape only
-                gpu_results[f"{det_name}.calib"] = calib_gpu
-                # Add {det_name}.raw here from the gathered uint16 array to
-                # match the files path.  Unavailable in passthrough mode, where
-                # the DRP discarded raw ADC values.
-
-            yield EventEnvelope(
-                dgrams=dgrams,
-                gpu_state=GpuEventState(
-                    gpu_results=gpu_results,
-                    detector_names=list(self.gpu_detectors),
-                ),
-            )
+    def submit(self, event_envelopes):
+        slot = self.event_pool.next_slot_id
+        gpu_input = self.shmem_input.copy_to_slot(event_envelopes, slot)
+        parsed = self.xtc_pool.parse(
+            slot, gpu_input.data_gpu, gpu_input.desc_table, gpu_input.stream
+        )
+        event_dgrams = GpuEventDgrams.from_descriptors(event_envelopes, parsed)
+        return self.event_pool.submit_parsed(
+            event_envelopes, event_dgrams, self.gpu_detectors, slot
+        )
 ```
+
+The method names in this sketch are intentionally new: current `EventPool`
+submission is coupled to `GpuBatchView`/KvikIO records, so extracting a shared
+parsed-input submission boundary is part of the work. There is no existing
+`GPUDetector.calibrate(det_gpu)` single-event API.
 
 ### 3. `GpuEventManager._next_batch()` — improve error message  (`gpu_events.py:886`)
 
@@ -369,7 +324,7 @@ def _next_batch(self):
     if self.smdr_man is None:
         raise RuntimeError(
             "GpuEventManager requires an SMDReaderManager (smdr_man). "
-            "For DataSource(files=..., gpu_det=...) this is set automatically. "
+            "For DataSource(exp=..., run=..., gpu_det=...) this is set automatically. "
             "For DataSource(shmem=..., gpu_det=...) use GpuShmemEvents instead."
         )
 ```
@@ -654,11 +609,11 @@ Option A is the practical choice for Phase 2.
 
 ```
                     ┌─────────────────────────────────────────────────────┐
-  XTC2 files        │  AMI Worker process (single-process psana2)         │
+  exp/run files     │  AMI Worker process (single-process psana2)         │
   or shmem ring ──► │                                                     │
                     │  DataSource(gpu_det="jungfrau", ...)                │
                     │       │                                             │
-                     │  Phase 1 (files):  GpuEventManager                │
+                     │  Phase 1 (exp/run): GpuEventManager               │
                      │  Phase 2 (shmem):  GpuShmemEvents                  │
                      │       │  GPU processing (CuPy)                     │
                      │       │  normal:      uint16 → calibration kernel  │
@@ -716,11 +671,13 @@ Option A is the practical choice for Phase 2.
 
 | Phase | What | Effort | When |
 |---|---|---|---|
-| **1** | Files= path already works; add `gpu_detinfo` property to `GpuEventManager` and `Run`; add `gpu_det` to AMI `ds_keys`; add an `evt.gpu is not None` branch to `_process()` calling `.on_cpu` | Small | Now |
-| **2** | `GpuShmemEvents` new class; `RunShmem` GPU branch; shmem-path H→D copy | Medium | After Phase 1 validated |
+| **1** | Reuse the working serial experiment/run path; add `gpu_detinfo` property to `GpuEventManager` and `Run`; add GPU routing to AMI data-source keys; add an `evt.gpu is not None` branch to `_process()` calling `.on_cpu` | Small | First |
+| **2** | `GpuShmemEvents` new class; `RunShmem` GPU branch; shmem H2D input adapter with parser reuse | Medium | After Phase 1 validated |
 | **3** | `GpuArray1d/2d/3d` in amitypes; `GpuToHost` node; array-module-agnostic operators; `Store.get_type()` CuPy support; `_process()` returns `.on_gpu` instead of `.on_cpu` | Large | After Phase 2 validated |
 | **RDMA** | DAQ-side changes (CUDA IPC or GPUDirect RDMA) | Very large | Future |
 
-**Phase 1 has the lowest risk** — it requires four small changes (two in psana2,
-two in AMI) and reuses the entire existing `GPUDetector` / `EventPool` /
-`_D2hPipeline` stack.  Phases 2 and 3 build incrementally on Phase 1.
+**Phase 1 has the lowest risk when AMI can identify data as an experiment/run**:
+it reuses the existing `GPUDetector` / `EventPool` / `_D2hPipeline` stack.
+Supporting AMI's explicit `files=` source is additional psana work because
+`RunSingleFile` does not currently construct `GpuEventManager`. Phases 2 and 3
+build incrementally on the same result API.

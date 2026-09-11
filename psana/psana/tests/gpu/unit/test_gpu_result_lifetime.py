@@ -9,7 +9,7 @@ All tests run on CPU only — CuPy is replaced with a lightweight fake that:
   - runtime.memcpyAsync → ctypes.memmove so actual data is copied
 
 Tests cover the design requirements from
-gpu_memory_backpressure_and_async_join.md §Validation:
+gpu/docs/memory_backpressure_and_results.md §Validation:
 
   - A slot cannot be recycled while D→H is in flight.
   - A downstream CUDA completion token controls release.

@@ -868,11 +868,15 @@ class GpuEventManager:
         The budget is:
           (total_limit - fixed_bytes - 10% margin) / n_slots
 
-        where fixed_bytes = calibration constants + geometry arrays + routing
-        maps already reserved in _gpu_budget._committed.  The 10% margin covers
-        CuPy allocator overhead, input buffers (KvikioGpuReader), and rounding.
+        where fixed_bytes = measured calibration constants + geometry arrays +
+        routing maps. These fixed allocations are not currently included in
+        _gpu_budget.committed(); subtracting them here prevents the default
+        variable allowance from treating that space as free. The 10% margin
+        covers CuPy allocator overhead, input buffers, and rounding.
 
-        Configurable override: set DsParms.gpu_subbatch_budget_bytes > 0.
+        An internal gpu_subbatch_budget_bytes attribute is consulted when
+        present, but DsParms does not currently expose it as a supported
+        DataSource argument.
 
         Returns
         -------

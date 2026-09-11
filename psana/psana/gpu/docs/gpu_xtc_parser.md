@@ -1,4 +1,6 @@
-# GPU XTC parser
+# GPU XTC Parser
+
+**Status:** Current on this branch.
 
 ## Parser contract and event-loop integration
 
@@ -216,10 +218,14 @@ ShapesData counts and references
 one locator table per registered field handle
 ```
 
-Their allocations are charged to the same `_GpuBudget` as KvikIO input,
-calibration, raw, and geometry buffers. Parser bytes are also included in
-subbatch sizing. `EventPool.submit()` queues the parser before detector work
-on the same non-blocking slot stream and retains the `GpuEventBatch` in
+The Configure tables and per-slot parser buffers are charged to the same
+`_GpuBudget` as KvikIO input and detector slot buffers. Parser bytes are also
+included in subbatch sizing. Calibration constants and geometry are measured
+and subtracted while deriving the default subbatch allowance, but the current
+committed-byte counter does not reserve them; that accounting gap is tracked
+in [Known problems and limitations](known_issues.md#fixed-allocation-accounting).
+`EventPool.submit()` queues the parser before detector work on the same
+non-blocking slot stream and retains the `GpuEventBatch` in
 `_EventSlot.xtc_batch`. Two-phase retirement synchronizes the producer and
 waits for consumer leases before the object is released and the slot buffers
 may be overwritten.

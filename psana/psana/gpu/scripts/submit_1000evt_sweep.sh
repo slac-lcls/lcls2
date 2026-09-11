@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:a100:2
 #SBATCH --gpu-bind=none
 #SBATCH -t 01:00:00
-#SBATCH -o psana/psana/gpu/notes/sweep_1000evt_%j.out
+#SBATCH -o psana_gpu_sweep_1000evt_%j.out
 #SBATCH -J gpu_1000evt_sweep
 
 # =============================================================================
@@ -20,7 +20,7 @@
 #
 # Usage (from ~/lcls2):
 #   sbatch psana/psana/gpu/scripts/submit_1000evt_sweep.sh
-#   tail -f psana/psana/gpu/notes/sweep_1000evt_<JOBID>.out
+#   tail -f psana_gpu_sweep_1000evt_<JOBID>.out
 # =============================================================================
 
 REPO_ROOT="${SLURM_SUBMIT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
