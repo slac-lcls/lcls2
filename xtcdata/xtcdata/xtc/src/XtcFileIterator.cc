@@ -28,7 +28,7 @@ Dgram* XtcFileIterator::next()
         return 0;
     }
     char* p = dg.xtc.payload();
-    printf("Reading %zu into %p\n", payloadSize, p);
+    //printf("Reading %zu into %p\n", payloadSize, p);
     if (payloadSize == 0)
         return &dg;
 

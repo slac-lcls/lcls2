@@ -18,7 +18,7 @@ typedef Pds::Mmhw::TriggerEventManager2 TEM;
 
 #define MAX_RET_CNT_C 1000
 static int fd;
-std::atomic<bool> terminate;
+static std::atomic<bool> terminate;
 
 using namespace Drp;
 
@@ -35,8 +35,10 @@ void int_handler(int dummy)
 
 static void show_usage(const char* p)
 {
-    printf("Usage: %s -d <device file> [-c <virtChan>] [-l <laneMask>] [-r]\n",p);
+    printf("Usage: %s -d <device file> [-c <virtChan>] [-l <laneMask>] [-r] [-t] [-D] [-v]\n",p);
     printf("       -r  Has batcher event builder\n");
+    printf("       -t  Enable KCU timing\n");
+    printf("       -D  Enable driver debug\n");
     printf("       -v  verbose\n");
 }
 
@@ -49,8 +51,9 @@ int main(int argc, char* argv[])
     std::string device;
     unsigned lverbose = 0;
     bool lrogue = false, timing_kcu_enable=false;
+    bool lDriverDebug = false;
     bool lusage = false;
-    while((c = getopt(argc, argv, "c:d:l:tvrh?")) != EOF) {
+    while((c = getopt(argc, argv, "c:d:l:tvrDh?")) != EOF) {
         switch(c) {
             case 'd':
                 device = optarg;
@@ -69,6 +72,9 @@ int main(int argc, char* argv[])
                 break;
             case 't':
                 timing_kcu_enable = true;
+                break;
+            case 'D':
+                lDriverDebug = true;
                 break;
             default:
                 lusage = true;
@@ -120,6 +126,9 @@ int main(int argc, char* argv[])
         std::cout<<"Error opening "<<device<<'\n';
         return -1;
     }
+
+    if (lDriverDebug)
+      dmaSetDebug(fd, 1);
 
     uint32_t dmaCount, dmaSize;
     void** dmaBuffers = dmaMapDma(fd, &dmaCount, &dmaSize);
@@ -210,5 +219,7 @@ int main(int argc, char* argv[])
 	    if ( ret > 0 ) dmaRetIndexes(fd, ret, dmaIndex);
 	    //sleep(0.1)
     }
+    if (lDriverDebug)
+        dmaSetDebug(fd, 0);
     printf("finished: nEvents %lu\n", nevents);
 }

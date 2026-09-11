@@ -40,7 +40,6 @@ typedef uint32_t sizeb_t;
     gain_t gain;
   };
 
-  static ccstruct CCSV3 [NGRINDS][NPIXELS];
   void fill_CCSV3(const cc_t *cc);
 
   void  calib_jungrfau_blk_v1(const rawd_t *raw, const cc_t *cc, const sizeb_t& size_blk, out_t *out);

@@ -9,14 +9,15 @@
 
 #include <sys/prctl.h>
 
-using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp;
 using namespace Drp::Gpu;
 using namespace Pds;
 using namespace Pds::Eb;
 
-using us_t = std::chrono::microseconds;
+using logging = psalg::SysLog;
+using json    = nlohmann::json;
+using us_t    = std::chrono::microseconds;
 
 struct red_domain{ static constexpr char const* name{"Reducer"}; };
 using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
@@ -133,17 +134,6 @@ Reducer::Reducer(const Parameters&                  para,
       *m_metrics.inpWtCtr[i] = 0;
       chkError(cudaHostAlloc(&m_metrics.outWtCtr[i], sizeof(*m_metrics.outWtCtr[i]), cudaHostAllocDefault));
       *m_metrics.outWtCtr[i] = 0;
-    }
-
-    if (m_algos[0]->hasGraph()) {         // Same value for all instances
-      // Prepare the CUDA graphs
-      m_graphExecs.resize(m_para.nworkers);
-      for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        if (_setupGraph(i)) {
-          logging::critical("Failed to set up Reducer graph[%u]", i);
-          abort();
-        }
-      }
     }
   }
 }
@@ -279,7 +269,7 @@ bool Reducer::_setupAlgos(Detector& det)
     logging::error("Missing required kwarg 'reducer'");
     return false;
   }
-  reducer = const_cast<Parameters&>(m_para).kwargs["reducer"];
+  reducer = m_para.kwargs.at("reducer");
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_algos[i])  delete m_algos[i]; // If the object exists, delete it
@@ -448,7 +438,6 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
 #endif
 
   // Perform the reduction algorithm
-  printf("*** Reducer::recordGraph: state[%u] %p\n", worker, m_metrics.state[worker]);
   m_algos[worker]->recordGraph(stream,
                                m_state_d[worker],
                                m_indices[worker],
@@ -480,26 +469,68 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   return graph;
 }
 
-void Reducer::startup()
+int Reducer::configure(const json& configureMsg,
+                       const json& connectMsg,
+                       size_t      collectionId) // Called during phase 1 of Configure
 {
+  if (m_para.nworkers) {
+    if (m_algos[0]->hasGraph()) {       // Same value for all instances
+      // Configure algorithm instances
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        if (m_algos[i]->configure(configureMsg, connectMsg, collectionId)) {
+          logging::error("Failed 1st configure of Reducer %u", i);
+          return -1;
+        }
+      }
+    }
+  }
+  return 0;
+}
+
+bool Reducer::setup(Xtc& xtc, const void* bufEnd) // Called during phase 1 of Configure
+{
+  if (m_para.nworkers) {
+    if (m_algos[0]->hasGraph()) {       // Same value for all instances
+      // Configure algorithm instances
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        if (m_algos[i]->configure(xtc, bufEnd)) {
+          logging::error("Failed 2nd configure of Reducer %u", i);
+          return true;
+        }
+      }
+      // Prepare the CUDA graphs
+      m_graphExecs.resize(m_para.nworkers);
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        if (_setupGraph(i)) {
+          logging::error("Failed to set up Reducer graph[%u]", i);
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
+bool Reducer::startup()                 // Called during phase 1 of Configure
+{
+  logging::info("Starting %u Reducer(s)", m_para.nworkers);
+
 #ifndef HOST_LAUNCHED_REDUCERS
-  printf("*** Reducer::startup: 1\n");
   if (m_algos.size() && m_algos[0]->hasGraph()) {           // Same value for all workers
-    printf("*** Reducer::startup: 2\n");
 
     // Launch the Reducer graphs
     for (unsigned i = 0; i < m_graphExecs.size(); ++i) {
-      printf("*** Reducer::startup: 3, wkr %d\n", i);
       chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
     }
   }
-  printf("*** Reducer::startup: 4\n");
 #else
   // Start the worker threads
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     m_threads.emplace_back(&Reducer::_worker, std::ref(*this), i);
   }
 #endif
+
+  return false;
 }
 
 void Reducer::shutdown()

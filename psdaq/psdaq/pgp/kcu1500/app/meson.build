@@ -29,7 +29,7 @@ static_kcu_lib = static_library('staticKcu',
 kcu_status = executable('kcuStatus',
   'xStatus.cpp',
   include_directories: [kcu_inc_dir],
-  link_with: [static_kcu_lib],
+  link_whole: [static_kcu_lib],
   install_rpath: libdir_install_rpath,
   install: true,
 )

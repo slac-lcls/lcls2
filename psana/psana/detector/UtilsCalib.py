@@ -22,9 +22,9 @@ import os
 import sys
 import numpy as np
 import psana.detector.utils_psana as up
-from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record  # info_command_line
+from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
-from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, save_ndarray_in_textfile
+from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, reshape_to_3d, save_ndarray_in_textfile
 from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix, fname_prefix_block_results
 
 SCRNAME = sys.argv[0].rsplit('/')[-1]
@@ -632,8 +632,8 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = obdet.raw._sorted_segment_inds
     kwa['segment_numbers'] = obdet.raw._segment_numbers
+    kwa['shape_as_daq'] =\
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
-    #kwa['seggeo_shape'] = obdet.raw._seg_geo.shape()
     #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 

@@ -32,9 +32,7 @@ protected:
 private:
     void           _init_dual_dev(std::string detname,
                                   std::string data_fpga,
-                                  size_t data_lane_mask,
-                                  std::string cfg_fpga,
-                                  size_t cfg_lane_mask);
+                                  size_t data_lane_mask);
     void           __event   (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&);
 public:

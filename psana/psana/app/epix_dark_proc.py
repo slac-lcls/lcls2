@@ -13,6 +13,7 @@ USAGE = 'Usage:'\
       + '\n     [-o <output-result-directory>] [-L <logging-mode>] [other-kwargs]'\
       + '\nTests:'\
       + '\n  %s -k exp=mfxdet23,run=15 -d epixuhr -o work1 # data on psana' % SCRNAME\
+      + '\n  %s -k exp=mfx101628626,run=163 -d epixuhr3x2 -o work1' % SCRNAME\
       + '\n\n  Try: %s -h' % SCRNAME
 #      + '\n  %s -k exp=ascdaq123,run=4 -d epixm -o ./work # data on psana' % SCRNAME\
 #      + '\n  %s -k exp=tstx00417,run=317,dir=/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/ -d tst_epixm -o ./work # data on psana' % SCRNAME\
@@ -42,7 +43,7 @@ def argument_parser():
 
     d_dskwargs = None
     d_det     = None # 'epixquad'
-    d_nrecs   = 100  # number of records to collect and process
+    d_nrecs   = 1000 # number of records to collect and process
     d_nrecs1  = 50   # number of records to process at 1st stage
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirrepo = DIR_REPO_EPIX10KA
@@ -66,10 +67,16 @@ def argument_parser():
     d_fraclm  = 0.1     # allowed fraction limit
     d_fraclo  = 0.05    # fraction of statistics [0,1] below low limit
     d_frachi  = 0.95    # fraction of statistics [0,1] below high limit
-    d_version = 'V2024-12-18'
-    d_datbits = 0o77777
-    d_deploy  = False
+    d_version = 'V2026-07-13' # 'V2024-12-18'
+    d_datbits = 0o77777 # lowest 15 bits
     d_plotim  = 0
+    d_deploy  = False
+    d_ctdepl  = 'prs'   # for constants from dark, 'prsnx'
+    d_tstamp  = None # 20180910111049
+    d_run_beg = None
+    d_run_end = 'end'
+    d_comment = None
+    d_dbsuffix= None
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -102,8 +109,14 @@ def argument_parser():
     h_frachi  = 'fraction of statistics [0,1] above high limit of the gate, default = %f' % d_frachi
     h_version = 'constants version, default = %s' % str(d_version)
     h_datbits = 'data bits, e.g. 0x7fff is 15-bit mask for epixm320, default = %s' % hex(d_datbits)
-    h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
+    h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
+    h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = %s' % d_ctdepl
+    h_tstamp  = 'DEPLOY: non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
+    h_run_beg = 'DEPLOY: first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
+    h_run_end = 'DEPLOY: last run for validity range, default = %s' % str(d_run_end)
+    h_comment = 'DEPLOY: comment added to constants metadata, default = %s' % str(d_comment)
+    h_dbsuffix= 'DEPLOY: suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -133,8 +146,14 @@ def argument_parser():
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('--datbits',       default=d_datbits,    type=int,   help=h_datbits)
-    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
+    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
+    parser.add_argument('--ctdepl',  default=d_ctdepl,   type=str,   help=h_ctdepl)
+    parser.add_argument('--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
+    parser.add_argument('--run_beg', default=d_run_beg,  type=int,   help=h_run_beg)
+    parser.add_argument('--run_end', default=d_run_end,  type=str,   help=h_run_end)
+    parser.add_argument('--comment', default=d_comment,  type=str,   help=h_comment)
+    parser.add_argument('--dbsuffix',default=d_dbsuffix, type=str,   help=h_dbsuffix)
 
     return parser
 

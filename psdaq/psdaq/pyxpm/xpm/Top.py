@@ -42,6 +42,7 @@ class Top(pr.Device):
                     numDDC      = 0,
                     noTiming    = False,
                     fwVersion   = 0,
+                    noRudp      = False,
                     **kwargs):
         super().__init__(name=name, description=description, **kwargs)
         self.fwVersion = fwVersion
@@ -59,15 +60,24 @@ class Top(pr.Device):
         # UDP_SRV_RSSI_ILEAVE_IDX_C => 8198);  -- Interleaved RSSI         
         ################################################################################################################
 
-        # Create SRP/ASYNC_MSG interface
-        self.rudp = pr.protocols.UdpRssiPack( name='rudpReg', host=ipAddr, port=8193, packVer = 1, jumbo = False)
+        if noRudp:
+            # UDP only
+            self.udp = rogue.protocols.udp.Client(ipAddr,8192,0)
+            
+            # Connect the SRPv0 to RAW UDP
+            self.srp = rogue.protocols.srp.SrpV0()
+            pyrogue.streamConnectBiDir( self.srp, self.udp )
 
-        # Connect the SRPv3 to tDest = 0x0
-        self.srp = rogue.protocols.srp.SrpV3()
-        pr.streamConnectBiDir( self.srp, self.rudp.application(dest=0x0) )
+        else:
+            # Create SRP/ASYNC_MSG interface
+            self.rudp = pr.protocols.UdpRssiPack( name='rudpReg', host=ipAddr, port=8193, packVer = 1, jumbo = False)
 
-        # Create stream interface
-        self.stream = pr.protocols.UdpRssiPack( name='rudpData', host=ipAddr, port=8194, packVer = 1, jumbo = False)
+            # Connect the SRPv3 to tDest = 0x0
+            self.srp = rogue.protocols.srp.SrpV3()
+            pr.streamConnectBiDir( self.srp, self.rudp.application(dest=0x0) )
+
+            # Create stream interface
+            self.stream = pr.protocols.UdpRssiPack( name='rudpData', host=ipAddr, port=8194, packVer = 1, jumbo = False)
 
         # Connect XVC
         if xvcPort is not None:

@@ -741,6 +741,7 @@ class CollectionManager():
         self.bypass_activedet = False
         self.cydgram = dc.CyDgram()
         self.step_done = Event()
+        self.step_thread_started = False # ensure thread only started once
 
         # instantiate DaqPVA object
         self.pva = DaqPVA(report_error=self.report_error) if not self.simulator else None
@@ -2352,10 +2353,12 @@ class CollectionManager():
 
             if start_step_thread:
                 self.step_exit.clear()
-                # initialize stepdone thread
-                self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
-                # start step done thread
-                self.step_done_thread.start()
+                if not self.step_thread_started: # ensure thread only started once
+                    # initialize stepdone thread
+                    self.step_done_thread = Thread(target=self.step_done_func, name='stepdone')
+                    # start step done thread
+                    self.step_done_thread.start()
+                    self.step_thread_started=True
 
 
         ok = self.get_phase2_replies('configure')

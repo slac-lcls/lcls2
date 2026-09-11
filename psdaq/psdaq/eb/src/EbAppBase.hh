@@ -36,7 +36,7 @@ namespace Pds {
       using MetricExporter_t = std::shared_ptr<Pds::MetricExporter>;
 
     public:
-      EbAppBase(const EbParams& prms, const std::string& pfx);
+      EbAppBase(EbParams& prms, const std::string& pfx);
       virtual ~EbAppBase();
     public:
       int              resetCounters();

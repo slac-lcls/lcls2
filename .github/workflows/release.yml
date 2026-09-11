@@ -1,0 +1,97 @@
+name: Build wheels and create release
+
+# Only build for release tags.
+on:
+  push:
+    tags:
+      - '*'
+  workflow_dispatch:
+
+jobs:
+  build_wheels:
+    name: Build wheels
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+
+      - name: Cache pip
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Build and test wheels
+        uses: pypa/cibuildwheel@294735312765b09d24a2fbec22660ce817587d55 # v4.1.0
+        env:
+          # pyproject.toml's [tool.cibuildwheel].container-engine is a
+          # Podman + crun config specific to SDF's Weka-related rootless
+          # cgroup workaround. None of that applies on a
+          # GitHub-hosted runner -- override back to cibuildwheel's normal
+          # default here instead of touching pyproject.toml's local-build
+          # config.
+          CIBW_CONTAINER_ENGINE: docker
+          # Matches run_psana_tests.yaml/run_daq_tests.yaml's job-level
+          # LCLS_CALIB_HTTP override. Several tests below fetch calibration
+          # constants; without this they hit CalibConstants.py's default,
+          # psdmint.sdf.slac.stanford.edu, which is SDF-internal and
+          # unreachable from a GitHub-hosted runner. cibuildwheel runs
+          # CIBW_TEST_COMMAND inside an isolated container, so this must be
+          # passed via CIBW_ENVIRONMENT_LINUX rather than plain job env.
+          # NOTE: this env var *fully replaces* pyproject.toml's
+          # [tool.cibuildwheel.linux].environment table (cibuildwheel env
+          # vars override TOML entirely, they don't merge) -- so
+          # LD_LIBRARY_PATH from that table must be repeated here too, or
+          # mpi4py's dlopen fix silently disappears on GitHub Actions.
+          CIBW_ENVIRONMENT_LINUX: LD_LIBRARY_PATH=/usr/lib64/openmpi/lib:$LD_LIBRARY_PATH LCLS_CALIB_HTTP=https://pswww.slac.stanford.edu/calib_ws/
+          CIBW_TEST_REQUIRES: pytest
+          CIBW_TEST_COMMAND: >
+            pytest
+            {project}/psana/psana/tests/test_HBins.py
+            {project}/psana/psana/tests/test_Time.py
+            {project}/psana/psana/tests/test_TimeFormat.py
+            {project}/psana/psana/tests/test_TimeParse.py
+            {project}/psana/psana/tests/test_dgramedit.py
+            {project}/psana/psana/tests/test_dgraminit.py
+            {project}/psana/psana/tests/test_epix_calib.py
+            {project}/psana/psana/tests/test_hsd.py
+            {project}/psana/psana/tests/test_packetfooter.py
+            {project}/psana/psana/tests/test_psalg.py
+            {project}/psana/psana/tests/test_py2xtc.py
+            {project}/psana/psana/tests/test_py2xtc_scan.py
+            {project}/psana/psana/tests/test_pyalgos.py
+            {project}/psana/psana/tests/test_sample.py
+            {project}/psana/psana/tests/test_timetool.py
+            {project}/psana/psana/tests/test_ts.py
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: cibw-wheels
+          path: ./wheelhouse/*.whl
+
+  create_release:
+    name: Create GitHub release and publish to PyPI
+    needs: [build_wheels]
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+      contents: write
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Gather build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: cibw-*
+          path: dist
+          merge-multiple: true
+
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@718ea10b132b3b2eba29c1007bb80653f286566b # v3.0.1
+        with:
+          files: dist/*
+          generate_release_notes: true

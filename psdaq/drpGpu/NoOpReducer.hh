@@ -26,6 +26,9 @@ public:
                      unsigned  index,
                      size_t*   dataSize,
                      unsigned* retCode) override;
+  int      configure(const nlohmann::json& configureMsg,
+                     const nlohmann::json& connectMsg,
+                     size_t                collectionId) override;
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:

@@ -28,7 +28,7 @@ public:
 private:
     Pds::EbDgram* _handle(uint32_t& evtIndex);
     Detector* m_det;
-    static const int MAX_RET_CNT_C = 100;
+    static const unsigned MAX_RET_CNT_C = 100;
     int32_t m_available;
     int32_t m_current;
     uint64_t m_nDmaRet;
@@ -146,6 +146,7 @@ public:
     virtual ~PvDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
+    std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     int  _setupMetrics(const std::shared_ptr<Pds::MetricExporter>);
     void _reader();
@@ -189,6 +190,7 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
+    std::string _endrun(const nlohmann::json& phase1Info);
     void _unconfigure();
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
@@ -198,6 +200,7 @@ private:
     std::unique_ptr<PvDetector> m_det;
     std::unique_ptr<PvDrp>      m_drp;
     bool                        m_unconfigure;
+    std::string                 m_lastKey;
 };
 
 }

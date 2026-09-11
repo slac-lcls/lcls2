@@ -94,7 +94,10 @@ static Module134* reg = NULL;
 
 static void sigHandler( int signal )
 {
+    printf("sigHandler received signal %d\n",signal);
+  
     if (reg) {
+        printf("Stopping ChipADC\n");
         reg->chip(0).reg.stop();
         reg->chip(1).reg.stop();
     }
@@ -232,6 +235,7 @@ int main(int argc, char** argv)
 
     Module134* m = Module134::create(fd);
     m->dumpMap();
+    reg = m;
 
     std::string buildStamp = m->version().buildStamp();
     printf("BuildStamp: %s\n",buildStamp.c_str());
