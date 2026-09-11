@@ -1,4 +1,6 @@
-# CPU and GPU MPI event paths
+# CPU and GPU Event Flow and Lifetimes
+
+**Status:** Current on this branch.
 
 This note describes the unified MPI event path on this branch. Both CPU and
 GPU runs use the same EB-to-BD transport, the same one-batch look-ahead, and
@@ -36,7 +38,7 @@ There is no separate `start_gpu()`, `_gpu_events_mpi()`, or
 | GPU read issue | None | `KvikioGpuReader.issue_batch()` | Starts reads from GPUBAT1 bigdata descriptors into the selected slot's VRAM buffer. |
 | CPU materialization | `EventManager` | `EventManager` inside `GpuEventManager` | Reads CPU bigdata and constructs `EventEnvelope(dgrams)`. |
 | GPU XTC parse | None | `GpuXtcBatchPool.parse()` | Uploads dgram records, walks XTC, and locates registered array fields on the slot stream. |
-| GPU detector | None | `GPUDetector.process_batch()` | Uses Configure-selected handles and device locator rows to produce canonical raw, calibrated, and optional image results. |
+| GPU detector | None | `GPUDetector.process_batch()` | Uses Configure-selected handles and device locator rows to produce canonical raw and calibrated results. Geometry helpers exist, but this method does not currently publish an image result. |
 | Internal result | `EventEnvelope(dgrams)` | `EventEnvelope(dgrams, gpu_state)` | Carries one event without owning RunCtx. |
 | Public result | `RunParallel` creates `Event(gpu=None)` | `RunParallel` creates `Event(gpu=GpuEventState)` | The same public object is returned in both modes. |
 | User GPU access | N/A | `evt.gpu.get("calib")` | Returns a lease-aware `GPUResult`. |
@@ -75,18 +77,20 @@ BatchEnvelope(smd, gpubat1)
 ```
 
 `GpuEventManager` is run-scoped. It owns the CPU `GpuStreamConfigTable`, the
-`GpuXtcBatchPool`, KvikIO reader, GPU detectors, D2H pipelines, shared VRAM
+`GpuXtcBatchPool`, KvikIO reader, GPU detectors, D2H pipelines, per-BD VRAM
 budget, and EventPool. `GpuXtcBatchPool` uploads its numeric Configure tables
 once and owns reusable parser buffers indexed by EventPool slot. EventPool
 retains each subbatch's `GpuEventBatch` until that slot is safely retired.
 
-`GpuEventState` is event-scoped and contains only that event's detector
-results, leases, pending D2H tokens, and cached host results. Stage 2 does not
-expose XTC dgram or field-locator tables through the public Event API.
+`GpuEventState` is event-scoped and contains that event's detector results,
+result leases, pending D2H tokens, cached host results, detector bindings, and
+a slot-backed parsed-input view. The parser tables remain run/slot-owned;
+general field access resolves event-specific views through the retained input
+binding and lease.
 
-Stage 2 runs the GPU XTC parser in shadow mode: it produces device dgram and
-field-locator tables before detector processing, but `GPUDetector` continues
-to use legacy raw-array addressing until the Stage 3 consumer switch.
+The GPU XTC parser produces device dgram and field-locator tables before
+detector processing. `GPUDetector` consumes those locators to gather raw
+detector arrays without relying on fixed payload offsets or child order.
 
 See [GPU XTC parser](gpu_xtc_parser.md) for table layouts and parser details.
 
@@ -108,7 +112,8 @@ that are currently waiting.
 
 ## GPU result lifetime
 
-The manager preserves the two-phase retirement window:
+External GPU mode (`gpu_d2h_chunk_size=0`) preserves a two-phase retirement
+window:
 
 ```text
 begin_retire_next()
@@ -120,7 +125,18 @@ reuse slot
 
 Advancing the Python generator is not treated as proof that an asynchronous
 GPU consumer completed. `evt.gpu.get(...).on_gpu_view(stream)` records the
-consumer completion token used by EventPool.
+consumer completion token used by EventPool. A detector-result `SlotLease`
+currently retains only one such token, so the same result must not be handed to
+multiple zero-copy consumer streams. Parsed input uses a separate
+multi-consumer lease.
+
+With automatic D2H enabled, `<det>.calib` copies are scheduled immediately
+after submission. A slot is released before yield only when every slot-backed
+product has an independent host handoff. Eagerly exposed parser fields have no
+automatic host handoff, so their presence currently keeps the yield-first
+retirement window even when calibrated-result D2H is enabled. See
+[Memory backpressure and results](memory_backpressure_and_results.md) and
+[Known problems and limitations](known_issues.md).
 
 ## Transitions
 

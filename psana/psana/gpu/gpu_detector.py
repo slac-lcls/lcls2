@@ -359,7 +359,9 @@ class GPUDetector:
           - Raw-gather scratch buffer (uint16): n_events × n_segs × nrows × ncols × 2
 
         Calibration constants and geometry scatter maps are fixed allocations
-        that are excluded here (they are already committed in _GpuBudget).
+        excluded from this per-subbatch estimate. GpuEventManager subtracts
+        their measured bytes when deriving the default allowance; they are not
+        currently reserved in _GpuBudget.committed().
 
         Parameters
         ----------

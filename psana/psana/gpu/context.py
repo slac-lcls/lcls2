@@ -38,8 +38,11 @@ class SlotLease:
        token.  After the caller has had a chance to register any external GPU
        consumer, finish_retire_next() waits before reuse.
 
-    Rule: a slot may be reused only after every consumer of that slot
-    has completed — generator advancement alone is not sufficient.
+    Intended rule: a slot may be reused only after every consumer of that
+    slot has completed — generator advancement alone is not sufficient.
+    This result lease currently stores one terminal event; registering another
+    replaces it. InputSlotLease provides the multi-consumer implementation for
+    parsed input fields.
     """
 
     __slots__ = ('result_ready', '_consumer_done')
@@ -60,6 +63,8 @@ class SlotLease:
         Called by _D2hPipeline after issuing cudaMemcpyAsync, or by
         _GpuViewContext.__exit__ after the user's downstream GPU kernel.
         EventPool waits on this event in finish_retire_next() before reuse.
+        Only one event is retained; multiple zero-copy consumers of the same
+        result are not currently supported.
         """
         self._consumer_done = event
 
@@ -181,8 +186,10 @@ class GPUResult:
         """Return an independent D→D copy of the calibrated result.
 
         The copy is not tied to the EventPool slot buffer — the slot can
-        be recycled immediately after this call.  Use when the copy cost
-        (~2 ms D→D for Jungfrau) is acceptable and simplicity is preferred.
+        be recycled after the copy completes. Current EventPool retirement
+        synchronizes the CuPy null stream, so call this accessor on that
+        stream. For a custom stream, use on_gpu_view(stream), which registers
+        its completion explicitly.
         """
         self._require_device_storage("on_gpu")
         return self._arr.copy()

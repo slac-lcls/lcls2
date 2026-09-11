@@ -1,4 +1,4 @@
-# Lazy-Sync D2H and GPU Slot Lifetime
+# GPU Memory Backpressure and Result Lifetimes
 
 ## Status and scope
 
@@ -11,15 +11,26 @@ consumption modes:
 
 These modes have different retirement ordering because they expose different
 result lifetimes. Automatic-D2H results can be detached from the execution
-slot before delivery. External GPU results remain slot-backed while the user
-registers downstream work.
+slot before delivery only when every slot-backed product has a host handoff.
+The integrated parser exposes slot-backed input fields without such a handoff,
+so current parsed events normally retain the slot through the user-yield
+window. External GPU results also remain slot-backed while the user registers
+downstream work.
 
-The central invariant is:
+The intended central invariant is:
 
 > An execution slot cannot be overwritten until every terminal consumer of
 > its current contents has completed.
 
 Advancing a Python generator is not a CUDA completion signal.
+
+`InputSlotLease` implements this invariant for multiple parsed-field
+consumers. The detector-result `SlotLease` currently stores only one terminal
+event, so multiple `on_gpu_view()` consumers of the same result are a known
+gap. See [Known problems and limitations](known_issues.md#result-lease-fan-out).
+
+The measurements that motivated this design are retained in
+[D2H bandwidth](performance/d2h_bandwidth.md).
 
 ---
 
@@ -41,7 +52,7 @@ The controls have separate meanings:
 |---|---|
 | `n_gpu_streams` | Number of reusable GPU execution slots (`EventPool` depth) |
 | `gpu_d2h_chunk_size` | Maximum events stored in one pinned-host D2H buffer; `0` disables automatic D2H |
-| `gpu_memory_budget_gb` | Per-BD committed device-memory limit |
+| `gpu_memory_budget_gb` | Per-BD limit for allocations tracked by `_GpuBudget` |
 | `batch_size` | EventBuilder communication size, not an execution-slot capacity |
 
 `gpu_d2h_chunk_size` does **not** determine the number of GPU slots. For
@@ -82,6 +93,8 @@ Each result lease contains:
 Automatic D2H registers its copy-completion event. An external
 `on_gpu_view(stream)` consumer registers an event recorded after the user's
 kernel launches. `EventPool` waits for the registered event before reuse.
+Unlike `InputSlotLease`, this class stores one `_consumer_done` value rather
+than a list; registering a second event replaces the first.
 
 ### `_PinnedSlot`: bounded host retention
 
@@ -94,7 +107,9 @@ host buffers. A pinned slot contains:
 - A reference to the pipeline's free-slot queue.
 
 The number of pinned slots is `max(2, n_gpu_streams)`. Each pinned slot can
-hold up to `gpu_d2h_chunk_size` event results.
+hold up to `gpu_d2h_chunk_size` event results. The pool is count-bounded but
+does not have a separate byte-budget setting; its allocation is
+`pool_slots * chunk_size * dense_result_bytes` per detector pipeline.
 
 ### `_PendingD2H`: one event's pinned result
 
@@ -135,6 +150,11 @@ submitted execution slot. It divides the record into physical chunks no larger
 than `gpu_d2h_chunk_size`. A partial chunk is scheduled immediately; there is
 no cross-slot `_chunk_buf` and no batch-boundary D2H flush.
 
+The manager currently creates a pipeline only for each `<det>.calib` key.
+`_D2hPipeline` also assumes a dense three-dimensional float32 result. Raw
+results, image results, arbitrary parser fields, and future user-task outputs
+do not receive automatic D2H from this implementation.
+
 For `batch_size=1, gpu_d2h_chunk_size=2`, each execution record contains one
 event, so a one-event partial D2H is issued for every event.
 
@@ -144,7 +164,8 @@ event, so a one-event partial D2H is issued for every event.
 
 ### Automatic D2H: `gpu_d2h_chunk_size > 0`
 
-Automatic D2H is the CPU-result mode. The normal slot-replacement path is:
+Automatic D2H prepares the CPU copy. The optimized host-only replacement path
+is:
 
 ```text
 submit event N in slot S
@@ -164,12 +185,17 @@ when slot S is needed for event N + pool_depth:
 
 If any result key lacks a host handoff, the controller conservatively keeps
 the yield-first two-phase retirement path and does not release the device slot
-before delivery.
+before delivery. `GpuEventManager._is_fully_host_backed()` explicitly returns
+false when parsed input dgrams are attached. Because current GPU events expose
+those parser fields eagerly, this is the normal integrated behavior; the
+early-release branch applies only when no parsed input is retained and every
+result key is host-backed.
 
 The replacement H2D is issued before the outgoing event is delivered to user
 CPU code. This permits work in another execution slot to overlap with that H2D.
 
-The normally retired context is explicitly marked `device_released`:
+An event delivered through the early-release branch is explicitly marked
+`device_released`:
 
 - Result keys remain available through `evt.gpu.get()`.
 - `on_cpu` consumes the pending pinned token or cached CPU result.
@@ -290,9 +316,11 @@ null/default stream. The next slot submission synchronizes that stream before
 overwriting the calibration output slot. For a custom consumer stream, use
 `on_gpu_view(stream)` so its completion event is registered explicitly.
 
-In the normal automatic-D2H delivery path, device storage has already been
-released and `on_gpu` raises. Select `gpu_d2h_chunk_size=0` when the result is
-intended for GPU consumption.
+In the conditional early-release automatic-D2H path, device storage has
+already been released and `on_gpu` raises. When parsed input keeps the slot
+through yield, `on_gpu` remains available, but relying on that interaction is
+not a stable automatic-D2H GPU-consumer contract. Select
+`gpu_d2h_chunk_size=0` when the result is intended for GPU consumption.
 
 ### `on_gpu_view(stream)`
 
@@ -363,14 +391,18 @@ view.
 
 ### 3. Device-memory backpressure
 
-`_GpuBudget` accounts for committed device allocations. One coherent EB batch
-is divided into byte-bounded `GpuSubbatchView` objects before submission.
+`_GpuBudget` accounts for selected committed device allocations. One coherent
+EB batch is divided into byte-bounded `GpuSubbatchView` objects before
+submission.
 
 KvikIO raw input slots and calibrated output slots reserve committed bytes
-directly. Fixed constants and geometry are subtracted when deriving the
-per-subbatch allowance. Detector raw/gather scratch and input bytes are
-included in subbatch estimation, while the remaining CuPy allocator overhead
-is covered by the safety margin.
+directly, as do parser Configure and per-slot buffers. Fixed constants and
+geometry are subtracted when deriving the per-subbatch allowance, but are not
+reserved in `_GpuBudget.committed()`. Detector raw/gather scratch, field
+presence, input bytes, and parser estimates contribute to subbatch admission;
+the calculation is an estimate and allocation-time `reserve()` remains the
+enforcement point. See
+[Known problems and limitations](known_issues.md#fixed-allocation-accounting).
 
 Pinned host memory is tracked separately through `_D2hPipeline.pinned_bytes()`.
 
@@ -405,9 +437,10 @@ slot 0: H2D0 -> calib0 -> D2H0 -> release -> H2D2 -> ...
 slot 1: H2D1 -> calib1 -> D2H1 -> release -> H2D3 -> ...
 ```
 
-For the normal automatic-D2H replacement path, the controller releases the
-outgoing slot and issues its replacement H2D before yielding the host-backed
-event. This permits, for example, H2D2 to overlap D2H1 when timing allows.
+For the conditional host-only automatic-D2H replacement path, the controller
+releases the outgoing slot and issues its replacement H2D before yielding the
+host-backed event. This permits, for example, H2D2 to overlap D2H1 when timing
+allows. Parsed input currently disables this early-release branch.
 
 In a ten-event Nsight Systems run with `batch_size=1`, `pool_depth=2`, and
 `gpu_d2h_chunk_size=2`, 8 of the 9 possible D2H-to-next-H2D pairs overlapped.
@@ -516,17 +549,20 @@ and its CPU delivery are visible in Nsight Systems.
 | `gpu_detector.py` | Per-slot calibration/raw buffers and result-ready producer work |
 | `gpu_calib.py` | Calibration constants, geometry helpers, and Jungfrau kernel |
 | `dgram_layout.py` | CPU-side dgram layout and stream/segment discovery |
-| `gpu_budget.py` | Committed device-memory accounting |
+| `gpu_budget.py` | Accounting for explicitly tracked device allocations |
 | `gpu_batch.py` | GPU batch and byte-bounded subbatch views |
+| `gpudgram/` | Run-scoped Configure tables, per-slot XTC parsing, and field locators |
+| `gpu_input.py` | Detector bindings, general field access, and input-buffer leases |
 
 ---
 
-## Deferred work
+## Related open work
 
-- Aggregate GPU-memory coordination across multiple BD processes sharing one
-  device remains separate from the per-BD budget.
 - True GDS depends on filesystem and cuFile infrastructure. On Lustre/GPFS,
   KvikIO uses the CPU-fallback path (storage to CPU DRAM to GPU VRAM).
 - Logical joins of many CPU results are separate from physical D2H chunking.
   Compact downstream GPU reductions should transfer only their reduced result
   rather than full calibrated detector planes.
+- Correctness and completeness gaps in leases, fixed-allocation accounting,
+  pinned-host sizing, and multi-BD coordination are tracked in
+  [Known problems and limitations](known_issues.md).

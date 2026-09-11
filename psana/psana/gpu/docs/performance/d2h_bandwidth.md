@@ -1,4 +1,10 @@
-# GPU D2H Interval and NIC Bandwidth Results
+# GPU D2H and NIC Bandwidth Results
+
+**Status:** Measured on 2026-07-06. This report records the synchronous-D2H
+implementation used for that run; it is performance evidence, not a description
+of the current asynchronous D2H pipeline. See
+[Memory backpressure and results](../memory_backpressure_and_results.md) for
+current behavior.
 
 ## Summary
 
@@ -27,9 +33,10 @@ The GPU runs used the CPU-fallback KvikIO path, not true GDS:
 storage -> CPU DRAM -> GPU VRAM
 ```
 
-The main finding is that the GPU read/calib path is much faster than the CPU
-path when results stay on GPU.  When every event calls `.on_cpu`, the D2H copy
-is synchronous and the total rate falls back to the CPU-like range.
+The main finding at the measured revision was that the GPU read/calibration
+path was much faster than the CPU path when results stayed on GPU. When every
+event called `.on_cpu`, the synchronous D2H copy reduced the total rate to the
+CPU-like range.
 
 ## Event Rate Results
 
@@ -57,8 +64,8 @@ jn10:  185.39 - 25.90  = 159.49 s
 jn1:   404.16 - 246.37 = 157.79 s
 ```
 
-This confirms that the current D2H path is not overlapped with later GPU
-read/H2D/compute work.  It is effectively additive.
+This confirmed that the measurement-time D2H path did not overlap later GPU
+read/H2D/compute work. It was effectively additive.
 
 ## D2H Cost
 
@@ -104,14 +111,14 @@ rate falls back to CPU-like levels.
 
 ## Interpretation
 
-The current path behaves like:
+The measurement-time path behaved like:
 
 ```text
 GPU read/H2D + GPU calib -> GPU result
 optional synchronous .on_cpu -> D2H copy for that event
 ```
 
-What overlaps today:
+What overlapped at the measured revision:
 
 ```text
 GPU read issued before CPU EventManager work
@@ -119,7 +126,7 @@ CPU EventManager can overlap with the GPU read
 GPU calib is launched asynchronously through EventPool
 ```
 
-What does not overlap today:
+What did not overlap at the measured revision:
 
 ```text
 .on_cpu D2H with later read/H2D/compute
@@ -127,7 +134,12 @@ batched D2H with later batches
 async D2H into pinned host memory
 ```
 
-This supports a future split between:
+This evidence motivated separating execution-slot depth from logical result
+retention and physical D2H chunking. The current implementation uses
+`n_gpu_streams`, `gpu_d2h_chunk_size`, and a byte budget for those distinct
+roles.
+
+The earlier design shorthand was:
 
 ```text
 gpu_pool_depth: pipeline depth for read/compute
@@ -141,8 +153,12 @@ holding 100 events would need about 6.4 GiB per BD rank:
 100 * 64 MiB = 6.4 GiB
 ```
 
-That is plausible for one BD per GPU.  With multiple BDs sharing one GPU, a
-smaller starting point such as 16 or 32 events per BD is safer.
+That calculation was part of the earlier logical-join design and is not a
+current sizing recommendation. The implemented `gpu_d2h_chunk_size` controls
+physical pinned-buffer capacity, not a retained cross-batch join. Current
+multi-BD sizing must also account for the known per-device coordination and
+fixed-allocation gaps in
+[Known problems and limitations](../known_issues.md).
 
 ## Reproducing the Runs
 
