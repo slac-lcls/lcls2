@@ -218,8 +218,85 @@ in people's heads.
 
 ## Operations
 
+- **`CpuSpecList` does not reserve whole cores when hyperthreading is on.**  Found on
+  drp-srcf-gpu006 on 2026-09-11, and it is a concrete mechanism for the open IT ticket
+  about Slurm scheduling onto cores already saturated by WEKA.  The agreement is that
+  core 0 is the OS and cores 1-3 are WEKA, expressed as `CpuSpecList=0-3`.  But that
+  list is in *CPU* indices, and on gpu006 `cpu0`'s siblings are `0,64`, `cpu1`'s are
+  `1,65`, and so on — so CPUs 64-67 are the second thread of those very same physical
+  cores and remain schedulable.  Slurm can and will place work on the execution
+  resources WEKA is pinning at 100%.
+
+  Two fixes, in preference order:
+
+  - Turn hyperthreading off in the BIOS, which was IT's original instruction and was
+    not done on many nodes.  gpu008 has it off.
+  - Failing that, extend the reservation to cover the siblings:
+    `CpuSpecList=0-3,64-67`.  This needs no BIOS change and is provably right rather
+    than relying on the unverified `ThreadsPerCore=1` behaviour.  Note that setting
+    `ThreadsPerCore=1` while leaving `CPUs=128` makes the declaration
+    self-contradictory (2 sockets x 32 cores x 1 thread = 64), so `CPUs` would have to
+    drop to 64 as well.
+
+  `gen_gres_conf`'s `Cores=` output is unaffected either way: it is in core-index
+  space, which depends only on sockets x cores-per-socket.
+
 - **datadev driver install at boot via dkms**, so a kernel update does not leave a
-  node without its driver.  Pair with `options datadev cfgDevName=1` above.
+  node without its driver, and so the module parameters live in one declared place
+  instead of in whoever's copy of `comp_and_load_drivers` ran last.  Wanted in
+  `/etc/modprobe.d/datadev.conf`:
+
+  ```
+  options datadev cfgDevName=1 cfgMode=2 cfgCont=0 cfgTxCount=4 cfgRxCount=1020 cfgSize=4096
+  ```
+
+  `cfgDevName=1` gives the `/dev/datadev_XX` hex bus-number names that `gen_gres_conf`
+  keys its `Type=` names off.  `cfgMode=2` is `BUFF_STREAM` (`dma_buffer.h:38`),
+  i.e. `dma_map_single` with explicit cache synchronisation, rather than the
+  `BUFF_COHERENT` default.  The dkms recipe must also pin `DATA_GPU=1` — see below.
+
+  Note that these parameters govern the **CPU-side** DMA buffers only.  The GPU DRP's
+  buffers are the ones registered with `gpuAddNvidiaMemory()`, sized by `drp_gpu`, so
+  `cfgSize` does not bound them.  Both paths coexist on one card: the GPU DRP is
+  restricted to lane 0 and CPU DRPs use any other lane, which is how the ePixUHRemu
+  work has been tested — a GPU DRP on lane 0 at ~200 kB per DMA alongside a timing
+  CPU DRP on lane 1 happy with 4 kB.  The firmware was confirmed to assert the
+  overflow bit when a GPU DMA exceeds its registered buffer.
+
+  `cfgCont=0` deserves its own note, since it differs from the driver's default of 1
+  and from current CPU-node practice.  With continuation enabled, an oversized frame
+  spans buffers (`AxiStreamDmaV2Write.vhd:325`); with it disabled the write engine
+  asserts `overflow` in the `DmaDsc` and sets `dropEn`, discarding the rest of the
+  frame.  No DRP reassembles a continued frame — `TrgInpGen.cu`'s
+  `dmaDsc->header ^ ~dmaDsc->errorMask()` test rejects any header bit other than SOF,
+  and `cont` is bit 3 — so continuation can only produce descriptors the code throws
+  out, while `overflow` is a condition it already tests.  This has bitten before.
+  Riccardo is being asked whether the CPU nodes' ansible should change to match; the
+  GPU sample sets it regardless.
+
+- **An installer that checks the lcls2, driver and firmware builds against the current
+  minimum versions.**  This is the right home for consistency checking; the
+  alternative is every tool growing its own anomaly detection.  Two traps it should
+  cover, both found on drp-srcf-gpu006 on 2026-09-11:
+
+  - The driver only probes the GpuAsyncCore version register when compiled with
+    `DATA_GPU` (`gpu_async.c:48`), which `aes-stream-drivers` enables by setting
+    `NVIDIA_DRIVERS` (`data_dev/driver/Makefile:88`).  Both builds install as
+    `datadev.ko`, so `lsmod` and `modinfo` cannot tell them apart — only
+    `GPUAsync Support` in `/proc/datadev_*` (`dma_common.c:1454`) can.  A node can
+    look healthy and silently be unable to run `drp_gpu`.
+  - Without `DATA_GPU` every card reports `GPU Async En : 0`, which reads as a
+    firmware fault and is not one.  Diagnosing firmware requires the right driver
+    loaded first.
+
+- ~~Does the ePixUHR3x2 emulator firmware still support GPU DMA?~~  **Resolved
+  2026-09-11: yes, it does.**  With the `DATA_GPU` driver loaded, all three cards on
+  drp-srcf-gpu006 report `GPU Async En : 1`, `GpuAsyncCore Version : 5` and a
+  `DataGPU State` section — `ePixUHR3x2XilinxVariumC1100` on `a1` and `d5`,
+  `InterCardTestXilinxVariumC1100` on `84`.  Nothing was reverted; the earlier
+  `GPU Async En : 0` was entirely the wrong driver build.  Recorded because the
+  reasoning generalises: a firmware capability read through a driver that does not
+  probe for it is not evidence about the firmware.
 
 - **Drop CAP_SYS_ADMIN once the registers are mapped.**  `drp_gpu` needs it only for
   the one `cuMemHostRegister(..., CU_MEMHOSTREGISTER_IOMEMORY)` call in
