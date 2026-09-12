@@ -2,6 +2,7 @@ from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import *
 from psdaq.cas.xpm_utils import timTxId
+import os
 import rogue
 import time
 import json
@@ -11,24 +12,33 @@ barrier_global = Barrier()
 args = {}
 #logging.basicConfig(level=logging.INFO)
 
-def detect_C1100():
-    ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
-    file_datadev='/proc/datadev_0'
-    isC1100 = False
+def detect_C1100(dev):
+    ''' Detect if the board is a C1100 by reading the /proc entry for dev
+
+    The name is derived from dev rather than hardwired to /proc/datadev_0, since
+    the driver's cfgDevName=1 option names devices by PCI bus number instead:
+    /dev/datadev_02 with /proc/datadev_02.  With the name hardwired, the open
+    failed on such a node and the board was reported as not a C1100, which is a
+    guess and on this hardware the wrong one.  That put xpmdet_init on the
+    KCU1500 branch, whose rogue tree reads refClockRate() as 0.0, which is outside
+    every timebase range, so connectionInfo() went on to program a Si570 the C1100
+    does not have and divided by its zero crystal frequency.
+
+    Hence no falling back to False: failing to identify the board is not the same
+    as identifying it as a KCU1500, and four steps later the difference is a
+    ZeroDivisionError with nothing to connect it back to here.
+    '''
+    file_datadev = os.path.join('/proc', os.path.basename(dev))
     try:
         with open(file_datadev, 'r', encoding='utf-8') as file:
             for line in file:
                 if 'Build String' in line:
-                    isC1100 = 'C1100' in line
-                    break
-        return isC1100
-
-    except FileNotFoundError:
-        logging.error(f"Error: File '{file_datadev}' not found.")
-        return False
-    except Exception as e:
-        logging.error(f"Error reading file: {e}")
-        return False
+                    return 'C1100' in line
+    except OSError as e:
+        raise RuntimeError(f"Cannot determine the board type: {e}.  Is the datadev "
+                           f"driver loaded, and is {dev} the right device?") from e
+    raise RuntimeError(f"Cannot determine the board type: no 'Build String' in "
+                       f"{file_datadev}")
 
 def dumpTiming(tim):
     logging.warning(f'FidCount  : {tim.FidCount.get()}')
@@ -44,7 +54,7 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     args["timebase"]=timebase
     args["lanemask"]=lanemask
 
-    if (detect_C1100()):
+    if (detect_C1100(dev)):
        # print("Board Detected C1100")
         root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType='VariumC1100',qsa=False, xvcPort=None)
         root.__enter__()
@@ -96,6 +106,29 @@ def xpmdet_connectionInfo(alloc_json_str):
             clockrange = None
 
         if clockrange is not None:
+            #  Is the commented-out guard below what was intended here?  Leaving the
+            #  question for whoever owns this.  Two observations, from debugging a
+            #  C1100 on drp-srcf-gpu001, 2026-09-12:
+            #
+            #  args['core'] is DRIVER_TYPE_ID_G==0, a bare AxiVersion generic whose
+            #  only other use in this file is 'il = i if args['core'] else i+4' in
+            #  xpmdet_connect, i.e. which block of TriggerEventBuffer indices the
+            #  firmware puts the lanes at.  That says nothing about whether the board
+            #  has a reference clock to program, so it looks like the wrong test
+            #  either way round -- which may be why it was replaced by 'if True'.
+            #
+            #  But 'if True' is not right either: only _DevKcu1500 adds an I2CBus,
+            #  _DevC1100 has none, so on a C1100 whose refClockRate() reads outside
+            #  clockrange this raises AttributeError on root.I2CBus.  It has not bitten
+            #  yet only because the rate normally reads in range.  Testing for the bus
+            #  rather than for a firmware variant would cover both boards:
+            #
+            #  if hasattr(root, 'I2CBus'):
+            #      rate = root.TDetTiming.refClockRate()
+            #      if (rate < clockrange[0] or rate > clockrange[1]):
+            #          ...
+            #  else:
+            #      logging.info('No I2CBus on this board; not programming a reference clock')
             if True:
 #            if args['core']:
                 # check timing reference clock, program if necessary

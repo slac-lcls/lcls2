@@ -29,9 +29,58 @@ namespace Drp {
 class XpmDetector : public Drp::XpmDetector
 {
 public:
-  XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) : Drp::XpmDetector(para, pool, len) {}
+  XpmDetector(Parameters* para, MemPool* pool, unsigned len=100) :
+    Drp::XpmDetector(para, pool, len),
+    m_pyModule(PyImport_ImportModule("psdaq.configdb.epixuhremu_config"))
+  {
+    // Imported here rather than in connectionInfo(), which is called once per
+    // Allocate, and following Drp::XpmDetector's own pattern: import once, resolve
+    // the function from the module dict per call.
+    if (!m_pyModule) {
+      PyErr_Print();
+      logging::error("Gpu::EpixUHRemu: cannot import epixuhremu_config; LCLS-II "
+                     "timing will have to be configured by hand");
+    }
+  }
   using Drp::XpmDetector::event;
   void event(Dgram&, const void* bufEnd, PGPEvent*, uint64_t count) override { /* Not used */ }
+
+  // The emulator firmware needs LCLS-II timing configured, which the real
+  // detectors do not and which is otherwise done by hand from the devGui.
+  //
+  // This is the least invasive place for it.  Drp::XpmDetector's Python hook is
+  // hardwired to psdaq.configdb.xpmdet_config (XpmDetector.cc:37), and changing
+  // that, or xpmdet_config itself, would put the CPU DRPs at risk for the sake of
+  // a detector that will never run in production.  But nothing stops a second,
+  // independent import from GPU-only code: epixuhremu_config reaches the rogue
+  // tree through xpmdet_config's own module global, so neither has to change.
+  //
+  // The GIL is already held here -- PGPDetectorApp::connectionInfo wraps
+  // m_det->connectionInfo() in PY_ACQUIRE_GIL_GUARD -- so no guard is needed.
+  json connectionInfo(const json& msg) override
+  {
+    // Before the base call, not after.  With the timing link down,
+    // xpmdet_connectionInfo() reads the XPM remote link id as 0xffffffff and raises
+    // 'Illegal XPM Remote link id', so a hook after it never runs -- and the link
+    // being down is precisely the case this exists to fix.  Its own RxPllReset retry
+    // does not recover it; ConfigLclsTimingV2() also clears UseMiniTpg and issues
+    // TxPhyReset and the Tx and Rx user resets.
+    if (m_pyModule) {
+      auto dict = PyModule_GetDict(m_pyModule);            // Borrowed
+      auto func = PyDict_GetItemString(dict, "epixuhremu_configTiming"); // Borrowed
+      if (func) {
+        auto rv = PyObject_CallObject(func, nullptr);       // Not CallFunction(f, ""),
+        if (rv)  Py_DECREF(rv);                            // which passes None, not ()
+        else     PyErr_Print();
+      } else {
+        logging::error("Gpu::EpixUHRemu: epixuhremu_config has no "
+                       "epixuhremu_configTiming()");
+      }
+    }
+    return Drp::XpmDetector::connectionInfo(msg);          // The whole xpmdet path
+  }
+private:
+  PyObject* m_pyModule;
 };
 
 class RawDef : public VarDef

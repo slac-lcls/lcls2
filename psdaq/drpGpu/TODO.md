@@ -6,19 +6,63 @@ in people's heads.
 
 ## Detector configuration
 
-- **`epixuhremu_config.py`.**  Write `psdaq/psdaq/configdb/epixuhremu_config.py`
-  modelled on `piranha4_config.py`, which calls `ConfigLclsTimingV2()`
-  (`piranha4_config.py:108`) when the timing link is down, resetting the latching
-  register with `TimingFrameRx.RxDown.set(0)` on the other branch.  Coordinate with
-  the calls into `xpmdet_config.py`.  The functions are to be called from the
-  `Gpu::EpixUHRemu` C++ interface.
+- ~~**`epixuhremu_config.py`.**~~  **Done, and working on drp-srcf-gpu001 on
+  2026-09-12.**  From a link-down start, Allocate now logs `epixuhremu: timing link is
+  down, calling ConfigLclsTimingV2()`, the fiducial counter starts counting, and
+  `xpmdet_connectionInfo()` reads a legal `rxId` where it previously got `0xffffffff`
+  and aborted.  Connect and Configure follow through to `Gpu::EpixUHRemu configure`,
+  with no devGui clicking.
 
-  Note the structural obstacle: `Gpu::EpixUHRemu` uses
-  `_initialize<Drp::Gpu::XpmDetector>`, and `Drp::XpmDetector` has no Python config
-  hook — the `<detType>_config.py` machinery lives in `BEBDetector::_init()`.  So
-  this needs a way for EpixUHRemu to reach a config module, not just the module
-  itself.  `Gpu::EpixUHR3x2` gets this for free because it derives from
-  `Drp::EpixUHR3x2`, hence `epixuhr3x2_config.py` already exists and already calls
+  The emulator firmware needs LCLS-II timing configured, which the real detectors do
+  not, and which is otherwise a devGui click per card — tedious on a multi-datadev
+  node.  `ConfigLclsTimingV2()` is guarded on `TimingFrameRx.RxLinkUp`, the live link
+  status, because it resets the receive PLL, issues Tx and Rx user resets and sleeps
+  three times for a second: calling it unconditionally would add that to every
+  Allocate and bounce a link that was working.  `RxDown` is a latch and so is cleared
+  afterwards rather than tested.
+
+  It is called **before** `Drp::XpmDetector::connectionInfo()`, not after.  That is not
+  cosmetic: with the link down, `xpmdet_connectionInfo()` reads the XPM remote link id
+  as `0xffffffff` and raises, so a hook after it never runs — and the link being down
+  is the whole case it exists for.  `xpmdet_connectionInfo()`'s own `RxPllReset` retry
+  does not recover it, because `ConfigLclsTimingV2()` also clears `UseMiniTpg` and
+  issues `TxPhyReset` and the Tx and Rx user resets.  Getting this backwards cost a
+  debugging round; the ordering is commented at both ends.
+
+  Because it must precede the barrier-supervisor election inside
+  `xpmdet_connectionInfo()`, it runs in every DRP process rather than only the
+  supervisor.  That is correct with one process per card, which is the emulator's case.
+  Two processes sharing a card could each find the link down and reset it in turn; the
+  `RxLinkUp` guard makes that unlikely, not impossible.
+
+  An earlier note here claimed `Drp::XpmDetector` has no Python config hook.  That is
+  wrong — it imports `psdaq.configdb.xpmdet_config` at `XpmDetector.cc:37` and looks
+  its functions up in that module's dict on every call.  What it lacks is the
+  `<detType>_config.py` *selection* machinery, which lives in `BEBDetector::_init()`;
+  the module name is hardwired.
+
+  Changing that, or `xpmdet_config.py`, would risk the CPU DRPs for a detector that
+  will never run in production, so neither is touched.  Two properties make that
+  avoidable:
+
+  - `Gpu::Detector` *wraps* rather than inherits — it holds a `Drp::Detector* m_det`
+    built by `_initialize<T>` (`Detector.hh:107`) and delegates `connectionInfo()` to
+    it (`Detector.cc:10`).  So overriding `connectionInfo()` on the file-local
+    `Gpu::XpmDetector` shim in `EpixUHRemu.cu` is enough, and touches no header.
+  - A second, independent Python import from GPU-only code costs nothing.
+    `epixuhremu_config` reaches the rogue tree through `xpmdet_config.args['root']`,
+    a module global, so it needs no cooperation from `xpmdet_config` at all.
+
+  The GIL is already held at that point: `PGPDetectorApp::connectionInfo` wraps
+  `m_det->connectionInfo()` in `PY_ACQUIRE_GIL_GUARD`.
+
+  If an override site were ever unavailable, the fallback is to monkeypatch
+  `xpmdet_config.xpmdet_connectionInfo` from an imported module — the C++ resolves
+  the function from the module dict per call, not at init, so a replacement takes
+  effect.  Action at a distance, and not needed here.
+
+  `Gpu::EpixUHR3x2` needs none of this: it derives from `Drp::EpixUHR3x2`, so it gets
+  the `BEBDetector` machinery, and `epixuhr3x2_config.py` already calls
   `ConfigLclsTimingV2()`.
 
 - **EpixUHR3x2 gain encoding.**  `RangeOffset`/`RangeBits` in `EpixUHR3x2.hh` are
@@ -251,7 +295,18 @@ in people's heads.
   ```
 
   `cfgDevName=1` gives the `/dev/datadev_XX` hex bus-number names that `gen_gres_conf`
-  keys its `Type=` names off.  `cfgMode=2` is `BUFF_STREAM` (`dma_buffer.h:38`),
+  keys its `Type=` names off.  **Anything that hardwires `datadev_0` breaks under it.**
+  One such was found and fixed on 2026-09-12: `xpmdet_config.py`'s `detect_C1100()`
+  opened `/proc/datadev_0` literally, and on a `cfgDevName=1` node the open failed and
+  it *returned False* — reporting a C1100 as a KCU1500.  That built the wrong rogue
+  tree, whose `refClockRate()` reads 0.0, which is outside every timebase range, so
+  `xpmdet_connectionInfo()` went on to program a Si570 the C1100 does not have and
+  divided by its zero crystal frequency.  The visible symptom was a `ZeroDivisionError`
+  in `_Si570.py`, four steps from the cause; the only clue was one line
+  `ERROR:root:Error: File '/proc/datadev_0' not found.` early in the DRP log.  It now
+  derives the name from the device it was given, and raises rather than guessing.
+  This affects the **CPU** DRPs equally, so grep for other hardwired device names
+  before rolling `cfgDevName=1` out more widely.  `cfgMode=2` is `BUFF_STREAM` (`dma_buffer.h:38`),
   i.e. `dma_map_single` with explicit cache synchronisation, rather than the
   `BUFF_COHERENT` default.  The dkms recipe must also pin `DATA_GPU=1` — see below.
 
