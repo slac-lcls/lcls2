@@ -187,7 +187,11 @@ cuda_inc_dir = include_directories([
     include_directories: [drpgpu_inc_dir],
     install: true,
     install_rpath: libdir_install_rpath,
-    link_with: [],
+    # detector_shlib for detector::configNames(), reached through BEBDetector by the
+    # ../drp detector class compiled in above.  A dlopen'd plugin has to carry its own
+    # dependencies: drp_gpu does not link libdetector, so without this the dlopen
+    # fails at run time on an unresolved symbol rather than at build time.
+    link_with: [detector_shlib],
     cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
@@ -208,7 +212,11 @@ cuda_inc_dir = include_directories([
     include_directories: [drpgpu_inc_dir],
     install: true,
     install_rpath: libdir_install_rpath,
-    link_with: [],
+    # detector_shlib for detector::configNames(), reached through BEBDetector by the
+    # ../drp detector class compiled in above.  A dlopen'd plugin has to carry its own
+    # dependencies: drp_gpu does not link libdetector, so without this the dlopen
+    # fails at run time on an unresolved symbol rather than at build time.
+    link_with: [detector_shlib],
     cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
