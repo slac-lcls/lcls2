@@ -18,7 +18,7 @@
 #ifndef _GPU_ASYNC_USER_H_
 #define _GPU_ASYNC_USER_H_
 
-#include "GpuAsyncRegs.h"
+#include <GpuAsyncRegs.h>
 
 #if defined(__cplusplus) && __cplusplus < 201103L
 #error The code in this file requires C++11

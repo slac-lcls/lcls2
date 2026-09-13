@@ -73,6 +73,20 @@ else
 endif
 bindir_install_rpath = join_paths(get_option('prefix'), get_option('bindir'))
 
+# The vendored aes-stream-drivers headers in psdaq/psdaq/aes-stream-drivers include
+# their siblings with angle brackets -- DataDriver.h does #include <AxisDriver.h> --
+# so that directory has to be on the search path.  Doing it here rather than editing
+# the headers keeps them byte-identical to upstream, so syncing them stays a plain
+# copy with nothing to re-apply afterwards.
+#
+# -isystem rather than -I because they are third-party: their warnings are not ours
+# to fix.  Has to precede the subdir() calls below, since add_project_arguments()
+# cannot follow a target declaration.
+add_project_arguments(
+  '-isystem', meson.current_source_dir() / 'psdaq/psdaq/aes-stream-drivers',
+  language: ['cpp', 'cuda'],
+)
+
 subdir('xtcdata')
 subdir('psalg')
 subdir('psana')
