@@ -544,3 +544,68 @@ Note for whoever picks this up: Gabriel's last point is the one to check first. 
 may not have the full serial number to match on, which would need the code made to
 expose it.  `Parameters::serNo` exists and is passed to `Names` during configure, so
 start there.
+
+## Appendix: running the ePixUHR3x2 emulator, from Gabriel
+
+Notes Gabriel sent on Slack on 2026-08-24, kept here because Slack is not a record.
+His words, lightly reflowed; the observations under each are mine, from checking the
+tree on 2026-09-13.
+
+> There are two minor tweaks needed to work with the emulator - I wasn't sure if this
+> should be long term added to configdb or not so for now its just manual:
+>
+> `epixuhr3x2_config.py:183` — that bool needs to be set to True otherwise it will try
+> to initialize asics which don't exist and crash.
+>
+> `epixuhr3x2.py:81` — this is currently hard-coded to use the CPU path.  There are
+> startup problems sometimes and it gets latched onto the wrong data path, so I've had
+> this routine that will toggle it back onto CPU.  Presumably that would need to set
+> `use_cpu = False` to do GPU development.
+
+Both are still as described.  `emulator: bool = False` at `epixuhr3x2_config.py:183`
+feeds `emuMode` and `reset_asic_gt()`; the comment beside it says the emulator does not
+have all the registers and `emuMode` prevents erroneous access to them.
+
+Note that setting it True does **not** obviously avoid the failure seen on 2026-09-13,
+a register transaction timeout on `FebFpga.App.TimingRx.TimingFrameRx.ClearRxCounters`:
+`init_board()` calls `ConfigLclsTimingV2()` gated only on `timebase != "119M"`, not on
+`self._emulator`.  Whether `emuMode` prunes the tree enough for that call to succeed is
+untested.
+
+`_kick_data_path(use_cpu=True)` is called explicitly at `epixuhr3x2.py:653`, commented
+"Force use of CPU data path.  Seems to not determine that sometimes."  It sets
+`DataDestination` to 0x0 for CPU, 0x1 for GPU, so **GPU work needs `use_cpu=False`**.
+Until that changes, data goes to the CPU no matter what else is configured, and the GPU
+path cannot be exercised at all.  This is the hard blocker of the two.
+
+> I programmed DAQ:FEH:XPM:4 with the event codes to run the detector on Seq Engine 5.
+> In whatever group setup you use, the following needs to hold:
+>
+> - Timing's readout group should use event code 278
+> - The ePixUHR readout group should use event code 277
+> - The run trigger should be set to 276 (but this is already setup in configdb so you
+>   may not need to change anything, unless reprogramming the sequencer)
+
+> We didn't setup an IOC for the power supply since its going to be switched soon.  I
+> wrote a Python program you can download with pip, or if you prefer you can send the
+> serial commands over USB directly from ctl-xpp-cam-03 to turn the detector on and off.
+>
+> - Query the state: `echo ":OUTput:STATe?" > /dev/ttyUSB0`
+> - Turn the power on: `echo ":OUTput:STATe ON" > /dev/ttyUSB0`
+> - Turn the power off: `echo ":OUTput:STATe OFF" > /dev/ttyUSB0`
+>
+> You can read responses to your query from another terminal with `cat /dev/ttyUSB0`.
+> This can only be done on ctl-xpp-cam-03 since that is the direct USB connection (no
+> Moxa, etc.).
+>
+> I've left the detector off at the moment.
+
+So the detector was off as of 2026-08-24 and its state since is unknown.  Worth querying
+before concluding anything from a register timeout.
+
+His own reference run, `~dorlhiac/2026/08/24_15:27:42_drp-srcf-gpu006:epixuhr3x2_0.log`,
+used the **CPU** `drp`, `-d /dev/datadev_a1`, `-D epixuhr3x2`, `-W 16`,
+`-k pebbleBufCount=1024`, and
+`SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_07202026`.  That
+release is the one to use: the March release the DAQ defaults to has no
+`epixuhr-3x2-readout-testing` tree at all, so `enable_epix_uhr3x2` raises on import.
