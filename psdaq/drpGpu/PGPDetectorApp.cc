@@ -130,7 +130,12 @@ Drp::Gpu::Detector* DetectorFactory::_instantiate(Pds::Dl&           dl,
 
     if (dl.open(soName, RTLD_LAZY))
     {
-        logging::error("Error opening library '%s'", soName.c_str());
+        // dlerror() or nothing: without it a missing dependency and a missing file
+        // look identical, and the reason -- usually an unresolved symbol naming the
+        // library that should have been linked -- is thrown away.
+        const char* why = dlerror();
+        logging::error("Error opening library '%s': %s", soName.c_str(),
+                       why ? why : "no reason given");
         return nullptr;
     }
 
@@ -138,14 +143,16 @@ Drp::Gpu::Detector* DetectorFactory::_instantiate(Pds::Dl&           dl,
     auto createFn = dl.loadSymbol(symName.c_str());
     if (!createFn)
     {
-        logging::error("Symbol '%s' not found in %s", symName.c_str(), soName.c_str());
+        const char* why = dlerror();
+        logging::error("Symbol '%s' not found in %s: %s", symName.c_str(),
+                       soName.c_str(), why ? why : "no reason given");
         return nullptr;
     }
     typedef Drp::Gpu::Detector* fn_t(Parameters& para, MemPool& pool);
     auto instance = reinterpret_cast<fn_t*>(createFn)(para, pool);
     if (!instance)
     {
-        logging::error("%Error calling %s from %s", symName.c_str(), soName.c_str());
+        logging::error("Error calling %s from %s", symName.c_str(), soName.c_str());
         return nullptr;
     }
     return instance;
@@ -582,7 +589,12 @@ void PGPDetectorApp::connectionShutdown()
         m_det->connectionShutdown();
     }
 
-    m_drp->DrpBase::shutdown();
+    // Guarded like the rest of the teardown path: m_drp is created after m_det, so
+    // it is still null if the detector could not be created, and the destructor
+    // comes through here while unwinding that exception.
+    if (m_drp) {
+        m_drp->DrpBase::shutdown();
+    }
 }
 
   } // Gpu
