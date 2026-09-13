@@ -353,14 +353,48 @@ in people's heads.
   reasoning generalises: a firmware capability read through a driver that does not
   probe for it is not evidence about the firmware.
 
-- **Drop CAP_SYS_ADMIN once the registers are mapped.**  `drp_gpu` needs it only for
-  the one `cuMemHostRegister(..., CU_MEMHOSTREGISTER_IOMEMORY)` call in
-  `MemPool.cc`.  Afterwards the process could remove it from its effective and
-  permitted sets, and clear the ambient set, so the capability is not held for the
-  lifetime of the run.  Looks straightforward: `capset()` with the bit cleared, plus
-  `prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL)`, right after the mapping
-  succeeds.  Worth confirming nothing later in startup needs it — the mapping is
-  early, but `gpuAddNvidiaMemory` and the DMA setup come after.
+- ~~**Drop CAP_SYS_ADMIN once the registers are mapped.**~~  **Done, and verified on
+  drp-srcf-gpu001 on 2026-09-13** across three runs including a Deallocate and a
+  Reset:
+
+  ```
+  Privilege: uid 1085, euid 1085, CapEff 0x0000000000200000, CAP_SYS_ADMIN yes
+  Dropped CAP_SYS_ADMIN; CapEff now 0x0000000000000000
+  ```
+
+  `_dropPrivilege()` in `MemPool.cc` runs immediately after the
+  `cuMemHostRegister(..., CU_MEMHOSTREGISTER_IOMEMORY)` call, clearing the ambient set
+  and then the bit from effective, permitted *and* inheritable, so it cannot be raised
+  again.  It re-reads `CapEff` afterwards and warns if the bit survived, rather than
+  assuming.
+
+  What made the tight placement safe: the mapping is made once, in `MemPoolGpu`'s
+  constructor with a single panel, and is not redone on any transition — Configure and
+  Unconfigure allocate ordinary device and host buffers, not I/O memory.  And the
+  datadev driver checks no capabilities at all, only ownership by thread group
+  (`grep -rn 'capable(\|CAP_SYS' common/driver/ data_dev/driver/src/` is empty), so
+  `gpuAddNvidiaMemory()` and the later ioctls do not need it.
+
+  Note it is a real improvement only for the `setpriv` and `setcap` routes.  Under
+  setuid root the kernel restores a root process's capabilities across an `exec`, so
+  the code warns when `euid` is 0 that dropping the capability is not dropping
+  privilege.
+
+- **`pgpread`: switch it to the `HOST_REARMS_DMA` pattern, or retire it.**  It is a
+  light-weight, detector-agnostic tool for diagnosing whether data is arriving, and it
+  has no performance constraint, so it has no reason to need a privilege.  It is
+  currently the only caller of `gpuInitBufferState()` → `gpuMapFpgaMem()` →
+  `cuMemHostRegister(..., CU_MEMHOSTREGISTER_IOMEMORY)` in `GpuAsyncLib.cc`, which is
+  the tree's second privileged mapping and the reason that path exists at all.  Having
+  the CPU rearm the buffers instead would let it run unprivileged and would leave
+  `MemPool.cc` as the only place needing `CAP_SYS_ADMIN`.
+
+  Retiring it is the other option: `aes-stream-drivers` now ships `rdmaTest`, which
+  appears to cover the same diagnostic ground, and `pgpread` is drifting stale.  What
+  argues for keeping it is that colleagues find it an easier sandbox to modify than
+  `rdmaTest`.  Someone should confirm `rdmaTest` really is a superset before deleting
+  anything.  Either way the status quo is the one option with no upside: a stale tool
+  that also keeps a privileged code path alive.
 
 - **Where the datadev's missing bandwidth goes.**  Cards achieve 102.3 Gbps of the
   126 Gbps a PCIe 4.0 x8 link raw-rates at, i.e. 81%.  Some of that is protocol

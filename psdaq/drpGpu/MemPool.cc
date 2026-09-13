@@ -8,8 +8,11 @@
 
 #include <cstdio>                       // For fopen, fgets, sscanf
 #include <cstring>                      // For strncmp
-#include <unistd.h>                     // For getuid, geteuid
+#include <cerrno>                       // For errno
+#include <unistd.h>                     // For getuid, geteuid, syscall
 #include <linux/capability.h>           // For CAP_SYS_ADMIN (no libcap needed)
+#include <sys/prctl.h>                  // For PR_CAP_AMBIENT
+#include <sys/syscall.h>                // For SYS_capget, SYS_capset
 
 using logging = psalg::SysLog;
 using namespace Pds;
@@ -47,6 +50,24 @@ DataDev::DataDev(const char* path)
 
 
 #ifndef HOST_REARMS_DMA                 // Only this build needs the privilege
+// Read the effective capability set rather than link against libcap for one value.
+// Returns false when it cannot be determined, leaving capEff untouched.
+static bool _capEff(uint64_t& capEff)
+{
+  bool known{false};
+  if (FILE* status = fopen("/proc/self/status", "r")) {
+    char line[256];
+    while (fgets(line, sizeof(line), status)) {
+      if (strncmp(line, "CapEff:", 7) == 0) {
+        known = sscanf(line + 7, "%lx", &capEff) == 1;
+        break;
+      }
+    }
+    fclose(status);
+  }
+  return known;
+}
+
 // Report how the process came by the privilege that the mapping below needs, so
 // that a log shows whether the intended mechanism is the one actually in force.
 // Several mechanisms work, and they are not equally desirable: a leftover setuid
@@ -55,19 +76,8 @@ DataDev::DataDev(const char* path)
 // MemPool.hh for how the privilege is meant to be granted.
 static void _reportPrivilege()
 {
-  // Read the effective capability set rather than link against libcap for one value
   uint64_t capEff{0};
-  bool     capEffKnown{false};
-  if (FILE* status = fopen("/proc/self/status", "r")) {
-    char line[256];
-    while (fgets(line, sizeof(line), status)) {
-      if (strncmp(line, "CapEff:", 7) == 0) {
-        capEffKnown = sscanf(line + 7, "%lx", &capEff) == 1;
-        break;
-      }
-    }
-    fclose(status);
-  }
+  bool const capEffKnown{_capEff(capEff)};
   bool const hasSysAdmin{capEffKnown && (capEff & (1UL << CAP_SYS_ADMIN))};
 
   logging::info("Privilege: uid %u, euid %u, CapEff 0x%016lx, CAP_SYS_ADMIN %s",
@@ -81,6 +91,68 @@ static void _reportPrivilege()
                      "('chmod u-s' to clear it); see the comment in MemPool.hh");
   } else if (hasSysAdmin) {
     logging::debug("Holding CAP_SYS_ADMIN without being root, as intended");
+  }
+}
+
+
+// Give up CAP_SYS_ADMIN once the mapping that needs it has been made.
+//
+// Nothing afterwards wants it.  The cuMemHostRegister() below is the only
+// privileged call in drp_gpu: the mapping is made once, here in MemPoolGpu's
+// constructor, and is not redone on any state machine transition -- Configure and
+// Unconfigure allocate and free ordinary device and host buffers, not I/O memory.
+// The datadev driver checks ownership by thread group and never a capability, so
+// the ioctls that follow, gpuAddNvidiaMemory() among them, do not need it either.
+// Once the registers are mapped the GPU writes them directly, without the host.
+//
+// Raw syscalls rather than libcap, for the same reason _reportPrivilege() reads
+// /proc: one capability is not worth a dependency.
+static void _dropPrivilege()
+{
+  // Ambient first.  The kernel clears an ambient bit when its permitted bit goes
+  // away, so the capset() below would cover this, but doing it explicitly means the
+  // intent survives someone reordering the two.  EINVAL means a kernel without
+  // ambient capabilities, which is not a failure.
+  if (prctl(PR_CAP_AMBIENT, PR_CAP_AMBIENT_CLEAR_ALL, 0, 0, 0) && errno != EINVAL) {
+    logging::warning("Could not clear the ambient capability set: %m");
+  }
+
+  __user_cap_header_struct hdr{_LINUX_CAPABILITY_VERSION_3, 0};
+  __user_cap_data_struct   data[2]{};
+  if (syscall(SYS_capget, &hdr, data)) {
+    logging::warning("capget failed (%m); CAP_SYS_ADMIN not dropped");
+    return;
+  }
+
+  // Drop it from permitted as well as effective, so it cannot be raised again
+  auto const idx  = CAP_TO_INDEX(CAP_SYS_ADMIN);
+  auto const mask = CAP_TO_MASK(CAP_SYS_ADMIN);
+  data[idx].effective   &= ~mask;
+  data[idx].permitted   &= ~mask;
+  data[idx].inheritable &= ~mask;
+
+  if (syscall(SYS_capset, &hdr, data)) {
+    logging::warning("capset failed (%m); CAP_SYS_ADMIN is still held");
+    return;
+  }
+
+  // Confirm rather than assume: a silent no-op here would leave the privilege held
+  // for the whole run, which is the thing this is meant to avoid.
+  uint64_t capEff{0};
+  if (_capEff(capEff)) {
+    if (capEff & (1UL << CAP_SYS_ADMIN)) {
+      logging::warning("CAP_SYS_ADMIN is still effective after capset; CapEff "
+                       "0x%016lx", capEff);
+    } else {
+      logging::info("Dropped CAP_SYS_ADMIN; CapEff now 0x%016lx", capEff);
+    }
+  }
+
+  if (geteuid() == 0) {
+    logging::warning("Still running with euid 0, so dropping the capability is not "
+                     "the same as dropping privilege: the kernel restores a root "
+                     "process's capabilities across an exec.  Grant CAP_SYS_ADMIN "
+                     "on its own instead -- see the comment in MemPool.hh");
   }
 }
 #endif
@@ -215,6 +287,9 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     }
 
     logging::debug("Mapped FPGA registers");
+
+    // That was the only call needing it, so hold it no longer
+    _dropPrivilege();
 #endif
 
     // Configure max. FPGA->GPU buffer on the FPGA side
