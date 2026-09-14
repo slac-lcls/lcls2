@@ -344,10 +344,11 @@ Stage 3 switched `GPUDetector` from `_raw_data_offset` and fixed segment
 stride addressing to field locators. Stage 4A moved stream/dgram ownership and
 canonical segment binding out of the calibration adapter. Stage 4B added
 general field selection, segment-preserving shape materialization, and the
-input-buffer lease used by `on_gpu`, `on_gpu_view`, and `on_cpu`. Remaining
-cleanup can remove the unused legacy layout helper and its tests. Exclusive
-`gpu_det` routing continues to reject shared streams; `hybrid_det` is the
-explicit mirrored-I/O path for those streams.
+input-buffer lease used by `on_gpu`, `on_gpu_view`, and `on_cpu`. The unused
+CPU layout inference module and CPU raw-field descriptor export have been
+removed; `Dgram.config_names()` remains the Configure metadata export used by
+the parser. Exclusive `gpu_det` routing continues to reject shared streams;
+`hybrid_det` is the explicit mirrored-I/O path for those streams.
 
 The run-scoped Configure allocation must outlive every batch. Batch bytes,
 dgram records, ShapesData references, locators, and downstream detector work
