@@ -1,7 +1,7 @@
 """Device-only GPU XTC parser correctness on the xpptut test stream."""
 
-import os
 import struct
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -37,10 +37,13 @@ from psana.gpu.gpu_kvikio_read import (
 )
 
 
-_XTC = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    ".tmp",
-    "xpptut15-r0014-s000-c000.xtc2",
+# Tracked fixture: post-Configure record 3 is the first L1Accept and contains
+# xppcspad[1].raw.arrayRaw (NamesId 0x10c, uint16, shape (3, 6)).
+_XTC = (
+    Path(__file__).resolve().parents[2]
+    / "test_data"
+    / "chunking"
+    / "xpptut15-r0014-s000-c000.xtc2"
 )
 
 
@@ -56,12 +59,14 @@ def _gpu_available():
 requires_gpu = pytest.mark.skipif(
     not _gpu_available(), reason="no CUDA device available"
 )
-requires_data = pytest.mark.skipif(
-    not os.path.isfile(_XTC), reason=f"test data not found: {_XTC}"
-)
 
 
 def _index_post_config(data, config_nbytes):
+    """Supply dgram read metadata, as the integrated CPU read planner does.
+
+    This test harness frames whole dgrams only; XTC walking and field-offset
+    decoding are performed by the GPU parser under test.
+    """
     records = []
     offset = int(config_nbytes)
     event_index = 0
@@ -128,13 +133,12 @@ def _consume_uint16(cp, data_gpu, locators, dgram_index, n_values):
 
 @pytest.mark.gpu
 @requires_gpu
-@requires_data
 def test_xpptut_field_is_located_and_consumed_without_metadata_round_trip():
     import cupy as cp
 
     from psana import dgram
 
-    file_bytes = open(_XTC, "rb").read()
+    file_bytes = _XTC.read_bytes()
     config = dgram.Dgram(view=memoryview(file_bytes), offset=0)
     config_nbytes = int(config._size)
     post_config = file_bytes[config_nbytes:]
@@ -177,13 +181,12 @@ def test_xpptut_field_is_located_and_consumed_without_metadata_round_trip():
 
 @pytest.mark.gpu
 @requires_gpu
-@requires_data
 def test_same_names_id_is_resolved_in_its_own_stream_config_table():
     import cupy as cp
 
     from psana import dgram
 
-    file_bytes = open(_XTC, "rb").read()
+    file_bytes = _XTC.read_bytes()
     config = dgram.Dgram(view=memoryview(file_bytes), offset=0)
     config_nbytes = int(config._size)
     records = _index_post_config(file_bytes, config_nbytes)
@@ -220,14 +223,13 @@ def test_same_names_id_is_resolved_in_its_own_stream_config_table():
 
 @pytest.mark.gpu
 @requires_gpu
-@requires_data
 def test_slot_pool_reuses_device_parser_tables_without_metadata_round_trip():
     import cupy as cp
 
     from psana import dgram
     from psana.gpu.gpu_budget import _GpuBudget
 
-    file_bytes = open(_XTC, "rb").read()
+    file_bytes = _XTC.read_bytes()
     config = dgram.Dgram(view=memoryview(file_bytes), offset=0)
     config_nbytes = int(config._size)
     post_config = file_bytes[config_nbytes:]

@@ -265,7 +265,8 @@ def test_detector_field_handles_group_all_fields_by_name_and_segment():
     assert fields[("raw", "counter")][4].rank == 0
 
 
-def test_detector_array_handles_reject_ambiguous_array_payload():
+def test_adapter_array_selection_rejects_ambiguity_but_named_fields_work():
+    """Only automatic adapter-input selection requires a unique array."""
     configs = GpuStreamConfigTable(
         {
             0: [
@@ -282,6 +283,14 @@ def test_detector_array_handles_reject_ambiguous_array_payload():
             ]
         }
     )
+
+    fields = configs.detector_field_handles(
+        "det", stream_segments={0: [0]}, alg_names={"raw"}
+    )
+    assert fields == {
+        ("raw", name): {0: configs.resolve("det", 0, "raw", name, stream_id=0)}
+        for name in ("first", "second")
+    }
 
     with pytest.raises(ValueError, match="exactly one event array"):
         configs.detector_array_handles(
