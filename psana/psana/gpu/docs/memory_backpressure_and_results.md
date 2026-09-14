@@ -548,7 +548,6 @@ and its CPU delivery are visible in Nsight Systems.
 | `gpu_kvikio_read.py` | Reusable per-slot raw input buffers and asynchronous reads |
 | `gpu_detector.py` | Per-slot calibration/raw buffers and result-ready producer work |
 | `gpu_calib.py` | Calibration constants, geometry helpers, and Jungfrau kernel |
-| `dgram_layout.py` | CPU-side dgram layout and stream/segment discovery |
 | `gpu_budget.py` | Accounting for explicitly tracked device allocations |
 | `gpu_batch.py` | GPU batch and byte-bounded subbatch views |
 | `gpudgram/` | Run-scoped Configure tables, per-slot XTC parsing, and field locators |

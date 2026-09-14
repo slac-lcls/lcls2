@@ -9,7 +9,6 @@ import numpy as np
 import pytest
 
 import psana.gpu.gpu_events as gpu_events_module
-from psana.gpu.dgram_layout import segment_ids_in_l1_order
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_events import GpuEventManager
@@ -313,31 +312,6 @@ def test_run_events_materializes_event_envelope():
     assert events[0].timestamp == 43
     assert events[0].gpu is gpu_state
     assert events[0].run() is run._run_ctx
-
-
-def test_segment_ids_preserve_l1_child_order():
-    dgram = SimpleNamespace(
-        jungfrau={
-            17: object(),
-            13: object(),
-            9: object(),
-            5: object(),
-            29: object(),
-            25: object(),
-            21: object(),
-        }
-    )
-
-    assert segment_ids_in_l1_order(dgram, "jungfrau") == [
-        17,
-        13,
-        9,
-        5,
-        29,
-        25,
-        21,
-    ]
-    assert segment_ids_in_l1_order(object(), "jungfrau") == []
 
 
 class _FakeEvent:
