@@ -9,6 +9,7 @@ are organized by the contract they protect, not by implementation stage.
 | `unit/test_gpudgram.py` | Stream-indexed Configure tables, numeric field handles, named-field and adapter-input selection, and read-descriptor translation |
 | `unit/test_gpu_input.py` | Event/stream dgram mapping, canonical segment order, multiple detectors/fields, segment-preserving shape/dtype access, and input-consumer leases |
 | `unit/test_gpu_result_lifetime.py` | Result copies/views, completion-token tracking, D2H handoff, host caching, budgets, and safe slot retirement |
+| `unit/test_gpu_smoke.py` | Manual-smoke reporting, incomplete participation, and launcher argument/exit-status handling without acquiring GPUs |
 | `integration/test_gpudgram_device.py` | Real CUDA XTC walking and field consumption, stream-scoped NamesId resolution, and reusable parser tables |
 | `integration/test_pixel_exact.py` | Two fast locator-to-adapter CUDA tests plus six slow DataSource raw/calibration acceptance cases |
 
@@ -75,11 +76,55 @@ Check the skip summary before claiming device or DataSource coverage.
 - Add coverage for independent failure modes, not redundant external-data
   shape/dtype/NaN smoke checks. Keep performance thresholds out of pytest.
 
-Manual multi-rank GPU validation requires a Slurm/MPI allocation:
+## Manual MPI/GPU transport smoke check
+
+Run this after MPI transport, GPU routing, or GPU-assignment changes. It is
+not required for every parser edit. It exercises one node with one SMD0,
+one EB, and at least two BDs, with one BD per GPU. Multi-node, multiple-EB,
+and GPU-sharing topologies are outside this check's scope.
+
+Activate the Python environment used for your local build, then launch:
 
 ```bash
-bash psana/psana/gpu/scripts/run_multi_gpu_test.sh
+source setup_env.sh
+bash psana/psana/gpu/scripts/run_multi_gpu_test.sh --max-events 50 --batch-size 5
 ```
 
-That script is a transport/placement smoke check, not a replacement for
-pixel-exact acceptance. Benchmark scripts likewise do not replace tests.
+The launcher sources `install_psana/activate.sh` and verifies the imported
+psana is under that prefix. Set `PSANA_GPU_TEST_PREFIX` for a different local
+build. Missing setup or a wrong install is fatal. Python comes from the
+activated environment, not a hard-coded executable. No output is filtered.
+
+From a login node it requests an A100 allocation; inside an existing Slurm
+allocation it starts a step. With the default two GPUs, the allocation must
+provide one node, four tasks, and two CPUs per task. Set `N_GPUS_PER_NODE`
+to request more GPUs/BDs. The default time limit is 15 minutes; override with
+`PSANA_GPU_TEST_TIME`. Slurm bounds hangs and the launcher returns `srun`'s
+exit status, including failures and timeouts.
+
+The workload defaults to public Jungfrau `mfx100852324` run 77. Override
+`PSANA_GPU_TEST_SMD_GLOB` to select one experiment/run/directory. Its zero
+calibration mask is acceptable here because this check does not compare
+pixel values, shapes, NaNs, or performance. Numerical correctness belongs
+to the separate pixel-exact acceptance suite above. Each delivered event
+must expose `jungfrau.raw`; the smoke check does not copy those pixels.
+
+Every rank is reported, including BDs with zero events. GPU identity comes
+from the actual CUDA device's PCI bus address together with its hostname,
+not an inferred rank or `CUDA_VISIBLE_DEVICES` ordinal.
+
+| Result | Meaning |
+|---|---|
+| `PASS` / exit 0 | Expected event count, unique timestamps, distinct BD devices, every requested BD processed events, and MPI completed |
+| `FAIL` / nonzero | Event delivery or device-placement failure, missing GPU result, or runtime/launcher error |
+| `INCOMPLETE` / script exit 2 | Delivery checks passed, but at least one requested BD/GPU received no events |
+
+Incomplete participation can occur legitimately with very short runs. Rerun
+with more events or smaller batches; do not force event destinations or treat
+it as a data-loss error. For example, `--max-events 1 --batch-size 1` cannot
+exercise both BDs and should report incomplete coverage, not a full PASS.
+
+This smoke check does not prove numerical equality, true GDS operation,
+performance, or the proposed user-task C ABI. Benchmark scripts likewise do
+not replace tests. The small CPU tests of reporting/launching are collected
+by pytest; the real multi-rank GPU run remains manual.
