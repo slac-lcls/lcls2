@@ -1278,10 +1278,10 @@ def issue_2026_08_31(args):
     print(f'resp:{r.json()}')
 
 
-def issue_2026_09_09(args):
+def issue_2026_09_08(args):
     """ISSUE:
        curl -s "https://pswww.slac.stanford.edu/ws/calib_ws/cdb_mfx101628626/epixuhr3x2_000004"
-       It works with query as a string, but DOES NOT work with regular query: {'detector': 'epixuhr3x2_000004', 'run': {'$lte': 163}} 
+       It works with query as a string, but DOES NOT work with regular query: {'detector': 'epixuhr3x2_000004', 'run': {'$lte': 163}}
        PROBLEM:
        FIX:
     """
@@ -1297,7 +1297,20 @@ def issue_2026_09_09(args):
     ldocs = r.json()
     s = '\n\n  '.join([str(d) for d in ldocs])
     print(f'resp\n\n{s}')
-    
+
+
+def issue_2026_09_09(args):
+    """ISSUE: Philip, datinfo -k exp=ascdaq123,run=578 > 'time_stamp': '1990-02-24T19:38:34-0800'
+       PROBLEM: exp='ascdaq123', run=578  run.timestamp : 20466009406593865 -> 1990-02-24T19:38:34
+       FIX:
+    """
+    from psana import DataSource
+    from psana.detector.utils_psana import seconds, timestamp_run
+    ds = DataSource(exp='ascdaq123', run=578)
+    run = next(ds.runs())
+    print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
+    print('ds.timestamps:', str(ds.timestamps))
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1339,7 +1352,7 @@ def selector():
     args = parser.parse_args()
     STRLOGLEV = args.loglevel
     INTLOGLEV = logging._nameToLevel[STRLOGLEV]
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d %(filename)s: %(message)s', level=INTLOGLEV)
+    logging.basicConfig(format='[%(levelname).1s] %(filename)s L%(lineno)04d: %(message)s', level=INTLOGLEV)
 
     TNAME = args.tname # sys.argv[1] if len(sys.argv)>1 else '0'
 
@@ -1362,7 +1375,8 @@ def selector():
     elif TNAME in ('16',):issue_2026_08_19()     # for Murali can't add document to psdm DB
     elif TNAME in ('17',):issue_2026_08_25(args) # kerberos access to DB (for Murali), see --subtest
     elif TNAME in ('18',):issue_2026_08_31(args) # delete documents
-    elif TNAME in ('19',):issue_2026_09_09(args) # kerberos access to DB with query (for Murali), see --subtest
+    elif TNAME in ('19',):issue_2026_09_08(args) # kerberos access to DB with query (for Murali), see --subtest
+    elif TNAME in ('20',):issue_2026_09_09(args) # Philip timestamp is 1990...
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())
