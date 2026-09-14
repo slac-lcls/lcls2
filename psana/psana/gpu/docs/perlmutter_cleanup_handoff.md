@@ -12,7 +12,7 @@ validation. Do not merge or delete this branch as part of the handoff.
 - Stage 2, `7718f8622`: removed the old integration-only parser-status scan,
   clarified API/adapter/budget test contracts, and replaced the generated
   xpptut dependency with the tracked `test_data/chunking` fixture.
-- Stage 3, the commit containing this handoff: narrowed the manual MPI smoke
+- Stage 3, `8d66f344a`: narrowed the manual MPI smoke
   check to event counts, timestamp uniqueness, raw-result availability,
   measured device identity, BD participation, and completion. Removed pixel
   sanity checks and benchmark reporting. Hardened the Slurm launcher and
@@ -122,7 +122,141 @@ Slurm may add termination diagnostics for nonzero results; preserve them.
 The single-node smoke check does not validate multi-EB scheduling, GPU
 sharing, true GDS, performance, or the proposed user-task C ABI.
 
-## Design context and remaining scope
+## Full parser integration: implemented baseline
+
+The parser is already integrated into the DataSource event loop, not just the
+standalone driver. The remaining work below is validation, hardening, API
+completion, and performance work; it is not another raw-addressing migration.
+
+- CPU Configure parsing builds stream-indexed `GpuStreamConfigTable` tables
+  and name/field handles. `GpuXtcBatchPool` uploads the configuration once and
+  shares it across execution slots.
+- EventBuilder supplies GPUBAT1 event/stream file-offset and size descriptors.
+  `KvikioGpuReader` reads whole dgrams into a slot's `data_gpu`. CPU metadata
+  supplies logical event/stream indexing and device destinations, not field
+  offsets derived from parsing event payloads.
+- Each batch uploads initial dgram records. The GPU walker fills header/status
+  columns and ShapesData references; field decoding produces device locators.
+  `evt.gpu.dgrams[stream_id]` links the event to those slot-owned tables.
+- General detector field access resolves detector, segment, algorithm, and
+  field handles. Fields may have different shapes across segments; dense
+  ordering/shape adjustment and calibration belong to detector adapters, not
+  the reader. Existing calibration consumes parser-derived addressing.
+- `gpu_det` keeps selected streams GPU-exclusive; `hybrid_det` explicitly
+  mirrors selected streams to both paths, paying duplicate I/O. Multiple GPU
+  detectors may share a stream. Do not remove these ownership rules merely
+  to optimize reads.
+
+Source map: [architecture](architecture_overview.md),
+[parser details](gpu_xtc_parser.md), `gpu_events.py`, `gpu_kvikio_read.py`,
+`gpudgram/config.py`, `gpudgram/batch.py`, `gpudgram/parser.py`, and
+`gpu_input.py` (source paths relative to `psana/psana/gpu`).
+
+## Remaining integration roadmap
+
+These are proposed follow-up stages, separate from the completed cleanup
+Stages 1–3. Do not implement them all as one change. Keep the verified
+[issue register](known_issues.md) synchronized as issues are closed.
+
+### A. Establish the Perlmutter baseline
+
+Complete the validation above before changing runtime behavior. Exercise
+general fields and calibrated results, shared-stream GPU detectors,
+multi-stream/segment detectors, hybrid CPU/GPU event identity, partial tails,
+and transition drains. Retain the tracked xpptut coverage and nonzero real-data
+pixel comparison. Record actual I/O mode; fallback success is not GDS proof.
+
+### B. Close lifetime and resource-accounting gaps
+
+- Make result leases wait for every consumer stream, as input leases already
+  do. Register the actual `on_gpu` copy stream or enforce its documented stream.
+- Reserve calibration/geometry fixed allocations explicitly, including correct
+  CUDA-IPC ownership. Reject oversized events before starting slot allocation;
+  resolve the unsupported subbatch-budget override and estimate floor.
+- Before multi-EB scaling, replace EB-local GPU identity/leader/budget decisions
+  with node-wide BD and per-device coordination. Test uneven sharing and more
+  than one EB group. Single-EB smoke success does not close this issue.
+
+These are integration safety issues, not reasons to restore CPU field offsets.
+Focus changes in `context.py`, `gpu_input.py`, `gpu_stream.py`,
+`gpu_budget.py`, `gpu_events.py`, `gpu_mpi.py`, and `psexp/mpi_ds.py` as appropriate.
+
+### C. Bulk reads for small detectors
+
+**Current behavior:** `KvikioGpuReader.issue_batch()` submits one `pread` per
+nonempty dgram descriptor. `_build_desc_table()` packs their payloads back to
+back. KvikIO's `task_size` is not a psana-level coalescing plan.
+
+**Proposed first implementation:** introduce a bounded read planner between
+GPUBAT1 descriptor resolution and KvikIO submission, within one execution
+subbatch/slot. Keep two distinct structures:
+
+- Physical read ranges: resolved file/chunk identity, file offset, read length,
+  and destination offset. Merge adjacent ranges first; allow bounded gaps only
+  under an explicit over-read policy. Never merge across files/chunks.
+- Logical dgram records: preserve event/stream identity and dgram size, but
+  rebase each device offset into the containing physical range. For example,
+  a dgram at file offset `f` inside a range starting at `r`, loaded at device
+  offset `b`, has device offset `b + (f - r)`.
+
+The GPU should walk the known logical dgrams, not interpret gap bytes as selected
+events. Physical read ordering may change without changing logical event rows.
+Detectors sharing a stream must reuse that stream's dgram, not issue duplicate
+reads. CPU planning uses SMD offsets/sizes only; no payload parsing or parser
+metadata round trip is needed.
+
+Update admission and buffer sizing to charge **physical fetched bytes**,
+including gaps/padding, plus parser tables and detector allocations. Do not
+derive total input capacity from the last logical row once physical and logical
+ordering differ. Keep `PendingBatch`, file handles, futures, input bytes, and
+parser tables alive until all I/O and CUDA consumers finish, including partial
+submission, short-read, and exception paths. Audit the current stream-keyed
+file cache for chunk changes. Preserve BeginStep/EndRun drain boundaries.
+
+Start in `gpu_kvikio_read.py`; adjust subbatch admission in `gpu_events.py` and
+the descriptor-to-record boundary in `gpudgram/batch.py` only where necessary.
+The field-access API and GPUBAT1 wire format need not change for this first step.
+
+Acceptance: compare coalesced versus per-dgram reads byte-for-byte for contiguous,
+gapped, interleaved-stream, shared-stream, missing-data, chunk-boundary, and tail
+cases. Test short reads, memory limits, and delayed consumers. Then benchmark
+small-detector-heavy data separately from large-detector data, recording request
+count, useful/fetched bytes, issue-to-completion time, end-to-end throughput,
+CPU overhead, and peak device/host memory. Validate fallback and true GDS
+separately; the current wait-only I/O timer is not total read latency.
+
+### D. Finish user-facing event and host-handoff behavior
+
+- Add GPU `RunParallel.steps()` through the unified event/step envelopes.
+  `run.events()` already handles BeginStep; a second independent GPU event path
+  would duplicate lifetime and transition logic.
+- Support `smd_callback` only after callback selection produces coherent CPU
+  and GPU packets. The current explicit rejection is intentional protection.
+- Generalize automatic D2H beyond dense float32 calibrated results using
+  declared output shape/dtype and a pinned-host byte budget. Define whether
+  raw parser inputs remain available or are released after host handoff;
+  eagerly attached inputs currently prevent fully host-backed early retirement.
+- Device-kernel consumers can already use device locators without a host copy.
+  Python `GpuFieldResult` access still fetches a small locator row to construct
+  dynamically shaped arrays. Document that boundary, and optimize/cache or add
+  a device-oriented consumption path only after profiling; do not claim every
+  convenience API is metadata-D2H-free.
+
+### E. Measure parser parallelism and broader detector workflows
+
+Keep the current iterative one-thread-per-dgram walker as the correctness and
+performance baseline; different dgrams already run in parallel. Compare it with
+cooperative ShapesData/block/warp approaches and multi-stream scheduling using
+the same data and output checks. Measure parser-only and end-to-end costs before
+choosing a design. Retain malformed-XTC, depth/capacity, missing-field, and shape
+validation; do not trade explicit errors for silent truncation.
+
+Image publication, additional detector calibration adapters/common-mode, and
+user-task C ABI execution are separate workflow extensions, not prerequisites
+for general raw-field parsing. Prioritize them by actual consumers after the
+baseline and safety work. Bulk-read work can precede these extensions.
+
+## User-task design context
 
 The user-task C ABI is proposed, not implemented. Cleanup did not remove C
 ABI tests: none existed. Retain the result/lease, BeginStep, budget, field,
