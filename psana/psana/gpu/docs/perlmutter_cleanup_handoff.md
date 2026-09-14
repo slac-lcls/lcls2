@@ -1,8 +1,11 @@
 # GPU parser cleanup: Perlmutter handoff
 
 Date: 2026-09-14. Continue branch `codex/psana2-gpu-xtc-parser` from `origin`.
-The SDF implementation is ready for review; Stage 3 still needs real MPI/GPU
-validation. Do not merge or delete this branch as part of the handoff.
+The SDF implementation and Perlmutter cleanup validation are complete. See
+[the Perlmutter validation report](perlmutter_cleanup_validation.md) for all
+176 passing pytest cases, four-GPU MPI participation, expected nonzero exit
+checks, and the required job-local environment corrections. Do not merge or
+delete this branch as part of the handoff.
 
 ## Completed work
 
@@ -53,7 +56,9 @@ tables, field locators, and all numerical/lifetime acceptance coverage.
 2. Build on a login node using the checkout-local `build_psana.sh -j 8`.
    A native rebuild is required when coming from before Stage 1. Activate
    the matching checkout-local `install_psana`, not another worktree's prefix.
-   Follow the Perlmutter skill's conda/compiler/CUDA-shim setup.
+   Follow the Perlmutter skill's conda/compiler setup. The current CUDA shim
+   path is absent on Perlmutter; after activation load `cudatoolkit/12.9` and
+   set `CUDA_PATH="$CUDA_HOME"` as recorded in the validation report.
 3. Verify `psana.__file__`, `psana.dgram.__file__`, MPI library, CuPy/CUDA, and
    visible GPUs. An incremental install can leave a stale installed
    `gpu/dgram_layout.py`; check and remove only that obsolete installed copy
@@ -75,10 +80,12 @@ python -m pytest -q -rs -m slow psana/psana/tests/gpu/integration/test_pixel_exa
 
 Use `PSANA_GPU_TEST_EXP`, `PSANA_GPU_TEST_RUN`, and `PSANA_GPU_TEST_DIR` for
 slow acceptance. Use `PSANA_GPU_TEST_SMD_GLOB` for the manual MPI smoke test.
-Verify staged data under `/pscratch/sd/p/psdatmgr/psdm/<instr>/<exp>/xtc`;
-the exact available experiment/run paths have not been checked from SDF.
-Keep `SIT_PSDM_OFFSITE` unset and use the calibration URL provided by the
-Perlmutter activation helper.
+Run 51 is verified at
+`/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc`; run 77 is absent at its
+expected staged path. Both the smoke and pixel-exact runs used run 51.
+Keep `SIT_PSDM_OFFSITE` unset. After activation, override the helper with
+`LCLS_CALIB_HTTP=https://pswww.slac.stanford.edu/ws`: this branch appends
+`/calib_ws/` itself, so the helper's older value duplicates that suffix.
 
 ## Launch portability: important
 
@@ -98,7 +105,8 @@ Example inside a one-node, four-GPU allocation, after runtime activation:
 export PS_EB_NODES=1 PS_SRV_NODES=0 PS_EB_NODE_LOCAL=0 PS_PARALLEL=mpi
 export MPICH_GPU_SUPPORT_ENABLED=0
 export SLURM_GPUS_ON_NODE=4
-# Set PSANA_GPU_TEST_SMD_GLOB to a verified staged run-77 SMD glob first.
+# Use the staged run-51 dataset verified on Perlmutter.
+export PSANA_GPU_TEST_SMD_GLOB="/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051*.smd.xtc2"
 srun --mpi=cray_shasta -N 1 -n 6 --ntasks-per-node=6 -c 2 \
   --gpus-per-node=4 --gpu-bind=none --kill-on-bad-exit=1 --time=00:15:00 \
   bash -c '
