@@ -59,7 +59,14 @@ def epixuhremu_configTiming():
     # last reset before RxLinkUp means anything.
     time.sleep(1.0)
     if tim.RxLinkUp.get():
-        logging.info('epixuhremu: timing link is up')
+        # Everything the counters hold was accumulated while the link was training,
+        # so it says nothing about the run about to start.  Clearing here matters
+        # because xpmdet_connectionInfo() dumps them a moment later and only then
+        # clears them itself, so without this the numbers in the log are noise.
+        tim.ClearRxCounters()
+        logging.info('epixuhremu: timing link is up, Rx counters cleared')
     else:
+        # Left uncleared deliberately: with the link still down, the error counts are
+        # the evidence.
         logging.error('epixuhremu: timing link is still down after '
                       'ConfigLclsTimingV2(); check the fibre and the XPM')
