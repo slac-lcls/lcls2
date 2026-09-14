@@ -1,11 +1,13 @@
 """Pixel-exact validation of the integrated psana2 GPU event path.
 
-The existing kernel tests start from ``det.raw.raw(evt)`` and therefore do
-not exercise EventBuilder GPU splitting, GPUBAT1 descriptors, KvikIO reads,
-raw-payload extraction, segment ordering, EventPool slot reuse, or timestamp
-joining. This test compares the final result from
-``DataSource(gpu_det="jungfrau")`` with the normal psana CPU calibration for
-the same event timestamps.
+The two fast device tests exercise locator-based raw gathering/calibration
+and float32 passthrough independently of DataSource. The slow acceptance
+cases exercise EventBuilder GPU splitting, GPUBAT1 descriptors, KvikIO reads,
+parser-based field access, segment ordering, and EventPool slot reuse. They
+compare raw and calibrated results from ``DataSource(gpu_det="jungfrau")``
+or ``DataSource(hybrid_det="jungfrau")`` with normal psana CPU results for
+the same event timestamps. Parser-table assertions live in
+``test_gpudgram_device.py`` rather than inspecting retiring slots here.
 
 The default dataset is public MFX Lysozyme Jungfrau ``mfx100848724`` run 51.
 Override it with ``PSANA_GPU_TEST_EXP``, ``PSANA_GPU_TEST_RUN``, and
@@ -325,7 +327,6 @@ def test_integrated_jungfrau_pixel_exact(
     run = next(ds.runs())
 
     seen = set()
-    validated_xtc_batches = set()
     validated_general_field_access = False
     for evt in run.events():
         timestamp = int(evt.timestamp)
@@ -339,45 +340,6 @@ def test_integrated_jungfrau_pixel_exact(
         calib_result = evt.gpu.get("calib")
         raw_result = evt.gpu.get("raw")
         manager = getattr(run._evt_iter, "gpu_manager", run._evt_iter)
-        if d2h_chunk_size == 0:
-            # While the slot is exposed between the two retirement phases,
-            # verify the parser decoded every routed dgram and located the
-            # arrays now consumed by GPUDetector.
-            slot_record = manager.event_pool._retiring
-            if slot_record is None:
-                # End-of-input/max-events delivery comes from flush(), whose
-                # yield window retains the record in _slots without using the
-                # incremental-retirement latch.
-                slot_record = next(
-                    (
-                        record
-                        for record in manager.event_pool._slots
-                        if record is not None
-                        and timestamp in record.gpu_results_by_ts
-                    ),
-                    None,
-                )
-            assert slot_record is not None
-            xtc_batch = slot_record.xtc_batch
-            assert xtc_batch is not None
-            if id(xtc_batch) not in validated_xtc_batches:
-                import cupy as cp
-
-                from psana.gpu.gpudgram.batch import DGRAM_STATUS, LOC_STATUS
-                from psana.gpu.gpudgram.parser import STATUS_FOUND, STATUS_OK
-
-                dgram_status = cp.asnumpy(
-                    xtc_batch.dgram_records_gpu[:, DGRAM_STATUS]
-                )
-                assert np.all(dgram_status == STATUS_OK)
-                found = np.zeros(xtc_batch.n_dgrams, dtype=bool)
-                for handle in manager.gpu_xtc_parser.field_handles:
-                    locator_status = cp.asnumpy(
-                        xtc_batch.locate(handle).rows_gpu[:, LOC_STATUS]
-                    )
-                    found |= locator_status == STATUS_FOUND
-                assert np.all(found), "a routed dgram had no located detector array"
-                validated_xtc_batches.add(id(xtc_batch))
         if _result_still_on_device(calib_result):
             _assert_result_is_slot_backed(run, calib_result._arr)
         else:

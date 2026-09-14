@@ -19,23 +19,21 @@ from psana.psexp.ds_base import DsParms
 from psana.psexp.packet_footer import PacketFooter
 
 
-def test_public_gpu_api_is_minimal():
+def test_public_gpu_api_exports_result_types_and_rank_helpers():
     import psana.gpu as gpu
 
-    assert "GpuEventState" in gpu.__all__
-    assert "GpuFieldData" in gpu.__all__
-    assert "GpuFieldResult" in gpu.__all__
-    assert "GpuEventContext" not in gpu.__all__
-    # D→H join is internal to GpuEventManager — no join class in public API.
-    assert "EventJoiner" not in gpu.__all__, "EventJoiner was made internal"
-    assert "CalibJoiner" not in gpu.__all__, "CalibJoiner was renamed then made internal"
-    # These implementation-detail names must never be public.
-    internal_names = {
-        "gpu_error_handler",
-        "share_calib_between_gpu_peers",
-        "verify_gpu_pinning",
+    # Check supported imports without freezing the API against future additions.
+    required_exports = {
+        "GPUResult",
+        "GpuEventState",
+        "GpuFieldData",
+        "GpuFieldResult",
+        "init_gpu_rank",
+        "is_calib_leader",
     }
-    assert internal_names.isdisjoint(gpu.__all__)
+    assert required_exports.issubset(gpu.__all__)
+    for name in required_exports:
+        assert callable(getattr(gpu, name))
 
 
 @pytest.mark.parametrize("argument", ["gpu_det", "hybrid_det"])
@@ -1087,13 +1085,17 @@ class TestSplitSubbatches:
             (2, 4),
         ]
 
-    def test_single_oversized_event_not_split(self):
-        """An event that alone exceeds budget must still be included."""
+    def test_splitter_preserves_indivisible_events_above_target_size(self):
+        """Splitting preserves event identity; it does not authorize allocation.
+
+        This checks only the proposed subbatch boundaries, not admission of
+        an oversized event or permission to exceed the device-memory quota.
+        """
         det    = _FakeDetForEstimate(4, 512, 1024)
         events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
         gv     = GpuBatchView(_make_batch(3, bd_size=0))
         sbs    = events._split_subbatches(gv)
-        # Each event must appear in exactly one subbatch (even with tiny budget)
+        # Each event appears in one proposed subbatch, with no partial event.
         assert len(sbs) == 3
         for i, sb in enumerate(sbs):
             assert sb._start == i and sb._end == i + 1
