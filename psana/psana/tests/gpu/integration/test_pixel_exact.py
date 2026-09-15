@@ -306,8 +306,8 @@ def test_locator_passthrough_copy_writes_canonical_row():
         # The same parser/calibration path with the SMD proxy retained for the
         # normal CPU BigData reader as well as represented in GPUBAT1.
         pytest.param("hybrid_det", 5, 2, 0, False, id="hybrid-stream-mirror"),
-        pytest.param("gpu_det", 5, 2, 0, True, id="bulk-exclusive"),
-        pytest.param("hybrid_det", 5, 2, 3, True, id="bulk-hybrid-d2h"),
+        pytest.param("gpu_det", 5, 2, 0, None, id="bulk-exclusive"),
+        pytest.param("hybrid_det", 5, 2, 3, None, id="bulk-hybrid-d2h"),
     ],
 )
 def test_integrated_jungfrau_pixel_exact(
@@ -323,8 +323,8 @@ def test_integrated_jungfrau_pixel_exact(
         batch_size=batch_size,
         n_gpu_streams=pool_depth,
         gpu_d2h_chunk_size=d2h_chunk_size,
-        gpu_bulk_read=bulk_read,
         max_events=_N_EVENTS,
+        **({} if bulk_read is None else {"gpu_bulk_read": bulk_read}),
         **{detector_kw: _DET_NAME},
     )
     run = next(ds.runs())

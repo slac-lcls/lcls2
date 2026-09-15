@@ -64,7 +64,7 @@ class DsParms:
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
     gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
-    gpu_bulk_read: bool = False  # adjacent reads inside existing GPU subbatches
+    gpu_bulk_read: bool = True  # adjacent reads inside existing GPU subbatches
     # Whole bigdata stream indices selected for either GPU mode. Populated
     # from Configure by DgramManager and forwarded to EventBuilder.
     gpu_stream_ids: list = None  # list[int] | None
@@ -74,9 +74,7 @@ class DsParms:
     def __post_init__(self):
         if type(self.gpu_bulk_read) is not bool:
             raise TypeError("gpu_bulk_read must be a bool")
-        if self.gpu_bulk_read and not self.gpu_enabled:
-            raise ValueError("gpu_bulk_read requires gpu_det or hybrid_det")
-        if self.gpu_bulk_read and (self.intg_det or (self.timestamps is not None and len(self.timestamps))):
+        if self.gpu_enabled and self.gpu_bulk_read and (self.intg_det or (self.timestamps is not None and len(self.timestamps))):
             raise NotImplementedError(
                 "gpu_bulk_read requires ordinary GPUBAT1 batching; "
                 "intg_det and timestamp filtering are not supported"
@@ -280,8 +278,9 @@ class DataSourceBase(abc.ABC):
     hybrid_det : str or list[str]
         Detectors whose complete streams are read by both CPU and GPU paths.
     gpu_bulk_read : bool
-        Opt in to adjacent KvikIO reads inside existing GPU subbatches.
-        Defaults to False. Requires ordinary gpu_det/hybrid_det batching.
+        Coalesce adjacent KvikIO reads inside existing GPU subbatches (default:
+        True). Set False for per-dgram comparison/debugging. Applies only to
+        gpu_det/hybrid_det; requires ordinary GPUBAT1 batching.
     """
 
     def __init__(self, **kwargs):
@@ -329,7 +328,7 @@ class DataSourceBase(abc.ABC):
         self.n_gpu_streams = kwargs.get("n_gpu_streams", 2)
         self.gpu_d2h_chunk_size = kwargs.get("gpu_d2h_chunk_size", 0)
         self.gpu_memory_budget_gb = kwargs.get("gpu_memory_budget_gb", 0)
-        self.gpu_bulk_read = kwargs.get("gpu_bulk_read", False)
+        self.gpu_bulk_read = kwargs.get("gpu_bulk_read", True)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)

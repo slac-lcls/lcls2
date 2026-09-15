@@ -88,13 +88,13 @@ def issue(reader, descriptors, manager, transitions=()):
     return reader.issue_batch(view(descriptors), manager, file_epochs=epochs)
 
 
-@pytest.mark.parametrize("bulk,requests", [(False, 6), (True, 2)])
+@pytest.mark.parametrize("bulk,requests", [(False, 6), (True, 2), (None, 2)])
 def test_reader_preserves_logical_bytes_and_reports_physical_requests(io, bulk, requests):
     io.files = {"/fast": bytes(range(64)), "/slow": bytes(reversed(range(64)))}
     manager = dm(io.files)
     descriptors = [desc(0, 0, 0), desc(1, 0, 4), desc(1, 1, 0, 8),
                    desc(2, 0, 8), desc(3, 0, 12), desc(3, 1, 8, 8)]
-    reader = KvikioGpuReader(bulk_read=bulk)
+    reader = KvikioGpuReader(**({} if bulk is None else {"bulk_read": bulk}))
     pending = issue(reader, descriptors, manager)
     assert all(f.gets == 0 for f in io.futures)  # submission stays asynchronous
     result = reader.wait_batch(pending)
@@ -250,15 +250,29 @@ def test_bulk_flag_rejects_nonboolean_values(value):
                 gpu_det="jungfrau", gpu_bulk_read=value)
 
 
-def test_bulk_flag_requires_supported_gpu_packet_path():
-    from psana.psexp.ds_base import DsParms
+def test_bulk_default_requires_supported_gpu_packet_path_only_for_gpu():
+    from psana.psexp.ds_base import DataSourceBase, DsParms
+
+    class MinimalDataSource(DataSourceBase):
+        def is_mpi(self):
+            return False
+
+        def runs(self):
+            return iter(())
+
     args = (5, 0, 0, False, None, "", 0, False, [], 0, [], "")
-    with pytest.raises(ValueError, match="requires gpu_det"):
-        DsParms(*args, gpu_bulk_read=True)
-    p = DsParms(*args, gpu_det="jungfrau", gpu_bulk_read=True)
+    cpu = DsParms(*args)
+    assert not cpu.gpu_enabled
+    replace(cpu, intg_det="jungfrau", timestamps=np.array([100]))
+    ds = MinimalDataSource(gpu_det="jungfrau")
+    assert ds.gpu_bulk_read and ds.dsparms.gpu_bulk_read
+    p = DsParms(*args, gpu_det="jungfrau")
     assert p.gpu_bulk_read
     with pytest.raises(NotImplementedError, match="ordinary GPUBAT1"):
         replace(p, intg_det="jungfrau")
+    with pytest.raises(NotImplementedError, match="ordinary GPUBAT1"):
+        replace(p, timestamps=np.array([100]))
+    assert not replace(p, gpu_bulk_read=False).gpu_bulk_read
 
 
 def test_exclusive_smd_packet_resolves_real_chunked_fixture_before_cpu_reads(io):

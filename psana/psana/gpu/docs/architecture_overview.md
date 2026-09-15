@@ -41,8 +41,9 @@ paths when a selected detector shares a stream with CPU consumers. Mirroring
 therefore trades compatibility for duplicate bigdata I/O. A detector cannot be
 selected by both modes, and exclusive and mirrored stream sets cannot overlap.
 
-`gpu_bulk_read=True` opts into adjacent-range KvikIO reads inside the existing
-GPU subbatch/slot. The default is False. The BD resolves file/chunk identities
+GPU reads coalesce adjacent ranges by default inside the existing subbatch/slot.
+No extra DataSource argument is needed. `gpu_bulk_read=False` retains per-dgram
+reads for debugging and comparison. The BD resolves file/chunk identities
 from ordered SMD transitions before submitting reads, then coalesces ranges
 within each file and transition interval. GPUBAT1 and logical event order stay
 unchanged; parser offsets are rebased into the physical read layout.
