@@ -456,7 +456,7 @@ class GpuEventManager:
         # drain it before gpu_reader.close() releases its buffers.
         self._pending_gpu_read = None
 
-        self._setup_detectors(calib_leader=calib_leader)
+        self._setup_gpu_pipeline(calib_leader=calib_leader)
 
     def __iter__(self):
         return self
@@ -544,7 +544,8 @@ class GpuEventManager:
             _fmt_mib(hw.get("pinned", 0)),
         )
 
-    def _setup_detectors(self, calib_leader=True):
+    def _setup_gpu_pipeline(self, calib_leader=True):
+        """Initialize this BD's run-scoped GPU resources and processing pipeline."""
         # Budget must exist before constructing GPUDetector objects.
         from psana.gpu.gpu_budget import _GpuBudget
 
@@ -603,7 +604,7 @@ class GpuEventManager:
         self.gpu_xtc_configs = GpuStreamConfigTable.from_configs(self.configs)
         xtc_field_handles = []
 
-        log_gpu_mem("_setup_detectors entry", rank=_rank)
+        log_gpu_mem("_setup_gpu_pipeline entry", rank=_rank)
         for det_name in self.gpu_det_names:
             try:
                 det = self.run.Detector(det_name)
@@ -741,7 +742,7 @@ class GpuEventManager:
                 )
             elif not calib_leader:
                 # Follower BD rank sharing a GPU with the leader.
-                # is_calib_leader() returned False before _setup_detectors() was
+                # is_calib_leader() returned False before _setup_gpu_pipeline() was
                 # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
                 # share_calib_between_gpu_peers() will populate them later via
                 # CUDA IPC handles from the leader — at zero allocation cost.
@@ -803,17 +804,7 @@ class GpuEventManager:
             budget=self._gpu_budget,
         )
 
-        # KvikioGpuReader: pre-allocate one data_gpu buffer per slot.
-        # _gpu_budget was already created in _setup_detectors() above and
-        # is shared with every GPUDetector so all allocations are counted
-        # against the same limit.
-        bulk_read = self.dsparms.gpu_bulk_read
-        self.gpu_reader = KvikioGpuReader(
-            n_slots=pool_depth, budget=self._gpu_budget, bulk_read=bulk_read,
-        )
-        if bulk_read:
-            from psana.gpu.gpu_file_epochs import GpuFileEpochs
-            self._gpu_file_epochs = GpuFileEpochs(self.dm)
+        self._setup_input_io()
 
         # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
         # Transfers calibrated results to pinned host memory in chunks so that
@@ -863,6 +854,21 @@ class GpuEventManager:
         # Phase-3: per-subbatch byte budget for byte-bounded splitting.
         # Computed once after all GPU detectors are set up.
         self._subbatch_budget_bytes = self._compute_subbatch_budget()
+
+    def _setup_input_io(self):
+        """Create BD-owned input I/O after the shared budget and slots exist.
+
+        The reader serves all selected GPU streams. File resolution state is
+        local to this BD and run, independent of individual detector adapters.
+        """
+        self.gpu_reader = KvikioGpuReader(
+            n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
+            budget=self._gpu_budget,
+            bulk_read=self.dsparms.gpu_bulk_read,
+        )
+        if self.dsparms.gpu_bulk_read:
+            from psana.gpu.gpu_file_epochs import GpuFileEpochs
+            self._gpu_file_epochs = GpuFileEpochs(self.dm)
 
     # ------------------------------------------------------------------
     # Phase 3: byte-bounded subbatch helpers

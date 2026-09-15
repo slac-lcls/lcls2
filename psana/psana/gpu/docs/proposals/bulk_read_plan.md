@@ -62,12 +62,17 @@ Enable/chunkinfo transitions before CPU EventManager processing. Immutable
 event/stream mappings survive later mutations to CPU file handles. Replayed
 history does not rewind chunk state; every transition fences coalescing.
 
+`GpuEventManager._setup_gpu_pipeline()` orchestrates run setup, including the
+shared budget, detector adapters, parser/execution slots, input I/O, and D2H
+pipelines. Its `_setup_input_io()` helper creates the BD-owned reader and
+run-scoped file resolver after the budget and slots exist.
+
 `KvikioGpuReader` now owns pending destinations, ranges, futures, and file
 handles through I/O completion. On submission or completion failure it drains
 all started futures exactly once, preserves the first error and its cause,
 and refuses further submissions. File caching uses resolved file identity
 and prunes obsolete handles only after pending reads release them. This I/O
-cleanup also applies to the default per-dgram path.
+cleanup also applies to the temporary per-dgram comparison path.
 
 The read plan supplies allocation size and logical device offsets. Existing
 slot capacity plus available tracked budget bounds the raw-input allowance.
@@ -97,6 +102,25 @@ including DataSource default propagation, CPU-only special batching, and a
 no-argument reader producing two physical reads for six logical dgrams. The
 exclusive/hybrid GPU acceptance cases now omit the selector; their previous
 explicit-True run above exercised the same coalescing implementation.
+
+Final Stage 2 recheck after the setup refactor: 235 CPU cases passed in
+5.32 seconds. Perlmutter job `58338308` passed all 14 GPU integration cases
+in 466.33 seconds on nid001524 (A100-SXM4-40GB), including default-mode
+exclusive and hybrid pixel-exact cases. KvikIO compatibility mode was True;
+GDS was unavailable. Installed runtime modules were byte-identical to source.
+Evidence: `validation/bulk-read-stage2/recheck-unit.log` and
+`recheck-58338308.log`. Stage 2 acceptance is complete.
+
+## Deferred cleanup
+
+- Remove `gpu_bulk_read` and the per-descriptor submission branch after this
+  integration. Always use the planner; an isolated descriptor naturally becomes
+  a single-descriptor physical range. Keep both paths unchanged for now.
+- Remove tests whose purpose is comparing the legacy and planned read paths
+  when removing that branch. Use CPU-referenced pixel-exact/raw/field checks
+  as the end-to-end correctness oracle. Retain planner bounds/request-count,
+  chunk-transition, fault-injection, and ownership tests; those cover behavior
+  beyond successful pixel output.
 
 ## Target behavior
 
