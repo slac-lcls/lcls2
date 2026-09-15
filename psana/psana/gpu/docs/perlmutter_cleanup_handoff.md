@@ -191,11 +191,18 @@ Focus changes in `context.py`, `gpu_input.py`, `gpu_stream.py`,
 
 ### C. Bulk reads for small detectors
 
-**Current behavior:** `KvikioGpuReader.issue_batch()` submits one `pread` per
+**Integration update (2026-09-14):** Stages 1 and 2 of the
+[bulk-read plan](proposals/bulk_read_plan.md) are implemented. Setting
+`gpu_bulk_read=True` enables adjacent reads within an existing execution
+subbatch, with immutable file/chunk resolution and pending-I/O cleanup.
+CPU validation passed; Stage 2 GPU validation is pending. Independent fast/slow
+input ownership and resident-fast scheduling remain later stages.
+
+**Default behavior:** `KvikioGpuReader.issue_batch()` submits one `pread` per
 nonempty dgram descriptor. `_build_desc_table()` packs their payloads back to
 back. KvikIO's `task_size` is not a psana-level coalescing plan.
 
-**Proposed first implementation:** introduce a bounded read planner between
+**First implementation design:** introduce a bounded read planner between
 GPUBAT1 descriptor resolution and KvikIO submission, within one execution
 subbatch/slot. Keep two distinct structures:
 

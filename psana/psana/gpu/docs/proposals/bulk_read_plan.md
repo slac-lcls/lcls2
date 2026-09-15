@@ -169,8 +169,9 @@ its intentional CPU I/O.
 
 GPUBAT1 currently has stream IDs and file-relative offsets, not per-descriptor
 filenames. `EventManager` discovers chunk changes from Enable/chunkinfo SMD
-metadata and updates `DgramManager`; the GPU reader currently caches CuFile
-objects by stream ID. GPU pre-issue can precede CPU EventManager processing.
+metadata and updates `DgramManager`. Before Stage 2, the GPU reader cached
+CuFile objects by stream ID; it now keys them by resolved file identity.
+GPU pre-issue can precede CPU EventManager processing.
 
 Build an ordered file-epoch map from the paired SMD/transition packet before
 GPU pre-issue. Map descriptors to the active file at their event position;
