@@ -807,7 +807,13 @@ class GpuEventManager:
         # _gpu_budget was already created in _setup_detectors() above and
         # is shared with every GPUDetector so all allocations are counted
         # against the same limit.
-        self.gpu_reader = KvikioGpuReader(n_slots=pool_depth, budget=self._gpu_budget)
+        bulk_read = getattr(self.dsparms, "gpu_bulk_read", False)
+        self.gpu_reader = KvikioGpuReader(
+            n_slots=pool_depth, budget=self._gpu_budget, bulk_read=bulk_read,
+        )
+        if bulk_read:
+            from psana.gpu.gpu_file_epochs import GpuFileEpochs
+            self._gpu_file_epochs = GpuFileEpochs(self.dm)
 
         # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
         # Transfers calibrated results to pinned host memory in chunks so that
@@ -1133,7 +1139,10 @@ class GpuEventManager:
         """Issue and own the single read allowed ahead of CPU processing."""
         if getattr(self, '_pending_gpu_read', None) is not None:
             raise RuntimeError("a pre-issued GPU read is already outstanding")
-        pending = self.gpu_reader.issue_batch(subbatch, self.dm, slot_id=slot_id)
+        kwargs = {}
+        if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
+            kwargs["file_epochs"] = self._gpu_read_files
+        pending = self.gpu_reader.issue_batch(subbatch, self.dm, slot_id=slot_id, **kwargs)
         self._pending_gpu_read = pending
         return pending
 
@@ -1192,6 +1201,21 @@ class GpuEventManager:
         n_events = self._n_events
         try:
             while True:
+                gpu_views = [GpuBatchView(packet, validate=True)
+                             for packet, _ in gpu_batch_dict.values()]
+                if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
+                    if len(gpu_views) > 1:
+                        raise ValueError("bulk reads require one coherent GPUBAT1 packet")
+                    transitions = [
+                        transition
+                        for packet, _ in step_dict.values()
+                        for transition in _iter_step_events(packet, self.configs)
+                        if transition[0] and not TransitionId.isEvent(transition[0])
+                    ]
+                    self._gpu_read_files = self._gpu_file_epochs.resolve(
+                        [d for view in gpu_views for d in view.iter_read_descs(self.dm)],
+                        transitions,
+                    )
                 end_run_seen = yield from self._handle_steps(step_dict)
 
                 # ── Phase 3: GPU path — split batch into subbatches ──────────
@@ -1202,8 +1226,7 @@ class GpuEventManager:
                 all_subbatches = []
                 first_pending  = None   # (subbatch_0, PendingBatch)
 
-                for gpu_batch, _ in gpu_batch_dict.values():
-                    gpu_view = GpuBatchView(gpu_batch, validate=True)
+                for gpu_view in gpu_views:
                     if not gpu_view.has_work:
                         continue
                     all_subbatches.extend(self._split_subbatches(gpu_view))

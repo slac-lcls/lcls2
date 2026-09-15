@@ -1,8 +1,10 @@
 # GPU bulk-read implementation plan
 
-Status: Stage 1 implemented for review, 2026-09-14; Stages 2-7 remain proposed.
+Status: Stages 1 and 2 implemented, 2026-09-14; Stage 2 GPU validation is in
+progress. Stages 3-7 remain proposed.
 Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The new planner
-is not connected to the production reader or scheduler.
+is connected to the reader only with `gpu_bulk_read=True`; the existing
+execution-subbatch schedule is preserved.
 
 ## Stage 1 review evidence
 
@@ -49,9 +51,42 @@ an initial run with `PS_PARALLEL=none` failed that test before the corrected
 211-case pass. Site MUNGE diagnostics and existing amitypes deprecations were
 also emitted; the final pytest exit status was zero.
 
-Stage 1 stops here for review. File-epoch resolution, KvikIO integration,
-input ownership, admission/scheduling, and consumer execution remain future
-stages as specified below.
+Stage 1 was committed as `c71eac4d2`. Stage 2 started after user review.
+
+## Stage 2 review evidence
+
+`DataSource(..., gpu_det=..., gpu_bulk_read=True)` enables the adjacent-range
+reader in existing slots. The default retains per-dgram reads. The BD's
+`GpuFileEpochs` snapshots run-start file identity and applies ordered SMD
+Enable/chunkinfo transitions before CPU EventManager processing. Immutable
+event/stream mappings survive later mutations to CPU file handles. Replayed
+history does not rewind chunk state; every transition fences coalescing.
+
+`KvikioGpuReader` now owns pending destinations, ranges, futures, and file
+handles through I/O completion. On submission or completion failure it drains
+all started futures exactly once, preserves the first error and its cause,
+and refuses further submissions. File caching uses resolved file identity
+and prunes obsolete handles only after pending reads release them. This I/O
+cleanup also applies to the default per-dgram path.
+
+The read plan supplies allocation size and logical device offsets. Existing
+slot capacity plus available tracked budget bounds the raw-input allowance.
+There is no new public per-request size knob and no gap over-read. Broader
+fixed-allocation accounting and resident-fast scheduling remain Stages 4-5.
+
+`io_stats()` retains `total_bytes` (bytes from fully validated physical reads),
+`total_ns` (wait-only time), and the existing bandwidth calculation. New fields
+are `total_requests`, `requested_bytes`, `useful_bytes` (fully successful
+batches), `issue_to_complete_ns` (summed submission-to-completion wall time),
+and `bulk_read`. Concurrent batch durations may overlap; their sum is not an
+end-to-end bandwidth denominator.
+
+CPU validation: all 234 GPU unit cases passed. New cases include fault
+injection, immutable file resolution, and the tracked chunking fixture with
+exclusive GPU routing and events on both sides of a chunk change in one EB
+packet. Device validation job `58335140` was submitted on Perlmutter; results
+will be recorded before the Stage 2 review checkpoint. Logs and the submitted
+script are under `validation/bulk-read-stage2/` (generated, not committed).
 
 ## Target behavior
 
