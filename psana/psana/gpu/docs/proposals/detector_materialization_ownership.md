@@ -1,10 +1,62 @@
 # Detector materialization and early reader-buffer reuse
 
-Status: proposed design, agreed in the side conversation on 2026-09-15.
-This document records implementation requirements; it does not claim they are
-implemented or authorize starting another implementation stage.
+Status: deferred on 2026-09-15. The experimental Stage 3A code and tests were
+reverted before production integration. Stage 3 remains the implementation in
+commit `a5f07ee38`; review and bulk-read work continue from that baseline.
+The design below is retained for a possible future refactor, not a prerequisite
+for completing the current bulk-read stages.
 
-This refines [the bulk-read plan](bulk_read_plan.md). In particular, long-lived
+## Deferral decision and current behavior
+
+The scope of a general materializer, independent detector owners, preparation
+streams, and independently recycled reader pools is larger than warranted by
+the immediate memory benefit for small slow-detector groups. Retaining source
+buffers in a bounded pool applies backpressure rather than accumulating a new
+allocation for every batch. Making cached buffers reusable earlier does not
+itself reduce allocated VRAM; savings require fewer/smaller allocations.
+
+Illustrative sizing using the recorded run-51 raw shape `(32, 512, 1024)`:
+uint16 Jungfrau payload is 32 MiB/event. Two reader buffers holding two events
+each retain about 128 MiB of Jungfrau source payload, plus XTC metadata and
+parser storage. One retained 1,000-event fast input adds 3.9 MiB if its dgrams
+are 4 KiB each (an assumption, not a measured fast-detector size). If one
+64 MiB reader buffer eventually provides sufficient overlap instead of two,
+the source-capacity saving is about 64 MiB; detector inputs/outputs still need
+their own storage. Revisit with actual byte counts, parser capacity, budgets,
+and evidence that source reservations limit throughput or admission.
+
+Current Stage 3 keeps reader XTC bytes and parser tables under `InputWindow`
+references. Detector raw/calibrated slot arrays remain under EventPool result
+leases. For a registered user consumer in the ordinary delivery path, EventPool
+waits for detector-result completion before releasing the event's input-window
+reference and recycling the execution slot. Parsed-field view contexts hold
+their own input references and completion tokens. This is conservative source
+retention, not release at gather completion. Arbitrary escaped pointers or
+unregistered CUDA streams are not protected by this contract.
+
+The existing `SlotLease` for detector results still stores one terminal event;
+separate zero-copy consumers of the same result on multiple streams are not
+safe unless their work is covered by one registered completion dependency.
+`InputSlotLease` for parsed fields already tracks multiple events. This known
+result-lease limitation is not fixed by reverting or retaining Stage 3A.
+
+There are currently two field-consumption paths to revisit:
+
+- Jungfrau's supported calibration adapter automatically gathers raw pixels
+  into execution-slot storage, then calibrates them in `GPUDetector.process_batch()`.
+  Supported precalibrated dense adapters likewise gather into their output.
+- Generic field access in `GpuFieldResult` reads parser-located XTC views;
+  `on_gpu` explicitly copies those views when requested. This path serves
+  arbitrary fields, including Jungfrau fields and detectors without calibration
+  adapters. There is no common automatic materialization of every selected field.
+
+If this proposal is revived, unify those paths for detectors selected through
+`gpu_det` and `hybrid_det`, preserving all supported event fields. Detector-specific
+calibration should consume the shared materialized representation. The proposed
+Stages 3A-3D below describe that future work only; the current implementation
+continues to permit leased XTC field views.
+
+The deferred design would refine [the bulk-read plan](bulk_read_plan.md). In particular, long-lived
 fast data should reside in detector-owned buffers after materialization, rather
 than keeping original XTC bytes and parser tables alive through execution.
 The stream and reuse requirements below are part of the design, not optional

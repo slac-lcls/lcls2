@@ -131,6 +131,14 @@ until planned uses, event consumers, and CUDA work have finished. The current
 scheduler still groups reads with execution subbatches; independent fast/slow
 residency admission comes in later stages.
 
+Before issuing each read, Stage 4 admission reserves growth capacity for its
+reader, parser, and detector buffers together. Fixed calibration, geometry, and
+Configure allocations are charged once to their owning BD; IPC followers do
+not charge shared calibration views again. Cached buffers retain their charge.
+Under pressure, the manager drains execution consumers before trimming free
+buffers and retrying. A 10% margin covers runtime/allocator overhead; independent
+user allocations and host staging are outside this device-memory ledger.
+
 Per-event `GpuEventState` objects expose that event's results and input bindings;
 they do not own the manager. Field-view contexts and field copies reserve input
 references before accessing raw storage.
@@ -198,4 +206,5 @@ is [Known problems and limitations](known_issues.md).
 | `gpu_stream.py` | Reusable execution slots and retirement |
 | `context.py` | `GpuEventState`, `GPUResult`, and result access modes |
 | `gpu_budget.py` | Per-BD accounting for explicitly tracked device allocations |
+| `gpu_admission.py` | Presence-aware execution sizing and future residency planning |
 | `gpu_mpi.py` | Device assignment and CUDA IPC calibration sharing |

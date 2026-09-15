@@ -220,10 +220,11 @@ one locator table per registered field handle
 
 The Configure tables and per-slot parser buffers are charged to the same
 `_GpuBudget` as KvikIO input and detector slot buffers. Parser bytes are also
-included in subbatch sizing. Calibration constants and geometry are measured
-and subtracted while deriving the default subbatch allowance, but the current
-committed-byte counter does not reserve them; that accounting gap is tracked
-in [Known problems and limitations](known_issues.md#fixed-allocation-accounting).
+included in subbatch sizing. Calibration constants and geometry are reserved
+during setup. Stage 4 holds the reader, parser, and detector growth requirements
+together before I/O, so input reads cannot consume parser progress capacity.
+See [device-memory backpressure](memory_backpressure_and_results.md#3-device-memory-backpressure)
+for the accounting boundary and pressure-driven cache trimming.
 `EventPool.submit()` queues the parser before detector work on the same
 non-blocking slot stream and retains the `GpuEventBatch` in
 `_EventSlot.xtc_batch`. Two-phase retirement synchronizes the producer and

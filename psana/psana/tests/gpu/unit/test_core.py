@@ -904,6 +904,7 @@ class _FakeDetForEstimate:
         self._n_segs_calib   = n_segs
         self._nrows          = nrows
         self._ncols          = ncols
+        self.binding = SimpleNamespace(has_sources=lambda streams: 0 in streams)
 
     def estimate_subbatch_bytes(self, n_events):
         return GPUDetector.estimate_subbatch_bytes(self, n_events)
@@ -1022,18 +1023,17 @@ class TestEstimateSubbatchBytes:
         e10 = det.estimate_subbatch_bytes(10)
         assert e10 == 10 * e1
 
-    def test_formula_uses_routed_field_handles(self):
+    def test_formula_covers_canonical_rows_including_missing_segments(self):
         det = _FakeDetForEstimate(
             n_segs=32, nrows=512, ncols=1024,
             n_routed_segs=12,
         )
-        n_segs_gpu = 5 + 7
-        expected   = 1 * n_segs_gpu * 512 * 1024 * (4 + 2)
+        expected   = 32 * 512 * 1024 * (4 + 2) + 32
         assert det.estimate_subbatch_bytes(1) == expected
 
     def test_formula_defaults_to_all_calib_segments(self):
         det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
-        expected = 1 * 8 * 256 * 512 * (4 + 2)
+        expected = 1 * 8 * 256 * 512 * (4 + 2) + 8
         assert det.estimate_subbatch_bytes(1) == expected
 
 
@@ -1086,20 +1086,13 @@ class TestSplitSubbatches:
             (2, 4),
         ]
 
-    def test_splitter_preserves_indivisible_events_above_target_size(self):
-        """Splitting preserves event identity; it does not authorize allocation.
-
-        This checks only the proposed subbatch boundaries, not admission of
-        an oversized event or permission to exceed the device-memory quota.
-        """
+    def test_splitter_rejects_indivisible_event_above_capacity(self):
         det    = _FakeDetForEstimate(4, 512, 1024)
         events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
         gv     = GpuBatchView(_make_batch(3, bd_size=0))
-        sbs    = events._split_subbatches(gv)
-        # Each event appears in one proposed subbatch, with no partial event.
-        assert len(sbs) == 3
-        for i, sb in enumerate(sbs):
-            assert sb._start == i and sb._end == i + 1
+        from psana.gpu.gpu_budget import GpuMemoryPressureError
+        with pytest.raises(GpuMemoryPressureError, match='cannot fit alone'):
+            events._split_subbatches(gv)
 
     def test_event_order_preserved(self):
         det    = _FakeDetForEstimate(4, 512, 1024)
@@ -1290,10 +1283,10 @@ class TestKvikioSlotBufferBudget:
         rdr._ensure_slot_buffer(0, 400)
         assert budget.committed() == 400
 
-    def test_growth_charges_only_the_delta(self):
+    def test_growth_retains_only_new_capacity_after_replacement(self):
         from psana.gpu.gpu_budget import _GpuBudget
 
-        budget = _GpuBudget(limit_bytes=1000)
+        budget = _GpuBudget(limit_bytes=1100)  # old 400 + replacement 700 at peak
         rdr, _ = self._reader(budget)
         rdr._ensure_slot_buffer(0, 400)
         rdr._ensure_slot_buffer(0, 700)
