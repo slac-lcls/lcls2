@@ -77,28 +77,58 @@ in people's heads.
 
 ## Slurm and node configuration
 
-- **`gres.conf` publishing.**  `psdaq/psdaq/slurm/gen_gres_conf.py` does the work.
-  The workflow, run on the node after every datadev driver load:
+- **gpu006 is published** as of 2026-09-14, the first node converted.  Slurm now
+  advertises `gpu:dda1:1(S:1),gpu:ddd5:1(S:1)`; the `(S:1)` confirms it mapped the
+  emitted `Cores=32-63` to socket 1, which is where both GPUs are.  `GresTypes` was left
+  alone, since only the GPU is declared.
 
-      gen_gres_conf.py --expect N --base --output ~/gres.conf
-      scp ~/gres.conf psslurmctld001:/etc/slurm/gres.conf
-      ssh psslurmctld001 sudo scontrol reconfigure
+  **Converting a node drains it, and the drain has to be cleared by hand.**  Expect
+  `State=UNKNOWN+DRAIN+INVALID_REG` in passing and then `State=IDLE+DRAIN` with
+  `Reason=gres/gpu:ddXX count too low (0 < 1)`.  The two config files are distributed
+  together, but the controller applies its view and `slurmd` reloads at slightly
+  different moments, so there is a window in which the declared count exceeds the
+  detected one.  The reason is stale by the time you read it; Slurm never clears a drain
+  by itself:
 
-  `--base` with no argument starts from `/var/spool/slurmd/conf-cache/gres.conf`, the
-  copy the controller distributed to this node, and emits the whole file with this
-  node's block spliced in.  No editor involved.
+      sudo scontrol update NodeName=drp-srcf-gpuNNN State=RESUME
 
-  **The hole**: that copy is only as current as the last `scontrol reconfigure`, so
-  anything changed on the controller since will be silently reverted when the result
-  is copied back.  The script prints the base's size, mtime and sha256 so it can be
-  compared against `psslurmctld001:/etc/slurm/gres.conf` before copying; closing the
-  hole properly would mean splicing on the controller instead, which needs the node
-  name passed in rather than taken from `uname`.
+  If that same reason returns immediately afterwards, `slurmd` has not reloaded
+  `gres.conf` -- `sudo systemctl restart slurmd` on the node, then resume again.  The
+  documentation does not say whether `scontrol reconfigure` suffices for that file, and
+  on gpu006 it did.  A *persistent* `INVALID_REG`, or that reason surviving a slurmd
+  restart, would be the real thing.
 
-  The script also **comments out**, rather than deletes, any pre-existing
-  `NodeName=<this node>` gpu or datadev line outside its own block.  Those are the
-  hand written entries it replaces, and leaving them would give the node two records
-  for the same `File=` with different `Type=`.
+  Still to do: gpu001 (one card, one A5000, so `--expect 1` and no `--exclude`), then the
+  rest as they are built.  Nothing yet tests that a DAQ process is actually allocated the
+  paired GPU -- that wants a run on gpu006 with `nvidia-smi` showing two GPUs in use
+  rather than one.
+
+- **`gres.conf` publishing.**  `psdaq/psdaq/slurm/gen_gres_conf.py` derives the
+  pairing; publishing is a deliberate paste.  Run on the node after every datadev
+  driver load:
+
+      gen_gres_conf --expect N [--exclude CARDS]
+
+  then paste the output into `psslurmctld001:/etc/slurm/gres.conf`, replacing any
+  existing lines for that node, and `sudo scontrol reconfigure` there.  `slurm.conf`
+  needs the node's `Gres=` line to agree; the tool prints the exact string on stderr.
+  Afterwards, `--check` compares the node's distributed copy against its hardware and
+  exits non-zero on any difference.
+
+  Stdout is exactly the file content and nothing else; every instruction, count and
+  warning goes to stderr.  So `2>/dev/null` yields the block alone and `>/dev/null` the
+  instructions alone.  The block itself is two lines per pairing plus one header and the
+  cut-here markers, because it repeats per node: at twenty-odd nodes a paragraph of
+  preamble each would make the central file unreadable, which is exactly the objection to
+  generating it at all.  The reasoning lives on the Confluence page instead.
+
+  It deliberately does **not** write to `gres.conf`.  Earlier versions spliced their
+  output in, retiring superseded lines and recording the base file's checksum, which was
+  disproportionate: the whole central file is about two dozen lines for nine nodes, so it
+  can be read at a glance, and editing it by hand is the recovery path when hardware
+  breaks at three in the morning.  A tool that rewrites a shared file has to be
+  understood before it can be trusted.  Roughly 200 lines went with that decision, and
+  another 50 with the verbose block.
 
   Note what the existing file already contains: hand written per-node lines with
   `Type=nvidia_h200_nvl`, and a comment recording that "cpo and claus have a guess
@@ -107,14 +137,51 @@ in people's heads.
   this task.  Model based type names cannot express the pairing, because every H200
   on the node has the same model name; bus derived names (`dd04`) can.
 
-  With ~25 nodes coming, the copy-and-reconfigure step wants automating.
+  That naming is also what makes the 3 a.m. recovery cheap.  `ddXX` is bound to the
+  *card*, and which GPU serves it is decided solely by the `File=` on its `Name=gpu`
+  line, so moving a card to a spare GPU is one edit to one line plus a reconfigure — no
+  `slurm.conf` change, no DAQ configuration change.  Worth provisioning N+1 GPUs per node
+  for that reason: had gpu008 had a spare, GPU5's death would have been that one-line fix
+  instead of the episode that motivated the degraded-mode machinery.
 
-- **The `g` flag conflicts with a gres request.**  `psdaq/slurm/utils.py:590` emits
-  `#SBATCH --gpus-per-task=1 --gpus=1` when `flags` contains `g`, which collides
-  with `--gres=gpu:...`: two ways of asking for a GPU in one allocation.  They need
-  to be mutually exclusive, with gres winning.  Worse, `generate_as_step()` handles
-  no flags at all, so placement differs by launch mode — `#SBATCH` in per-process
-  mode, on the `srun` line in step mode.  Must be settled before gres is usable.
+- ~~**The `g` flag conflicts with a gres request.**~~  Done in `utils.py`.  `get_gres()`
+  derives the request from the process's own `-d /dev/datadev_XX`, so
+  `#SBATCH --gres=gpu:ddXX:1` replaces the `--gpus-per-task=1 --gpus=1` kludge.  Request
+  and device name come from one string and cannot drift apart.  Verified by rendering
+  gpu6.py: the two GPU processes get `gpu:dda1:1` and `gpu:ddd5:1`, the CPU DRP and the
+  TEB get no GPU request at all.  **Inert until the records are published**, since a
+  request for a type that does not exist pends for ever.
+
+  Three decisions worth keeping:
+
+  - The `--gpus` fallback is *not* kept.  An arbitrary GPU is the failure this exists to
+    prevent, and asking for none fails immediately in CUDA init rather than running
+    slower than it should for reasons nobody can see.
+  - The device suffix must be exactly two hex digits, which is what `cfgDevName=1`
+    produces and what `gen_gres_conf` derives type names from.  A single digit means
+    probe-order naming, so `dd1` would request a type existing nowhere; `get_gres()`
+    warns and declines instead.  That is why the CPU `timing_0` on cmp008, which uses
+    `-d /dev/datadev_1`, is untouched.
+  - `generate_as_step()` is deliberately not changed.  It handles no flags at all, and
+    in step mode one allocation covers several processes on a node that want *different*
+    gres, so the header would need the union while each `srun` requests its share.
+    `as_step` defaults to False and has no known user; `generate()` is the worked
+    example if one appears.
+
+- **The datadev is not a gres, and `ConstrainDevices=yes` is why.**  Declaring
+  `Name=datadev ... File=/dev/datadev_XX` would let Slurm catch a `.cnf.py` that hands
+  two processes the same card -- something that has bitten us more than once.  It is
+  deliberately not done: `cgroup.conf` sets `ConstrainDevices=yes`, which per
+  `cgroup.conf(5)` constrains "the job's allowed devices based on GRES allocated
+  resources".  Naming the datadev would therefore *deny* a job access to any card it was
+  not allocated, breaking the arrangement in use on gpu001 and gpu006 -- a GPU DRP on
+  lane 0 of a card and a CPU DRP on another lane of the same one.  The second process
+  cannot request the same `datadev:ddXX:1`, the count being one.
+
+  So only the GPU is declared, which also means `GresTypes=gpu` suffices and needs no
+  change.  Worth revisiting once there is experience of how the GPU allocation behaves:
+  the duplicate-`-d` check is worth having, but as a lint over the `.cnf.py`, which costs
+  nothing and breaks nothing.
 
 - **`cfgDevName=1` everywhere.**  `options datadev cfgDevName=1` in
   `/etc/modprobe.d/datadev.conf` makes the driver name devices by PCI bus number
@@ -136,6 +203,61 @@ in people's heads.
   after every driver load and at boot, rather than trusting Slurm to self-correct.
 
 ## Performance and structure
+
+- **Nothing coordinates the green context split with the kernels' launch geometry.**
+  There are three independent hard-coded SM tables, and they disagree:
+
+  | where | SMs it assumes | context it runs in |
+  |---|---|---|
+  | `PGPDetector.cc:615` green split | 6 / 40 / remainder | — |
+  | `Reader.cu:528`, for `_event` | 6 at `tpSM` 1536, **8** at 2048 | ctx 0, which has **6**, shared with TrgInpGen |
+  | `NoOpReducer.cu:158`, for `_reduce` | **20** at 1536, **10** at 2048 | ctx 1, which has **40** |
+
+  `m_green_ctx[0]` goes to both the Reader and TrgInpGen, `[1]` to the Reducer, `[2]`
+  (the remainder) to `TebReceiver::_recorder`.  So on an H200, `_event` asks for eight
+  SMs' worth of blocks inside a six-SM context it also shares, while `_reduce` uses a
+  quarter of its forty.  The two tables even scale in opposite directions as `tpSM`
+  rises — 6→8 against 20→10 — which reads like independent tuning at different times
+  rather than a plan.  `Reader.cu:523` and `NoOpReducer.cu:167` both already carry a
+  to-do saying as much.
+
+  Three further consequences of the numbers being absolute rather than derived:
+
+  - The split is 6 + 40 + remainder regardless of the device, so moving from an A5000
+    (64 SMs) to an H200 (132) leaves the remainder context 86 SMs instead of 18.  All
+    the extra capacity silently lands on the recorder, which is unlikely to be the
+    intended balance.
+  - Both `switch (tpSM)` statements `abort()` on anything unrecognised, so a new GPU
+    generation stops the DRP with "Unexpected number of threads per MultiProcessor"
+    rather than falling back to something sane.
+  - Both call `cudaGetDeviceProperties(&prop, 0)` with the device hard-coded, while
+    `MemPoolGpu` honours a `gpuId` kwarg.  Harmless under Slurm, which renumbers
+    `CUDA_VISIBLE_DEVICES` so the allocated GPU is always index 0, but inconsistent.
+
+  The fix is for one place to own the partitioning and hand each component the SM count
+  of the context it was given — `cudaExecutionCtxGetDevResource()` already returns it,
+  and `_setupGreenContexts()` logs it.  Each stage then derives blocks and threads from
+  that rather than from a table.  Note the Reader and TrgInpGen share a context, so
+  whatever owns this has to divide their allocation, not just report it; TrgInpGen's and
+  the Reducer's own driver kernels are `<<<1, 1>>>` persistent loops, so they want about
+  one SM each, and the bulk belongs to `_event` and `_reduce`.
+
+- ~~**Clear the firmware counters once the timing link is up.**~~  Done in
+  `epixuhremu_config.py`; **untested**, wants a run on gpu001 to confirm the counts in
+  the log are small.
+
+  After `ConfigLclsTimingV2()` the counters held whatever the link accumulated while
+  training, which says nothing about the run about to start: the successful gpu001 run
+  logged `FidCount 2347064`, `RxDecErrs 6009085` immediately afterwards.  They were
+  already being cleared — `xpmdet_connectionInfo()` calls `ClearRxCounters()` itself —
+  but only *after* `dumpTiming()` had logged them, so the reported numbers were noise.
+
+  `tim.ClearRxCounters()` now runs in the hook, but only when `RxLinkUp` confirms the
+  link came up.  If it is still down the counts are left alone, because then they are the
+  evidence.  Only the `TimingFrameRx` counters are wanted; the `TriggerEventBuffer` ones
+  are separate and not of interest.  Note `TimingFrameRx.countReset()` is merely an alias
+  for `ClearRxCounters()` (`TimingFrameRx.py:264`), so there is no third thing to call.
+
 
 - **Standalone harness for the graphs.**  Long-standing want: pull the kernels into
   a harness with synthesised input, both as permanent test code and as a profiling
@@ -329,6 +451,30 @@ in people's heads.
   Riccardo is being asked whether the CPU nodes' ansible should change to match; the
   GPU sample sets it regardless.
 
+- ~~**The GPU dkms build failed silently, producing a non-GPU module.**~~  **Fixed
+  upstream: `slaclab/aes-stream-drivers` PR #319, merged to `pre-release` 2026-09-14.**
+  Root cause was kbuild's two-pass evaluation: `data_dev/driver/Makefile` pulled in
+  `Makefile.local` by a bare relative path, which resolves in the top-level pass but not
+  in the sub-make whose cwd is `$(KERNELDIR)`, where `ccflags-y` is evaluated.  So
+  `NVIDIA_DRIVERS` was empty exactly where `DATA_GPU` was decided, and
+  `datadev-gpu-dkms` had **never** produced a GPU-enabled module.  The fix anchors the
+  include to the Makefile's own directory, makes `build-nvidia.sh` refuse to skip the
+  NVIDIA build unless `ALLOW_NO_NVIDIA=1`, and adds a `POST_BUILD` guard
+  (`check-gpu-build.sh`) that greps the built module for `GPUAsync Support : Enabled`
+  and fails closed when `Makefile.local` is absent.
+
+  What this means for us now that it is merged:
+
+  - `datadev-gpu.conf` and `dkms-reload.sh` are upstream, so the next driver install
+    should take them from `pre-release` rather than from a local branch.
+  - No header changed and `DMA_VERSION` is still `0x06`, so the seven headers vendored
+    into `psdaq/psdaq/aes-stream-drivers/` remain byte-identical to upstream and there
+    is nothing to re-vendor.  (`DmaDest.h` there is ours, not upstream.)
+  - Worth rebuilding the driver from `pre-release` on gpu006 and gpu001 to confirm the
+    *merged* form still yields `GPUAsync Support : Enabled`, then deleting the
+    `pr-require-nvidia-for-gpu-build` branch.  Requires an sdfiana node: DAQ nodes
+    cannot reach GitHub.
+
 - **An installer that checks the lcls2, driver and firmware builds against the current
   minimum versions.**  This is the right home for consistency checking; the
   alternative is every tool growing its own anomaly detection.  Two traps it should
@@ -396,12 +542,60 @@ in people's heads.
   anything.  Either way the status quo is the one option with no upside: a stale tool
   that also keeps a privileged code path alive.
 
-- **Where the datadev's missing bandwidth goes.**  Cards achieve 102.3 Gbps of the
-  126 Gbps a PCIe 4.0 x8 link raw-rates at, i.e. 81%.  Some of that is protocol
-  overhead, but the PCIe **MaxPayloadSize** and **MaxReadRequestSize** are worth
-  checking, in the BIOS and with `lspci -vv` (`DevCtl: MaxPayload ... MaxReadReq`).
-  A small MaxPayloadSize costs a lot of efficiency.  Note "MPS" here means PCIe
-  MaxPayloadSize, not CUDA's Multi-Process Service.
+- **Where the datadev's missing bandwidth goes** — largely answered, on 2026-09-14,
+  and it was the MaxPayloadSize as this item guessed.  Cards achieve 102.3 Gbps of the
+  126 Gbps a PCIe 4.0 x8 link raw-rates at, i.e. 81%.  Mudit or Jeremy found that a
+  configuration on gpu008 reached **113 Gbps**, which is 90%.
+
+  The mechanism: PCIe **MaxPayloadSize** is constrained by whichever device in a
+  hierarchy needs the lowest value, and Linux's default policy sets it to the smallest
+  common value across the tree.  The GPU is the limiter, apparently 256 bytes; the
+  datadev can do 1024.  So a root complex carrying both forces 256 on the datadev too.
+  Put the datadevs on their own root complex and they run at 1024, which is where the
+  extra 11 Gbps comes from.  ("MPS" here is PCIe MaxPayloadSize, not CUDA's
+  Multi-Process Service.)
+
+  Chris therefore proposes putting **all GPUs on one root complex and all datadevs on
+  the other**.  Two things to settle first.
+
+  **The NVIDIA objection is probably about correctness, not performance.**  NVIDIA
+  recommends against this arrangement, reportedly as less likely to work and slower --
+  and the measurement contradicts the second half, which may mean it is answering a
+  different objection than the one being made.  Mismatched MaxPayloadSize across a
+  peer-to-peer path is a validity problem: a TLP carrying 1024 bytes cannot be forwarded
+  into a hierarchy whose MPS is 256, which is exactly why the default policy levels it
+  down.  That 113 Gbps works could mean the root complex splits oversized TLPs, or that
+  the datadev's writes into GPU BAR space are under 256 bytes anyway so the larger MPS
+  only helps its host-memory traffic, or that it works by luck and fails rarely and
+  data-dependently.  For a DAQ the last is the one that ruins a beamtime months later.
+
+  The cheap test is AER, which counts exactly this failure:
+
+      sudo lspci -vv | grep -E "MaxPayload|MaxReadReq"   # what is actually set
+      cat /sys/bus/pci/devices/0000:*/aer_dev_nonfatal   # counters, if AER is enabled
+      dmesg | grep -iE "aer|malformed|unsupported request"
+
+  Run the 113 Gbps configuration hard and check those stay static.  Clean AER over a
+  long run is decent evidence it is genuinely fine; a slow trickle settles it the other
+  way.  A throughput number cannot answer this on its own.  Note gpu006 and gpu008 boot
+  with `iommu=off`, so there is no translation layer policing payload sizes either.
+
+  **It would make `gen_gres_conf`'s locality logic vestigial.**  With every GPU on one
+  root complex and every card on the other, no pairing is local by construction:
+  `shared_depth()` returns 0 or 1 for every pair, all of them print
+  `*** DIFFERENT PCIe switch ***`, and the two-pass preference in `pair()` has nothing
+  to prefer.  The tool still does the job that matters -- deterministic one-to-one
+  pairing, and the one-line spare swap -- but `LOCAL_DEPTH`, the preference pass and the
+  warning should then go, because a warning that fires on every pair trains people to
+  skim past it.  Reword the generated comment to say the pairing is for determinism
+  rather than proximity.
+
+  Separately, Cheolhong proposed measuring with `amd_uncore`/`perf` whether cross-socket
+  peer-to-peer traffic bypasses host memory.  That is a different question from the MPS
+  one and the two measurements are independent.  Note that the inter-socket hop on these
+  AMD EPYC boxes is Infinity Fabric, not PCIe; Ric measured it sustaining a card's full
+  rate by running each TDet datadev on gpu008 against GPU0 in turn, every combination at
+  33 kHz.
 
 - **IT ticket: CUDA and driver mismatch on the sdfada nodes.**  See below.
 
@@ -545,6 +739,63 @@ may not have the full serial number to match on, which would need the code made 
 expose it.  `Parameters::serNo` exists and is passed to `Names` during configure, so
 start there.
 
+## The ePixUHR3x2 Configure failure is a missing clock, not a dead board
+
+Diagnosed 2026-09-14 on drp-srcf-gpu006.  Configure aborts in
+`lcls2_pgp_fw_lib/shared/_TimingRx.py:128`, on the first write of
+`ConfigLclsTimingBase`:
+
+    self.TimingFrameRx.ModeSelEn.setDisp('UseClkSel')
+
+    rogue.GeneralError: ... Transaction error for block
+    Root.ROS[0].FebFpga.App.TimingRx.TimingFrameRx.ClearRxCounters with address
+    0x8e080020.  Error Timeout waiting for register transaction 62 message response.
+
+The block is named for `ClearRxCounters` rather than `ModeSelEn` because rogue coalesces
+adjacent variables into one block and reports the error against the block; the traceback
+is what says which write was attempted.
+
+Two quite different faults give that identical timeout, and the DRP log cannot separate
+them, because the only FEB access before it is `Core.SystemDevices.Si5345Pll.Page0.LOL`
+and nothing else under `App` is ever touched.  `_initial_power_up()` runs *after* the
+timing configuration, so it never gets the chance.  Note also that the hundreds of
+`setPollInterval(1)` lines in the log are local rogue tree configuration, **not** bus
+traffic: `epixuhr3x2_config.py:196` sets `pollEn=False`, so nothing was ever polled and
+their clean record is not evidence of health.
+
+Resolved by `probe_feb.py` (kept in the session directory), which reads `App` registers
+outside `TimingRx` with `Core` as a control and nothing written:
+
+- `Core.SystemDevices.Si5345Pll` answers and the PLL is locked, so the FEB has power and
+  a working control path.
+- `App.BoardCtrl3x2Readout.LTM4664_*` and `App.AxiAds1217Core` answer, so the `App`
+  branch is alive and out of reset.
+- `App.TimingRx.TimingFrameRx` does not answer.
+
+**So the TimingRx clock domain has no clock.** An AXI-Lite transaction into an unclocked
+domain can never complete, which is exactly a timeout and not an error response.  That
+makes this a timing problem rather than a detector problem: the board being powered off,
+which was the leading hypothesis while Gabriel was away, is ruled out.  The question to
+chase is where the FEB's timing clock is meant to come from and why it is absent, not
+the `LTM4664` regulators.
+
+Worth keeping the general shape: a register timeout says only that nobody drove a
+response, and "unpowered", "held in reset" and "unclocked" are indistinguishable from one
+transaction.  Probing a sibling branch and a known-good control separates them cheaply.
+
+## Real-time priority is denied on the DRP nodes
+
+Every GPU DRP log since at least 2026-09-13 opens with
+
+    <C> Inadequate RTPRIO limit: got 0, require 99
+
+so the DRP threads run at normal priority.  Not a correctness problem, and not the cause
+of any failure seen so far, but it will bound achievable rate.  Ric raised an IT ticket
+for this a few days before 2026-09-14 --
+[ECS-11217](https://jira.slac.stanford.edu/browse/ECS-11217) -- since the `RLIMIT_RTPRIO`
+ceiling has to be raised in IT's ansible and cannot be set from our side.  Recorded so
+that a future rate shortfall is not misattributed.
+
 ## Appendix: running the ePixUHR3x2 emulator, from Gabriel
 
 Notes Gabriel sent on Slack on 2026-08-24, kept here because Slack is not a record.
@@ -602,6 +853,11 @@ path cannot be exercised at all.  This is the hard blocker of the two.
 
 So the detector was off as of 2026-08-24 and its state since is unknown.  Worth querying
 before concluding anything from a register timeout.
+
+**Superseded 2026-09-14:** the FEB is powered and its `App` branch answers, so whatever
+`ttyUSB0` controls is not what blocks Configure.  See "The ePixUHR3x2 Configure failure
+is a missing clock, not a dead board" above.  The two flags below are still needed, but
+they are no longer the first thing in the way.
 
 His own reference run, `~dorlhiac/2026/08/24_15:27:42_drp-srcf-gpu006:epixuhr3x2_0.log`,
 used the **CPU** `drp`, `-d /dev/datadev_a1`, `-D epixuhr3x2`, `-W 16`,
