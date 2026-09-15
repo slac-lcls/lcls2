@@ -396,6 +396,13 @@ admission holds. One coherent EB batch is divided into byte-bounded
 `GpuSubbatchView` objects using actual source presence, detector working sets,
 and parser bytes. An event that cannot fit alone is rejected before reading.
 
+Stage 5 can retain complete affordable stream inputs across those executions.
+One extra lazy reader/parser slot holds the resident input for one EB batch;
+execution slots read only the remaining streams. Initial admission reserves
+resident growth plus room for the largest planned execution. Resident input
+closes after the batch's executions drain, with actual release still governed
+by its input references and CUDA completion events.
+
 Fixed constants, geometry, and Configure tables are reserved during setup.
 Before each read, a hold reserves the reader, parser, and detector growth
 requirements together, including old+new replacement peaks. Actual allocations
@@ -550,7 +557,7 @@ and its CPU delivery are visible in Nsight Systems.
 | `gpu_detector.py` | Per-slot calibration/raw buffers and result-ready producer work |
 | `gpu_calib.py` | Calibration constants, geometry helpers, and Jungfrau kernel |
 | `gpu_budget.py` | Accounting for explicitly tracked device allocations |
-| `gpu_admission.py` | Presence-aware admission and future residency decisions |
+| `gpu_admission.py` | Presence-aware execution and resident-input admission |
 | `gpu_batch.py` | GPU batch and byte-bounded subbatch views |
 | `gpudgram/` | Run-scoped Configure tables, per-slot XTC parsing, and field locators |
 | `gpu_input.py` | Detector bindings, general field access, and input-buffer leases |

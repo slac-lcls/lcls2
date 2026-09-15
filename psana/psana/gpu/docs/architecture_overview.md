@@ -128,8 +128,11 @@ Execution slots own detector buffers, result views, and execution completion
 state. They hold references to `InputWindow` owners for raw bytes and parser
 rows. An input window can serve multiple executions and cannot be recycled
 until planned uses, event consumers, and CUDA work have finished. The current
-scheduler still groups reads with execution subbatches; independent fast/slow
-residency admission comes in later stages.
+scheduler admits affordable complete stream inputs for one EB batch, reads and
+parses them once, and combines them with transient inputs for ordered execution
+subbatches. Reader/parser pools have one extra lazy slot for resident input;
+execution and detector slot counts are unchanged. When no complete input fits,
+the scheduler uses common input/execution subbatches.
 
 Before issuing each read, Stage 4 admission reserves growth capacity for its
 reader, parser, and detector buffers together. Fixed calibration, geometry, and
@@ -206,5 +209,5 @@ is [Known problems and limitations](known_issues.md).
 | `gpu_stream.py` | Reusable execution slots and retirement |
 | `context.py` | `GpuEventState`, `GPUResult`, and result access modes |
 | `gpu_budget.py` | Per-BD accounting for explicitly tracked device allocations |
-| `gpu_admission.py` | Presence-aware execution sizing and future residency planning |
+| `gpu_admission.py` | Presence-aware execution sizing and stream-residency admission |
 | `gpu_mpi.py` | Device assignment and CUDA IPC calibration sharing |
