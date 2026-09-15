@@ -432,7 +432,7 @@ class RunParallel(Run):
         The resulting numpy arrays are stored as
             self._gpu_geometry_arrays = {det_name: (ix_all, iy_all)}
         and passed to GpuEventManager(prebuilt_geometry=...) so that
-        _setup_detectors() calls gpu_detector.setup_geometry_from_arrays()
+        _setup_gpu_pipeline() calls gpu_detector.setup_geometry_from_arrays()
         instead of setup_geometry(det), avoiding a shmem collective during
         the event loop.
 
