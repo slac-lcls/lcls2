@@ -1,10 +1,11 @@
 # GPU bulk-read implementation plan
 
 Status: Stages 1 and 2 accepted. Stage 3 is committed as `a5f07ee38`.
-Stage 4 is implemented and validated, uncommitted for review.
-Bulk reads are the default. Stages 5-7 remain proposed.
-Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The planner is connected to the reader by default; the existing
-execution-subbatch schedule is preserved.
+Stage 4 is committed as `763a8df1b`. Stage 5 is implemented and validated,
+uncommitted for review. Bulk reads are the default. Stages 6-7 remain proposed.
+Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The planner is
+connected to the reader by default; Stage 5 adds independent resident inputs
+while retaining ordered execution subbatches.
 
 Deferred alternative: [detector materialization ownership](detector_materialization_ownership.md)
 retains the proposed shared automatic-copy and early reader-reuse design for
@@ -182,9 +183,9 @@ lease to unsupported multi-stream fan-out.
 
 Stage 4 preserves the Stage 3 source and detector lifetimes. It adds admission
 before reads; it does not materialize arbitrary fields or release reader storage
-at gather completion. The production schedule still uses common execution
-subbatches. Full-stream residency decisions are testable CPU planning output
-only, to be connected by Stage 5.
+at gather completion. At the Stage 4 checkpoint, production still used common
+execution subbatches; full-stream residency decisions were CPU planning output
+only. Stage 5 connects those decisions to the input schedule as described below.
 
 Call path:
 
@@ -256,8 +257,77 @@ not a claim of a single all-green full suite. Both used A100 GPUs with KvikIO
 compatibility mode True and GDS unavailable. Logs and both submission scripts
 are in `validation/bulk-read-stage4/`. No GDS or throughput claim is made.
 
-Review status: Stage 4 is uncommitted. Stage 5 resident scheduling has not
-started, and experimental Stage 3A automatic materialization remains reverted.
+Stage 4 was reviewed and committed as `763a8df1b` before starting Stage 5.
+Experimental Stage 3A automatic materialization remains reverted.
+
+## Stage 5 implementation and review
+
+The default bulk-read path now enables the admission planner's residency
+decisions. Affordable complete stream inputs are read and parsed once for an
+EB batch, then combined with transient input windows for ordered executions.
+Detector processing still uses the existing execution slots and adapters.
+The GPUBAT1 ABI and public event/field/result interfaces are unchanged.
+
+Call path:
+
+1. Setup gives the reader and parser `n_gpu_streams + 1` lazy input slots.
+   Execution/detector slot counts remain `n_gpu_streams`. The extra reader slot
+   holds the resident input; the parser selects any free slot independently.
+2. `_process_batch()` calls `_split_subbatches(..., allow_residency=True)` for
+   bulk reads. When a complete input fits, it drains the previous executions
+   and trims free caches before `_start_resident_input()`. This initial policy
+   bounds residency to one EB batch and favors predictable capacity over cache
+   retention across resident batches; throughput tradeoffs remain to measure.
+3. `GpuReadSelection.from_view()` filters descriptors by physical stream while
+   preserving original event indices, timestamps, file offsets, and identities.
+   It is an input view, not another serialized ABI. Execution views still
+   describe all streams needed for their event ranges.
+4. `_start_resident_input()` holds resident buffer growth plus the largest
+   planned execution's working bytes before I/O. It reads into the extra input
+   slot and creates one parsed InputWindow. The owner stays open for subsequent
+   planned execution acquisitions; the unused admission credit is returned.
+5. For each execution, `_issue_gpu_read()` selects only nonresident descriptors.
+   `_input_allocation_requirements()` charges these input/parser requirements;
+   detector requirements still count all present detectors in the execution.
+   An execution with only resident inputs issues no new read.
+6. `_submit_gpu()` parses transient input on `EventPool.next_stream`, then
+   submits the full execution view with resident and transient InputWindows.
+   Existing event/stream composition and leases bind every detector and event
+   to the correct owner. The transient window closes to new acquisitions after
+   submission; existing leases keep its storage until consumers complete.
+7. Executions are delivered and retired in event order. Before leaving the EB
+   batch, the pool drains and `_close_resident_input()` closes the resident
+   window. Existing input references and CUDA completion events govern actual
+   release. Generator close, pending-read failure, and manager shutdown also
+   close the resident owner; no early reader-reuse/materialization path is added.
+
+If no complete stream fits, production uses the existing common-subbatch
+schedule. The temporary `gpu_bulk_read=False` path remains unchanged in scope.
+Both residency and fallback retain the Stage 4 pressure-driven drain/trim/retry.
+File epochs and transition fences still apply to every physical range.
+
+New tests exercise the production manager, reader, and execution ownership:
+the 1,000-fast/10-slow case produces one contiguous fast read and five two-slow
+reads; other CPU cases cover smaller budgets, absent streams, partial tails,
+resident-only executions, BeginStep/EndRun, hybrid CPU envelopes, max_events,
+early generator close, and failed transient I/O. The device fixture uses real
+XTC fields plus a valid opaque XTC sibling to enlarge the slow input; it checks
+field values and dense raw/calibrated results while enforcing the same six-read
+schedule. This is synthetic mixed-rate data, not a throughput benchmark.
+
+CPU validation: all 275 GPU unit cases passed in 3.30 seconds. Validation
+commands, source hashes, and logs are under `validation/bulk-read-stage5/`.
+GPU validation job `58391075` passed all 17 integration cases in 465.26 seconds
+with Slurm exit 0 on an NVIDIA A100-SXM4-40GB. This includes the six-request
+mixed-rate fixture, input lifetime checks, and every run-51 Jungfrau pixel-exact
+case (exclusive/hybrid, slot reuse, tails, and D2H chunk variations). KvikIO
+compatibility mode was True and GDS was unavailable. Installed runtime sources
+matched this worktree, and the final files match `runtime.sha256`.
+
+An earlier attempt, `58390777`, passed ten cases before a calibration-server
+connection reset interrupted setup of the next case. The successful retry used
+unchanged runtime sources. This stage establishes correctness and request
+grouping; throughput and true-GDS measurements remain Stage 7 work.
 
 ## Deferred cleanup
 

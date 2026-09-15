@@ -80,6 +80,11 @@ class EventPool:
         """Slot index that the next submitted batch will occupy."""
         return self._write_idx % self._n
 
+    @property
+    def next_stream(self):
+        """Producer stream for parsing the next execution's transient inputs."""
+        return self._streams[self.next_slot_id]
+
     def begin_retire_next(self):
         """Synchronize the outgoing producer but retain its slot lease.
 

@@ -12,7 +12,7 @@ _log = logging.getLogger(__name__)
 from psana import dgram, utils
 from psana.event import EventEnvelope
 from psana.gpu.context import GpuEventState
-from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
+from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView, GpuReadSelection
 from psana.gpu.gpu_budget import GpuMemoryPressureError
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
 from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
@@ -803,7 +803,7 @@ class GpuEventManager:
         self.gpu_xtc_parser = GpuXtcBatchPool(
             self.gpu_xtc_configs,
             field_handles=xtc_field_handles,
-            n_slots=pool_depth,
+            n_slots=pool_depth + int(self.dsparms.gpu_bulk_read),
             budget=self._gpu_budget,
         )
 
@@ -865,7 +865,7 @@ class GpuEventManager:
         local to this BD and run, independent of individual detector adapters.
         """
         self.gpu_reader = KvikioGpuReader(
-            n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
+            n_slots=getattr(self.dsparms, "n_gpu_streams", 2) + int(self.dsparms.gpu_bulk_read),
             budget=self._gpu_budget,
             bulk_read=self.dsparms.gpu_bulk_read,
         )
@@ -909,7 +909,7 @@ class GpuEventManager:
             events.append(AdmissionEvent(streams, detector_bytes))
         return events
 
-    def _split_subbatches(self, gpu_view) -> list:
+    def _split_subbatches(self, gpu_view, *, allow_residency=False) -> list:
         """Admit complete events; fail before I/O when a minimum event cannot fit."""
         from .gpu_admission import plan_admission
         parser = getattr(self, 'gpu_xtc_parser', None)
@@ -919,24 +919,69 @@ class GpuEventManager:
             getattr(self, '_admission_capacity', self._subbatch_budget_bytes),
             parser_bytes_per_dgram=per_dgram,
             max_inflight=max(1, getattr(getattr(self, 'dsparms', None), 'n_gpu_streams', 1)),
+            allow_residency=allow_residency,
         )
         self._last_admission_plan = plan
         return [GpuSubbatchView(gpu_view, start, end)
                 for start, end in plan.execution_ranges]
 
-    def _reserve_gpu_subbatch(self, subbatch, slot):
+    def _input_allocation_requirements(self, read_view, slot):
+        n_dgrams = sum(1 for _ in read_view.iter_read_descs(self.dm))
+        if not n_dgrams:
+            return []
+        requirements = self.gpu_reader.allocation_requirements(read_view.total_read_bytes, slot)
+        if self.gpu_xtc_parser is not None:
+            requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams)
+        return requirements
+
+    def _reserve_gpu_subbatch(self, subbatch, slot, read_view=None):
         """Hold reader/parser/detector growth before any read is submitted."""
         from .gpu_budget import allocation_growth_bytes
         events = self._event_memory(subbatch)
-        n_dgrams = sum(len(e.streams) for e in events)
-        requirements = self.gpu_reader.allocation_requirements(subbatch.total_read_bytes, slot)
-        if self.gpu_xtc_parser is not None:
-            requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams)
+        requirements = self._input_allocation_requirements(
+            subbatch if read_view is None else read_view, slot)
         for _, det in self.gpu_detectors.values():
             n_events = sum(det.binding.has_sources({s for s, _ in e.streams}) for e in events)
             requirements += det.allocation_requirements(n_events, slot)
         return self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=getattr(self, '_admission_margin', 0))
+
+    def _start_resident_input(self, gpu_view, plan):
+        """Read/parse complete admitted streams once, with execution room held."""
+        from .gpu_budget import allocation_growth_bytes
+        if getattr(self, '_resident_window', None) is not None:
+            raise RuntimeError('only one resident EB batch is allowed')
+        # The caller has drained the previous EB batch and trimmed free caches.
+        read_view = GpuReadSelection.from_view(gpu_view, self.dm, plan.resident_streams)
+        events = self._event_memory(gpu_view)
+        per_dgram = self.gpu_xtc_parser.estimate_batch_bytes(1)
+        costs = [e.detector_bytes + sum(n + per_dgram for s, n in e.streams
+                                       if s not in plan.resident_streams) for e in events]
+        progress = max(sum(costs[a:b]) for a, b in plan.execution_ranges)
+        slot = self.event_pool.depth  # extra input slot, outside execution ring
+        requirements = self._input_allocation_requirements(read_view, slot)
+        hold = self._gpu_budget.hold(allocation_growth_bytes(requirements) + progress,
+                                     margin=self._admission_margin)
+        self._gpu_read_reservation = hold
+        try:
+            with hold:
+                pending = self.gpu_reader.issue_batch(
+                    read_view, self.dm, slot_id=slot, file_epochs=self._gpu_read_files)
+            self._pending_gpu_read = pending
+            read = self._wait_gpu_read(pending)
+            with hold:
+                self._resident_window = self.gpu_xtc_parser.parse_window(
+                    read, self.event_pool.next_stream, batch_id=self._input_batch_id)
+            self._resident_streams = plan.resident_streams
+        finally:
+            self._close_gpu_reservation()
+
+    def _close_resident_input(self):
+        window = getattr(self, '_resident_window', None)
+        if window is not None:
+            window.close()  # existing execution/event leases remain authoritative
+            self._resident_window = None
+        self._resident_streams = ()
 
     def _close_gpu_reservation(self):
         hold = getattr(self, '_gpu_read_reservation', None)
@@ -1040,11 +1085,25 @@ class GpuEventManager:
         hold = getattr(self, '_gpu_read_reservation', None)
         try:
             with hold if hold is not None else nullcontext():
-                record = self.event_pool.submit(
-                    subbatch, gpu_read, event_envelopes, self.gpu_detectors,
-                    xtc_parser=self.gpu_xtc_parser,
-                    batch_id=getattr(self, "_input_batch_id", 0),
-                )
+                resident = getattr(self, '_resident_window', None)
+                transient = None
+                kwargs = {}
+                try:
+                    if resident is not None:
+                        if gpu_read is not None:
+                            transient = self.gpu_xtc_parser.parse_window(
+                                gpu_read, self.event_pool.next_stream,
+                                batch_id=self._input_batch_id)
+                        kwargs['input_windows'] = ((resident, transient) if transient is not None
+                                                   else (resident,))
+                    record = self.event_pool.submit(
+                        subbatch, gpu_read, event_envelopes, self.gpu_detectors,
+                        xtc_parser=self.gpu_xtc_parser,
+                        batch_id=getattr(self, "_input_batch_id", 0), **kwargs,
+                    )
+                finally:
+                    if transient is not None:
+                        transient.close()
         finally:
             self._close_gpu_reservation()
         for pipe in self._d2h_pipelines.values():
@@ -1103,15 +1162,20 @@ class GpuEventManager:
 
     def _issue_gpu_read(self, subbatch, slot_id):
         """Issue and own the single read allowed ahead of CPU processing."""
-        if getattr(self, '_pending_gpu_read', None) is not None:
+        if (getattr(self, '_pending_gpu_read', None) is not None
+                or getattr(self, '_gpu_read_reservation', None) is not None):
             raise RuntimeError("a pre-issued GPU read is already outstanding")
         kwargs = {}
         if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
             kwargs["file_epochs"] = self._gpu_read_files
-        hold = self._reserve_gpu_subbatch(subbatch, slot_id)
+        resident = getattr(self, '_resident_window', None)
+        read_view = (GpuReadSelection.from_view(subbatch, self.dm, self._resident_streams,
+                                               exclude=True) if resident is not None else subbatch)
+        hold = self._reserve_gpu_subbatch(subbatch, slot_id, read_view)
         try:
             with hold:
-                pending = self.gpu_reader.issue_batch(subbatch, self.dm, slot_id=slot_id, **kwargs)
+                pending = (None if resident is not None and not read_view.descriptors else
+                           self.gpu_reader.issue_batch(read_view, self.dm, slot_id=slot_id, **kwargs))
         except BaseException:
             hold.close()
             raise
@@ -1123,6 +1187,8 @@ class GpuEventManager:
         """Complete a read and relinquish its controller-side ownership."""
         if getattr(self, '_pending_gpu_read', None) is not pending:
             raise RuntimeError("attempted to wait for an unowned GPU read")
+        if pending is None and getattr(self, '_resident_window', None) is not None:
+            return None  # this execution uses only already-resident input
         try:
             return self.gpu_reader.wait_batch(pending)
         except BaseException:
@@ -1221,7 +1287,15 @@ class GpuEventManager:
                 for gpu_view in gpu_views:
                     if not gpu_view.has_work:
                         continue
-                    all_subbatches.extend(self._split_subbatches(gpu_view))
+                    all_subbatches.extend(self._split_subbatches(
+                        gpu_view, allow_residency=bool(getattr(self.dsparms, 'gpu_bulk_read', False))))
+
+                if all_subbatches and self._last_admission_plan.resident_streams:
+                    # Bound resident input to one EB batch. Complete old consumers
+                    # before repurposing cached capacity for its full input.
+                    yield from self._flush_event_pool()
+                    self._trim_gpu_caches()
+                    self._start_resident_input(gpu_views[0], self._last_admission_plan)
 
                 if all_subbatches:
                     first_pending = (
@@ -1326,12 +1400,15 @@ class GpuEventManager:
                         n_events += 1
                         yield self._attach_gpu(envelope, {})
 
+                if getattr(self, '_resident_window', None) is not None:
+                    yield from self._flush_event_pool()
                 if stop_after or end_run_seen:
                     yield from self._flush_event_pool()
                     self._done = True
                 return
         finally:
             self._n_events = n_events
+            self._close_resident_input()
 
     def process_batch(self, smd_batch, gpu_batch=None):
         """Process one coherent EB-to-BD batch and yield EventEnvelopes."""
@@ -1359,6 +1436,7 @@ class GpuEventManager:
         try:
             yield from self._flush_event_pool()
             self._drain_pending_gpu_read()
+            self._close_resident_input()
             parser = getattr(self, "gpu_xtc_parser", None)
             if parser is not None:
                 parser.close()
