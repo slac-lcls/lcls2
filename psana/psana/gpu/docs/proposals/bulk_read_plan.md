@@ -1,17 +1,17 @@
 # GPU bulk-read implementation plan
 
-Status: Stages 1 and 2 accepted. Stage 3 implementation and validation complete;
-ready for review. Bulk reads are the default. Stages 4-7 remain proposed.
+Status: Stages 1 and 2 accepted. Stage 3 is committed as `a5f07ee38`.
+Stage 4 is implemented and validated, uncommitted for review.
+Bulk reads are the default. Stages 5-7 remain proposed.
 Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The planner is connected to the reader by default; the existing
 execution-subbatch schedule is preserved.
 
-Design refinement: [detector materialization ownership](detector_materialization_ownership.md)
-defines proposed Stages 3A-3D before Stage 4. It supersedes the retained-XTC
-ownership and residency design below: all GPU detectors, including Jungfrau,
-use one automatic materialization path, and long-lived fast data resides in
-detector-owned storage. The existing Stage 3 evidence applies to the validated
-baseline only; the refinement is not yet implemented. Stages 4-7 must use the
-revised ownership contract and review gates in that proposal.
+Deferred alternative: [detector materialization ownership](detector_materialization_ownership.md)
+retains the proposed shared automatic-copy and early reader-reuse design for
+future review. Experimental Stage 3A was reverted; Stages 3A-3D are not current
+prerequisites. Continue Stage 3 review and Stages 4-7 using the retained-XTC
+ownership described below. The proposal records the deferral rationale and the
+current difference between automatic Jungfrau gathering and generic field access.
 
 ## Stage 1 review evidence
 
@@ -83,9 +83,10 @@ and prunes obsolete handles only after pending reads release them. This I/O
 cleanup also applies to the temporary per-dgram comparison path.
 
 The read plan supplies allocation size and logical device offsets. Existing
-slot capacity plus available tracked budget bounds the raw-input allowance.
-There is no new public per-request size knob and no gap over-read. Broader
-fixed-allocation accounting and resident-fast scheduling remain Stages 4-5.
+slot capacity and available tracked budget bound the raw-input allowance.
+There is no new public per-request size knob and no gap over-read. Stage 4
+adds fixed-allocation and pre-I/O growth accounting; resident-fast scheduling
+remains Stage 5.
 
 `io_stats()` retains `total_bytes` (bytes from fully validated physical reads),
 `total_ns` (wait-only time), and the existing bandwidth calculation. New fields
@@ -160,8 +161,103 @@ on nid002441: all 15 GPU cases passed in 465.80 seconds on an A100-SXM4-40GB.
 This includes the corrected retained-input/locator test and all pixel-exact
 cases. KvikIO compatibility mode was True; GDS was unavailable. Source hashes
 still match `validation/bulk-read-stage3/runtime.sha256`. The result log is
-`validation/bulk-read-stage3/final-58339082.log`. Stage 3 is ready for review;
-its implementation remains uncommitted, and Stage 4 has not started.
+`validation/bulk-read-stage3/final-58339082.log`. Stage 3 was ready for review
+and committed as `a5f07ee38` before Stage 4 started.
+
+After reverting experimental Stage 3A, production sources again matched that
+Stage 3 baseline. Reader/input-window references and detector result leases
+retain their existing conservative consumer-completion behavior. The separate
+result-lease fan-out limitation remains open.
+
+Revert verification: all 243 CPU GPU-unit tests passed in 4.84 seconds. The
+Stage 3 runtime hashes still match the sources tested by GPU job `58339082`.
+Refreshed the installed package and removed the two stale Stage 3A modules
+left by the incremental installer; neither module is importable. A CPU
+control-flow probe confirmed that the reader pin and Jungfrau raw execution
+slot are both held when joining a registered user-result consumer, and become
+reusable only after that join. This does not extend the single-token result
+lease to unsupported multi-stream fan-out.
+
+## Stage 4 implementation and review
+
+Stage 4 preserves the Stage 3 source and detector lifetimes. It adds admission
+before reads; it does not materialize arbitrary fields or release reader storage
+at gather completion. The production schedule still uses common execution
+subbatches. Full-stream residency decisions are testable CPU planning output
+only, to be connected by Stage 5.
+
+Call path:
+
+1. `_setup_gpu_pipeline()` passes the shared budget into calibration preparation
+   and geometry uploads. `_upload_fixed_arrays()` reserves before transfer and
+   rolls back failed uploads only after completion is proved. IPC followers
+   still skip constant allocation; `_compute_subbatch_budget()` uses charged
+   fixed bytes once and leaves 10% allocator/runtime headroom, without a floor.
+2. `_split_subbatches()` calls `_event_memory()` and `plan_admission()` in
+   `gpu_admission.py`. Costs use actual source presence, all canonical dense
+   detector rows, presence masks, raw bytes, and parser tables. A minimum event
+   exceeding the total variable allowance fails before I/O with a breakdown.
+3. `_issue_gpu_read()` first calls `_reserve_gpu_subbatch()`. Reader, parser,
+   and detector `allocation_requirements()` report required/existing capacities
+   for the chosen storage. `allocation_growth_bytes()` reserves all required
+   new/replacement arrays while existing capacity remains charged. This covers
+   old+new peaks even when old event views survive several replacements.
+4. `_GpuBudget.hold()` keeps that credit unavailable to unrelated allocations.
+   While the hold is active around reading and `_submit_gpu()`, actual allocations
+   convert held bytes to committed bytes. Replaced old buffers return credit to
+   the hold; final unused credit is returned after submission. Read, parser,
+   submission, and early-exit failures close unused reservations.
+5. If current retained/cached capacity prevents admission,
+   `_retire_issue_and_yield()` drains remaining supported execution consumers,
+   then `_trim_gpu_caches()` relinquishes unowned variable buffers and retries.
+   Reader I/O/input pins and parser owners prevent trimming reserved storage.
+   Detector slot buffers are trimmed only after EventPool is empty. Actual
+   concurrency can reduce under pressure without changing event identity.
+
+The CPU residency policy considers complete streams in ascending source+parser
+byte cost, with stream ID breaking ties. It reserves minimum execution capacity
+before accepting residency, can reduce overlap to fit the cheapest whole stream,
+and otherwise builds smaller ordered ranges. It does not inspect detector names
+or assume a fixed fast/slow ratio. Multiple detectors sharing one stream charge
+the source once and their actual detector working sets separately.
+
+The ledger charges cached pipeline-owned buffers until relinquished. Retained
+slot results remain charged while their consumer leases are live. Independent
+user copies and custom allocations are outside this ledger; the stated margin
+does not make those unbounded allocations safe. Pinned host buffers, host
+descriptor/plan objects, and KvikIO staging are not charged to the device ledger;
+the current one-EB-batch/one-preissued-read schedule bounds descriptor and I/O
+work, while existing D2H pool/chunk counts bound host staging. A general host
+byte quota and future user-task output admission remain separate work.
+
+CPU coverage includes full-fast admission with five two-slow-event ranges,
+presence-aware costs, parser overhead, reduced overlap, minimum-event rejection,
+growth peaks, cached capacity, protected trimming, failed uploads, unused-hold
+rollback, and IPC-follower accounting. The device test exercises real
+read/parse/gather under exact admission quotas across growth and reuse, compares
+raw fields with CPU data, and rejects insufficient capacity before issuing I/O.
+Perlmutter validation is recorded under `validation/bulk-read-stage4/`.
+
+CPU validation: all 263 GPU unit cases passed in 4.38 seconds, including an
+occupied-slot check that distinguishes EventPool capacity from live executions
+and parser trimming that preserves owned rows and the fixed-allocation charge.
+Installed runtime sources are checked against this worktree before GPU tests;
+the frozen runtime manifest is `validation/bulk-read-stage4/runtime.sha256`.
+
+GPU validation: job `58376353` passed all 15 existing GPU integration cases,
+including the run-51 Jungfrau pixel-exact cases, in a 477.68-second suite run.
+The new admission case passed read/parse/gather, growth, and reuse assertions
+but exposed an incorrect budget attribute in parser cache trimming. After
+correcting that attribute and adding the CPU regression, focused job `58377320`
+passed the admission case in 7.81 seconds (Slurm exit 0). The final runtime
+diff from the full run is confined to that trimming attribute correction;
+`runtime-58376353.sha256` preserves the earlier manifest. These are two runs,
+not a claim of a single all-green full suite. Both used A100 GPUs with KvikIO
+compatibility mode True and GDS unavailable. Logs and both submission scripts
+are in `validation/bulk-read-stage4/`. No GDS or throughput claim is made.
+
+Review status: Stage 4 is uncommitted. Stage 5 resident scheduling has not
+started, and experimental Stage 3A automatic materialization remains reverted.
 
 ## Deferred cleanup
 

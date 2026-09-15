@@ -214,28 +214,44 @@ class KvikioGpuReader:
     def _ensure_slot_buffer(self, slot: int, total_nbytes: int):
         """Grow slot ``slot``'s input buffer to hold at least total_nbytes.
 
-        Buffers only ever grow, so the budget is charged the growth alone.
-        Releasing the old size up front instead would drop a still-allocated
-        buffer from the committed total and leave the budget under-reporting by
-        that much for the rest of the run.  Mirrors GPUDetector._slot_buffer.
+        Charge both old and new buffers during replacement, then return the old
+        capacity. Reusable buffers retain their charge.
         """
         existing = self._slot_bufs[slot]
         if existing is not None and existing.nbytes >= total_nbytes:
             return
 
         old_size = int(existing.nbytes) if existing is not None else 0
-        delta = total_nbytes - old_size
         if self._budget is not None:
-            self._budget.reserve(delta)
+            self._budget.reserve(total_nbytes)
         try:
             new_buf = self.cp.empty(total_nbytes, dtype=self.cp.uint8)
         except Exception:
             # Roll back so a failed allocation cannot leave the budget
             # permanently committed against memory that was never obtained.
             if self._budget is not None:
-                self._budget.release(delta)
+                self._budget.release(total_nbytes)
             raise
         self._slot_bufs[slot] = new_buf
+        del existing
+        if self._budget is not None:
+            self._budget.release(old_size)
+
+    def allocation_requirements(self, nbytes, slot):
+        old = self._slot_bufs[slot]
+        return [(int(nbytes), int(old.nbytes) if old is not None else 0)]
+
+    def trim_free_buffers(self):
+        """Relinquish cached capacity only when neither I/O nor input owns it."""
+        pending_slots = {p.slot_id for p in self._pending}
+        for slot, buf in enumerate(self._slot_bufs):
+            if buf is None or slot in pending_slots or self._input_holds.get(slot, 0):
+                continue
+            nbytes = int(buf.nbytes)
+            self._slot_bufs[slot] = None
+            del buf
+            if self._budget is not None:
+                self._budget.release(nbytes)
 
     def issue_batch(self, gpu_view, bd_dm, slot_id=None, *, file_epochs=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
@@ -275,7 +291,7 @@ class KvikioGpuReader:
             raise RuntimeError(f"GPU raw buffer {slot} is owned by an input window")
         existing = self._slot_bufs[slot]
         old_size = int(existing.nbytes) if existing is not None else 0
-        capacity = (old_size + self._budget.available() if self._budget is not None
+        capacity = (max(old_size, self._budget.allocation_available()) if self._budget is not None
                     else sum(d.size for d in read_descs))
         desc_table = self._build_desc_table(read_descs)
         plan = None

@@ -89,15 +89,16 @@ class _GpuXtcSlotBuffers:
 
         old_nbytes = int(existing.nbytes) if existing is not None else 0
         required_nbytes = int(np.prod(required_shape, dtype=np.int64)) * 8
-        delta = required_nbytes - old_nbytes
         if self.budget is not None:
-            self.budget.reserve(delta)
+            self.budget.reserve(required_nbytes)
         try:
             replacement = self.cp.empty(required_shape, dtype=self.cp.uint64)
         except Exception:
             if self.budget is not None:
-                self.budget.release(delta)
+                self.budget.release(required_nbytes)
             raise
+        if self.budget is not None:
+            self.budget.release(old_nbytes)
         return replacement, replacement
 
     def prepare(self, desc_table, max_shapes_per_dgram, stream):
@@ -276,6 +277,29 @@ class GpuXtcBatchPool:
             + len(self.field_handles) * LOC_NCOLS * 8
         )
         return n_dgrams * per_dgram
+
+    def allocation_requirements(self, n_dgrams):
+        """Growth requests for the free parser slot parse_window will choose."""
+        try:
+            index = self._owners.index(None)
+        except ValueError:
+            raise RuntimeError("no free GPU input parser storage") from None
+        slot = self._slots[index]
+        rows = [(DGRAM_NCOLS * 8, slot.dgram_records), (8, slot.shape_counts),
+                (self.max_shapes_per_dgram * REF_NCOLS * 8, slot.shape_refs)]
+        rows.extend((LOC_NCOLS * 8, slot.locators.get(h)) for h in self.field_handles)
+        return [(int(n_dgrams) * size, int(a.nbytes) if a is not None else 0)
+                for size, a in rows]
+
+    def trim_free_buffers(self):
+        for index, slot in enumerate(self._slots):
+            if self._owners[index] is not None:
+                continue
+            nbytes = slot.memory_bytes
+            self._slots[index] = _GpuXtcSlotBuffers(self.cp, self._budget)
+            del slot
+            if self._budget is not None:
+                self._budget.release(nbytes)
 
     def memory_bytes(self):
         per_slot = [slot.memory_bytes for slot in self._slots]

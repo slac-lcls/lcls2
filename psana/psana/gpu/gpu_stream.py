@@ -271,5 +271,10 @@ class EventPool:
         """Number of batches that can be in flight simultaneously."""
         return self._n
 
+    @property
+    def active_count(self) -> int:
+        """Occupied executions, including one exposed during retirement."""
+        return sum(record is not None for record in self._slots)
+
     def __len__(self) -> int:
         return self._n

@@ -391,24 +391,25 @@ view.
 
 ### 3. Device-memory backpressure
 
-`_GpuBudget` accounts for selected committed device allocations. One coherent
-EB batch is divided into byte-bounded `GpuSubbatchView` objects before
-submission.
+`_GpuBudget` accounts for pipeline-owned device allocations and pre-I/O
+admission holds. One coherent EB batch is divided into byte-bounded
+`GpuSubbatchView` objects using actual source presence, detector working sets,
+and parser bytes. An event that cannot fit alone is rejected before reading.
 
-KvikIO raw input slots and calibrated output slots reserve committed bytes
-directly, as do parser Configure and per-slot buffers. Fixed constants and
-geometry are subtracted when deriving the per-subbatch allowance, but are not
-reserved in `_GpuBudget.committed()`. Detector raw/gather scratch, field
-presence, input bytes, and parser estimates contribute to subbatch admission;
-the calculation is an estimate and allocation-time `reserve()` remains the
-enforcement point. See
-[Known problems and limitations](known_issues.md#fixed-allocation-accounting).
+Fixed constants, geometry, and Configure tables are reserved during setup.
+Before each read, a hold reserves the reader, parser, and detector growth
+requirements together, including old+new replacement peaks. Actual allocations
+consume that hold; cached capacity remains charged. Under pressure the manager
+drains execution consumers, trims only unowned variable buffers, and retries.
+The allocation-time checks enforce the configured limit with 10% headroom.
+Independent user allocations and host staging are outside this device ledger;
+see [Known problems and limitations](known_issues.md#accounting-boundary-outside-pipeline-owned-device-storage).
 
 Pinned host memory is tracked separately through `_D2hPipeline.pinned_bytes()`.
 
 These controls are related but not interchangeable: pool depth bounds active
 execution pipelines, D2H chunk size bounds each host-transfer buffer, and the
-GPU budget bounds committed VRAM bytes.
+GPU budget bounds tracked committed bytes plus admission holds.
 
 ---
 
@@ -549,6 +550,7 @@ and its CPU delivery are visible in Nsight Systems.
 | `gpu_detector.py` | Per-slot calibration/raw buffers and result-ready producer work |
 | `gpu_calib.py` | Calibration constants, geometry helpers, and Jungfrau kernel |
 | `gpu_budget.py` | Accounting for explicitly tracked device allocations |
+| `gpu_admission.py` | Presence-aware admission and future residency decisions |
 | `gpu_batch.py` | GPU batch and byte-bounded subbatch views |
 | `gpudgram/` | Run-scoped Configure tables, per-slot XTC parsing, and field locators |
 | `gpu_input.py` | Detector bindings, general field access, and input-buffer leases |
@@ -562,6 +564,6 @@ and its CPU delivery are visible in Nsight Systems.
 - Logical joins of many CPU results are separate from physical D2H chunking.
   Compact downstream GPU reductions should transfer only their reduced result
   rather than full calibrated detector planes.
-- Correctness and completeness gaps in leases, fixed-allocation accounting,
+- Correctness and completeness gaps in leases, user-allocation accounting,
   pinned-host sizing, and multi-BD coordination are tracked in
   [Known problems and limitations](known_issues.md).
