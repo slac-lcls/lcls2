@@ -288,10 +288,10 @@ def test_locator_passthrough_copy_writes_canonical_row():
 @requires_gpu
 @requires_data
 @pytest.mark.parametrize(
-    "detector_kw,batch_size,pool_depth,d2h_chunk_size",
+    "detector_kw,batch_size,pool_depth,d2h_chunk_size,bulk_read",
     [
-        pytest.param("gpu_det", 1, 1, 0, id="single-event"),
-        pytest.param("gpu_det", 5, 2, 0, id="batched-slot-reuse-partial-tail"),
+        pytest.param("gpu_det", 1, 1, 0, False, id="single-event"),
+        pytest.param("gpu_det", 5, 2, 0, False, id="batched-slot-reuse-partial-tail"),
         # gpu_d2h_chunk_size > 0 activates _D2hPipeline: results are copied to
         # pinned host memory on a separate stream. Parsed field access now
         # keeps the input slot through the event yield window. Exercising the
@@ -299,17 +299,19 @@ def test_locator_passthrough_copy_writes_canonical_row():
         # check of that path against a real CUDA stream — the unit tests fake
         # cupy with a synchronous memmove, which cannot detect a missing
         # synchronization because the data has already landed.
-        pytest.param("gpu_det", 5, 2, 1, id="d2h-chunk-per-event"),
-        pytest.param("gpu_det", 5, 2, 3, id="d2h-chunk-spans-events"),
+        pytest.param("gpu_det", 5, 2, 1, False, id="d2h-chunk-per-event"),
+        pytest.param("gpu_det", 5, 2, 3, False, id="d2h-chunk-spans-events"),
         # Chunk larger than the batch: exercises the partial-chunk path.
-        pytest.param("gpu_det", 5, 2, 8, id="d2h-chunk-exceeds-batch"),
+        pytest.param("gpu_det", 5, 2, 8, False, id="d2h-chunk-exceeds-batch"),
         # The same parser/calibration path with the SMD proxy retained for the
         # normal CPU BigData reader as well as represented in GPUBAT1.
-        pytest.param("hybrid_det", 5, 2, 0, id="hybrid-stream-mirror"),
+        pytest.param("hybrid_det", 5, 2, 0, False, id="hybrid-stream-mirror"),
+        pytest.param("gpu_det", 5, 2, 0, True, id="bulk-exclusive"),
+        pytest.param("hybrid_det", 5, 2, 3, True, id="bulk-hybrid-d2h"),
     ],
 )
 def test_integrated_jungfrau_pixel_exact(
-    cpu_reference, detector_kw, batch_size, pool_depth, d2h_chunk_size
+    cpu_reference, detector_kw, batch_size, pool_depth, d2h_chunk_size, bulk_read
 ):
     """Integrated GPU calibration exactly matches normal psana by timestamp."""
     from psana import DataSource
@@ -321,6 +323,7 @@ def test_integrated_jungfrau_pixel_exact(
         batch_size=batch_size,
         n_gpu_streams=pool_depth,
         gpu_d2h_chunk_size=d2h_chunk_size,
+        gpu_bulk_read=bulk_read,
         max_events=_N_EVENTS,
         **{detector_kw: _DET_NAME},
     )
