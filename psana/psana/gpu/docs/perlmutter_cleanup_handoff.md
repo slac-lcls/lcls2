@@ -193,12 +193,14 @@ Focus changes in `context.py`, `gpu_input.py`, `gpu_stream.py`,
 
 **Integration update (2026-09-14):** Stages 1 and 2 of the
 [bulk-read plan](proposals/bulk_read_plan.md) are implemented. Setting
-`gpu_bulk_read=True` enables adjacent reads within an existing execution
+GPU reads now coalesce adjacent ranges by default within an existing execution
 subbatch, with immutable file/chunk resolution and pending-I/O cleanup.
-CPU validation passed; Stage 2 GPU validation is pending. Independent fast/slow
+CPU validation and all 14 Stage 2 GPU integration cases passed; GPU validation
+used KvikIO CPU fallback with GDS unavailable. Independent fast/slow
 input ownership and resident-fast scheduling remain later stages.
 
-**Default behavior:** `KvikioGpuReader.issue_batch()` submits one `pread` per
+**Comparison mode (`gpu_bulk_read=False`):** `KvikioGpuReader.issue_batch()`
+submits one `pread` per
 nonempty dgram descriptor. `_build_desc_table()` packs their payloads back to
 back. KvikIO's `task_size` is not a psana-level coalescing plan.
 

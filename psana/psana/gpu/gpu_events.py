@@ -807,7 +807,7 @@ class GpuEventManager:
         # _gpu_budget was already created in _setup_detectors() above and
         # is shared with every GPUDetector so all allocations are counted
         # against the same limit.
-        bulk_read = getattr(self.dsparms, "gpu_bulk_read", False)
+        bulk_read = self.dsparms.gpu_bulk_read
         self.gpu_reader = KvikioGpuReader(
             n_slots=pool_depth, budget=self._gpu_budget, bulk_read=bulk_read,
         )

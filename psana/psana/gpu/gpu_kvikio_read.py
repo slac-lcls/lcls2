@@ -47,7 +47,7 @@ class PendingBatch:
 
 
 class KvikioGpuReader:
-    def __init__(self, task_size=None, n_slots=2, budget=None, *, bulk_read=False):
+    def __init__(self, task_size=None, n_slots=2, budget=None, *, bulk_read=True):
         """Create a GPU reader with optional pre-allocated per-slot buffers.
 
         Parameters

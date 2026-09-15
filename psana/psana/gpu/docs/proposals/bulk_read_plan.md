@@ -1,9 +1,8 @@
 # GPU bulk-read implementation plan
 
-Status: Stages 1 and 2 implemented, 2026-09-14; Stage 2 GPU validation is in
-progress. Stages 3-7 remain proposed.
-Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The new planner
-is connected to the reader only with `gpu_bulk_read=True`; the existing
+Status: Stages 1 and 2 implemented; Stage 2 GPU validation passed.
+Bulk reads are the default per user direction. Stages 3-7 remain proposed.
+Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The planner is connected to the reader by default; the existing
 execution-subbatch schedule is preserved.
 
 ## Stage 1 review evidence
@@ -55,8 +54,9 @@ Stage 1 was committed as `c71eac4d2`. Stage 2 started after user review.
 
 ## Stage 2 review evidence
 
-`DataSource(..., gpu_det=..., gpu_bulk_read=True)` enables the adjacent-range
-reader in existing slots. The default retains per-dgram reads. The BD's
+`DataSource(..., gpu_det=...)` uses the adjacent-range reader in existing slots
+by default, as does `hybrid_det`. `gpu_bulk_read=False` retains per-dgram reads
+for debugging and comparison. The BD's
 `GpuFileEpochs` snapshots run-start file identity and applies ordered SMD
 Enable/chunkinfo transitions before CPU EventManager processing. Immutable
 event/stream mappings survive later mutations to CPU file handles. Replayed
@@ -84,9 +84,19 @@ end-to-end bandwidth denominator.
 CPU validation: all 234 GPU unit cases passed. New cases include fault
 injection, immutable file resolution, and the tracked chunking fixture with
 exclusive GPU routing and events on both sides of a chunk change in one EB
-packet. Device validation job `58335140` was submitted on Perlmutter; results
-will be recorded before the Stage 2 review checkpoint. Logs and the submitted
-script are under `validation/bulk-read-stage2/` (generated, not committed).
+packet. Device validation job `58335140` passed all 14 GPU integration cases
+in 467.54 seconds on an NVIDIA A100-SXM4-40GB, including raw-byte/field
+comparisons and exclusive/hybrid Jungfrau pixel checks. KvikIO compatibility
+mode was True and GDS was unavailable: this validates fallback I/O, not GDS
+or a throughput improvement. This run used explicit bulk-read selection before
+the default changed. Logs and the submitted script are under
+`validation/bulk-read-stage2/` (generated, not committed).
+
+After changing the default, all 235 CPU GPU-unit cases passed in 5.92 seconds,
+including DataSource default propagation, CPU-only special batching, and a
+no-argument reader producing two physical reads for six logical dgrams. The
+exclusive/hybrid GPU acceptance cases now omit the selector; their previous
+explicit-True run above exercised the same coalescing implementation.
 
 ## Target behavior
 
@@ -387,8 +397,9 @@ and integer/overlap validation. No production-path behavior changes yet.
 Integrate the planner in `gpu_kvikio_read.py`. Resolve per-event file epochs
 from ordered SMD metadata before pre-issue; retain immutable file identities
 and handle references. Submit one pread per physical range, allocate from the
-plan's capacity, and drain all started operations on error. Add the opt-in
-selector and useful/fetched-byte and request-count reporting. Touch
+plan's capacity, and drain all started operations on error. Enable adjacent
+reads by default, retain a per-dgram comparison selector, and add
+useful/fetched-byte and request-count reporting. Touch
 `gpu_events.py`, SMD helpers, and `gpudgram/batch.py` only as required by this
 existing-slot integration.
 
@@ -429,7 +440,7 @@ Run these checks before enabling independent resident scheduling.
 ### Stage 5: Full-fast residency with slow execution windows
 
 Replace the common pre-read split in `GpuEventManager._process_batch()` for
-the opt-in path. Admit complete affordable stream inputs, parse them once,
+the bulk-read path. Admit complete affordable stream inputs, parse them once,
 and reference them from ordered execution windows containing transient slow
 inputs. Initially allow one resident EB batch. Continue using existing
 detector adapters and public event delivery; fast read grouping may exceed
@@ -467,14 +478,13 @@ and peak device/host memory. Preserve commands and environment evidence.
 
 Review gate: produce a correctness and performance report, explicitly label
 fallback versus demonstrated true GDS, and update architecture/handoff notes.
-Record unavailable GDS validation separately. Retain opt-in behavior until
-the rollout review; only close issue-register items actually fixed.
+Record unavailable GDS validation separately; only close issue-register items
+actually fixed.
 
-Introduce one validated opt-in selector in `DsParms`/`DataSource` during
-development, proposed `gpu_bulk_read=True`, retaining the existing path for
-comparison. Default to adjacent-only merging. Do not make the new path the
-default until all mixed-rate acceptance gates pass. Keep tuning controls
-internal until measurements justify exposing them.
+Per user direction, adjacent-only merging within existing slots is the default
+starting in Stage 2. `gpu_bulk_read=False` retains per-dgram reads for debugging
+and comparison. Later mixed-rate residency stages retain their own acceptance
+gates. Keep tuning controls internal until measurements justify exposing them.
 
 ### Tests
 
