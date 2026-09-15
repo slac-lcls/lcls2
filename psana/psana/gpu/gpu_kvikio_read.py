@@ -25,6 +25,11 @@ DESC_NCOLS = 6
 class KvikioBatchRead:
     desc_table: np.ndarray
     data_gpu: object = None
+    _retain: object = None
+
+    def retain_input(self):
+        """Pin this read's raw storage; return an explicit release callback."""
+        return self._retain() if self._retain is not None else lambda: None
 
 
 @dataclass
@@ -42,6 +47,7 @@ class PendingBatch:
     plan: object = None
     slot_id: object = None
     issued_ns: int = 0
+    generation: int = 0
     completed: bool = False
     error: object = None
 
@@ -55,7 +61,8 @@ class KvikioGpuReader:
         task_size : int or None
             KvikIO task size for GDS reads.
         n_slots : int
-            Number of EventPool slots (must match EventPool depth).
+            Number of raw input buffers. The current scheduler uses its
+            execution depth; retained InputWindows independently guard reuse.
             One ``data_gpu`` buffer is pre-allocated per slot and grown
             lazily on the first batch that exceeds the current size.
             Reusing the same buffer per slot eliminates the per-batch
@@ -76,6 +83,8 @@ class KvikioGpuReader:
         self._pending = []
         self._closed = False
         self._failure = None
+        self._input_holds = {}
+        self._generations = {}
 
         # Detect which I/O path kvikio will use for this run.
         # GDS (is_gds_available=True)  → NVMe → GPU VRAM direct via DMA
@@ -262,6 +271,8 @@ class KvikioGpuReader:
             self._slot_idx += 1
         if any(p.slot_id == slot for p in self._pending):
             raise RuntimeError(f"GPU input slot {slot} still has pending I/O")
+        if self._input_holds.get(slot, 0):
+            raise RuntimeError(f"GPU raw buffer {slot} is owned by an input window")
         existing = self._slot_bufs[slot]
         old_size = int(existing.nbytes) if existing is not None else 0
         capacity = (old_size + self._budget.available() if self._budget is not None
@@ -308,8 +319,10 @@ class KvikioGpuReader:
             except Exception:
                 pass
 
+        generation = self._generations.get(slot, 0) + 1
+        self._generations[slot] = generation
         pending = PendingBatch(desc_table, data_gpu, [], plan=plan, slot_id=slot,
-                               issued_ns=time.perf_counter_ns())
+                               generation=generation, issued_ns=time.perf_counter_ns())
         self._pending.append(pending)
         try:
             for r in ranges:
@@ -367,7 +380,22 @@ class KvikioGpuReader:
                     self._failure = exc
         if pending.error is not None:
             raise pending.error
-        return KvikioBatchRead(pending.desc_table, pending.data_gpu)
+        return KvikioBatchRead(pending.desc_table, pending.data_gpu,
+                              lambda: self._retain_input(pending))
+
+    def _retain_input(self, pending):
+        slot = pending.slot_id
+        if self._closed or self._generations.get(slot) != pending.generation:
+            raise RuntimeError("cannot retain an obsolete GPU read")
+        self._input_holds[slot] = self._input_holds.get(slot, 0) + 1
+        released = False
+
+        def release():
+            nonlocal released
+            if not released:
+                self._input_holds[slot] -= 1
+                released = True
+        return release
 
     @staticmethod
     def _read_error(operation, r, pending, exc):

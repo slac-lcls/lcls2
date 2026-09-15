@@ -67,7 +67,7 @@ EventBuilder
   -> send one coherent BatchEnvelope to a BD worker
 
 BD / GpuEventManager
-  -> issue KvikIO reads into an EventPool slot
+  -> issue KvikIO reads into reusable input storage
   -> construct CPU events for CPU-routed streams
   -> parse XTC and locate configured fields on the GPU
   -> gather detector fields into canonical segment order
@@ -124,9 +124,16 @@ policy.
 - The per-BD device-memory budget and asynchronous D2H pipeline.
 - `EventPool`, whose reusable slots each own a non-blocking CUDA stream.
 
-Each occupied slot owns its input bytes, parser rows, detector buffers, result
-views, and completion state. Per-event `GpuEventState` objects expose only that
-event's results and input bindings; they do not own the manager.
+Execution slots own detector buffers, result views, and execution completion
+state. They hold references to `InputWindow` owners for raw bytes and parser
+rows. An input window can serve multiple executions and cannot be recycled
+until planned uses, event consumers, and CUDA work have finished. The current
+scheduler still groups reads with execution subbatches; independent fast/slow
+residency admission comes in later stages.
+
+Per-event `GpuEventState` objects expose that event's results and input bindings;
+they do not own the manager. Field-view contexts and field copies reserve input
+references before accessing raw storage.
 
 The intended lifetime rule is:
 

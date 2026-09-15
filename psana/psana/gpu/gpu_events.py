@@ -1086,6 +1086,7 @@ class GpuEventManager:
             event_envelopes,
             self.gpu_detectors,
             xtc_parser=self.gpu_xtc_parser,
+            batch_id=getattr(self, "_input_batch_id", 0),
         )
         for pipe in self._d2h_pipelines.values():
             pipe.schedule(record)
@@ -1207,6 +1208,7 @@ class GpuEventManager:
         n_events = self._n_events
         try:
             while True:
+                self._input_batch_id = getattr(self, "_input_batch_id", 0) + 1
                 gpu_views = [GpuBatchView(packet, validate=True)
                              for packet, _ in gpu_batch_dict.values()]
                 if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
@@ -1373,6 +1375,9 @@ class GpuEventManager:
         try:
             yield from self._flush_event_pool()
             self._drain_pending_gpu_read()
+            parser = getattr(self, "gpu_xtc_parser", None)
+            if parser is not None:
+                parser.close()
         finally:
             if self.gpu_reader is not None:
                 self.gpu_reader.close()
