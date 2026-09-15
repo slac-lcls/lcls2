@@ -329,3 +329,21 @@ def test_exclusive_smd_packet_resolves_real_chunked_fixture_before_cpu_reads(io)
     assert len(used) == 2
     assert crossed_inside_packet
     assert seen
+
+
+def test_completed_read_pin_blocks_reuse_until_all_input_owners_release(io):
+    io.files = {"/fast": bytes(range(32))}
+    reader = KvikioGpuReader(n_slots=1)
+    result = reader.wait_batch(issue(reader, [desc(0, 0, 0)], dm(io.files)))
+    first, second = result.retain_input(), result.retain_input()
+    with pytest.raises(RuntimeError, match="owned by an input window"):
+        issue(reader, [desc(1, 0, 4)], dm(io.files))
+    first()
+    first()
+    with pytest.raises(RuntimeError, match="owned by an input window"):
+        issue(reader, [desc(1, 0, 4)], dm(io.files))
+    second()
+    reader.wait_batch(issue(reader, [desc(1, 0, 4)], dm(io.files)))
+    with pytest.raises(RuntimeError, match="obsolete GPU read"):
+        result.retain_input()
+    reader.close()

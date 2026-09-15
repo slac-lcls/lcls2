@@ -1,9 +1,17 @@
 # GPU bulk-read implementation plan
 
-Status: Stages 1 and 2 implemented; Stage 2 GPU validation passed.
-Bulk reads are the default per user direction. Stages 3-7 remain proposed.
+Status: Stages 1 and 2 accepted. Stage 3 implementation and validation complete;
+ready for review. Bulk reads are the default. Stages 4-7 remain proposed.
 Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The planner is connected to the reader by default; the existing
 execution-subbatch schedule is preserved.
+
+Design refinement: [detector materialization ownership](detector_materialization_ownership.md)
+defines proposed Stages 3A-3D before Stage 4. It supersedes the retained-XTC
+ownership and residency design below: all GPU detectors, including Jungfrau,
+use one automatic materialization path, and long-lived fast data resides in
+detector-owned storage. The existing Stage 3 evidence applies to the validated
+baseline only; the refinement is not yet implemented. Stages 4-7 must use the
+revised ownership contract and review gates in that proposal.
 
 ## Stage 1 review evidence
 
@@ -110,6 +118,50 @@ exclusive and hybrid pixel-exact cases. KvikIO compatibility mode was True;
 GDS was unavailable. Installed runtime modules were byte-identical to source.
 Evidence: `validation/bulk-read-stage2/recheck-unit.log` and
 `recheck-58338308.log`. Stage 2 acceptance is complete.
+
+## Stage 3 review evidence
+
+Stage 2 was rechecked and committed as `6f4171c92` before Stage 3 began.
+
+`InputWindow` in `gpu_input_window.py` owns a parsed batch and its descriptor
+identity, with explicit references for planned uses, execution, and event
+consumers. Closing a window stops new root acquisitions. An existing reference
+can split into child references (for example, a field-view context); actual
+retirement starts only after every reference is released. CUDA dependencies
+transfer to the owner and must complete before its backing storage is reusable.
+There is no garbage-collection release policy.
+
+The KvikIO read receipt pins its raw buffer by generation. A retained input
+blocks overwrite, and an obsolete receipt cannot pin replacement bytes.
+`GpuXtcBatchPool.parse_window()` leases free parser storage independently of
+execution-slot IDs and shares the run's Configure tables. Parser/submission
+errors retain both raw and parser storage if CUDA completion cannot be proved.
+
+`GpuEventDgrams.from_windows()` composes stream views using BD-local batch
+identity, original event index, stream ID, and timestamp. Each stream keeps its
+own raw base and locator row; no payload concatenation is needed. EventPool
+accepts these independent windows and reserves execution/event references.
+The default path still creates one input window per existing execution
+subbatch. Independent residency admission and scheduling remain Stages 4-5.
+Field-view contexts and independent field copies reserve their own input uses;
+the separate detector-result lease fan-out issue remains open.
+
+CPU validation: 243 tests passed in 5.28 seconds. New coverage retains fast
+input through repeated slow execution retirement, validates composed identities,
+blocks acquisition during retirement, waits for delayed/failing consumers,
+rejects obsolete raw reads, and retains storage on parser/execution failure.
+GPU acceptance includes a delayed CUDA consumer plus stable raw bytes and
+locator addresses through slow input/parser/execution reuse, followed by the
+existing pixel-exact suite. Initial GPU job `58338947` passed all 14 existing
+cases but the new test used unavailable CuPy `Event.query()`. The test now uses
+the installed `Event.done` property and explicitly orders initialization before
+its delayed kernel. Final-source job `58339082` completed with exit code 0:0
+on nid002441: all 15 GPU cases passed in 465.80 seconds on an A100-SXM4-40GB.
+This includes the corrected retained-input/locator test and all pixel-exact
+cases. KvikIO compatibility mode was True; GDS was unavailable. Source hashes
+still match `validation/bulk-read-stage3/runtime.sha256`. The result log is
+`validation/bulk-read-stage3/final-58339082.log`. Stage 3 is ready for review;
+its implementation remains uncommitted, and Stage 4 has not started.
 
 ## Deferred cleanup
 

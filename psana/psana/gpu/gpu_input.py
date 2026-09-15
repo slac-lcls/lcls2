@@ -42,15 +42,19 @@ class GpuStreamDgramView:
     """One event's parsed dgram in a physical input stream.
 
     The view does not own another copy of the XTC bytes. ``batch`` remains the
-    owner of ``data_gpu`` and all parser-produced device tables.
+    view of ``data_gpu`` and parser-produced tables. ``owner`` pins their
+    independent input storage when present.
     """
 
     stream_id: int
     dgram_index: int
     batch: object
+    owner: object = None
 
     @property
     def data_gpu(self):
+        if self.owner is not None:
+            self.owner.require_storage()
         return self.batch.data_gpu
 
     def locate(self, handle, *, stream=None):
@@ -62,7 +66,8 @@ class GpuStreamDgramView:
                 f"field handle belongs to stream {handle.stream_id}, "
                 f"not stream {self.stream_id}"
             )
-        return self.batch.locate(handle, stream=stream)
+        target = self.owner if self.owner is not None else self.batch
+        return target.locate(handle, stream=stream)
 
 
 class GpuEventDgrams(Mapping):
@@ -108,12 +113,47 @@ class GpuEventDgrams(Mapping):
 
         self.event = event
         self.batch = batch
+        self.input_windows = ()
         self._dgrams = MappingProxyType(dgrams)
 
     @classmethod
     def from_batch(cls, gpu_view, batch):
         """Build the event views once for all consumers of a parsed batch."""
         return tuple(cls(event, batch) for event in gpu_view.iter_events())
+
+    @classmethod
+    def from_windows(cls, gpu_view, windows, *, batch_id):
+        """Compose event streams from independent input bases without copying."""
+        windows = tuple(windows)
+        rows = {}
+        for owner in windows:
+            owner.require_storage()
+            if owner.batch_id != batch_id:
+                raise ValueError("cannot compose input windows from different EB batches")
+            for event_index, streams in owner.rows_by_event.items():
+                for stream_id, (row, timestamp) in streams.items():
+                    streams = rows.setdefault(event_index, {})
+                    if stream_id in streams:
+                        raise ValueError(f"duplicate input event/stream across windows: {(event_index, stream_id)}")
+                    streams[stream_id] = (owner, row, timestamp)
+        result = []
+        for event in gpu_view.iter_events():
+            dgrams, owners = {}, []
+            for stream_id, (owner, row, timestamp) in rows.get(int(event.batch_event_index), {}).items():
+                if timestamp != int(event.timestamp):
+                    raise ValueError("input window timestamp disagrees with execution event")
+                dgrams[stream_id] = GpuStreamDgramView(stream_id, row, owner.batch, owner)
+                if owner not in owners:
+                    owners.append(owner)
+            if len(dgrams) != int(event.n_desc):
+                raise ValueError("input windows do not cover the execution event descriptors")
+            view = cls.__new__(cls)
+            view.event = event
+            view.batch = owners[0].batch if len(owners) == 1 else None
+            view.input_windows = tuple(owners)
+            view._dgrams = MappingProxyType(dgrams)
+            result.append(view)
+        return tuple(result)
 
     @property
     def timestamp(self):
@@ -343,20 +383,65 @@ class GpuDetectorFieldBinding:
 
 
 class InputSlotLease:
-    """Protect one parsed input slot across any number of field consumers."""
+    """Event/execution references to independently owned parsed inputs."""
 
-    __slots__ = ("result_ready", "_consumer_done")
-
-    def __init__(self, result_ready):
+    def __init__(self, result_ready, owners=()):
+        from threading import RLock
         self.result_ready = result_ready
         self._consumer_done = []
+        self._lock = RLock()
+        self._closed = False
+        self._owners = tuple(dict.fromkeys(owners))
+        self._uses = []
+        try:
+            for owner in self._owners:
+                self._uses.append(owner.acquire())
+        except BaseException:
+            for use in self._uses:
+                use.wait_until_safe_to_reuse()
+            raise
+
+    def require_active(self):
+        with self._lock:
+            if self._closed:
+                raise RuntimeError("parsed GPU input lease is retiring or released")
+
+    def acquire_view(self):
+        with self._lock:
+            self.require_active()
+            # A field-view context can outlive its event's delivery window.
+            # Reserve its owners before exposing any zero-copy arrays.
+            if not self._owners:
+                return self
+            child = InputSlotLease(self.result_ready)
+            child._owners = self._owners
+            try:
+                for use in self._uses:
+                    child._uses.append(use.fork())
+            except BaseException:
+                child.wait_until_safe_to_reuse()
+                raise
+            return child
 
     def register_consumer_done(self, event):
-        self._consumer_done.append(event)
+        with self._lock:
+            self.require_active()
+            self._consumer_done.append(event)
 
     def wait_until_safe_to_reuse(self):
-        for event in self._consumer_done:
-            event.synchronize()
+        with self._lock:
+            if not self._closed:
+                self._closed = True
+                events = ([self.result_ready] if self.result_ready is not None else []) + self._consumer_done
+                for use in self._uses:
+                    for event in events:
+                        use.register_consumer_done(event)
+            if self._uses:
+                for use in self._uses:
+                    use.wait_until_safe_to_reuse()
+            else:
+                for event in self._consumer_done:
+                    event.synchronize()
 
 
 class GpuFieldData(Mapping):
@@ -398,21 +483,29 @@ class GpuFieldData(Mapping):
 
 
 class _GpuFieldViewContext:
-    __slots__ = ("_result", "_stream", "_exited")
+    __slots__ = ("_result", "_stream", "_exited", "_lease")
 
     def __init__(self, result, stream):
         self._result = result
         self._stream = stream
         self._exited = False
+        self._lease = None
 
     def __enter__(self):
         import cupy as cp
 
         stream = self._stream or cp.cuda.Stream.null
-        ready = self._result._lease.result_ready
+        self._lease = self._result._lease.acquire_view()
+        ready = self._lease.result_ready
         if ready is not None:
             stream.wait_event(ready)
-        return self._result._slot_views()
+        try:
+            return self._result._slot_views()
+        except BaseException:
+            if self._lease is not self._result._lease:
+                self._lease.wait_until_safe_to_reuse()
+            self._exited = True
+            raise
 
     def __exit__(self, *_):
         import cupy as cp
@@ -420,11 +513,13 @@ class _GpuFieldViewContext:
         stream = self._stream or cp.cuda.Stream.null
         done = cp.cuda.Event(disable_timing=True)
         stream.record(done)
-        self._result._lease.register_consumer_done(done)
+        self._lease.register_consumer_done(done)
+        if self._lease is not self._result._lease:
+            self._lease.wait_until_safe_to_reuse()
         self._exited = True
 
     def __del__(self):
-        if not self._exited:
+        if not self._exited and self._lease is self._result._lease:
             try:
                 import cupy as cp
 
@@ -479,6 +574,8 @@ class GpuFieldResult:
         return self._segment_ids
 
     def _require_device_storage(self, accessor):
+        if self._lease is not None:
+            self._lease.require_active()
         if self._device_released or self.event_dgrams is None:
             raise RuntimeError(
                 f"{accessor} is unavailable because the parsed GPU input "
@@ -554,16 +651,21 @@ class GpuFieldResult:
 
         self._require_device_storage("on_gpu")
         stream = cp.cuda.Stream.null
-        if self._lease.result_ready is not None:
-            stream.wait_event(self._lease.result_ready)
-        with stream:
-            copied = {
-                segment: value.copy()
-                for segment, value in self._slot_views().items()
-            }
-        done = cp.cuda.Event(disable_timing=True)
-        stream.record(done)
-        self._lease.register_consumer_done(done)
+        lease = self._lease.acquire_view()
+        try:
+            if lease.result_ready is not None:
+                stream.wait_event(lease.result_ready)
+            with stream:
+                copied = {
+                    segment: value.copy()
+                    for segment, value in self._slot_views().items()
+                }
+        finally:
+            done = cp.cuda.Event(disable_timing=True)
+            stream.record(done)
+            lease.register_consumer_done(done)
+            if lease is not self._lease:
+                lease.wait_until_safe_to_reuse()
         return GpuFieldData(self.binding, copied)
 
     def on_gpu_view(self, stream=None):
@@ -578,15 +680,21 @@ class GpuFieldResult:
         """Return independent NumPy values keyed by physical segment id."""
         if self._cpu_cache is None:
             self._require_device_storage("on_cpu")
-            if self._lease.result_ready is not None:
-                self._lease.result_ready.synchronize()
-            self._cpu_cache = GpuFieldData(
-                self.binding,
-                {
-                    segment: value.get()
-                    for segment, value in self._slot_views().items()
-                },
-            )
+            lease = self._lease.acquire_view()
+            try:
+                if lease.result_ready is not None:
+                    lease.result_ready.synchronize()
+                self._cpu_cache = GpuFieldData(
+                    self.binding,
+                    {segment: value.get() for segment, value in self._slot_views().items()},
+                )
+            finally:
+                if lease is not self._lease:
+                    import cupy as cp
+                    done = cp.cuda.Event(disable_timing=True)
+                    cp.cuda.get_current_stream().record(done)
+                    lease.register_consumer_done(done)
+                    lease.wait_until_safe_to_reuse()
         return self._cpu_cache
 
 

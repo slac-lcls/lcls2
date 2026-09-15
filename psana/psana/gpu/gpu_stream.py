@@ -27,6 +27,7 @@ class _EventSlot:
     leases: list
     leases_by_ts: dict
     xtc_batch: object = None
+    input_windows: tuple = ()
     gpu_event_dgrams: tuple = ()
     input_dgrams_by_ts: dict = field(default_factory=dict)
     input_leases_by_ts: dict = field(default_factory=dict)
@@ -61,8 +62,8 @@ class EventPool:
         import cupy as cp
         self._n = n
         self._streams = [cp.cuda.Stream(non_blocking=True) for _ in range(n)]
-        # Each slot is an _EventSlot or None.  leases is a flat list of all
-        # SlotLease objects that protect buffers owned by that execution slot.
+        # Each slot is an _EventSlot or None. Its leases include terminal
+        # result leases and references to independently owned input windows.
         self._slots: list = [None] * n
         self._write_idx = 0
         # Slot currently exposed between begin_retire_next() and
@@ -127,132 +128,109 @@ class EventPool:
         old.input_leases_by_ts = {}
         old.gpu_event_dgrams = ()
         old.xtc_batch = None
+        old.input_windows = ()
         self._retiring = None
 
     def submit(
-        self,
-        gv,
-        gpu_read,
-        event_envelopes: list,
-        gpu_detectors: dict,
-        xtc_parser=None,
+        self, gv, gpu_read, event_envelopes: list, gpu_detectors: dict,
+        xtc_parser=None, *, input_windows=None, batch_id=0,
     ):
-        """Queue calibration into the already-retired next slot.
+        """Queue execution using owned inputs, independently of its slot ID.
 
-        Records a result-ready CUDA event after detector processing is queued,
-        then creates one SlotLease per result so downstream consumers can
-        release the slot when done.
-
-        Returns the occupied _EventSlot.  Automatic consumers such as D2H may
-        attach their completion tokens immediately; results are delivered later
-        by begin_retire_next().
+        The default creates one input window for the existing subbatch. An
+        internal caller may instead supply resident and transient windows;
+        that caller controls when those windows close to new planned uses.
         """
         import cupy as cp
         from psana.gpu.context import SlotLease
-        from psana.gpu.gpu_input import InputSlotLease
+        from psana.gpu.gpu_input import GpuEventDgrams, InputSlotLease
 
-        slot   = self.next_slot_id
+        slot = self.next_slot_id
         if self._slots[slot] is not None:
             raise RuntimeError(
                 f"EventPool slot {slot} was submitted before retirement finished"
             )
         stream = self._streams[slot]
+        null = getattr(cp.cuda.Stream, 'null', None)
+        if null is not None:
+            null.synchronize()
 
-        # Synchronise the null (default) stream before launching the
-        # calibration kernel.  Any on_gpu D→D copies issued by the user
-        # in the previous iteration run on the null stream; without this
-        # sync they could race with the new calib kernel which writes to
-        # the same slot buffer (Race 1).  The sync is a no-op if no
-        # null-stream work is pending, so it adds negligible overhead.
+        owned_window = None
+        if input_windows is None:
+            if xtc_parser is not None:
+                owned_window = xtc_parser.parse_window(gpu_read, stream, batch_id=batch_id)
+            input_windows = () if owned_window is None else (owned_window,)
+        windows = tuple(input_windows)
+        all_leases = []
         try:
-            cp.cuda.Stream.null.synchronize()
-        except Exception:
-            pass
-
-        # Translate the completed read descriptors and walk XTC on this slot's
-        # stream.  The resulting device tables remain slot-owned until every
-        # downstream consumer has completed and retirement releases the slot.
-        xtc_batch = None
-        if xtc_parser is not None:
-            xtc_batch = xtc_parser.parse(
-                slot,
-                gpu_read.data_gpu,
-                gpu_read.desc_table,
-                stream,
+            execution_inputs = InputSlotLease(None, windows)
+            if windows:
+                all_leases.append(execution_inputs)
+            for window in windows:
+                window.wait_ready(stream)
+            gpu_event_dgrams = (
+                GpuEventDgrams.from_windows(gv, windows, batch_id=batch_id)
+                if gv is not None and windows else ()
             )
 
-        # Build event -> stream dgram ownership once, outside every detector
-        # adapter. These views retain the shared parsed batch; the slot clears
-        # them together at retirement.
-        gpu_event_dgrams = ()
-        if gv is not None and xtc_batch is not None:
-            from psana.gpu.gpu_input import GpuEventDgrams
+            gpu_results_by_ts = {}
+            for det_name, det_info in gpu_detectors.items():
+                for ec in det_info[1].process_batch(
+                    gpu_event_dgrams, stream=stream, slot_id=slot
+                ):
+                    results = gpu_results_by_ts.setdefault(ec.timestamp, {})
+                    results[f'{det_name}.calib'] = ec.calib_gpu
+                    if ec.raw_gpu is not None:
+                        results[f'{det_name}.raw'] = ec.raw_gpu
+                    if ec.image_gpu is not None:
+                        results[f'{det_name}.image'] = ec.image_gpu
 
-            gpu_event_dgrams = GpuEventDgrams.from_batch(gv, xtc_batch)
+            result_ready = cp.cuda.Event(disable_timing=True)
+            result_ready.record(stream)
+            execution_inputs.result_ready = result_ready
+            leases_by_ts = {}
+            for ts, results in gpu_results_by_ts.items():
+                leases_by_ts[ts] = {key: SlotLease(result_ready) for key in results}
+                all_leases.extend(leases_by_ts[ts].values())
 
-        # Launch detector processing on this slot's non-blocking stream.  It
-        # consumes the parser's device locators directly, in stream order.
-        gpu_results_by_ts: dict = {}
-        for det_name, det_info in gpu_detectors.items():
-            gpu_det_obj = det_info[1]
-            for ec in gpu_det_obj.process_batch(
-                gpu_event_dgrams, stream=stream, slot_id=slot
-            ):
-                ts_dict = gpu_results_by_ts.setdefault(ec.timestamp, {})
-                ts_dict[f'{det_name}.calib'] = ec.calib_gpu
-                if ec.raw_gpu is not None:
-                    ts_dict[f'{det_name}.raw'] = ec.raw_gpu
-                if ec.image_gpu is not None:
-                    ts_dict[f'{det_name}.image'] = ec.image_gpu
-
-        # Record ONE result-ready event after detector work is queued. All
-        # results share this event because they run on the same slot stream.
-        result_ready = cp.cuda.Event(disable_timing=True)
-        result_ready.record(stream)
-
-        # Create one SlotLease per (timestamp, det, result_type) — each
-        # gets the shared result_ready event but its own view (array slice).
-        leases_by_ts: dict = {}   # {ts: {key: SlotLease}}
-        all_leases: list  = []
-        for ts, ts_dict in gpu_results_by_ts.items():
-            ts_leases = {}
-            for key, arr in ts_dict.items():
-                lease = SlotLease(result_ready)
-                ts_leases[key] = lease
+            input_dgrams_by_ts, input_leases_by_ts = {}, {}
+            for event in gpu_event_dgrams:
+                lease = InputSlotLease(result_ready, event.input_windows)
+                input_dgrams_by_ts[event.timestamp] = event
+                input_leases_by_ts[event.timestamp] = lease
                 all_leases.append(lease)
-            leases_by_ts[ts] = ts_leases
+            if owned_window is not None:
+                owned_window.close()  # leases keep it alive through delivery
 
-        # Parsed input is another slot-backed product. One multi-consumer
-        # lease per event protects every detector field view the user may open.
-        input_dgrams_by_ts = {}
-        input_leases_by_ts = {}
-        for event_dgrams in gpu_event_dgrams:
-            ts = event_dgrams.timestamp
-            input_lease = InputSlotLease(result_ready)
-            input_dgrams_by_ts[ts] = event_dgrams
-            input_leases_by_ts[ts] = input_lease
-            all_leases.append(input_lease)
-
-        if os.environ.get('PSANA_GPU_MEM_DEBUG'):
-            try:
+            if os.environ.get('PSANA_GPU_MEM_DEBUG'):
                 from psana.gpu.gpu_mpi import log_gpu_mem
-                log_gpu_mem(f'EventPool.submit slot={slot} '
-                            f'write={self._write_idx}')
-            except Exception:
-                pass
+                log_gpu_mem(f'EventPool.submit slot={slot} write={self._write_idx}')
 
-        record = _EventSlot(
-            slot_id=slot,
-            gpu_results_by_ts=gpu_results_by_ts,
-            event_envelopes=list(event_envelopes),
-            stream=stream,
-            leases=all_leases,
-            leases_by_ts=leases_by_ts,
-            xtc_batch=xtc_batch,
-            gpu_event_dgrams=gpu_event_dgrams,
-            input_dgrams_by_ts=input_dgrams_by_ts,
-            input_leases_by_ts=input_leases_by_ts,
-        )
+            record = _EventSlot(
+                slot_id=slot, gpu_results_by_ts=gpu_results_by_ts,
+                event_envelopes=list(event_envelopes), stream=stream,
+                leases=all_leases, leases_by_ts=leases_by_ts,
+                xtc_batch=windows[0].batch if len(windows) == 1 else None,
+                input_windows=windows, gpu_event_dgrams=gpu_event_dgrams,
+                input_dgrams_by_ts=input_dgrams_by_ts,
+                input_leases_by_ts=input_leases_by_ts,
+            )
+        except BaseException:
+            # Preserve every owner if CUDA completion cannot be established.
+            # A subsequent close/flush can retry the same synchronization.
+            failed = _EventSlot(slot, {}, [], stream, all_leases, {}, input_windows=windows)
+            try:
+                stream.synchronize()
+                for lease in all_leases:
+                    lease.wait_until_safe_to_reuse()
+            except BaseException:
+                self._slots[slot] = failed
+                self._write_idx += 1
+                raise
+            finally:
+                if owned_window is not None:
+                    owned_window.close()
+            raise
         self._slots[slot] = record
         self._write_idx += 1
         return record
@@ -282,6 +260,7 @@ class EventPool:
                 record.input_leases_by_ts = {}
                 record.gpu_event_dgrams = ()
                 record.xtc_batch = None
+                record.input_windows = ()
 
     # ------------------------------------------------------------------
     # Inspection

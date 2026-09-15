@@ -450,9 +450,10 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     detector_events = []
 
     class _Parser:
-        def parse(self, slot_id, data_gpu, desc_table, stream):
-            log.append(("parse", slot_id, data_gpu, desc_table, stream))
-            return xtc_batch
+        def parse_window(self, read, stream, *, batch_id):
+            from psana.gpu.gpu_input_window import InputWindow
+            log.append(("parse", 0, read.data_gpu, read.desc_table, stream))
+            return InputWindow(batch_id, 0, xtc_batch, read.desc_table)
 
     class _Detector:
         def __init__(self, name):
@@ -463,7 +464,7 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
             log.append((self.name, kwargs["slot_id"], kwargs["stream"]))
             return iter(())
 
-    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table="descriptors")
+    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table=np.array([[3, 7, 42, 0, 4, 0]], dtype=np.uint64))
     pool = EventPool(n=1)
     record = pool.submit(
         gpu_view,

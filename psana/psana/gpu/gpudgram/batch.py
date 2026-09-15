@@ -1,4 +1,4 @@
-"""Slot-owned device tables for GPU-resident XTC batches."""
+"""Input-owned device tables for GPU-resident XTC batches."""
 
 from dataclasses import dataclass, field
 
@@ -73,7 +73,7 @@ def build_dgram_records(desc_table):
 
 @dataclass
 class _GpuXtcSlotBuffers:
-    """Reusable parser buffers whose lifetime matches one EventPool slot."""
+    """Reusable parser buffers leased to an input window."""
 
     cp: object
     budget: object = None
@@ -182,6 +182,9 @@ class GpuXtcBatchPool:
                 budget.release(self._config_bytes)
             raise
 
+        self._owners = [None] * self.n_slots
+        self._next_window_id = 0
+        self._failed_inputs = []
         self._slots = [
             _GpuXtcSlotBuffers(cp=cp, budget=budget)
             for _ in range(self.n_slots)
@@ -194,6 +197,8 @@ class GpuXtcBatchPool:
         slot_id = int(slot_id)
         if slot_id < 0 or slot_id >= self.n_slots:
             raise IndexError(slot_id)
+        if self._owners[slot_id] is not None:
+            raise RuntimeError("parser storage is owned by an input window")
         slot = self._slots[slot_id]
         stream.wait_event(self._config_ready)
         records, shape_counts, shape_refs = slot.prepare(
@@ -215,6 +220,51 @@ class GpuXtcBatchPool:
         for handle in self.field_handles:
             batch.locate(handle, stream=stream)
         return batch
+
+    def parse_window(self, gpu_read, stream, *, batch_id):
+        """Lease a free input parser buffer independently of execution IDs."""
+        from psana.gpu.gpu_input_window import InputWindow
+
+        try:
+            index = self._owners.index(None)
+        except ValueError:
+            raise RuntimeError("no free GPU input parser storage") from None
+        release_raw = gpu_read.retain_input()
+        try:
+            batch = self.parse(index, gpu_read.data_gpu, gpu_read.desc_table, stream)
+            window = InputWindow(batch_id, self._next_window_id, batch,
+                                 gpu_read.desc_table, release=lambda: release(index))
+        except BaseException:
+            # Submitted parser work must finish before either raw bytes or
+            # partially populated tables can be reused. Preserve ownership if
+            # synchronization itself fails.
+            try:
+                stream.synchronize()
+            except BaseException:
+                self._owners[index] = stream
+                self._failed_inputs.append((index, stream, release_raw))
+                raise
+            release_raw()
+            raise
+
+        def release(index):
+            release_raw()
+            self._owners[index] = None
+
+        self._owners[index] = window
+        self._next_window_id += 1
+        return window
+
+    def close(self):
+        """Drain inputs after execution/event references have been released."""
+        for index, stream, release_raw in tuple(self._failed_inputs):
+            stream.synchronize()
+            release_raw()
+            self._owners[index] = None
+            self._failed_inputs.remove((index, stream, release_raw))
+        for owner in tuple(self._owners):
+            if owner is not None and not owner.close():
+                raise RuntimeError("GPU input still has planned or live uses")
 
     def estimate_batch_bytes(self, n_dgrams):
         """Return slot metadata bytes required for ``n_dgrams`` rows."""
