@@ -98,10 +98,40 @@ in people's heads.
   on gpu006 it did.  A *persistent* `INVALID_REG`, or that reason surviving a slurmd
   restart, would be the real thing.
 
-  Still to do: gpu001 (one card, one A5000, so `--expect 1` and no `--exclude`), then the
-  rest as they are built.  Nothing yet tests that a DAQ process is actually allocated the
-  paired GPU -- that wants a run on gpu006 with `nvidia-smi` showing two GPUs in use
-  rather than one.
+  **Verified end to end on 2026-09-14.**  A real DAQ run on gpu006 had the two GPU DRPs
+  request `gpu:dda1:1` and `gpu:ddd5:1`, derived by `get_gres()` from their own
+  `-d /dev/datadev_XX`, and open `0000:D4:00.0` and `0000:D3:00.0` -- exactly the pairing
+  `gen_gres_conf` derives from the PCIe topology.  Each logged `Total GPU devices: 1`,
+  confirming `ConstrainDevices=yes` constrains the cgroup to the allocated GPU and that
+  `gpuId=0` stays right for every process.  The CPU DRP and the TEB got no GPU request.
+
+  **gpu001 published 2026-09-15**: `Gres=gpu:dd02:1(S:1)`, one card and one A5000, so
+  `--expect 1` and no `--exclude`.  Confirmed under load: the DRP requested `gpu:dd02:1`,
+  `GresUsed` showed `(IDX:0)`, and it opened `0000:82:00.0`.
+
+  **gpu008 published 2026-09-15**, the largest and the one that exercised the tooling
+  properly: seven cards, six GPU-capable, five GPUs.  `--expect 5 --exclude d5`, giving
+  `Gres=gpu:dd04:1(S:0),gpu:dd05:1(S:0),gpu:dd53:1(S:0),gpu:dd84:1(S:1),gpu:dd85:1(S:1)`.
+  Three notes worth keeping:
+
+  - It was also the dkms *and* `cfgDevName=1` conversion, done as two phases so the driver
+    change and the rename could be judged separately.  See "Module parameters are
+    invisible in sysfs" for why phase 1 needed its own minimal `cfgMode=2` conf.
+  - `--exclude d5` rather than `05` or `85` **costs one local pairing**: `d5` shares a
+    switch with GPU `d3`, so including it would give four local pairs instead of three.
+    It is still right, because `d5` is the one card `gpu8.py` does not drive, and a free
+    non-local hop beats a card that cannot run a GPU DRP at all.
+  - The phantom sixth GPU went in the same edit; `slurmd -C` had been reporting
+    `gpu:nvidia_h200_nvl:5` against a declared 6 all along.
+
+  Then the rest as they are built.
+
+  **gpu006 was handed to Mudit on 2026-09-15**, for QSFP optical-power readout work.  Its
+  gres records were left in place: he is content with the `cfgDevName=1` hex device names
+  and does not use Slurm, so nothing there constrains him.  Two things to know if it comes
+  back: reflashing card firmware can change what `GPU Async En` reports, and
+  `gen_gres_conf` refuses to emit for a card whose firmware has no GpuAsyncCore -- so run
+  `--check` before assuming the published records still describe the node.
 
 - **`gres.conf` publishing.**  `psdaq/psdaq/slurm/gen_gres_conf.py` derives the
   pairing; publishing is a deliberate paste.  Run on the node after every datadev
@@ -143,6 +173,12 @@ in people's heads.
   `slurm.conf` change, no DAQ configuration change.  Worth provisioning N+1 GPUs per node
   for that reason: had gpu008 had a spare, GPU5's death would have been that one-line fix
   instead of the episode that motivated the degraded-mode machinery.
+
+  **One line only when the dead GPU was the last in PCI order.**  Minor numbers are
+  assigned over the GPUs actually present, so one falling off the bus shifts every GPU
+  above it down by one and invalidates their `File=` too — see "How `/dev/nvidiaN` is
+  numbered" below.  Regenerate the node's whole block rather than editing one line,
+  unless `--check` says the rest still match.
 
 - ~~**The `g` flag conflicts with a gres request.**~~  Done in `utils.py`.  `get_gres()`
   derives the request from the process's own `-d /dev/datadev_XX`, so
@@ -234,6 +270,66 @@ in people's heads.
     `MemPoolGpu` honours a `gpuId` kwarg.  Harmless under Slurm, which renumbers
     `CUDA_VISIBLE_DEVICES` so the allocated GPU is always index 0, but inconsistent.
 
+  **Measured on drp-srcf-gpu001 (RTX A5000) on 2026-09-15**, confirming the split is what
+  the code says and giving the constraints the fix has to respect:
+
+      Initial SM resources: 64 SMs
+        - Min. SM partition size: 2 SMs
+        - SM co-scheduled alignment: 2 SMs
+      Final SM resources for context 0: 6 SMs
+      Final SM resources for context 1: 40 SMs
+      Final SM resources for context 2: 18 SMs
+
+  So 6 + 40 + 18 = 64 exactly, and any derived scheme must land on multiples of 2.  The
+  **Measured on drp-srcf-gpu008 (H200 NVL) on 2026-09-15**, and it is *not* the 6 / 40 / 86
+  that arithmetic on the hard-coded values predicted:
+
+      Number of multiprocessors: 132
+      Initial SM resources: 132 SMs
+        - Min. SM partition size: 8 SMs
+      Final SM resources for context 0: 8 SMs
+      Final SM resources for context 1: 40 SMs
+      Final SM resources for context 2: 84 SMs
+
+  It is **8 / 40 / 84**, because the H200's device-level `minSmPartitionSize` is 8 where the
+  A5000's is 2, and the clamp at `PGPDetector.cc:617` raised group 0's requested 6 to 8.
+  So the one guard that exists did the useful thing here.  Note the per-context
+  `minSmPartitionSize` reads 2 after the split, so the device-level value is the one that
+  constrains the request.
+
+  That also softens the `_event` complaint above: `Reader.cu` asks for 8 SMs' worth at
+  `tpSM` 2048 and context 0 has exactly 8; on the A5000 it asks 6 at 1536 and context 0 had
+  6.  So `_event` happens to fit on both -- by coincidence of two independently chosen
+  tables, not by design, and nothing would warn if a future device broke the coincidence.
+  The real imbalance is that `_reduce` uses 10 of context 1's 40 SMs on an H200 (a quarter),
+  and that context 2 -- the recorder -- holds 84 of 132 SMs, 64% of the GPU.
+
+  **And the reason the imbalance is invisible: the DRPs are DMA-bound, not GPU-bound.**
+  Re-confirmed on gpu008 on 2026-09-15 with the merged pre-release driver -- 33 kHz on all
+  five DRPs, no drops, no overflows.  At `dmaBufSize=387104` that is
+
+      387104 B x 33035 Hz = 12.788 GB/s per DRP,  63.9 GB/s across five
+
+  against 15.75 GB/s raw for one PCIe 4.0 x8 uplink, i.e. 81% of raw and essentially
+  payload line rate once TLP and DLLP overhead is taken out.  Each card is pinned at its
+  own uplink, so the GPU has spare capacity no matter how badly the SMs are divided.  That
+  is why 84 of 132 SMs sitting in the recorder's context costs nothing measurable.
+
+  **This gates the work rather than motivating it.**  Rebalancing the split cannot improve
+  a rate that is set by the card's uplink, so it should not be justified on throughput
+  until the cards are x16 gen5 -- which is exactly the same condition under which PCIe
+  locality stops being free (see the locality note in `gen_gres_conf.py`'s docstring).  The
+  two open items have the same trigger and should be revisited together.  Until then the
+  argument for touching the partitioning is correctness and comprehensibility -- three
+  hard-coded tables that disagree, and an `abort()` on any unrecognised `tpSM` -- not speed.
+
+  Any future rebalancing must be measured against 33035 Hz rather than assumed to improve
+  on it.
+
+  Two gaps in the guarding, visible at `PGPDetector.cc:617`: only `group_params[0]` is
+  clamped to `minSmPartitionSize`, not `[1]`; and nothing checks that 6 + 40 fits within
+  the device, so a GPU with fewer than 46 SMs would fail the split rather than degrade.
+
   The fix is for one place to own the partitioning and hand each component the SM count
   of the context it was given — `cudaExecutionCtxGetDevResource()` already returns it,
   and `_setupGreenContexts()` logs it.  Each stage then derives blocks and threads from
@@ -243,8 +339,46 @@ in people's heads.
   one SM each, and the bulk belongs to `_event` and `_reduce`.
 
 - ~~**Clear the firmware counters once the timing link is up.**~~  Done in
-  `epixuhremu_config.py`; **untested**, wants a run on gpu001 to confirm the counts in
-  the log are small.
+  `epixuhremu_config.py`, and **confirmed on drp-srcf-gpu008 on 2026-09-15** -- gpu001 lost
+  its timing to the NEH outage, so the test happened here instead.  From a link-down start:
+
+      WARNING:root:epixuhremu: timing link is down, calling ConfigLclsTimingV2()
+      ConfigLclsTimingV2()
+      ...
+      WARNING:root:RxRstCount: 0
+      WARNING:root:RxDecErrs : 0
+      WARNING:root:RxDspErrs : 0
+
+  All three zero, which is the point.  `RxRstCount` is the conclusive one:
+  `ConfigLclsTimingV2()` issues `C_RxReset`, so that counter would be non-zero unless
+  something cleared it afterwards.
+
+  The run also exposed a flaw in the same file: both `logging.info` calls were invisible.
+  A DRP runs Python logging at WARNING -- there were zero `INFO:root:` lines in the whole
+  log -- so "timing link is up, leaving it alone" and "timing link is up, Rx counters
+  cleared" left no trace, while only the branch that resets the link was visible.  That
+  makes "ran and decided to skip" indistinguishable from "never ran", which defeats the
+  purpose of a function whose whole job is to record a decision.  Both are now
+  `logging.warning`, matching the level the surrounding timing code dumps its counters at.
+  One line per Allocate, so there is no noise cost.
+
+  Nothing is deliberately suppressing INFO: the root logger is simply at Python's default
+  of WARNING.  `xpmdet_config.py:13` carries the override commented out --
+  `#logging.basicConfig(level=logging.INFO)` -- because lowering the *root* level
+  unsilences rogue and pyrogue as well, which is unusable.
+
+  **A cleaner fix exists but is not taken yet.**  A named logger carries its own level
+  without touching anyone else's, and this was verified to work: `logging.getLogger(name)`
+  with `setLevel(logging.INFO)` prints while `pyrogue.*` stays quiet.  It was not used
+  because its visibility depends on a handler with a permissive level existing, and the
+  only evidence one does is that the log lines carry `basicConfig()`'s default
+  `LEVEL:name:` prefix -- *something* in the import chain calls it, but not
+  `xpmdet_config`, and it has not been identified.  If that caller ever goes away, Python's
+  `lastResort` handler takes over at WARNING and INFO messages vanish silently.  A
+  diagnostic that might disappear is worse than one labelled a shade too severely.  Worth
+  revisiting together with the wider question of why the DAQ's Python logging is configured
+  by accident rather than deliberately -- several `configdb` modules call `basicConfig`,
+  and whichever imports first wins.
 
   After `ConfigLclsTimingV2()` the counters held whatever the link accumulated while
   training, which says nothing about the run about to start: the successful gpu001 run
@@ -404,8 +538,8 @@ in people's heads.
     self-contradictory (2 sockets x 32 cores x 1 thread = 64), so `CPUs` would have to
     drop to 64 as well.
 
-  `gen_gres_conf`'s `Cores=` output is unaffected either way: it is in core-index
-  space, which depends only on sockets x cores-per-socket.
+  `gen_gres_conf`'s `Cores=` output is unaffected either way: it names whole sockets in
+  core-index space, which depends only on sockets x cores-per-socket.
 
 - **datadev driver install at boot via dkms**, so a kernel update does not leave a
   node without its driver, and so the module parameters live in one declared place
@@ -782,6 +916,429 @@ the `LTM4664` regulators.
 Worth keeping the general shape: a register timeout says only that nobody drove a
 response, and "unpowered", "held in reset" and "unclocked" are indistinguishable from one
 transaction.  Probing a sibling branch and a known-good control separates them cheaply.
+
+## How `/dev/nvidiaN` is numbered, and when `gres.conf` goes stale
+
+Measured 2026-09-14, because `gres.conf`'s `File=` is the only thing binding a datadev to
+a GPU and a minor number is not a durable identity.
+
+The NVIDIA kernel driver assigns minors sequentially over the GPUs it binds, in PCI probe
+order, which is ascending BDF.  Confirmed on three nodes with three populations:
+
+| node   | PCI addresses                        | minors      |
+|--------|--------------------------------------|-------------|
+| gpu001 | `82:00.0`                            | 0           |
+| gpu006 | `d3:00.0`, `d4:00.0`                 | 0, 1        |
+| gpu008 | `03`, `54`, `55`, `83`, `d3` (`:00.0`) | 0, 1, 2, 3, 4 |
+
+**So a driver reload with an unchanged PCI population gives the same minors, and
+`gres.conf` does not need regenerating for a `dkms-reload`.**  Only a change in GPU
+population requires it.  That is already the minimum update frequency; there is nothing
+to tune.
+
+**`CUDA_DEVICE_ORDER` is the wrong layer and cannot help.**  It is read by the CUDA
+user-space library at `cuInit` and only permutes the device indices *within* a process —
+what `cudaSetDevice(0)` means and how `CUDA_VISIBLE_DEVICES` entries map.  It has no path
+to the kernel driver's minor assignment, so setting it before `modprobe` or `dkms` is
+meaningless.  It is also nearly moot here: Slurm gives each DRP one GPU renumbered to
+index 0, and with one device there is no order to choose.  Worth setting only if a
+process is ever given more than one GPU.
+
+### The renumbering hazard, and why it is invisible
+
+Because minors count only *present* devices, a GPU falling off the bus shifts every GPU at
+a higher PCI address down by one.  gpu008 escaped this by luck: the one that died was
+`0000:d4:00.0`, the highest of its six, behind the now-empty downstream port
+`0000:d2:01.0` (bus 212).  It took minor 5 and the survivors kept 0-4.  Had `55:00.0` died
+instead, `83`, `d3` and `d4` would each have shifted and every `File=` below the failure
+would silently have named a different GPU.
+
+The device nodes cannot tell you which happened.  On gpu008 now, `/dev/nvidia0..4` open
+and `/dev/nvidia5` returns `ENODEV` — the identical picture a middle-GPU death would
+produce.  The nodes are static files created by `nvidia-modprobe` (see
+`/usr/lib/udev/rules.d/60-nvidia.rules`), so they neither disappear nor change timestamp
+when the mapping moves: on gpu006 `/dev/nvidia0` and `/dev/nvidia1` date from Aug 4 and
+survived the Sep 11 driver rebuild.
+
+`/proc/driver/nvidia/gpus/<pci>/information` is the only authoritative statement, and
+`gen_gres_conf` reads its `Device Minor` field rather than inferring from names.  This is
+what the per-record comment line is for: it preserves both PCI addresses, so a record can
+be checked against the hardware later.  Hand-written records that carry no PCI address
+cannot be checked at all.  `--check` mechanises the comparison; run it after every driver
+load and after anything that touches the GPU population.
+
+If minors ever do prove unstable across reloads, the lever is a stable path in `File=` —
+a udev rule creating something like `/dev/nvidia-by-pci/0000:d3:00.0` — not an
+environment variable.  Three things to settle before trusting that: `gres.conf(5)` says
+nothing about symlinks (enforcement goes through cgroups, which needs `major:minor` from
+`stat()`, and `stat()` follows links, so it should work but is undocumented); the nodes
+are created on demand by `nvidia-modprobe`, so a rule firing at bind time may find nothing
+to link; and it would not remove `gen_gres_conf`, since `Cores=` and the pairing still
+come from topology.  Not worth building on present evidence.
+
+## gpu008 advertises a GPU that does not exist
+
+Found 2026-09-14 while checking the above.  Nobody else is inconvenienced by it -- as of
+2026-09-15 only we need Slurm and the GPU DRP, and others on these nodes are doing firmware
+and orthogonal tests that do not go through gres -- so this is ours to fix at our
+convenience rather than urgent:
+
+    gres.conf:22  NodeName=drp-srcf-gpu008 Name=gpu Type=nvidia_h200_nvl File=/dev/nvidia5
+    scontrol      Gres=gpu:nvidia_h200_nvl:6  CfgTRES=gres/gpu=6  State=IDLE  (no Reason)
+    open("/dev/nvidia5") -> ENODEV
+
+This is the concrete confirmation that **Slurm does not notice a GPU that has fallen off
+the bus**: it keeps advertising six, stays `IDLE` with no `Reason`, and will hand the
+sixth concurrent GPU job a device that fails in CUDA init at run time.  Fix is to delete
+that record and set the node's `slurm.conf` `Gres=` to 5.
+
+Worth converting gpu008 with `gen_gres_conf` rather than just deleting the stale record.
+Its five records carry no `Cores=` at all, so nothing places tasks near their GPU, and no
+PCI address, so none of them can be verified against the hardware.
+
+Converting it is a bigger job than gpu006 or gpu001 were, and that is the point: it is the
+best rehearsal available for the twenty-odd nodes arriving in November.  Specifically, it
+is the only GPU node that is **not** dkms-managed -- `dkms status datadev-gpu-dkms` is
+empty there, so its driver came from `comp_and_load_drivers.sh` -- and its cards are named
+`datadev_0..6`, i.e. probe order, so `cfgDevName=1` has never been set on it.  Both of
+those are exactly what a new node will need done, and neither has been exercised
+from scratch:
+
+1. Install `/etc/modprobe.d/datadev.conf` with `cfgDevName=1`, which renames all seven
+   cards and is the step most likely to surprise something that hardwired a device name.
+2. Convert to dkms with `dkms-reload.sh`, retiring the hand-built module.
+3. `gen_gres_conf --expect 5` -- note five, not six, and note that two of the seven cards
+   report no GPU capability, so `--exclude` will be needed to choose which cards lose out
+   rather than letting `/proc` order decide.
+
+No coordination cost: others on the node are doing firmware work that does not go through
+Slurm.
+
+## A dead timing feedback link is invisible from the DRP: TxPhyPllReset fixes it
+
+Diagnosed on drp-srcf-gpu008 on 2026-09-15.  The DAQ sat at 100% deadtime; `xpmpva` showed
+`RemoteLinkId` on XPM:14 QSFP1-2 as `undef/0` where it should read `TDetSim/gpu008`.  The
+**feedback** direction -- DRP to XPM -- was not being received, while XPM to DRP was fine.
+
+**The DRP cannot see this.**  Every register on the failing card was indistinguishable from
+four working ones:
+
+    RxLinkUp 1  MmcmLocked 3  TxRstStatus 0x0  RxRstStatus 0x0
+    TxClkFreq 185.714 MHz  RxClkFreq 185.714 MHz  Loopback No
+    XPM remote link id 0xff0e8d06: XPM:14 link 6 = QSFP1-2
+
+and it read a valid remote link id, so its receive path was genuinely working.  Only the
+XPM knows the feedback link is dead, which is why no DRP-side symptom can trigger a
+DRP-side remedy.
+
+**The remedy is `TimingPhyMonitor.TxPhyPllReset()`**, followed by epixquad's full sequence:
+
+    TDetTiming.TimingPhyMonitor.TxPhyPllReset()   # then ~1 s
+    TDetTiming.TimingFrameRx.C_RxReset()          # then ~2 s
+    TDetTiming.TimingFrameRx.RxDown.set(0)
+
+`RemoteLinkId` corrected the instant the PLL reset was issued.
+
+This is a known-flaky bring-up step that the TDet path omits, not a broken component.  The
+evidence: `epixquad_config.py:189` and `epixquad1kfps_config.py:822` both call
+`TxPhyPllReset()` **unconditionally**, under the comment "To get the timing feedback link
+working"; `ConfigLclsTimingV2` in the l2si tree issues `TxPhyReset` and `TxUserRst` but
+**never** `TxPhyPllReset`; and `xpmdet_config.py:200` names `TxPllReset` as the remedy in a
+message and then aborts rather than doing it.  Cheolhong has been finding XPM firmware bugs
+and one may still be outstanding, which would explain why four of five links on identical
+hardware and firmware came up fine.
+
+### Diagnostic order that worked, for next time
+
+1. **Which DRP is on the bad link** -- now a single line in every DRP log, in both the
+   absolute and `QSFP%d-%d` notations, so it matches whatever xpmpva shows.
+2. **Is the DRP's local PHY healthy** -- the `epixuhremu: RxLinkUp ...` dump.  All nominal
+   here, which is the point: it does not exonerate the transmitter.
+3. **Is the XPM's digital receive path healthy** -- set that link's `LinkLoopback` briefly.
+   It read correctly, so the XPM's GT, decoder and `RemoteLinkId` logic are fine.  Note this
+   is an internal loopback and says nothing about its optics.
+4. **Is it configuration** -- compare `LinkRxReady`, `LinkRxResetDone`, `LinkTxReady`,
+   `LinkTxResetDone`, `LinkIsXpm`, `LinkLoopback`, `LinkGroupMask` against a working link.
+5. **`TxPhyPllReset` on the DRP**, with the sequence above.
+
+### Three wrong hypotheses, recorded so they are not repeated
+
+- **`TxPhyReset` would fix it.**  No -- it is the *PLL* reset that is needed, and
+  `ConfigLclsTimingV2` already issues `TxPhyReset` without helping this class of fault.
+- **Dark fibre / nothing arriving.**  No -- `LinkRxErr` counting and wrapping while
+  `LinkRxRcv` stays 0 means the XPM's receiver has signal it cannot decode.  Loss of signal
+  does not count errors.
+- **Loopback set on the DRP.**  No, it read `No`.  A *near-end* mode was already excluded by
+  the card reading a valid `RxId`; only a far-end mode was consistent, and it was not set.
+
+**The trap in all three: `TxClkFreq` reading a nominal 185.714 MHz does not mean the
+transmitter is good.**  The DRP measures its own clock frequency, not its eye quality, so a
+PLL locked at the right frequency with bad jitter looks perfect from this side and is
+undecodable at the far end.  Nothing on the DRP can distinguish those.
+
+### The real fix belongs on the XPM/control side
+
+A DRP-side remedy cannot be triggered by a DRP-side symptom, and issuing `TxPhyPllReset`
+unconditionally every Allocate costs ~3 s and bounces four working links to fix a fifth.
+The check that would have turned a long hunt into one error message is at Configure, on the
+side that has the information: for each link in the partition's `GroupMask`, compare the
+XPM's `RemoteLinkId` against the `TxId` the contributor should be sending -- `timTxId()` is
+deterministic from the host address, and `xpmdet_connectionInfo` already reports each
+contributor's link number as `paddr`.  A mismatch means that contributor's feedback link is
+dead, which is a precise, actionable message instead of 100% deadtime with no attribution.
+
+## Every DRP log now names its XPM link
+
+Added 2026-09-15, after `xpmpva` reported a bad link on gpu008 and nothing in five DRP
+logs said which process was on it.  The information was always there and always thrown
+away: `xpmdet_config.py` read `XpmMessageAligner.RxId` three times and logged it with
+`logging.info`, which a DRP filters out (see the logging note above).
+
+The final read -- the one outside the supervisor block, that every process reaches, and
+whose value becomes `connect_info['paddr']` -- is now `logging.warning` and decoded:
+
+    XPM remote link id 0xff0e0006: XPM:14 link 6 = QSFP1-2 (10.0.0.100)
+
+Low byte is the link, bits 23:16 the XPM number; `xpmLinkId()` in `psdaq/cas/xpm_utils.py`
+already decoded the rest.  **Both link notations are printed on purpose**: `xpmpva` names
+ports `QSFP%d-%d` of `port//4` and `port%4` (`xpmpva.py:71`, `:701`), while the register,
+the deadtime tables and the illegal-value checks use the absolute number.  Printing one
+form only moves the division by four to whoever is reading the log during an incident.
+
+The two earlier reads stay at `info`: they are mid-sequence, before the reset paths have
+settled, and three near-identical lines would raise the question of which is authoritative.
+The illegal-value paths already log at `warning` and `critical`.
+
+Logging-only, so it is safe for the CPU DRPs that share this file.
+
+## `/usr/local/bin/drp_gpu` is node-local and goes stale silently
+
+`drp_gpu` needs `CAP_SYS_ADMIN` to `cuMemHostRegister` the FPGA registers, and `setcap`
+fails on wekafs, so the executable has to live on local disk.  That means a per-node copy
+that nothing keeps in step with `$TESTRELDIR/bin/drp_gpu`, and two commands after every C++
+rebuild, on every node:
+
+    sudo install -m 0755 $TESTRELDIR/bin/drp_gpu /usr/local/bin/drp_gpu
+    sudo setcap cap_sys_admin+ep /usr/local/bin/drp_gpu
+
+The `setcap` is **not optional**: `install` drops file capabilities, so skipping it leaves a
+binary that dies at startup for a reason that looks nothing like the cause.
+
+The image check earns its keep.  On drp-srcf-gpu008 on 2026-09-15 the local copy was from
+Sep 9 -- predating the `CAP_SYS_ADMIN` drop, the `libdetector` linking, the `dlerror()`
+reporting and the null-`m_drp` guard -- and the DRP refused to start:
+
+    <E> Running /usr/local/bin/drp_gpu, which differs from .../install/bin/drp_gpu
+    <C> Refusing to start on an image mismatch.  Pass -k imageCheck=warn to continue anyway
+
+Without it the node would have quietly run month-old code.  Note also that `build_all.sh`
+does **not** necessarily move `$TESTRELDIR/bin/drp_gpu`: a day of Python-only changes leaves
+ninja with nothing to relink, so the timestamps can look stale when they are correct.
+
+**This does not scale to twenty nodes.**  Two manual sudo commands per node per rebuild,
+which someone has to remember, is the kind of step that gets skipped on the node nobody was
+thinking about.  The answer is to make installing it a deployment step rather than a habit -- ansible, or
+whatever installs `drp_gpu` in the first place.
+
+**The capability itself cannot be delegated**, so do not go looking for a way around it.
+An earlier version of this note suggested a setuid-root helper that performs the mapping and
+passes a descriptor back; that does not work, for the reason Ric had already established.
+The privileged call is
+`cuMemHostRegister(ptr, size, CU_MEMHOSTREGISTER_IOMEMORY)`, which registers a host pointer
+into *the calling process's* CUDA context.  Passing an fd over `SCM_RIGHTS` would let the
+parent `mmap` the BAR itself, but the thing that needs `CAP_SYS_ADMIN` is the CUDA
+registration, and that is inherently per-process: a mapping made in another process is not
+valid in this one.  The same wall stopped the idea of putting the capability on a `.so`,
+from the other side -- file capabilities attach to executables, not shared objects.
+
+## `Cores=` must name whole sockets, not the GPU's NUMA node
+
+Found on drp-srcf-gpu008 on 2026-09-15, and fixed in `gen_gres_conf.py`'s `gpu_cores()`
+the same day.  Publishing invalidated the node:
+
+    State=IDLE+DRAIN+INVALID_REG
+    Reason=gres/gpu GRES core specification 8-15 for node drp-srcf-gpu008 doesn't match
+           socket boundaries. (Socket 0 is cores 0-31)
+
+`gpu_cores()` derived the core set from the GPU's sysfs `local_cpulist`, which is its
+**NUMA node**.  Slurm requires the set to fall on **socket** boundaries.
+
+**Why it survived two nodes.**  gpu006 (2 sockets x 32 cores) and gpu001 (2 x 8) both run
+NPS=1, so a NUMA node *is* a socket there and the two definitions coincide: `32-63` and
+`8-15` were simultaneously "the GPU's NUMA node" and "socket 1", and the narrow
+interpretation looked correct.  gpu008 is NPS=4 -- eight NUMA nodes over two sockets -- so
+a GPU's NUMA node is eight cores of a thirty-two-core socket, and Slurm rejected it.  The
+mistake needed a node with more than one NUMA node per socket to become visible.
+
+The fix maps the GPU's local CPUs through `physical_package_id` and emits the containing
+socket(s) whole.  Verified on the live nodes rather than argued: gpu001's `--check` stayed
+green and both gpu006 and gpu001 still emit identical `Cores=`, so neither needed
+re-publishing.
+
+**This revises an earlier note here** which said only that `Cores=` is core indices rather
+than CPU indices.  True but incomplete; the full constraint is core indices *on socket
+boundaries*.  The NUMA node is still recorded in the comment above each record, so the
+finer locality is not lost -- it is simply not something `gres.conf` can express.
+
+Both times a `Cores=` mistake has bitten, it presented as `INVALID_REG` with a precise
+reason string.  So `scontrol show node <node> -d | grep -E "State|Reason"` immediately
+after `scontrol reconfigure` is the check that earns its place in the procedure; the
+reason names the exact rule that was broken.
+
+## `dkms-reload.sh` reported a reload that had not happened
+
+Found on drp-srcf-gpu001 on 2026-09-15, and fixed in `dkms-reload.sh` the same day
+(uncommitted in `~/git/aes-stream-drivers`, to go upstream with the `rdmaTest` timeout).
+
+The script printed `==> reloading the module`, then `module matches what the next boot will
+load`, then `==> done: datadev-gpu-dkms/7.6.0-17-g77badc8`.  All of that while the module
+resident since 2026-09-11 -- `7.6.0-11-g06c52c6` -- was still loaded, with the new one
+sitting unused on disk.
+
+The verification was wrong, not merely weak:
+
+    RUNNING=$(cat /sys/module/datadev/srcversion)
+    ONDISK=$(modinfo -F srcversion datadev)
+
+`srcversion` hashes the `.c`/`.h` files.  PR #319 changed only the Makefile, the build
+scripts and the docs, so it is **byte-identical between the two builds** and the comparison
+passes whichever module is resident.  The message was even honest -- "what the next boot
+will load" is a statement about `modinfo`, i.e. about disk -- and was read as though it
+said "what is running".
+
+The field that discriminates is `GITV`, compiled in per build and printed by
+`dma_common.c:1451` as `DMA Driver's Git Version` in `/proc/datadev_*`.  The fix compares
+that against the version just installed and fails with the remedy.  Verified against the
+broken state: the new check errors, the old one passed.
+
+**So the check to trust is `/proc/datadev_*`'s `Git Version`.**  `dkms status` reports the
+*package*; `srcversion` reports the *sources*; neither reports the resident module.  Also
+useful: the driver announces itself in the kernel log on every load --
+`datadev: aes-stream-drivers <ver>` followed by `datadev: Init` -- so `dmesg -T | grep
+datadev` dates the last real reload, and `/dev/datadev_*`'s ctime is the probe time.
+
+Why the reload did not happen is **unexplained**, and the following were checked and
+eliminated, so do not spend time on them again:
+
+- No stale duplicate: only one `datadev.ko` exists on that kernel, in `extra/`, and it is
+  what `modinfo -n` resolves to.
+- Nothing held the module: `refcnt` 0, no entries in `/sys/module/datadev/holders/`, no
+  process with the device open.
+- Nothing reloads it behind our backs -- the cause the script's own error text suggests.
+  There is no `datadev` systemd unit, and nothing matching in `/etc/modules-load.d`,
+  `/etc/rc.d/rc.local`, `/etc/rc.local`, `/etc/systemd/system` or `/etc/sysconfig/modules`.
+- Not a logging gap: neither `dmesg` nor `/var/log/messages` mentions datadev between the
+  Sep 11 load and the manual reload at 14:44, and both record the `Exit.`/`Init` pair for
+  loads that did happen.
+- A manual `modprobe -r datadev && modprobe datadev` immediately afterwards worked
+  cleanly, logging the expected pair and bringing `/proc` to `7.6.0-17-g77badc8`.
+
+The script's own guard should have caught a failed `modprobe -r` and exited 1, and no error
+was printed, so on the evidence `lsmod` found the module absent -- which the kernel log
+contradicts.  One of those must be wrong and there is no artefact left to say which.  Left
+open deliberately rather than guessed at; the new check turns a silent recurrence into a
+loud one, which is the part that matters.
+
+Worth noting the shape, because it is the same one PR #319 addressed one layer down: a step
+that reports success without testing the thing that matters.  The build is now honest about
+what it produced; the reload was not honest about what is running.  Both `rdmaTest`'s
+timeout-free wait and this belong to that family.
+
+## Module parameters are invisible in sysfs; /proc is the only source
+
+Found 2026-09-15 while planning the gpu008 conversion.  Every `module_param()` in
+`data_dev_top.c` is declared with permission `0`, so `/sys/module/datadev/parameters/`
+**does not exist**.  There is no way to ask a loaded module what parameters it was given.
+`/proc/datadev_*` is the only source: `Buffer Mode` reports `cfgMode`, and the device
+names themselves report `cfgDevName`.
+
+Same shape as the `Git Version` lesson: for anything about the *resident* module -- its
+version or its parameters -- `/proc/datadev_*` is authoritative and everything else
+(`dkms status`, `srcversion`, `modinfo`, the modprobe.d files) describes disk or sources.
+
+This matters when converting a node whose driver was insmod'd rather than modprobe'd,
+because the parameters are on a command line inside a script rather than in
+`/etc/modprobe.d`, and a naive reload silently reverts them to the built-in defaults:
+
+    static int cfgMode    = BUFF_COHERENT;   // data_dev_top.c:56
+    static int cfgCont    = 1;               // :57
+    static int cfgDevName = 0;               // :68
+
+`comp_and_load_drivers.sh:115` passes `cfgMode=2` (BUFF_STREAM), and nothing else.  So on
+such a node the *only* non-default parameter is `cfgMode`, and a modprobe.d file must
+carry it or DMA buffer allocation quietly changes from streaming with explicit cache
+synchronisation to coherent.
+
+## dkms rebuilds per node; nothing is cached on /sdf
+
+Asked 2026-09-14 while planning the move off gpu006.  All of dkms's state is node-local --
+`/var/lib/dkms` on `vg_raid-lv_var`, `/usr/src` and `/lib/modules` on `vg_raid-lv_root` --
+and it keys its bookkeeping on package/version/kernel/arch there.  So a fresh node has no
+record, and `dkms build` compiles from scratch including the `PRE_BUILD` NVIDIA rebuild,
+which is the several-minute part.  Identical kernel, CUDA and OS do not help; there is no
+cross-node cache.  Only the checkout and the `make dkms` tarball are shared via `/sdf`,
+and those are the cheap half.
+
+Fine for two nodes, not for twenty.  dkms 3.2.2 here has no `mkrpm` (dropped in 3.x), but
+it does have a native route worth testing before the November boxes arrive:
+
+    dkms mktarball -m datadev-gpu-dkms -v <ver> -k <kernel> --binaries-only
+    dkms ldtarball --archive=<tarball>          # on every other node
+
+`--binaries-only` packages the built module, so `ldtarball` installs it without
+compiling.  Needs an identical kernel *and* a matching nvidia module version, since the
+GPU build resolves nvidia's symbols.  **Untested** -- recorded as the lead, not a recipe.
+
+## rdmaTest is the way to exercise the driver's GPU path without the DAQ
+
+`data_dev/app/bin/rdmaTest` (built with `make cuda`, not `make`) registers CUDA buffers via
+`gpuAddNvidiaMemory` and DMAs into them, so it tests the driver's GPU path directly rather
+than through a DRP that dies in detector configuration.  Needs `CAP_SYS_ADMIN`, because
+`rdmaTest.cu:206` calls `gpuMapHostFpgaMem` -> `cuMemHostRegister(..., IOMEMORY)`, the same
+call `drp_gpu` needs it for; simplest is `sudo`.
+
+Two things learned the hard way on 2026-09-15:
+
+- **`-s` must be a multiple of 64 KiB**, which is GPU page/BAR granularity and has nothing
+  to do with the driver's `cfgSize`.  The default, `0x100000`, is already valid; passing
+  `cfgSize`'s 4096 to match is simply wrong.  The `-h` text does not mention the rule.
+- **It hung on drp-srcf-gpu006 with `-l` on `/dev/datadev_84`.**  The hang is the first
+  statement of the receive loop, `cuStreamWaitValue32(rxBuffers[0] + 4, 1, GEQ)`, waiting
+  for the FPGA to raise the doorbell for event 0.  So no event ever arrived.  Setup had
+  armed the free list and cleared the doorbell, so the GPU side was ready; what is missing
+  is a data source.  Nothing in `rdmaTest` visibly starts a pattern generator, and the
+  firmware is `InterCardTest` -- which may well require a *partner* card, and `84` is the
+  only card carrying that firmware on this node.  Left for Mudit and Jeremy, who own it.
+
+  **Answered by Mudit, 2026-09-15**: the flow has to be started from the InterCardTest GUI,
+  which `rdmaTest` does not do and does not mention.
+
+      cd /sdf/home/m/mmishra9/project/axi-pcie-devel3/axi-pcie-devel/software/scripts
+      python interCardGui.py --dev /dev/datadev_84
+
+  then set `PrbsTx.TxEn` True.  So the data source is a PRBS generator that is off by
+  default, and the loopback path is FPGA PRBS -> GPU -> FPGA.  Note the card was
+  `/dev/datadev_84` under probe-order naming on gpu006; after `cfgDevName=1` it is
+  `/dev/datadev_84` there by coincidence of bus number, so check the name rather than
+  assuming.
+
+  Two consequences.  The timeout below should say what to check, not just that nothing
+  arrived -- "no event in N s; is a transmitter enabled?" points at this.  And `rdmaTest`
+  arms the GPU side and calls `gpuEnableTx`/`gpuEnableRx` but never starts a source, so a
+  first-time user hangs with no output; that is a documentation gap at minimum.
+
+- **Give `rdmaTest`'s doorbell wait a timeout, and PR it.**  Agreed 2026-09-15, deferred
+  off gpu006.  `cuStreamWaitValue32` on the event-0 doorbell blocks silently and for ever
+  when no data source is running, which is the *normal* first-time experience: it turned a
+  one-run question into a code read.  It should say "no event in N seconds -- is a data
+  source running?" and exit non-zero.
+
+  Note the wait is a *device-side* stream operation, so there is no host-side timeout to
+  set: it needs either `cuStreamWaitValue32` in a loop against a host-visible copy of the
+  doorbell, or a bounded `cuStreamSynchronize` poll.  Not a one-liner, which is why it was
+  not done on the spot.  Applies to the non-loopback path too.
+
+  The push needs an sdfiana node; DAQ nodes cannot reach GitHub.
 
 ## Real-time priority is denied on the DRP nodes
 
