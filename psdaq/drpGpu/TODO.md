@@ -1039,6 +1039,17 @@ DRP-side remedy.
 
 `RemoteLinkId` corrected the instant the PLL reset was issued.
 
+**The fifth link also failed to go down when the datadev driver was reloaded**, while the
+other four did (2026-09-15, the phase-1 to phase-2 reload that renamed the devices).  That
+is the strongest hint about the mechanism: a driver reload re-probes the card and issues a
+user reset, which bounced four links and left this one apparently up.  Whatever state was
+wrong survived a driver reload, a card re-probe and a user reset, and yielded only to an
+explicit `TxPhyPllReset`.  A GT transmit PLL locked in a bad state fits: it is not in the
+user-reset domain, so nothing short of a PLL reset touches it, and a PLL can hold a lock at
+the right frequency while producing an eye the far end cannot decode.  Recorded as evidence
+rather than conclusion -- the receive path genuinely worked throughout, which a stuck
+`RxLinkUp` bit would not explain.
+
 This is a known-flaky bring-up step that the TDet path omits, not a broken component.  The
 evidence: `epixquad_config.py:189` and `epixquad1kfps_config.py:822` both call
 `TxPhyPllReset()` **unconditionally**, under the comment "To get the timing feedback link
@@ -1086,6 +1097,139 @@ XPM's `RemoteLinkId` against the `TxId` the contributor should be sending -- `ti
 deterministic from the host address, and `xpmdet_connectionInfo` already reports each
 contributor's link number as `paddr`.  A mismatch means that contributor's feedback link is
 dead, which is a precise, actionable message instead of 100% deadtime with no attribution.
+
+## GPU memory must be GPU-page aligned, and that reopens the packaging question
+
+aes-stream-drivers PR #321 (merged to `pre-release` 2026-09-16) makes the driver **reject**
+GPU memory that does not start on a GPU page boundary, where it used to round down
+internally and carry the remainder as an offset:
+
+    // Memory must be aligned to GPU page boundary to avoid GpuAsyncCore writing out-of-bounds
+    if ((dat.address & GPU_BOUND_MASK) != dat.address) { ... return -EINVAL; }
+
+`MemPool.cc` passed `cudaMalloc`'s pointer straight to `gpuAddNvidiaMemory()`, and
+`cudaMalloc` guarantees no such alignment -- upstream's own commit says "APIs such as
+cudaMalloc or cuMalloc do not guarantee us alignment".  In practice it returned 512 B
+alignment, visible in the logs all along as `dptr 0x...200`, `0x...400`, `0x...600`.  So a
+driver update past #321 would have aborted every GPU DRP at startup, with
+`gpuAddNvidiaMemory failed` and nothing to suggest why.
+
+**Fixed 2026-09-16** by `_allocAlignedDma()`: over-allocate by `GPU_PAGE_SIZE - 1`, round
+the pointer up, and keep what `cudaMalloc` returned in `DetPanel::dmaRawPtrs` for
+`cudaFree`.  `dmaBuffers` now holds pointers *into* those allocations, which is why there
+are two vectors and why the destroy path must free the raw one.  Costs under one GPU page
+per buffer.
+
+Worth noting the *size* was always rounded to 64 KiB at `MemPool.cc:213`, so whoever wrote
+this knew of the requirement; what defeated them is that only the address was wrong, and
+the old driver hid it.  Both now go through the same `GPU_PAGE_SIZE`.
+
+**Verified on drp-srcf-gpu008 on 2026-09-16**, against `7.6.0-27-g232c8ed`, which is the
+first driver that enforces this.  All forty DMA buffers across five DRPs came up on 64 KiB
+boundaries, no `Gpu_AddNvidia` rejections, no aborts, and the pairings and typed gres
+allocations were unaffected:
+
+    DMA buffer[0] dptr 0x7f0403e10000, size 393216
+    DMA buffer[1] dptr 0x7f0403e80000, size 393216
+    ...
+
+Compare the same lines on the old driver -- `0x...200`, `0x...400`, `0x...600` -- which it
+accepted by rounding down internally.  Worth noting this was the first configuration in
+which a mistake in `_allocAlignedDma()` would have been *loud*: the driver returns EINVAL
+and `MemPool.cc` calls `abort()`, so there is no subtle middle outcome to misread.
+
+### The goal is the VMM path, via PRs that make the interface usable
+
+Over-allocating is the interim answer, not the intended one.  Upstream took the CUDA VMM
+API for its own test app -- `cuMemCreate`/`cuMemMap` behind `vmmCuAlloc()`/`vmmCuFree()`
+and a `CudaVMMAlloc` handle -- which asks CUDA for the alignment instead of working around
+its absence.  That is where this should end up.
+
+What stops it today is *where the code lives*, and that is the interesting part:
+
+- `include/GpuAsyncLib.h` **declares** `vmmCuAlloc`/`vmmCuFree` and defines `alignValue`.
+- The **definitions** are in `data_dev/app/src/GpuAsyncLib.cpp` -- an application source,
+  not a header, and not something lcls2 can vendor the way it vendors headers.
+- `GPU_BOUND_SHIFT`, the alignment the driver actually enforces, is in
+  `common/driver/gpu_async.h`: kernel-side, uses `u64`, not in `include/`.  So lcls2
+  duplicates the constant as `GPU_PAGE_SIZE`, across repos, with nothing to keep them in
+  step.
+
+**This breaks the assumption that made the current arrangement acceptable.**
+aes-stream-drivers has been a headers-only package from lcls2's point of view, which is
+precisely why those who maintain such things did not want it as a `SUBMODULEDIR` module --
+seven headers copied into `psdaq/psdaq/aes-stream-drivers/` was proportionate.  Needing
+*implementations* changes that calculus, and the question of how lcls2 consumes this
+package is open again.
+
+So the plan is to feed PRs back until the interface fits, rather than to vendor an app
+source or reimplement the helpers:
+
+1. Ask for `GPU_BOUND_SIZE` to be exposed in `GpuAsyncUser.h`, next to the ioctl that
+   enforces it.  A userspace caller cannot currently learn the alignment it is required to
+   satisfy, which is why the constant is duplicated.
+2. Ask for the VMM helpers to land somewhere consumable -- header-inline, or a small
+   library the package installs, rather than an app source.
+3. Then switch `MemPool.cc` to them and delete `_allocAlignedDma()`.
+
+Also note `drp_gpu` does **not** use `GpuAsyncLib` at all: `MemPool.cc` reaches
+`gpuAddNvidiaMemory()` through the vendored `GpuAsyncUser.h`.  Only `pgpread.cc` uses the
+local `drpGpu/GpuAsyncLib.{hh,cc}`, which are older copies of the upstream header/source
+pair.  They have diverged a long way -- `checkError` changed signature, `DataDev` became
+`DataGPU`, `GpuAsyncOffsets` is gone from `include/`, 340 header lines differ -- so porting
+pgpread is a real refactor.  It is also unnecessary: nothing else uses those files, they
+still build, and they are not in the way.  Leave them until someone needs pgpread itself.
+
+## Lower priority, after November's deliverables
+
+- **A generic `recoverLinks` script for operators.**  When a DRP complains about a timing
+  link, an operator should be able to run one thing that either brings the link up or says
+  "this is a transceiver or optical-path problem, call someone".  Today that took a long
+  hunt and ended on a register almost nobody would think to try.
+
+  The escalation ladder is now known, and is the script's body: read and report both
+  directions; `C_RxReset`; then the `ConfigLclsTimingV2` set (`TxPhyReset`, `TxUserRst`,
+  `RxUserRst`); then `TxPhyPllReset` with `C_RxReset` and `RxDown` cleared after it; and
+  only then declare the optical path.
+
+  Two design points decide whether it is worth building:
+
+  - **Firmware independence is the hard part.**  The registers live at different paths per
+    board -- `l2si_drp.DrpTDetRoot` for the C1100, `PcieControl.DevKcu1500` for the
+    KCU1500, `DevPcie.Hsio.TimingRx` for the epix trees -- so it cannot hard-code a path.
+    `root.find(typ=...)` on `TimingPhyMonitor` and `TimingFrameRx` would locate them
+    wherever they are, which is how `epixuhr3x2.py` already walks its own tree.
+  - **It cannot verify success from the DRP alone.**  The failure that motivated this was
+    invisible from the card: every local register read healthy.  Confirming the feedback
+    direction means reading the XPM's `RemoteLinkId` for that link over PVA and comparing
+    it against `timTxId()`, which is deterministic from the host address.  Without that the
+    script can only report that the receive direction works, which is the half that was
+    never broken.
+
+  So the script wants PVA access to the XPM, which is a bigger dependency than a recovery
+  tool usually carries.  Worth weighing against putting the same check in `control` at
+  Configure, where the XPM connection already exists.
+
+- **Let the DRP idle at low power when triggers are absent or slow.**  Rather than polling
+  hard for an event that is not coming.  Cheaper than it sounds, because the pattern is
+  already there: `Reader.cu` waits with exponential `__nanosleep` backoff in three places
+  (`:363`, `:407`, `:448`), doubling 8 ns to a 256 ns ceiling and then returning to yield
+  instead of spinning.
+
+  So this is a question about the ceiling, not new machinery.  At 33 kHz the inter-event
+  gap is about 30 us, so a 256 ns cap already means roughly 120 wake-ups per event period,
+  and proportionally more as the rate falls.  Raising the ceiling -- or adding a second,
+  coarser tier once a quiet period is established -- costs added latency only on the first
+  event after the quiet spell, which is exactly when latency does not matter.
+
+  Two things to check before doing it: whether the host-side threads also poll (the device
+  side is the part with backoff today), and that `__nanosleep`'s guarantees hold at longer
+  intervals on the devices in use.  Measure against 33035 Hz, since the point is to change
+  power draw and not throughput.
+
+  Shares a mechanism with the `rdmaTest` timeout below -- both are bounded waits -- but not
+  a purpose: that one is about saying why nothing arrived, this one about not burning power
+  while nothing arrives.
 
 ## Every DRP log now names its XPM link
 
