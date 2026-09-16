@@ -1,8 +1,8 @@
 # GPU bulk-read implementation plan
 
 Status: Stages 1 and 2 accepted. Stage 3 is committed as `a5f07ee38`.
-Stage 4 is committed as `763a8df1b`. Stage 5 is implemented and validated,
-uncommitted for review. Bulk reads are the default. Stages 6-7 remain proposed.
+Stage 4 is committed as `763a8df1b`. Stage 5 is committed as `694b9ff2b`.
+Bulk reads are the default. Stages 6-7 remain proposed.
 Source baseline: `803a70011` on `codex/psana2-gpu-xtc-parser`. The planner is
 connected to the reader by default; Stage 5 adds independent resident inputs
 while retaining ordered execution subbatches.
