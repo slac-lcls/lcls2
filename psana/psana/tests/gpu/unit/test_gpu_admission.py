@@ -132,6 +132,39 @@ def test_residency_disabled_keeps_execution_only_accounting():
     _assert_admission_fits(events, plan, 2200)
 
 
+@pytest.mark.parametrize('capacity,expected_depth,expected_reasons', [
+    (2200, 2, ('fits_with_execution', 'insufficient_capacity')),
+    (1400, 1, ('fits_with_execution', 'insufficient_capacity')),
+    (800, 2, ('insufficient_capacity', 'insufficient_capacity')),
+    (3000, 2, ('fits_with_execution', 'fits_with_execution')),
+])
+def test_residency_decisions_record_real_fit_and_concurrency(
+        capacity, expected_depth, expected_reasons):
+    plan = plan_admission(mixed_events(), capacity, allow_residency=True)
+    decisions = plan.residency_decisions
+    assert tuple(d.reason for d in decisions) == expected_reasons
+    assert tuple(d.candidate.stream_id for d in decisions if d.admitted) == plan.resident_streams
+    assert plan.inflight == expected_depth
+    resident, depth = 0, 2
+    for d in decisions:
+        assert d.resident_bytes_before == resident
+        assert d.inflight_before == depth
+        assert d.capacity_bytes == capacity
+        assert d.admitted == (d.required_bytes <= capacity)
+        assert d.required_bytes == resident + d.candidate.resident_bytes + d.inflight * d.working_bytes
+        if d.admitted:
+            resident += d.candidate.resident_bytes
+        depth = d.inflight
+    assert resident == plan.resident_bytes and depth == plan.inflight
+
+
+def test_disabled_or_empty_residency_has_no_candidate_decisions():
+    assert plan_admission(mixed_events(), 2200).residency_decisions == ()
+    assert plan_admission([], 0, allow_residency=True).residency_decisions == ()
+    assert plan_admission([AdmissionEvent(((0, 0),), 0)], 10,
+                          parser_bytes_per_dgram=1, allow_residency=True).residency_decisions == ()
+
+
 def test_full_fast_admission_with_two_slow_events_per_execution():
     plan = plan_admission(mixed_events(), 2200, max_inflight=2, allow_residency=True)
     assert plan.resident_streams == (0,)

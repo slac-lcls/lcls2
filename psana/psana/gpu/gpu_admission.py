@@ -32,6 +32,7 @@ class AdmissionPlan:
     execution_ranges: tuple
     inflight: int
     per_execution_bytes: int
+    residency_decisions: tuple = ()  # diagnostics recorded by the actual fit checks
 
 
 @dataclass(frozen=True)
@@ -49,6 +50,26 @@ class _ResidentCandidate:
     @property
     def resident_bytes(self):
         return self.input_bytes + self.parser_bytes
+
+
+@dataclass(frozen=True)
+class _ResidencyDecision:
+    candidate: _ResidentCandidate
+    resident_bytes_before: int
+    working_bytes: int
+    inflight_before: int
+    inflight: int
+    capacity_bytes: int
+    admitted: bool
+
+    @property
+    def required_bytes(self):
+        return (self.resident_bytes_before + self.candidate.resident_bytes
+                + self.inflight * self.working_bytes)
+
+    @property
+    def reason(self):
+        return 'fits_with_execution' if self.admitted else 'insufficient_capacity'
 
 
 def _resident_candidates(events, parser_bytes_per_dgram):
@@ -106,18 +127,25 @@ def plan_admission(events, capacity_bytes, *, parser_bytes_per_dgram=0,
     while depth > 1 and largest * depth > capacity_bytes:
         depth -= 1
     resident, resident_bytes = [], 0
+    decisions = []
     if allow_residency:
         for candidate in _resident_candidates(events, parser_bytes_per_dgram):
             stream, nbytes = candidate.stream_id, candidate.resident_bytes
             selected = resident + [stream]
             working = max(cost(e, selected) for e in events)
+            previous_depth = depth
             # Prefer the first affordable small-dgram input over extra overlap.
             # Once residency is established, additional streams must fit the
             # selected depth; do not collapse the pipeline to retain everything.
             if not resident and resident_bytes + nbytes + working <= capacity_bytes:
                 while depth > 1 and resident_bytes + nbytes + depth * working > capacity_bytes:
                     depth -= 1
-            if resident_bytes + nbytes + depth * working <= capacity_bytes:
+            admitted = resident_bytes + nbytes + depth * working <= capacity_bytes
+            decisions.append(_ResidencyDecision(
+                candidate, resident_bytes, working, previous_depth, depth,
+                capacity_bytes, admitted,
+            ))
+            if admitted:
                 resident, resident_bytes = selected, resident_bytes + nbytes
     allowance = (capacity_bytes - resident_bytes) // depth
     ranges, start, current = [], 0, 0
@@ -128,4 +156,5 @@ def plan_admission(events, capacity_bytes, *, parser_bytes_per_dgram=0,
             start, current = i, 0
         current += nbytes
     ranges.append((start, len(events)))
-    return AdmissionPlan(tuple(resident), resident_bytes, tuple(ranges), depth, allowance)
+    return AdmissionPlan(tuple(resident), resident_bytes, tuple(ranges), depth,
+                         allowance, tuple(decisions))

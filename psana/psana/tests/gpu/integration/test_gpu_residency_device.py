@@ -28,7 +28,12 @@ def available():
 
 @pytest.mark.gpu
 @pytest.mark.skipif(not available(), reason='no CUDA device')
-def test_resident_fast_and_five_slow_reads_match_cpu(tmp_path, mixed_packet):
+@pytest.mark.parametrize('fast_padding,slow_padding', [
+    (0, 1024**2),
+    (16 * 1024, 64 * 1024),  # frequent small dgrams have the larger total footprint
+])
+def test_resident_fast_and_five_slow_reads_match_cpu(
+        tmp_path, mixed_packet, fast_padding, slow_padding):
     import cupy as cp
     from psana import dgram
 
@@ -47,14 +52,15 @@ def test_resident_fast_and_five_slow_reads_match_cpu(tmp_path, mixed_packet):
     raw_offset = cpu.xppcspad[1].raw.arrayRaw.ctypes.data - np.frombuffer(template, np.uint8).ctypes.data
     assert 0 <= raw_offset <= len(template) - expected.nbytes
     timestamp_base = int(cpu.timestamp())
-    padding = 1024**2
+    fast_size, slow_size = size + fast_padding, size + slow_padding
 
     def record(i, slow=False):
         result = bytearray(template)
         struct.pack_into('<Q', result, 0, timestamp_base + i)
         struct.pack_into('<H', result, raw_offset, 1000 + i if slow else i)
-        if slow:
-            # A valid opaque Data sibling makes the slow dgram larger without
+        padding = slow_padding if slow else fast_padding
+        if padding:
+            # A valid opaque Data sibling enlarges either input without
             # changing its configured raw field. The XTC walker skips it.
             result += struct.pack('<IHHI', 0, 0, 3, padding) + bytes(padding - 12)
             struct.pack_into('<I', result, 20, len(result) - 12)
@@ -72,8 +78,8 @@ def test_resident_fast_and_five_slow_reads_match_cpu(tmp_path, mixed_packet):
     detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=2, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=handles, n_slots=3, budget=budget)
     per_dgram = parser.estimate_batch_bytes(1)
-    resident_bytes = 1000 * (size + per_dgram)
-    slow_cost = size + padding + per_dgram + detector.estimate_subbatch_bytes(1)
+    resident_bytes = 1000 * (fast_size + per_dgram)
+    slow_cost = slow_size + per_dgram + detector.estimate_subbatch_bytes(1)
     capacity = resident_bytes + 4 * slow_cost
     budget._limit = budget.committed() + capacity
     m = GpuEventManager.__new__(GpuEventManager)
@@ -88,7 +94,7 @@ def test_resident_fast_and_five_slow_reads_match_cpu(tmp_path, mixed_packet):
     m.configs, m._d2h_pipelines = [config, config], {}
     m._first_batch_logged, m._done, m._closed = True, False, False
     m._n_events, m._pending_gpu_read = 0, None
-    packet = mixed_packet(fast_size=size, slow_size=size + padding,
+    packet = mixed_packet(fast_size=fast_size, slow_size=slow_size,
                           timestamp_base=timestamp_base)
     fast_owner, fast_bytes, rows, slow_owners, observed = None, None, None, set(), []
     try:
@@ -115,11 +121,21 @@ def test_resident_fast_and_five_slow_reads_match_cpu(tmp_path, mixed_packet):
                 np.testing.assert_array_equal(cp.asnumpy(state._gpu_results['slow.raw'])[0], reference)
                 np.testing.assert_array_equal(cp.asnumpy(state._gpu_results['slow.calib'])[0], reference.astype(np.float32))
             observed.append(i)
+            if i == 999:
+                # Re-read device storage after all five slow executions. A host
+                # snapshot alone would hide accidental resident-buffer reuse.
+                np.testing.assert_array_equal(cp.asnumpy(owner.batch.data_gpu), fast_bytes)
         assert observed == list(range(1000))
+        plan = m._last_admission_plan
+        assert plan.resident_streams == (0,)
+        if fast_padding:
+            assert 1000 * fast_size > 10 * slow_size
+            assert resident_bytes > 10 * (slow_size + per_dgram)
+        assert [(d.candidate.stream_id, d.admitted) for d in plan.residency_decisions] == [(0, True), (1, False)]
         assert len(slow_owners) == 5 and fast_owner.released
         stats = m.gpu_reader.io_stats()
         assert stats['total_requests'] == 6
-        assert stats['requested_bytes'] == 1000 * size + 10 * (size + padding)
+        assert stats['requested_bytes'] == 1000 * fast_size + 10 * slow_size
         assert budget._held == 0 and budget.committed() <= budget.limit()
         assert m.event_pool.active_count == 0 and not any(m.gpu_reader._input_holds.values())
     finally:

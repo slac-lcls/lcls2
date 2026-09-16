@@ -10,7 +10,7 @@ from psana.gpu.gpu_batch import GpuBatchView, GpuReadSelection, GpuSubbatchView
 from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
 from psana.gpu.gpu_file_epochs import GpuFileEpochs
 from psana.gpu.gpu_input_window import InputWindow
-from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from psana.gpu.gpu_kvikio_read import KvikioGpuReader, DESC_DEVICE_OFFSET
 from psana.gpu.gpu_stream import EventPool
 from test_gpu_bulk_read import io
 from test_gpu_input_window import Stream, Token
@@ -83,18 +83,29 @@ def execute(m, packet):
     return m._process_batch({}, {0: (packet, [])}, {})
 
 
-def test_full_fast_read_and_five_two_slow_reads(io, mixed_packet):
-    m = manager(io)
+def priority_manager(io, fast_size, slow_size, *, n_fast=1000, **kwargs):
+    # Parser costs one byte per descriptor; leave two slow events per slot.
+    capacity = n_fast * (fast_size + 1) + 4 * (slow_size + 1)
+    m = manager(io, capacity, **kwargs)
+    io.files = {'/fast': b''.join(bytes([i % 256]) * fast_size for i in range(1000)),
+                '/slow': b'x' * (10 * slow_size)}
+    return m
+
+
+@pytest.mark.parametrize('fast_size,slow_size', [(1, 1000), (8, 70)])
+def test_full_fast_read_and_five_two_slow_reads(io, mixed_packet, fast_size, slow_size):
+    m = priority_manager(io, fast_size, slow_size)
     seen, fast_owners, slow_owners = [], set(), set()
     early = Token()
-    for envelope in execute(m, mixed_packet()):
+    for envelope in execute(m, mixed_packet(fast_size=fast_size, slow_size=slow_size)):
         state = envelope.gpu_state
         fast = state._event_dgrams[0].owner
         fast_owners.add(id(fast))
         i = state._event_dgrams.batch_event_index
         seen.append(i)
         row = fast.rows_by_event[i][0][0]
-        assert int(fast.batch.data_gpu[row]) == i % 256
+        start = int(fast.desc_table[row, DESC_DEVICE_OFFSET])
+        assert bytes(fast.batch.data_gpu[start:start + fast_size]) == bytes([i % 256]) * fast_size
         assert not fast.released
         if i == 0:
             use = state._input_lease.acquire_view()
@@ -105,8 +116,15 @@ def test_full_fast_read_and_five_two_slow_reads(io, mixed_packet):
         assert early.waits == 0  # resident use remains open for later executions
     assert seen == list(range(1000)) and len(fast_owners) == 1
     assert len(slow_owners) == 5
+    decisions = m._last_admission_plan.residency_decisions
+    assert [(d.candidate.stream_id, d.admitted) for d in decisions] == [(0, True), (1, False)]
+    if fast_size == 8:
+        # Both input-only and input+parser costs would prioritize /slow under
+        # the old policy. Nevertheless /fast is read once and held across reuse.
+        assert decisions[0].candidate.input_bytes > decisions[1].candidate.input_bytes
+        assert decisions[0].candidate.resident_bytes > decisions[1].candidate.resident_bytes
     submits = [c for c in io.calls if c[0] == 'submit']
-    assert [(c[1], c[3]) for c in submits] == [('/fast', 1000)] + [('/slow', 2000)] * 5
+    assert [(c[1], c[3]) for c in submits] == [('/fast', 1000 * fast_size)] + [('/slow', 2 * slow_size)] * 5
     assert early.waits == 1
     assert all(w.released for w in m.gpu_xtc_parser.windows)
     assert not m._gpu_budget._held and not m.event_pool.active_count
@@ -133,9 +151,10 @@ def test_resident_only_execution_does_not_issue_empty_reads(io, mixed_packet):
 
 
 @pytest.mark.parametrize('stop', ['max_events', 'generator_close', 'read_failure'])
-def test_resident_cleanup_on_stop_or_failure(io, stop, mixed_packet):
-    m = manager(io, max_events=3 if stop == 'max_events' else 0)
-    events = execute(m, mixed_packet())
+@pytest.mark.parametrize('fast_size,slow_size', [(1, 1000), (8, 70)])
+def test_resident_cleanup_on_stop_or_failure(io, stop, mixed_packet, fast_size, slow_size):
+    m = priority_manager(io, fast_size, slow_size, max_events=3 if stop == 'max_events' else 0)
+    events = execute(m, mixed_packet(fast_size=fast_size, slow_size=slow_size))
     if stop == 'read_failure':
         io.fail_get = 1  # resident succeeded; first slow read fails
         with pytest.raises(RuntimeError, match='injected future failure'):
@@ -171,18 +190,25 @@ def test_resident_read_reserves_execution_progress_before_io(io, mixed_packet):
     m.close()
 
 
-def test_missing_streams_and_partial_tail_keep_event_identity(io, mixed_packet):
-    m = manager(io)
+@pytest.mark.parametrize('fast_size,slow_size', [(1, 1000), (8, 70)])
+def test_missing_streams_and_partial_tail_keep_event_identity(io, mixed_packet, fast_size, slow_size):
+    m = priority_manager(io, fast_size, slow_size, n_fast=953)
     seen = []
-    for envelope in execute(m, mixed_packet(n_events=955, missing_fast=(1, 499))):
+    for envelope in execute(m, mixed_packet(n_events=955, missing_fast=(1, 499),
+                                            fast_size=fast_size, slow_size=slow_size)):
         dgrams = envelope.gpu_state._event_dgrams
         i = dgrams.batch_event_index
         assert (0 in dgrams) == (i not in (1, 499))
         assert (1 in dgrams) == (i % 100 == 99)
         seen.append(i)
     assert seen == list(range(955))
+    plan = m._last_admission_plan
+    assert plan.resident_streams == (0,)
     sizes = [c[3] for c in io.calls if c[0] == 'submit' and c[1] == '/slow']
-    assert sizes == [2000, 2000, 2000, 2000, 1000]
+    expected = [sum(i % 100 == 99 for i in range(a, b)) * slow_size
+                for a, b in plan.execution_ranges]
+    assert sizes == [n for n in expected if n]
+    assert m.gpu_reader.io_stats()['requested_bytes'] == 953 * fast_size + 9 * slow_size
     m.close()
 
 
