@@ -248,8 +248,11 @@ They check one resident input across five two-slow-event execution groups,
 exact read requests and event/field values, and retirement. CPU cases additionally
 cover delayed consumers, failure/early exit, missing streams, and partial tails;
 the device test rechecks resident bytes after all execution-slot reuse.
-Stage 3 remains matched-policy acceptance/measurement work; request-savings
-scoring and partial resident windows remain outside this refactor.
+Stage 3 matched-policy acceptance/measurements are recorded in
+[admission_priority_stage3.md](../admission_priority_stage3.md). All 18 GPU
+integration cases passed. The new policy reduced small-stream read submissions
+but did not show a universal speedup in the warm-file CPU-fallback comparison.
+Request-savings scoring and partial resident windows remain outside this refactor.
 
 Stage 1 validation on SDF: 288 GPU CPU-only unit cases passed (13 new priority
 cases), and all four byhand MPI cases passed. The full psana suite was not
@@ -296,22 +299,27 @@ byhand MPI cases. The earlier shared-memory failure did not reproduce; no
 shared-memory production fix was made. Logs are
 `/tmp/psana_test_isolation_{focused_with_fixture,main,byhand}.log`.
 
-Remaining residency-priority Stage 3 work is acceptance and measurement, not
-another admission-policy implementation:
+Stage 3 completed acceptance and bounded measurements without changing
+production admission logic:
 
-- Compare total-footprint-first and mean-dgram-first policies with identical
-  data, event ranges, budgets, batch sizes, execution depths, and I/O mode.
-  Include the mixed-rate case where frequent small dgrams have the larger
-  total footprint, plus an equal-rate control and constrained-budget cases.
-- Record per-stream admission and pread counts, request sizes, execution
-  ranges/concurrency, memory high-water, and warmed event-loop throughput.
-  Distinguish psana pread submissions from KvikIO's internal chunking. Current
-  correctness traces are not an old/new performance comparison.
-- Run the remaining slow/pixel-exact GPU acceptance cases and preserve the
-  commands, runtime revisions, and results in a comparison report. Identify
-  CPU-fallback versus verified GDS runs explicitly; current SDF evidence is
-  fallback only. True-GDS performance remains a separate environment-dependent
-  validation item, not a prerequisite for implementing the ranking.
+- Benchmark-only old ranking against the current ranking, sharing all fit
+  checks and execution code. Four cases cover frequent small versus sparse
+  large dgrams, a compact variant, equal rates, and a tight budget with no
+  resident input. Job `38395749` used five alternating-order samples of ten
+  warm batches per policy/case; all byte, field, lifetime, and quota checks passed.
+- Per-stream reads, sizes, execution ranges/concurrency, ledger high-water,
+  and loop timings are in the report. The main mixed case changed small/large
+  read counts from 4/1 to 1/5; median loop time was 1.7% longer, with overlapping
+  sample ranges. This is an explicit prioritization tradeoff, not a demonstrated
+  general throughput improvement.
+- All 18 GPU integration cases, including the eight slow/pixel-exact cases,
+  passed in job `38395141`. Compact real-data traces passed with execution
+  deferral at 1 GiB (`38395705`) and all-resident/partial-batch input at 1.5 GiB
+  (`38395770`). Psana read counts are actual submissions; printed KvikIO pieces
+  are task-size estimates, not measured internal calls.
+
+True-GDS, cold-storage, production mixed-rate, and multi-BD throughput remain
+unmeasured and are separate environment/workload-dependent follow-ups.
 
 Partial resident windows, request-savings scoring, changes to coalescing, and
 changes to lease/backpressure ownership remain out of scope for this refactor.
