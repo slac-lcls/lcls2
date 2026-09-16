@@ -1076,15 +1076,33 @@ go down when the driver reloads, and the only one that came up with `RxLinkUp 1`
 other four were down.  Its GT transmit PLL appears to return to the same bad state whenever
 the card is re-probed.
 
-Its receive side is marginal too, and now measurably so, because the counters are cleared
-at every Allocate: over the 18.5 h between two Allocates it logged **97 link resets**, 2043
-decode and 1967 disparity errors -- about 5 resets and 110 errors per hour, against zero on
-the other four.
+Its receive side was degraded too: over the 18.5 h between two Allocates it logged **97
+link resets**, 2043 decode and 1967 disparity errors -- about 5 resets and 110 errors per
+hour, against zero on the other four.  After the `TxPhyPllReset` it read **zero on all
+three**, matching a healthy card exactly, so the reset cleaned up both directions.
 
-**Cheolhong confirmed on 2026-09-16 that there is firmware work in the pipe for this**, and
-will work with Mudit to get it merged into the TDet firmware.  So the manual
-`TxPhyPllReset` is an interim workaround with an end date, not something to build
-operational procedure around.  Do it from devGui after each driver reload until that lands.
+### Root cause, from Cheolhong on 2026-09-16
+
+**The TDet firmware clocks the transceiver from an internal clock rather than an external
+one, giving more jitter and a poor eye.**  Firmware work is in the pipe and he will work
+with Mudit to merge it into the TDet firmware, so the manual `TxPhyPllReset` is an interim
+workaround with an end date rather than something to build procedure around.  Do it from
+devGui after each driver reload until that lands.
+
+That one cause accounts for every observation, including the ones that defeated a
+register-by-register hunt:
+
+- `TxClkFreq` reading a nominal 185.714 MHz while the XPM could not decode the stream.
+  Frequency correct, jitter not -- which is why nothing on the DRP side could see the fault.
+- Marginal rather than dead, and varying between links: jitter eats margin, so only the
+  link with the least of it fails.
+- Recurring on every re-probe: the PLL re-locks, sometimes into a worse state.
+- The receive side degrading as well.  A single internal reference feeds both the Tx and Rx
+  PLLs, so one reset fixing both directions is expected rather than surprising.
+
+An earlier version of this note said a Tx-side firmware fix would not address the
+receive-side errors, and flagged that for Cheolhong and Mudit.  **That was wrong**: with a
+shared internal reference as the cause, moving to an external clock addresses both.
 
 ### Checking it is a one-liner, and worth automating regardless
 
