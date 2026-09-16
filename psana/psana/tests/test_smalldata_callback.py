@@ -1,15 +1,12 @@
 import os
 import unittest
+from unittest.mock import patch
 from mpi4py import MPI
 from psana import DataSource
 
 # Initialize MPI
 comm = MPI.COMM_WORLD
 rank = comm.Get_rank()
-
-# Set environment variables for MPI execution
-os.environ["PS_SRV_NODES"] = "1"
-os.environ["PS_SMD_N_EVENTS"] = "1"
 
 # Global variable to store received data for validation
 received_data = []
@@ -25,6 +22,10 @@ class TestSmallDataCallbacks(unittest.TestCase):
 
     def setUp(self):
         """Common setup for both tests: Define the experiment, run, and test data."""
+        # Scope MPI settings to this test, not pytest's module collection.
+        env = patch.dict(os.environ, {"PS_SRV_NODES": "1", "PS_SMD_N_EVENTS": "1"})
+        env.start()
+        self.addCleanup(env.stop)
         self.exp = 'xpptut15'
         self.runnum = 14
         self.xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
