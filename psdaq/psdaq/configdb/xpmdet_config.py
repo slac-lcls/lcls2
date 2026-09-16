@@ -1,7 +1,7 @@
 from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import *
-from psdaq.cas.xpm_utils import timTxId
+from psdaq.cas.xpm_utils import timTxId, xpmLinkId
 import os
 import rogue
 import time
@@ -39,6 +39,27 @@ def detect_C1100(dev):
                            f"driver loaded, and is {dev} the right device?") from e
     raise RuntimeError(f"Cannot determine the board type: no 'Build String' in "
                        f"{file_datadev}")
+
+def rxIdStr(rxId):
+    """XPM, link and QSFP port for a legal remote link id, else why it is not.
+
+    The low byte is the XPM's link number and bits 23:16 are the XPM number, so this
+    register says exactly which XPM port a DRP is cabled to.  Worth spelling out rather
+    than printing hex alone: when a link misbehaves, xpmpva names it, and nothing else in
+    a DRP log connects that name back to a device or a process.
+
+    Both forms of the link are given because xpmpva uses the QSFP one -- 'QSFP%d-%d' of
+    port//4 and port%4, at xpmpva.py:71 and :701 -- while the register itself, the
+    deadtime tables and the illegal-value checks below all use the absolute number.
+    Printing one and not the other just moves the arithmetic to whoever is reading the
+    log at the time, which is exactly when nobody wants to do arithmetic.
+    """
+    if rxId == 0 or rxId == 0xffffffff or (rxId & 0xff) > 15:
+        return 'illegal'
+    name, ip = xpmLinkId(rxId)
+    link = rxId & 0xff
+    return f'{name} link {link} = QSFP{link // 4}-{link % 4} ({ip})'
+
 
 def dumpTiming(tim):
     logging.warning(f'FidCount  : {tim.FidCount.get()}')
@@ -180,7 +201,7 @@ def xpmdet_connectionInfo(alloc_json_str):
                 raise RuntimeError(f"Illegal XPM Remote link id. Try TxPllReset.")
     barrier_global.wait()
     rxId = xma.RxId.get()
-    logging.info('rxId {:x}'.format(rxId))
+    logging.warning('XPM remote link id 0x{:08x}: {}'.format(rxId, rxIdStr(rxId)))
 
     connect_info = {}
     connect_info['paddr'] = rxId

@@ -24,6 +24,39 @@ import time
 from psdaq.configdb import xpmdet_config
 
 
+def _dumpPhy(root):
+    """Transmit and receive PHY status, one line, at a level a DRP actually prints.
+
+    Cheap: four register reads once per Allocate.  Worth it because the interesting
+    failure is asymmetric -- the receive link can be up and locked while the transmitter
+    is not reaching the XPM -- and nothing else in the log distinguishes the two
+    directions.  TxClkFreq near zero, or a TxRstStatus that never clears, says the
+    transmit side is the problem and that ConfigLclsTimingV2 (which issues TxPhyReset and
+    TxUserRst) is worth forcing even though RxLinkUp looks fine.
+
+    Loopback is here because a *far-end* mode is invisible from this side in every other
+    respect: the receive link stays healthy and RxId reads correctly, while the card
+    retransmits what it receives instead of its own TxId, so the XPM sees garbage rather
+    than TDetSim/<host> and counts errors without ever landing a valid frame.  A near-end
+    mode is self-evident by contrast -- RxId could not decode -- so it is the far-end case
+    that needs stating.  UseMiniTpg for the same reason: it changes where timing comes from
+    and nothing else in the log records it.
+    """
+    try:
+        phy = root.TDetTiming.TimingPhyMonitor
+        tim = root.TDetTiming.TimingFrameRx
+        logging.warning('epixuhremu: RxLinkUp %s  MmcmLocked %s  '
+                        'TxRstStatus 0x%x  RxRstStatus 0x%x  '
+                        'TxClkFreq %.3f MHz  RxClkFreq %.3f MHz  '
+                        'Loopback %s  UseMiniTpg %s',
+                        tim.RxLinkUp.get(), phy.MmcmLocked.get(),
+                        phy.TxRstStatus.get(), phy.RxRstStatus.get(),
+                        phy.TxClkFreq.get() * 1.e-6, phy.RxClkFreq.get() * 1.e-6,
+                        phy.Loopback.getDisp(), phy.UseMiniTpg.get())
+    except Exception as exc:
+        # Diagnostics must never be the reason Allocate fails.
+        logging.warning('epixuhremu: could not read PHY status: %s', exc)
+
 def epixuhremu_configTiming():
     """Configure LCLS-II timing if, and only if, the link is not already up.
 
@@ -46,8 +79,20 @@ def epixuhremu_configTiming():
     root = xpmdet_config.args['root']
     tim  = root.TDetTiming.TimingFrameRx
 
+    # Both directions, before deciding anything.  RxLinkUp describes only the receive
+    # side, and on drp-srcf-gpu008 on 2026-09-15 a card with a healthy receive link was
+    # not being seen by the XPM at all -- xpmpva showed RemoteLinkId as undef/0 where it
+    # should have shown TDetSim/gpu008 -- so the fault was on the transmit side, which the
+    # guard below cannot see.  Log the transmit status too, so that case is visible
+    # instead of having to be inferred from which messages are missing.
+    _dumpPhy(root)
+
     if tim.RxLinkUp.get():
-        logging.info('epixuhremu: timing link is up, leaving it alone')
+        # warning, not info: the surrounding timing code logs at WARNING, so INFO is
+        # filtered out in a DRP and this decision would leave no trace at all.  Both
+        # branches have to be visible or a log cannot distinguish "ran and skipped" from
+        # "never ran".  It is one line per Allocate, so there is no noise cost.
+        logging.warning('epixuhremu: timing link is up, leaving it alone')
         return
 
     logging.warning('epixuhremu: timing link is down, calling ConfigLclsTimingV2()')
@@ -64,7 +109,7 @@ def epixuhremu_configTiming():
         # because xpmdet_connectionInfo() dumps them a moment later and only then
         # clears them itself, so without this the numbers in the log are noise.
         tim.ClearRxCounters()
-        logging.info('epixuhremu: timing link is up, Rx counters cleared')
+        logging.warning('epixuhremu: timing link is up, Rx counters cleared')
     else:
         # Left uncleared deliberately: with the link still down, the error counts are
         # the evidence.
