@@ -109,7 +109,18 @@ def xpmdet_connectionInfo(alloc_json_str):
 
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json,args['dev'])
-    logging.info(f'xpmdet supervisor: {supervisor}, nworkers: {nworker}')
+    # warning, not info: a DRP filters info out (see rxIdStr's comment), and much of what
+    # follows -- the dumpTiming() counter dump, the reference clock check, the Si570
+    # programming -- happens only in the supervisor.  Without this line a log that is
+    # simply missing that output is indistinguishable from one where something failed.
+    # Diagnosing exactly that cost a detour on 2026-09-16: on a GPU node two processes can
+    # share one card, supervisor_info() groups by host *and* board, and the process that
+    # correctly deferred to its peer looked broken.
+    # nworker counts the entries after the first, i.e. the workers the barrier expects
+    # besides the supervisor -- a property of the board, not of this process.  Saying
+    # "other" would be wrong from a non-supervisor's point of view, since it is one of them.
+    logging.warning(f'xpmdet {"IS" if supervisor else "is NOT"} the barrier supervisor for '
+                    f'{args["dev"]}, {nworker} worker(s) besides the supervisor')
     barrier_global.init(supervisor,nworker)
 
     if barrier_global.supervisor:

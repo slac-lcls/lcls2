@@ -1059,6 +1059,52 @@ message and then aborts rather than doing it.  Cheolhong has been finding XPM fi
 and one may still be outstanding, which would explain why four of five links on identical
 hardware and firmware came up fine.
 
+### It recurs, and a firmware fix is coming
+
+**The reset does not survive a driver reload.**  On 2026-09-16, after updating gpu008 to
+`7.6.0-27` and restarting the DAQ, link 6 had failed again -- read straight from the XPM
+rather than through xpmpva:
+
+    DAQ:NEH:XPM:14:RemoteLinkId0   4211121061   = 0xFB009BA5 = TDetSim/gpu008
+    DAQ:NEH:XPM:14:RemoteLinkId1   4211121061
+    DAQ:NEH:XPM:14:RemoteLinkId2   4211121061
+    DAQ:NEH:XPM:14:RemoteLinkId4   4211121061
+    DAQ:NEH:XPM:14:RemoteLinkId6            0   <- datadev_85
+
+That fits the rest of the picture: `datadev_85` is also the only card whose link does *not*
+go down when the driver reloads, and the only one that came up with `RxLinkUp 1` while the
+other four were down.  Its GT transmit PLL appears to return to the same bad state whenever
+the card is re-probed.
+
+Its receive side is marginal too, and now measurably so, because the counters are cleared
+at every Allocate: over the 18.5 h between two Allocates it logged **97 link resets**, 2043
+decode and 1967 disparity errors -- about 5 resets and 110 errors per hour, against zero on
+the other four.
+
+**Cheolhong confirmed on 2026-09-16 that there is firmware work in the pipe for this**, and
+will work with Mudit to get it merged into the TDet firmware.  So the manual
+`TxPhyPllReset` is an interim workaround with an end date, not something to build
+operational procedure around.  Do it from devGui after each driver reload until that lands.
+
+### Checking it is a one-liner, and worth automating regardless
+
+The closed-loop check proposed below turns out to be trivial, which removes the main
+argument against it.  `pvget` on the XPM, compared against `timTxId()`:
+
+    export EPICS_PVA_ADDR_LIST=<xpm> EPICS_PVA_AUTO_ADDR_LIST=YES
+    pvget -i DAQ:NEH:XPM:<n>:RemoteLinkId<link>
+
+Zero means that link's contributor is not reaching the XPM.  `timTxId()` is deterministic
+from the host's 172.21 address, so the expected value is computable without asking anyone.
+
+One limitation to record: every DRP on a host produces the *same* `TxId`, so all healthy
+links from one node read identically.  The check can say "this link's contributor is not
+reaching the XPM" but not which process -- which is sufficient, because the link number now
+identifies the card via the log line each DRP writes.
+
+Worth doing even after the firmware fix lands: it catches *any* feedback-link failure, and
+the failure mode it catches is 100% deadtime with no attribution anywhere.
+
 ### Diagnostic order that worked, for next time
 
 1. **Which DRP is on the bad link** -- now a single line in every DRP log, in both the
