@@ -27,6 +27,7 @@ namespace Drp {
     static constexpr unsigned GPU_OFFSET       = GPU_ASYNC_CORE_OFFSET;
     static constexpr size_t   DMA_BUFFER_SIZE  = 64*1024; // Minimum buffer
     static constexpr unsigned DMA_BUFFER_COUNT = 4;       // Default
+    static constexpr size_t   GPU_PAGE_SIZE    = 1ul<<16; // GPU_BOUND_SHIFT in the driver
   } // Gpu
 } // Drp
 
@@ -36,6 +37,40 @@ static void chkMemory(const void* pointer, unsigned count, size_t size, const ch
     logging::critical("cudaMalloc returned no memory for %u %s of size %zu\n", count, name, size);
     exit(-ENOMEM);
   }
+}
+
+
+// Allocate GPU memory whose start address is on a GPU page boundary.
+//
+// The datadev driver requires this of anything registered with gpuAddNvidiaMemory() and
+// rejects the rest outright:
+//
+//   Gpu_AddNvidia: error: memory must be aligned to GPU page boundary (0x10000 bytes)
+//
+// It used to accept unaligned addresses, rounding down internally and carrying the
+// remainder as an offset.  aes-stream-drivers PR #321 removed that, because GpuAsyncCore
+// could write past the end of an unaligned region.  So this is a hard requirement now, and
+// a driver predating that PR is the only reason the old code worked.
+//
+// cudaMalloc promises no more than 256 or 512 byte alignment -- upstream's own commit says
+// "APIs such as cudaMalloc or cuMalloc do not guarantee us alignment" -- and in practice
+// returned 512 B alignment here, so the addresses were rejected.  Over-allocating and
+// rounding up costs less than one GPU page per buffer and needs no new API.  The
+// alternative, which upstream took for its own test app, is the CUDA VMM API
+// (cuMemCreate/cuMemMap); that is tidier but its helpers live in an app source we do not
+// vendor.
+//
+// 'raw' comes back as what must be handed to cudaFree; the return value is what the FPGA
+// and the kernels use.  Keeping both is the whole reason DetPanel carries two vectors.
+static uint8_t* _allocAlignedDma(uint8_t*& raw, size_t size, const char* name)
+{
+  const size_t over{size + Gpu::GPU_PAGE_SIZE - 1};
+  raw = nullptr;
+  chkError(cudaMalloc(&raw, over));
+  chkMemory          ( raw, over, sizeof(*raw), name);
+  chkError(cudaMemset( raw, 0, over));
+  auto addr = reinterpret_cast<uintptr_t>(raw);
+  return reinterpret_cast<uint8_t*>((addr + Gpu::GPU_PAGE_SIZE - 1) & ~(Gpu::GPU_PAGE_SIZE - 1));
 }
 
 
@@ -169,13 +204,16 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 {
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
-  // Determine DMA buffer size and round up to units of 64 kB for alignment
+  // Determine DMA buffer size and round up to a whole number of GPU pages
   // The DMA buffer size must include space for the TimingHeader
   if (para.kwargs.find("dmaBufSize") != para.kwargs.end())
     m_dmaSize = std::stoul(para.kwargs.at("dmaBufSize"));
   else
     m_dmaSize = DMA_BUFFER_SIZE;
-  m_dmaSize = ((m_dmaSize >> 16) + (m_dmaSize & 0xffff ? 1 : 0)) << 16;
+  // The same GPU_PAGE_SIZE that _allocAlignedDma() aligns the addresses to: the driver
+  // wants both.  The size was always rounded here, which is why only the addresses were
+  // rejected when the driver stopped tolerating unaligned ones.
+  m_dmaSize = ((m_dmaSize + Gpu::GPU_PAGE_SIZE - 1) / Gpu::GPU_PAGE_SIZE) * Gpu::GPU_PAGE_SIZE;
 
   // Determine DMA buffer count
   if (para.kwargs.find("dmaBufCount") != para.kwargs.end())
@@ -302,12 +340,10 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     auto& dmaBufs_d = m_panel->dmaBuffers_d;
     chkError(cudaMalloc(&dmaBufs_d, m_dmaCount * sizeof(*dmaBufs_d)));
     m_panel->dmaBuffers.resize(m_dmaCount);
+    m_panel->dmaRawPtrs.resize(m_dmaCount);
     for (unsigned i = 0; i < m_dmaCount; ++i) {
-      uint8_t* dp{nullptr};
       size_t   sz{dmaHeaderSize + m_dmaSize};
-      chkError(cudaMalloc(&dp,    sz));
-      chkMemory          ( dp,    sz, sizeof(*dp), "dmaBuffers");
-      chkError(cudaMemset( dp, 0, sz));
+      uint8_t* dp{_allocAlignedDma(m_panel->dmaRawPtrs[i], sz, "dmaBuffers")};
       m_panel->dmaBuffers[i] = dp;
       chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
     }
@@ -349,12 +385,10 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
     auto& dmaBufs_d = m_panel->dmaBuffers_d;
     chkError(cudaMalloc(&dmaBufs_d, m_dmaCount * sizeof(*dmaBufs_d)));
     m_panel->dmaBuffers.resize(m_dmaCount);
+    m_panel->dmaRawPtrs.resize(m_dmaCount);
     for (unsigned i = 0; i < m_dmaCount; ++i) {
-      uint8_t* dp{nullptr};
       size_t   sz{dmaHeaderSize + m_dmaSize};
-      chkError(cudaMalloc(&dp,    sz));
-      chkMemory          ( dp,    sz, sizeof(*dp), "dmaBuffers");
-      chkError(cudaMemset( dp, 0, sz));
+      uint8_t* dp{_allocAlignedDma(m_panel->dmaRawPtrs[i], sz, "dmaBuffers")};
       m_panel->dmaBuffers[i] = dp;
       chkError(cudaMemcpy(&dmaBufs_d[i], &dp, sizeof(*dmaBufs_d), cudaMemcpyDefault));
       logging::info("DMA buffer[%u] dptr %p, size %u, free list[%u] %p",
@@ -395,7 +429,9 @@ MemPoolGpu::~MemPoolGpu()
 
   // Free the DMA buffers
   for (unsigned i = 0; i < dmaCount(); ++i) {
-    if (m_panel->dmaBuffers[i])  chkError(cudaFree(m_panel->dmaBuffers[i]));
+    // dmaRawPtrs, not dmaBuffers: the latter is an aligned pointer *into* the allocation.
+    if (m_panel->dmaRawPtrs[i])  chkError(cudaFree(m_panel->dmaRawPtrs[i]));
+    m_panel->dmaRawPtrs[i]  = nullptr;
     m_panel->dmaBuffers[i] = nullptr;
   }
   if (m_panel->dmaBuffers_d)  chkError(cudaFree(m_panel->dmaBuffers_d));

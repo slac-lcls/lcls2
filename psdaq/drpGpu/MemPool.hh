@@ -185,7 +185,8 @@ struct DetPanel
 {
   DataDev               datadev;
   CoreRegisters         coreRegs;       // GpuAsyncCore registers wrapper
-  std::vector<uint8_t*> dmaBuffers;     // Host vector of dmaCount dptrs
+  std::vector<uint8_t*> dmaBuffers;     // Host vector of dmaCount dptrs, GPU page aligned
+  std::vector<uint8_t*> dmaRawPtrs;     // What cudaMalloc returned, for cudaFree
   uint8_t**             dmaBuffers_d;   // Device array of dmaCount dptrs
   std::string           name;
 
