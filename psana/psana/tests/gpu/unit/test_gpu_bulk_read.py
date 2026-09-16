@@ -275,12 +275,14 @@ def test_bulk_default_requires_supported_gpu_packet_path_only_for_gpu():
     assert not replace(p, gpu_bulk_read=False).gpu_bulk_read
 
 
-def test_exclusive_smd_packet_resolves_real_chunked_fixture_before_cpu_reads(io):
+def test_exclusive_smd_packet_resolves_real_chunked_fixture_before_cpu_reads(io, monkeypatch):
     from psana.gpu.gpu_batch import GpuBatchView
     from psana.gpu.gpu_events import _iter_step_events
     from psana.psexp.ds_base import DsParms
     from psana.psexp.smdreader_manager import SmdReaderManager
 
+    # This coverage requires a packet spanning a file-chunk boundary.
+    monkeypatch.setenv("PS_SMD_N_EVENTS", "1000")
     root = Path(__file__).resolve().parents[2] / "test_data/chunking"
     initial = root / "xpptut15-r0014-s000-c000.xtc2"
     io.files = {str(path.resolve()): path.read_bytes() for path in root.glob("*.xtc2")}
