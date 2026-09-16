@@ -114,7 +114,7 @@ if has_jwt:
     session.headers.update({'Authorization': 'Bearer ' + jwt })
     logger.debug(f'jwt: {str(jwt)}')
 
-print('MDBWebUtils: ' + info_ticket)
+#print('MDBWebUtils: ' + info_ticket)
 #logger.info(info_ticket)
 
 def has_kerberos_ticket():
@@ -127,7 +127,7 @@ def check_ticket(exit_if_invalid=True, output=logger.debug):
         output('use JWT ticket')
         return True
     elif has_kerberos_ticket():
-        output('using kerberos, JWT ticket is missing')
+        output('using kerberos, JWT ticket is missing, try command: jwt')
         return True
     output(info_missing_tickets)
     if exit_if_invalid:
