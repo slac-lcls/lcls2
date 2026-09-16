@@ -215,7 +215,7 @@ Call path:
    Detector slot buffers are trimmed only after EventPool is empty. Actual
    concurrency can reduce under pressure without changing event identity.
 
-The follow-up residency-priority refactor (Stage 1) considers complete streams
+The follow-up residency-priority refactor (Stage 1, `4a26bc640`) considers complete streams
 in ascending mean size of present, nonempty XTC dgrams. Equal means prefer the
 smaller total source+parser footprint, then stream ID. This replaces Stage 5's
 original total-footprint-first order so a sparse large-dgram stream does not
@@ -229,10 +229,27 @@ smaller ordered ranges. Full resident footprints, not mean dgram sizes, enter
 the fit checks. It does not inspect detector names or assume a fixed fast/slow
 ratio. Multiple detectors sharing one stream charge the source once and their
 actual detector working sets separately. This ranking change does not alter
-read coalescing, parser behavior, input leases, or the GPUBAT1 ABI. Follow-up
-Stages 2 and 3 cover decision tracing/device regressions and matched-policy
-acceptance/measurements; request-savings scoring and partial resident windows
-remain outside this refactor.
+read coalescing, parser behavior, input leases, or the GPUBAT1 ABI.
+
+Stage 2 records each attempted residency decision in
+`AdmissionPlan.residency_decisions`: the exact candidate statistics, previously
+admitted bytes, remaining maximum event working set, concurrency before/after,
+capacity, and admission result. The optional field defaults to an empty tuple
+when no candidates are considered. The trace consumes these recorded decisions;
+it does not reimplement the ranking or fit checks. Each `CANDIDATE` line shows
+the mean nonempty dgram size, input/parser footprint, `ADMIT` or `SKIP`, and the
+actual `previous_resident + candidate + inflight * working <= capacity` test
+(or `>` for a rejected candidate). Skipping residency keeps that stream's input
+execution-scoped; it does not discard its events.
+
+CPU scheduling and real-device tests now include frequent small dgrams whose
+total input and input+parser footprint both exceed a sparse large-dgram stream.
+They check one resident input across five two-slow-event execution groups,
+exact read requests and event/field values, and retirement. CPU cases additionally
+cover delayed consumers, failure/early exit, missing streams, and partial tails;
+the device test rechecks resident bytes after all execution-slot reuse.
+Stage 3 remains matched-policy acceptance/measurement work; request-savings
+scoring and partial resident windows remain outside this refactor.
 
 Stage 1 validation on SDF: 288 GPU CPU-only unit cases passed (13 new priority
 cases), and all four byhand MPI cases passed. The full psana suite was not
@@ -245,6 +262,59 @@ requires the new residency ranking. Those test-isolation/output issues were
 not changed as part of this policy refactor. Logs are
 `/tmp/gpu_priority_stage1_{unit,psana,byhand,chunk_isolated,chunk_env1}.log`
 on the SDF login host. Device-policy comparison remains a later-stage gate.
+
+Follow-up Stage 2 validation on SDF: 298 CPU-only GPU unit cases passed.
+GPU job `38389330` passed ten fast integration cases (eight slow cases
+deselected), including the new larger-total-footprint/smaller-dgram case.
+Run-51 traces at 1.5 GiB (`38389330`) and 1 GiB (`38389359`) each delivered
+the same 30 timestamps, shapes, dtypes, and detector sums. At 1 GiB, epix alone
+was resident and all five Jungfrau streams remained execution-scoped, with
+explicit failed-fit decisions. Sampled ledger commitments stayed below their
+limits (1355.420/1536 MiB and 906.722/1024 MiB). These runs used CPU fallback,
+not true GDS. The detailed trace record is in `../bulk_read_trace.md`; the trace
+driver and launchers remain untracked diagnostic scripts, excluded from commits.
+
+The Stage 2 full psana rerun reported 362 passed, 15 skipped, ten deselected,
+and three failures: the same two Stage 1 issues above, plus the CPU smalldata
+shared-memory path exiting without events and then finding no `/oneint`
+dataset. The latter also reproduced with the main and byhand suites run
+sequentially, so a shared-output collision alone does not explain it. No
+smalldata/shared-memory code was changed; this failure remains unresolved.
+The sequential byhand suite reported three passed and one failure in
+`byhand_mpi.py::Test::test_mpi`, again at the shared-memory `/oneint` check.
+Logs are `/tmp/gpu_priority_stage2_{unit,psana_sequential,byhand_sequential}.log`.
+
+Independent test-fix commit `599f856ae` scopes the callback tests' MPI environment to each
+test with cleanup, explicitly give the cross-chunk test a 1000-event SMD
+window, and assert the subset event count inside its subprocess rather than
+comparing diagnostic stdout. The subprocess uses the current Python executable.
+All 34 affected cases passed with prepared fixture data, even with
+`PS_SMD_N_EVENTS=1` inherited. Import/cleanup checks confirmed no environment
+leak and restoration of both absent and existing settings. Sequential full
+reruns passed: 365 main-suite cases (15 skipped, ten deselected) and all four
+byhand MPI cases. The earlier shared-memory failure did not reproduce; no
+shared-memory production fix was made. Logs are
+`/tmp/psana_test_isolation_{focused_with_fixture,main,byhand}.log`.
+
+Remaining residency-priority Stage 3 work is acceptance and measurement, not
+another admission-policy implementation:
+
+- Compare total-footprint-first and mean-dgram-first policies with identical
+  data, event ranges, budgets, batch sizes, execution depths, and I/O mode.
+  Include the mixed-rate case where frequent small dgrams have the larger
+  total footprint, plus an equal-rate control and constrained-budget cases.
+- Record per-stream admission and pread counts, request sizes, execution
+  ranges/concurrency, memory high-water, and warmed event-loop throughput.
+  Distinguish psana pread submissions from KvikIO's internal chunking. Current
+  correctness traces are not an old/new performance comparison.
+- Run the remaining slow/pixel-exact GPU acceptance cases and preserve the
+  commands, runtime revisions, and results in a comparison report. Identify
+  CPU-fallback versus verified GDS runs explicitly; current SDF evidence is
+  fallback only. True-GDS performance remains a separate environment-dependent
+  validation item, not a prerequisite for implementing the ranking.
+
+Partial resident windows, request-savings scoring, changes to coalescing, and
+changes to lease/backpressure ownership remain out of scope for this refactor.
 
 The ledger charges cached pipeline-owned buffers until relinquished. Retained
 slot results remain charged while their consumer leases are live. Independent
