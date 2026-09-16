@@ -5,7 +5,7 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from psana.gpu.gpu_admission import AdmissionEvent, plan_admission
+from psana.gpu.gpu_admission import AdmissionEvent, plan_admission, _resident_candidates
 from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError, allocation_growth_bytes
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
@@ -18,6 +18,118 @@ def mixed_events():
     return [AdmissionEvent(((0, 1), (1, 100)) if i % 100 == 99 else ((0, 1),),
                            200 if i % 100 == 99 else 0)
             for i in range(1000)]
+
+
+def _assert_admission_fits(events, plan, capacity, parser_bytes=0):
+    assert [i for a, b in plan.execution_ranges for i in range(a, b)] == list(range(len(events)))
+    expected_resident = sum(n + parser_bytes for e in events for s, n in e.streams
+                            if s in plan.resident_streams)
+    assert plan.resident_bytes == expected_resident
+    for a, b in plan.execution_ranges:
+        cost = sum(e.detector_bytes + sum(n + parser_bytes for s, n in e.streams
+                                          if s not in plan.resident_streams)
+                   for e in events[a:b])
+        assert cost <= plan.per_execution_bytes
+    assert plan.resident_bytes + plan.inflight * plan.per_execution_bytes <= capacity
+
+
+@pytest.mark.parametrize('small_stream,large_stream', [(0, 1), (7, 2)])
+@pytest.mark.parametrize('capacity,inflight', [(2600, 2), (2300, 1)])
+def test_small_dgrams_win_even_when_sparse_large_stream_costs_less(
+        small_stream, large_stream, capacity, inflight):
+    # Small: 1000 input + 1000 parser; large: 700 input + 10 parser.
+    # Both would fit individually as resident, but not together. The old
+    # total-footprint order chose the large-dgram stream and excluded the small.
+    events = [AdmissionEvent(((small_stream, 1), (large_stream, 70))
+                             if i % 100 == 99 else ((small_stream, 1),),
+                             200 if i % 100 == 99 else 0)
+              for i in range(1000)]
+    candidates = _resident_candidates(events, 1)
+    assert [c.stream_id for c in candidates] == [small_stream, large_stream]
+    assert candidates[0].resident_bytes > candidates[1].resident_bytes
+    plan = plan_admission(events, capacity, parser_bytes_per_dgram=1,
+                          max_inflight=2, allow_residency=True)
+    assert plan.resident_streams == (small_stream,)
+    assert plan.inflight == inflight
+    _assert_admission_fits(events, plan, capacity, 1)
+
+
+def test_priority_uses_mean_present_size_not_minimum_or_batch_event_count():
+    events = [AdmissionEvent(((0, 1), (1, 60), (2, 40)), 0),
+              AdmissionEvent(((0, 99),), 0)] + [AdmissionEvent((), 0)] * 100
+    candidates = _resident_candidates(events, 3)
+    assert [c.stream_id for c in candidates] == [2, 0, 1]
+    assert [c.average_dgram_bytes for c in candidates] == [40, 50, 60]
+
+
+def test_priority_preserves_fractional_mean_and_large_integer_precision():
+    large = 2**60
+    events = [AdmissionEvent(((0, large + 1), (1, large)), 0),
+              AdmissionEvent(((1, large),), 0)]
+    assert [c.stream_id for c in _resident_candidates(events, 0)] == [1, 0]
+    events = [AdmissionEvent(((0, 1), (1, 1)), 0),
+              AdmissionEvent(((0, 2), (1, 1)), 0)]
+    assert [c.stream_id for c in _resident_candidates(events, 0)] == [1, 0]
+
+
+def test_equal_mean_ties_use_full_footprint_then_stream_id():
+    events = [AdmissionEvent(((2, 4), (1, 4), (0, 4)), 0),
+              AdmissionEvent(((1, 4),), 0)]
+    candidates = _resident_candidates(events, 3)
+    assert [c.stream_id for c in candidates] == [0, 2, 1]
+    assert [c.resident_bytes for c in candidates] == [7, 7, 14]
+    reordered = [AdmissionEvent(tuple(reversed(e.streams)), e.detector_bytes)
+                 for e in reversed(events)]
+    assert candidates == _resident_candidates(reordered, 3)
+
+
+def test_zero_size_rows_do_not_improve_priority_but_keep_parser_charge():
+    events = [AdmissionEvent(((0, 0), (1, 3), (2, 0)), 0),
+              AdmissionEvent(((0, 4), (2, 0)), 0)]
+    candidates = _resident_candidates(events, 2)
+    assert [c.stream_id for c in candidates] == [1, 0]
+    assert [c.average_dgram_bytes for c in candidates] == [3, 4]
+    assert [c.resident_bytes for c in candidates] == [5, 8]
+    plan = plan_admission(events, 100, parser_bytes_per_dgram=2, allow_residency=True)
+    assert plan.resident_streams == (1, 0)
+    _assert_admission_fits(events, plan, 100, 2)
+
+
+def test_equal_mean_and_input_bytes_tie_includes_parser_footprint():
+    events = [AdmissionEvent(((0, 4), (1, 4)), 0), AdmissionEvent(((0, 0),), 0)]
+    candidates = _resident_candidates(events, 2)
+    assert [c.stream_id for c in candidates] == [1, 0]
+    assert [c.resident_bytes for c in candidates] == [6, 8]
+
+
+def test_all_empty_stream_remains_execution_scoped():
+    events = [AdmissionEvent(((0, 0),), 0)] * 3
+    assert _resident_candidates(events, 2) == ()
+    plan = plan_admission(events, 8, parser_bytes_per_dgram=2, allow_residency=True)
+    assert plan.resident_streams == ()
+    assert plan.execution_ranges == ((0, 2), (2, 3))
+    _assert_admission_fits(events, plan, 8, 2)
+
+
+def test_unaffordable_small_stream_does_not_block_later_candidate():
+    events = [AdmissionEvent(((0, 1), (1, 10)), 5)] + [AdmissionEvent(((0, 1),), 0)] * 99
+    plan = plan_admission(events, 30, max_inflight=2, allow_residency=True)
+    assert plan.resident_streams == (1,)
+    _assert_admission_fits(events, plan, 30)
+
+
+def test_priority_does_not_rescue_an_oversized_complete_event():
+    # One easy event must not hide the later oversized joint-detector event.
+    events = [AdmissionEvent(((0, 1),), 0), AdmissionEvent(((0, 1), (1, 100)), 200)]
+    with pytest.raises(GpuMemoryPressureError, match='event 1 cannot fit alone'):
+        plan_admission(events, 300, allow_residency=True)
+
+
+def test_residency_disabled_keeps_execution_only_accounting():
+    events = mixed_events()
+    plan = plan_admission(events, 2200, allow_residency=False)
+    assert plan.resident_streams == () and plan.resident_bytes == 0
+    _assert_admission_fits(events, plan, 2200)
 
 
 def test_full_fast_admission_with_two_slow_events_per_execution():

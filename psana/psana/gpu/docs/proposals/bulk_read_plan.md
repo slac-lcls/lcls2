@@ -215,12 +215,36 @@ Call path:
    Detector slot buffers are trimmed only after EventPool is empty. Actual
    concurrency can reduce under pressure without changing event identity.
 
-The CPU residency policy considers complete streams in ascending source+parser
-byte cost, with stream ID breaking ties. It reserves minimum execution capacity
-before accepting residency, can reduce overlap to fit the cheapest whole stream,
-and otherwise builds smaller ordered ranges. It does not inspect detector names
-or assume a fixed fast/slow ratio. Multiple detectors sharing one stream charge
-the source once and their actual detector working sets separately.
+The follow-up residency-priority refactor (Stage 1) considers complete streams
+in ascending mean size of present, nonempty XTC dgrams. Equal means prefer the
+smaller total source+parser footprint, then stream ID. This replaces Stage 5's
+original total-footprint-first order so a sparse large-dgram stream does not
+automatically outrank a frequent small-dgram stream. Missing events and empty
+descriptors do not dilute the mean; all supplied descriptors still incur parser
+cost. All-empty streams remain execution-scoped. Means are compared exactly.
+
+The policy reserves minimum execution capacity before accepting residency, can
+reduce overlap to admit the first affordable candidate, and otherwise builds
+smaller ordered ranges. Full resident footprints, not mean dgram sizes, enter
+the fit checks. It does not inspect detector names or assume a fixed fast/slow
+ratio. Multiple detectors sharing one stream charge the source once and their
+actual detector working sets separately. This ranking change does not alter
+read coalescing, parser behavior, input leases, or the GPUBAT1 ABI. Follow-up
+Stages 2 and 3 cover decision tracing/device regressions and matched-policy
+acceptance/measurements; request-savings scoring and partial resident windows
+remain outside this refactor.
+
+Stage 1 validation on SDF: 288 GPU CPU-only unit cases passed (13 new priority
+cases), and all four byhand MPI cases passed. The full psana suite was not
+clean: 350 passed, 14 skipped, 10 deselected, and two failures. The existing
+subset-export test expects stdout to contain only the event count, but calibration
+startup also prints there. The chunked bulk-read test fails when another module
+sets `PS_SMD_N_EVENTS=1` during collection (`test_smalldata_callback.py`); it
+passes alone and fails identically with that variable set. Neither failure
+requires the new residency ranking. Those test-isolation/output issues were
+not changed as part of this policy refactor. Logs are
+`/tmp/gpu_priority_stage1_{unit,psana,byhand,chunk_isolated,chunk_env1}.log`
+on the SDF login host. Device-policy comparison remains a later-stage gate.
 
 The ledger charges cached pipeline-owned buffers until relinquished. Retained
 slot results remain charged while their consumer leases are live. Independent
@@ -504,18 +528,20 @@ or presumed rates. A deterministic first policy is:
 
 1. Determine the minimum executable event working set and reserve progress
    capacity, including required detector outputs and scratch.
-2. Consider complete stream inputs in ascending resident-byte cost, with
-   stream ID breaking ties. Admit a complete stream only if all remaining
-   executions retain a feasible working set. Apply a configured range cap.
+2. Consider complete stream inputs in ascending mean present, nonempty dgram
+   size, with full resident-byte cost and then stream ID breaking ties. Admit
+   a complete stream only if its full input+parser footprint leaves feasible
+   execution working sets. Physical read ranges still obey any configured cap.
 3. Build ordered execution ranges from actual descriptor presence and detector
    bindings. Include all streams required by each detector event. Do not charge
    every detector for an event where all its sources are absent.
 4. Group nonresident stream reads inside each execution range; resident stream
    references reuse existing windows. Include fast-only events in execution
    and delivery, even when no slow dgram is present.
-5. If the full fast input cannot coexist with the working set, shorten its
-   resident window. Reduce overlap before rejecting work. If one minimum
-   complete event cannot fit, fail before issuing reads with a byte breakdown.
+5. If a complete stream cannot coexist with the working set, keep its reads
+   execution-scoped. Partial resident windows are a future extension. Reduce
+   overlap when allowed by admission. If one minimum complete event cannot fit,
+   fail before issuing reads with a byte breakdown.
 
 For the target example, if all fast input fits alongside two Jungfrau events,
 the fast read occurs once and the ten Jungfrau events execute in five groups.

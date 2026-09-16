@@ -1,11 +1,12 @@
-"""Deterministic byte admission for current and future resident-input schedules.
+"""Deterministic byte admission with small-dgram-first resident inputs.
 
-No allocation or I/O. Stage 4 uses ordered execution ranges without residency;
-Stage 5 will consume the optional resident-stream decisions. Inputs are actual
-descriptor presence, parser bytes per dgram, and detector working-set bytes.
+No allocation or I/O. Inputs are actual descriptor presence, parser bytes per
+dgram, and detector working-set bytes. Priority does not change the full-input
+and minimum-execution fit checks.
 """
 
 from dataclasses import dataclass
+from fractions import Fraction
 
 from .gpu_budget import GpuMemoryPressureError
 
@@ -31,6 +32,46 @@ class AdmissionPlan:
     execution_ranges: tuple
     inflight: int
     per_execution_bytes: int
+
+
+@dataclass(frozen=True)
+class _ResidentCandidate:
+    stream_id: int
+    input_bytes: int
+    nonempty_dgrams: int
+    parser_bytes: int
+
+    @property
+    def average_dgram_bytes(self):
+        # Exact ordering, including large byte counts and fractional means.
+        return Fraction(self.input_bytes, self.nonempty_dgrams)
+
+    @property
+    def resident_bytes(self):
+        return self.input_bytes + self.parser_bytes
+
+
+def _resident_candidates(events, parser_bytes_per_dgram):
+    """Rank physical streams by mean size of present, nonempty XTC dgrams.
+
+    Missing events and zero-size descriptors do not dilute the mean. Parser
+    accounting still includes every supplied descriptor, even an empty one.
+    All-empty streams stay execution-scoped because they offer no input reads
+    to coalesce. Ties prefer a smaller full resident footprint, then stream ID.
+    """
+    streams = {}
+    for event in events:
+        for stream, nbytes in event.streams:
+            # Input bytes, nonempty dgram count, parser bytes.
+            stats = streams.setdefault(stream, [0, 0, 0])
+            stats[0] += nbytes
+            stats[1] += int(nbytes > 0)
+            stats[2] += parser_bytes_per_dgram
+    candidates = (_ResidentCandidate(stream, *stats)
+                  for stream, stats in streams.items() if stats[1])
+    return tuple(sorted(candidates, key=lambda c: (
+        c.average_dgram_bytes, c.resident_bytes, c.stream_id,
+    )))
 
 
 def plan_admission(events, capacity_bytes, *, parser_bytes_per_dgram=0,
@@ -66,14 +107,11 @@ def plan_admission(events, capacity_bytes, *, parser_bytes_per_dgram=0,
         depth -= 1
     resident, resident_bytes = [], 0
     if allow_residency:
-        streams = {}
-        for event in events:
-            for stream, nbytes in event.streams:
-                streams[stream] = streams.get(stream, 0) + nbytes + parser_bytes_per_dgram
-        for stream, nbytes in sorted(streams.items(), key=lambda item: (item[1], item[0])):
+        for candidate in _resident_candidates(events, parser_bytes_per_dgram):
+            stream, nbytes = candidate.stream_id, candidate.resident_bytes
             selected = resident + [stream]
             working = max(cost(e, selected) for e in events)
-            # Prefer the cheapest complete input over extra overlap if needed.
+            # Prefer the first affordable small-dgram input over extra overlap.
             # Once residency is established, additional streams must fit the
             # selected depth; do not collapse the pipeline to retain everything.
             if not resident and resident_bytes + nbytes + working <= capacity_bytes:
