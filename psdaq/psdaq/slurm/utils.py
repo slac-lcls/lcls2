@@ -13,9 +13,6 @@ SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
 SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
 RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
-HUTCH_DEFAULT_LOG_SUBDIRS = {
-    "xpp": os.path.join("daq", "logs"),
-}
 DAQMGR_DEBUG_ENV = "DAQMGR_DEBUG_ENV"
 DAQMGR_DEBUG_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
 DAQMGR_DEBUG_ENV_DUMP_CMD = (
@@ -126,11 +123,11 @@ class SbatchManager:
         self.user = os.environ["USER"]
         self.hutch = self.user[: self.user.find("opr")]
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        output_root = output
-        if output_root is None:
-            output_root = self.get_default_output_root()
+        log_root = output
+        if log_root is None:
+            log_root = self.get_default_log_root()
         self.output_path = os.path.join(
-            output_root, now.strftime("%Y"), now.strftime("%m")
+            log_root, now.strftime("%Y"), now.strftime("%m")
         )
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
@@ -142,12 +139,9 @@ class SbatchManager:
         self.verbose = verbose
         self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, "scripts")
 
-    def get_default_output_root(self):
+    def get_default_log_root(self):
         home_dir = os.environ.get("HOME", "")
-        hutch_log_subdir = HUTCH_DEFAULT_LOG_SUBDIRS.get(self.hutch)
-        if hutch_log_subdir is not None:
-            return os.path.join(home_dir, hutch_log_subdir)
-        return home_dir
+        return os.path.join(home_dir, "daq", "logs")
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
