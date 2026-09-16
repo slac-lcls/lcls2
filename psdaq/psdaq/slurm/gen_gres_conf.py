@@ -231,20 +231,58 @@ def core_map():
     return {cpu: index[group] for cpu, group in siblings.items()}
 
 
+def socket_map():
+    """(logical CPU -> socket, socket -> set of core indices), or None on failure."""
+    mapping = core_map()
+    if mapping is None:
+        return None
+    cpu_pkg, pkg_cores = {}, {}
+    for cpu, core in mapping.items():
+        try:
+            with open(f"/sys/devices/system/cpu/cpu{cpu}/topology/"
+                      "physical_package_id") as f:
+                pkg = int(f.read().strip())
+        except (OSError, ValueError):
+            return None
+        cpu_pkg[cpu] = pkg
+        pkg_cores.setdefault(pkg, set()).add(core)
+    return (cpu_pkg, pkg_cores) if pkg_cores else None
+
+
 def gpu_cores(pci):
-    """The Cores= value for a GPU, or '' if it cannot be determined safely."""
+    """The Cores= value for a GPU, or '' if it cannot be determined safely.
+
+    Whole sockets, not the GPU's own NUMA node.  Slurm requires the core set to fall on
+    socket boundaries and drains the node with INVALID_REG otherwise:
+
+        gres/gpu GRES core specification 8-15 for node drp-srcf-gpu008 doesn't match
+        socket boundaries. (Socket 0 is cores 0-31)
+
+    A GPU's sysfs locality is finer than a socket wherever there is more than one NUMA
+    node per socket.  drp-srcf-gpu008 is NPS=4, so local_cpulist gives eight cores of a
+    thirty-two-core socket.  Nodes with one NUMA node per socket hide the distinction
+    entirely -- on gpu006 (2x32) and gpu001 (2x8) the GPU's local cores were *exactly*
+    one socket, so the narrow form and the socket form agreed and the narrow one looked
+    correct.  Widening is therefore safe for those two as well as necessary here.
+
+    The NUMA node stays in the comment above each record, so the finer locality is not
+    lost -- it is just not something Slurm can express here.
+    """
     cpulist = pci_attr(pci, "local_cpulist")
     if not cpulist:
         return ""
-    mapping = core_map()
-    if mapping is None:
+    maps = socket_map()
+    if maps is None:
         return ""
+    cpu_pkg, pkg_cores = maps
     try:
-        cores = {mapping[cpu] for cpu in parse_cpulist(cpulist) if cpu in mapping}
+        cpus = parse_cpulist(cpulist)
     except ValueError:
         return ""
-    # Omitting Cores= costs a scheduling hint; emitting a wrong one can leave the
-    # node's gres configuration invalid, so say nothing rather than guess.
+    pkgs = {cpu_pkg[cpu] for cpu in cpus if cpu in cpu_pkg}
+    cores = set().union(*(pkg_cores[pkg] for pkg in pkgs)) if pkgs else set()
+    # Omitting Cores= costs a scheduling hint; emitting a wrong one leaves the node's
+    # gres configuration invalid, so say nothing rather than guess.
     return format_ranges(cores) if cores else ""
 
 
@@ -354,6 +392,19 @@ def emit(pairs, node):
 
 CACHED_CONF = "/var/spool/slurmd/conf-cache/gres.conf"
 
+# --check's verdict is the one line a person is actually looking for, in among the
+# warnings and counts, so it gets a blank line and a colour.  Only when stderr is a
+# terminal: the escape codes must not end up in whatever captured the output, which is
+# the case that matters when it fails.
+GREEN = "1;32"
+RED   = "1;31"
+
+
+def _verdict(text, colour):
+    if not sys.stderr.isatty():
+        return text
+    return f"\033[{colour}m{text}\033[0m"
+
 
 def _records(text, node):
     """The substantive NodeName= lines for a node, ignoring comments and spacing."""
@@ -451,12 +502,13 @@ def main():
             print(f"error: cannot read {CACHED_CONF}: {exc}", file=sys.stderr)
             return 1
         want = _records(emit(pairs, node)[0], node)
+        print(file=sys.stderr)
         if have == want:
-            print(f"info: {CACHED_CONF} matches this node's hardware "
-                  f"({len(want)} record(s))", file=sys.stderr)
+            print(_verdict(f"info: {CACHED_CONF} matches this node's hardware "
+                           f"({len(want)} record(s))", GREEN), file=sys.stderr)
             return 0
-        print(f"error: {CACHED_CONF} does not match this node's hardware",
-              file=sys.stderr)
+        print(_verdict(f"error: {CACHED_CONF} does not match this node's hardware",
+                       RED), file=sys.stderr)
         for line in sorted(set(have) - set(want)):
             print(f"error:   configured but not present: {line}", file=sys.stderr)
         for line in sorted(set(want) - set(have)):
