@@ -3,6 +3,7 @@ import time
 import struct
 import logging
 import threading
+import numpy as np
 import multiprocessing as mp
 from typing import Any, Optional
 # rougue imports
@@ -14,6 +15,7 @@ import rogue.interfaces.stream
 import rogue.protocols.srp
 import pyrogue
 # caproto imports
+import caproto as ca
 from caproto import config_caproto_logging
 from caproto.server import (
         PVGroup, PvpropertyDouble,
@@ -25,7 +27,16 @@ from caproto.server import (
         pvproperty,
         run
 )
-from caproto.server.records import AoFields, AiFields, LongoutFields, LonginFields, StringinFields, WaveformFields, MbbiFields
+from caproto.server.records import (
+        AoFields,
+        AiFields,
+        LongoutFields,
+        LonginFields,
+        BiFields,
+        StringinFields,
+        WaveformFields,
+        MbbiFields
+)
 
 
 class EpixQuadMonitorUtils:
@@ -110,16 +121,16 @@ class EpixQuadMonitorUtils:
     def getThermistorTemp(raw: int) -> float:
         # resistor divider 100k and MC65F103B (Rt25=10k)
         # Vref 2.5V
-        TthermK = 0.0
+        TthermK = -273.15
         if raw != 0:
             Umeas = raw / 16383.0 * 2.5
             Itherm = Umeas / 100000
             Rtherm = (2.5 - Umeas) / Itherm
             if Rtherm > 0.0:
                 LnRtR25 = np.log(Rtherm / 10000.0)
-                TthermK = 1.0 / (3.3538646E-03 + 2.5654090E-04 * LnRtR25 +
+                TthermK += 1.0 / (3.3538646E-03 + 2.5654090E-04 * LnRtR25 +
                              1.9243889E-06 * (LnRtR25**2) + 1.0969244E-07 * (LnRtR25**3))
-            TthermK -= 273.15
+
         return TthermK
 
 
@@ -140,49 +151,49 @@ CHANNEL_DEFS: dict[int, Any] = {
         name="NCT218 Local Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getNctTempLoc,
-        pv_signal_="nct_loc_temp",
+        pv_signal="nct_loc_temp",
     ),
     3: dict(
         name="NCT218 Remote Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getNctTempRem,
-        pv_signal_="nct_fpga_temp",
+        pv_signal="nct_fpga_temp",
     ),
     4: dict(
         name="ASIC_A0_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
-        pv_signal_="asic_a0_2v5_cur",
+        pv_signal="asic_a0_2v5_cur",
     ),
     5: dict(
         name="ASIC_A1_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
-        pv_signal_="asic_a1_2v5_cur",
+        pv_signal="asic_a1_2v5_cur",
     ),
     6: dict(
         name="ASIC_A2_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
-        pv_signal_="asic_a2_2v5_cur",
+        pv_signal="asic_a2_2v5_cur",
     ),
     7: dict(
         name="ASIC_A3_2V5 Curr.",
         unit="A",
         conv=EpixQuadMonitorUtils.getLt3086DoubleCurr,
-        pv_signal_="asic_a3_2v5_cur",
+        pv_signal="asic_a3_2v5_cur",
     ),
     8: dict(
         name="ASIC_D0_2V5 Curr.",
         unit="mA",
         conv=EpixQuadMonitorUtils.getLt3086SingleCurr,
-        pv_signal_="asic_d0_2v5_cur",
+        pv_signal="asic_d0_2v5_cur",
     ),
     9: dict(
         name="ASIC_D1_2V5 Curr.",
         unit="mA",
         conv=EpixQuadMonitorUtils.getLt3086SingleCurr,
-        pv_signal_="asic_d1_2v5_cur",
+        pv_signal="asic_d1_2v5_cur",
     ),
     10: dict(
         name="Therm0 Temp.",
@@ -212,7 +223,7 @@ CHANNEL_DEFS: dict[int, Any] = {
         name="PwrDigTemp",
         unit="°C",
         conv=EpixQuadMonitorUtils.getPwrTemp,
-        pv_signal_="dig_temp",
+        pv_signal="dig_temp",
     ),
     15: dict(
         name="PwrAnaCurr",
@@ -230,127 +241,127 @@ CHANNEL_DEFS: dict[int, Any] = {
         name="PwrAnaTemp",
         unit="°C",
         conv=EpixQuadMonitorUtils.getPwrTemp,
-        pv_signal_="ana_temp",
+        pv_signal="ana_temp",
     ),
     18: dict(
         name="A0_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a0_2v5_h_temp",
+        pv_signal="asic_a0_2v5_h_temp",
     ),
     19: dict(
         name="A0_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a0_2v5_l_temp",
+        pv_signal="asic_a0_2v5_l_temp",
     ),
     20: dict(
         name="A1_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a1_2v5_h_temp",
+        pv_signal="asic_a1_2v5_h_temp",
     ),
     21: dict(
         name="A1_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a1_2v5_l_temp",
+        pv_signal="asic_a1_2v5_l_temp",
     ),
     22: dict(
         name="A2_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a2_2v5_h_temp",
+        pv_signal="asic_a2_2v5_h_temp",
     ),
     23: dict(
         name="A2_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a2_2v5_l_temp",
+        pv_signal="asic_a2_2v5_l_temp",
     ),
     24: dict(
         name="A3_2_5V_H Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a3_2v5_h_temp",
+        pv_signal="asic_a3_2v5_h_temp",
     ),
     25: dict(
         name="A3_2_5V_L Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a3_2v5_l_temp",
+        pv_signal="asic_a3_2v5_l_temp",
     ),
     26: dict(
         name="D0_2_5V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_d0_2v5_temp",
+        pv_signal="asic_d0_2v5_temp",
     ),
     27: dict(
         name="D1_2_5V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_d1_2v5_temp",
+        pv_signal="asic_d1_2v5_temp",
     ),
     28: dict(
         name="A0_1_8V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a0_1v8_temp",
+        pv_signal="asic_a0_1v8_temp",
     ),
     29: dict(
         name="A1_1_8V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a1_1v8_temp",
+        pv_signal="asic_a1_1v8_temp",
     ),
     30: dict(
         name="A2_1_8V Temp.",
         unit="°C",
         conv=EpixQuadMonitorUtils.getLdoTemp,
-        pv_signal_="asic_a2_1v8_temp",
+        pv_signal="asic_a2_1v8_temp",
     ),
     31: dict(
         name="PcbAnaTemp0",
         unit="°C",
         conv=EpixQuadMonitorUtils.getAnaTemp,
-        pv_signal_="pcb_ana_temp0",
+        pv_signal="pcb_ana_temp0",
     ),
     32: dict(
         name="PcbAnaTemp1",
         unit="°C",
         conv=EpixQuadMonitorUtils.getAnaTemp,
-        pv_signal_="pcb_ana_temp1",
+        pv_signal="pcb_ana_temp1",
     ),
     33: dict(
         name="PcbAnaTemp2",
         unit="°C",
         conv=EpixQuadMonitorUtils.getAnaTemp,
-        pv_signal_="pcb_ana_temp2",
+        pv_signal="pcb_ana_temp2",
     ),
     34: dict(
         name="TrOptTemp",
         unit="°C",
         conv=EpixQuadMonitorUtils.getTrOptTemp,
-        pv_signal_="tropt_temp",
+        pv_signal="tropt_temp",
     ),
     35: dict(
         name="TrOptVcc",
         unit="V",
         conv=EpixQuadMonitorUtils.getTrOptVolt,
-        pv_signal_="tropt_volt",
+        pv_signal="tropt_volt",
     ),
     36: dict(
         name="TrOptTxPwr",
         unit="uW",
         conv=EpixQuadMonitorUtils.getTrOptPwr,
-        pv_signal_="tropt_txpwr",
+        pv_signal="tropt_txpwr",
     ),
     37: dict(
         name="TrOptRxPwr",
         unit="uW",
         conv=EpixQuadMonitorUtils.getTrOptPwr,
-        pv_signal_="tropt_rxpwr",
+        pv_signal="tropt_rxpwr",
     ),
 }
 
@@ -422,37 +433,41 @@ class EpixQuadMonitorPacket:
         self.raw = struct.unpack_from("<80H", data)
 
     @property
+    def counter(self) -> int:
+        return self.raw[0]
+
+    @property
     def header(self) -> tuple[int, ...]:
-        return self.raw[0:HEADER_BYTES]
+        return self.raw[0:self.HEADER_BYTES]
 
     def channel_raw(self, ch: int) -> int:
         """Raw signed int32 for channel ch (0–15)."""
-        return self.raw[ch + HEADER_BYTES]
+        return self.raw[ch + self.HEADER_BYTES]
 
     def channel_value(self, ch: int) -> Optional[float]:
         """Converted physical value for a defined channel, or None if undefined."""
         if ch not in CHANNEL_DEFS:
             return None
-        return CHANNEL_DEFS[ch]["conv"](self.raw[ch + HEADER_BYTES])
+        return CHANNEL_DEFS[ch]["conv"](self.raw[ch + self.HEADER_BYTES])
 
     def as_dict(self) -> dict:
         """Return {sensor_name: physical_value} for all defined channels."""
         return {
-            defn["name"]: defn["conv"](self.raw[ch + HEADER_BYTES])
+            defn["name"]: defn["conv"](self.raw[ch + self.HEADER_BYTES])
             for ch, defn in CHANNEL_DEFS.items()
         }
 
     def pv_data(self) -> dict:
         """Return {pv_name: physical_value} for all defined channels."""
         return {
-            defn["pv_signal"]: defn["conv"](self.raw[ch + HEADER_BYTES])
+            defn["pv_signal"]: defn["conv"](self.raw[ch + self.HEADER_BYTES])
             for ch, defn in CHANNEL_DEFS.items()
         }
 
     def __str__(self) -> str:
         lines = [f"  counter : {self.counter}"]
         for ch, defn in CHANNEL_DEFS.items():
-            raw = self.raw[ch + HEADER_BYTES]
+            raw = self.raw[ch + self.HEADER_BYTES]
             val = defn["conv"](raw)
             lines.append(
                 f"  {defn['name']:<28s}: {val:8.2f} {defn['unit']}  (raw={raw})"
@@ -460,7 +475,32 @@ class EpixQuadMonitorPacket:
         return "\n".join(lines)
 
 
-class MonitorStream(rogue.interfaces.stream.Slave):
+class MonitorStreamWriter(rogue.interfaces.stream.Master):
+    def __init__(self, vc: int):
+        super().__init__()
+        self.vc = vc
+        self.n_sent = 0
+        self.n_errors = 0
+        self.log = logging.getLogger(f"caproto.{__name__}")
+
+    def enable(self, flag):
+        payload = struct.pack("<4I", 0, flag, 0, 0)
+        size = len(payload)
+        self.log.info("[VC={self.vc}] sending enable packet #{self.n_sent}: {payload}")
+        frame = self._reqFrame(size, True)
+        with frame.lock():
+            frame.write(payload, 0)
+            frame.setChannel(self.vc)
+        try:
+            self._sendFrame(frame)
+            self.n_sent += 1
+        except Exception as exc:
+            self.n_errors += 1
+            self.log.error(f"[VC={self.vc}] enable packet write error: {exc}  ({payload})")
+            self.log.exception(f"  exception traceback:")
+
+
+class MonitorStreamReader(rogue.interfaces.stream.Slave):
     def __init__(self, vc: int, queue=None):
         super().__init__()
         self.vc = vc
@@ -507,23 +547,25 @@ class EpixQuadBoard(pyrogue.Root):
         self.add(
             ePixQuad.EpixVersion(
                 name='AxiVersion',
-                memBase=memMap,
+                memBase=srp,
                 offset=0x00000000,
                 expand=False,
             ))
         self.add(
             ePixQuad.SystemRegs(
                  name='SystemRegs',
-                 memBase=memMap,
+                 memBase=srp,
                  offset=0x00100000,
                  expand=False,
+                 enabled=True,
         ))
         self.add(
             ePixQuad.EpixQuadMonitor(
                 name='EpixQuadMonitor',
-                memBase=memMap,
+                memBase=srp,
                 offset=0x00700000,
                 expand=False,
+                enabled=True,
         ))
 
 
@@ -533,19 +575,19 @@ class EpixQuadBoard(pyrogue.Root):
         try:
             with EpixQuadBoard(dev, lane, vc) as root:
                 # read firmware info
-                fw = root.EpixQuadBoard.AxiVersion.FpgaVersion.get()
+                fw = root.AxiVersion.FpgaVersion.get()
                 data["firmware_version"] = '0x%08x' % fw
-                githash = root.EpixQuadBoard.AxiVersion.GitHash.get()
+                githash = root.AxiVersion.GitHash.get()
                 data["firmware_githash"] = '%040x' % githash
-                bldstr = root.EpixQuadBoard.AxiVersion.BuildStamp.get()
+                bldstr = root.AxiVersion.BuildStamp.get()
                 data["firmware_bldstr"] = bldstr
                 # configure the monitoring registers
-                root.EpixQuadBoard.EpixQuadMonitor.MonitorEn.set(flag)
-                root.EpixQuadBoard.EpixQuadMonitor.TrigPrescaler.set(mon_prescale)
-                root.EpixQuadBoard.SystemRegs.TrigEn.set(1)
-                root.EpixQuadBoard.SystemRegs.TrigSrcSel.set(3)
-                root.EpixQuadBoard.SystemRegs.SystemRegs.AutoTrigEn.set(1)
-                root.EpixQuadBoard.SystemRegs.AutoTrigPerMs.set(trig_period)
+                root.EpixQuadMonitor.MonitorEn.set(flag)
+                root.EpixQuadMonitor.TrigPrescaler.set(mon_prescale)
+                root.SystemRegs.TrigEn.set(1)
+                root.SystemRegs.TrigSrcSel.set(3)
+                root.SystemRegs.AutoTrigEn.set(1)
+                root.SystemRegs.AutoTrigPerMs.set(trig_period)
         finally:
             # send the firmware info back
             queue.put(data)
@@ -555,11 +597,15 @@ class EpixQuadMonitoringIOC(PVGroup):
     """
     A simple EPICS IOC defining a single integer process variable.
     """
-    def __init__(self, *args, dev, lane, vc, regvc, **kwargs):
+    def __init__(self, *args, dev, lane, vc, regvc, has_microblaze, **kwargs):
         self.dev = dev
         self.lane = lane
         self.vc = vc
+        self.dma_dest = lane << 8 | vc
         self.regvc = regvc
+        self.has_microblaze = has_microblaze
+        self.mon_reader = None
+        self.mon_writer = None
         self.lastmontime = None
         self.trigrateconv = 1000
         super().__init__(*args, **kwargs)
@@ -571,7 +617,7 @@ class EpixQuadMonitoringIOC(PVGroup):
         Monitor rate converted to a prescale value. Set to a minimum of 1.
         E.g.: a prescale of 10 means the monitoring will fire on every tenth trigger
         """
-        prescale = self.set_auto_trig_rate.value // self.set_monitor_rate.value
+        prescale = int(self.set_auto_trig_rate.value // self.set_monitor_rate.value)
         if prescale == 0:
             prescale = 1
         return prescale
@@ -583,10 +629,52 @@ class EpixQuadMonitoringIOC(PVGroup):
         """
         return int(self.trigrateconv/self.set_auto_trig_rate.value)
 
+    def check_packet(self, data):
+        """
+        Check that the packet is valid. This check is skipped if the microblaze is set as dead.
+        """
+        channels = ["nct_loc_temp", "nct_fpga_temp"]
+        if self.has_microblaze:
+            # only check these if the detector has a working microblaze
+            channels.extend(["ana_temp", "dig_temp", "ana_in_v", "dig_in_v"])
+        return all([data.get(d, 0) for d in channels])
+
+    def check_temps(self, data):
+        """
+        Check that at least on the of the sensor or electronics temps are valid
+        """
+        stemp = False
+        etemp = False
+
+        # loop over the sensor temps to find if at least one is valid
+        for channame, lowlim in self.stemp_channels:
+            if channame in self.microblaze_fixup_channels:
+                # values in this case are bad so ignore them
+                continue
+            if hasattr(self, channame):
+                chan = getattr(self, channame)
+                if chan.value > lowlim:
+                    stemp = True
+                    break
+
+        # loop over the elec temps to find if at least one is valid
+        for channame, lowlim, highlim in self.etemp_channels:
+            if channame in self.microblaze_fixup_channels:
+                # values in this case are bad so ignore them
+                continue
+            if hasattr(self, channame):
+                chan = getattr(self, channame)
+                if chan.value > lowlim and chan.value < highlim:
+                    etemp = True
+                    break
+
+        return stemp, etemp
+
+
     def configure(self, flag, mon_period, trig_period):
         self.log.debug(f"Starting register process: dev - {self.dev}, lane,vc - {self.lane},{self.regvc}")
         queue = mp.Queue()
-        proc = mp.Process(target=Epix100aBoard.configure,
+        proc = mp.Process(target=EpixQuadBoard.configure,
                           args=(self.dev, self.lane, self.regvc, flag, mon_period, trig_period, queue))
         proc.start()
 
@@ -599,29 +687,44 @@ class EpixQuadMonitoringIOC(PVGroup):
         else:
             self.log.error(f"Register process has failed!")
 
+        # send the special monitor enable packet
+        if self.mon_writer is not None:
+            self.mon_writer.enable(flag)
+
         return data
 
     async def __ainit__(self, async_lib):
-        self.monitoring = False
         self.async_lib = async_lib
         queue = async_lib.ThreadsafeQueue()
-        dma_dest = self.lane << 8 | self.vc
-        self.log.info(f"Initializing monitor stream dma: dev - {self.dev}, dest,lane,vc - {dma_dest},{self.lane},{self.vc}")
-        dma = rogue.hardware.axi.AxiStreamDma(self.dev, dma_dest, True)
-        mon = MonitorStream(vc=self.vc, queue=queue)
-        pyrogue.streamConnect(dma, mon)
+        self.log.info(f"Initializing monitor stream dma: dev - {self.dev}, dest,lane,vc - {self.dma_dest},{self.lane},{self.vc}")
+        dma = rogue.hardware.axi.AxiStreamDma(self.dev, self.dma_dest, True)
+        self.mon_reader = MonitorStreamReader(vc=self.vc, queue=queue)
+        self.mon_writer = MonitorStreamWriter(vc=self.vc)
+        pyrogue.streamConnect(dma, self.mon_reader)
+        pyrogue.streamConnect(self.mon_writer, dma)
 
         try:
             count = 0
+            errcount = 0
             self.lastmontime = time.time()
             while True:
                 data = await queue.async_get()
-                self.lastmontime= time.time()
-                for name, value in data.items():
-                    if hasattr(self, name):
-                        await getattr(self, name).write(value=value)
-                count += 1
-                await self.moncnt.write(value=count)
+                if self.check_packet(data):
+                    self.lastmontime= time.time()
+                    for name, value in data.items():
+                        if hasattr(self, name):
+                            # fixup up garbage values if microblaze is not functioning
+                            if (not self.has_microblaze) and (name in self.microblaze_fixup_channels):
+                                value = 0.0
+                            await getattr(self, name).write(value=value)
+                    stemp, etemp = self.check_temps(data)
+                    await self.stemp_ok.write(value=stemp)
+                    await self.etemp_ok.write(value=etemp)
+                    count += 1
+                    await self.moncnt.write(value=count)
+                else:
+                    errcount += 1
+                    await self.monerrcnt.write(value=errcount)
         except Exception:
             self.log.exception("Server monitoring queue reader encountered an error:")
         finally:
@@ -638,6 +741,11 @@ class EpixQuadMonitoringIOC(PVGroup):
                         dtype=PvpropertyInteger[LonginFields],
                         record=LonginFields,
                         doc="epix monitor counts")
+    monerrcnt = pvproperty(name="MONERRCNT",
+                           value=0,
+                           dtype=PvpropertyInteger[LonginFields],
+                           record=LonginFields,
+                           doc="epix monitor error counts")
     monchk = pvproperty(name="MONCHK",
                         value=0,
                         dtype=PvpropertyInteger[LonginFields],
@@ -646,6 +754,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                         lower_alarm_limit=-0.5,
                         upper_warning_limit=0.5,
                         lower_warning_limit=-0.5,
+                        alarm_group="monchk",
                         doc="epixMon check")
     monchkdelay = pvproperty(name="MONCHKDELAY",
                              value=5,
@@ -680,6 +789,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp1",
                        precision=2,
                        units="C",
                        doc="Therm0 Temp")
@@ -691,6 +801,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp2",
                        precision=2,
                        units="C",
                        doc="Therm1 Temp")
@@ -702,6 +813,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp3",
                        precision=2,
                        units="C",
                        doc="SHT31 Temp")
@@ -713,6 +825,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=101.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="humidity",
                           precision=2,
                           units="%",
                           doc="SHT31 Humidity")
@@ -724,6 +837,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=100.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="ana_in_v",
                           precision=3,
                           units="V",
                           doc="Analog Voltage")
@@ -735,6 +849,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=100.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="dig_in_v",
                           precision=3,
                           units="V",
                           doc="Digital Voltage")
@@ -746,6 +861,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                               lower_alarm_limit=-1.0,
                               upper_warning_limit=100.0,
                               lower_warning_limit=-1.0,
+                              alarm_group="asic_ana_cur",
                               precision=3,
                               units="A",
                               doc="ASIC Analog Current")
@@ -757,6 +873,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                               lower_alarm_limit=-1.0,
                               upper_warning_limit=100.0,
                               lower_warning_limit=-1.0,
+                              alarm_group="asic_dig_cur",
                               precision=3,
                               units="A",
                               doc="ASIC Digital Current")
@@ -768,6 +885,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                           lower_alarm_limit=0.0,
                           upper_warning_limit=1000.0,
                           lower_warning_limit=0.0,
+                          alarm_group="ana_temp",
                           precision=2,
                           units="C",
                           doc="PwrAnaTemp")
@@ -779,6 +897,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                           lower_alarm_limit=0.0,
                           upper_warning_limit=1000.0,
                           lower_warning_limit=0.0,
+                          alarm_group="dig_temp",
                           precision=2,
                           units="C",
                           doc="PwrDigTemp")
@@ -790,6 +909,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                               lower_alarm_limit=0.0,
                               upper_warning_limit=1000.0,
                               lower_warning_limit=0.0,
+                              alarm_group="nct_loc_temp",
                               precision=2,
                               units="C",
                               doc="NCT218 Local Temp.")
@@ -801,6 +921,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                lower_alarm_limit=0.0,
                                upper_warning_limit=1000.0,
                                lower_warning_limit=0.0,
+                               alarm_group="nct_fpga_temp",
                                precision=2,
                                units="C",
                                doc="NCT218 Remote Temp.")
@@ -812,6 +933,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  lower_alarm_limit=-1.0,
                                  upper_warning_limit=100.0,
                                  lower_warning_limit=-1.0,
+                                 alarm_group="asic_a0_2v5_cur",
                                  precision=3,
                                  units="A",
                                  doc="ASIC_A0_2V5 Curr.")
@@ -823,6 +945,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  lower_alarm_limit=-1.0,
                                  upper_warning_limit=100.0,
                                  lower_warning_limit=-1.0,
+                                 alarm_group="asic_a1_2v5_cur",
                                  precision=3,
                                  units="A",
                                  doc="ASIC_A1_2V5 Curr.")
@@ -834,6 +957,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  lower_alarm_limit=-1.0,
                                  upper_warning_limit=100.0,
                                  lower_warning_limit=-1.0,
+                                 alarm_group="asic_a2_2v5_cur",
                                  precision=3,
                                  units="A",
                                  doc="ASIC_A2_2V5 Curr.")
@@ -845,6 +969,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  lower_alarm_limit=-1.0,
                                  upper_warning_limit=100.0,
                                  lower_warning_limit=-1.0,
+                                 alarm_group="asic_a3_2v5_cur",
                                  precision=3,
                                  units="A",
                                  doc="ASIC_A3_2V5 Curr.")
@@ -856,6 +981,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  lower_alarm_limit=-1.0,
                                  upper_warning_limit=100000.0,
                                  lower_warning_limit=-1.0,
+                                 alarm_group="asic_d0_2v5_cur",
                                  precision=3,
                                  units="mA",
                                  doc="ASIC_D0_2V5 Curr.")
@@ -867,6 +993,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  lower_alarm_limit=-1.0,
                                  upper_warning_limit=100000.0,
                                  lower_warning_limit=-1.0,
+                                 alarm_group="asic_d1_2v5_cur",
                                  precision=3,
                                  units="mA",
                                  doc="ASIC_D1_2V5 Curr.")
@@ -878,6 +1005,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a0_2v5_h_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A0_2V5_H Temp.")
@@ -889,6 +1017,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a0_2v5_l_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A0_2V5_L Temp.")
@@ -900,6 +1029,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a1_2v5_h_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A1_2V5_H Temp.")
@@ -911,6 +1041,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a1_2v5_l_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A1_2V5_L Temp.")
@@ -922,6 +1053,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a2_2v5_h_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A2_2V5_H Temp.")
@@ -933,6 +1065,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a2_2v5_l_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A2_2V5_L Temp.")
@@ -944,6 +1077,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a3_2v5_h_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A3_2V5_H Temp.")
@@ -955,6 +1089,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                     lower_alarm_limit=0.0,
                                     upper_warning_limit=1000.0,
                                     lower_warning_limit=0.0,
+                                    alarm_group="asic_a3_2v5_l_temp",
                                     precision=2,
                                     units="C",
                                     doc="ASIC_A3_2V5_L Temp.")
@@ -967,6 +1102,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                   upper_warning_limit=1000.0,
                                   lower_warning_limit=0.0,
                                   precision=2,
+                                  alarm_group="asic_d0_2v5_temp",
                                   units="C",
                                   doc="ASIC_D0_2V5 Temp.")
     asic_d1_2v5_temp = pvproperty(name="ASIC_D1_2V5_TEMP",
@@ -977,6 +1113,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                   lower_alarm_limit=0.0,
                                   upper_warning_limit=1000.0,
                                   lower_warning_limit=0.0,
+                                  alarm_group="asic_d1_2v5_temp",
                                   precision=2,
                                   units="C",
                                   doc="ASIC_D1_2V5 Temp.")
@@ -988,6 +1125,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                   lower_alarm_limit=0.0,
                                   upper_warning_limit=1000.0,
                                   lower_warning_limit=0.0,
+                                  alarm_group="asic_a0_1v8_temp",
                                   precision=2,
                                   units="C",
                                   doc="ASIC_A0_1V8 Temp.")
@@ -999,6 +1137,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                   lower_alarm_limit=0.0,
                                   upper_warning_limit=1000.0,
                                   lower_warning_limit=0.0,
+                                  alarm_group="asic_a1_1v8_temp",
                                   precision=2,
                                   units="C",
                                   doc="ASIC_A1_1V8 Temp.")
@@ -1010,6 +1149,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                   lower_alarm_limit=0.0,
                                   upper_warning_limit=1000.0,
                                   lower_warning_limit=0.0,
+                                  alarm_group="asic_a2_1v8_temp",
                                   precision=2,
                                   units="C",
                                   doc="ASIC_A2_1V8 Temp.")
@@ -1021,6 +1161,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                lower_alarm_limit=0.0,
                                upper_warning_limit=1000.0,
                                lower_warning_limit=0.0,
+                               alarm_group="pcb_ana_temp0",
                                precision=2,
                                units="C",
                                doc="PcbAnaTemp0")
@@ -1032,6 +1173,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                lower_alarm_limit=0.0,
                                upper_warning_limit=1000.0,
                                lower_warning_limit=0.0,
+                               alarm_group="pcb_ana_temp1",
                                precision=2,
                                units="C",
                                doc="PcbAnaTemp1")
@@ -1043,6 +1185,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                                lower_alarm_limit=0.0,
                                upper_warning_limit=1000.0,
                                lower_warning_limit=0.0,
+                               alarm_group="pcb_ana_temp2",
                                precision=2,
                                units="C",
                                doc="PcbAnaTemp2")
@@ -1054,6 +1197,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                             lower_alarm_limit=0.0,
                             upper_warning_limit=1000.0,
                             lower_warning_limit=0.0,
+                            alarm_group="tropt_temp",
                             precision=2,
                             units="C",
                             doc="TrOptTemp")
@@ -1065,31 +1209,53 @@ class EpixQuadMonitoringIOC(PVGroup):
                             lower_alarm_limit=-1.0,
                             upper_warning_limit=100.0,
                             lower_warning_limit=-1.0,
+                            alarm_group="tropt_volt",
                             precision=3,
                             units="V",
                             doc="TrOptVcc")
     tropt_txpwr = pvproperty(name="TROPT_TXPWR",
-                            value=0.0,
-                            dtype=PvpropertyDouble[AiFields],
-                            record=AiFields,
-                            upper_alarm_limit=100000.0,
-                            lower_alarm_limit=-1.0,
-                            upper_warning_limit=100000.0,
-                            lower_warning_limit=-1.0,
-                            precision=3,
-                            units="uW",
-                            doc="TrOptTxPwr")
+                             value=0.0,
+                             dtype=PvpropertyDouble[AiFields],
+                             record=AiFields,
+                             upper_alarm_limit=100000.0,
+                             lower_alarm_limit=-1.0,
+                             upper_warning_limit=100000.0,
+                             lower_warning_limit=-1.0,
+                             alarm_group="tropt_txpwr",
+                             precision=3,
+                             units="uW",
+                             doc="TrOptTxPwr")
     tropt_rxpwr = pvproperty(name="TROPT_RXPWR",
-                            value=0.0,
-                            dtype=PvpropertyDouble[AiFields],
-                            record=AiFields,
-                            upper_alarm_limit=100000.0,
-                            lower_alarm_limit=-1.0,
-                            upper_warning_limit=100000.0,
-                            lower_warning_limit=-1.0,
-                            precision=3,
-                            units="uW",
-                            doc="TrOptRxPwr")
+                             value=0.0,
+                             dtype=PvpropertyDouble[AiFields],
+                             record=AiFields,
+                             upper_alarm_limit=100000.0,
+                             lower_alarm_limit=-1.0,
+                             upper_warning_limit=100000.0,
+                             lower_warning_limit=-1.0,
+                             alarm_group="tropt_rxpwr",
+                             precision=3,
+                             units="uW",
+                             doc="TrOptRxPwr")
+    stemp_ok = pvproperty(name="STEMP_OK",
+                          value=0,
+                          dtype=PvpropertyInteger[LonginFields],
+                          record=LonginFields,
+                          alarm_group="stemp_ok",
+                          doc="epix sensor temp OK")
+    etemp_ok = pvproperty(name="ETEMP_OK",
+                          value=0,
+                          dtype=PvpropertyInteger[LonginFields],
+                          record=LonginFields,
+                          alarm_group="etemp_ok",
+                          doc="epix electronics temp OK")
+    microblaze = pvproperty(name="MICROBLAZE",
+                            value=1,
+                            dtype=PvpropertyEnum[BiFields],
+                            record=BiFields,
+                            alarm_group="microblaze",
+                            enum_strings=["NO", "YES"],
+                            doc="epix has working MicroBlaze")
     firmware_version = pvproperty(name="FWVERSION",
                                   value="",
                                   dtype=PvpropertyString[StringinFields],
@@ -1107,6 +1273,19 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  string_encoding='ascii',
                                  max_length=256,
                                  doc="epix fw build str")
+    stemp_channels = {
+            ("temp1", -273.15),
+            ("temp2", -273.15),
+    }
+    etemp_channels = {
+            ("temp3", -45.0, 130),
+            ("nct_loc_temp", 0.0, 200),
+            ("nct_fpga_temp", 0.0, 200),
+            ("ana_temp", 0.0, 200),
+            ("dig_temp", 0.0, 200),
+            ("tropt_temp", 0.0, 200),
+    }
+    microblaze_fixup_channels = {"temp1", "temp2", "ana_temp", "dig_temp"}
  
     @monchk.scan(period=1.0, use_scan_field=True)
     async def monchk(self, instance, async_lib):
@@ -1131,12 +1310,22 @@ class EpixQuadMonitoringIOC(PVGroup):
             if hasattr(self, name):
                 await getattr(self, name).write(value=value)
 
+    @microblaze.startup
+    async def microblaze(self, instance, async_lib):
+        if self.has_microblaze:
+            status=ca.AlarmStatus.NO_ALARM
+            severity=ca.AlarmSeverity.NO_ALARM
+        else:
+            status=ca.AlarmStatus.STATE
+            severity=ca.AlarmSeverity.MAJOR_ALARM
+        await instance.write(value=self.has_microblaze, status=status, severity=severity)
+
 
 def main():
     # Parse standard EPICS IOC command-line options
     parser, split_args = template_arg_parser(
         default_prefix="DET:EPIX:CMP004:",
-        desc="Read ePix100 environmental monitor packets via rogue and publish via caproto IOC"
+        desc="Read ePixQuad environmental monitor packets via rogue and publish via caproto IOC"
     )
     parser.add_argument(
         "--dev",
@@ -1158,9 +1347,15 @@ def main():
     )
     parser.add_argument(
         "--regvc",
-        default=0,
+        default=1,
         type=int,
-        help="Register virtual channel (default: 0)"
+        help="Register virtual channel (default: 1)"
+    )
+    parser.add_argument(
+        "--no-microblaze",
+        action='store_false',
+        dest='microblaze',
+        help="Flag to indicate the detector has a non-functional microblaze processor"
     )
 
     args = parser.parse_args()
@@ -1179,7 +1374,7 @@ def main():
     config_caproto_logging(level=log_level)
 
     # Start the server
-    ioc = EpixQuadMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, regvc=args.regvc, **ioc_options)
+    ioc = EpixQuadMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, regvc=args.regvc, has_microblaze=args.microblaze, **ioc_options)
     run(ioc.pvdb, **run_options, startup_hook=ioc.__ainit__)
 
 
