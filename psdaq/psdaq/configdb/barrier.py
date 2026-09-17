@@ -1,5 +1,29 @@
 import zmq
 import time
+import os
+import socket
+
+def supervisor_info(json_msg,mydev):
+    nworker = 0
+    supervisor=None
+    mypid = os.getpid()
+    myhostname = socket.gethostname()
+    for drp in json_msg['body']['drp'].values():
+        proc_info = drp['proc_info']
+        host = proc_info['host']
+        pid = proc_info['pid']
+        dev = proc_info['device']
+        #  Check for the same FPGA board (assume non-gpu hosts have only one board)
+        same_board = ('gpu' not in myhostname) or (dev==mydev)
+        if host==myhostname and same_board and drp['active']:
+            if supervisor is None:
+                # we are supervisor if our pid is the first entry
+                supervisor = pid==mypid
+            else:
+                # only count workers for second and subsequent entries on this host
+                nworker+=1
+    return supervisor,nworker
+            
 
 class Barrier:
     """

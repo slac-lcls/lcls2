@@ -1135,7 +1135,7 @@ unsigned BldDrp::unconfigure()
 
 
 BldApp::BldApp(Parameters& para) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
     m_para       (para),
     m_pool       (para),
     m_unconfigure(false)

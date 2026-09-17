@@ -1187,7 +1187,7 @@ void UdpDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
 
 
 UdpApp::UdpApp(UdpParameters& para) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
     m_para(para),
     m_pool(para),
     m_unconfigure(false)
