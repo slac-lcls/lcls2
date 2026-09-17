@@ -352,7 +352,6 @@ class EpixMonitoringIOC(PVGroup):
         return data
 
     async def __ainit__(self, async_lib):
-        self.monitoring = False
         self.async_lib = async_lib
         queue = async_lib.ThreadsafeQueue()
         dma_dest = self.lane << 8 | self.vc
@@ -396,6 +395,7 @@ class EpixMonitoringIOC(PVGroup):
                         lower_alarm_limit=-0.5,
                         upper_warning_limit=0.5,
                         lower_warning_limit=-0.5,
+                        alarm_group="monchk",
                         doc="epixMon check")
     monchkdelay = pvproperty(name="MONCHKDELAY",
                              value=5,
@@ -430,6 +430,7 @@ class EpixMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp1",
                        precision=2,
                        units="C",
                        doc="Strong Back Temp.")
@@ -441,6 +442,7 @@ class EpixMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp2",
                        precision=2,
                        units="C",
                        doc="Ambient Temp.")
@@ -452,6 +454,7 @@ class EpixMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=101.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="humidity",
                           precision=2,
                           units="%",
                           doc="Humidity")
@@ -463,6 +466,7 @@ class EpixMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=100.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="ana_in_v",
                           precision=3,
                           units="V",
                           doc="Analog Voltage")
@@ -474,6 +478,7 @@ class EpixMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=100.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="dig_in_v",
                           precision=3,
                           units="V",
                           doc="Digital Voltage")
@@ -485,6 +490,7 @@ class EpixMonitoringIOC(PVGroup):
                               lower_alarm_limit=-1.0,
                               upper_warning_limit=100.0,
                               lower_warning_limit=-1.0,
+                              alarm_group="asic_ana_cur",
                               precision=3,
                               units="A",
                               doc="ASIC Analog Current")
@@ -496,6 +502,7 @@ class EpixMonitoringIOC(PVGroup):
                               lower_alarm_limit=-1.0,
                               upper_warning_limit=100.0,
                               lower_warning_limit=-1.0,
+                              alarm_group="asic_dig_cur",
                               precision=3,
                               units="A",
                               doc="ASIC Digital Current")
@@ -507,6 +514,7 @@ class EpixMonitoringIOC(PVGroup):
                              lower_alarm_limit=-1.0,
                              upper_warning_limit=100.0,
                              lower_warning_limit=-1.0,
+                             alarm_group="asic_gr_cur",
                              precision=3,
                              units="A",
                              doc="Guard Ring Current")
