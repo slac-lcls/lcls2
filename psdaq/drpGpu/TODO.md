@@ -1677,9 +1677,38 @@ Two things learned the hard way on 2026-09-15:
   assuming.
 
   Two consequences.  The timeout below should say what to check, not just that nothing
-  arrived -- "no event in N s; is a transmitter enabled?" points at this.  And `rdmaTest`
-  arms the GPU side and calls `gpuEnableTx`/`gpuEnableRx` but never starts a source, so a
-  first-time user hangs with no output; that is a documentation gap at minimum.
+  arrived -- "is a transmitter enabled?" points at this.  And `rdmaTest` arms the GPU side
+  and calls `gpuEnableTx`/`gpuEnableRx` but never starts a source, so a first-time user hangs
+  with no output; that is a documentation gap at minimum.
+
+### Where the hang actually is, which is not where it looks
+
+Worth knowing before anyone attempts this again.  The obvious reading is that the program
+blocks in `cuStreamWaitValue32` on the event-0 doorbell, so a bound belongs around the
+following `cuStreamSynchronize`.  Putting one there **does not work**, and produces a
+process that spins silently with no output at all.  A `gstack` on drp-srcf-gpu008 on
+2026-09-17 showed why:
+
+    #10 cuMemcpyDtoHAsync_v2 ()
+    #11 runSimpleLoop (s=...)
+
+The thread is blocked inside the **enqueue** of the header copy, before any polling code is
+reached.  `hdr` is an ordinary local, so the destination is *pageable* host memory, and CUDA
+documents device-to-host copies into pageable memory as behaving synchronously: the driver
+stages through an internal pinned buffer and waits for the stream.  Enqueued while the
+stream is still blocked on the doorbell wait, it blocks the host indefinitely.
+
+So the wait has to be **drained before the copy is enqueued**, not after: enqueue the wait,
+poll until it clears, then enqueue the copy and synchronise.  With that ordering the stream
+is idle when the copy is enqueued and it returns promptly.  Two wrong guesses preceded the
+backtrace -- that `cuStreamQuery` was blocking, and before that that the doorbell needed
+releasing from a second stream -- and neither survived one `gstack`.
+
+**A per-event host round trip, deferred.**  The same pageable copy means every event pays a
+synchronous host round trip for a 16-byte header.  Pinning `hdr` with `cuMemAllocHost` would
+make it genuinely asynchronous.  Jeremy notes `rdmaTest` was not written with performance in
+mind, so this is a future enhancement rather than a defect -- but the tool does print a
+GiB-transferred figure, so it is worth knowing those numbers carry that cost.
 
 - **Give `rdmaTest`'s doorbell wait a timeout, and PR it.**  Agreed 2026-09-15, deferred
   off gpu006.  `cuStreamWaitValue32` on the event-0 doorbell blocks silently and for ever
