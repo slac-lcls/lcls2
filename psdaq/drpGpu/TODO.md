@@ -917,6 +917,152 @@ Worth keeping the general shape: a register timeout says only that nobody drove 
 response, and "unpowered", "held in reset" and "unclocked" are indistinguishable from one
 transaction.  Probing a sibling branch and a known-good control separates them cheaply.
 
+## slurmd will not start at all if a `File=` device is missing
+
+Learned from drp-srcf-gpu007 on 2026-09-16, which was `DOWN+NOT_RESPONDING` because slurmd
+had exited:
+
+    error: Waiting for gres.conf file /dev/nvidia0
+    fatal: can't stat gres.conf file /dev/nvidia0: No such file or directory
+
+It waits 19 s for the device to appear and then **fatals**.  So a node whose
+`/dev/nvidia*` are absent when slurmd starts does not run slurmd, and the failure presents
+as "Not responding" rather than as anything about GPUs.  That is a dependency of every
+`gres.conf` carrying `File=`, ours included, and it was not on our radar.
+
+**The device nodes are created lazily, and on our nodes by accident.**  They are not part
+of the driver load: something has to invoke `nvidia-modprobe`, which any process opening a
+GPU does implicitly.  On gpu006, gpu008 and gpu001 the thing that does it is
+**`nvidia-powerd`**, which starts at boot, opens a GPU, reports `ERROR! UnSupported System`
+on this hardware and exits -- creating the nodes as a side effect of failing.  Confirmed by
+the timestamps on gpu008: `/dev/nvidia0` appears in the same second as
+`Started nvidia-powerd service`.
+
+An earlier version of this note credited the udev rule
+(`/usr/lib/udev/rules.d/60-nvidia.rules`, `KERNEL=="nvidia", RUN+="/usr/bin/nvidia-modprobe"`)
+because the node also appears in the same second as `Finished Wait for udev To Complete
+Device Initialization`.  **That was wrong** -- both happen in that second, and gpu007
+settles udev *before* nvidia loads yet still gets no nodes, which the udev explanation
+cannot account for.  `nvidia-powerd` is enabled on the three working nodes and disabled on
+gpu007, which is the whole difference:
+
+| node | `/dev/nvidia0` created | `nvidia-persistenced` |
+|---|---|---|
+| gpu006 | 15 s after boot | disabled / inactive |
+| gpu008 | 27 s after boot | disabled / inactive |
+| gpu001 |  9 s after boot | disabled / inactive |
+| gpu007 | never | enabled / **failed** |
+
+`nvidia-powerd`: enabled on gpu006, gpu008 and gpu001; **disabled** on gpu007.
+
+So persistenced is not what creates them -- it is disabled on all three working nodes --
+and neither, as it turns out, is udev.  **The mechanism our nodes depend on is a service
+that fails.**  If a driver update ever made `nvidia-powerd` succeed, or stop running, every
+node would lose its device nodes at once and every slurmd would refuse to start.
+
+**`nvidia-persistenced` is the fix, and it is proven.**  Demonstrated on drp-srcf-gpu007 on
+2026-09-16, where `nvidia-powerd` is disabled, so there is no ambiguity about the cause:
+
+    boot            17:46:43
+    persistenced    17:46:58   active, and stays running
+    /dev/nvidia0    17:46:58   +15 s, the same second
+    slurmd          17:47:38   40 s of margin
+
+So it creates the nodes deliberately rather than as a side effect, and the ordering is not
+marginal.  Getting there needed the broken drop-in removed:
+`/etc/systemd/system/nvidia-persistenced.service.d/override.conf` set `--user root` while
+the packaged unit keeps `User=nvidia-persistenced`, so it could not chown its own runtime
+directory.  With that moved aside and a `daemon-reload`, the packaged unit works unmodified.
+
+**But it is per-node policy, not a fleet-wide setting.**  persistenced pins the `nvidia`
+module by holding the GPUs open, so anything wanting `rmmod nvidia` must stop it first.
+That is fine on nodes we manage with dkms -- `dkms-reload.sh` only unloads `datadev`, and
+nvidia stays loaded throughout, as done twice on gpu008 with nvidia in use.  It obstructs
+nodes where `comp_and_load_drivers.sh` does its own `insmod nvidia.ko`.  So: enable it on
+the DAQ nodes, and expect driver-development nodes to want it off.  gpu007's divergence may
+have been deliberate for exactly that reason.
+
+The narrower alternative, if that trade-off ever bites, is a unit running `nvidia-modprobe`
+before slurmd: same effect, holds nothing open.  Not needed while persistenced works.
+gpu007 was the outlier twice over: persistenced enabled and failing, and whatever does the
+creating on the others not having run.  Its persistenced override is broken independently,
+`User=nvidia-persistenced` in the unit against `--user root` in the override, so it cannot
+chown its own runtime directory:
+
+    nvidia-persistenced: Failed to change ownership of /var/run/nvidia-persistenced:
+                         Operation not permitted
+
+It also lacked the `nvidia-open` package the others have, which makes this look like a
+provisioning divergence rather than a fault.  The remedy was to make it match the three
+working nodes rather than to fix persistenced.
+
+### gpu007 hosts an XPM, which the rename will break
+
+Not a node of ours, but it will be converted eventually and this is the trap.  gpu007 is an
+isolated test stand Matt is making use of.  It has three datadev cards and two H200s, and
+`datadev_2` runs **`xpmGenC1100`** firmware -- it is **XPM:13**, a timing source rather than
+a DRP card, with `GPU Async En : 0` as expected.  Only gpu007's own two cards are fibred to
+it, so it has no external consumers.
+
+**Its driver did not survive a reboot, so it was converted to dkms.**  On 2026-09-16, after
+rebooting gpu007, `datadev` was not loaded, `/dev/datadev_*` were absent, `dkms status` had
+no datadev package and there was no module in `/lib/modules` -- because its driver came from
+`comp_and_load_drivers.sh` via `insmod`, which leaves nothing to load at boot.  XPM:13 went
+down with it, and Slurm restarting the XPM job could not help while there was no device to
+open.
+
+**Phase 1 applied the same day**, `cfgDevName` left at 0 so the names stay `datadev_0..2`
+and `pykcuxpm -d /dev/datadev_2` keeps working: all three cards now report
+`7.6.0-29-gb79d0f8-dirty` with `mode=2 cont=0`, dkms has the package for the running kernel,
+and `/lib/modules/.../extra/datadev.ko.xz` exists, so it comes back on its own next boot.
+That also lets persistenced stay enabled there, since `dkms-reload.sh` only unloads
+`datadev` where `comp_and_load_drivers.sh` insists on unloading `nvidia`.
+
+Two traps found on the way, both about parameters living where `insmod` cannot see them:
+
+- gpu007 already had `/etc/modprobe.d/datadev.conf`, written 2026-08-11, which had **never
+  been in effect** -- `insmod` does not read `/etc/modprobe.d`, and the script passes
+  `cfgMode=2` on its command line.  Converting to `modprobe` would have silently activated
+  it.  It happened to contain exactly the built-in defaults
+  (`cfgTxCount=1024 cfgRxCount=1024 cfgSize=131072 cfgMode=1 cfgCont=1`), so the only real
+  change would have been `cfgMode` reverting from 2 to 1.  Ric replaced it with the GPU DRP
+  set instead.  **Read any existing modprobe.d file before converting a node**; do not
+  assume the parameters are only in the script.
+- A `datadev.conf~` editor backup sat beside it.  Harmless -- modprobe reads only `*.conf`
+  -- but worth confirming with `modprobe -c | grep "^options datadev"` that exactly one
+  line results, since two would be resolved by file order.
+
+`patches/0001-nvidia-driver-fix-crash.patch`, which `comp_and_load_drivers.sh` applies to
+`nvidia-uvm/uvm_hmm.c`, is **obsolete** -- rolled into the NVIDIA open driver.  The dkms
+path applies no patches, so nothing is lost by converting; the patch could be dropped from
+the repository.
+
+`pykcuxpm` serves it, running as `tmoopr` under Slurm, which is normal for XPM processes.
+That is what holds a reference on the datadev module, so `Module datadev is in use` there is
+the driver protecting a running service rather than an obstacle.  A reboot clears it and
+Slurm restarts the XPM processes.
+
+**When gpu007 is moved to a dkms datadev with `cfgDevName=1`, the rename hits `datadev_2`
+too**, and `pykcuxpm`'s device argument breaks -- taking XPM:13 down.  `gen_gres_conf
+--exclude` does *not* protect against this: exclusion only affects which cards get gres
+records, not what the driver names them.  So the rename check has to cover XPM launch
+configuration as well as the DAQ `.cnf.py`.  Deferred deliberately; later rather than sooner.
+
+Two lessons worth keeping:
+
+- **`nvidia-smi` is not a read-only diagnostic.**  It invokes `nvidia-modprobe` and creates
+  the device nodes.  Running it while diagnosing gpu007 destroyed the original state.
+  `/proc/driver/nvidia/gpus/`, `lsmod` and `lspci` answer the same questions without
+  touching anything.
+- **`fuser` and `lsof` only see your own processes.**  On gpu007 they reported nothing
+  holding the datadev devices, which read as leaked references needing a reboot; the holder
+  was `pykcuxpm` running as another user.  `ps -eo user,pid,args` is visible where file
+  descriptors are not, so check for a plausible process before concluding a refcount is
+  stale.  The same permission boundary had already hidden the journal on that node.
+- **`gen_gres_conf --check` belongs in post-boot verification**, not only after a driver
+  load.  It would have named this immediately, where the Slurm-side symptom pointed at
+  the network.
+
 ## How `/dev/nvidiaN` is numbered, and when `gres.conf` goes stale
 
 Measured 2026-09-14, because `gres.conf`'s `File=` is the only thing binding a datadev to
