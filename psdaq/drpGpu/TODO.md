@@ -974,16 +974,39 @@ marginal.  Getting there needed the broken drop-in removed:
 the packaged unit keeps `User=nvidia-persistenced`, so it could not chown its own runtime
 directory.  With that moved aside and a `daemon-reload`, the packaged unit works unmodified.
 
-**But it is per-node policy, not a fleet-wide setting.**  persistenced pins the `nvidia`
-module by holding the GPUs open, so anything wanting `rmmod nvidia` must stop it first.
-That is fine on nodes we manage with dkms -- `dkms-reload.sh` only unloads `datadev`, and
-nvidia stays loaded throughout, as done twice on gpu008 with nvidia in use.  It obstructs
-nodes where `comp_and_load_drivers.sh` does its own `insmod nvidia.ko`.  So: enable it on
-the DAQ nodes, and expect driver-development nodes to want it off.  gpu007's divergence may
-have been deliberate for exactly that reason.
+**Do not enable it on the DAQ nodes.**  It blocks the NVIDIA driver's automatic recovery
+from a GPU fault, which is a much higher cost than the `rmmod` nuisance it was first weighed
+against.
 
-The narrower alternative, if that trade-off ever bites, is a unit running `nvidia-modprobe`
-before slurmd: same effect, holds nothing open.  Not needed while persistenced works.
+Demonstrated on gpu008 on 2026-09-17.  GPU5 (`0000:d4:00.0`) had returned after a reboot, so
+six GPUs were published and six DRPs started.  Minutes later `tstcam1_4` died with
+`CUDA_ERROR_NO_DEVICE`, and the kernel log said why:
+
+    NVRM: GPU5 _kgspRpcRecvPoll: GSP RM heartbeat timed out
+    NVRM: Xid (PCI:0000:d4:00): 154, GPU recovery action changed from 0x0 (None) to
+          0x1 (GPU Reset Required)
+    NVRM: Attempting to remove device 0000:d4:00.0 with non-zero usage count!
+
+The GPU's onboard GSP processor hung, the driver raised Xid 154 and tried to reset the
+device, and **the removal was refused because persistenced held it open**.  That left the GPU
+enumerated but unusable: `lspci` and `/proc/driver/nvidia/gpus/` still listed six, while
+`nvidia-smi` listed five.
+
+`sudo systemctl stop nvidia-persistenced` alone recovered it -- no `nvidia-smi -r` needed.
+The refcount on the `nvidia` module fell from 28 to 3, `Bus Type` went back from `PCI` to
+`PCIe`, `current_link_speed` became readable again, and `nvidia-smi` showed all six.  The DAQ
+then ran six DRPs at 33034 Hz each, 76.7 GB/s aggregate, with `tstcam1_4` on the recovered
+GPU.
+
+So persistenced converts a self-healing transient into a dead GPU needing human
+intervention.  **It also casts doubt on the original GPU5 death**, which may equally have
+been a recoverable fault held open rather than failing hardware.
+
+Use the narrow alternative instead: a unit running `nvidia-modprobe` before slurmd.  It
+creates the device nodes deliberately, holds nothing open, and obstructs neither `rmmod
+nvidia` nor the driver's own recovery.  Note the nodes still have to come from *somewhere* --
+without persistenced, gpu006, gpu008 and gpu001 get them from `nvidia-powerd` failing as
+"UnSupported System", which is the accident described above and not something to rely on.
 gpu007 was the outlier twice over: persistenced enabled and failing, and whatever does the
 creating on the others not having run.  Its persistenced override is broken independently,
 `User=nvidia-persistenced` in the unit against `--user root` in the override, so it cannot

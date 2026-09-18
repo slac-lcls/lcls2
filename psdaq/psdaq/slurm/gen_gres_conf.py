@@ -120,9 +120,39 @@ def read_gpus():
             continue
         minor = re.search(r"^Device Minor:\s*(\d+)", text, re.M)
         excl  = re.search(r"^GPU Excluded:\s*(\S+)", text, re.M)
+        bus   = re.search(r"^Bus Type:\s*(\S+)", text, re.M)
         if not minor:
             print(f"warning: no Device Minor for GPU {pci}; skipping", file=sys.stderr)
             continue
+
+        # A GPU can be listed here and still be unusable.  When one fails, the driver asks
+        # the kernel to remove it, and if anything holds it open the removal is refused --
+        # "Attempting to remove device ... with non-zero usage count!" -- leaving an entry
+        # that looks healthy.  /proc keeps listing it, so does lspci, and only nvidia-smi
+        # (which we do not want to depend on) notices it is gone.  Pairing a card with such
+        # a GPU produces a gres record Slurm allocates happily and a DRP that dies with
+        # CUDA_ERROR_NO_DEVICE, which is exactly the invisible failure the pairing exists to
+        # prevent.  Observed on drp-srcf-gpu008 after an Xid 154 GSP hang on 2026-09-17.
+        #
+        # Two independent symptoms, both read without opening the device: the driver reports
+        # 'Bus Type: PCI' rather than 'PCIe' because it can no longer read the PCIe
+        # capability structure, and current_link_speed returns EINVAL for the same reason.
+        # Requiring both to agree avoids skipping a GPU over one odd reading.
+        # Tested against "PCIe" rather than against the "PCI" that was observed, so that a
+        # failure mode reporting something else again is also caught.  A missing Bus Type
+        # line is treated as healthy: absence means the field moved or was renamed, which is
+        # not evidence of a fault, and the link check below still applies.
+        bus_type     = bus.group(1) if bus else None
+        healthy_bus  = bus_type is None or bus_type == "PCIe"
+        healthy_link = bool(pci_attr(pci.lower(), "current_link_speed"))
+        if not healthy_bus and not healthy_link:
+            print(f"warning: GPU {pci} is listed but not usable -- the driver reports "
+                  f"'Bus Type: {bus_type}' rather than PCIe and cannot read its link speed, "
+                  f"which means it has failed and its removal was refused (look for Xid in "
+                  f"dmesg).  Not offered as a gres; a DRP given it would fail in CUDA init.",
+                  file=sys.stderr)
+            continue
+
         gpus.append({"pci":      pci.lower(),
                      "minor":    int(minor.group(1)),
                      "dev":      f"/dev/nvidia{int(minor.group(1))}",
