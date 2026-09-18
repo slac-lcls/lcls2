@@ -131,7 +131,7 @@ def check_ticket(exit_if_invalid=True, output=logger.debug):
         return True
     output(info_missing_tickets)
     if exit_if_invalid:
-        sys.exit('EXIT DUE TO MISSING TICKET')
+        sys.exit('EXIT DUE TO MISSING KERBEROS OR JWT TICKET, check status with command: jwt')
     return False
 
 
