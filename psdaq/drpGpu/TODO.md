@@ -1890,6 +1890,22 @@ Two things learned the hard way on 2026-09-15:
   and calls `gpuEnableTx`/`gpuEnableRx` but never starts a source, so a first-time user hangs
   with no output; that is a documentation gap at minimum.
 
+  **Both paths now run on drp-srcf-gpu008 (2026-09-18)**, with `a1` reflashed to InterCardTest
+  and `NVreg_EnableStreamMemOPs=1` in place.  Receive-only reached 1.18M events and loopback
+  1.44M, both with zero invalid events, at 262 kB per event -- so the PRBS generator produces
+  quarter-megabyte frames rather than filling the 1 MiB default buffer, and the throughput
+  figure reflects the source rather than the buffer size.
+
+  The loopback run also tested the case the timeout is really for, deliberately: `PrbsTx.TxEn`
+  was turned off after 1.44M events and the wait reported it.  A source that stops *after* a
+  period of apparently normal operation is harder to diagnose than an absent one, because
+  nothing distinguishes it from a quiet detector, and previously it was a silent hang.
+
+  Note `rdmaTest` reaches only 3.4-8.6 GB/s where the GPU DRP sustains 12.788 GB/s on the same
+  hardware.  Consistent with Jeremy's remark that it was not written with performance in mind,
+  and the per-event synchronous pageable copy found in the backtrace below is the obvious
+  suspect.  So its numbers should not be quoted as a hardware capability.
+
 ### Where the hang actually is, which is not where it looks
 
 Worth knowing before anyone attempts this again.  The obvious reading is that the program
