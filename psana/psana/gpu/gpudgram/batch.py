@@ -4,6 +4,8 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from .config import build_field_location_tables
+
 from psana.gpu.gpu_kvikio_read import (
     DESC_DEVICE_OFFSET,
     DESC_EVENT_INDEX,
@@ -81,6 +83,29 @@ class _GpuXtcSlotBuffers:
     shape_counts: object = None
     shape_refs: object = None
     locators: dict = field(default_factory=dict)
+    locator_backing: object = None
+
+    def batched_locator_rows(self, n_handles, n_dgrams):
+        """Return [handle, capacity, column] storage; tails keep capacity strides."""
+        existing = self.locator_backing
+        if existing is not None and existing.shape[1] >= n_dgrams:
+            return existing
+        shape = (int(n_handles), int(n_dgrams), LOC_NCOLS)
+        required = int(np.prod(shape, dtype=np.int64)) * 8
+        old_bytes = int(existing.nbytes) if existing is not None else 0
+        # Reserve the full replacement while the previous allocation is live.
+        if self.budget is not None:
+            self.budget.reserve(required)
+        try:
+            replacement = self.cp.empty(shape, dtype=self.cp.uint64)
+        except Exception:
+            if self.budget is not None:
+                self.budget.release(required)
+            raise
+        self.locator_backing = replacement
+        if self.budget is not None:
+            self.budget.release(old_bytes)
+        return replacement
 
     def _rows(self, existing, n_rows, row_shape):
         required_shape = (int(n_rows),) + tuple(row_shape)
@@ -126,7 +151,8 @@ class _GpuXtcSlotBuffers:
 
     @property
     def memory_bytes(self):
-        arrays = (self.dgram_records, self.shape_counts, self.shape_refs)
+        arrays = (self.dgram_records, self.shape_counts, self.shape_refs,
+                  self.locator_backing)
         return sum(int(array.nbytes) for array in arrays if array is not None) + sum(
             int(array.nbytes) for array in self.locators.values()
         )
@@ -150,7 +176,9 @@ class GpuXtcBatchPool:
 
         self.cp = cp
         self.configs = configs
-        self.field_handles = tuple(field_handles)
+        (self.field_handles, stream_handles, handle_table) = (
+            build_field_location_tables(configs, field_handles)
+        )
         self.n_slots = int(n_slots)
         if self.n_slots <= 0:
             raise ValueError("n_slots must be positive")
@@ -169,12 +197,16 @@ class GpuXtcBatchPool:
                 configs.stream_names_index,
                 configs.names_table,
                 configs.fields_table,
+                stream_handles,
+                handle_table,
             )
         )
         if budget is not None:
             budget.reserve(self._config_bytes)
         try:
             self.device_configs = configs.to_device(cp)
+            self.stream_handles_gpu = cp.asarray(stream_handles)
+            self.handle_table_gpu = cp.asarray(handle_table)
             self._config_ready = cp.cuda.Event(disable_timing=True)
             self._config_ready.record(cp.cuda.get_current_stream())
         except Exception:
@@ -212,8 +244,15 @@ class GpuXtcBatchPool:
                 desc_table[:, DESC_STREAM_ID], dtype=np.uint64, copy=True
             ),
         )
-        for handle in self.field_handles:
-            batch.locate(handle, stream=stream)
+        if self.field_handles:
+            with stream:
+                backing = slot.batched_locator_rows(
+                    len(self.field_handles), len(desc_table)
+                )
+                batch._locate_configured(
+                    self.field_handles, self.stream_handles_gpu,
+                    self.handle_table_gpu, backing,
+                )
         return batch
 
     def estimate_batch_bytes(self, n_dgrams):

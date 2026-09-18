@@ -1,0 +1,90 @@
+{
+  "B": {
+    "modules": {
+      "batch.py": {
+        "installed": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/gpu/gpudgram/batch.py",
+        "sha256": "1ff181afe927e2510fae23770580805ed0e9de418036639d80f5e8628f7f32f1",
+        "matches_source": true
+      },
+      "config.py": {
+        "installed": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/gpu/gpudgram/config.py",
+        "sha256": "dab0dd83144eeec252d8008068add3e7f15a2078e9dbe9fe1d095e905c25920b",
+        "matches_source": true
+      },
+      "parser.py": {
+        "installed": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/gpu/gpudgram/parser.py",
+        "sha256": "1e01035024ae1f4c7b587a034f7f01eef6a79632ff075a55705c77c977c89049",
+        "matches_source": true
+      }
+    },
+    "build_options": {
+      "buildtype": "debugoptimized",
+      "optimization": "2",
+      "debug": true,
+      "cpp_args": [
+        "-fvisibility-inlines-hidden",
+        "-fmessage-length=0",
+        "-march=nocona",
+        "-mtune=haswell",
+        "-ftree-vectorize",
+        "-fPIC",
+        "-fstack-protector-strong",
+        "-fno-plt",
+        "-O2",
+        "-ffunction-sections",
+        "-pipe",
+        "-isystem",
+        "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include",
+        "-DNDEBUG",
+        "-D_FORTIFY_SOURCE=2",
+        "-O2",
+        "-isystem",
+        "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include"
+      ]
+    }
+  },
+  "O": {
+    "modules": {
+      "batch.py": {
+        "installed": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/install_psana/lib/python3.9/site-packages/psana/gpu/gpudgram/batch.py",
+        "sha256": "1357998d13637809085cfe756253d11d2d3f7d5c1b4ba95b8d8534ed569bbb26",
+        "matches_source": true
+      },
+      "config.py": {
+        "installed": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/install_psana/lib/python3.9/site-packages/psana/gpu/gpudgram/config.py",
+        "sha256": "fa0b7607df8bd3c031ef7ce4739c1faa1db189ee1c8196208f82e7555873c0c3",
+        "matches_source": true
+      },
+      "parser.py": {
+        "installed": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/install_psana/lib/python3.9/site-packages/psana/gpu/gpudgram/parser.py",
+        "sha256": "db0c402aee07a82d7f0d37464acc2c61df63b784e9d5ff8b1bda48a81f6f510d",
+        "matches_source": true
+      }
+    },
+    "build_options": {
+      "buildtype": "debugoptimized",
+      "optimization": "2",
+      "debug": true,
+      "cpp_args": [
+        "-fvisibility-inlines-hidden",
+        "-fmessage-length=0",
+        "-march=nocona",
+        "-mtune=haswell",
+        "-ftree-vectorize",
+        "-fPIC",
+        "-fstack-protector-strong",
+        "-fno-plt",
+        "-O2",
+        "-ffunction-sections",
+        "-pipe",
+        "-isystem",
+        "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include",
+        "-DNDEBUG",
+        "-D_FORTIFY_SOURCE=2",
+        "-O2",
+        "-isystem",
+        "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/include"
+      ]
+    }
+  }
+}

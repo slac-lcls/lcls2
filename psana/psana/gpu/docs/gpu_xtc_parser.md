@@ -26,7 +26,7 @@ Read slot / GPU
        enrich dgram records       timestamp, service, damage, parse status
        produce shape_refs_gpu     ShapesData -> Configure Names row
        produce shape_counts_gpu
-    -> GpuEventBatch.locate(handle)
+    -> init_locators / locate_fields (stream-grouped configured handles)
        produce locator rows       type, shape, device offset, byte count
     -> detector CUDA kernel       dereference locator and consume field bytes
 ```
@@ -131,10 +131,27 @@ reported in `dgram_records_gpu[:, DGRAM_STATUS]`.
 
 ## Field location
 
-`GpuEventBatch.locate(handle)` launches one work item per allocated ShapesData
-reference slot. References for other Configure Names rows are ignored. For a
-match, the kernel finds the Shapes and Data children and walks fields in
-Configure order until the requested field:
+The pool compiles configured handles once into a stream-range table and a
+`uint64[n_handles, 3]` request table: Configure Names index, Configure field
+index, and output index. Requests are grouped by XTC stream; output indices
+preserve the caller's unique handle order. These tables are included in the
+run's fixed memory budget.
+
+After the walker, `init_locators` fully initializes the active rows of one
+slot-owned `uint64[n_handles, capacity, 11]` allocation. It propagates invalid
+dgram statuses to every handle, preserving the single-handle parser behavior.
+A separate `locate_fields` launch assigns one block per dgram, with threads
+spanning only that stream's handles and actual ShapesData references. The
+separate launches prevent initialization/decoding races. Scheduling requires
+no GPU metadata readback. Empty inputs and empty handle sets skip both kernels.
+
+`GpuEventBatch.locate(handle)` returns a cached per-handle view for configured
+handles. An unregistered handle still uses the lazy single-handle kernel,
+with one work item per allocated ShapesData reference slot. Both paths share
+the same field-offset decoder and atomic duplicate detection. References for
+other Configure Names rows are ignored. For a match, the decoder finds the
+Shapes and Data children and walks fields in Configure order until the
+requested field:
 
 ```text
 scalar bytes = element_size
@@ -150,9 +167,18 @@ The result is `uint64[n_dgrams, 11]`:
 ```
 
 Absent fields stay `STATUS_NOT_PRESENT`; valid matches become
-`STATUS_FOUND`. The locator event records which CUDA stream produced the
-table. A kernel on another stream calls `locators.wait_on(stream)` before it
-uses the rows. No host synchronization is required.
+`STATUS_FOUND`. Configured handles share one ready event recorded after
+decoding; lazy handles retain separate events. A kernel on another stream
+calls `locators.wait_on(stream)` before it uses the rows. No host synchronization
+is required. Each per-handle view is contiguous and exposes only active dgram
+rows; kernels receive the backing capacity stride explicitly for tail reuse.
+The slot retains backing storage until its existing consumer retirement
+contract permits reuse. Growth reserves the full replacement allocation
+before releasing the old accounting, and failed allocation preserves the old
+buffer and its budget charge.
+
+This change covers location only. Gathering and bulk-read/input-window
+integration remain separate review work.
 
 ## xpptut15 example
 
@@ -195,8 +221,9 @@ pytest -q psana/psana/tests/gpu/integration/test_gpudgram_device.py
 
 `GpuEventManager` compiles `GpuStreamConfigTable` from `Run.configs` and
 constructs one `GpuXtcBatchPool` for the run. The pool uploads the three
-numeric Configure tables once and records a CUDA completion event for that
-upload. Each EventPool stream waits on this event before its first parse.
+numeric Configure tables and two handle scheduling tables once, recording a
+CUDA completion event for that upload. Each EventPool stream waits on this
+event before parsing.
 
 After KvikIO completes a read, its CPU descriptor table has one dense row per
 valid dgram:
@@ -215,7 +242,8 @@ Each `GpuXtcBatchPool` slot owns reusable high-water buffers for:
 ```text
 dgram records
 ShapesData counts and references
-one locator table per registered field handle
+one combined allocation for configured field locators
+separate locator tables for any additional lazy handles
 ```
 
 The Configure tables and per-slot parser buffers are charged to the same
