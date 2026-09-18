@@ -31,17 +31,10 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
-#import kerberos
 from krtc import KerberosTicket
 from urllib.parse import urlparse
 import getpass
 import json
-
-# CLI set SIT_PSDM_OFFSITE for test:
-# export SIT_PSDM_OFFSITE="is set"
-# echo $SIT_PSDM_OFFSITE
-# curl -s "https://psextapi.slac.stanford.edu/calib_ws/cdb_ascdaq023"
-#...detector/test_issues_2025.py 45
 
 # TWO WARIABLES:
 # 1) LCLS_CALIB_HTTP for URL
@@ -53,6 +46,7 @@ import json
 #curl -s "https://pswww.slac.stanford.edu/ws/calib_ws/"
 #curl -s "https://psdmint.sdf.slac.stanford.edu/calib_ws/"
 #curl -s "https://psdmint.sdf.slac.stanford.edu/ws/calib_ws/"
+#...detector/test_issues_2025.py 45
 
 URL_DEV     = 'https://psdm.slac.stanford.edu/ws'
 URL_PRO     = 'https://pswww.slac.stanford.edu/ws'
@@ -77,7 +71,7 @@ def krbheaders():
         krbh = KerberosTicket(URL_KRBHEADERS).getAuthHeaders()
     except Exception as e:
         _counter += 1
-        if _counter<4: logger.error(f'WARNING: kerberos ticket is not valid - use command: kinit (klist, kdestroy)\n    Exception: {str(e)}')
+        if _counter<2: logger.debug(f'kerberos ticket is not valid - use command: kinit (klist, kdestroy)\n    Exception: {str(e)}')
         #if _counter>2: sys.exit('\npsana/pscalib/calib/CalibConstants.py: EXIT DUE TO: kerberos ticket is not valid')
         return None
     krbh = dict(krbh)
