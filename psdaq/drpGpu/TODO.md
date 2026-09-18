@@ -930,13 +930,36 @@ It waits 19 s for the device to appear and then **fatals**.  So a node whose
 as "Not responding" rather than as anything about GPUs.  That is a dependency of every
 `gres.conf` carrying `File=`, ours included, and it was not on our radar.
 
-**The device nodes are created lazily, and on our nodes by accident.**  They are not part
-of the driver load: something has to invoke `nvidia-modprobe`, which any process opening a
-GPU does implicitly.  On gpu006, gpu008 and gpu001 the thing that does it is
-**`nvidia-powerd`**, which starts at boot, opens a GPU, reports `ERROR! UnSupported System`
-on this hardware and exits -- creating the nodes as a side effect of failing.  Confirmed by
-the timestamps on gpu008: `/dev/nvidia0` appears in the same second as
-`Started nvidia-powerd service`.
+**`nvidia-powerd` is what creates the device nodes, and it is REQUIRED.  Do not disable it.**
+
+They are not part of the driver load: something has to invoke `nvidia-modprobe`, which any
+process opening a GPU does implicitly.  `nvidia-powerd` is packaged and enabled by NVIDIA to
+initialise the GPUs at boot, and it does exactly that -- it opens them, finds this platform
+has no dynamic-boost capability, prints `ERROR! UnSupported System` and exits.  The nodes it
+leaves behind are what slurmd needs, and slurmd *fatals* without them.
+
+Confirmed on gpu008 on 2026-09-17, after a power reset with persistenced disabled so nothing
+else could be responsible:
+
+    nvidia-powerd   18:19:03   (then exits, "UnSupported System")
+    /dev/nvidia0    18:19:03   same second
+    slurmd          18:19:36   33 s later
+
+**The hazard is that the error message invites a cleanup.**  Someone reasonably reading
+`ERROR! UnSupported System` as noise, and disabling the service to silence it, would take
+every GPU node's `/dev/nvidia*` with it -- and the symptom would be
+`State=DOWN+NOT_RESPONDING`, pointing at the network rather than at NVIDIA.  That is exactly
+how drp-srcf-gpu007 presented on 2026-09-16, where powerd is disabled.
+
+So the choice is between depending on a service whose error message looks like a defect, and
+writing and maintaining a small unit that runs `nvidia-modprobe` before slurmd.  The unit is
+more honest about intent, but it is more code to keep alive, and the dependency is only
+dangerous while it is undocumented -- which this note fixes.  Leave powerd enabled until
+something better comes along.
+
+An earlier version of this note called the node creation an "accident".  That was wrong:
+powerd opens the GPUs deliberately, and `UnSupported System` describes the platform's lack of
+a feature, not a malfunction.
 
 An earlier version of this note credited the udev rule
 (`/usr/lib/udev/rules.d/60-nvidia.rules`, `KERNEL=="nvidia", RUN+="/usr/bin/nvidia-modprobe"`)
@@ -955,10 +978,9 @@ gpu007, which is the whole difference:
 
 `nvidia-powerd`: enabled on gpu006, gpu008 and gpu001; **disabled** on gpu007.
 
-So persistenced is not what creates them -- it is disabled on all three working nodes --
-and neither, as it turns out, is udev.  **The mechanism our nodes depend on is a service
-that fails.**  If a driver update ever made `nvidia-powerd` succeed, or stop running, every
-node would lose its device nodes at once and every slurmd would refuse to start.
+So persistenced is not what creates them, and neither is udev: it is `nvidia-powerd`, as
+above.  What matters operationally is that **something must open a GPU before slurmd starts**,
+and on these nodes that something is powerd.
 
 **`nvidia-persistenced` is the fix, and it is proven.**  Demonstrated on drp-srcf-gpu007 on
 2026-09-16, where `nvidia-powerd` is disabled, so there is no ambiguity about the cause:
