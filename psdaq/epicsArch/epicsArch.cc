@@ -32,7 +32,7 @@ using ms_t = std::chrono::milliseconds;
 namespace Drp {
 
 Pgp::Pgp(const Parameters& para, MemPool& pool, Detector* det) :
-    PgpReader(para, pool, MAX_RET_CNT_C, 32),
+    PgpReader(para, pool, std::min(MAX_RET_CNT_C, pool.dmaCount()), 32),
     m_det(det),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
@@ -376,7 +376,7 @@ void EaDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
 // ---
 
 EpicsArchApp::EpicsArchApp(Parameters& para, const std::string& pvCfgFile) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
     m_para       (para),
     m_pool       (para),
     m_unconfigure(false)

@@ -123,7 +123,7 @@ class QWLoggerStd(QWidget):
 
         tsfmt='%Y-%m-%dT%H:%M:%S'
         fmt = '[%(levelname).1s] %(name)s:L%(lineno)04d %(message)s' if level==logging.DEBUG else\
-              '[%(levelname).1s] %(asctime)s %(name)s: %(message)s' # %(filename)s
+              '[%(levelname).1s] %(asctime)s %(name)s:L%(lineno)04d %(message)s' # %(filename)s
 
         #sys.stdout = sys.stderr = open('/dev/null', 'w')
 

@@ -77,7 +77,7 @@ def image_of_sensors(gfname, afname=None, ofname='mask.txt', mbits=0xffff, dotes
 def roi_mask_editor(ifname='image.txt', mfname='mask', mbits=0xffff):
     """ Launch the mask editor, command "med" with parameters"""
     import sys
-    sys.exit('\nWARNING: Mask Editor is not implemetted yet for lcls2.')
+    sys.exit('\nWARNING: to run Mask Editor use command: masked')
 
     #from subprocess import getoutput
     #cmd = 'med -i %s -m %s' % (ifname, mfname)

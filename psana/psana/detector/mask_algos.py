@@ -252,7 +252,7 @@ class MaskAlgos:
 #             self._mask = self.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center,\
 #                                       calib=calib, umask=umask, dtype=dtype, **kwa)
     def mask(self, **kwa):
-        """returns cached mask_comb(**self._kwa) with **self._kwa passed from Detector(detname,**kwa)
+        """returns CACHED mask_comb(**self._kwa) with **self._kwa passed from Detector(detname,**kwa)
         Control parameter
         force_update (bool) allows to re-evaluate cached mask for newly passed **kwa
         """

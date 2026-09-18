@@ -41,3 +41,12 @@ executable(
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, psalg_shlib, digitizer_shlib]
 )
+
+executable(
+    'test_fft',
+    'tests/test_FFT.cc',
+    include_directories: [psalg_incdir],
+    #install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [psalg_shlib, detector_shlib]
+)
