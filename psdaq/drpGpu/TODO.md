@@ -1435,6 +1435,29 @@ pair.  They have diverged a long way -- `checkError` changed signature, `DataDev
 pgpread is a real refactor.  It is also unnecessary: nothing else uses those files, they
 still build, and they are not in the way.  Leave them until someone needs pgpread itself.
 
+## Nothing names the process to comment out when a GPU dies
+
+The degraded procedure's third step is "remove the affected process from the DAQ config", and
+on 2026-09-17 it took working out which one.  `gen_gres_conf` says `datadev_85 has no GPU left
+to pair with`; `gpu8.py` says `tstcam1_4` and `gpu_cmd%0x85`.  Nothing connects the two, so the
+operator translates a bus number into a process name by hand, in the middle of an incident, and
+the failure mode for getting it wrong is a job that pends for ever with no explanation.
+
+Both halves already exist.  `SbatchManager.get_gres()` parses `-d /dev/datadev_XX` out of each
+process's command, and `scontrol show node <node>` lists the gres actually offered.  So a check
+at `daqmgr` start could compare the two and say, precisely:
+
+    tstcam1_4 requests gpu:dd85:1, which this node does not offer.  Comment it out
+    of the configuration, or publish a gres record for datadev_85.
+
+That is the "check at daqmgr start" already listed as a known gap on the Confluence page; this
+is the concrete case for it.  Worth doing before twenty nodes exist, because the translation
+gets harder as the node count grows and it is only ever done under pressure.
+
+Note it belongs at `daqmgr` start rather than in the DRP: by the time `drp_gpu` runs, Slurm has
+either given it a GPU or left the job pending for ever, and in the pending case there is no
+process to report anything.
+
 ## Lower priority, after November's deliverables
 
 - **A generic `recoverLinks` script for operators.**  When a DRP complains about a timing
