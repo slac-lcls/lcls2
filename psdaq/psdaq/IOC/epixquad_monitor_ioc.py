@@ -568,6 +568,16 @@ class EpixQuadBoard(pyrogue.Root):
                 enabled=True,
         ))
 
+    def check_carried_ids(self):
+        for i in range(4):
+            cid_lo = self.SystemRegs.CarrierIdLow[i].get()
+            if (cid_lo == 0xffffffff) or (cid_lo == 0):
+                return False
+            cid_hi = self.SystemRegs.CarrierIdHigh[i].get()
+            if (cid_hi == 0xffffffff) or (cid_hi == 0):
+                return False
+
+        return True
 
     @staticmethod
     def configure(dev, lane, vc, flag, mon_prescale, trig_period, queue):
@@ -581,6 +591,32 @@ class EpixQuadBoard(pyrogue.Root):
                 data["firmware_githash"] = '%040x' % githash
                 bldstr = root.AxiVersion.BuildStamp.get()
                 data["firmware_bldstr"] = bldstr
+                # read carrier id info
+                if not root.check_carried_ids():
+                    root.SystemRegs.CarrierIdRst.set(True)
+                    time.sleep(0.1)
+                    root.SystemRegs.CarrierIdRst.set(False)
+                for i in range(4):
+                    cid_lo = root.SystemRegs.CarrierIdLow[i].get()
+                    cid_hi = root.SystemRegs.CarrierIdHigh[i].get()
+                    data["carrier_id_%d"%i] = '0x%08x%08x' % (cid_lo, cid_hi)
+                # check if the asic mask is zero
+                asic_mask = root.SystemRegs.AsicMask.get()
+                if asic_mask == 0:
+                    # this needs to set to fix this just calling AdcReqStart is not enough
+                    root.SystemRegs.AdcBypass.set(True)
+                    root.SystemRegs.AdcReqStart.set(True)
+                    time.sleep(0.1)
+                    root.SystemRegs.AdcReqStart.set(False)
+                    time.sleep(0.1)
+                    start = time.time()
+                    timeout = 1.0 # wait max one second
+                    while root.SystemRegs.AdcTestDone.get() != 1:
+                        time.sleep(0.1)
+                        if time.time() - start > timeout:
+                            break
+                    root.SystemRegs.AdcBypass.set(False)
+
                 # configure the monitoring registers
                 root.EpixQuadMonitor.MonitorEn.set(flag)
                 root.EpixQuadMonitor.TrigPrescaler.set(mon_prescale)
@@ -1273,6 +1309,26 @@ class EpixQuadMonitoringIOC(PVGroup):
                                  string_encoding='ascii',
                                  max_length=256,
                                  doc="epix fw build str")
+    carrier_id_0 = pvproperty(name="CARRIER_ID_0",
+                              value="",
+                              dtype=PvpropertyString[StringinFields],
+                              record=StringinFields,
+                              doc="epix carrier id 0")
+    carrier_id_1 = pvproperty(name="CARRIER_ID_1",
+                              value="",
+                              dtype=PvpropertyString[StringinFields],
+                              record=StringinFields,
+                              doc="epix carrier id 1")
+    carrier_id_2 = pvproperty(name="CARRIER_ID_2",
+                              value="",
+                              dtype=PvpropertyString[StringinFields],
+                              record=StringinFields,
+                              doc="epix carrier id 2")
+    carrier_id_3 = pvproperty(name="CARRIER_ID_3",
+                              value="",
+                              dtype=PvpropertyString[StringinFields],
+                              record=StringinFields,
+                              doc="epix carrier id 3")
     stemp_channels = {
             ("temp1", -273.15),
             ("temp2", -273.15),
