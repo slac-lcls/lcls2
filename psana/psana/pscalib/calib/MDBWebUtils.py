@@ -71,23 +71,68 @@ import json as jsonmet
 import psana.detector.Utils as ut
 #import psana.detector.utils_psana as up # dict_filter
 
+has_kerb = not call(["klist", "-s"])
 jwt = os.getenv('CALIB_JWT', None)
 has_jwt = bool(jwt)
-info_jwt = 'using jwt' if has_jwt else 'using kerberos, NO jwt available'
-msg_jwt = 'importing psana.pscalib.calib.MDBWebUtils'\
-    '\nusing jwt' if has_jwt else 'using kerberos, NO jwt available'\
-    '\nmake env CALIB_JWT using:'\
-    '\n  source psana/psana/pscalib/calib/get_JWT_from_s3df.sh'\
-    '\nor'\
-    '\n  source psana/psana/pscalib/calib/get_JWT_from_kerberos.sh'\
+
+USE_QUERY_STR = not has_jwt # True - for old version with kerberos
+
+def path_to_pscalib_calib(path_to_conda2_bin='/sdf/group/lcls/ds/ana/sw/conda2/manage/bin', ext=''):
+    """returns path to <lcls2_MMDDYY>/psana/psana/pscalib/calib/ in release lcls2_MMDDYY
+       for access scripts get_JWT_from_kerberos.sh, get_JWT_from_s3df.sh
+       path to release is defined by the link <path_to_conda2_bin>/psconda{ext}.sh, where
+       ext=''/'previous'/'test' to destinguish between psconda.sh/pscondaprevious.sh/pscondatest.sh, respectively
+    """
+    from pathlib import Path
+    p = f'{path_to_conda2_bin}/psconda{ext}.sh' # link to:
+    target = str(Path(p).resolve())        #/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_080526/setup_env.sh
+    path_to_rel = target.rsplit('/', 1)[0] #/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_080526
+    path_to_calib = path_to_rel + '/psana/psana/pscalib/calib'
+    #print(f'\npath_to_psconda: {p}\n  target       : {target}\n  path_to_rel  : {path_to_rel}\n  path_to_calib: {path_to_calib}')
+    return path_to_calib
+
+
+PASS_TO_REL_CALIB = path_to_pscalib_calib(ext='test') # ext=''/'previous'/'test'
+
+info_missing_jwt = 'JWT TICKET IS UNAVAILABLE OR EXPIRED'\
+      +'\nmake env CALIB_JWT using command:'\
+      +f'\n  source {PASS_TO_REL_CALIB}/get_JWT_from_s3df.sh'\
+      +'\nor'\
+      +f'\n  source {PASS_TO_REL_CALIB}/get_JWT_from_kerberos.sh\n'\
+
+info_missing_kerb = 'KERBEROS TICKET IS UNAVAILABLE OR EXPIRED'\
+      +'\nor\n  make kerberos using command: kinit (klist, kdestroy)\n'
+
+info_missing_tickets = f'{info_missing_jwt}{info_missing_kerb}'
+
+info_ticket = f'using jwt, CALIB_JWT: {jwt[:20]}...' if has_jwt else\
+              f'using kerberos\n{info_missing_jwt}' if has_kerb else\
+              info_missing_tickets
 
 session = req.Session() if has_jwt else None
 if has_jwt:
     session.headers.update({'Authorization': 'Bearer ' + jwt })
     logger.debug(f'jwt: {str(jwt)}')
 
-print(msg_jwt)
-#logger.info(msg_jwt)
+#print('MDBWebUtils: ' + info_ticket)
+#logger.info(info_ticket)
+
+def has_kerberos_ticket():
+    """dynamically check if user has a valid Kerberos ticket."""
+    return not call(["klist", "-s"])
+
+def check_ticket(exit_if_invalid=True, output=logger.debug):
+    """dynamically check any ticket and send message to output method"""
+    if has_jwt:
+        output('use JWT ticket')
+        return True
+    elif has_kerberos_ticket():
+        output('using kerberos, JWT ticket is missing, try command: jwt')
+        return True
+    output(info_missing_tickets)
+    if exit_if_invalid:
+        sys.exit('EXIT DUE TO MISSING TICKET')
+    return False
 
 
 def info_dict(d, cmt='', offset='  '):
@@ -109,7 +154,10 @@ info_document = info_dict_for_keys
 
 def info_ldocs(ldocs, nmax=4, sep='\n  '):
     if ldocs is None: return 'None'
-    return f'ndocs={len(ldocs)}' + sep + sep.join([info_document(d) for i,d in enumerate(ldocs) if i<nmax])
+    ndocs = len(ldocs)
+    s = f'ndocs={ndocs}'
+    if ndocs>0: s += sep + sep.join([info_document(d) for i,d in enumerate(ldocs) if i<nmax])
+    return s
 
 def info_docs_list(docs, strlen=150):
     if not isinstance(docs, list):
@@ -130,7 +178,7 @@ def info_detnames(ldocs, keys=('_id','short','time_stamp','long'), nmax=10, sep=
 
 
 def post(url, data=None, doc={}, **kwa):
-    logger.debug(f'post url: {url}  ticket: {info_jwt}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
+    logger.debug(f'post url: {url}  ticket: {info_ticket}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
     if has_jwt:
         if data is None:
             if 'headers' in doc.keys():
@@ -140,7 +188,7 @@ def post(url, data=None, doc={}, **kwa):
             return session.post(url, data=data, headers={"Content-Type": "application/json"})
     else:
         krbh = cc.krbheaders() # krbh['Content-Type'] = 'application/octet-stream'
-        logger.debug(f'post url: {url}  ticket: {info_jwt}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
+        logger.debug(f'post url: {url}  ticket: {info_ticket}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
         logger.debug(f'post krbheaders: {jsonmet.dumps(krbh, indent=2)}')
         resp = req.post(url, headers=krbh, json=dict(doc), data=data)
         logger.debug(f'post resp: {resp.text}')
@@ -154,36 +202,23 @@ def put(url, doc, **kwa):
 
 
 def get(url, query=None, timeout=180, **kwa):
-    krbh = cc.krbheaders() # inside: krbh['Content-Type'] = 'application/octet-stream'
-    logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_jwt}')
-    logger.debug(f'\nget: krbheaders {jsonmet.dumps(krbh, indent=2)}')
-    return session.get(url, json=query, timeout=timeout) if has_jwt else\
-           req.get(url, params=query, timeout=timeout, headers=krbh)
+    logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_ticket}')
+    if has_jwt:
+        r = session.get(url, json=query, timeout=timeout)
+        logger.debug(f'ZZZZ get for jwt  url: {url}  query: {str(query)}  ticket: {info_ticket}  resp.ok: {r.ok}') #resp: {r.text[:100]}')
+        return r
+    else:
+        krbh = cc.krbheaders() # inside: krbh['Content-Type'] = 'application/octet-stream'
+        logger.debug(f'\nget: krbheaders {jsonmet.dumps(krbh, indent=2)}')
+        return req.get(url, params=query, timeout=timeout, headers=krbh) if USE_QUERY_STR else\
+               req.get(url, json=query, timeout=timeout, headers=krbh)
 
 
 def delete_cmd(url):
     resp = session.delete(url) if has_jwt else\
            req.delete(url, headers=cc.krbheaders())
-    logger.debug(f'delete for url: {url}  ticket: {info_jwt}  resp.ok: {resp.ok}')
+    logger.info(f'delete for url: {url}  ticket: {info_ticket}  resp.ok: {resp.ok}')
     return resp
-
-
-def has_kerberos_ticket():
-    """Checks to see if the user has a valid Kerberos ticket."""
-    return not call(["klist", "-s"])
-
-
-def check_ticket(exit_if_invalid=True):
-    if has_jwt:
-        logger.debug('use JWT ticket')
-        return True
-    if has_kerberos_ticket():
-        logger.debug('using kerberos, JWT ticket is missing')
-        return True
-    logger.error('KERBEROS AND JWT TICKETS ARE UNAVAILABLE OR EXPIRED')
-    if exit_if_invalid:
-        sys.exit('FIX KERBEROS OR JWT TICKET - use command "kinit" or check its status with command "klist"')
-    return False
 
 
 def query_id_pro_str(query):
@@ -194,6 +229,7 @@ def query_id_pro_str(query):
 
 
 def query_id_pro(query):
+    if USE_QUERY_STR: return query_id_pro_str(query)
     id = query.get('_id', None)
     if isinstance(id, str):
         query['_id'] = mu.ObjectId(id)
@@ -201,13 +237,14 @@ def query_id_pro(query):
 
 
 def request(url, query=None, timeout=180, **kwa):
-    logger.debug(f'in request for url: {url} and query: {str(query)}     {info_jwt}')
+    logger.debug(f'in request for url: {url} and query: {str(query)}     {info_ticket}')
     #t0_sec = time()
     #r = req.get(url, query, timeout=180)
     #r = session.get(url, params={'query_string':str(query)}, timeout=180) if has_jwt else\
     r = get(url, query=query, timeout=timeout)
     #dt = time()-t0_sec # ~30msec
     #logger.debug('CONSUMED TIME by request %.3f sec\n  for url=%s  query=%s' % (dt, url, str(query)))
+    logger.debug(f'ZZZZ request for url: {url}  query: {str(query)}')
     if r.ok:
         logger.debug(f'request resp is ok: {str(r.content)[:100]}')
         return r
@@ -242,19 +279,20 @@ def find_docs(dbname, colname, query={}, **kwa):
     """Returns list of documents for query, e.g. query={'ctype':'pedestals', "run":{ "$gte":80}}."""
     uri = f'{cc.URL.rstrip("/")}/{dbname}/{colname}'
 
-    # WORKING OLD VERSION using query as str:
-    #query_string=str(query).replace("'",'"')
-    #logger.debug('find_docs uri: %s query: %s' % (uri, query_string))
-    #r = request(uri, {"query_string": query_string})
+    r = None
+    if USE_QUERY_STR: # WORKING OLD VERSION using query as str:
+        query_string=str(query).replace("'",'"')
+        logger.debug(f'find_docs uri: {uri} query: {query_string}')
+        r = request(uri, {"query_string": query_string})
 
-    # NEW VERSION using query as dict/json:
-    logger.debug(f'find_docs uri: {uri} query: {str(query)}')
-    r = request(uri, query=query) # query = {'_id': bson.ObjectId(doc_id), ...}
+    else: # NEW VERSION using query as dict/json:
+        logger.debug(f'find_docs uri: {uri} query: {str(query)}')
+        r = request(uri, query=query) # query = {'_id': bson.ObjectId(doc_id), ...}
 
     if ut.is_true(r is None, 'find_docs resp is None for url: {uri}', logger_method=logger.debug): return None
     ldocs = r.json()
-    s = '\n\n  '.join([str(d) for d in ldocs])
-    logger.debug(f"find_docs res.ok:{r.ok}  docs:\n\n  {s}")
+    s = '\n  '.join([str(d) for d in ldocs])
+    logger.debug(f'find_docs res.ok:{r.ok}  docs:\n  {s}')
 
     try:
         return r.json()
@@ -367,12 +405,12 @@ def dbnames_collection_query(detname, exp=None, ctype='pedestals', run=None, tim
     """wrapper for MDBUtils.dbnames_collection_query,
        - which should receive short detector name, othervice uses direct interface to DB
     """
-    logger.info('dbnames_collection_query input parameters:\n' +\
-                 '    detname:%s exp:%s ctype:%s run:%s time_sec:%s vers:%s dtype:%s dbsuffix:%s kwa:%s' %\
-                 (detname, exp, ctype, str(run), str(time_sec), vers, str(dtype), dbsuffix, str(kwa)))
+    logger.debug('dbnames_collection_query input pars:\n' +\
+                f'   detname:{detname} exp:{exp} ctype:{ctype} run:{str(run)} time_sec:{str(time_sec)} vers:{vers} dtype:{str(dtype)} dbsuffix:{dbsuffix} kwa:{str(kwa)}')
     short = pro_detector_name(detname)
-    logger.debug(f'short: {short} dbsuffix: {dbsuffix}')
+    logger.debug(f'dbnames_collection_query detname: {detname}  short: {short}  dbsuffix: {dbsuffix}  exp: {exp}')
     resp = list(mu.dbnames_collection_query(short, exp, ctype, run, time_sec, vers, dtype))
+    logger.debug(f'mu.dbnames_collection_query resp: {str(resp)}')
     if dbsuffix: resp[0] = detector_dbname(short, dbsuffix=dbsuffix)
     return resp
 
@@ -440,23 +478,24 @@ def print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002'):
 
 
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, dbsuffix='', **kwa):
-    """ USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+    """ USED BY psana/psexp/ds_base.py, psana/psana/psexp/run.py TO RETRIEVE ALL CONSTANTS FROM DB
         Returns constants for all ctype-s."""
-    t0_sec = time()
     ctype=None
     longname = det
-    logger.debug('detlongname: %s exp: %s run: %s time_sec: %s vers: %s' % (longname, exp, str(run), time_sec, vers))
+
+    #if not ('epixuhr3x2' in longname):
+    #    logger.warning(f'WARNING calib_constants_all_types IS IGNORED for NON-epixuhr3x2 longname: {longname}')
+    #    return None
 
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
 
-    logger.debug('dbname: %s db_det: %s db_exp: %s colname: %s query: %s dbsuffix: %s'%\
-                (dbname, db_det, db_exp, colname, query, dbsuffix))
-    logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
-
     docs = find_docs(dbname, colname, query)
-    logger.debug('find_docs: number of docs found: %s' % (str(len(docs)) if docs is not None else None))
     #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))
+
+    logger.debug(f'calib_constants_all_types longname: {longname}  exp: {exp}  run: {str(run)}  time_sec: {time_sec}  vers: {vers}'\
+               +f'\n  dbname: {dbname}  db_det: {db_det}  db_exp: {db_exp}  colname: {colname}  query: {query}  dbsuffix: {dbsuffix}'\
+               +'\n  after find_docs: number of docs found: %s\n' % (str(len(docs)) if docs is not None else None))
 
     resp = {}
     if docs is not None:
@@ -479,7 +518,6 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
         #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))
 
     resp = calib_constants_of_missing_types(resp, det, time_sec, vers)
-
     #print('time 4: %.6f sec - check for missing types in the det DB' % (time()-t0_sec))
 
     return resp
@@ -717,6 +755,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     """Returns short detector name for long input name detname."""
     colname = detname.split('_',1)[0]
     # find a single doc for long detname
+
     query = {'long':detname}
     ldocs = find_docs(dbname, colname, query=query)
 
@@ -818,7 +857,7 @@ def delete_document(dbname, colname, doc_id, **kwa):
     """Deletes document for specified _id from database/collection."""
     check_ticket()
     r = delete_cmd(cc.URL_KRB+dbname+'/'+colname+'/'+ doc_id)
-    logger.debug(r.text)
+    logger.info(r.text)
     return r
 
 
@@ -865,7 +904,8 @@ def delete_document_and_data(dbname, colname, doc_id, **kwa):
 def delete_documents(dbname, colname, doc_ids, **kwa):
     resp = None
     for doc_id in doc_ids:
-        isok = delete_document_and_data(dbname, colname, doc_id)
+        isok = delete_document(dbname, colname, doc_id) if dbname == 'cdb_detnames' else\
+               delete_document_and_data(dbname, colname, doc_id)
         logger.debug(f'resp.ok {isok}')
 
 
@@ -961,7 +1001,7 @@ def valid_post_privilege(dbname):
         if cc.krbheaders() is None:
            return False
 
-    logger.info(info_jwt)
+    logger.info(info_ticket)
 
     r = request(url_ws, timeout=180)
 

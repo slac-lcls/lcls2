@@ -3,6 +3,9 @@ setup_env_local.sh
 build
 builddir
 install
+builddir_psana/
+install_psana/
+.conda-psana/
 wheelhouse
 dist
 cibuildwheel_run_*.log

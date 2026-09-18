@@ -81,7 +81,16 @@ import rogue.protocols.srp
 import pyrogue
 # caproto imports
 from caproto import config_caproto_logging
-from caproto.server import PVGroup, PvpropertyDouble, PvpropertyInteger, PvpropertyString, PvpropertyChar, PvpropertyEnum, template_arg_parser, pvproperty, run
+from caproto.server import (
+        PVGroup,
+        PvpropertyDouble,
+        PvpropertyInteger,
+        PvpropertyString, PvpropertyChar,
+        PvpropertyEnum,
+        template_arg_parser,
+        pvproperty,
+        run
+)
 from caproto.server.records import AoFields, AiFields, LongoutFields, LonginFields, StringinFields, WaveformFields, MbbiFields
 
 
@@ -304,6 +313,7 @@ class EpixMonitoringIOC(PVGroup):
         self.lane = lane
         self.vc = vc
         self.regvc = regvc
+        self.lastmontime = None
         self.monrateconv = 100000000
         self.trigrateconv = 1000
         super().__init__(*args, **kwargs)
@@ -342,7 +352,6 @@ class EpixMonitoringIOC(PVGroup):
         return data
 
     async def __ainit__(self, async_lib):
-        self.monitoring = False
         self.async_lib = async_lib
         queue = async_lib.ThreadsafeQueue()
         dma_dest = self.lane << 8 | self.vc
@@ -386,6 +395,7 @@ class EpixMonitoringIOC(PVGroup):
                         lower_alarm_limit=-0.5,
                         upper_warning_limit=0.5,
                         lower_warning_limit=-0.5,
+                        alarm_group="monchk",
                         doc="epixMon check")
     monchkdelay = pvproperty(name="MONCHKDELAY",
                              value=5,
@@ -420,6 +430,7 @@ class EpixMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp1",
                        precision=2,
                        units="C",
                        doc="Strong Back Temp.")
@@ -431,6 +442,7 @@ class EpixMonitoringIOC(PVGroup):
                        lower_alarm_limit=0.0,
                        upper_warning_limit=1000.0,
                        lower_warning_limit=0.0,
+                       alarm_group="temp2",
                        precision=2,
                        units="C",
                        doc="Ambient Temp.")
@@ -442,6 +454,7 @@ class EpixMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=101.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="humidity",
                           precision=2,
                           units="%",
                           doc="Humidity")
@@ -453,6 +466,7 @@ class EpixMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=100.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="ana_in_v",
                           precision=3,
                           units="V",
                           doc="Analog Voltage")
@@ -464,6 +478,7 @@ class EpixMonitoringIOC(PVGroup):
                           lower_alarm_limit=-1.0,
                           upper_warning_limit=100.0,
                           lower_warning_limit=-1.0,
+                          alarm_group="dig_in_v",
                           precision=3,
                           units="V",
                           doc="Digital Voltage")
@@ -475,6 +490,7 @@ class EpixMonitoringIOC(PVGroup):
                               lower_alarm_limit=-1.0,
                               upper_warning_limit=100.0,
                               lower_warning_limit=-1.0,
+                              alarm_group="asic_ana_cur",
                               precision=3,
                               units="A",
                               doc="ASIC Analog Current")
@@ -486,6 +502,7 @@ class EpixMonitoringIOC(PVGroup):
                               lower_alarm_limit=-1.0,
                               upper_warning_limit=100.0,
                               lower_warning_limit=-1.0,
+                              alarm_group="asic_dig_cur",
                               precision=3,
                               units="A",
                               doc="ASIC Digital Current")
@@ -497,6 +514,7 @@ class EpixMonitoringIOC(PVGroup):
                              lower_alarm_limit=-1.0,
                              upper_warning_limit=100.0,
                              lower_warning_limit=-1.0,
+                             alarm_group="asic_gr_cur",
                              precision=3,
                              units="A",
                              doc="Guard Ring Current")
@@ -524,9 +542,10 @@ class EpixMonitoringIOC(PVGroup):
         """
         Scan this record
         """
-        curtime = time.time()
-        checkval = curtime-self.lastmontime > self.monchkdelay.value
-        await instance.write(value=checkval)
+        if self.lastmontime is not None:
+            curtime = time.time()
+            checkval = curtime-self.lastmontime > self.monchkdelay.value
+            await instance.write(value=checkval)
 
     @set_monitor.putter
     async def set_monitor(self, instance, flag):

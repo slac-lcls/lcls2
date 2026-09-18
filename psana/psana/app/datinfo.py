@@ -50,11 +50,17 @@ def ds_run_det(args):
     except:
       print('Can not open DataSource\nCheck if xtc2 file is available')
       sys.exit()
-    run = next(ds.runs())
+
+    print('datinfo ds_run_det > ds.runs() > calib_constants_all_types')
+    run = next(ds.runs()) # <<<<<<<<<<< calls calib_constants_all_types
+
     det = None if args.detname is None else run.Detector(args.detname, logmet_init=logger.info)
 
-    print('args.detname:%s' % str(args.detname))
-    print('DataSource members and methods\ndir(ds):', dir(ds))
+    #sys.exit('TEST EXIT')
+
+    print(f'args.detname:{str(args.detname)}')
+    if args.logmode == 'DEBUG':
+        print('DataSource members and methods dir(ds):\n', dir(ds))
 
     xtc_path = getattr(ds, 'xtc_path', None)
     print('ds.xtc_path:', str(xtc_path))
@@ -70,14 +76,7 @@ def ds_run_det(args):
     print('ds.is_mpi:', str(ds.is_mpi()))
     print('ds.live:', str(ds.live))
 
-    #sys.exit('TEST EXIT')
-
-
-    print('dskwargs:', args.dskwargs)
-    #print('run.timestamp :', run.timestamp)
-
     print(info_run(run, cmt='run info\n    ', sep='\n    '))
-    #print(info_detnames(run, cmt='\ncommand: '))
     print(info_detnames_for_dskwargs(args.dskwargs, cmt='\ncommand: '))
 
     if det is None:
@@ -85,7 +84,8 @@ def ds_run_det(args):
         sys.exit('EXIT')
 
     det_raw_attrs = dir(det.raw)
-    print('\ndir(det.raw):', det_raw_attrs)
+    if args.logmode == 'DEBUG':
+        print(f'\ndir(det.raw): {str(det_raw_attrs)}')
 
     print('det.raw._uniqueid       :', det.raw._uniqueid if '_uniqueid' in det_raw_attrs else 'MISSING')
     print('det.raw._fullname       :', det.raw._fullname() if '_fullname' in det_raw_attrs else 'MISSING')
@@ -107,6 +107,8 @@ def ds_run_det(args):
     if seg_geo is not None:
       print('det.raw._seg_geo.shape():', seg_geo.shape() if seg_geo is not None else '_seg_geo is None')
 
+    return ds, run, det
+
 
 def selected_record(nrec):
     return nrec<5\
@@ -118,30 +120,26 @@ def info_det_evt(det, evt, ievt):
     return '  Event %05d    %s' % (ievt, ('detector is None'+80*' ' if det is None else info_ndarr(det.raw.raw(evt), 'raw ')))
 
 
-def loop_run_step_evt(args):
+def loop_run_step_evt(ds, run, det, args):
   """Data access example for confluence
      run, step, event loops
   """
+  from psana.pyalgos.generic.NDArrUtils import info_ndarr
+
   typeinfo = args.typeinfo.lower()
   do_loopruns  = 'r' in typeinfo
   do_loopevts  = 'e' in typeinfo
   do_loopsteps = 's' in typeinfo
 
-  from psana.pyalgos.generic.NDArrUtils import info_ndarr
-  #from psana import DataSource
-  #ds = DataSource(exp=args.expt, run=args.run, dir=f'/cds/data/psdm/{args.expt[:3]}/{args.expt}/xtc', max_events=1000)
-
-  dskwargs = datasource_kwargs_from_string(args.dskwargs)
-  print('dskwargs', dskwargs)
-  ds = DataSource(**dskwargs)
-
   if do_loopruns:
-    for irun, run in enumerate(ds.runs()):
+    #for irun, run in enumerate(ds.runs()):
+      irun = 0
       print('\n==== %02d run: %d exp: %s detnames: %s' % (irun, run.runnum, run.expt, ','.join(run.detnames)))
       print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
-      if not do_loopsteps: continue
+      #if not do_loopsteps: continue
       print('%s detector object' % args.detname)
-      det = None if args.detname is None else run.Detector(args.detname, logmet_init=logger.info)
+
+      #det = None if args.detname is None else run.Detector(args.detname, logmet_init=logger.info)
 
       is_epix10ka  = False if det is None else det.raw._dettype == 'epix10ka'
       is_epixhr2x2 = False if det is None else det.raw._dettype == 'epixhr2x2'
@@ -164,12 +162,12 @@ def loop_run_step_evt(args):
 
       det.raw._calibconstants()  # prints cc.info_calibconst()
 
-      for istep, step in enumerate(run.steps()):
+      if do_loopsteps:
+       for istep, step in enumerate(run.steps()):
         print('\nStep %02d' % istep, end='')
         if is_epixm320:
           from psana.detector.UtilsEpixm320Calib import gain_mode_name
           print(' gain mode name from config: %s' % gain_mode_name(det), end='')
-
 
         if step_docstring is not None:
           sds = step_docstring(step)
@@ -225,25 +223,22 @@ def do_main():
         exit('EXIT - MISSING ARGUMENT(S)')
 
     parser = argument_parser()
-    args = parser.parse_args()
-    #opts = vars(args)
-
-    #?????defs = vars(parser.parse_args([])) # dict of defaults only
+    args = parser.parse_args() # Namespace
+    #opts = vars(args)         # dict
+    #defs = vars(parser.parse_args([])) # dict of defaults only
 
     #logging.basicConfig(format='%(asctime)s %(name)s %(levelname)s: %(message)s', datefmt='%H:%M:%S', level=logging.DEBUG)
     #logging.basicConfig(filename='log.txt', filemode='w', format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
-    fmt = '[%(levelname).1s] %(name)s %(message)s' if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
+    fmt = '[%(levelname).1s] %(filename)s %(lineno)04d %(message)s' # if args.logmode=='DEBUG' else '[%(levelname).1s] %(message)s'
     logging.basicConfig(format=fmt, level=DICT_NAME_TO_LEVEL[args.logmode])
 
     print('command line: %s' % info_command_line())
     logger.info(info_parser_arguments(parser))
 
-    #print('input parameters: %s' % info_dict(opts, fmt='%s: %s', sep=', '))
-    #pedestals_calibration(*args, **opts)
-    #pedestals_calibration(**opts)
-    ds_run_det(args)
-
-    loop_run_step_evt(args)
+    resp = ds_run_det(args)
+    if resp is None: exit('EXIT - ds_run_det responce is None')
+    ds, run, det = resp
+    loop_run_step_evt(ds, run, det, args)
 
     logger.info('DONE, consumed time %.3f sec' % (time() - t0_sec))
 

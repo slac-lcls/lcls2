@@ -66,14 +66,19 @@ JWT_OR_KRB = '-jwt/' if CALIB_JWT else '-kerb/'
 URL = URL_ENV + '/calib_ws/'
 URL_KRB = URL_ENV + JWT_OR_KRB + 'calib_ws/'
 
-print(f'URL CALIB DB RO: {URL}')
-print(f'URL CALIB DB RW: {URL_KRB}')
+logger.debug(f'URL CALIB DB RO: {URL}')
+logger.debug(f'URL CALIB DB RW: {URL_KRB}')
+
+_counter = 0
 
 def krbheaders():
+    global _counter
     try:
         krbh = KerberosTicket(URL_KRBHEADERS).getAuthHeaders()
     except Exception as e:
-        logger.warning(f'WARNING: kerberos ticket is not valid - use commands klist, kinit\nException: {str(e)}')
+        _counter += 1
+        if _counter<4: logger.error(f'WARNING: kerberos ticket is not valid - use command: kinit (klist, kdestroy)\n    Exception: {str(e)}')
+        #if _counter>2: sys.exit('\npsana/pscalib/calib/CalibConstants.py: EXIT DUE TO: kerberos ticket is not valid')
         return None
     krbh = dict(krbh)
     krbh['Content-Type'] = 'application/octet-stream'

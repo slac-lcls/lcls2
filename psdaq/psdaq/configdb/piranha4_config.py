@@ -25,6 +25,10 @@ args = {}
 #FEB parameters
 ocfg = None
 
+# user set holding the flat-field (FPN/PRNU) coefficients to load at configure,
+# as written by psdaq/configdb/piranha4_flatfield_cal.py
+coeff_user_set = 1
+
 #timebase
 clkRate      = 1300/7.  # MHz
 clksPerFrame = 200
@@ -420,6 +424,16 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     uart.VV()
     uart._rx._await()
     #print('Voltage: ', uart._rx._resp[-1])
+
+    #  Load the dark/flat-field pixel coefficients from a user set.  'lpc'
+    #  loads only the FPN/PRNU coefficients, so no other camera setting is
+    #  disturbed (unlike 'usl', which reloads everything 'gcp' reports).
+    #  Whether the coefficients are applied is set by the configdb FFM value.
+    #  Reading from flash is slower than a normal command, so allow more time.
+    logging.info('loading pixel coefficients from user set %d'%coeff_user_set)
+    uart._rx._clear()
+    uart.LPC.set('%d'%coeff_user_set)
+    uart._rx._await(20.0)
 
     # should be done by supervisor only, but XpmMini so doesn't really matter
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(False)
