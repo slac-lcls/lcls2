@@ -634,6 +634,7 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['segment_numbers'] = obdet.raw._segment_numbers
     kwa['shape_as_daq'] =\
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
+    kwa['dark_factor']  = getattr(obdet.raw, '_dark_factor', None)
     #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 
