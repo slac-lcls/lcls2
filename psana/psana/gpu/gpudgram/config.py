@@ -29,6 +29,37 @@ FIELD_NCOLS = 5
 
 SCALAR_SHAPE_INDEX = np.iinfo(np.uint64).max
 
+# Stream-grouped location requests; output indices preserve caller order.
+HANDLE_NAMES_INDEX = 0
+HANDLE_FIELD_INDEX = 1
+HANDLE_OUTPUT_INDEX = 2
+HANDLE_NCOLS = 3
+
+
+def build_field_location_tables(configs, handles):
+    """Compile unique handles and stream ranges without inspecting event data."""
+    handles = tuple(dict.fromkeys(handles))
+    for handle in handles:
+        if not isinstance(handle, GpuFieldHandle):
+            raise TypeError("handle must be a GpuFieldHandle")
+        if not 0 <= handle.stream_id < configs.n_streams:
+            raise ValueError("field handle has an invalid stream id")
+        if not 0 <= handle.config_names_index < len(configs.names_table):
+            raise ValueError("field handle has an invalid Configure Names index")
+        if not 0 <= handle.config_field_index < len(configs.fields_table):
+            raise ValueError("field handle has an invalid Configure field index")
+        if (configs.names_table[handle.config_names_index, NAMES_STREAM_ID]
+                != handle.stream_id):
+            raise ValueError("field handle stream does not own its Configure Names")
+    order = sorted(range(len(handles)), key=lambda i: handles[i].stream_id)
+    table = np.empty((len(handles), HANDLE_NCOLS), dtype=np.uint64)
+    counts = np.zeros(configs.n_streams + 1, dtype=np.uint64)
+    for row, index in enumerate(order):
+        handle = handles[index]
+        table[row] = (handle.config_names_index, handle.config_field_index, index)
+        counts[handle.stream_id + 1] += 1
+    return handles, counts.cumsum(dtype=np.uint64), table
+
 
 @dataclass(frozen=True)
 class ConfigField:

@@ -366,3 +366,45 @@ def test_to_device_records_host_counts_without_copying_strings():
     assert device.stream_names_index.dtype == np.uint64
     assert device.names.shape == (1, 7)
     assert device.fields.shape == (1, 5)
+
+
+def test_location_plan_groups_streams_preserving_handle_identity():
+    from psana.gpu.gpudgram.config import build_field_location_tables
+    configs = GpuStreamConfigTable({
+        i: [_entry('det', i, 'raw', 10, [_field('x', 2, 4, 0, 0, -1)])]
+        for i in (0, 2, 3)
+    })
+    h0, h2, h3 = configs.field_handles()
+    handles, ranges, table = build_field_location_tables(configs, [h3, h0, h2, h0])
+    assert handles == (h3, h0, h2)
+    assert ranges.tolist() == [0, 1, 1, 2, 3]
+    assert table.tolist() == [[0, 0, 1], [1, 1, 2], [2, 2, 0]]
+    empty, ranges, table = build_field_location_tables(configs, [])
+    assert empty == () and ranges.tolist() == [0] * 5 and table.shape == (0, 3)
+
+
+def test_batched_locator_growth_budget_and_failure():
+    from psana.gpu.gpudgram.batch import _GpuXtcSlotBuffers, LOC_NCOLS
+    from psana.gpu.gpu_budget import _GpuBudget
+    budget = _GpuBudget(limit_bytes=10**6)
+    slot = _GpuXtcSlotBuffers(cp=np, budget=budget)
+    first = slot.batched_locator_rows(3, 5)
+    assert slot.batched_locator_rows(3, 2) is first
+    assert budget.committed() == first.nbytes == slot.memory_bytes
+
+    class FailAllocation:
+        uint64 = np.uint64
+
+        @staticmethod
+        def empty(shape, dtype):
+            assert budget.committed() == first.nbytes + 3 * 7 * LOC_NCOLS * 8
+            raise MemoryError('injected')
+
+    slot.cp = FailAllocation
+    with pytest.raises(MemoryError, match='injected'):
+        slot.batched_locator_rows(3, 7)
+    assert slot.locator_backing is first
+    assert budget.committed() == first.nbytes == slot.memory_bytes
+    slot.cp = np
+    grown = slot.batched_locator_rows(3, 7)
+    assert budget.committed() == grown.nbytes == slot.memory_bytes
