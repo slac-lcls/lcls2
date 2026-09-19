@@ -29,6 +29,14 @@ the conclusions.
 - **Read any existing `/etc/modprobe.d/datadev.conf` before converting a node to dkms.**  An
   `insmod`-based node keeps its parameters in a script, so a file may exist that has never been
   in effect and that `modprobe` would silently activate.
+- **Converting a node to dkms also drops the NVIDIA module parameters.**
+  `comp_and_load_drivers.sh` passes `NVreg_OpenRmEnableUnsupportedGpus=1
+  NVreg_EnableStreamMemOPs=1` on its `insmod` line and nothing in the dkms path supplies them,
+  so a `modprobe`-loaded node has `EnableStreamMemOPs: 0`.  `drp_gpu` does not care -- its
+  kernels write the GpuAsyncCore registers directly -- so the DAQ runs perfectly while
+  `rdmaTest` aborts with "Selected GPU lacks stream memory ops".  That asymmetry is what makes
+  it easy to miss.  Fix with `/etc/modprobe.d/nvidia-daq.conf`; check with
+  `grep EnableStreamMemOPs /proc/driver/nvidia/params`.
 - **`fuser` and `lsof` show only your own processes**, so an apparently stale refcount may be
   another user's live service.  `ps -eo user,pid,args` sees what they cannot.
 - **A GPU in `Node Reboot Required` state may hang `sudo reboot`** -- use IPMI.
