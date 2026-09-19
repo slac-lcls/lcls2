@@ -63,11 +63,56 @@ That is not academic for us.  NPS=4 is what makes a card's `numa_node` meaningfu
 exactly why the `Cores=` socket-boundary bug surfaced only on gpu008: with NPS=1 a NUMA node
 *is* a socket, so the wrong definition and the right one coincide.
 
-**Worth deciding which configuration is wanted before the November boxes arrive**, since the
-two live settings disagree.  NPS=4 gives finer locality information, which the GPU DRP's
-card-to-GPU DMA path could use; hyperthreading off gives Slurm a simpler core model and avoids
-the `CpuSpecList` trap where reserving `0-3` leaves `64-67` schedulable.  gpu008 has both,
-gpu006 and gpu007 have neither, and nobody has chosen.  Both `Cores=` fixes
+### BIOS settings for the November boxes: a recommendation to argue with
+
+Nobody in the group has decided this, and Chris's inclination is to take the defaults until
+something pushes otherwise.  We know how to update the BIOS, so all 20+ nodes can be made
+uniform; the question is what to make them.  A concrete proposal, with the reasoning, so there
+is something to disagree with:
+
+**SMT off** -- settled, and for a concrete reason rather than preference.  `CpuSpecList` does
+not reserve whole cores when SMT is on: on gpu006, `cpu0`'s sibling is `cpu64`, so
+`CpuSpecList=0-3` leaves `64-67` schedulable and the reservation is half-effective.  That is
+the open IT ticket about Slurm landing work on WEKA-saturated cores.  With SMT off it
+disappears, and the `CPUs=`/`ThreadsPerCore=` bookkeeping stops being a trap -- as gpu007's
+`CPUs=64` against 128 hardware threads has just demonstrated.
+
+**NPS=1** -- recommended, but on weaker grounds, and worth measuring before committing twenty
+boxes.
+
+The reasoning starts from a correction.  It is tempting to say NPS does not matter because
+datadev traffic goes to the GPU rather than to host memory.  The *payload* does, but the DRP
+uses pinned host memory in its hot path: `m_hostWrtBufs` (`MemPool.cc:484`) holds the DMA
+descriptors, TimingHeaders and TEB input data, mapped so both CPU and GPU see it.  So there is
+per-event host traffic, small but on the critical path, and that is where NPS would bite.
+
+The case for NPS=1 is that **the NPS=4 quadrants are too small to place into**:
+
+| | |
+|---|---|
+| NPS=4 quadrant | 8 cores, 94 GB |
+| one GPU DRP asks for | `cores:4` |
+| gpu008 runs | 5-6 DRPs, plus TEB, timing DRP, monitoring |
+
+Two DRPs fill a quadrant, so with six the placement spans quadrants regardless and NPS=4's
+finer information buys nothing anyone can act on.  Meanwhile it costs: each quadrant has a
+quarter of the socket's local memory bandwidth, so any allocation that does not fit, or any
+thread that migrates, takes an Infinity Fabric hop.  NPS=1 interleaves across all four
+controllers, giving every allocation the socket's full bandwidth and making the DRP insensitive
+to where its pinned buffers land.
+
+Two honest caveats:
+
+- **NPS=4 is what makes a card's `numa_node` meaningful.**  `gen_gres_conf` prints it, and under
+  NPS=1 it degrades to socket granularity.  We do not currently act on it, but we would lose
+  the ability to.
+- **This is reasoning, not measurement.**  The experiment is the same six-DRP configuration at
+  both settings, comparing rate.  Expect no difference today, since every card is already
+  pinned at its PCIe 4.0 x8 ceiling at 12.788 GB/s -- the question only becomes live at x16
+  gen5.  gpu008 is the node to measure on, since it is the one already at NPS=4.
+
+So: **SMT off and NPS=1, uniformly**, with the NPS half offered as a considered guess rather
+than a result.  Both `Cores=` fixes
 have therefore been exercised: the CPU-versus-core-index fix on gpu006, whose 128 CPUs would
 otherwise have produced out-of-range indices, and the NUMA-versus-socket fix on gpu008.
 gpu006's published `Cores=32-63` is correct and Slurm confirms it with `(S:1)`.
