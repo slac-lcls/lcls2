@@ -16,10 +16,34 @@ usable -- `/proc` reports driver state, `lspci` reports hardware.
 |---|---|---|---|---|
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
 | gpu003 | 1 | 1 A5000 | **no** | Gabriel's; conversion pending |
-| gpu005 | 6 | 1 H100 NVL at `47:00.0` | no | datadev driver **not loaded**, so no `/proc/datadev_*`; six cards at `45,46,ae,af,c0,c1`.  Also carries `nvidia-fs` (GDS), which no other node has |
+| gpu005 | 6 | 1 H100 NVL at `47:00.0` | no | **the first big-box GPU node, so it differs throughout** -- see below |
 | gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5` |
 | gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
 | gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
+
+### gpu005 is the odd one out, for historical reasons
+
+It was the first big-box GPU node, built while we were still learning about GPUs, so its
+differences are provenance rather than design:
+
+- **Intel Xeon Gold 6444Y**, 2 sockets x 16 cores x **2 threads**, **2 NUMA nodes** -- where
+  gpu006/7/8 are AMD EPYC 9355, 2 x 32 x 1 thread, 8 NUMA nodes.
+- **H100 NVL** rather than H200, chosen before we knew better.
+- Six datadev cards for one GPU, so five could not be paired if it were ever converted -- far
+  more constrained than any node done so far.
+- The datadev driver is **not loaded**, which is why `/proc/datadev_*` is empty; the cards are
+  visible to `lspci`.
+- It carries **`nvidia-fs`** (GPUDirect Storage), which no other node has.  Not used by the
+  GPU DRP today, but relevant to the recorder and file-writing work, since GDS is the
+  mechanism for writing from GPU memory without a host bounce.  Worth knowing someone set it
+  up.
+- `chan01` and `lorelli` have processes there.
+
+**It is the only remaining node that would exercise the hyperthreaded `Cores=` path.**  The
+two `Cores=` bugs needed different topologies to show: CPU-versus-core indices appears only
+with `ThreadsPerCore=2`, which only gpu005 has, and NUMA-versus-socket boundaries appears only
+with NPS=4, which only the EPYC nodes have.  So if `gen_gres_conf` is ever run here it tests
+the fix the EPYC nodes cannot.
 
 ## Rules that will bite you, learned the hard way
 
