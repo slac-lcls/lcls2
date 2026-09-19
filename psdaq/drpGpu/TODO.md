@@ -12,6 +12,37 @@ no driver looks cardless.  That mistake was made here first, concluding gpu005 h
 cards when it has six.  Same trap as trusting `/proc/driver/nvidia/gpus/` to prove a GPU is
 usable -- `/proc` reports driver state, `lspci` reports hardware.
 
+CPU topology, which matters because `Cores=` depends on it and the nodes are not uniform:
+
+| node | CPU | sockets x cores x threads | NUMA | `slurm.conf` `CPUs=` |
+|---|---|---|---|---|
+| gpu001 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
+| gpu003 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
+| gpu005 | Xeon Gold 6444Y | 2 x 16 x 2 | 2 | -- |
+| gpu006 | EPYC 9355 | 2 x 32 x **2** | **2** | 128 ✓ |
+| gpu007 | EPYC 9355 | 2 x 32 x **2** | **2** | **64 -- wrong, see below** |
+| gpu008 | EPYC 9355 | 2 x 32 x 1 | **8** | 64 ✓ |
+
+**gpu008 is the outlier, not gpu006/7.**  All three are identical EPYC 9355 boxes, but gpu008
+has hyperthreading **off** and **NPS=4** where its two siblings have hyperthreading **on** and
+NPS=1.  Those are BIOS settings, so someone configured gpu008 differently.  Both `Cores=` fixes
+have therefore been exercised: the CPU-versus-core-index fix on gpu006, whose 128 CPUs would
+otherwise have produced out-of-range indices, and the NUMA-versus-socket fix on gpu008.
+gpu006's published `Cores=32-63` is correct and Slurm confirms it with `(S:1)`.
+
+**gpu007's `slurm.conf` line under-declares its CPUs, and the fix is sitting commented out
+directly below it:**
+
+    NodeName=...gpu007 CPUs=64  ... ThreadsPerCore=2 ...      <- active, wrong
+    #NodeName=...gpu007 CPUs=128 ... ThreadsPerCore=2 ...     <- commented out, correct
+
+`slurmd -C` detects 128, and 2 x 32 x 2 = 128, so the active line loses half the node.  It
+presents as a non-fatal `error: Node configuration differs from hardware: CPUs=64:128(hw)` at
+every slurmd start -- visible in that node's journal and noted here on 2026-09-16 without
+spotting that the correction was one line away.  It looks like `CPUs=64` was copied from
+gpu008 without matching `ThreadsPerCore=1`.  Worth fixing when gpu007 is converted, since the
+controller file is being edited then anyway.
+
 | node | datadev cards | GPUs | dkms | notes |
 |---|---|---|---|---|
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
