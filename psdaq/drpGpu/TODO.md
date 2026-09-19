@@ -36,12 +36,27 @@ directly below it:**
     NodeName=...gpu007 CPUs=64  ... ThreadsPerCore=2 ...      <- active, wrong
     #NodeName=...gpu007 CPUs=128 ... ThreadsPerCore=2 ...     <- commented out, correct
 
-`slurmd -C` detects 128, and 2 x 32 x 2 = 128, so the active line loses half the node.  It
-presents as a non-fatal `error: Node configuration differs from hardware: CPUs=64:128(hw)` at
-every slurmd start -- visible in that node's journal and noted here on 2026-09-16 without
-spotting that the correction was one line away.  It looks like `CPUs=64` was copied from
-gpu008 without matching `ThreadsPerCore=1`.  Worth fixing when gpu007 is converted, since the
-controller file is being edited then anyway.
+`slurmd -C` detects 128, and 2 x 32 x 2 = 128, so the active line loses half the node:
+`CPUEfctv=60` against gpu006's `124` on identical hardware.  It presents as a non-fatal
+`error: Node configuration differs from hardware: CPUs=64:128(hw)` at every slurmd start.
+
+**The commented-out line is not a forgotten fix -- Ric wrote it, tried it, and reverted it**
+because swapping the comments put Slurm into a bad state, and restoring the old line brought
+Slurm back.  So it is still hanging fire rather than waiting to be applied, and an earlier
+version of this note wrongly framed it as an oversight to tidy up during the conversion.
+
+Why it probably failed, though this is inference and not established: **gpu007 has jobs running
+permanently**, since XPM:13 lives there.  At the time of writing it shows `CPUAlloc=37`,
+`State=MIXED`.  Changing a node's CPU count while jobs hold allocations computed under the old
+geometry is the kind of transition that goes wrong -- the same class as the drains we have seen
+after every gres change, but affecting running work rather than just scheduling.  gpu006
+carries the identical parameters with `CPUs=128` and is fine, so 128 is not wrong for this
+hardware.
+
+If it is retried, the obvious precautions are to drain the node and let its jobs finish first,
+stop the XPM processes deliberately rather than have Slurm evict them, and expect to clear a
+drain afterwards.  Worth asking someone who knows Slurm better than we do, rather than
+experimenting on a node other people depend on.
 
 | node | datadev cards | GPUs | dkms | notes |
 |---|---|---|---|---|
