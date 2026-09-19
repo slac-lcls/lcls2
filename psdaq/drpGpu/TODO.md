@@ -6,14 +6,17 @@ in people's heads.
 
 ## The GPU nodes, and which are DRP-capable
 
-As of 2026-09-18.  Not all "GPU nodes" can run a GPU DRP, which matters when someone asks why
-a node has no gres records.
+As of 2026-09-18.  Card counts are from `lspci | grep -i slac`, **not** from
+`/proc/datadev_*`: the latter exists only when the driver is loaded, so a node with cards and
+no driver looks cardless.  That mistake was made here first, concluding gpu005 had no FPGA
+cards when it has six.  Same trap as trusting `/proc/driver/nvidia/gpus/` to prove a GPU is
+usable -- `/proc` reports driver state, `lspci` reports hardware.
 
 | node | datadev cards | GPUs | dkms | notes |
 |---|---|---|---|---|
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
 | gpu003 | 1 | 1 A5000 | **no** | Gabriel's; conversion pending |
-| gpu005 | **none** | 1 H100 NVL | n/a | **cannot run a GPU DRP** -- no FPGA cards, so no pairing |
+| gpu005 | 6 | 1 H100 NVL at `47:00.0` | no | datadev driver **not loaded**, so no `/proc/datadev_*`; six cards at `45,46,ae,af,c0,c1`.  Also carries `nvidia-fs` (GDS), which no other node has |
 | gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5` |
 | gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
 | gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
