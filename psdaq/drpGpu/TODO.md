@@ -29,14 +29,18 @@ differences are provenance rather than design:
 - **Intel Xeon Gold 6444Y**, 2 sockets x 16 cores x **2 threads**, **2 NUMA nodes** -- where
   gpu006/7/8 are AMD EPYC 9355, 2 x 32 x 1 thread, 8 NUMA nodes.
 - **H100 NVL** rather than H200, chosen before we knew better.
-- Six datadev cards for one GPU, so five could not be paired if it were ever converted -- far
-  more constrained than any node done so far.
+- Six datadev cards for one GPU, so five could not be paired if it were ever converted.  That
+  ratio is an artefact of the box being early and partly populated, not a configuration to
+  plan around.
 - The datadev driver is **not loaded**, which is why `/proc/datadev_*` is empty; the cards are
   visible to `lspci`.
-- It carries **`nvidia-fs`** (GPUDirect Storage), which no other node has.  Not used by the
-  GPU DRP today, but relevant to the recorder and file-writing work, since GDS is the
-  mechanism for writing from GPU memory without a host bounce.  Worth knowing someone set it
-  up.
+- It carries **`nvidia-fs`** (GPUDirect Storage), which no other node has, because
+  **Cheolhong has been testing GDS there** -- the 22 GB/s figure quoted under "Recorder and
+  file writing" was measured on this node.  Relevant to that work, since GDS is the mechanism
+  for writing from GPU memory without a host bounce.
+- **It is not fully populated** the way the November nodes will be, being an early box.  So
+  its card and GPU counts, and the six-cards-to-one-GPU ratio, are not representative of what
+  the rollout has to handle.
 - `chan01` and `lorelli` have processes there.
 
 **It is the only remaining node that would exercise the hyperthreaded `Cores=` path.**  The
@@ -534,11 +538,18 @@ process to report anything.
   scatter-gather.  Profile `TebReceiver::_recorder()` and the writer
   before the third-party compressor work: the sink's throughput sets the compression
   ratio the reducers have to achieve.  At 33 kHz the uncompressed calibrated rate is
-  ~25 GB/s, above even the 22 GB/s measured with GPUDirect Storage working properly.
-  GDS is unavailable (mixed IB/Ethernet is unsupported by WEKA), so cuFile runs in
-  compatibility mode — worth asking whether cuFile buys anything over an explicit
-  device-to-host copy plus `pwritev` in that mode, and whether scatter-gather writes
-  help.
+  ~25 GB/s, above the **22 GB/s Cheolhong measured with GPUDirect Storage on gpu005** --
+  the only node with `nvidia-fs` installed, and measured there *with* the unsupported
+  IB/Ethernet mix rather than on a supported configuration.  So 22 GB/s is a real number from
+  real hardware but not an upper bound for a properly supported setup, and the sink is still
+  slower than the source either way.
+
+  GDS is nominally unavailable, since WEKA does not support a mixed IB/Ethernet fabric, so
+  cuFile falls back to compatibility mode.  Worth asking whether cuFile buys anything over an
+  explicit device-to-host copy plus `pwritev` in that mode, and whether scatter-gather writes
+  help.  Worth also asking Cheolhong what his 22 GB/s actually exercised, since "GDS on an
+  unsupported fabric" could mean the compatibility path rather than true peer-to-peer -- which
+  changes whether the number is a floor or a ceiling.
 
 - **Remove `HOST_LAUNCHED_REDUCERS`.**  A temporary switch for seeing whether
   certain reducers worked at all.  It gives reducers two launch paths of which only
