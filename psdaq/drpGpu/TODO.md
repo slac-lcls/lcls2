@@ -23,10 +23,15 @@ CPU topology, which matters because `Cores=` depends on it and the nodes are not
 | gpu007 | EPYC 9355 | 2 x 32 x **2** | **2** | **64 -- wrong, see below** |
 | gpu008 | EPYC 9355 | 2 x 32 x 1 | **8** | 64 ✓ |
 
-**gpu008 is the outlier, not gpu006/7, and the BIOS version is why.**  All three are the same
-hardware -- board `H14DSG-O-CPU` rev 1.01 in an `AS -5126GS-TNRT` chassis -- so the motherboard
-replacement Supermicro carried out on arrival did not leave gpu008 with a different board.  What
-differs is the firmware:
+**gpu008 is the outlier, not gpu006/7, and the BIOS version is why.**  All three report the same
+board -- `H14DSG-O-CPU` rev 1.01 in an `AS -5126GS-TNRT` -- so Supermicro's on-arrival
+motherboard replacement did not leave gpu008 differing from its siblings.  Note that is all it
+shows: if the wrong model was delivered fleet-wide then all three report the wrong thing
+identically, and the separate question of whether these should be `AS -5126GS-TNRT2` is not
+answered by DMI.  The chassis DMI is only partly programmed anyway
+(`product_version 0123456789`, `product_sku To be filled by O.E.M.`).
+
+What differs between them is the firmware:
 
 | node | BIOS | date | hyperthreading | NUMA |
 |---|---|---|---|---|
@@ -35,10 +40,34 @@ differs is the firmware:
 | gpu008 | **2.0** | **2026-04-01** | **off** | **NPS=4** |
 
 gpu008 took a BIOS update in April that the others did not, and its settings changed with it --
-either reset to new defaults or configured deliberately at the same time.  Worth knowing before
-anyone assumes the three are interchangeable, and worth deciding which configuration is wanted
-before the November boxes arrive: NPS=4 gives finer memory locality, hyperthreading off gives
-Slurm a simpler core model, and the two nodes disagree today.  Both `Cores=` fixes
+either reset to new defaults or configured deliberately at the same time.
+
+**NPS is "NUMA Per Socket", a BIOS setting rather than a property of the silicon.**  An EPYC
+socket is several chiplets around an I/O die, with memory controllers and PCIe roots distributed
+across it; that physical arrangement is fixed.  NPS decides how finely the BIOS *describes* it
+to the OS.  Measured on the two nodes:
+
+| | gpu006, NPS=1 | gpu008, NPS=4 |
+|---|---|---|
+| nodes | 2, one per socket | 8, four per socket |
+| node0 memory | 386 GB, the whole socket | 96 GB, one quadrant |
+| node0 CPUs | `0-31,64-95` | `0-7` |
+| a card's `numa_node` | socket granularity | quadrant, e.g. `datadev_85` -> 5 |
+
+So NPS=1 aggregates each socket's memory controllers into one node and interleaves across them;
+NPS=4 exposes the quadrants, so the OS can tell that a card is nearer some of its own socket's
+memory than the rest.  The hardware is the same either way -- NPS=4 is simply more truthful
+about it.
+
+That is not academic for us.  NPS=4 is what makes a card's `numa_node` meaningful, and it is
+exactly why the `Cores=` socket-boundary bug surfaced only on gpu008: with NPS=1 a NUMA node
+*is* a socket, so the wrong definition and the right one coincide.
+
+**Worth deciding which configuration is wanted before the November boxes arrive**, since the
+two live settings disagree.  NPS=4 gives finer locality information, which the GPU DRP's
+card-to-GPU DMA path could use; hyperthreading off gives Slurm a simpler core model and avoids
+the `CpuSpecList` trap where reserving `0-3` leaves `64-67` schedulable.  gpu008 has both,
+gpu006 and gpu007 have neither, and nobody has chosen.  Both `Cores=` fixes
 have therefore been exercised: the CPU-versus-core-index fix on gpu006, whose 128 CPUs would
 otherwise have produced out-of-range indices, and the NUMA-versus-socket fix on gpu008.
 gpu006's published `Cores=32-63` is correct and Slurm confirms it with `(S:1)`.
