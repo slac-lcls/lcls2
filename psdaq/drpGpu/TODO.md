@@ -23,9 +23,22 @@ CPU topology, which matters because `Cores=` depends on it and the nodes are not
 | gpu007 | EPYC 9355 | 2 x 32 x **2** | **2** | **64 -- wrong, see below** |
 | gpu008 | EPYC 9355 | 2 x 32 x 1 | **8** | 64 ✓ |
 
-**gpu008 is the outlier, not gpu006/7.**  All three are identical EPYC 9355 boxes, but gpu008
-has hyperthreading **off** and **NPS=4** where its two siblings have hyperthreading **on** and
-NPS=1.  Those are BIOS settings, so someone configured gpu008 differently.  Both `Cores=` fixes
+**gpu008 is the outlier, not gpu006/7, and the BIOS version is why.**  All three are the same
+hardware -- board `H14DSG-O-CPU` rev 1.01 in an `AS -5126GS-TNRT` chassis -- so the motherboard
+replacement Supermicro carried out on arrival did not leave gpu008 with a different board.  What
+differs is the firmware:
+
+| node | BIOS | date | hyperthreading | NUMA |
+|---|---|---|---|---|
+| gpu006 | 1.9 | 2026-01-23 | on | NPS=1 |
+| gpu007 | 1.9 | 2026-01-23 | on | NPS=1 |
+| gpu008 | **2.0** | **2026-04-01** | **off** | **NPS=4** |
+
+gpu008 took a BIOS update in April that the others did not, and its settings changed with it --
+either reset to new defaults or configured deliberately at the same time.  Worth knowing before
+anyone assumes the three are interchangeable, and worth deciding which configuration is wanted
+before the November boxes arrive: NPS=4 gives finer memory locality, hyperthreading off gives
+Slurm a simpler core model, and the two nodes disagree today.  Both `Cores=` fixes
 have therefore been exercised: the CPU-versus-core-index fix on gpu006, whose 128 CPUs would
 otherwise have produced out-of-range indices, and the NUMA-versus-socket fix on gpu008.
 gpu006's published `Cores=32-63` is correct and Slurm confirms it with `(S:1)`.
