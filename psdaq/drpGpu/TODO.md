@@ -4,6 +4,20 @@ Working notes for the `features/gpu` branch.  Each item records enough context t
 be picked up cold, because the reasoning behind these decisions is otherwise only
 in people's heads.
 
+## The GPU nodes, and which are DRP-capable
+
+As of 2026-09-18.  Not all "GPU nodes" can run a GPU DRP, which matters when someone asks why
+a node has no gres records.
+
+| node | datadev cards | GPUs | dkms | notes |
+|---|---|---|---|---|
+| gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
+| gpu003 | 1 | 1 A5000 | **no** | Gabriel's; conversion pending |
+| gpu005 | **none** | 1 H100 NVL | n/a | **cannot run a GPU DRP** -- no FPGA cards, so no pairing |
+| gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5` |
+| gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
+| gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
+
 ## Rules that will bite you, learned the hard way
 
 Each of these has already cost time.  The reasoning is in the findings appendix; these are
@@ -29,7 +43,11 @@ the conclusions.
 - **Read any existing `/etc/modprobe.d/datadev.conf` before converting a node to dkms.**  An
   `insmod`-based node keeps its parameters in a script, so a file may exist that has never been
   in effect and that `modprobe` would silently activate.
-- **Converting a node to dkms also drops the NVIDIA module parameters.**
+- **Converting a node to dkms also drops the NVIDIA module parameters.**  As of 2026-09-18
+  `/etc/modprobe.d/nvidia-daq.conf` is in place on gpu001, gpu003, gpu005, gpu006, gpu007 and
+  gpu008, so the parameters survive a reboot everywhere; a copy lives in the session directory.
+  Nodes whose nvidia module predates the file still read `EnableStreamMemOPs: 0` until their
+  next load.
   `comp_and_load_drivers.sh` passes `NVreg_OpenRmEnableUnsupportedGpus=1
   NVreg_EnableStreamMemOPs=1` on its `insmod` line and nothing in the dkms path supplies them,
   so a `modprobe`-loaded node has `EnableStreamMemOPs: 0`.  `drp_gpu` does not care -- its
