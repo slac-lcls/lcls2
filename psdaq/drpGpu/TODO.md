@@ -465,7 +465,7 @@ process to report anything.
   for `ClearRxCounters()` (`TimingFrameRx.py:264`), so there is no third thing to call.
 
 
-- **Standalone harness for the graphs.**  Long-standing want: pull the kernels into
+- **Standalone harness for the CUDA graphs.**  Long-standing want: pull the kernels into
   a harness with synthesised input, both as permanent test code and as a profiling
   target.  `_event` is already a template in `ReaderKernels.cuh`, and
   `ReducerAlgo::recordGraph()` and `TriggerPrimitive::event()` already take a
