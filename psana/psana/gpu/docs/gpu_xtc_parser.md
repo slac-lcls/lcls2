@@ -145,8 +145,19 @@ spanning only that stream's handles and actual ShapesData references. The
 separate launches prevent initialization/decoding races. Scheduling requires
 no GPU metadata readback. Empty inputs and empty handle sets skip both kernels.
 
-`GpuEventBatch.locate(handle)` returns a cached per-handle view for configured
-handles. An unregistered handle still uses the lazy single-handle kernel,
+`GpuEventBatch.locate(handle)` creates a per-handle view on first access for
+configured handles and caches it for later calls. Parsing creates no per-handle
+Python wrappers: the combined backing, handle indices, and shared ready event
+are retained independently. Creating a configured view launches no kernels,
+allocates no device storage, and adds no synchronization; cross-stream consumers
+must still wait on its shared ready event. Canonical gathering uses the combined
+storage directly and needs no per-handle wrappers.
+
+For subsequent bulk-read integration, input owners must retain this shared event
+explicitly (available through `configured_locations().ready`), even when the
+wrapper cache is empty. Enumerating `_locators` alone is insufficient.
+
+An unregistered handle still uses the lazy single-handle kernel,
 with one work item per allocated ShapesData reference slot. Both paths share
 the same field-offset decoder and atomic duplicate detection. References for
 other Configure Names rows are ignored. For a match, the decoder finds the
@@ -177,8 +188,10 @@ contract permits reuse. Growth reserves the full replacement allocation
 before releasing the old accounting, and failed allocation preserves the old
 buffer and its budget charge.
 
-This change covers location only. Gathering and bulk-read/input-window
-integration remain separate review work.
+The subsequent canonical-gather change consumes this combined backing once
+per detector execution subbatch; see
+[its review and call path](batched_canonical_gather_review.md).
+Bulk-read/input-window integration remains separate review work.
 
 ## xpptut15 example
 
@@ -262,10 +275,16 @@ may be overwritten.
 routed detector segment. `EventPool` uses CPU descriptor metadata to construct
 one immutable `GpuEventDgrams` mapping per event. The same stream-indexed
 mapping is passed to every detector adapter, so event/stream ownership is not
-rebuilt per detector. `GPUDetector.process_batch()` reads the corresponding
-device locator row, validates type, rank, payload size, and bounds, and copies
-the field into canonical segment order. No XTC bytes or locator results make a
-GPU-to-CPU round trip.
+rebuilt per detector. Each detector uploads a fixed canonical gather plan once.
+`GPUDetector.process_batch()` makes a compact event/required-stream row map from
+those shared views, uploads it from reusable pinned storage, and submits one
+gather kernel for the existing execution subbatch. The kernel reads combined
+locator storage with its allocated capacity stride, validates type, rank,
+payload size, and bounds, and writes every canonical output pixel and presence
+byte. Missing or rejected rows are zero. Per-event calibration and subsequent
+missing-row cleanup remain unchanged. No XTC bytes or locator results make a
+GPU-to-CPU round trip in this detector path. The map and output slots remain
+protected by the existing consumer leases.
 
 Stage 4A introduces the input-to-detector ownership contracts in
 `gpu_input.py`:

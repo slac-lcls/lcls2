@@ -113,6 +113,26 @@ class DeviceFieldLocators:
         return self.rows_gpu
 
 
+@dataclass(frozen=True)
+class ConfiguredFieldLocations:
+    """Internal gather input; retains its parsed owner and allocation stride."""
+
+    owner: object
+    backing: object
+    handle_indices: object
+    ready: object
+
+    @property
+    def capacity(self):
+        return int(self.backing.shape[1])
+
+    def wait_on(self, stream):
+        # Same-stream submission is already ordered. Keep the producer stream
+        # alive via owner so its identity cannot be reused before consumption.
+        if stream.ptr != self.owner.stream.ptr:
+            stream.wait_event(self.ready)
+
+
 class GpuEventBatch:
     """Own device-side XTC parse state for one collection of stream dgrams.
 
@@ -236,14 +256,15 @@ class GpuEventBatch:
             self.walk_done = cp.cuda.Event()
             self.walk_done.record(self.stream)
         self._locators = {}
+        self._configured_backing = None
 
-    def _locate_configured(self, handles, stream_handles, handle_table, backing):
-        """Populate eager locators in two launches on the parser stream.
+    def _locate_configured(self, handles, stream_handles, handle_table, backing,
+                          handle_indices):
+        """Decode configured fields in two launches on the parser stream.
 
-        The slot owns the backing allocation. Each contiguous per-handle view
-        keeps that allocation alive and uses window-local dgram rows, even when
-        its capacity exceeds this batch's size. Lazy requests retain their
-        separate allocator and completion events.
+        The slot owns the backing allocation; retain it and the shared ready
+        event independently of the on-demand per-handle views. Unconfigured
+        requests retain their separate allocator and completion events.
         """
         cp = _cupy()
         capacity = int(backing.shape[1])
@@ -270,13 +291,26 @@ class GpuEventBatch:
             )
         ready = cp.cuda.Event(disable_timing=True)
         ready.record(self.stream)
-        self._locators.update(
-            (handle, DeviceFieldLocators(handle, backing[i, :self.n_dgrams], ready))
-            for i, handle in enumerate(handles)
+        self._configured_backing = backing
+        self._configured_indices = handle_indices
+        self._configured_ready = ready
+
+    def configured_locations(self):
+        """Return input-local combined storage without reading device metadata."""
+        if self._configured_backing is None:
+            raise ValueError("canonical gathering requires configured field locations")
+        return ConfiguredFieldLocations(
+            self, self._configured_backing, self._configured_indices,
+            self._configured_ready,
         )
 
     def locate(self, handle, *, stream=None):
-        """Launch or return the device locator table for ``handle``."""
+        """Return a cached view, decoding only unconfigured handles on demand.
+
+        Configured fields were decoded on the parser stream. Their first access
+        creates only a view, sharing the configured-ready event; consumers must
+        still wait on that event before using the rows on another stream.
+        """
         if not isinstance(handle, GpuFieldHandle):
             raise TypeError("handle must be a GpuFieldHandle")
         if not 0 <= handle.stream_id < self.device_configs.n_streams:
@@ -289,6 +323,16 @@ class GpuEventBatch:
         cached = self._locators.get(handle)
         if cached is not None:
             return cached
+
+        if self._configured_backing is not None:
+            index = self._configured_indices.get(handle)
+            if index is not None:
+                result = DeviceFieldLocators(
+                    handle, self._configured_backing[index, :self.n_dgrams],
+                    self._configured_ready,
+                )
+                self._locators[handle] = result
+                return result
 
         cp = _cupy()
         launch_stream = stream if stream is not None else self.stream

@@ -1,12 +1,15 @@
-# Batched locators: current diff review
+# Batched locators: B+ implementation review
 
 Reviewed 2026-09-18 against B (`803a70011d18168200927e279cbeaca90568e13f`).
 This records the pre-commit review snapshot, not a new
 gathering implementation or bulk-read integration.
 
-The next implementation is specified in the
-[batched canonical gather plan](batched_canonical_gather_plan.md), including
-the bulk integration contract: locate per input window, gather per execution.
+This historical snapshot describes B+ before canonical gathering and on-demand
+Python locator views. Those follow-ups are now covered by the
+[gather review](batched_canonical_gather_review.md) and
+[final pre-bulk review](batched_pre_bulk_review.md). The
+[implementation plan](batched_canonical_gather_plan.md) retains the bulk
+integration contract: locate per input window, gather per execution.
 
 ## Review result
 
