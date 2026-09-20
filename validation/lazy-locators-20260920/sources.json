@@ -1,0 +1,23 @@
+{
+  "psana/psana/gpu/__init__.py": "d33980f86737cec2cb130c5200e08a62182a47d6bb311575a970684bf999907a",
+  "psana/psana/gpu/context.py": "58582687dfb612e6dba12ea234f982f7afbfbeb80d5dccfd4774faae41f0d187",
+  "psana/psana/gpu/gpu_batch.py": "0aa3104cd512a4459877251341faf479d9f7133dd0103bea0d5ef026e4cfbda7",
+  "psana/psana/gpu/gpu_budget.py": "fed782c29ee6c4f3a1afcf41911f74ff96b99f89825477b2aefcd083076c1ab2",
+  "psana/psana/gpu/gpu_calib.py": "97b9cce3ac85ec44dad2e03ccdfc7cae2cffa57ebe3e4c5ca00510eed6f5fb96",
+  "psana/psana/gpu/gpu_detector.py": "1f3ab3cb43fb7c8bb7528f486001548a08aa059ed32088ebcd738508accd477e",
+  "psana/psana/gpu/gpu_events.py": "40397f0c4f551f721a3c05819901c21be07facc25f3593696edbb7914cb5ecf2",
+  "psana/psana/gpu/gpu_input.py": "02b040e765e17a2dd9ec1f2c7635a1241b102cee306195c4584be8ab80d875cb",
+  "psana/psana/gpu/gpu_kvikio_read.py": "a163a7a9e6a0c17a592b117b920cd045eed00dc728ccf29115ae3cb0c128b66e",
+  "psana/psana/gpu/gpu_mpi.py": "6277f1faf06700a707dab02ecf3ffeb58a68975791eea58a1e12e348206c08fe",
+  "psana/psana/gpu/gpu_mpi_benchmark.py": "8a676c5f877bda18677e1d159e22c6fae18cf9aef5afbf64d43c36f371d2de15",
+  "psana/psana/gpu/gpu_mpi_perf_compare.py": "66133994ac0f25409825b007c020e97d700574536ace483a63cdd0d7abbc4a37",
+  "psana/psana/gpu/gpu_performance_benchmark.py": "bcedaf22251d39e0e3c78f538033cbc56fae2d4c844967b110cc80136ae8e521",
+  "psana/psana/gpu/gpu_stream.py": "50572e056ae6ee6a1b6a7ec6cbc58608f3e7788eea887c8786bc6340f2929a18",
+  "psana/psana/gpu/gpudgram/__init__.py": "3324988f088a49bedaf4a8f91df3421e514cb32c40ebb8c409e311eb04493291",
+  "psana/psana/gpu/gpudgram/batch.py": "586f7a3d0b45bf6f1074784dcec99cb973df184fb2a22acda075ed693c640dcf",
+  "psana/psana/gpu/gpudgram/config.py": "fa0b7607df8bd3c031ef7ce4739c1faa1db189ee1c8196208f82e7555873c0c3",
+  "psana/psana/gpu/gpudgram/parser.py": "e3c2b143d5b30360d33c6b24ff2fb3126e18121c5256a9cff4364abc3142fddb",
+  "psana/psana/gpu/scripts/gpu_multi_rank_smoke.py": "3c6b4eb092401732f2fab06bdc5c3ca7ec85c5cf8fcfaffc2ff1e8bf73ba38a1",
+  "psana/psana/tests/gpu/integration/test_batched_gather.py": "0e86770c15fdf572603e97bd4ca011daccd48feae077ea4bc7980d638a772f93",
+  "psana/psana/tests/gpu/integration/test_batched_locators.py": "3213aaeded733beae0a1cd5667bd0323d86fbce5248e997dc18e03011e3af3e3"
+}
