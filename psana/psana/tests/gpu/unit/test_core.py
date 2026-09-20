@@ -450,10 +450,9 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     detector_events = []
 
     class _Parser:
-        def parse_window(self, read, stream, *, batch_id):
-            from psana.gpu.gpu_input_window import InputWindow
-            log.append(("parse", 0, read.data_gpu, read.desc_table, stream))
-            return InputWindow(batch_id, 0, xtc_batch, read.desc_table)
+        def parse(self, slot_id, data_gpu, desc_table, stream):
+            log.append(("parse", slot_id, data_gpu, desc_table, stream))
+            return xtc_batch
 
     class _Detector:
         def __init__(self, name):
@@ -464,7 +463,7 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
             log.append((self.name, kwargs["slot_id"], kwargs["stream"]))
             return iter(())
 
-    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table=np.array([[3, 7, 42, 0, 4, 0]], dtype=np.uint64))
+    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table="descriptors")
     pool = EventPool(n=1)
     record = pool.submit(
         gpu_view,
@@ -904,10 +903,56 @@ class _FakeDetForEstimate:
         self._n_segs_calib   = n_segs
         self._nrows          = nrows
         self._ncols          = ncols
-        self.binding = SimpleNamespace(has_sources=lambda streams: 0 in streams)
+        self._sources_by_stream = {0: (), 1: ()}
 
     def estimate_subbatch_bytes(self, n_events):
         return GPUDetector.estimate_subbatch_bytes(self, n_events)
+
+
+def test_memory_reporting_includes_gather_buffers_and_all_detectors(monkeypatch, caplog):
+    # Exercise reporting without touching a CUDA context on a CPU-only node.
+    monkeypatch.setitem(sys.modules, "cupy", None)
+
+    def detector(scale):
+        det = GPUDetector.__new__(GPUDetector)
+        det.peds_gpu = np.empty(10 * scale, dtype=np.float32)
+        det.gmask_gpu = np.empty(10 * scale, dtype=np.float32)
+        det._scatter_ix = det._scatter_iy = None
+        det._gather_plan = SimpleNamespace(table=np.empty((scale, 4), dtype=np.uint64))
+        det._calib_slot_bufs = [np.empty(20 * scale, dtype=np.float32)]
+        det._raw_slot_bufs = [np.empty(20 * scale, dtype=np.uint16)]
+        det._present_slot_bufs = [np.empty(scale, dtype=np.uint8)]
+        det._gather_maps = [
+            SimpleNamespace(host=np.empty(5 * scale, dtype=np.int64),
+                            device=np.empty(5 * scale, dtype=np.int64)),
+            SimpleNamespace(host=None, device=None),
+        ]
+        return det
+
+    manager = GpuEventManager.__new__(GpuEventManager)
+    manager.gpu_detectors = {"first": (None, detector(1)),
+                             "second": (None, detector(2))}
+    manager.gpu_reader = manager.gpu_xtc_parser = None
+    manager._d2h_pipelines = {"first.calib": SimpleNamespace(pinned_bytes=lambda: 1000)}
+    manager._high_water = {}
+
+    snapshot = manager._snapshot_memory("both")
+    assert snapshot.det_routing == {"first": 32, "second": 64}
+    assert snapshot.det_raw_slots == {"first": 81, "second": 162}
+    assert snapshot.pinned == 1120  # 120 host-map bytes plus 1,000 D2H bytes
+    assert manager.gpu_detectors["first"][1].memory_bytes()["total"] == 273
+    with caplog.at_level("INFO"):
+        manager.log_memory("both")
+        # A smaller later snapshot must not lower aggregate high-water marks.
+        manager.gpu_detectors.pop("second")
+        manager.log_memory("smaller")
+        manager.log_high_water()
+    assert {k: manager._high_water[k] for k in
+            ("constants", "routing", "calib_slots", "raw_slots", "pinned")} == {
+                "constants": 240, "routing": 96, "calib_slots": 240,
+                "raw_slots": 243, "pinned": 1120,
+            }
+    assert "routing=" in caplog.text
 
 
 def _new_splitting_gpu_events(det, budget_bytes):
@@ -1023,17 +1068,17 @@ class TestEstimateSubbatchBytes:
         e10 = det.estimate_subbatch_bytes(10)
         assert e10 == 10 * e1
 
-    def test_formula_covers_canonical_rows_including_missing_segments(self):
+    def test_formula_accounts_for_dense_output_and_gather_map(self):
         det = _FakeDetForEstimate(
             n_segs=32, nrows=512, ncols=1024,
             n_routed_segs=12,
         )
-        expected   = 32 * 512 * 1024 * (4 + 2) + 32
+        expected = 32 * 512 * 1024 * (4 + 2) + 32 + 2 * 8
         assert det.estimate_subbatch_bytes(1) == expected
 
     def test_formula_defaults_to_all_calib_segments(self):
         det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
-        expected = 1 * 8 * 256 * 512 * (4 + 2) + 8
+        expected = 1 * 8 * 256 * 512 * (4 + 2) + 8 + 2 * 8
         assert det.estimate_subbatch_bytes(1) == expected
 
 
@@ -1086,13 +1131,20 @@ class TestSplitSubbatches:
             (2, 4),
         ]
 
-    def test_splitter_rejects_indivisible_event_above_capacity(self):
+    def test_splitter_preserves_indivisible_events_above_target_size(self):
+        """Splitting preserves event identity; it does not authorize allocation.
+
+        This checks only the proposed subbatch boundaries, not admission of
+        an oversized event or permission to exceed the device-memory quota.
+        """
         det    = _FakeDetForEstimate(4, 512, 1024)
         events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
         gv     = GpuBatchView(_make_batch(3, bd_size=0))
-        from psana.gpu.gpu_budget import GpuMemoryPressureError
-        with pytest.raises(GpuMemoryPressureError, match='cannot fit alone'):
-            events._split_subbatches(gv)
+        sbs    = events._split_subbatches(gv)
+        # Each event appears in one proposed subbatch, with no partial event.
+        assert len(sbs) == 3
+        for i, sb in enumerate(sbs):
+            assert sb._start == i and sb._end == i + 1
 
     def test_event_order_preserved(self):
         det    = _FakeDetForEstimate(4, 512, 1024)
@@ -1266,7 +1318,7 @@ class TestKvikioSlotBufferBudget:
             calls.append(nbytes)
             if fail_at is not None and nbytes >= fail_at:
                 raise RuntimeError("simulated cudaMalloc failure")
-            return np.empty(nbytes, dtype=dtype)
+            return TestKvikioSlotBufferBudget._FakeArr(nbytes)
 
         rdr = object.__new__(KvikioGpuReader)
         rdr.cp = SimpleNamespace(empty=_empty, uint8="uint8")
@@ -1283,10 +1335,10 @@ class TestKvikioSlotBufferBudget:
         rdr._ensure_slot_buffer(0, 400)
         assert budget.committed() == 400
 
-    def test_growth_retains_only_new_capacity_after_replacement(self):
+    def test_growth_charges_only_the_delta(self):
         from psana.gpu.gpu_budget import _GpuBudget
 
-        budget = _GpuBudget(limit_bytes=1100)  # old 400 + replacement 700 at peak
+        budget = _GpuBudget(limit_bytes=1000)
         rdr, _ = self._reader(budget)
         rdr._ensure_slot_buffer(0, 400)
         rdr._ensure_slot_buffer(0, 700)

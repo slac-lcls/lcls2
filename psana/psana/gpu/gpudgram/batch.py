@@ -179,6 +179,7 @@ class GpuXtcBatchPool:
         (self.field_handles, stream_handles, handle_table) = (
             build_field_location_tables(configs, field_handles)
         )
+        self.handle_indices = {h: i for i, h in enumerate(self.field_handles)}
         self.n_slots = int(n_slots)
         if self.n_slots <= 0:
             raise ValueError("n_slots must be positive")
@@ -251,7 +252,7 @@ class GpuXtcBatchPool:
                 )
                 batch._locate_configured(
                     self.field_handles, self.stream_handles_gpu,
-                    self.handle_table_gpu, backing,
+                    self.handle_table_gpu, backing, self.handle_indices,
                 )
         return batch
 

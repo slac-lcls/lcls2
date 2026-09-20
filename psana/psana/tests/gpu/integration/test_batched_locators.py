@@ -76,6 +76,7 @@ def _input(cp, cases, streams):
 
 def _compare(cp, pool, data, desc, stream):
     batch = pool.parse(0, data, desc, stream)
+    assert batch._locators == {}
     # Independent submission through the original single-handle path, sharing
     # only the unchanged field-offset algorithm with batched decoding.
     with stream:
@@ -174,4 +175,67 @@ def test_empty_and_no_handles_avoid_location_launches(monkeypatch):
         data, desc = _input(cp, cases, streams)
         batch = pool.parse(0, data, desc, stream)
         stream.synchronize()
-        assert len(batch._locators) == len(handles)
+        assert batch._locators == {}
+        for handle in handles:
+            assert batch.locate(handle).rows_gpu.shape == (0, p.LOC_NCOLS)
+
+
+def test_configured_views_are_created_only_on_access(monkeypatch):
+    import cupy as cp
+
+    configs = _configs()
+    handles = tuple(reversed(configs.field_handles()))
+    pool = GpuXtcBatchPool(configs, field_handles=handles, n_slots=1)
+    producer = cp.cuda.Stream(non_blocking=True)
+    consumer = cp.cuda.Stream(non_blocking=True)
+    created = []
+    wrapper = p.DeviceFieldLocators
+
+    def counted(*args, **kwargs):
+        result = wrapper(*args, **kwargs)
+        created.append(result)
+        return result
+
+    def unexpected(*args, **kwargs):
+        raise AssertionError('configured view must not allocate or submit CUDA work')
+
+    monkeypatch.setattr(p, 'DeviceFieldLocators', counted)
+    for streams in ([0, 1, 0, 1, 0], [1, 0], [], [0] * 7):
+        data, desc = _input(cp, ['ok'] * len(streams), streams)
+        before = len(created)
+        batch = pool.parse(0, data, desc, producer)
+        locations = batch.configured_locations()
+        assert batch._locators == {}
+        assert len(created) == before
+        assert locations.ready is batch._configured_ready
+        memory = pool.memory_bytes().copy()
+
+        # Include output index zero and a nonzero index, but leave other handles
+        # unused. A consumer stream argument must not trigger another decoder.
+        with monkeypatch.context() as patch:
+            patch.setattr(p, '_cupy', unexpected)
+            patch.setattr(p, '_locate_kernel', unexpected)
+            batch._locator_allocator = unexpected
+            views = []
+            for handle in (handles[0], handles[-1]):
+                view = batch.locate(handle, stream=consumer)
+                assert batch.locate(handle) is view
+                assert view.ready is locations.ready
+                assert view.rows_gpu.shape == (len(streams), p.LOC_NCOLS)
+                assert view.rows_gpu.flags.c_contiguous
+                if streams:
+                    index = locations.handle_indices[handle]
+                    assert view.rows_gpu.data.ptr == (
+                        locations.backing.data.ptr + index * locations.backing.strides[0])
+                views.append(view)
+        assert len(created) - before == 2
+        assert len(batch._locators) == 2
+        assert pool.memory_bytes() == memory
+        with consumer:
+            copies = [view.wait_on(consumer).copy() for view in views]
+        consumer.synchronize()
+        # handles[0] belongs to the absent stream 2; handles[-1] is stream 0's
+        # counter. Check data after the cross-stream dependency, including tails.
+        assert cp.asnumpy(copies[0][:, p.LOC_STATUS]).tolist() == [p.STATUS_NOT_PRESENT] * len(streams)
+        assert cp.asnumpy(copies[1][:, p.LOC_STATUS]).tolist() == [
+            p.STATUS_FOUND if stream == 0 else p.STATUS_NOT_PRESENT for stream in streams]

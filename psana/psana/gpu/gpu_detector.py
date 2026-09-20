@@ -6,8 +6,6 @@ from typing import Iterator
 
 import numpy as np
 
-from psana.gpu.gpu_allocation import owned_empty, allocation_requirement, backing_capacity
-
 from psana.gpu.gpu_calib import (
     assemble_image as assemble_calib_image,
     fused_calib_gpu,
@@ -29,6 +27,107 @@ from psana.gpu.gpudgram.parser import STATUS_FOUND
 _GATHER_U16_KERNEL_NAME = "gather_locator_u16_kernel"
 _GATHER_F32_KERNEL_NAME = "gather_locator_f32_kernel"
 _ZERO_MISSING_KERNEL_NAME = "zero_missing_rows_kernel"
+
+
+def _canonical_gather_table(binding, handle_indices):
+    """Compile canonical rows as [stream column, handle index, type, rank]."""
+    streams = tuple(binding.sources_by_stream)
+    columns = {stream: i for i, stream in enumerate(streams)}
+    rows = []
+    for segment in binding.canonical_segment_ids:
+        handle = binding.field_handles_by_segment[segment]
+        rows.append((columns[handle.stream_id], handle_indices[handle],
+                     handle.type, handle.rank))
+    return streams, np.asarray(rows, dtype=np.uint64).reshape(-1, 4)
+
+
+class _GatherMap:
+    """Slot-owned device map and pinned upload source, retired with results."""
+
+    def __init__(self):
+        self.device = None
+        self.host = None
+
+    def prepare(self, events, streams, stream, budget):
+        cp = _cupy()
+        nitems = len(events) * len(streams)
+        old_bytes = 0 if self.device is None else int(self.device.nbytes)
+        required = nitems * 8
+        if required > old_bytes:
+            if budget is not None:
+                budget.reserve(required)  # both old and new are live during growth
+            try:
+                pinned = cp.cuda.alloc_pinned_memory(required)
+                host = np.frombuffer(pinned, dtype=np.int64, count=nitems)
+                device = cp.empty(nitems, dtype=cp.int64)
+            except Exception:
+                if budget is not None:
+                    budget.release(required)
+                raise
+            self.host, self.device = host, device
+            if budget is not None:
+                budget.release(old_bytes)
+        host = self.host[:nitems].reshape(len(events), len(streams))
+        host.fill(-1)
+        batch = events[0].batch
+        for i, event in enumerate(events):
+            if event.batch is not batch:
+                raise ValueError("canonical gathering requires one parsed input owner")
+            for j, stream_id in enumerate(streams):
+                dgram = event.get(stream_id)
+                if dgram is not None:
+                    if dgram.batch is not batch or not 0 <= dgram.dgram_index < batch.n_dgrams:
+                        raise ValueError("invalid gather input owner or dgram row")
+                    host[i, j] = dgram.dgram_index
+        # The EventPool retains the parsed owner through queued kernels. Do not
+        # cache it here across retirement: that would retain old parser storage
+        # while the next parse replaces it. The result lease also protects the
+        # pinned source until this upload completes.
+        locations = batch.configured_locations()
+        view = self.device[:nitems]
+        view.set(host.reshape(-1), stream=stream)
+        return view, locations
+
+
+class _CanonicalGatherPlan:
+    """One immutable routing upload per detector/configured handle layout."""
+
+    def __init__(self, binding, handle_indices, budget):
+        cp = _cupy()
+        self.streams, self.host = _canonical_gather_table(binding, handle_indices)
+        self.handle_indices = handle_indices
+        if budget is not None:
+            budget.reserve(self.host.nbytes)
+        try:
+            self.table = cp.asarray(self.host)
+            self.ready = cp.cuda.Event(disable_timing=True)
+            producer = cp.cuda.get_current_stream()
+            self.ready.record(producer)
+            self.ordered_streams = {producer.ptr: producer}
+        except Exception:
+            if budget is not None:
+                budget.release(self.host.nbytes)
+            raise
+
+    def gather(self, locations, rows, target, present, pixels, stream):
+        if locations.handle_indices is not self.handle_indices:
+            raise ValueError("gather plan does not match the configured locator layout")
+        if stream.ptr not in self.ordered_streams:
+            stream.wait_event(self.ready)
+            self.ordered_streams[stream.ptr] = stream
+        locations.wait_on(stream)
+        nsegments = int(self.table.shape[0])
+        nrows = int(present.size)
+        tiles = (pixels + 255) // 256
+        _batched_gather_kernel(target.dtype)(
+            (tiles * nrows,), (256,),
+            (locations.owner.data_gpu, np.uint64(locations.owner.data_gpu.nbytes),
+             locations.backing, np.uint64(locations.capacity),
+             np.uint64(locations.owner.n_dgrams), self.table, rows,
+             np.uint64(len(self.streams)), np.uint64(nsegments),
+             np.uint64(pixels), np.uint64(tiles), target, present),
+            stream=stream,
+        )
 
 
 def optimal_kernel_batch_size(det_shape, threads_per_block=256,
@@ -162,7 +261,6 @@ class GPUDetector:
                 f"segment: got {len(self._canonical_segment_ids)}, "
                 f"expected {self._n_segs_calib}"
             )
-        self._canonical_segment_rows = binding.canonical_segment_rows
         self._budget = budget  # _GpuBudget | None
 
         self._field_handles_by_segment = binding.field_handles_by_segment
@@ -218,6 +316,8 @@ class GPUDetector:
         self._raw_slot_bufs   = [None] * self._n_slots   # uint16 per slot
         self._calib_slot_bufs = [None] * self._n_slots   # cp.ndarray per slot
         self._present_slot_bufs = [None] * self._n_slots  # uint8 per slot
+        self._gather_maps = [_GatherMap() for _ in range(self._n_slots)]
+        self._gather_plan = None
         # Common-mode correction — not yet implemented on GPU.
         if cmpars is not None:
             raise NotImplementedError(
@@ -231,13 +331,23 @@ class GPUDetector:
     def canonical_segment_ids(self):
         return self._canonical_segment_ids
 
+    def configure_gather(self, handle_indices):
+        """Upload fixed canonical routing once, after parser setup."""
+        if self._gather_plan is not None:
+            if self._gather_plan.handle_indices is not handle_indices:
+                raise ValueError("cannot replace a live canonical gather plan")
+            return
+        self._gather_plan = _CanonicalGatherPlan(
+            self.binding, handle_indices, self._budget,
+        )
+
     # ------------------------------------------------------------------
     # Geometry — image assembly
     # ------------------------------------------------------------------
 
     def setup_geometry(self, det):
         """Build the GPU image-scatter map from a psana detector."""
-        geometry = prepare_geometry(det, self._canonical_segment_ids, budget=self._budget)
+        geometry = prepare_geometry(det, self._canonical_segment_ids)
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
 
@@ -247,7 +357,6 @@ class GPUDetector:
             ix_all,
             iy_all,
             self._canonical_segment_ids,
-            budget=self._budget,
         )
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
@@ -328,28 +437,26 @@ class GPUDetector:
         ----------
         constants   peds_gpu + gmask_gpu (calibration constants)
         geometry    scatter_ix + scatter_iy (pixel coordinate maps)
-        routing     reserved for run-scoped detector routing metadata
+        routing     run-scoped canonical gather table
         calib_slots sum of allocated per-slot calibrated-output buffers
-        raw_slots   sum of allocated per-slot raw-gather buffers
+        raw_slots   raw-gather buffers, presence masks, and device row maps
         total       sum of the above
         """
         def _nb(arr):
-            return backing_capacity(arr) if arr is not None else 0
+            return int(arr.nbytes) if arr is not None else 0
 
         constants   = _nb(self.peds_gpu) + _nb(self.gmask_gpu)
-        borrowed = constants if self._is_calib_follower else 0
-        constants -= borrowed
         geometry    = _nb(self._scatter_ix) + _nb(self._scatter_iy)
-        routing     = 0
+        routing     = _nb(self._gather_plan.table) if self._gather_plan else 0
         calib_slots = sum(_nb(b) for b in (self._calib_slot_bufs or []))
         raw_slots   = (
             sum(_nb(b) for b in self._raw_slot_bufs)
             + sum(_nb(b) for b in self._present_slot_bufs)
+            + sum(_nb(m.device) for m in self._gather_maps)
         )
         total       = constants + geometry + routing + calib_slots + raw_slots
         return {
             'constants':   constants,
-            'borrowed_constants': borrowed,
             'geometry':    geometry,
             'routing':     routing,
             'calib_slots': calib_slots,
@@ -357,17 +464,23 @@ class GPUDetector:
             'total':       total,
         }
 
+    def pinned_bytes(self) -> int:
+        """Host row-map upload buffers, reported separately from device bytes."""
+        return sum(int(m.host.nbytes) for m in self._gather_maps
+                   if m.host is not None)
+
     def estimate_subbatch_bytes(self, n_events: int) -> int:
         """Estimate device VRAM needed for calibration of n_events events.
 
-        Accounts for the variable allocations per batch:
+        Accounts for variable allocations per batch:
           - Calibrated output buffer (float32): n_events × n_segs × nrows × ncols × 4
           - Raw-gather scratch buffer (uint16): n_events × n_segs × nrows × ncols × 2
-          - Presence mask (uint8): n_events × n_segs
+          - Presence mask and event/stream dgram-row map
 
         Calibration constants and geometry scatter maps are fixed allocations
-        excluded from this per-subbatch estimate. Setup reserves those owned
-        bytes before upload; IPC followers do not charge shared views again.
+        excluded from this per-subbatch estimate. GpuEventManager subtracts
+        their measured bytes when deriving the default allowance; they are not
+        currently reserved in _GpuBudget.committed().
 
         Parameters
         ----------
@@ -389,23 +502,8 @@ class GPUDetector:
             bytes_per_event = n_pix_per_event * 4
         else:
             bytes_per_event = n_pix_per_event * (4 + 2)
-        return int(n_events * (bytes_per_event + n_segs))  # uint8 presence rows
-
-    def allocation_requirements(self, n_events, slot):
-        pixels = int(n_events) * self._n_segs_calib * self._nrows * self._ncols
-        items = [(pixels * 4, self._calib_slot_bufs[slot]),
-                 (int(n_events) * self._n_segs_calib, self._present_slot_bufs[slot])]
-        if not self._passthrough:
-            items.append((pixels * 2, self._raw_slot_bufs[slot]))
-        return [allocation_requirement(_cupy(), need, a) for need, a in items]
-
-    def trim_slot_buffers(self):
-        """Caller must first retire every execution/result lease."""
-        for buffers in (self._calib_slot_bufs, self._raw_slot_bufs, self._present_slot_bufs):
-            for slot, buf in enumerate(buffers):
-                if buf is not None:
-                    buffers[slot] = None
-                    del buf
+        bytes_per_event += n_segs + len(self._sources_by_stream) * 8
+        return int(n_events * bytes_per_event)
 
     def _slot_buffer(self, buffers, slot, shape, dtype, label):
         """Return a reusable slot view, growing its backing array only."""
@@ -415,7 +513,15 @@ class GPUDetector:
         buf = buffers[slot]
         old_size = int(buf.nbytes) if buf is not None else 0
         if old_size < needed:
-            new_buf = owned_empty(cp, nitems, dtype, self._budget, 'detector')
+            delta = needed - old_size
+            if self._budget is not None:
+                self._budget.reserve(delta)
+            try:
+                new_buf = cp.empty(nitems, dtype=dtype)
+            except Exception:
+                if self._budget is not None:
+                    self._budget.release(delta)
+                raise
             buffers[slot] = new_buf
             buf = new_buf
             if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
@@ -471,6 +577,15 @@ class GPUDetector:
         )
 
         sctx = stream if stream is not None else cp.cuda.Stream.null
+        if self._gather_plan is None:
+            self.configure_gather(events_info[0].batch.configured_locations().handle_indices)
+        with sctx:
+            mapping = self._gather_maps[slot]
+            rows, locations = mapping.prepare(events_info, self._gather_plan.streams,
+                                              sctx, self._budget)
+            target = calib_slot if self._passthrough else raw_slot
+            self._gather_plan.gather(locations, rows, target, present_slot,
+                                     self._n_pix_seg, sctx)
         for event_index, event_dgrams in enumerate(events_info):
             lo = event_index * self._n_segs_calib
             hi = lo + self._n_segs_calib
@@ -479,26 +594,6 @@ class GPUDetector:
             present = present_slot[event_index]
 
             with sctx:
-                target = calib_out if self._passthrough else raw_out
-                target.fill(0)
-                present.fill(0)
-                for dgram, output_row, _segment_id, handle in (
-                    self.binding.iter_sources(event_dgrams)
-                ):
-                    locator_rows = dgram.locate(
-                        handle, stream=sctx
-                    ).wait_on(sctx)
-                    _gather_locator_field_gpu(
-                        dgram.data_gpu,
-                        locator_rows,
-                        dgram_index=dgram.dgram_index,
-                        handle=handle,
-                        output_row=output_row,
-                        pixels_per_segment=self._n_pix_seg,
-                        out=target,
-                        present=present,
-                    )
-
                 if not self._passthrough:
                     fused_calib_gpu(
                         raw_out, self.peds_gpu, self.gmask_gpu, out=calib_out
@@ -510,6 +605,48 @@ class GPUDetector:
                 calib_gpu=calib_out,
                 raw_gpu=raw_out,
             )
+
+
+@lru_cache(maxsize=2)
+def _batched_gather_kernel(dtype):
+    cp = _cupy()
+    ctype = "unsigned short" if dtype == cp.dtype(cp.uint16) else "float"
+    if dtype not in (cp.dtype(cp.uint16), cp.dtype(cp.float32)):
+        raise TypeError("unsupported canonical gather dtype")
+    name = "gather_canonical_u16" if ctype == "unsigned short" else "gather_canonical_f32"
+    return cp.RawKernel(f"""
+extern "C" __global__ void {name}(
+    const unsigned char* data, unsigned long long data_bytes,
+    const unsigned long long* locators, unsigned long long capacity,
+    unsigned long long n_dgrams, const unsigned long long* plan,
+    const long long* rows, unsigned long long n_streams,
+    unsigned long long n_segments, unsigned long long pixels,
+    unsigned long long tiles, {ctype}* out, unsigned char* present)
+{{
+    const unsigned long long row = (unsigned long long)blockIdx.x / tiles;
+    const unsigned long long pixel = ((unsigned long long)blockIdx.x % tiles)
+                                     * blockDim.x + threadIdx.x;
+    const unsigned long long* source = plan + (row % n_segments) * 4;
+    const long long dgram = rows[(row / n_segments) * n_streams + source[0]];
+    bool valid = dgram >= 0 && (unsigned long long)dgram < n_dgrams;
+    unsigned long long offset = 0;
+    if (valid) {{
+        const unsigned long long* loc = locators +
+            (source[1] * capacity + (unsigned long long)dgram) * {LOC_NCOLS};
+        offset = loc[{LOC_OFFSET}];
+        const unsigned long long nbytes = loc[{LOC_NBYTES}];
+        valid = loc[{LOC_STATUS}] == {STATUS_FOUND} &&
+                loc[{LOC_TYPE}] == source[2] && loc[{LOC_RANK}] == source[3] &&
+                nbytes == pixels * sizeof({ctype}) &&
+                offset <= data_bytes && nbytes <= data_bytes - offset;
+    }}
+    if (pixel == 0) present[row] = valid ? 1 : 0;
+    if (pixel < pixels) {{
+        out[row * pixels + pixel] = valid ?
+            reinterpret_cast<const {ctype}*>(data + offset)[pixel] : ({ctype})0;
+    }}
+}}
+""", name, options=("--std=c++17",))
 
 
 def _gather_locator_field_gpu(

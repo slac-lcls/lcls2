@@ -1,7 +1,6 @@
 import logging
 import math
 import sys
-from contextlib import nullcontext
 from dataclasses import dataclass, field
 from queue import Empty, SimpleQueue
 
@@ -12,8 +11,7 @@ _log = logging.getLogger(__name__)
 from psana import dgram, utils
 from psana.event import EventEnvelope
 from psana.gpu.context import GpuEventState
-from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView, GpuReadSelection
-from psana.gpu.gpu_budget import GpuMemoryPressureError
+from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
 from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
 from psana.gpu.gpu_input import GpuDetectorBinding
@@ -341,8 +339,9 @@ class _GpuMemStats:
     GPU categories (device VRAM):
         constants    calibration constants per detector (peds + gmask)
         geometry     scatter-index arrays for image assembly
+        routing      run-scoped canonical gather tables
         calib_slots  per-slot calibrated-output buffers (grow lazily)
-        raw_slots    per-slot raw-gather buffers (grow lazily)
+        raw_slots    raw-gather buffers, presence masks, and device row maps
         raw_input    KvikioGpuReader per-slot input buffers
         xtc_config   run-scoped flattened Configure tables
         xtc_slots    per-slot dgram, ShapesData, and field-locator tables
@@ -351,25 +350,19 @@ class _GpuMemStats:
         device_total total device memory
 
     Pinned-host category:
-        pinned       _D2hPipeline _PinnedSlot allocations
+        pinned       D2H buffers and detector row-map upload buffers
     """
 
     # per-detector breakdowns
     det_constants: dict = field(default_factory=dict)  # {det_name: bytes}
     det_geometry: dict = field(default_factory=dict)
+    det_routing: dict = field(default_factory=dict)
     det_calib_slots: dict = field(default_factory=dict)
     det_raw_slots: dict = field(default_factory=dict)
     # aggregate GPU
     raw_input: int = 0
     xtc_config: int = 0
     xtc_slots: int = 0
-    committed: int = 0
-    held: int = 0
-    retained: int = 0
-    failed: int = 0
-    borrowed: int = 0
-    allocations: tuple = ()
-    cupy_used: int = 0
     cupy_pool: int = 0
     device_used: int = 0
     device_total: int = 0
@@ -383,18 +376,16 @@ class _GpuMemStats:
 
     def log(self):
         """Emit a structured INFO log summarising the snapshot."""
-        _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s borrowed=%s pool_used=%s",
-                  self.label, self._mb(self.committed), self._mb(self.held),
-                  self._mb(self.retained), self._mb(self.failed),
-                  self._mb(self.borrowed), self._mb(self.cupy_used))
         det_names = sorted(self.det_constants)
         for name in det_names:
             _log.info(
-                "GPU mem [%s] det=%s  constants=%s  geometry=%s  calib_slots=%s  raw_slots=%s",
+                "GPU mem [%s] det=%s  constants=%s  geometry=%s  routing=%s  "
+                "calib_slots=%s  raw_slots=%s",
                 self.label,
                 name,
                 self._mb(self.det_constants.get(name, 0)),
                 self._mb(self.det_geometry.get(name, 0)),
+                self._mb(self.det_routing.get(name, 0)),
                 self._mb(self.det_calib_slots.get(name, 0)),
                 self._mb(self.det_raw_slots.get(name, 0)),
             )
@@ -469,7 +460,7 @@ class GpuEventManager:
         # drain it before gpu_reader.close() releases its buffers.
         self._pending_gpu_read = None
 
-        self._setup_gpu_pipeline(calib_leader=calib_leader)
+        self._setup_detectors(calib_leader=calib_leader)
 
     def __iter__(self):
         return self
@@ -484,28 +475,19 @@ class GpuEventManager:
         s = _GpuMemStats(label=label)
         for name, (_, det) in self.gpu_detectors.items():
             m = det.memory_bytes()
-            s.borrowed += m.get("borrowed_constants", 0)
             s.det_constants[name] = m["constants"]
             s.det_geometry[name] = m["geometry"]
+            s.det_routing[name] = m["routing"]
             s.det_calib_slots[name] = m["calib_slots"]
             s.det_raw_slots[name] = m["raw_slots"]
+            s.pinned += det.pinned_bytes()
         if self.gpu_reader is not None and hasattr(self.gpu_reader, "memory_bytes"):
             s.raw_input = self.gpu_reader.memory_bytes()["raw_input_slots"]
         if self.gpu_xtc_parser is not None:
             parser_memory = self.gpu_xtc_parser.memory_bytes()
             s.xtc_config = parser_memory["config"]
             s.xtc_slots = parser_memory["batch_slots"]
-        s.pinned = sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
-        budget = getattr(self, '_gpu_budget', None)
-        if budget is not None:
-            from .gpu_allocation import backing_capacity
-            s.committed, s.held = budget.committed(), budget._held
-            s.allocations = budget.allocation_snapshot()
-            cached = (s.raw_input + s.xtc_config + s.xtc_slots
-                      + sum(s.det_constants.values()) + sum(s.det_geometry.values())
-                      + sum(s.det_calib_slots.values()) + sum(s.det_raw_slots.values()))
-            s.retained = max(0, s.committed - cached)
-            s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
+        s.pinned += sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
         # Query CuPy pool and CUDA device info only when a GPU is active.
         # These calls fail on CPU-only nodes and are skipped silently.
         cupy_mod = sys.modules.get("cupy")
@@ -517,7 +499,6 @@ class GpuEventManager:
                 # destructor raises an unraisable CUDA driver exception.
                 if cupy_mod.cuda.runtime.getDeviceCount() <= 0:
                     return s
-                s.cupy_used = cupy_mod.get_default_memory_pool().used_bytes()
                 s.cupy_pool = cupy_mod.get_default_memory_pool().total_bytes()
                 free, total = cupy_mod.cuda.Device().mem_info
                 s.device_used = total - free
@@ -538,11 +519,9 @@ class GpuEventManager:
         s = self._snapshot_memory(label)
         s.log()
         hw = self._high_water
-        for category, values in (("constants", s.det_constants), ("geometry", s.det_geometry),
-                                 ("calib_slots", s.det_calib_slots), ("raw_slots", s.det_raw_slots)):
-            hw[category] = max(hw.get(category, 0), sum(values.values()))
-        for category in ('committed', 'held', 'retained', 'failed', 'borrowed', 'cupy_used'):
-            hw[category] = max(hw.get(category, 0), getattr(s, category))
+        for category in ("constants", "geometry", "routing", "calib_slots", "raw_slots"):
+            total = sum(getattr(s, "det_" + category).values())
+            hw[category] = max(hw.get(category, 0), total)
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
         hw["xtc_config"] = max(hw.get("xtc_config", 0), s.xtc_config)
         hw["xtc_slots"] = max(hw.get("xtc_slots", 0), s.xtc_slots)
@@ -554,11 +533,12 @@ class GpuEventManager:
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
         _log.info(
-            "GPU mem high-water  constants=%s  geometry=%s  calib_slots=%s  "
+            "GPU mem high-water  constants=%s  geometry=%s  routing=%s  calib_slots=%s  "
             "raw_slots=%s  raw_input=%s  xtc_config=%s  xtc_slots=%s  "
             "cupy_pool=%s  device_used=%s  pinned=%s",
             _fmt_mib(hw.get("constants", 0)),
             _fmt_mib(hw.get("geometry", 0)),
+            _fmt_mib(hw.get("routing", 0)),
             _fmt_mib(hw.get("calib_slots", 0)),
             _fmt_mib(hw.get("raw_slots", 0)),
             _fmt_mib(hw.get("raw_input", 0)),
@@ -569,8 +549,7 @@ class GpuEventManager:
             _fmt_mib(hw.get("pinned", 0)),
         )
 
-    def _setup_gpu_pipeline(self, calib_leader=True):
-        """Initialize this BD's run-scoped GPU resources and processing pipeline."""
+    def _setup_detectors(self, calib_leader=True):
         # Budget must exist before constructing GPUDetector objects.
         from psana.gpu.gpu_budget import _GpuBudget
 
@@ -629,7 +608,7 @@ class GpuEventManager:
         self.gpu_xtc_configs = GpuStreamConfigTable.from_configs(self.configs)
         xtc_field_handles = []
 
-        log_gpu_mem("_setup_gpu_pipeline entry", rank=_rank)
+        log_gpu_mem("_setup_detectors entry", rank=_rank)
         for det_name in self.gpu_det_names:
             try:
                 det = self.run.Detector(det_name)
@@ -767,7 +746,7 @@ class GpuEventManager:
                 )
             elif not calib_leader:
                 # Follower BD rank sharing a GPU with the leader.
-                # is_calib_leader() returned False before _setup_gpu_pipeline() was
+                # is_calib_leader() returned False before _setup_detectors() was
                 # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
                 # share_calib_between_gpu_peers() will populate them later via
                 # CUDA IPC handles from the leader — at zero allocation cost.
@@ -787,8 +766,7 @@ class GpuEventManager:
             )
             if not is_pre_calibrated and calib_leader:
                 peds_gpu, gmask_gpu = prep_calib_constants(
-                    det, canonical_segment_ids=canonical_segment_ids,
-                    budget=self._gpu_budget,
+                    det, canonical_segment_ids=canonical_segment_ids
                 )
                 log_gpu_mem(
                     f"after prep_calib_constants ({det_name})", rank=_rank
@@ -826,11 +804,17 @@ class GpuEventManager:
         self.gpu_xtc_parser = GpuXtcBatchPool(
             self.gpu_xtc_configs,
             field_handles=xtc_field_handles,
-            n_slots=pool_depth + int(self.dsparms.gpu_bulk_read),
+            n_slots=pool_depth,
             budget=self._gpu_budget,
         )
+        for _, gpu_detector in self.gpu_detectors.values():
+            gpu_detector.configure_gather(self.gpu_xtc_parser.handle_indices)
 
-        self._setup_input_io()
+        # KvikioGpuReader: pre-allocate one data_gpu buffer per slot.
+        # _gpu_budget was already created in _setup_detectors() above and
+        # is shared with every GPUDetector so all allocations are counted
+        # against the same limit.
+        self.gpu_reader = KvikioGpuReader(n_slots=pool_depth, budget=self._gpu_budget)
 
         # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
         # Transfers calibrated results to pinned host memory in chunks so that
@@ -881,146 +865,132 @@ class GpuEventManager:
         # Computed once after all GPU detectors are set up.
         self._subbatch_budget_bytes = self._compute_subbatch_budget()
 
-    def _setup_input_io(self):
-        """Create BD-owned input I/O after the shared budget and slots exist.
-
-        The reader serves all selected GPU streams. File resolution state is
-        local to this BD and run, independent of individual detector adapters.
-        """
-        self.gpu_reader = KvikioGpuReader(
-            n_slots=getattr(self.dsparms, "n_gpu_streams", 2) + int(self.dsparms.gpu_bulk_read),
-            budget=self._gpu_budget,
-            bulk_read=self.dsparms.gpu_bulk_read,
-        )
-        if self.dsparms.gpu_bulk_read:
-            from psana.gpu.gpu_file_epochs import GpuFileEpochs
-            self._gpu_file_epochs = GpuFileEpochs(self.dm)
-
     # ------------------------------------------------------------------
     # Phase 3: byte-bounded subbatch helpers
     # ------------------------------------------------------------------
 
     def _compute_subbatch_budget(self) -> int:
-        """Per-execution target after charged fixed storage and 10% headroom."""
-        self._admission_margin = self._gpu_budget.limit() // 10
-        self._admission_capacity = max(
-            0, self._gpu_budget.available() - self._admission_margin
-        )
-        depth = max(1, getattr(self.dsparms, 'n_gpu_streams', 2))
-        return self._admission_capacity // depth
+        """Compute per-subbatch VRAM byte budget for Phase 3 splitting.
 
-    def _event_memory(self, gpu_view):
-        """Actual descriptor presence and dense allocation cost for each event."""
-        from .gpu_admission import AdmissionEvent
-        if isinstance(gpu_view, GpuSubbatchView):
-            parent = gpu_view._parent
-            indices = range(gpu_view._start, gpu_view._end)
-        else:
-            parent = gpu_view
-            indices = range(parent.header.n_events)
-        events = []
-        for i in indices:
-            streams = tuple((int(d['stream_id']), int(d['bd_size']))
-                            for d in parent.desc_rows_for_event(i)
-                            if int(d['flags']) & GPU_DESC_FLAG_VALID)
-            present = {s for s, _ in streams}
-            detector_bytes = sum(
-                det.estimate_subbatch_bytes(1)
-                for _, det in self.gpu_detectors.values()
-                if det.binding.has_sources(present)
-            )
-            events.append(AdmissionEvent(streams, detector_bytes))
-        return events
+        The budget is:
+          (total_limit - fixed_bytes - 10% margin) / n_slots
 
-    def _split_subbatches(self, gpu_view, *, allow_residency=False) -> list:
-        """Admit complete events; fail before I/O when a minimum event cannot fit."""
-        from .gpu_admission import plan_admission
-        parser = getattr(self, 'gpu_xtc_parser', None)
-        per_dgram = parser.estimate_batch_bytes(1) if parser is not None else 0
-        plan = plan_admission(
-            self._event_memory(gpu_view),
-            getattr(self, '_admission_capacity', self._subbatch_budget_bytes),
-            parser_bytes_per_dgram=per_dgram,
-            max_inflight=max(1, getattr(getattr(self, 'dsparms', None), 'n_gpu_streams', 1)),
-            allow_residency=allow_residency,
-        )
-        self._last_admission_plan = plan
-        return [GpuSubbatchView(gpu_view, start, end)
-                for start, end in plan.execution_ranges]
+        where fixed_bytes = measured calibration constants + geometry arrays +
+        routing maps. These fixed allocations are not currently included in
+        _gpu_budget.committed(); subtracting them here prevents the default
+        variable allowance from treating that space as free. The 10% margin
+        covers CuPy allocator overhead, input buffers, and rounding.
 
-    def _input_allocation_requirements(self, read_view, slot):
-        n_dgrams = sum(1 for _ in read_view.iter_read_descs(self.dm))
-        if not n_dgrams:
-            return []
-        requirements = self.gpu_reader.allocation_requirements(read_view.total_read_bytes, slot)
-        if self.gpu_xtc_parser is not None:
-            requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams)
-        return requirements
+        An internal gpu_subbatch_budget_bytes attribute is consulted when
+        present, but DsParms does not currently expose it as a supported
+        DataSource argument.
 
-    def _reserve_gpu_subbatch(self, subbatch, slot, read_view=None):
-        """Hold reader/parser/detector growth before any read is submitted."""
-        from .gpu_budget import allocation_growth_bytes
-        events = self._event_memory(subbatch)
-        requirements = self._input_allocation_requirements(
-            subbatch if read_view is None else read_view, slot)
-        for _, det in self.gpu_detectors.values():
-            n_events = sum(det.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += det.allocation_requirements(n_events, slot)
-        return self._gpu_budget.hold(allocation_growth_bytes(requirements),
-                                     margin=getattr(self, '_admission_margin', 0))
+        Returns
+        -------
+        int  — bytes per subbatch.  At least 256 MiB to prevent splitting
+               every single event on low-budget or CPU-only nodes.
+        """
+        _min = 256 * 1024 * 1024   # 256 MiB floor
 
-    def _start_resident_input(self, gpu_view, plan):
-        """Read/parse complete admitted streams once, with execution room held."""
-        from .gpu_budget import allocation_growth_bytes
-        if getattr(self, '_resident_window', None) is not None:
-            raise RuntimeError('only one resident EB batch is allowed')
-        # The caller has drained the previous EB batch and trimmed free caches.
-        read_view = GpuReadSelection.from_view(gpu_view, self.dm, plan.resident_streams)
-        events = self._event_memory(gpu_view)
-        per_dgram = self.gpu_xtc_parser.estimate_batch_bytes(1)
-        costs = [e.detector_bytes + sum(n + per_dgram for s, n in e.streams
-                                       if s not in plan.resident_streams) for e in events]
-        progress = max(sum(costs[a:b]) for a, b in plan.execution_ranges)
-        slot = self.event_pool.depth  # extra input slot, outside execution ring
-        requirements = self._input_allocation_requirements(read_view, slot)
-        hold = self._gpu_budget.hold(allocation_growth_bytes(requirements) + progress,
-                                     margin=self._admission_margin)
-        self._gpu_read_reservation = hold
+        override = int(getattr(self.dsparms, 'gpu_subbatch_budget_bytes', 0) or 0)
+        if override > 0:
+            return override
+
+        if not self.gpu_detectors:
+            return _min
+
         try:
-            with hold:
-                pending = self.gpu_reader.issue_batch(
-                    read_view, self.dm, slot_id=slot, file_epochs=self._gpu_read_files)
-            self._pending_gpu_read = pending
-            read = self._wait_gpu_read(pending)
-            with hold:
-                self._resident_window = self.gpu_xtc_parser.parse_window(
-                    read, self.event_pool.next_stream, batch_id=self._input_batch_id)
-            self._resident_streams = plan.resident_streams
-        finally:
-            self._close_gpu_reservation()
+            fixed_bytes = 0
+            for _, (_, det) in self.gpu_detectors.items():
+                mb = det.memory_bytes()
+                fixed_bytes += mb['constants'] + mb['geometry'] + mb.get('routing', 0)
+            if self.gpu_xtc_parser is not None:
+                fixed_bytes += self.gpu_xtc_parser.memory_bytes()['config']
+        except Exception:
+            fixed_bytes = 0
 
-    def _close_resident_input(self):
-        window = getattr(self, '_resident_window', None)
-        if window is not None:
-            window.close()  # existing execution/event leases remain authoritative
-            self._resident_window = None
-        self._resident_streams = ()
+        limit   = self._gpu_budget.limit()
+        margin  = int(limit * 0.10)   # 10% headroom for CuPy pool etc.
+        n_slots = max(1, getattr(self.dsparms, 'n_gpu_streams', 2))
+        variable = max(0, limit - fixed_bytes - margin)
+        budget   = variable // n_slots
 
-    def _close_gpu_reservation(self):
-        hold = getattr(self, '_gpu_read_reservation', None)
-        if hold is not None:
-            hold.close()
-            self._gpu_read_reservation = None
+        return max(_min, budget)
 
-    def _trim_gpu_caches(self):
-        """Called only after execution leases drain; input pins remain authoritative."""
-        if self.event_pool.active_count:
-            raise RuntimeError('cannot trim detector buffers with active executions')
-        self.gpu_reader.trim_free_buffers()
-        if self.gpu_xtc_parser is not None:
-            self.gpu_xtc_parser.trim_free_buffers()
-        for _, det in self.gpu_detectors.values():
-            det.trim_slot_buffers()
+    def _split_subbatches(self, gpu_view) -> list:
+        """Partition gpu_view into byte-bounded GpuSubbatchViews.
+
+        Each subbatch is sized so that:
+          calib_detector_bytes + raw_input_bytes <= _subbatch_budget_bytes
+
+        The first event is always included even if it alone exceeds the
+        budget (a single oversized event cannot be split further).
+
+        Events from the same EB batch that fit within the budget are grouped
+        together to fill one EventPool slot efficiently.
+
+        Parameters
+        ----------
+        gpu_view : GpuBatchView
+
+        Returns
+        -------
+        list[GpuSubbatchView]  — at least one element; may be one entry
+                                 equal to the whole batch if no split needed.
+        """
+        n_events = gpu_view.header.n_events
+        if n_events == 0:
+            return []
+
+        budget = self._subbatch_budget_bytes
+
+        # Estimate calibration bytes per event (sum across all GPU detectors).
+        calib_bytes_per_event = sum(
+            det_obj.estimate_subbatch_bytes(1)
+            for _, (_, det_obj) in self.gpu_detectors.items()
+        )
+
+        # Per-event raw input bytes from the desc table (varies by event).
+        per_event_raw = []
+        per_event_dgrams = []
+        for i in range(n_events):
+            raw_bytes = 0
+            n_dgrams = 0
+            for desc in gpu_view.desc_rows_for_event(i):
+                if int(desc['flags']) & GPU_DESC_FLAG_VALID:
+                    raw_bytes += int(desc['bd_size'])
+                    n_dgrams += 1
+            per_event_raw.append(raw_bytes)
+            per_event_dgrams.append(n_dgrams)
+
+        # Greedy bin-packing: accumulate events until budget exceeded.
+        subbatches = []
+        start = 0
+        current_bytes = 0
+
+        for i in range(n_events):
+            parser = getattr(self, 'gpu_xtc_parser', None)
+            parser_bytes = (
+                parser.estimate_batch_bytes(per_event_dgrams[i])
+                if parser is not None
+                else 0
+            )
+            event_bytes = calib_bytes_per_event + per_event_raw[i] + parser_bytes
+
+            if i == start:
+                # Always include at least one event (even if over budget).
+                current_bytes = event_bytes
+            elif current_bytes + event_bytes > budget:
+                # Current accumulation would exceed budget — flush subbatch.
+                subbatches.append(GpuSubbatchView(gpu_view, start, i))
+                start = i
+                current_bytes = event_bytes
+            else:
+                current_bytes += event_bytes
+
+        # Final subbatch (always present).
+        subbatches.append(GpuSubbatchView(gpu_view, start, n_events))
+        return subbatches
 
     def _next_batch(self):
         if self.smdr_man is None:
@@ -1105,30 +1075,13 @@ class GpuEventManager:
 
     def _submit_gpu(self, subbatch, gpu_read, event_envelopes):
         """Submit one device slot and arm its automatic D→H immediately."""
-        hold = getattr(self, '_gpu_read_reservation', None)
-        try:
-            with hold if hold is not None else nullcontext():
-                resident = getattr(self, '_resident_window', None)
-                transient = None
-                kwargs = {}
-                try:
-                    if resident is not None:
-                        if gpu_read is not None:
-                            transient = self.gpu_xtc_parser.parse_window(
-                                gpu_read, self.event_pool.next_stream,
-                                batch_id=self._input_batch_id)
-                        kwargs['input_windows'] = ((resident, transient) if transient is not None
-                                                   else (resident,))
-                    record = self.event_pool.submit(
-                        subbatch, gpu_read, event_envelopes, self.gpu_detectors,
-                        xtc_parser=self.gpu_xtc_parser,
-                        batch_id=getattr(self, "_input_batch_id", 0), **kwargs,
-                    )
-                finally:
-                    if transient is not None:
-                        transient.close()
-        finally:
-            self._close_gpu_reservation()
+        record = self.event_pool.submit(
+            subbatch,
+            gpu_read,
+            event_envelopes,
+            self.gpu_detectors,
+            xtc_parser=self.gpu_xtc_parser,
+        )
         for pipe in self._d2h_pipelines.values():
             pipe.schedule(record)
         return record
@@ -1185,24 +1138,9 @@ class GpuEventManager:
 
     def _issue_gpu_read(self, subbatch, slot_id):
         """Issue and own the single read allowed ahead of CPU processing."""
-        if (getattr(self, '_pending_gpu_read', None) is not None
-                or getattr(self, '_gpu_read_reservation', None) is not None):
+        if getattr(self, '_pending_gpu_read', None) is not None:
             raise RuntimeError("a pre-issued GPU read is already outstanding")
-        kwargs = {}
-        if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
-            kwargs["file_epochs"] = self._gpu_read_files
-        resident = getattr(self, '_resident_window', None)
-        read_view = (GpuReadSelection.from_view(subbatch, self.dm, self._resident_streams,
-                                               exclude=True) if resident is not None else subbatch)
-        hold = self._reserve_gpu_subbatch(subbatch, slot_id, read_view)
-        try:
-            with hold:
-                pending = (None if resident is not None and not read_view.descriptors else
-                           self.gpu_reader.issue_batch(read_view, self.dm, slot_id=slot_id, **kwargs))
-        except BaseException:
-            hold.close()
-            raise
-        self._gpu_read_reservation = hold
+        pending = self.gpu_reader.issue_batch(subbatch, self.dm, slot_id=slot_id)
         self._pending_gpu_read = pending
         return pending
 
@@ -1210,25 +1148,20 @@ class GpuEventManager:
         """Complete a read and relinquish its controller-side ownership."""
         if getattr(self, '_pending_gpu_read', None) is not pending:
             raise RuntimeError("attempted to wait for an unowned GPU read")
-        if pending is None and getattr(self, '_resident_window', None) is not None:
-            return None  # this execution uses only already-resident input
         try:
             return self.gpu_reader.wait_batch(pending)
-        except BaseException:
-            self._close_gpu_reservation()
-            raise
         finally:
             self._pending_gpu_read = None
 
     def _drain_pending_gpu_read(self):
         """Finish a pre-issued read before the reader and buffers are closed."""
         pending = getattr(self, '_pending_gpu_read', None)
+        if pending is None:
+            return
         try:
-            if pending is not None:
-                self.gpu_reader.wait_batch(pending)
+            self.gpu_reader.wait_batch(pending)
         finally:
             self._pending_gpu_read = None
-            self._close_gpu_reservation()
 
     def _retire_issue_and_yield(self, subbatch):
         """Retire one slot, issue its replacement read, and yield its result.
@@ -1247,14 +1180,7 @@ class GpuEventManager:
         if release_before_yield:
             self.event_pool.finish_retire_next()
             slot = self.event_pool.next_slot_id
-            try:
-                pending = self._issue_gpu_read(subbatch, slot)
-            except GpuMemoryPressureError:
-                yield from self._yield_ready(ready, device_released=True)
-                ready = None
-                yield from self._flush_event_pool()
-                self._trim_gpu_caches()
-                return self._issue_gpu_read(subbatch, self.event_pool.next_slot_id)
+            pending = self._issue_gpu_read(subbatch, slot)
             yield from self._yield_ready(ready, device_released=True)
             return pending
 
@@ -1262,16 +1188,8 @@ class GpuEventManager:
             yield from self._yield_ready(ready)
         finally:
             self.event_pool.finish_retire_next()
-        ready = None
         slot = self.event_pool.next_slot_id
-        try:
-            return self._issue_gpu_read(subbatch, slot)
-        except GpuMemoryPressureError:
-            # Admission failed before I/O. Reduce overlap, then relinquish only
-            # unowned cached storage before retrying the same complete events.
-            yield from self._flush_event_pool()
-            self._trim_gpu_caches()
-            return self._issue_gpu_read(subbatch, self.event_pool.next_slot_id)
+        return self._issue_gpu_read(subbatch, slot)
 
     def _flush_event_pool(self):
         for slot_data in self.event_pool.flush():
@@ -1281,22 +1199,6 @@ class GpuEventManager:
         n_events = self._n_events
         try:
             while True:
-                self._input_batch_id = getattr(self, "_input_batch_id", 0) + 1
-                gpu_views = [GpuBatchView(packet, validate=True)
-                             for packet, _ in gpu_batch_dict.values()]
-                if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
-                    if len(gpu_views) > 1:
-                        raise ValueError("bulk reads require one coherent GPUBAT1 packet")
-                    transitions = [
-                        transition
-                        for packet, _ in step_dict.values()
-                        for transition in _iter_step_events(packet, self.configs)
-                        if transition[0] and not TransitionId.isEvent(transition[0])
-                    ]
-                    self._gpu_read_files = self._gpu_file_epochs.resolve(
-                        [d for view in gpu_views for d in view.iter_read_descs(self.dm)],
-                        transitions,
-                    )
                 end_run_seen = yield from self._handle_steps(step_dict)
 
                 # ── Phase 3: GPU path — split batch into subbatches ──────────
@@ -1307,18 +1209,11 @@ class GpuEventManager:
                 all_subbatches = []
                 first_pending  = None   # (subbatch_0, PendingBatch)
 
-                for gpu_view in gpu_views:
+                for gpu_batch, _ in gpu_batch_dict.values():
+                    gpu_view = GpuBatchView(gpu_batch, validate=True)
                     if not gpu_view.has_work:
                         continue
-                    all_subbatches.extend(self._split_subbatches(
-                        gpu_view, allow_residency=bool(getattr(self.dsparms, 'gpu_bulk_read', False))))
-
-                if all_subbatches and self._last_admission_plan.resident_streams:
-                    # Bound resident input to one EB batch. Complete old consumers
-                    # before repurposing cached capacity for its full input.
-                    yield from self._flush_event_pool()
-                    self._trim_gpu_caches()
-                    self._start_resident_input(gpu_views[0], self._last_admission_plan)
+                    all_subbatches.extend(self._split_subbatches(gpu_view))
 
                 if all_subbatches:
                     first_pending = (
@@ -1405,14 +1300,12 @@ class GpuEventManager:
                             _, pending_0 = first_pending
                             gpu_read = self._wait_gpu_read(pending_0)
                             self._submit_gpu(subbatch, gpu_read, sb_envelopes)
-                            first_pending = pending_0 = gpu_read = None
                         else:
                             pending = yield from self._retire_issue_and_yield(
                                 subbatch
                             )
                             gpu_read = self._wait_gpu_read(pending)
                             self._submit_gpu(subbatch, gpu_read, sb_envelopes)
-                            pending = gpu_read = None
                 else:
                     # No GPU batch — yield CPU-only events directly.
                     for envelope in event_envelopes:
@@ -1425,15 +1318,12 @@ class GpuEventManager:
                         n_events += 1
                         yield self._attach_gpu(envelope, {})
 
-                if getattr(self, '_resident_window', None) is not None:
-                    yield from self._flush_event_pool()
                 if stop_after or end_run_seen:
                     yield from self._flush_event_pool()
                     self._done = True
                 return
         finally:
             self._n_events = n_events
-            self._close_resident_input()
 
     def process_batch(self, smd_batch, gpu_batch=None):
         """Process one coherent EB-to-BD batch and yield EventEnvelopes."""
@@ -1458,18 +1348,13 @@ class GpuEventManager:
         """Drain in-flight work and close GPU reader resources once."""
         if self._closed:
             return
-        yield from self._flush_event_pool()
-        self._drain_pending_gpu_read()
-        self._close_resident_input()
-        parser = getattr(self, "gpu_xtc_parser", None)
-        if parser is not None:
-            parser.close()
-        budget = getattr(self, '_gpu_budget', None)
-        if budget is not None:
-            budget.drain_failed_allocations()
-        if self.gpu_reader is not None:
-            self.gpu_reader.close()
-        self._closed = True
+        try:
+            yield from self._flush_event_pool()
+            self._drain_pending_gpu_read()
+        finally:
+            if self.gpu_reader is not None:
+                self.gpu_reader.close()
+            self._closed = True
 
     def close(self):
         """Discard remaining deliveries while safely retiring their slots."""

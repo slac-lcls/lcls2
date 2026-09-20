@@ -1,9 +1,15 @@
-# Next implementation: batched canonical gathering
+# Batched canonical gathering: implementation plan
 
 Revised 2026-09-18 after review of stream-grouped batched locators and the
-bulk-read branch through `8f94e3c7b`. This is a plan, not implemented gathering.
+bulk-read branch through `8f94e3c7b`. The implementation now follows this plan; see the
+[current review and call path](batched_canonical_gather_review.md).
 The completed locator work is described in [the review](batched_locators_review.md)
 and [the matched benchmark](performance/batched_locators_abo_sdf.md).
+
+Completed through the on-demand locator-view follow-up on 2026-09-20.
+See the [final pre-bulk review](batched_pre_bulk_review.md) and
+[latest same-allocation comparison](performance/lazy_locator_wrappers_sdf.md).
+The original implementation sequence and bulk integration contract follow.
 
 ## Objective and review boundary
 
