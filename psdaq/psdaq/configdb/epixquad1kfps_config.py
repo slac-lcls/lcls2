@@ -1375,7 +1375,7 @@ def _resetSequenceCount():
     cbase = base['cam']
     cbase.AcqCore.AcqCountReset.set(1)
     cbase.RdoutCore.SeqCountReset.set(1)
-    time.sleep(1.e6)
+    time.sleep(1.e-6)
     cbase.AcqCore.AcqCountReset.set(0)
     cbase.RdoutCore.SeqCountReset.set(0)
 
