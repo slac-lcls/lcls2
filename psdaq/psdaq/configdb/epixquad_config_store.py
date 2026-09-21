@@ -49,11 +49,16 @@ def epixquad_cdict():
     top.set(base+'DdrVttEn'   , 0, 'boolEnum')
 ##    top.set(base+'TrigSrcSel' , 0, 'trigSrcEnum')
 ##    top.set(base+'TrigEn'     , 1, 'boolEnum')
-##  AsicMask is set by the Microblaze ASIC auto-detect, not by the DAQ.
-##  Firmware only latches a write when the upper 16 bits are the 0xAAAA key
-##  (SystemRegs.vhd), which a UINT16 cannot carry, so this write was always
-##  dropped by hardware and tripped a rogue verify mismatch.
-##    top.set(base+'AsicMask'   , 0xffff, 'UINT16')
+##  AsicMask is set by the Microblaze ASIC auto-detect, not by the DAQ. The old
+##  UINT16 AsicMask write could never work: offset 0x28 is write/read aliased in
+##  firmware, so the readback never matched and rogue flagged a verify mismatch,
+##  and firmware only latches a write whose upper 16 bits are the 0xAAAA key,
+##  which a UINT16 cannot carry, so hardware dropped it as well.
+##  To write it from the DAQ, use the write-only AsicMaskReg port with the key in
+##  the upper half, e.g. 0xAAAAFFFF for all 16 ASICs. Left commented out until
+##  the AsicMaskReg variable exists in the epix-quad submodule; see
+##  slaclab/epix-quad-1kfps#19.
+##    top.set(base+'AsicMaskReg', 0xAAAAFFFF, 'UINT32')
 
     base = 'expert.EpixQuad.AcqCore.'
     top.set(base+'AcqToAsicR0Delay', 0, 'UINT32')
