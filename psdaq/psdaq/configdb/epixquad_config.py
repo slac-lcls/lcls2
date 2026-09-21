@@ -505,7 +505,9 @@ def epixquad_config(base,connect_str,cfgtype,detname,detsegm,rog):
 
     group = rog
 
-    _checkADCs()
+    if _checkADCs() != 0:
+        raise RuntimeError('ADC startup did not complete: check SystemRegs.Adc[n]ChannelFail '
+                           'and whether the Microblaze completed its power-on sequence')
 
     #
     #  Retrieve the full configuration from the configDB
@@ -692,25 +694,39 @@ def _checkADCs():
 
     epixquad_external_trigger(base)
 
-    cbase = base['cam']
-    tmo = 0
-    while True:
-        time.sleep(0.001)
-        if cbase.SystemRegs.AdcTestFailed.get()==1:
-            logging.warning('Adc Test Failed - restarting!')
-            cbase.SystemRegs.AdcReqStart.set(1)
-            time.sleep(1.e-6)
-            cbase.SystemRegs.AdcReqStart.set(0)
-        else:
+    try:
+        cbase = base['cam']
+        tmo = 0
+        restarts = 0
+        #  The Microblaze clears AdcTestDone and AdcTestFailed when it starts a
+        #  run and sets them when it finishes, so AdcTestFailed==1 means a
+        #  completed failing run. Only pulse AdcReqStart on such a result, and
+        #  count every cycle toward the timeout, otherwise a board that keeps
+        #  failing never times out and gets re-pulsed every millisecond.
+        while True:
+            time.sleep(0.001)
+            if cbase.SystemRegs.AdcTestDone.get()==1:
+                if cbase.SystemRegs.AdcTestFailed.get()==0:
+                    break
+                if restarts >= 3:
+                    logging.error('Adc Test Failed after %d restarts', restarts)
+                    return 1
+                restarts += 1
+                logging.warning('Adc Test Failed - restarting (%d)!', restarts)
+                cbase.SystemRegs.AdcReqStart.set(1)
+                time.sleep(1.e-6)
+                cbase.SystemRegs.AdcReqStart.set(0)
+                #  give the Microblaze time to clear AdcTestDone so that the
+                #  next poll does not re-read the stale result
+                time.sleep(0.1)
             tmo += 1
             if tmo > 1000:
-                logging.warning('Adc Test Timedout')
+                logging.error('Adc Test Timedout')
                 return 1
-        if cbase.SystemRegs.AdcTestDone.get()==1:
-            break
-    logging.debug(f'Adc Test Done after {tmo} cycles')
-
-    epixquad_internal_trigger(base)
+        logging.debug(f'Adc Test Done after {tmo} cycles')
+    finally:
+        #  always restore internal triggering, including on the failure paths
+        epixquad_internal_trigger(base)
 
     return 0
 
