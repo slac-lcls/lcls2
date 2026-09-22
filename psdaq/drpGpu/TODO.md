@@ -184,6 +184,25 @@ BIOS would choose.  **The choice is therefore not "default versus non-default" b
 firmware picked once" versus "a value we picked deliberately"**, which makes setting `NPS1`
 explicitly cost nothing in maintainability and gain uniformity.
 
+**Resolved by setting `NPS1` explicitly, 2026-09-22.**  gpu008 now reports 2 NUMA nodes --
+`node0` cpus 0-31 with 377 GB, `node1` cpus 32-63 with 378 GB, each socket's memory interleaved
+across its four controllers where the NPS=4 quadrants had 94 GB apiece.  A third sample after
+that reboot is **byte-identical** to the second apart from its date, so the `Auto` -> concrete
+rewriting happened once on the first upload and the configuration is now idempotent.  That makes
+the sampled file a reliable template for the other nodes:
+
+    Workload Profile        Disabled
+    SMT Control             Disabled
+    NUMA Nodes Per Socket   NPS1
+    Global C-state Control  Enabled     <- firmware-resolved, left as-is
+    SDCI                    Enabled     <- firmware-resolved; absent on BIOS 1.9
+
+Slurm needed no change: `CPUs=64 ThreadsPerCore=1 CpuSpecList=0-3` was already right,
+`CoreSpecCount=4` agrees with it, and gres `Cores=0-31`/`32-63` is socket-based so the NPS change
+did not touch it -- which is a useful confirmation that the socket-boundary fix is robust to NUMA
+reconfiguration.  The copy of the settings is kept in the session directory as
+`gpu008_bios_settings.xml.planned`.
+
 Two other resolutions worth a look while deciding:
 
 - **`Global C-state Control = Enabled`** allows deep CPU idle states.  On a latency-sensitive
