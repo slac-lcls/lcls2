@@ -71,7 +71,17 @@ import json as jsonmet
 import psana.detector.Utils as ut
 #import psana.detector.utils_psana as up # dict_filter
 
-has_kerb = not call(["klist", "-s"])
+def has_kerberos_ticket():
+    """dynamically check if user has a valid Kerberos ticket."""
+    try:
+        return not call(["klist", "-s"])
+    except FileNotFoundError:
+        # klist isn't installed in this environment (e.g. the manylinux
+        # wheel-test container) - treat as "no Kerberos ticket" rather
+        # than crashing the whole module import.
+        return False
+
+has_kerb = has_kerberos_ticket()
 jwt = os.getenv('CALIB_JWT', None)
 has_jwt = bool(jwt)
 
@@ -116,10 +126,6 @@ if has_jwt:
 
 #print('MDBWebUtils: ' + info_ticket)
 #logger.info(info_ticket)
-
-def has_kerberos_ticket():
-    """dynamically check if user has a valid Kerberos ticket."""
-    return not call(["klist", "-s"])
 
 def check_ticket(exit_if_invalid=True, output=logger.debug):
     """dynamically check any ticket and send message to output method"""
