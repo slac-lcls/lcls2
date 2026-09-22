@@ -787,7 +787,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
 
 def grindex_array(raw, gbit=14):
-    """gbit (starting from 0) =14 for epix10ka, =15 for epixuhr"""
+    """gbit (starting from 0) =14 for epix10ka"""
     return np.right_shift(np.bitwise_and(raw, 1<<gbit), gbit) #, dtype=np.uint8)
     #return (raw & 1<<gbit) >> gbit
 
