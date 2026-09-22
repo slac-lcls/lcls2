@@ -75,10 +75,12 @@ code to maintain than it saves.
 So the same `fstab` line needs different Slurm values on the two nodes until SMT is off
 uniformly -- one more reason to settle the BIOS question.
 
-Note gpu008's `CpuSpecList=0-3` currently reserves four cores where WEKA holds three, so core 0
-is reserved for nothing and `CPUEfctv` is 60 where it could be 61.  Harmless, but the same class
-of declaration-versus-reality mismatch, and worth either correcting to `1-3` or commenting if
-core 0 is reserved deliberately.
+**Core 0 is reserved deliberately, so `CpuSpecList` is one wider than WEKA's set.**  gpu008
+holds `0-3` where WEKA has `1-3`: core 0 is for the OS, and the WEKA documentation separately
+recommends reserving it to help InfiniBand I/O.  Interrupt handling defaulted to core 0 under
+RHEL 7 and may or may not still, but the practice is sound either way -- measured on gpu008, the
+five datadev interrupt sources have taken 30M interrupts each with **zero** on cpu0, so the
+reservation is doing its job.  Do not reclaim it on the grounds that WEKA does not use it.
 
 `scontrol reconfigure` alone is **not** sufficient for a `CpuSpecList` change: slurmd caught the
 `SIGHUP`, printed the new value, and still failed the next launch.  `systemctl restart slurmd`
@@ -143,7 +145,12 @@ That is not academic for us.  NPS=4 is what makes a card's `numa_node` meaningfu
 exactly why the `Cores=` socket-boundary bug surfaced only on gpu008: with NPS=1 a NUMA node
 *is* a socket, so the wrong definition and the right one coincide.
 
-### BIOS settings for the November boxes: a recommendation to argue with
+### BIOS settings for the January boxes: a recommendation to argue with
+
+**The delivery date slipped from November to January** (learned 2026-09-21), so there is more
+time to settle this than the earlier notes assumed.  **SMT is to be turned off** -- agreed, and
+Ric plans to do it shortly -- which also removes the abstract-versus-machine CPU ID translation
+that cost an evening on gpu007, since the two numberings coincide when `ThreadsPerCore=1`.
 
 Nobody in the group has decided this, and Chris's inclination is to take the defaults until
 something pushes otherwise.  We know how to update the BIOS, so all 20+ nodes can be made
@@ -251,7 +258,7 @@ differences are provenance rather than design:
   **Cheolhong has been testing GDS there** -- the 22 GB/s figure quoted under "Recorder and
   file writing" was measured on this node.  Relevant to that work, since GDS is the mechanism
   for writing from GPU memory without a host bounce.
-- **It is not fully populated** the way the November nodes will be, being an early box.  So
+- **It is not fully populated** the way the January nodes will be, being an early box.  So
   its card and GPU counts, and the six-cards-to-one-GPU ratio, are not representative of what
   the rollout has to handle.
 - `chan01` and `lorelli` have processes there.
@@ -1252,7 +1259,7 @@ may not have the full serial number to match on, which would need the code made 
 expose it.  `Parameters::serNo` exists and is passed to `Names` during configure, so
 start there.
 
-## Lower priority, after November's deliverables
+## Lower priority, after the January deliverables
 
 - **A generic `recoverLinks` script for operators.**  When a DRP complains about a timing
   link, an operator should be able to run one thing that either brings the link up or says
@@ -1625,7 +1632,7 @@ Its five records carry no `Cores=` at all, so nothing places tasks near their GP
 PCI address, so none of them can be verified against the hardware.
 
 Converting it is a bigger job than gpu006 or gpu001 were, and that is the point: it is the
-best rehearsal available for the twenty-odd nodes arriving in November.  Specifically, it
+best rehearsal available for the twenty-odd nodes arriving in January (slipped from November).  Specifically, it
 is the only GPU node that is **not** dkms-managed -- `dkms status datadev-gpu-dkms` is
 empty there, so its driver came from `comp_and_load_drivers.sh` -- and its cards are named
 `datadev_0..6`, i.e. probe order, so `cfgDevName=1` has never been set on it.  Both of
@@ -2131,7 +2138,7 @@ cross-node cache.  Only the checkout and the `make dkms` tarball are shared via 
 and those are the cheap half.
 
 Fine for two nodes, not for twenty.  dkms 3.2.2 here has no `mkrpm` (dropped in 3.x), but
-it does have a native route worth testing before the November boxes arrive:
+it does have a native route worth testing before the January boxes arrive:
 
     dkms mktarball -m datadev-gpu-dkms -v <ver> -k <kernel> --binaries-only
     dkms ldtarball --archive=<tarball>          # on every other node
