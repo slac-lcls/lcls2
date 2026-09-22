@@ -28,7 +28,7 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
         self._counter_image = 0
         self._seg_geo = eb.sgs.Create(segname='EPIXUHR3X2:V1')
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixuhr3x2-02.data'
-        self._data_gain_bitnum = 1 # LSB (right-most) is gain bit
+        self._data_gain_bitnum = 0 # LSB (right-most) is gain bit
         self._data_bit_mask = 0x0FFE # 11-bit data mask (bits 2-12)
         self._dark_factor = 0.5 # factor applied to pedestals, pixel_rms, pixel_min, pixel_max before saving constants in repository
 
