@@ -688,6 +688,19 @@ def epixquad_update(update):
     return result
 
 #
+#  Poll SystemRegs.AdcTestDone until it reads 'value', about 1 ms per cycle.
+#  Returns the number of cycles left out of 'budget', or None if the budget
+#  is exhausted first.
+#
+def _waitAdcTestDone(regs, value, budget):
+    while budget > 0:
+        time.sleep(0.001)
+        budget -= 1
+        if regs.AdcTestDone.get()==value:
+            return budget
+    return None
+
+#
 #  Check that ADC startup has completed successfully
 #
 def _checkADCs():
@@ -695,35 +708,43 @@ def _checkADCs():
     epixquad_external_trigger(base)
 
     try:
-        cbase = base['cam']
-        tmo = 0
+        regs = base['cam'].SystemRegs
+        tmo  = 1000     # total polling budget, in ~1 ms cycles
+        left = tmo
         restarts = 0
         #  The Microblaze clears AdcTestDone and AdcTestFailed when it starts a
-        #  run and sets them when it finishes, so AdcTestFailed==1 means a
-        #  completed failing run. Only pulse AdcReqStart on such a result, and
-        #  count every cycle toward the timeout, otherwise a board that keeps
-        #  failing never times out and gets re-pulsed every millisecond.
+        #  run and sets them when it finishes, so AdcTestFailed is only
+        #  meaningful while AdcTestDone is set.  The two flags are read in
+        #  separate transactions, so AdcTestDone is re-read afterwards: if a
+        #  run started in between, the AdcTestFailed value belongs to that new
+        #  run and is discarded.
         while True:
-            time.sleep(0.001)
-            if cbase.SystemRegs.AdcTestDone.get()==1:
-                if cbase.SystemRegs.AdcTestFailed.get()==0:
-                    break
-                if restarts >= 3:
-                    logging.error('Adc Test Failed after %d restarts', restarts)
-                    return 1
-                restarts += 1
-                logging.warning('Adc Test Failed - restarting (%d)!', restarts)
-                cbase.SystemRegs.AdcReqStart.set(1)
-                time.sleep(1.e-6)
-                cbase.SystemRegs.AdcReqStart.set(0)
-                #  give the Microblaze time to clear AdcTestDone so that the
-                #  next poll does not re-read the stale result
-                time.sleep(0.1)
-            tmo += 1
-            if tmo > 1000:
+            left = _waitAdcTestDone(regs, 1, left)
+            if left is None:
                 logging.error('Adc Test Timedout')
                 return 1
-        logging.debug(f'Adc Test Done after {tmo} cycles')
+            failed = regs.AdcTestFailed.get()
+            if regs.AdcTestDone.get()==0:
+                continue
+            if failed==0:
+                break
+            if restarts >= 3:
+                logging.error('Adc Test Failed after %d restarts', restarts)
+                return 1
+            restarts += 1
+            logging.warning('Adc Test Failed - restarting (%d)!', restarts)
+            regs.AdcReqStart.set(1)
+            time.sleep(1.e-6)
+            regs.AdcReqStart.set(0)
+            #  AdcReqStart only raises an interrupt flag that the Microblaze
+            #  main loop services once it is idle, so wait for it to
+            #  acknowledge the restart by clearing AdcTestDone.  Otherwise the
+            #  stale result would be counted as another completed attempt.
+            left = _waitAdcTestDone(regs, 0, left)
+            if left is None:
+                logging.error('Adc Test restart not acknowledged by the Microblaze')
+                return 1
+        logging.debug(f'Adc Test Done after {tmo-left} cycles')
     finally:
         #  always restore internal triggering, including on the failure paths
         epixquad_internal_trigger(base)
