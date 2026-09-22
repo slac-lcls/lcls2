@@ -93,11 +93,25 @@ Known UIDs — use these directly, skip discovery tool calls:
 If a query fails with "datasource not found", fall back to
 `grafana_list_datasources` to re-discover UIDs.
 
-### Step 0: Detect active instrument (ALWAYS DO THIS FIRST)
+### Step 0: Establish which hutch/instrument (ALWAYS DO THIS FIRST)
 
-Fire this query before anything else. It returns which instruments currently
-have active DAQ metrics. Use it to set `{instrument="<value>"}` on all
-subsequent queries.
+**`hutch` and `instrument` are the same identifier** — Prometheus's `instrument`
+label is set directly from a component's `--hutch` argument
+(`psdaq/psdaq/cas/epics_exporter.py`). If the `psana-daq` router (or earlier
+in this conversation) already established `hutch`, use it as `instrument`
+directly — do not re-ask or re-derive it.
+
+If not already known, **ask the user** which hutch/instrument to investigate
+— do not guess or auto-select, even if only one instrument currently shows
+active metrics. Known instruments: asc, mfx, rix, tmo, tst, txi, ued, xpp.
+
+Once you have it (from either source), proceed to Step 1, which confirms
+metrics are actually flowing for it before loading the dashboard.
+
+If you need to see which instruments currently have *any* active DAQ metrics
+(e.g. the user isn't sure and there's no router context to fall back on),
+use this as a discovery aid — but treat its result as informational, not a
+substitute for asking:
 
     grafana_list_prometheus_label_values(
         datasourceUid="000000002",
@@ -107,18 +121,11 @@ subsequent queries.
         ]}]
     )
 
-- **One result** → use it automatically, tell the user
-  "Monitoring instrument: tmo" (or whichever)
-- **Multiple results** → ask the user which instrument to investigate
-- **No results** → DAQ is not running or metrics are not flowing; check connectivity
-
-Known instruments: asc, mfx, rix, tmo, tst, txi, ued, xpp
-
 ### Step 1: Confirm metrics are flowing and load the dashboard
 
 Fire these in parallel (single message, multiple tool calls):
 
-    # Confirm metrics flowing for detected instrument
+    # Confirm metrics flowing for the stated instrument
     grafana_query_prometheus(
         datasourceUid="000000002",
         expr='drp_event_rate{instrument="<instrument>"}',
@@ -128,6 +135,12 @@ Fire these in parallel (single message, multiple tool calls):
 
     # Load dashboard panel queries for context
     grafana_get_dashboard_panel_queries(uid="wihghwb")
+
+- **Metrics present** → proceed with `{instrument="<value>"}` on all
+  subsequent queries.
+- **No results** → tell the user plainly: DAQ is not running for that
+  instrument, or metrics are not flowing; check connectivity before
+  proceeding further.
 
 > **Parallel query rule:** Always fire independent Grafana queries in a single
 > message. The event rate, deadtime, damage, and error queries are all

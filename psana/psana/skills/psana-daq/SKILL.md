@@ -93,6 +93,17 @@ With `hutch`, `platform`, and `collect_host` from the config:
   collect host. Use the config's `collect_host` field. The collect host also appears as
   `# HOST:` in `control.log`.
 
+### Handing off to leaf skills
+
+Once `hutch` is established here, **state it explicitly when invoking a leaf
+skill** — e.g. "Loading psana-daq-monitor for hutch=rix" — rather than relying
+on the leaf skill to re-derive or re-ask for it. `hutch` and `instrument` are
+the same identifier: Prometheus's `instrument` label is set directly from a
+component's `--hutch` argument (`psdaq/psdaq/cas/epics_exporter.py:29-51`,
+`self._hutch = hutch` fed into `g.add_metric([self._hutch, self._id], ...)`
+under the `instrument` label), so no translation is needed between this
+router's `hutch` and `psana-daq-monitor`'s `instrument` label.
+
 ### Which config is running
 
 Not directly discoverable at runtime. Corroborating signals to show (but not decide on):
