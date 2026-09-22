@@ -145,7 +145,64 @@ That is not academic for us.  NPS=4 is what makes a card's `numa_node` meaningfu
 exactly why the `Cores=` socket-boundary bug surfaced only on gpu008: with NPS=1 a NUMA node
 *is* a socket, so the wrong definition and the right one coincide.
 
-### BIOS settings for the January boxes: a recommendation to argue with
+### The BIOS plan, decided 2026-09-22
+
+**`Workload Profile=Disabled`, `SMT Control=Disabled`, everything else left at its default.**
+
+The reasoning is maintainability rather than performance: a non-default BIOS setting has no
+history anyone else can see, and survives neither a reimage nor necessarily a BIOS update.  SMT
+off is the one exception the group already agrees on, and its justification is **correctness, not
+speed** -- it removes three separate classes of Slurm bookkeeping error, described below.
+
+**`Workload Profile` is why gpu008 differed, not its BIOS version.**  An earlier note here
+blamed BIOS 2.0; the sampled configurations show both nodes have `SMT Control=Auto` and
+`NUMA Nodes Per Socket=Auto`, and differ only in `Workload Profile` -- `Disabled` on gpu007,
+`Low Latency` on gpu008 -- plus the two `Determinism` settings that profile also sets.  So the
+profile overrides SMT and NPS while their own fields still read `Auto`, which is exactly the kind
+of hidden state the defaults-only argument is about.  Its `<Help>` text says only "allow
+configuring the BIOS settings to match the selected workload" and does not list what it changes.
+
+With the profile disabled, `Auto` should resolve as it does on gpu007: **SMT on and NPS=1**.  So
+setting SMT explicitly to `Disabled` and leaving NPS at `Auto` is expected to give 2 x 32 x 1
+with 2 NUMA nodes -- meaning gpu008 goes from 8 NUMA nodes to 2, and lands on NPS=1, which is what
+the analysis below recommends anyway.  Obtained as a default rather than as a documented
+deviation.
+
+**What SMT off buys, concretely:**
+
+- `CpuSpecList` becomes trivial: with `ThreadsPerCore=1`, abstract and machine CPU IDs coincide,
+  so there is no translation to get wrong.  This is what cost an evening on gpu007.
+- Whole-core reservation is automatic, so `CoreSpecCount` cannot disagree with `CpuSpecList`.
+- All three EPYC nodes converge on the identical line:
+  `CPUs=64 ThreadsPerCore=1 CpuSpecList=0-3`, where gpu007's hard-won value today is
+  `2-5,64-65`.
+
+**Ordering matters.**  Do this per node:
+
+1. **fstab first** -- `core=1,core=2,core=3` rather than `num_cores=3`, so WEKA's cores are
+   deterministic.  Until IT propagate that, gpu007's WEKA set is scattered and `CpuSpecList=0-3`
+   would be wrong for it.
+2. **BIOS** -- `Workload Profile=Disabled`, `SMT Control=Disabled`.
+3. **`slurm.conf`** -- with jobs stopped, since changing a node's CPU geometry while jobs hold
+   allocations against the old one is what went wrong on gpu007 the first time.
+4. **Reboot, then `systemctl restart slurmd`, then clear the drain.**  `scontrol reconfigure`
+   alone is not sufficient for a `CpuSpecList` change.
+
+**Two things lost, both worth noting:**
+
+- **The `Cores=` socket-boundary bug becomes undetectable.**  With NPS=1 a NUMA node *is* a
+  socket, so the wrong definition and the right one coincide.  gpu008 at NPS=4 was the only node
+  that could catch a regression there, and after this none can.  That makes the outstanding
+  `gen_gres_conf` unit test the only guard.
+- `gen_gres_conf` prints each card's `numa_node`, which degrades to socket granularity.  Nothing
+  acts on it, but regenerated blocks will disagree with published ones in the comments.
+
+**On measuring:** worth doing on gpu008, but decide in advance what would make you revisit,
+because a null result is the likely one.  Every card is pinned at its own PCIe 4.0 x8 ceiling at
+12.788 GB/s, so 33 kHz is set by the card rather than by memory locality or thread count.  The
+question only becomes live at x16 gen5, or if a reducer becomes the bottleneck.
+
+### The earlier analysis, kept for its reasoning
 
 **The delivery date slipped from November to January** (learned 2026-09-21), so there is more
 time to settle this than the earlier notes assumed.  **SMT is to be turned off** -- agreed, and
