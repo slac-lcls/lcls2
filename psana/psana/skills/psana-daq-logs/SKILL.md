@@ -167,6 +167,38 @@ makes the remaining output genuinely high-signal.
 Verified counts across one month of xpp `.log` files (2292 uncompressed, 232742 total lines):
 1382 `<C>` (1213 RTPRIO, 169 real), 579 `<E>`, 1951 `<W>`, 34291 `<I>`.
 
+## Interpreting `<C>`/`<E>` messages
+
+Do not rely on a pre-built error catalog — DRP/TEB source has roughly 459
+`logging::critical`/`logging::error` call sites across `psdaq/drp/*.cc` (339)
+and `psdaq/psdaq/eb/src/*.cc` (120), most emitting dynamic (`%s`-forwarded)
+content that a static catalog can't usefully capture, and message text drifts
+between releases (see "Release-source navigation" in the `psana-daq` router
+skill). Once you have a `<C>`/`<E>` line:
+
+1. Grep the **static portion** of the message against the running release's
+   source (per the release-source technique) to find the call site and its
+   surrounding context/comments.
+2. **Some messages carry their own remedy.** For example, `"XPM Remote link
+   id register illegal value: 0x%x. Try XPM TxLink reset."`
+   (`psdaq/drp/BEBDetector.cc:176`) already tells you what to do. Read the
+   full message before concluding you need to interpret it further.
+3. **Misconfiguration vs. hardware fault is not always obvious from the
+   message text alone.** Check whether the failing check validates a
+   user-supplied config value — e.g. `"nDmaBuffers (%u) can't exceed
+   evtCounter range (0:%u)"` (`psdaq/drp/DrpBase.cc:144`) is a config bug, not
+   a hardware fault. This distinction changes what the user should do next.
+4. **Watch for anomalous line counts before treating `<C>`/`<E>` hits as
+   discrete events.** Verified production incident (mfx, September 2026): a
+   single Jungfrau DRP log file grew to ~69.5 million `<C>` lines from a
+   `PGPReader data (64):`-style hex-dump loop — a runaway-logging pattern, not
+   69.5 million distinct failures. (That exact message string was not found
+   in the current lcls2 checkout's source — likely from a different release,
+   which is itself an example of the release-source drift this section
+   already warns about.) If a grep count for one file/process is wildly
+   higher than others in the same session, check for a repeating dump/loop
+   before investigating further.
+
 ---
 
 ## Component name catalog
