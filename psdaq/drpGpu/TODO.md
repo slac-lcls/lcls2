@@ -162,11 +162,37 @@ profile overrides SMT and NPS while their own fields still read `Auto`, which is
 of hidden state the defaults-only argument is about.  Its `<Help>` text says only "allow
 configuring the BIOS settings to match the selected workload" and does not list what it changes.
 
-With the profile disabled, `Auto` should resolve as it does on gpu007: **SMT on and NPS=1**.  So
-setting SMT explicitly to `Disabled` and leaving NPS at `Auto` is expected to give 2 x 32 x 1
-with 2 NUMA nodes -- meaning gpu008 goes from 8 NUMA nodes to 2, and lands on NPS=1, which is what
-the analysis below recommends anyway.  Obtained as a default rather than as a documented
-deviation.
+**Applied to gpu008 on 2026-09-22, and the NPS expectation was wrong.**  SMT off took effect
+(2 x 32 x 1, 64 CPUs) and WEKA's cores came up as `1-3` from the fstab fix, but the node still
+reports **8 NUMA nodes**: `NUMA Nodes Per Socket=Auto` resolves to **NPS4 on BIOS 2.0** and
+NPS1 on gpu007's BIOS 1.9, independent of `Workload Profile`.  So the profile was overriding SMT
+but not NPS, and the firmware version genuinely does decide this one.  Both Ric and I predicted
+NPS=1; neither of us was right.
+
+**And `Auto` does not stay `Auto`.**  Re-sampling the configuration after the reboot and diffing
+against what was uploaded shows the firmware resolved three settings and wrote the results back
+to NVRAM:
+
+    Global C-state Control    Auto -> Enabled
+    NUMA Nodes Per Socket     Auto -> NPS4
+    SDCI                      Auto -> Enabled
+
+Nothing else changed, so `sum -c ChangeBiosCfg` applied exactly what was sent.  But this
+undermines the reasoning behind leaving things at `Auto`: it is a one-time resolution, not a
+standing instruction, so the node is now pinned at `NPS4` in NVRAM regardless of what a later
+BIOS would choose.  **The choice is therefore not "default versus non-default" but "a value the
+firmware picked once" versus "a value we picked deliberately"**, which makes setting `NPS1`
+explicitly cost nothing in maintainability and gain uniformity.
+
+Two other resolutions worth a look while deciding:
+
+- **`Global C-state Control = Enabled`** allows deep CPU idle states.  On a latency-sensitive
+  node these are usually disabled -- waking from a deep C-state costs microseconds, which is
+  precisely what a core polling a DMA doorbell does not want, and is plausibly part of what
+  `Workload Profile=Low Latency` was setting.  Worth measuring or disabling.
+- `SDCI` (Smart Data Cache Injection) does not exist at all on gpu007's BIOS 1.9, so the two
+  firmware versions do not even offer the same option set.  Another reason a uniform BIOS
+  version matters as much as uniform settings.
 
 **What SMT off buys, concretely:**
 
