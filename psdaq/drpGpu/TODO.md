@@ -43,9 +43,42 @@ and the node went from offering 60 CPUs that morning to 122.  `pykcuxpm` runs an
 back.
 
 **This is very probably the open IT ticket about Slurm scheduling onto WEKA-saturated cores** --
-not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".  Worth checking
-which other nodes have a `weka-*` cgroup, since each needs its own `CpuSpecList` in abstract
-IDs, and the set is WEKA's choice rather than ours.
+not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".
+
+### The real fix: name WEKA's cores in fstab
+
+Learned from the WEKA team on 2026-09-21.  The mount option decides whether the set is
+predictable:
+
+| fstab option | result |
+|---|---|
+| `num_cores=3` | **WEKA chooses** -- on gpu007 it picked machine CPUs `1-2,32,65-66,96`, scattered by its own NUMA logic |
+| `core=1,core=2,core=3` | WEKA takes exactly those -- on gpu008 the cgroup reads `1-3` |
+
+So the scattered set was never arbitrary, it was WEKA spreading three cores across the
+topology.  Naming them explicitly makes the assignment deterministic, reviewable in `fstab`,
+and **stable until someone asks IT to change it** -- which is what makes a static
+`slurm.conf` `CpuSpecList` safe to depend on.  Verified working on gpu008; IT need to
+propagate it through their ansible.
+
+Deliberately **not** building a tool to derive `CpuSpecList` from `fstab`.  It is a one-line
+lookup per node, it changes only when we ask IT to change it, and the parser would be more
+code to maintain than it saves.
+
+**The value differs per node because of SMT**, which is the part to get right:
+
+| node | SMT | WEKA machine CPUs | `CpuSpecList` |
+|---|---|---|---|
+| gpu008 | off | `1,2,3` | `1-3` -- abstract and machine coincide when threads=1 |
+| gpu007 | **on** | `1,2,3` **and siblings** `65,66,67` | **`2-7`** |
+
+So the same `fstab` line needs different Slurm values on the two nodes until SMT is off
+uniformly -- one more reason to settle the BIOS question.
+
+Note gpu008's `CpuSpecList=0-3` currently reserves four cores where WEKA holds three, so core 0
+is reserved for nothing and `CPUEfctv` is 60 where it could be 61.  Harmless, but the same class
+of declaration-versus-reality mismatch, and worth either correcting to `1-3` or commenting if
+core 0 is reserved deliberately.
 
 `scontrol reconfigure` alone is **not** sufficient for a `CpuSpecList` change: slurmd caught the
 `SIGHUP`, printed the new value, and still failed the next launch.  `systemctl restart slurmd`
