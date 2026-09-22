@@ -11,13 +11,11 @@ You are querying the ConfigDB web service to read detector/trigger/timing
 configuration for a hutch. This skill is strictly READ-ONLY — you observe
 configuration, you never modify it.
 
-**Related skills:** if you arrived here without first checking metrics or
-logs, consider loading `psana-daq-monitor` or `psana-daq-logs` first (or
-`psana-daq` if the report is still vague) to narrow down which detector or
-device's configuration is actually relevant. If you need to correlate a
-config change with a specific run's wall-clock time, load `elog-search`
-(`skill(name="elog-search")`) to look up that run's start/end time in the
-LCLS eLog — do not guess at eLog query syntax from this skill.
+**Related skills:** reuse the hutch, alias/device, session/run, UTC window and
+available evidence passed by the caller. Load logs or metrics only if needed to
+localize the question. `elog-search` is an optional external skill, not bundled
+here: use it only if installed and relevant run times are not already supplied.
+Otherwise use retained run/transition evidence or report run bounds unavailable.
 
 ---
 
@@ -58,27 +56,26 @@ invoke the psdaq CLI script or import `psdaq`.
 | `GET .../get_configuration/<hutch>/<alias>/<device>/` | Full device configuration (e.g. `xpp/BEAM/timing_0`) | Large nested config dict with fields like `alg:RO`, `firmwareBuild:RO`, `help:RO`, etc. — not a small fixed payload, inspect the returned JSON directly. |
 | `GET .../get_history/<hutch>/<alias>/<device>/` (JSON array body required) | Track whether specific config parameter(s) changed over time (e.g. `xpp/BEAM/timing_0`) | See below — this is not a plain parameterless GET. |
 
-Unlike the other endpoints above, `get_history` requires a JSON array body
-naming which dot-separated parameter(s) to track, with the first component
-being the device config name. Verified live against the production service:
+`get_history` takes a JSON array of parameter names in a **GET request body**,
+as implemented by `configdb.get_history()` and `_get_response()` in
+`psdaq/psdaq/configdb/configdb.py` (`requests.get(..., json=plist)`). Example:
 
-    curl -G https://pswww.slac.stanford.edu/ws/configdb/ws/configDB/get_history/xpp/BEAM/timing_0/ \
-         -d '["detName:RO"]'
+```bash
+curl --fail --silent --show-error --max-time 20 --request GET \
+  --header 'Content-Type: application/json' \
+  --data '["detName:RO"]' \
+  'https://pswww.slac.stanford.edu/ws/configdb/ws/configDB/get_history/<hutch>/<alias>/<device>/'
+```
 
-Verified sample response (abbreviated):
+Substitute established identifiers before use. Do not use `curl -G -d`: it
+moves data into the query string and does not match the client contract. This
+example is source-checked and tested with a synthetic local HTTP receiver,
+not newly validated against production. A proxy may reject GET bodies; report
+that access failure instead of silently changing the request semantics.
 
-    {"status_code": 200, "success": true, "msg": "OK",
-     "value": [{"date": "2025-10-01T18:20:01.927000+00:00", "key": 1, "detName:RO": "timing_0"},
-               {"date": "2025-10-17T21:58:18.277000+00:00", "key": 2, "detName:RO": "timing_0"}, ...]}
-
-Each entry has `date` (UTC ISO8601) and `key` (an integer config version
-number).
-
-**Gotcha:** calling `get_history` via plain `GET` with no body returns
-`{"success": false, "msg": "get_history: no POST data"}` — the JSON body is
-mandatory even though the HTTP verb is `GET` (the `curl -G ... -d '...'`
-idiom sends the `-d` payload as a URL-encoded query string on a GET
-request, despite the error message's wording).
+Inspect both HTTP status and the JSON `success` field before using `value`.
+History entries may include UTC `date`, integer `key` and requested values;
+a successful empty result is different from an error or unavailable history.
 
 ### Equivalent read-only CLI
 
@@ -100,21 +97,28 @@ numbers directly.
 
 To answer "was detector X misconfigured during run N":
 
-1. First get that run's start/end wall-clock time from the LCLS eLog. Load
-   the sibling `elog-search` skill for that lookup — invoke via
-   `skill(name="elog-search")`. Do not guess at eLog query syntax from this
-   skill; `elog-search` is a separate skill package with its own documented
-   query interface.
-2. Once you have the run's UTC time window, find which `get_history` entry's
-   `date` falls within `[run start, run end)` — that entry's `key` is the
-   config version active during the run.
-3. To inspect that historical config's actual content: **this is
-   UNVERIFIED.** `get_configuration`'s documented signature takes an alias
-   name, not a numeric key, and this workflow has not been live-tested for
-   fetching a specific historical key's full config content. Verify this
-   live before relying on it — do not assume `get_configuration` (or any
-   other endpoint) can fetch an arbitrary historical `key`'s content just
-   because `get_history` returned that key.
+1. Establish the run and relevant Configure/scan-step context from supplied run
+   metadata, retained control logs or XTC transitions. Resolve time zones and
+   uncertainty; a launch prefix/mtime interval is not an exact run window.
+2. Treat history records as **database-change candidates**, not application
+   events. Include the latest applicable entry at or before Configure and
+   earlier entries if history is incomplete, plus changes during the requested
+   interval. A configuration may have been established long before BeginRun.
+   A later edit may never have reached the DAQ. Even the latest preceding key
+   is only a candidate without corroboration.
+3. Corroborate the applied identity with run-associated Configure content,
+   recorded key (when present), device/segment/alias and release evidence.
+   `get_config.py::get_config_with_params` retrieves by alias and may resolve
+   `_cfgTypeRef`; the alias alone is not an immutable version. Separate what
+   was requested, what was recorded and what hardware behavior demonstrates.
+   Partial Configure fields need not uniquely identify a database key.
+4. **Historical-key retrieval is unsupported by this skill's verified
+   interface.** The in-tree client concatenates an alias string into the
+   `get_configuration` path; it does not establish arbitrary numeric-key
+   retrieval. Do not invent an endpoint or substitute today's alias contents.
+   If key/content retrieval is unavailable, say so and use retained Configure
+   evidence with explicit limits. No production probe is required to complete
+   an evidence-limited historical report.
 
 ## Diagnosing a symptom via config
 
@@ -123,15 +127,17 @@ Two-stage model to keep in mind when a detector's data looks wrong:
 - ConfigDB tells you what configuration was **REQUESTED**.
 - psana's own `_configs`/`_seg_configs()` attributes — populated from XTC
   Config transitions baked into the actual data file/shared-memory stream —
-  tell you what configuration **ACTUALLY REACHED** the data for a given
-  run. These can diverge from ConfigDB's current value if a config change
+  tell you what configuration was **RECORDED** in the data for a given
+  run. Recorded fields are stronger run-associated evidence than today's alias,
+  but do not independently prove hardware applied every setting. These can
+  diverge from ConfigDB's current value if a config change
   happened between runs with no new Configure transition.
 
 `psana/psana/app/config_dump.py` and `psana/psana/detector/cfg_utils.py`
 (`dump_det_config`/`dump_seg`/`dumpvars`) are the tools for inspecting what
 actually reached a run's data.
 
-See `reference/device-config-diagnostics.md` (in this skill directory) for
+See [reference/device-config-diagnostics.md](reference/device-config-diagnostics.md) for
 which specific ConfigDB fields matter for which symptoms, per device type —
 including which fields psana never reads at all.
 

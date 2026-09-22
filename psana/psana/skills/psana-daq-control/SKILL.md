@@ -1,6 +1,6 @@
 ---
 name: psana-daq-control
-description: Diagnose LCLS-II DAQ run-control state and failed state transitions. Use for "the DAQ won't start", "it's stuck in connected/configured", "alloc/connect/configure failed to change state", "X did not respond to <transition>", "X did not respond to <transition> phase 2", rollcall failures, "why isn't detector X being recorded", readout-group questions, and scan/step (beginstep/endstep) problems. Queries live DAQ state via daqstate/showPlatform/DaqControl and reads the activedet.json file — needs no Grafana, no MCP, and no ConfigDB reachability, so it works when everything else is down.
+description: Diagnose LCLS-II DAQ run-control state and failed state transitions. Use for "the DAQ won't start", "it's stuck in connected/configured", "alloc/connect/configure failed to change state", "X did not respond to a transition", "X did not respond to a transition phase 2", rollcall failures, "why isn't detector X being recorded", readout-group questions, and scan/step (beginstep/endstep) problems. Queries live DAQ state via daqstate/showPlatform/DaqControl and reads the activedet.json file — needs no Grafana, no MCP, and no ConfigDB reachability, so it works when everything else is down.
 ---
 
 # Skill: psana-daq-control
@@ -27,27 +27,28 @@ recommend; the **HUMAN executes every remediation.**
 | You MAY run (read-only) | You MUST NOT run (mutating) |
 |---|---|
 | `daqstate -P <hutch>` (prints current state) | `daqstate --state <target>` |
-| `daqstate --state` (choice listing / status print) | `daqstate --transition <t>` |
+| `daqstate --help` (argument help) | `daqstate --transition <t>` |
 | `daqstate --monitor` (passive status stream) | `daqstate --config` / `--record` / `--bypass` / `-B` |
 | `showPlatform` (incl. `--json`) | `selectPlatform` (any invocation) |
 | `DaqControl.getState()` / `getStatus()` / `getPlatform()` / `getInstrument()` / `getJsonConfig()` / `monitorStatus()` | `DaqControl.setState()` / `setTransition()` / `setConfig()` / `setRecord()` / `setBypass()` / `selectPlatform()` / `storeJsonConfig()` |
 | Reading `~<hutch>opr/.psdaq/*.activedet.json` | Writing/editing any `activedet.json` |
 | Reading log files (see `psana-daq-logs`) | Restarting or killing any DAQ process |
 
-You may — and should — **recommend** a specific `setState`/`--transition`
-command, quoted exactly, with a stated reason. Present it as a suggestion for
-the human to run. Never run it yourself.
+When supported by the diagnosis and known current state, you may recommend a
+specific `setState`/`--transition` command with a stated reason. Present it as a
+suggestion for the human to run. Never run it yourself.
 
 ## Confidence labelling
 
-Every conclusion you report must carry one of these, and this skill's own
-claims are labelled the same way:
+The labels `verified-live`, `verified-against-real-logs`, and
+`inferred-from-code-only` describe evidence origin, not confidence in a cause.
+Keep observations, hypotheses, confirmed causes and proposed/tried/verified
+remedies separate. Unknown cause is valid. State what corroborates a cause or
+remedy and what remains untested; do not inherit certainty from an old incident.
 
-- **verified-live** — executed against the real service/filesystem
-- **verified-against-real-logs** — grepped from actual production log files
-- **inferred-from-code-only** — read from source, never operationally confirmed
-
-Prefer a ranked "most likely / also possible" over one confident answer.
+Reuse supplied context. For historical work use retained transitions and
+membership evidence; today's status/activedet file cannot establish past state.
+Unavailable live tools are a coverage limit, not a reason to stop log analysis.
 
 **Citation policy:** citations in this skill derive from `lcls2_091826`. Grep
 anchors are provided for message strings — those are stable across releases. Line
@@ -71,8 +72,8 @@ The `env -i` isolation is **required** because the setup scripts abort with
 (which it will be in any AMI session):
 
 ```bash
-env -i HOME=$HOME USER=$USER bash -lc \
-  'source <SRCROOT>/setup_env_daq.sh >/dev/null 2>&1; daqstate -P <hutch> -p <platform> -C <collect_host>'
+env -i HOME="$HOME" USER="$USER" bash -lc \
+  'source <SRCROOT>/setup_env_daq.sh >/dev/null && daqstate -P <hutch> -p <platform> -C <collect_host>'
 ```
 
 Where `<SRCROOT>` = `dirname` of the `# TESTRELDIR:` value from the log header
@@ -81,38 +82,18 @@ Where `<SRCROOT>` = `dirname` of the `# TESTRELDIR:` value from the log header
 **Fallback:** `setup_env_daq.sh` exists from `lcls2_072726` onward. For older
 releases, use `setup_env.sh` instead. Both put `daqstate` on PATH.
 
-### SSH escalation from analysis nodes
+### Reachability and historical fallback
 
-From analysis nodes (`sdfiana027`), the control port is firewalled even when `control`
-is listening (verified: TCP connection refused from analysis node; connects normally
-from `rix-daq`). Procedure:
+A live query requires the intended environment and reachable control endpoint;
+source setup with `&&` so failure cannot fall through to an unrelated binary.
+Use an established authorized host/account context. Do not infer routing or
+operator identity from the agent's own HOME. If a host hop is needed but not
+already authorized, explain the missing access and request it. On connection
+failure, report state unavailable and continue from supplied logs where possible.
+Avoid repeated failed queries; a timeout does not prove the DAQ is stopped.
 
-1. Attempt the local `env -i` sourcing + `daqstate` call.
-2. On failure (connection refused or "Resource temporarily unavailable"), **tell the
-   user what failed** and **ask before hopping hosts**.
-3. On approval, run the same `env -i` chain via:
-   ```bash
-   ssh -o BatchMode=yes <collect_host>.pcdsn \
-     'env -i HOME=$HOME USER=$USER bash -lc "source <SRCROOT>/setup_env_daq.sh >/dev/null 2>&1; daqstate -P <hutch> -p <platform> -C <collect_host>"'
-   ```
-   Note: `.pcdsn` must be appended for ssh (bare hostname doesn't resolve from
-   analysis nodes); pass the **bare** hostname to `-C` inside the ssh command
-   (resolved on the DAQ host where bare names work).
-4. Add one retry — 1 of 6 bare connects timed out in testing.
-5. If declined or the connection is flaky, fall back to log-derived state: grep the
-   last transition from `control.log` — `last transition:` appears in `daqstate`
-   output format; the last `<E>` lines name the failure.
-
-### Reachability caveat
-
-The `needs no external dependencies` claim (Section 6 below) refers to Grafana/MCP/
-ConfigDB dependencies — those are not required. But this skill does require either:
-- Running on `<hutch>-daq` (where the control port is open), **or**
-- Explicit ssh escalation from other hosts (see above).
-
-This is the production path: `ami-client` runs on `<hutch>-daq` in all four active
-hutches (xpp→xpp-daq, tmo→tmo-daq, rix→rix-daq, mfx→mfx-daq), where port 30020
-connects normally.
+For a past session reconstruct state only from its retained control/transition
+history, marking gaps. No live API in this skill returns historical state.
 
 ---
 
@@ -135,8 +116,8 @@ beginrun, endrun, beginstep, endstep, enable, disable, slowupdate, reset
 
 Transitions are registered on a `Machine` with a `condition_*` guard each
 (`psdaq/psdaq/control/control.py:841+`, `add_transition` registration block; as of
-`lcls2_091826`). Each transition has exactly one
-legal from-state and one legal to-state, which is what makes the chain linear:
+`lcls2_091826`). Most transitions move to adjacent states; reset, rollcall and internal
+slowupdate have the exceptions shown below:
 
 | Transition | From → To | Guard |
 |---|---|---|
@@ -163,45 +144,19 @@ deliberately does **not** report status afterward (grep: `"slowupdate is an inte
 transition"` in `control.py`). Do not treat a `slowupdate` in the logs as a
 user-driven state change; it is the periodic SlowUpdate heartbeat.
 
-### Path arithmetic — do this before opening any log
+### Path arithmetic — identify the next candidate transition
 
-The routing table `next_dict` (`control.py:281`, as of `lcls2_091826`; grep:
-`"next_dict"` to locate in any other release) maps
-`(current_state, target_state) → next transition to fire`. Because the chain is
-linear, you can compute the whole remaining path yourself by walking the `states`
-list in `ControlDef.py:21,29`.
+`next_dict` in `psdaq/psdaq/control/control.py` maps current and target state to
+the next transition. For example, from `connected` toward `running` the path is
+`configure → beginrun → beginstep → enable`. This identifies what would be
+attempted next, **not what has failed**. The target may not have been requested;
+logs may include earlier runs, reversals or retries in the same launch.
 
-**Worked example.** `daqstate` reports `state: connected`, the operator wants
-`running`:
-
-1. Index `connected` = 3, `running` = 7 → moving forward.
-2. Remaining transitions, in order: `configure` (3→4), `beginrun` (4→5),
-   `beginstep` (5→6), `enable` (6→7).
-3. `next_dict['connected']['running']` = `'configure'` → the very next transition
-   attempted was `configure`.
-4. Therefore: **it died on `configure`.** Nothing about `beginrun`,
-   `beginstep`, or `enable` has been attempted yet, and no log line from them
-   can exist.
-
-That single deduction eliminates most of the search space before any log is
-opened. Going backward works identically: from `running` toward `unallocated`
-the path is `disable → endstep → endrun → unconfigure → disconnect → dealloc`
-(read off the reverse column of `next_dict`).
-
-**Interpretation:**
-
-- **Report the stall boundary, not the state.** "Stuck in `connected`, target
-  `running`, next transition is `configure`, so `configure` is what failed" is
-  actionable. "It's in `connected`" is not.
-- The *failed* transition names the guard that returned False:
-  `configure` → `condition_configure`. That guard's body is where the root cause lives.
-- Only look for log evidence from transitions **at or before** the stall point.
-  Searching for `enable` errors when the DAQ never left `connected` wastes time.
-- A state that regresses (e.g. `running` → `paused` unprompted) means a
-  `disable` fired. Check whether an operator did it or whether
-  `condition_disable` was triggered by an error path.
-- `reset` is reachable from any state, so a jump straight to `reset` is legal and
-  tells you nothing about intermediate failures.
+Require evidence of the requested target, attempted transition and error before
+reporting a failed boundary. The published `lastTransition` is assigned by
+individual guards; it is not a reliable universal record of the last failed
+attempt. Follow timestamped control errors into the named participant's log.
+A reset is legal from any state and by itself establishes no cause.
 
 ---
 
@@ -213,8 +168,8 @@ mean genuinely different things.
 
 | Message | Source | Meaning |
 |---|---|---|
-| `'%s did not respond to %s'` | `control.py` (grep: `"did not respond to %s' % (alias, transition)"`) | **Phase 1** — the component never acknowledged at all. Usually the process isn't running. |
-| `'%s did not respond to %s phase 2'` | `control.py` (grep: `"did not respond to %s phase 2"`) | **Phase 1 succeeded**, then the component died doing the real work. The process IS running but is wedged. |
+| `'%s did not respond to %s'` | `control.py` (grep: `"did not respond to %s' % (alias, transition)"`) | **Phase 1** — no matching acknowledgement arrived before the timeout; inspect process, scheduling and communication evidence. |
+| `'%s did not respond to %s phase 2'` | `control.py` (grep: `"did not respond to %s phase 2"`) | **Phase 1 succeeded**, but the expected phase-2 reply did not arrive in time; present process liveness and the cause remain unknown. |
 | `'%s: %s' % (alias, err_msg)` | `control.py` (grep: `"check_answers"`) | The component **replied with its own error text** (from its `err_info`). This carries the component's own diagnosis — read it literally. |
 
 - **Phase 1** is `confirm_response(...)` inside `condition_common`, over
@@ -237,39 +192,23 @@ mean genuinely different things.
 | `alloc` phase-1 timeout | 5000 ms (hardcoded) | `control.py` (grep: `"timed out\""`) | Not configurable |
 | `configure` phase-1 timeout | 60000 ms (hardcoded) | `control.py` (grep: `"condition_configure(): configure phase1 failed"`) | Not configurable |
 
-**Real xpp production uses `-T 40000`, not the 12500 ms default.**
-*(verified-against-real-logs: all 118 `CMDLINE:` header lines carrying a `-T`
-flag across the September 2026 xpp `control.log` corpus show `-T 40000`.)*
+Read the actual timeout flags from the selected launch header, not an assumed
+site default. Compare the control timeout with participant/event-builder timing
+for that release; increasing a timeout is only a proposed remedy, not proof
+that the original timeout caused the failure.
 
 **Interpretation:**
 
-- **Phase-1 failure → hunt a missing or dead process.** The component never
-  answered the broadcast at all. Most likely it isn't running: check whether
-  its process exists, then read its log's startup header via
-  `psana-daq-logs`. *(inferred-from-code-only)*
-- **Phase-2 failure → the process is alive; look at what it was doing.** It
-  acknowledged phase 1, so its ZMQ path works and it was scheduled. The failure
-  is in the actual work (hardware access, configuration application,
-  event-builder handshake). *(inferred-from-code-only)*
-- **A phase-2 timeout on a system left at the `-T` default may simply be an
-  under-set timeout, not a fault.** Check the control process's `CMDLINE:`
-  header for its actual `-T` before concluding a component is wedged: 12500 ms
-  is only marginally above the 12 s event-builder timeout referenced at
-  (the older default is commented out nearby with that note), and production runs use 40000 ms. Say this explicitly
-  to the user rather than reporting a fault. *(inferred-from-code-only)*
-- **If you see the `'<alias>: <message>'` form (component replied with its own
-  error text), quote it verbatim.** That text came from the component itself and
-  is higher-quality evidence than any timeout message.
-- Phase-2 messages only ever name a `drp` or `meb` alias — or `control` itself,
-  which is registered as a `control`-level entry in `cmstate`. *(verified-against-real-logs:
-  the only phase-2 non-response alias seen for `configure` in the corpus is `control`.)*
-
-> **Provenance caveat, stated plainly:** the claim that the phase-1/phase-2
-> split is *diagnostically important* — that it reliably separates "process
-> missing" from "process wedged" — is **inferred-from-code-only.** It has not
-> been operationally confirmed against a known-cause incident. This skill is
-> organized around that claim, so it is structurally load-bearing. Treat it as
-> a strong hypothesis, not a verified rule, and say so when you use it.
+- Phase-1 non-response can reflect an absent process, communication failure,
+  scheduling delay or a slow handler. Check same-launch participant evidence.
+- Phase-2 non-response establishes that an expected reply was missing after
+  phase 1. The process may have exited, stalled or lost communication since
+  acknowledging; phase 1 does not prove it is still alive.
+- A component `err_info` reply is an observation from that component, not an
+  independently verified root cause. Preserve the specific message/context.
+- `get_phase2_replies` filters active `drp` and `meb` participants in this
+  source. If a log appears to name another level, check alias-to-level mapping
+  and release differences rather than assuming a new participant type.
 
 ---
 
@@ -315,16 +254,16 @@ baseline; present them as "what xpp did in one month."
 | `hsd_0 did not respond to alloc` | 8 | HSD DRP process missing. | As above. |
 | `4 client did not respond to alloc` | 8 | Four components missing at once — the four HSDs, in every observed instance. | Systemic, not per-detector. Check whether the whole HSD DRP process group failed to launch (one host, one job, one launcher). |
 | `drp/epix100_0 did not respond to rollcall` | 8 | Warning-level. Required by the activedet file but never answered the 30 s rollcall broadcast. Grep: `"client + ' did not respond to rollcall'"` in `control.py`. | Rollcall still advances the state machine (grep: `"Despite rollcall transition warnings"` in `control.py`), so this is a *precursor*, not the failure. Expect a matching `alloc` failure next. |
-| `did not respond to disable phase 2` (all aliases) | 8 | Phase-2 non-response during `disable`. Grep: `"did not respond to %s phase 2"` in `control.py`. Spread across 8 distinct aliases, 1 each. | Phase 1 succeeded — the process is alive. Usually seen during shutdown; check whether the run was being torn down. |
-| `configure failed to change state` | 8 | Umbrella for any `condition_configure` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above: distinguish `configure phase1 failed` (config problem) from `configure phase2 failed` (component wedged). |
+| `did not respond to disable phase 2` (all aliases) | 8 | Phase-2 non-response during `disable`. Grep: `"did not respond to %s phase 2"` in `control.py`. Spread across 8 distinct aliases, 1 each. | Phase 1 succeeded earlier; inspect subsequent process and transition evidence, including shutdown context. |
+| `configure failed to change state` | 8 | Umbrella for any `condition_configure` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above: distinguish phase-1 and phase-2 failures, then inspect participant evidence; neither alone proves a config problem or wedged process. |
 | `teb0: TEB didn't hear from:` | 9 | TEB reported, via its own `err_info`, that contributors are missing. | The **following** log line(s) name the missing contributors, one per line. Check each named component. |
 | `ami-meb0: MEB didn't hear from:` | 8 | Same, MEB side. | Same — read the following line(s) for the named contributor. |
 | `drp/jungfrau1M_0 did not respond to rollcall` | 7 | Warning-level rollcall miss for the Jungfrau DRP. | As with `epix100_0` above. |
-| `timing_0 did not respond to connect` | 6 | Timing DRP present at `alloc` but failed the `connect` handshake. Grep: `"did not respond to connect' % alias"` in `control.py`. | It answered `alloc`, so the process exists — look at its log for what happened during `connect`, not for a missing process. |
+| `timing_0 did not respond to connect` | 6 | Timing DRP present at `alloc` but failed the `connect` handshake. Grep: `"did not respond to connect' % alias"` in `control.py`. | It answered `alloc` earlier; inspect its log and liveness during `connect`, including possible exit since allocation. |
 | `1 client did not respond to connect` | 6 | Companion count line. Every observed instance pairs with `timing_0`. | Read the line above for the alias. |
 | `connect failed to change state` | 6 | Umbrella for `condition_connect` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above. |
 | `selectPlatform only permitted in unallocated state` | 6 | Someone ran `selectPlatform` (or the GUI's equivalent) while the DAQ was past `unallocated`. Grep: `"only permitted in unallocated state"` in `control.py`. | Not a DAQ fault — an operator-sequencing error. The DAQ must be deallocated first. Report as procedural, not as a failure. |
-| `condition_configure(): configure phase1 failed` | 4 | Phase-1 `configure` failure. Grep: `"condition_configure(): configure phase1 failed"` in `control.py`. Configuration could not be applied/retrieved. | Check `psana-configdb` for a recent change to the implicated device or config alias. Read the per-alias `did not respond to configure` lines above it. |
+| `condition_configure(): configure phase1 failed` | 4 | Phase-1 `configure` failure. Grep: `"condition_configure(): configure phase1 failed"` in `control.py`. The phase-1 handshake failed; timeout and explicit participant error are distinct possibilities. | Read the per-alias failure and participant log first; use ConfigDB if that evidence implicates configuration. |
 | `control did not respond to configure phase 2` | 4 | Phase-2 `configure` non-response, attributed to `control` itself. Grep: `"did not respond to %s phase 2"` in `control.py`. | Every observed instance is immediately preceded by `teb0: TEB didn't hear from:` and/or `ami-meb0: MEB didn't hear from:`. Diagnose *those* instead. |
 | `configure phase2 failed` | 4 | Umbrella for the phase-2 stage. | See above. |
 | `disable failed to change state` | 2 | `condition_disable` failed. Grep: `"failed to change state' % key"` in `control.py`. | Usually shutdown-time; correlate with the `disable phase 2` lines. |
@@ -432,19 +371,19 @@ alias with rollcall misses also has `alloc` misses.)*
 
 ### Topology preconditions — nothing downstream works until satisfied
 
-These fail `alloc` before any other work can happen. Flag them as blocking.
+The DRP/TEB/readout-group preconditions block allocation; absence of an MEB
+is a warning and permits allocation without AMI monitoring.
 
 - `control.py` (grep: `"at least one DRP is required"`) — `'at least one DRP is required'`
 - `control.py` (grep: `"must use readout group"`) — `f'at least one DRP must use readout group {self.platform}'`
 - `control.py` (grep: `"at least one TEB is required"`) — `'at least one TEB is required'`
 - `control.py` (grep: `"ami NOT supported in absence of MEB"`) — `'ami NOT supported in absence of MEB'`
-  (**warning** — the DAQ proceeds, but AMI monitoring will not work)
+  (**warning** — the DAQ proceeds without MEB monitoring)
 
-**Interpretation:** these are *configuration/selection* faults, not process
-faults. No component is broken; the wrong set was selected. Point the user at
-the activedet file (Section 5) and at `showPlatform`'s active-flag column, not
-at any process's log. *(inferred-from-code-only.)* None of these appeared in
-the corpus.
+**Interpretation:** inspect selection and registration before inferring a
+hardware fault. Missing required DRP/TEB/group membership blocks allocation;
+absence of an MEB is permitted and only removes its monitoring path. A selected
+component may also have failed to launch, so compare control and process logs.
 
 ### DRP alias grammar
 
@@ -582,15 +521,16 @@ confirm against the `active detectors file:` log line.
 ### Answering the two questions
 
 1. **"Why isn't detector X being recorded?"** → look up `X` in
-   `activedet.drp`. Missing entirely, or `"active": 0`, means it was
-   deliberately deselected — the DAQ is behaving as configured. Cross-check
+   `activedet.drp`. Missing entirely, or `"active": 0`, indicates it is not selected in that
+   file; this does not establish intent or prove the file applied to this run. Cross-check
    against the `rollcall: drp/X NOT selected for data collection` warning
    (the `NOT selected for data collection` warning), which is the log-side confirmation.
 2. **"What readout group should X be in?"** → `activedet.drp.X.det_info.readout`
-   is the current value; `history.drp.X.det_info.readout` is the
-   **prior-known-good** value. A mismatch, or a current value that differs from
-   its peers, is the thing to report. This is the only place in the DAQ that
-   preserves a previous-good group value to compare against.
+   is the current value; `history.drp.X.det_info.readout` is a
+   **last-recorded assignment**, not a known-good value. `condition_alloc`
+   updates history before later Configure/acquisition succeeds. A difference
+   warrants checking intended topology and run evidence; peers can legitimately
+   use different groups.
 
 **Interpretation:**
 
@@ -651,7 +591,7 @@ bypass_activedet: <b>  experiment_name: <e>  run_number: <n>
 last_run_number: <m>`
 
 **This bare invocation is your primary entry point.** It gives you the current
-state (for Section 1 path arithmetic), the last transition attempted, and
+state (for Section 1 path arithmetic), the published last-transition field, and
 whether `bypass_activedet` is on (which determines whether Section 5 applies).
 
 `--monitor` is the read-only way to watch a transition attempt live; it prints
@@ -676,7 +616,7 @@ its readout group** on a continuation line. Levels seen: `control`, `drp`, `teb`
 **Interpretation:**
 
 - **A component absent from `showPlatform` is not registered at all** — that is
-  the strongest possible confirmation of a phase-1 non-response cause. Present
+  evidence about current registration, not proof of why an earlier reply was missing. Present
   but without `*` means it registered and was *deselected*, which is a Section 5
   question, not a process question. *(inferred-from-code-only.)*
 - The per-DRP readout group here is the **live, applied** value. Compare it
@@ -775,11 +715,11 @@ configured ──beginrun──> starting ──beginstep──> paused ──en
 **Interpretation:**
 
 - **A scan stuck between steps is a state-machine stall like any other.** Run
-  the bare `daqstate` and apply Section 1: `paused` with target `running` means
-  `enable` failed; `starting` with target `paused` means `beginstep` failed.
-- **A scan that never advances past step 1 with the DAQ sitting in `running` is
-  a `step_done` problem, not a transition problem.** The `StepDone` PV either
-  isn't firing or arrived in the wrong state and was ignored.
+  the bare `daqstate` and apply Section 1: `paused` toward `running` suggests checking `enable`; `starting` toward
+  `paused` suggests `beginstep`. Confirm the attempt/failure from logs.
+- **A scan that never advances past step 1 with the DAQ sitting in `running` warrants checking the
+  `step_done` path alongside the scan driver and transition evidence.** The `StepDone` PV may
+  not be firing or may have arrived in a state where it was ignored.
   Check the control process's debug log for `StepDone PV=... (ignore)`.
   *(inferred-from-code-only.)*
 - `beginstep` / `endstep` phase-1 failures are logged via the same `did not
@@ -801,18 +741,18 @@ or ConfigDB URLs from this skill's summary.
 | Finding | Hand off to | What to ask it |
 |---|---|---|
 | Component down / not responding (**phase 1**) — `X did not respond to <t>`, or absent from `showPlatform` | `psana-daq-logs` | Read `X`'s log startup header (`# CMDLINE:`, `# HOST:`, `# SLURM_JOB_ID:`) and grep `<[EC]>` in the same session prefix |
-| `configure` **phase-1** failure — `condition_configure(): configure phase1 failed` | `psana-configdb` | Was there a recent configuration change to the implicated device or config alias? |
+| `configure` **phase-1** failure — `condition_configure(): configure phase1 failed` | `psana-daq-logs`, then `psana-configdb` if implicated | Read the participant error first; a phase-1 failure alone does not establish configuration retrieval/application failure. |
 | Deadtime / damage / buffer symptoms after the DAQ *is* running | `psana-daq-monitor` | Event rates, `DeadFrac`, `DRP_Damage`, buffer occupancy for the implicated detector |
-| Phase-2 failure — `X did not respond to <t> phase 2` | `psana-daq-logs` **first**, then `psana-daq-monitor` | The process is alive, so read what it logged during the transition; if it was mid-run, check whether metrics show it falling behind |
+| Phase-2 failure — `X did not respond to <t> phase 2` | `psana-daq-logs` **first**, then `psana-daq-monitor` | Check process liveness and what it logged during the transition; if it was mid-run, check whether metrics show it falling behind |
 | `TEB/MEB didn't hear from: <alias>` | `psana-daq-logs` for `<alias>`, then `psana-daq-monitor` | `<alias>` is a missing event-builder contributor; check its process, then `EB_FxUpCt` / `EB_CbMsMk` |
 | Vague report with no state information yet | `psana-daq` (the router) | Let it pick the angle; come back here if the answer is "it won't start" |
 
 **Do not duplicate sibling content.** Log path conventions, filename grammar,
-the `zstdcat` requirement for `.log.zst`, and the header-block format are owned
+decompression/error handling for `.log.zst`, and the header-block format are owned
 by `psana-daq-logs`. Metric names and thresholds are owned by
 `psana-daq-monitor`. ConfigDB endpoints are owned by `psana-configdb`.
 
-Out of scope entirely, per the router's scope table: psana2 analysis API
+Optional external skills (invoke only if installed and relevant): psana2 analysis API
 (`ask-lcls2`), timing-sequence authoring and rate arithmetic (`xpm-seq`),
 generic Slurm/EPICS questions (`ask-slurm-s3df` / `ask-epics`), AMI-side
 performance (`ami-performance-monitor`).

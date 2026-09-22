@@ -23,7 +23,9 @@ session. Before proceeding, call `grafana_list_datasources` (or attempt the
 Step 0 query below) — if it fails or no Grafana MCP tools are available, stop
 and tell the user that Grafana MCP access is required for this skill and is
 not currently configured, rather than attempting further `grafana_*` calls
-that will all fail.
+that will all fail. Mark this leg unavailable and return to any composed
+investigation so it can continue with other evidence. All remediation below is
+advice for human review; never reset hardware, change settings or restart DAQ.
 
 ---
 
@@ -121,6 +123,31 @@ substitute for asking:
         ]}]
     )
 
+### Historical windows and coverage
+
+Reuse the caller's hutch, window/time zone and launch/run context. For a past
+window, bypass the live `now` preflight below: query retained range data over
+that window even if no current metrics exist. Use explicit UTC `startTime` and
+`endTime` for range queries; use the selected historical time for instant
+queries. Replace relative `now` defaults in every example, including discovery,
+panels and links (`timeRange` is for rendering, not the Prometheus query API).
+If only log-file activity bounds exist, label them approximate; see the logs
+skill's **Session selection and historical bounds**.
+
+An empty series is unavailable/missing evidence, not a measured zero. Record
+retention, scrape gaps and any relevant `up` data; a scrape failure does not
+prove a DAQ failure. Keep available component/alias/instance labels and correlate
+with launch headers: endpoint/alias reuse after restart can join different
+processes. Counter resets, scrape intervals and short range vectors affect rate
+interpretation. Do not sum overlapping launch series before identifying them.
+For hutch-wide reports, platform/partition is metadata, not the report grouping.
+
+Metric interpretations below are diagnostic leads: correlate state, topology,
+trigger selection and logs before confirming a cause or a successful remedy.
+A positive event rate alone does not establish the run-control state; zero can
+also mean no triggers. Monitoring may intentionally select fewer events than
+recording, so a TEB/MEB rate difference alone does not prove lost events.
+
 ### Step 1: Confirm metrics are flowing and load the dashboard
 
 Fire these in parallel (single message, multiple tool calls):
@@ -138,9 +165,8 @@ Fire these in parallel (single message, multiple tool calls):
 
 - **Metrics present** → proceed with `{instrument="<value>"}` on all
   subsequent queries.
-- **No results** → tell the user plainly: DAQ is not running for that
-  instrument, or metrics are not flowing; check connectivity before
-  proceeding further.
+- **No results** → report metrics unavailable for that selection/time; check
+  access, retention and scrape coverage. Do not infer DAQ state from absence.
 
 > **Parallel query rule:** Always fire independent Grafana queries in a single
 > message. The event rate, deadtime, damage, and error queries are all
@@ -216,11 +242,11 @@ The most basic health check: are events flowing through the system?
     )
 
 **Interpretation:**
-- `drp_event_rate` > 0 across all expected detectors = DAQ is running
+- `drp_event_rate` > 0 across expected detectors = events observed in the measurement interval
 - `L0InpRate` ≈ `L0AccRate` = minimal deadtime, triggers accepted efficiently
 - `L0InpRate` >> `L0AccRate` = significant deadtime (see section B)
 - TEB rate ≈ L0AccRate = event builder keeping up
-- Zero event rate = DAQ not running or detector not connected
+- Zero event rate = no measured events; correlate state, trigger selection and connectivity
 - Mismatched rates across detectors = possible per-detector issues
 
 Note: `L0InpRate` and `L0AccRate` are EPICS PVs from the XPM, bridged to
@@ -282,7 +308,7 @@ EPICS PV — it is NOT computed by the DRP itself.
 Damaged events have missing or corrupted data from one or more detectors.
 The damage field is a **bitmask** — multiple types can be set simultaneously.
 
-**Damage types** (from `xtcdata/xtc/Damage.hh`):
+**Damage types** (from `xtcdata/xtcdata/xtc/Damage.hh`):
 
 | Bit | Name | Meaning |
 |---|---|---|
@@ -312,8 +338,8 @@ The damage field is a **bitmask** — multiple types can be set simultaneously.
     )
 
 **Interpretation:**
-- Zero damage rate = healthy
-- Nonzero but low (< 1/s) = occasional glitches, usually benign
+- Zero damage rate = no damage measured in available samples, not proof of overall health
+- Nonzero damage merits context even below 1/s; assess affected fraction and experiment needs
 - Sustained damage rate = systematic issue — check hardware links (H)
   and DRP errors (D)
 - Damage on a single detector = detector-specific problem
@@ -332,8 +358,8 @@ The damage field is a **bitmask** — multiple types can be set simultaneously.
 
 ### D. Are there DRP errors?
 
-Six types of discarded error events, dropped early in the readout chain
-(never reach recording or monitoring). All are registered as `MetricType::Gauge`
+Six readout error indicators; discard behavior differs as shown below. All are
+registered as `MetricType::Gauge`
 in prometheus-cpp despite being monotonically increasing — use `rate()` to
 get the rate.
 
@@ -641,8 +667,10 @@ the offending source ID.
 - `RxDataNAlign` ≠ 0 = JESD deserialization issue on HSD
 - Growing `fexoor` rate = HSD feature extraction seeing out-of-range values
 
-**Action:** Link down → check cables, power cycle HSD, re-initialize timing.
-JESD issues → HSD firmware/hardware problem. FEXOOR → adjust HSD thresholds.
+**Next checks:** confirm the affected link/topology and correlate its counters
+with detector logs. Power cycling, timing re-initialization and threshold changes
+are possible human-operated interventions only after diagnosis, not automatic
+consequences of a metric. Use available matching detector guidance when relevant.
 
 ---
 
@@ -909,7 +937,7 @@ matter, `TEB_nMonCt` incrementing is benign.
 
 | Finding | Recommendation |
 |---------|---------------|
-| Zero event rate | DAQ not running — check run control, detector power, timing links |
+| Zero event rate | Check run control, trigger selection, detector connectivity and measurement coverage |
 | High deadtime (>5%) | Trace backpressure: check buffers (E), file writing (F), then event builder (G) |
 | Sustained damage rate | Check hardware links (H), correlate with specific detectors via `detname` label |
 | DMA errors | Hardware issue — check PGP cables, HSD card, firmware version |

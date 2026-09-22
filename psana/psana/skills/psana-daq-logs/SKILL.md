@@ -14,102 +14,109 @@ self-contained — it reads only the plain-text/zstd log files at the paths
 below. There is no log aggregation database or search index behind this;
 every command here is a direct filesystem operation.
 
-**Related skills:** if you arrived here without first checking metrics, load
-`psana-daq-monitor` to locate a time window, or `psana-daq` if the user's
-report is still vague. Load `psana-configdb` afterward if a log finding
-looks configuration-related.
-
----
+**Related skills:** preserve the supplied hutch, time window, launch identities,
+release and available evidence. Load `psana-daq-monitor` only when retained
+metrics would help; a log-only question needs no metrics preflight. Load
+`psana-configdb` for configuration-related findings. For an implicated detector,
+use an available matching specialist skill/reference after identifying its launch
+and release. Do not assume personal or external skills are installed.
 
 ## Path convention
 
-    /sdf/home/<first-letter-of-hutch-account>/<hutch>opr/daq/logs/<YYYY>/<MM>/
+Use a supplied evidence directory first. Otherwise inspect the launcher/config
+and operator-home context without importing configuration Python. In
+`psdaq/psdaq/slurm/utils.py`, `SbatchManager.get_default_output_root()` selects
+`$HOME/daq/logs` for some hutches and `$HOME` for others; `daqmgr --output`
+overrides it (`psdaq/psdaq/slurm/main.py`). These are the launcher's HOME and
+output settings, not necessarily the investigating agent's HOME.
 
-Example, verified for real:
-
-    /sdf/home/x/xppopr/daq/logs/2026/09/
-
-**This path does NOT exist for every hutch.** Verified by directly testing
-every hutch account:
-
-| Status | Hutches |
-|---|---|
-| Present with data (readable) | xpp, tmo, rix, mfx, ued |
-| Directory exists but empty (no year subdirs) | txi, det |
-| No directory | xcs, cxi, asc, tst |
-
-Always check with `ls`/`test -d` before assuming the path exists for a given
-hutch — do not guess an alternate path if it's absent. Tell the user plainly
-if there is no log directory for the hutch they asked about.
-
----
+Logs are placed under `<output-root>/<YYYY>/<MM>/`. Check the configured root
+and readable alternatives supported by launch evidence. An absent conventional
+path does not prove that no logs exist. Report unavailable paths or incomplete
+retention explicitly; do not scan unrelated homes.
 
 ## Filename grammar
 
     <DD>_<HH:MM:SS>_<host>:<component>.log[.zst]
 
-Example real filenames from `xpp`'s September 2026 directory:
+`SbatchManager.__init__` assigns the directory and prefix once using the
+launcher's local `datetime.now()`. The prefix is a launch-group hint, not a
+DAQ run number or a globally unique session ID. Keep the full directory,
+hutch, component/host and header job/command identity: separate launches can
+share a prefix, overlap, or restart only some components. Corroborate grouping
+with control, detector/DRP and TEB headers before joining their findings.
 
-    15_15:31:17_xpp-daq:ami-client.log
-    15_15:31:17_xpp-daq:daqstat.log
-    15_15:31:17_drp-srcf-mon008:ami-meb0.log
-    15_15:31:17_drp-srcf-mon008:control.log
+### Session selection and historical bounds
 
-The `<DD>_<HH:MM:SS>` prefix is **shared across every process/component
-started in the same DAQ session** — it is effectively a session ID.
+1. Reuse a supplied session or historical window. Ask only when unresolved
+   ambiguity changes the investigation. For a hutch-wide window, include all
+   candidate launches intersecting it; do not require one prefix or group the
+   report by platform/partition. Keep those values as evidence metadata.
+2. Resolve a prefix with the parent **year/month** and the launcher's time zone.
+   Record the zone and UTC offset, and convert to UTC for cross-source joins.
+   Do not use the agent's current month/year or time zone. At a daylight-saving
+   fold, retain both possible instants until offset/timestamps distinguish them.
+   A local time in a daylight-saving gap is inconsistent with the stated zone;
+   do not normalize it silently. Keep its identity/coverage unresolved.
+3. The output path stays fixed for the launch: logs can continue in the old
+   month/year directory after midnight or month/year rollover. Search earlier
+   launch directories when the requested window may overlap a long-lived
+   launch. There is no fixed one-month maximum lifetime in the launcher.
+4. Prefer timestamped control transitions, run metadata and XTC BeginRun/EndRun
+   evidence for run boundaries. A launch can contain several runs or none.
+   Untimestamped component lines can establish ordering/context but cannot be
+   assigned exact times merely because metrics have a spike nearby.
+5. Prefix time and newest file mtime provide only an **estimated file-activity
+   interval**, not DAQ run coverage. Copying, compression, touching, sparse
+   logging and missing files can distort mtime. Do not exclude a possibly
+   overlapping launch solely because its last log write precedes the window;
+   label uncertain overlap/coverage. Reject negative intervals as inconsistent
+   evidence rather than silently wrapping the date.
+6. If selection is needed, show full dated launch identities, observed or
+   estimated bounds with their basis, file count, non-RTPRIO error-line count
+   and first excerpt. Sort by resolved full timestamps, not by day-prefix text
+   across directories. Mark ambiguous timestamps and overlaps separately.
+7. Ignore nonconforming names for prefix grouping, but retain relevant supplied
+   files as ungrouped evidence. Once scoped, cache the file list, headers and
+   useful excerpts so a narrow follow-up does not rescan whole month directories.
 
-**Do not simply pick the newest prefix — present a session list and ask the user.**
-The newest session is often a short test with 0 errors; the session before it may
-be the one with 23 errors that the user actually wants to investigate.
+### Compressed/rotated logs and error counts
 
-### Session selection — present a list and ask
+Read `.log.zst` through a zstd decompressor; never grep compressed bytes. Use
+the same reader for counts and excerpts. For one explicitly selected file, this Bash
+example filters messages **before** counting and returns `0` successfully for
+no matching errors. Run it with `bash -o pipefail`; a read/decompression failure
+is unavailable evidence, never a trustworthy zero:
 
-1. Get today's date: `date +%d` → e.g. `18`.
-2. Find sessions whose **last-written file's mtime is today** (not by prefix day —
-   sessions span midnight; a prefix starting `09_08:19:07` may still be writing on
-   the 17th). For each candidate prefix, compute and display:
-   - **prefix** (the session ID, format `DD_HH:MM:SS`)
-   - **lifetime** = (mtime of newest file) − (timestamp parsed from prefix)
-   - **non-RTPRIO error count** = `grep -c '<[EC]>' | grep -v 'Inadequate RTPRIO'`
-   - **first error excerpt** (first non-RTPRIO `<C>` or `<E>` line, truncated ~60 chars)
-   - **file count**
-3. Sort **reverse-lexically** (latest first). This is safe without date parsing:
-   the prefix format is fixed-width `DD_HH:MM:SS` (exactly 11 chars, zero-padded;
-   all hutches conform). Reverse lexical sort is a stable latest-first ordering.
-4. Mark sessions whose prefix day differs from today (spans midnight).
-5. Skip filenames not matching `^[0-9]{2}_[0-9]{2}:[0-9]{2}:[0-9]{2}_` — straggler
-   files with non-conforming names (e.g. `hsd_mw:*`) exist in some months.
-
-**Example list to show the user:**
+```bash
+read_daq_log() {
+    case "$1" in
+        *.log.zst) zstd -dc -- "$1" ;;
+        *.log) cat -- "$1" ;;
+        *) printf 'Unsupported log format: %s\n' "$1" >&2; return 2 ;;
+    esac
+}
+count_daq_errors() {
+    read_daq_log "$1" | awk '/<[EC]>/ && !/Inadequate RTPRIO/ {n++} END {print n+0}'
+}
+count_daq_errors "$log_file"
 ```
-Sessions with activity today (latest first):
-  1. 18_10:33:36   2m    0 errors
-  2. 18_10:13:25   4m    0 errors
-  3. 18_09:57:56   5m   17 errors  <E> 1 client did not respond to configure
-  4. 18_06:56:30  139m   0 errors
-  5. 18_06:53:09   3m   23 errors  <E> configure failed to change state
-  ...
-Which session? (or say 'yesterday' / give a prefix directly)
-```
 
-Tell the user they can also request a different day or specify a prefix directly.
-Month directories are self-contained (no writes bleed past month end), so only
-the day boundary needs handling.
+Use `zstd -dc` without `-f` here: some `zstdcat` versions pass unrecognized
+input through unchanged, concealing corrupt or mislabeled files. Discard stdout
+from a failed pipeline even if awk printed `0` before the reader failed.
 
-Once you have the session prefix, scope all further greps to
-`<dir><prefix>_*` rather than scanning the whole month directory — a single
-month directory can hold on the order of 2000+ files (verified: 2778 files in
-xpp September 2026 — 2292 `.log` and 486 `.log.zst`).
+Apply per file and retain path/count pairs; aggregate only successfully read,
+nonduplicate evidence. If both plain and compressed copies represent the same
+content, select one or establish rotation/overlap before adding counts. For
+excerpts, replace the awk expression with
+`'/<[EC]>/ && !/Inadequate RTPRIO/ {print NR ":" $0}'` and cite the file plus
+**decompressed** line number. Bound displayed excerpts without truncating the
+reader prematurely (which can cause SIGPIPE under `pipefail`).
 
-### Compressed/rotated logs
-
-Rotated logs are **zstd-compressed** (`.log.zst`). You must use `zstdcat`
-(not `cat`/`grep` directly) to read them:
-
-    zstdcat foo.log.zst | grep '<E>'
-
-In the verified sample directory, of 2778 total files, 2292 were `.log` and
-486 were `.log.zst`.
+Keep total `<C>`/`<E>` and RTPRIO counts/excerpts alongside the filtered view.
+Repeated lines are not automatically separate incidents; use component,
+transition, launch/run context and time evidence before grouping occurrences.
 
 ---
 
@@ -156,17 +163,14 @@ where `<L>` is a one-letter level: `<C>` (Critical), `<E>` (Error), `<W>`
     xpp-teb[1788610]: <C> Inadequate RTPRIO limit: got 0, require 99
     xpp-drp[2352331]: <C> Inadequate RTPRIO limit: got 0, require 99
 
-**Lead any investigation with a Critical/Error grep, excluding the RTPRIO startup noise:**
-
-    grep -E '<[EC]>' <session-prefix>_*.log | grep -v 'Inadequate RTPRIO'
-
-`Inadequate RTPRIO limit: got 0, require 99` fires once per process at startup
-and accounts for **1213 of 1382 `<C>` lines** (88%) across one month of xpp
-`.log` files — it is benign and appears in every session. Filtering it first
-makes the remaining output genuinely high-signal.
-
-Verified counts across one month of xpp `.log` files (2292 uncompressed, 232742 total lines):
-1382 `<C>` (1213 RTPRIO, 169 real), 579 `<E>`, 1951 `<W>`, 34291 `<I>`.
+Use the decompression-aware reader and filter above for an initial high-signal
+view, retaining the unfiltered evidence. In
+`psdaq/psdaq/service/Collection.cc::checkResourceLimits`, inadequate RTPRIO is
+logged at critical level but marked nonfatal. That means the process may
+continue, not that scheduling is healthy. Check subsequent transitions and
+scheduling/latency evidence before deprioritizing it; revisit it when scheduling
+is implicated. Do not globally erase these lines or count every critical line
+as a distinct failure.
 
 ## Interpreting `<C>`/`<E>` messages
 
@@ -189,16 +193,13 @@ skill). Once you have a `<C>`/`<E>` line:
    user-supplied config value — e.g. `"nDmaBuffers (%u) can't exceed
    evtCounter range (0:%u)"` (`psdaq/drp/DrpBase.cc:144`) is a config bug, not
    a hardware fault. This distinction changes what the user should do next.
-4. **Watch for anomalous line counts before treating `<C>`/`<E>` hits as
-   discrete events.** Verified production incident (mfx, September 2026): a
-   single Jungfrau DRP log file grew to ~69.5 million `<C>` lines from a
-   `PGPReader data (64):`-style hex-dump loop — a runaway-logging pattern, not
-   69.5 million distinct failures. (That exact message string was not found
-   in the current lcls2 checkout's source — likely from a different release,
-   which is itself an example of the release-source drift this section
-   already warns about.) If a grep count for one file/process is wildly
-   higher than others in the same session, check for a repeating dump/loop
-   before investigating further.
+4. **Watch for anomalous line counts before treating hits as discrete events.**
+   Check for repeated messages or dump loops; compare first/last excerpts,
+   launch identity and transition context. A large count can describe one
+   persistent condition. Without timestamps, occurrence times remain unknown.
+
+For launch/environment, IPC, output-path or PVA symptoms, read
+[references/operational-checks.md](references/operational-checks.md).
 
 ---
 
@@ -229,15 +230,9 @@ a log belongs to:
 
 ## Practical guidance
 
-- Bound greps to the current session's shared filename prefix rather than
-  scanning the whole month directory, e.g.:
-
-      grep -l '<C>\|<E>' /sdf/home/x/xppopr/daq/logs/2026/09/15_15:31:17_*
-
-- Narrow further by component or host substring when the user names one,
-  e.g. `*teb*.log` or `*drp-srcf-mon008*`.
-- Remember rotated `.log.zst` files need `zstdcat`, not `grep` directly —
-  `zgrep`-style tooling is not guaranteed to be `zstd`-aware, so pipe through
-  `zstdcat` explicitly.
-- If a component's current log is empty or missing, check whether it only
-  exists as a `.log.zst` from an earlier rotation in the same session.
+- Bound reads to selected launch files, then narrow by named component/host.
+- Inspect matching control, detector/DRP and TEB evidence for failed transitions.
+- Use the reader above for both `.log` and `.log.zst`. Missing or unreadable
+  files limit coverage; absence of matches is not evidence of a healthy DAQ.
+- A message suggesting a reset or other remedy is a proposal to evaluate,
+  not authorization or proof that it will work. This skill remains read-only.
