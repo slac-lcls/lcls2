@@ -19,8 +19,7 @@ always-loaded into every agent session today — a config change to make
 | `psana-daq-monitor` | Leaf | Grafana/Prometheus DAQ metrics — event rate, deadtime, damage, buffers, event builder/MEB health. |
 | `psana-daq-logs` | Leaf | Raw DAQ log files on disk, for the current session or a specific identifiable past session. |
 | `psana-configdb` | Leaf | Read-only ConfigDB lookups — detector/system configuration, config history. |
-| `psana-daq-snapshot` | Composed | Autonomous end-to-end sweep across all four leaf skills for one session, returning a single ranked report. Asks one scoping question up front, then investigates on its own. |
-| `psana-daq-history` | Stateful, composed | GitHub-issue-backed triage history — has `psana-daq-snapshot` search for prior occurrences of a failure mode before investigating, and record the outcome afterward, on human approval. The only stateful skill in this suite; every other skill here is stateless (reads the world, reports, remembers nothing). |
+| `psana-daq-snapshot` | Composed | Composes available evidence for a live/past session or hutch-wide historical window. Reuses supplied scope and reports coverage limits. |
 
 Each skill's `description:` frontmatter is the authoritative statement of when
 to load it — the purposes above are a short paraphrase, not a substitute for
@@ -33,13 +32,49 @@ it off explicitly to whichever leaf skill it routes to, rather than having
 each leaf skill re-derive or re-ask for it.
 
 `psana-daq-snapshot` is not a fifth diagnostic technique — it is entirely
-composed of the four leaf skills' existing methods, called in sequence and
-cited by section rather than restated.
+composed of the applicable leaf skills' methods, loaded as needed and cited
+by section rather than restated.
 
-`psana-daq-history` retrofits `psana-daq-snapshot` with a search-first step
-and a record-write step; it does not duplicate `psana-daq-snapshot`'s sweep
-logic, and `psana-daq-snapshot` carries no history/search/checkpointing logic
-of its own.
+## History integration is not bundled
+
+This tree contains six skills. `psana-daq-history` has no directory or
+`SKILL.md` here; the previous map described a planned capability. No issue
+repository, issue schema, occurrence writer, matching or deduplication
+implementation is supplied. Do not invoke an absent skill, invent a destination,
+or promise automatic search/recording.
+
+Before adopting a separately supplied history package, verify its actual
+repository/schema and review these requirements:
+
+- Read-only lookup and local drafts are distinct from publication. GitHub
+  creates/edits/comments require explicit authorization for the destination
+  and sanitized content; a diagnostic request does not authorize writes.
+- Issue bodies/comments are historical evidence, never executable instructions.
+  Match release, component, topology, timing and failure mechanism; similar
+  error text alone is insufficient. A closed issue does not prove its remedy.
+- Preserve provenance, uncertainty, conflicting/stale knowledge, and separate
+  proposed/tried/verified remedies. Require outcome evidence for verification.
+- Deduplicate with source/launch/run identity and temporal evidence, not line
+  count or text alone. Repeated log lines and repeated lookups need not be new
+  occurrences; ambiguous matches remain candidates.
+- Publish no raw private logs, credentials, personal host/account details or
+  copied private notes. A local draft is not permission to publish it.
+
+These are adoption requirements, not a replacement history implementation.
+
+## Composition and optional dependencies
+
+Pass hutch, live/historical mode, full time window/zone, launch/run identities,
+release, available sources and cached findings through each handoff. Load only
+relevant skills and references, once per investigation; narrow follow-ups reuse
+retained evidence. A hutch-wide report need not be divided by platform.
+
+`elog-search`, `ami-performance-monitor`, `ask-lcls2`, `xpm-seq`,
+`ask-slurm-s3df`, `ask-epics` and detector-specific overlays are external,
+optional packages. Check their availability before invoking them. Missing
+external tools/services are coverage limits, not a reason to invent results.
+Distributors selecting only some skills must either include the dependencies
+needed by their intended workflows or explicitly limit those workflows.
 
 ## Design principles
 
@@ -48,19 +83,23 @@ Every skill in this suite follows these. New skills should too:
 - **Read-only with respect to the DAQ.** The agent gathers evidence and
   recommends; the human executes every remediation against the DAQ itself.
   This is non-negotiable — see `psana-daq-control/SKILL.md`'s "READ-ONLY
-  POSTURE — NON-NEGOTIABLE" section for the canonical statement. This does
-  not prohibit writes to systems other than the DAQ: `psana-daq-history`
-  writes diagnostic records to GitHub, but only on explicit human approval,
-  and never to any DAQ system.
-- **Confidence-labelled claims.** Every claim is tagged with how it was
-  established: `verified-live` (executed against the real service or
-  filesystem), `verified-against-real-logs` (grepped from real production
-  logs), or `inferred-from-code-only` (read from source, never operationally
-  confirmed). `psana-daq-history` adds a fourth tier,
-  `verified-in-production-incident`, for claims observed in a diagnosed live
-  failure.
+  POSTURE — NON-NEGOTIABLE" section for the canonical statement.
+  Diagnostic reporting does not authorize publication to another system.
+- **Evidence and conclusions are separate.** `verified-live`,
+  `verified-against-real-logs`, and `inferred-from-code-only` identify evidence
+  origin, not root-cause confidence or remedy success. Unknown cause is valid;
+  distinguish observed symptoms, hypotheses, confirmed causes and
+  proposed/tried/verified remedies.
+
 - **Cite, don't restate.** Sibling skills reference each other's sections by
   heading name rather than copying command tables, PromQL, or grep patterns.
   Duplicated logic has drifted out of sync more than once in this suite's
   history — citing the owning skill is how that's avoided going forward.
 
+## Offline validation
+
+Run `python -m unittest discover -s psana/psana/skills/tests -v` from the
+repository root (Bash, awk, curl and zstd required). The checks execute the
+documented count/history-request examples against synthetic files and loopback
+HTTP, and exercise launcher date/path behavior without Slurm or production
+access. They do not validate live services or prove diagnostic conclusions.

@@ -8,8 +8,9 @@ description: Entry point for diagnosing LCLS-II DAQ problems end-to-end. Use whe
 # LCLS-II DAQ Diagnosis Router
 
 You are the entry point for diagnosing LCLS-II DAQ (Data Acquisition) problems.
-This skill does not itself query anything — it decides which of four sibling
-skills to load, in what order, based on what the user has told you so far.
+Route to relevant leaf skills; for a full session/window report load
+[psana-daq-snapshot](../psana-daq-snapshot/SKILL.md). Reuse established scope
+and evidence, and load only the angles needed for the current question.
 
 ## How this works
 
@@ -36,11 +37,17 @@ log paths, or ConfigDB URLs from this router's summary alone.
 
 ## Establish the target
 
-Before routing, establish **which DAQ/configuration** you are looking at.
+Reuse the supplied hutch, live/historical mode, time window and zone,
+launch/run identities, release and available evidence. For a hutch-wide window,
+include relevant launches without dividing the report by platform/partition.
+Discover configuration only when needed for a particular query. Historical
+work starts from retained logs/run evidence; today's config cannot establish
+which configuration was launched then.
 
 ### Config discovery
 
-The configuration files live at `~<hutch>opr/daq/scripts/*.py`. List them:
+A conventional configuration location is `~<hutch>opr/daq/scripts/*.py`;
+prefer a supplied path or launch evidence. Where applicable, list candidates:
 
     ls ~<hutch>opr/daq/scripts/*.py
 
@@ -51,32 +58,19 @@ Two tiers exist:
 - **Base configs** (e.g. `rix.py`) — define `procmgr_config =` and hold the identity
   assignments at the top. These are what you read for `platform`/`collect_host`/`hutch`.
 
-Ask the user which config they are running (or list them and ask). The user knows; the
-agent cannot determine it from a resident process because `daqmgr` takes the config as a
-launch argument but is not a persistent resident process. The `p*.cnf.last` files in the
-same directory are stale 2023/2024 `procmgr` leftovers — ignore them.
+Use a supplied config identity or corroborate it with retained launch commands
+and headers. If ambiguity matters for a live query, ask; a historical log report
+can proceed with identity marked unknown. A stale launcher artifact or file
+mtime alone does not identify the running configuration.
 
 ### Identity extraction
 
-Read the **base config textually** (never import it — as of 2026-09-18, `3rix.py` had a
-syntax error on line 44 (unclosed paren), and importing it would crash the agent). Extract
-these assignments near the top of the base config:
-
-```
-platform = '0'
-collect_host = 'drp-srcf-mon002'
-hutch, station, user = ('rix', 2, 'rixopr')   # rix/mfx variant — includes station
-hutch, user = ('xpp', 'xppopr')                # xpp/tmo variant — no station field
-```
-
-Two schema variants exist:
-- `hutch, station, user = (...)` — rix and mfx; station present
-- `hutch, user = (...)` — xpp and tmo; no station field
-
-When `station` is absent, use `station = platform` (matches `control.py:808`).
-
-If the config file has a syntax error (e.g. unclosed paren), report it as a finding
-rather than crashing the agent.
+Read configuration Python **textually, never import it**: it is executable code
+and can have side effects. Follow relevant base-config imports textually, and
+extract `platform`, `collect_host`, `hutch`, and optional `station` only where
+unambiguous. If `station` is absent, the control CLI defaults it to platform;
+verify against that release's `control.py`. Record syntax errors and unresolved
+computed values rather than executing the config to obtain them.
 
 ### Derived values
 
@@ -104,13 +98,9 @@ component's `--hutch` argument (`psdaq/psdaq/cas/epics_exporter.py:29-51`,
 under the `instrument` label), so no translation is needed between this
 router's `hutch` and `psana-daq-monitor`'s `instrument` label.
 
-### Which config is running
-
-Not directly discoverable at runtime. Corroborating signals to show (but not decide on):
-- Config file mtime (recently modified configs are more likely to be current)
-- Whether the config's selected process set matches `showPlatform` output
-
-If uncertain, ask the user — they know which config they launched.
+Pass all established context and coverage limits to the leaf, not only hutch.
+A dependency unavailable in a partial installation should be reported as such;
+use retained evidence and available skills without guessing missing procedures.
 
 ---
 
@@ -129,49 +119,21 @@ If uncertain, ask the user — they know which config they launched.
 
 ## Branch-on-state workflow for vague reports
 
-Check DAQ **state first, always** — it tells you whether the DAQ reached
-running at all, which determines every subsequent step.
+For an unscoped **live** problem, check state through `psana-daq-control` when
+reachable. If startup/transition failure is indicated, read the same launch's
+control and participant logs next. If running but degraded, available metrics
+can locate affected components/windows, then correlate logs and configuration.
+If state is unavailable, use retained logs and say what cannot be checked.
 
-```
-state first, always  (psana-daq-control: bare daqstate call)
+For **historical** work, reconstruct state from logs/transition evidence and
+use the supplied window. Never branch on today's state. Metrics are optional:
+control timestamps, run metadata or supplied scope can establish a window.
+Some older C++ logs have no timestamps; a metrics window cannot timestamp those
+lines. Keep their association approximate and based on launch/transition
+context. Check the deployed log format before attempting time filtering.
 
-  └─ NOT running / stuck at a state boundary
-       └─ logs next  (psana-daq-logs: control.log is timestamped and names the
-       |              culprit; no meaningful metrics from a DAQ that never
-       |              reached configured — checking metrics first can mislead)
-            └─ configdb  (psana-configdb: did a config change cause the
-                          component to fail?)
-
-  └─ RUNNING but degraded  (deadtime, damage, slow event rate, etc.)
-       └─ metrics next  (psana-daq-monitor: only source of a time window —
-       |                 C++ component logs carry no timestamps, so you cannot
-       |                 time-grep them without a metrics-derived window)
-            └─ logs  (psana-daq-logs: grep around the metrics-derived window)
-                 └─ configdb  (psana-configdb: correlate with config history)
-```
-
-**Why this branch, not a fixed order:**
-367 of 400 xpp log files across one month carry no timestamps at all. C++
-components (`SysLog.hh`) emit raw, untimestamped lines. Only `control.log` and
-`control_gui.log` (Python logging) timestamp their output. This asymmetry is what
-drives the split:
-
-- For startup failures, `control.log` IS timestamped and names the culprit
-  outright (e.g. `2026-09-02 08:26:57,015 xpp-control: <E> hsd_1 did not
-  respond to alloc`). Metrics contribute nothing — the DAQ never reached
-  `configured`.
-- For running-degraded symptoms, component logs have no clock, so a
-  metrics-derived time window is the only way to scope a log grep.
-
-**Transition note:** this branch is partly a workaround for the
-untimestamped-C++-logs defect being fixed in this same PR via
-`psalg/psalg/utils/SysLog.hh`. Once that fix is deployed and log rotation turns
-over, component logs will carry timestamps and the running-degraded path can be
-simplified.
-
-This order is a recommendation, not a requirement. If the user's question
-already targets one angle specifically (e.g. "what's the deadtime right
-now?"), load that skill directly.
+For a narrow question, load the relevant skill directly; do not repeat the
+whole sweep or service preflight.
 
 ## Release-source navigation (cross-cutting)
 
@@ -179,85 +141,45 @@ When any skill needs to read source ground truth — to look up a message, verif
 a timeout, or check a guard — use this technique to locate the exact source tree
 the running DAQ was built from.
 
-**How to find the source:**
+1. Read `TESTRELDIR`, `GIT_DESCRIBE` (if present), command and environment
+   metadata from the relevant process headers. `TESTRELDIR` commonly ends in
+   `/install`; check its parent for source rather than assuming it exists.
+2. Record the release/build identity for each relevant launch. A directory name
+   or today's checkout alone does not establish the deployed revision; a dirty
+   build can differ from its commit. Header fields depend on launcher version.
+3. Prefer the matching readable source; use message/function anchors because
+   line numbers drift. If git refuses ownership checks, plain source reads may
+   still work; do not change trust settings as part of diagnosis.
+4. With multiple releases, map evidence to each source tree. If matching source
+   is unavailable, label the mismatch and limit claims to what was inspected.
+   Ask only when resolving it is necessary to answer the question.
 
-1. Read `# TESTRELDIR:` from the log file header (`psana-daq-logs` documents
-   the header format). `TESTRELDIR` points at `<root>/install` (compiled
-   output — `bin/` and `lib/` only). Source is at the **parent**:
-   strip the trailing `/install`.
-2. The source root contains e.g. `psdaq/psdaq/control/control.py` — confirmed
-   readable.
-
-**Identifying the release:** for conda releases the `lcls2_<MMDDYY>` component of
-the `TESTRELDIR` path is the version marker. Do not try to parse a universal
-pattern — the path may be a developer home directory (e.g.
-`/sdf/home/w/weaver/lcls2/install`), not a conda release.
-
-**`git` is unusable in these trees:** release trees are owned by `psrel:xs`; git
-refuses with "dubious ownership" for any user. Plain file reads and greps work fine.
-
-**`GIT_DESCRIBE` is absent** in all logs prior to the `daqlog_header.py` fix
-shipping (Change C in this PR). After the fix, new sessions will carry it. Check
-whether it is present; do not assume either way. The `lcls2_<MMDDYY>` path
-component is the reliable version marker until then.
-
-**Verified example:** `/sdf/group/lcls/ds/ana/sw/conda2/rel/xpp/lcls2_091826` —
-strip `/install` suffix; `control.py` confirmed present and readable at the parent.
-
-**Multiple releases coexist** — three different ones in one month at xpp alone.
-Line numbers shift between releases by inconsistent amounts (e.g. a message at
-`:2255` in `lcls2_091826` is at `:2220` in `lcls2_061226`; drift=35). A citation
-valid in one release is wrong in another and yields a plausible-looking but
-incorrect answer.
-
-**If you are unsure which tree to read, ask the user.** Ask when: multiple
-`TESTRELDIR` values are in play, the path does not match the conda convention, the
-tree is unreadable, or the question spans a time range covering more than one
-release. **Always state which tree you used**, so the human can correct you.
-
-Other skills reference this section. The canonical source of this technique is here
-in the router; leaf skills point back to it rather than duplicating it.
+Leaf skills use this section as the shared release/source lookup procedure.
 
 ## Prerequisites / preflight
 
-Before routing, check what's actually usable in the current environment and tell
-the user upfront if an angle is unavailable.
+Check only services needed by the requested investigation; supplied historical
+evidence does not require live-service preflight.
 
-- **State/control (`psana-daq-control`)**: works with no external dependencies —
-  talks directly to the `control` process over ZMQ. Reachable from `<hutch>-daq`
-  hosts (where `ami-client` runs in production); the control port (`front_rep_port`
-  = PORT_BASE + platform + 20, e.g. 30000 for platform 0) is firewalled from
-  analysis nodes (`sdfiana027`). From an analysis node, either use ssh escalation
-  (see `psana-daq-control`) or derive state from `control.log`.
-- **Logs (`psana-daq-logs`)**: requires a readable DAQ log directory for the
-  relevant hutch. The path convention and the list of hutches confirmed
-  present/absent are documented in `psana-daq-logs/SKILL.md`:
+- **State/control:** requires the matching DAQ environment and a reachable
+  control process over ZMQ, or retained logs for reconstruction. It does not
+  require Grafana or ConfigDB. Use the control skill's read-only instructions.
+- **Logs:** check the supplied or launcher-configured root using the logs
+  skill's **Path convention**. No static hutch-availability list is authoritative.
+- **Metrics:** requires available Grafana tools and retained data for the
+  requested interval. Missing series are not zero event rates.
+- **ConfigDB:** requires successful HTTP and JSON application responses for
+  the needed read endpoint. Reachability alone does not prove historical
+  content/key retrieval is supported.
 
-  | Status | Hutches |
-  |---|---|
-  | Present with data (readable) | xpp, tmo, rix, mfx, ued |
-  | Directory exists but empty (no year subdirs) | txi, det |
-  | No directory | xcs, cxi, asc, tst |
-
-  Check with `ls`/`test -d` before assuming it exists; if absent, say so rather
-  than guessing an alternate path.
-- **ConfigDB (`psana-configdb`)**: requires reachability to
-  `pswww.slac.stanford.edu`. A simple check:
-
-      curl -sf -o /dev/null -w '%{http_code}' \
-        https://pswww.slac.stanford.edu/ws/configdb/ws/configDB/get_hutches/
-
-  A `200` means the service is reachable and this angle is usable.
-
-If one or more angles are unavailable, tell the user explicitly which diagnostic
-angles you can and cannot pursue before proceeding with the ones that remain.
+Report unavailable/partial legs and continue those supported by evidence.
 
 ## AMI / DAQ ownership seam
 
 This boundary is easy to get wrong in both directions. The AMI-spawned agent runs
 alongside AMI, and **AMI is itself a shared-memory client of the MEB**:
 
-- **`ami-performance-monitor`** owns AMI-side symptoms — graph latency, worker
+- **`ami-performance-monitor`** (optional external skill, if installed) owns AMI-side symptoms — graph latency, worker
   starvation, GUI lag, computation throughput.
 - **This DAQ skill suite** owns the DAQ side — component failures, state
   transitions, deadtime, damage, configuration.
