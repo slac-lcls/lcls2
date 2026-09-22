@@ -1,6 +1,6 @@
 ---
 name: psana-daq-logs
-description: Read and search raw LCLS-II DAQ log files on disk for the currently running or very recent DAQ session (not historical/archival analysis). Use for "read DAQ log files", "find error messages in DAQ logs", "why did a DAQ component crash", "current/live run log inspection", "tail DAQ logs", "DRP/TEB/MEB log errors".
+description: Read and search raw LCLS-II DAQ log files on disk for the currently running session or a specific past session you can identify by date/prefix (not a general-purpose archival search tool for arbitrary old data). Use for "read DAQ log files", "find error messages in DAQ logs", "why did a DAQ component crash", "current/live run log inspection", "tail DAQ logs", "DRP/TEB/MEB log errors".
 ---
 
 # Skill: psana-daq-logs
@@ -8,7 +8,8 @@ description: Read and search raw LCLS-II DAQ log files on disk for the currently
 # LCLS-II DAQ Live Log Inspection
 
 You are reading raw DAQ log files directly off the filesystem to diagnose the
-CURRENTLY RUNNING or very recently completed DAQ session. This skill is
+CURRENTLY RUNNING session or a specific past session identified by date/prefix
+via the session-listing mechanism below. This skill is
 self-contained — it reads only the plain-text/zstd log files at the paths
 below. There is no log aggregation database or search index behind this;
 every command here is a direct filesystem operation.
