@@ -33,8 +33,9 @@ every hutch account:
 
 | Status | Hutches |
 |---|---|
-| Present (readable) | xpp, tmo, rix, mfx, txi, ued, det |
-| Absent | xcs, cxi, asc, tst |
+| Present with data (readable) | xpp, tmo, rix, mfx, ued |
+| Directory exists but empty (no year subdirs) | txi, det |
+| No directory | xcs, cxi, asc, tst |
 
 Always check with `ls`/`test -d` before assuming the path exists for a given
 hutch — do not guess an alternate path if it's absent. Tell the user plainly
@@ -54,16 +55,50 @@ Example real filenames from `xpp`'s September 2026 directory:
     15_15:31:17_drp-srcf-mon008:control.log
 
 The `<DD>_<HH:MM:SS>` prefix is **shared across every process/component
-started in the same DAQ session** — it is effectively a session ID. To find
-the currently active session, list distinct prefixes and pick the newest:
+started in the same DAQ session** — it is effectively a session ID.
 
-    ls -t <dir>*.log | head       # newest-modified files, or:
-    ls <dir> | sed -E 's/^([0-9]+_[0-9:]+)_.*/\1/' | sort -u | tail -1
+**Do not simply pick the newest prefix — present a session list and ask the user.**
+The newest session is often a short test with 0 errors; the session before it may
+be the one with 23 errors that the user actually wants to investigate.
+
+### Session selection — present a list and ask
+
+1. Get today's date: `date +%d` → e.g. `18`.
+2. Find sessions whose **last-written file's mtime is today** (not by prefix day —
+   sessions span midnight; a prefix starting `09_08:19:07` may still be writing on
+   the 17th). For each candidate prefix, compute and display:
+   - **prefix** (the session ID, format `DD_HH:MM:SS`)
+   - **lifetime** = (mtime of newest file) − (timestamp parsed from prefix)
+   - **non-RTPRIO error count** = `grep -c '<[EC]>' | grep -v 'Inadequate RTPRIO'`
+   - **first error excerpt** (first non-RTPRIO `<C>` or `<E>` line, truncated ~60 chars)
+   - **file count**
+3. Sort **reverse-lexically** (latest first). This is safe without date parsing:
+   the prefix format is fixed-width `DD_HH:MM:SS` (exactly 11 chars, zero-padded;
+   all hutches conform). Reverse lexical sort is a stable latest-first ordering.
+4. Mark sessions whose prefix day differs from today (spans midnight).
+5. Skip filenames not matching `^[0-9]{2}_[0-9]{2}:[0-9]{2}:[0-9]{2}_` — straggler
+   files with non-conforming names (e.g. `hsd_mw:*`) exist in some months.
+
+**Example list to show the user:**
+```
+Sessions with activity today (latest first):
+  1. 18_10:33:36   2m    0 errors
+  2. 18_10:13:25   4m    0 errors
+  3. 18_09:57:56   5m   17 errors  <E> 1 client did not respond to configure
+  4. 18_06:56:30  139m   0 errors
+  5. 18_06:53:09   3m   23 errors  <E> configure failed to change state
+  ...
+Which session? (or say 'yesterday' / give a prefix directly)
+```
+
+Tell the user they can also request a different day or specify a prefix directly.
+Month directories are self-contained (no writes bleed past month end), so only
+the day boundary needs handling.
 
 Once you have the session prefix, scope all further greps to
 `<dir><prefix>_*` rather than scanning the whole month directory — a single
-month directory can hold on the order of 2000 files (verified: 1978 files in
-the xpp September sample).
+month directory can hold on the order of 2000+ files (verified: 2778 files in
+xpp September 2026 — 2292 `.log` and 486 `.log.zst`).
 
 ### Compressed/rotated logs
 
@@ -72,15 +107,19 @@ Rotated logs are **zstd-compressed** (`.log.zst`). You must use `zstdcat`
 
     zstdcat foo.log.zst | grep '<E>'
 
-In the verified sample directory, of 1978 total files, 1652 were `.log` and
-326 were `.log.zst`.
+In the verified sample directory, of 2778 total files, 2292 were `.log` and
+486 were `.log.zst`.
 
 ---
 
 ## Header block (every log file starts with one)
 
-Every log file begins with a `#`-prefixed header containing operational
-metadata that is itself useful diagnostic data — not just log content.
+Every log file begins with a header block of `#`-prefixed lines containing
+operational metadata that is itself useful diagnostic data — not just log content.
+As of `lcls2_091826`, some files begin with 1–4 lines of `git describe` stderr
+output before the first `#` line (a known regression in the log-header generator
+being fixed in this PR). Find the header by scanning for the first `#`-prefixed
+line rather than assuming it is line 1.
 Verified real example (`drp-srcf-mon008:ami-meb0.log`):
 
     # SLURM_JOB_ID:69442
@@ -100,8 +139,9 @@ Prometheus metrics output directory. This is how you cross-check what
 for that process: Grafana dashboards show current metric values, not the
 configured limits that produced them.
 
-Always read the first ~10 lines of a component's log before grepping for
-errors, so you know its host, PID/job, and startup flags.
+Always read the header block before grepping for errors — scan past any
+non-`#` preamble lines to find `# SLURM_JOB_ID:`, `# HOST:`, `# CMDLINE:`,
+`# TESTRELDIR:` etc. These give the process's host, PID/job, and startup flags.
 
 ---
 
@@ -115,14 +155,17 @@ where `<L>` is a one-letter level: `<C>` (Critical), `<E>` (Error), `<W>`
     xpp-teb[1788610]: <C> Inadequate RTPRIO limit: got 0, require 99
     xpp-drp[2352331]: <C> Inadequate RTPRIO limit: got 0, require 99
 
-**Lead any investigation with a Critical/Error grep** — this is a
-high-signal, low-volume filter:
+**Lead any investigation with a Critical/Error grep, excluding the RTPRIO startup noise:**
 
-    grep -E '<[EC]>' <session-prefix>_*.log
+    grep -E '<[EC]>' <session-prefix>_*.log | grep -v 'Inadequate RTPRIO'
 
-Verified counts across one month of xpp `.log` files (232742 total lines):
-1050 `<C>`, 310 `<E>`, 1951 `<W>`, 34291 `<I>` — Critical+Error together are
-under 4% of lines, so this filter is cheap and effective.
+`Inadequate RTPRIO limit: got 0, require 99` fires once per process at startup
+and accounts for **1213 of 1382 `<C>` lines** (88%) across one month of xpp
+`.log` files — it is benign and appears in every session. Filtering it first
+makes the remaining output genuinely high-signal.
+
+Verified counts across one month of xpp `.log` files (2292 uncompressed, 232742 total lines):
+1382 `<C>` (1213 RTPRIO, 169 real), 579 `<E>`, 1951 `<W>`, 34291 `<I>`.
 
 ---
 

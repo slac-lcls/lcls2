@@ -34,6 +34,75 @@ relevant, explicitly invoke `skill(name="psana-daq-control")` (or
 any of that skill's tool calls — do not guess at state queries, Grafana queries,
 log paths, or ConfigDB URLs from this router's summary alone.
 
+## Establish the target
+
+Before routing, establish **which DAQ/configuration** you are looking at.
+
+### Config discovery
+
+The configuration files live at `~<hutch>opr/daq/scripts/*.py`. List them:
+
+    ls ~<hutch>opr/daq/scripts/*.py
+
+Two tiers exist:
+
+- **Leaf endstation configs** (e.g. `3rix.py`, `crix.py`) — contain `from <base> import*` and
+  a `config.select([...])` call. These are what operators launch.
+- **Base configs** (e.g. `rix.py`) — define `procmgr_config =` and hold the identity
+  assignments at the top. These are what you read for `platform`/`collect_host`/`hutch`.
+
+Ask the user which config they are running (or list them and ask). The user knows; the
+agent cannot determine it from a resident process because `daqmgr` takes the config as a
+launch argument but is not a persistent resident process. The `p*.cnf.last` files in the
+same directory are stale 2023/2024 `procmgr` leftovers — ignore them.
+
+### Identity extraction
+
+Read the **base config textually** (never import it — as of 2026-09-18, `3rix.py` had a
+syntax error on line 44 (unclosed paren), and importing it would crash the agent). Extract
+these assignments near the top of the base config:
+
+```
+platform = '0'
+collect_host = 'drp-srcf-mon002'
+hutch, station, user = ('rix', 2, 'rixopr')   # rix/mfx variant — includes station
+hutch, user = ('xpp', 'xppopr')                # xpp/tmo variant — no station field
+```
+
+Two schema variants exist:
+- `hutch, station, user = (...)` — rix and mfx; station present
+- `hutch, user = (...)` — xpp and tmo; no station field
+
+When `station` is absent, use `station = platform` (matches `control.py:808`).
+
+If the config file has a syntax error (e.g. unclosed paren), report it as a finding
+rather than crashing the agent.
+
+### Derived values
+
+With `hutch`, `platform`, and `collect_host` from the config:
+
+- **`daqstate`**: `daqstate -P <hutch> -p <platform> -C <collect_host>`
+  Use the **bare `hutch`** (e.g. `rix`, not `rix:2`). The log CMDLINE may show `-P rix:2`
+  but `daqstate -P rix:2` exits with `Error: instrument name 'rix:2' does not match 'rix'`
+  — `control.py:801` (`handle_getinstrument` at `:1688` returns the bare instrument). The
+  config's `hutch` field is already stripped.
+- **`-C` is a homograph**: `-C COLLECT_HOST` in `daqstate.py:18` means the collection
+  host. `-C CONFIG_ALIAS` in `control.py:2608` means something entirely different. Do NOT
+  copy `-C BEAM` from the control CMDLINE in the log — that is the config alias, not the
+  collect host. Use the config's `collect_host` field. The collect host also appears as
+  `# HOST:` in `control.log`.
+
+### Which config is running
+
+Not directly discoverable at runtime. Corroborating signals to show (but not decide on):
+- Config file mtime (recently modified configs are more likely to be current)
+- Whether the config's selected process set matches `showPlatform` output
+
+If uncertain, ask the user — they know which config they launched.
+
+---
+
 ## Symptom → skill routing table
 
 | Symptom / question | Load skill |
@@ -144,16 +213,20 @@ Before routing, check what's actually usable in the current environment and tell
 the user upfront if an angle is unavailable.
 
 - **State/control (`psana-daq-control`)**: works with no external dependencies —
-  talks directly to the `control` process over ZMQ. Always available if the DAQ
-  host is reachable.
+  talks directly to the `control` process over ZMQ. Reachable from `<hutch>-daq`
+  hosts (where `ami-client` runs in production); the control port (`front_rep_port`
+  = PORT_BASE + platform + 20, e.g. 30000 for platform 0) is firewalled from
+  analysis nodes (`sdfiana027`). From an analysis node, either use ssh escalation
+  (see `psana-daq-control`) or derive state from `control.log`.
 - **Logs (`psana-daq-logs`)**: requires a readable DAQ log directory for the
   relevant hutch. The path convention and the list of hutches confirmed
   present/absent are documented in `psana-daq-logs/SKILL.md`:
 
   | Status | Hutches |
   |---|---|
-  | Present (readable) | xpp, tmo, rix, mfx, txi, ued, det |
-  | Absent | xcs, cxi, asc, tst |
+  | Present with data (readable) | xpp, tmo, rix, mfx, ued |
+  | Directory exists but empty (no year subdirs) | txi, det |
+  | No directory | xcs, cxi, asc, tst |
 
   Check with `ls`/`test -d` before assuming it exists; if absent, say so rather
   than guessing an alternate path.

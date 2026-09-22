@@ -56,7 +56,7 @@ def get_output_header(job_name, platform, nodelist, daq_cmd):
             ).strip()
             git_describe = git_output
         except subprocess.CalledProcessError as e:
-            logger.warning(
+            logger.debug(
                 "Git describe failed for TESTRELDIR '%s': %s",
                 os.environ["TESTRELDIR"],
                 e.output.strip()

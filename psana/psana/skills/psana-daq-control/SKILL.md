@@ -57,6 +57,65 @@ All `file:line` citations below are relative to the lcls2 checkout root.
 
 ---
 
+## Prerequisites — environment and reachability
+
+### Environment sourcing
+
+The DAQ environment must be sourced explicitly before running `daqstate` or
+`showPlatform`. Do NOT probe `command -v daqstate` — `ami-client` is launched via
+`bash -l -c` which re-sources shell profiles (e.g. `rixopr`'s `.bashrc` runs
+`pathmunge` which may clobber PATH).
+
+The `env -i` isolation is **required** because the setup scripts abort with
+`"Please do not mix ana and daq setup scripts"` when `ENV_TYPE=ana` is already set
+(which it will be in any AMI session):
+
+```bash
+env -i HOME=$HOME USER=$USER bash -lc \
+  'source <SRCROOT>/setup_env_daq.sh >/dev/null 2>&1; daqstate -P <hutch> -p <platform> -C <collect_host>'
+```
+
+Where `<SRCROOT>` = `dirname` of the `# TESTRELDIR:` value from the log header
+(strip trailing `/install`).
+
+**Fallback:** `setup_env_daq.sh` exists from `lcls2_072726` onward. For older
+releases, use `setup_env.sh` instead. Both put `daqstate` on PATH.
+
+### SSH escalation from analysis nodes
+
+From analysis nodes (`sdfiana027`), the control port is firewalled even when `control`
+is listening (verified: TCP connection refused from analysis node; connects normally
+from `rix-daq`). Procedure:
+
+1. Attempt the local `env -i` sourcing + `daqstate` call.
+2. On failure (connection refused or "Resource temporarily unavailable"), **tell the
+   user what failed** and **ask before hopping hosts**.
+3. On approval, run the same `env -i` chain via:
+   ```bash
+   ssh -o BatchMode=yes <collect_host>.pcdsn \
+     'env -i HOME=$HOME USER=$USER bash -lc "source <SRCROOT>/setup_env_daq.sh >/dev/null 2>&1; daqstate -P <hutch> -p <platform> -C <collect_host>"'
+   ```
+   Note: `.pcdsn` must be appended for ssh (bare hostname doesn't resolve from
+   analysis nodes); pass the **bare** hostname to `-C` inside the ssh command
+   (resolved on the DAQ host where bare names work).
+4. Add one retry — 1 of 6 bare connects timed out in testing.
+5. If declined or the connection is flaky, fall back to log-derived state: grep the
+   last transition from `control.log` — `last transition:` appears in `daqstate`
+   output format; the last `<E>` lines name the failure.
+
+### Reachability caveat
+
+The `needs no external dependencies` claim (Section 6 below) refers to Grafana/MCP/
+ConfigDB dependencies — those are not required. But this skill does require either:
+- Running on `<hutch>-daq` (where the control port is open), **or**
+- Explicit ssh escalation from other hosts (see above).
+
+This is the production path: `ami-client` runs on `<hutch>-daq` in all four active
+hutches (xpp→xpp-daq, tmo→tmo-daq, rix→rix-daq, mfx→mfx-daq), where port 30020
+connects normally.
+
+---
+
 ## Section 1 — The State Machine
 
 **8 states, strictly linear** (`psdaq/psdaq/control/ControlDef.py:21,29` — `states`
@@ -585,7 +644,7 @@ Verified flags (argument definitions in `daqstate.py`):
 **With no flag at all**, `daqstate` prints current status via `getStatus()`:
 
 ```
-daqstate -P xpp -p 0 -C <collect_host>
+daqstate -P <hutch> -p <platform> -C <collect_host>
 ```
 → `last transition: <t>  state: <s>  configuration alias: <c>  recording: <r>
 bypass_activedet: <b>  experiment_name: <e>  run_number: <n>
