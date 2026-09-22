@@ -4,6 +4,53 @@ Working notes for the `features/gpu` branch.  Each item records enough context t
 be picked up cold, because the reasoning behind these decisions is otherwise only
 in people's heads.
 
+## WEKA reserves CPUs on some nodes, and Slurm must be told in abstract IDs
+
+Cost an evening on drp-srcf-gpu007 on 2026-09-21, after its conversion to hex device names.
+The XPM:13 job would not start: `PENDING`, then four launch attempts each failing with
+
+    error: task_g_set_affinity: Invalid argument
+    error: _exec_wait_child_wait_for_parent: failed: File exists
+    error: job_manager: exiting abnormally: Slurmd could not execve job
+
+and each failure re-arming `Reason=batch job complete failure` on the node, so the drain was a
+symptom rather than the cause.
+
+**Root cause, two parts.**  First, **WEKA claims CPUs on gpu007 and not on gpu006**: a
+`weka-drpsrcf` cgroup holds machine CPUs `1-2,32,65-66,96`, which the kernel then removes from
+every other cgroup's effective set -- gpu007's root cpuset reads
+`0,3-31,33-64,67-95,97-127` where gpu006's reads `0-127`.  Slurm knows only as a startup
+warning (`_check_full_access: subset of restricted cpus`) and still allocates there.
+
+Second, and the part that took four wrong theories: **`CpuSpecList` is in abstract CPU IDs,
+while WEKA's set is machine IDs.**  On this topology the translation is
+
+    machine 1,2,32,65,66,96   ==   abstract 2-5,64-65
+
+so `CpuSpecList=2-5,64-65` is the value that works.  Earlier attempts wrote the machine numbers
+directly -- `0-3`, then `0-3,64-67`, then `0-2,32,65,66,96` -- each of which reserved a
+different wrong set while leaving machine CPU 2 allocatable, which is the CPU the kernel kept
+rejecting.
+
+Slurm prints the translation on every slurmd start, on adjacent lines, and it is the check to
+use:
+
+    Resource spec: Reserved abstract CPU IDs: 2-5,64-65
+    Resource spec: Reserved machine CPU IDs: 1-2,32,65-66,96      <- must match WEKA's set
+
+Result: `CoreSpecCount=3` (three whole cores, `{1,65}`, `{2,66}`, `{32,96}`), `CPUEfctv=122`,
+and the node went from offering 60 CPUs that morning to 122.  `pykcuxpm` runs and XPM:13 is
+back.
+
+**This is very probably the open IT ticket about Slurm scheduling onto WEKA-saturated cores** --
+not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".  Worth checking
+which other nodes have a `weka-*` cgroup, since each needs its own `CpuSpecList` in abstract
+IDs, and the set is WEKA's choice rather than ours.
+
+`scontrol reconfigure` alone is **not** sufficient for a `CpuSpecList` change: slurmd caught the
+`SIGHUP`, printed the new value, and still failed the next launch.  `systemctl restart slurmd`
+was needed.
+
 ## The GPU nodes, and which are DRP-capable
 
 As of 2026-09-18.  Card counts are from `lspci | grep -i slac`, **not** from
@@ -201,6 +248,17 @@ the conclusions.
 - **Re-install and re-`setcap` `/usr/local/bin/drp_gpu` after every C++ build**, per node.
   `install` drops file capabilities, and the image check refuses to start rather than running
   stale code.
+- **`CpuSpecList` is in Slurm's ABSTRACT CPU IDs, not machine IDs.**  On a two-socket SMT node
+  they differ completely: abstract counts socket-major with both threads adjacent, machine
+  counts all first threads then all second threads.  Slurm prints both on every slurmd start --
+  `Resource spec: Reserved abstract CPU IDs:` and `Reserved machine CPU IDs:` -- so **check the
+  machine line against what you meant to reserve**.  Writing machine numbers into
+  `CpuSpecList` reserves the wrong CPUs silently, and the symptom is remote: jobs fail with
+  `task_g_set_affinity: Invalid argument` and `Slurmd could not execve job`, because Slurm
+  allocates a CPU that something else has taken out of the cgroup.
+- **Reserve whole cores, or `CoreSpecCount` will disagree with `CpuSpecList`.**  With SMT on,
+  machine CPU *n* pairs with *n+64*: reserving one without the other gives a partial core and
+  inconsistent bookkeeping.
 - **Clear the drain after any reconfigure or node disturbance.**  Slurm never clears one
   itself: `sudo scontrol update NodeName=<node> State=RESUME`.  Read the `Reason` rather than
   skimming the state -- `count too low` is the harmless transient, anything else is real.
