@@ -25,6 +25,7 @@ def pyxpm_optsdb(n,ext='NEH'):
                      'pyxpm-11'    : 2543,
                      'pyxpm-12'    : 2544,   # drp-srcf-mon010
                      'pyxpm-13'    : 2542,   # drp-srcf-gpu007
+                     'pyxpm-14'    : 2542,   # drp-srcf-gpu002
 		     'pyxpm-feh-4' : 2552,
 		     'pyxpm-feh-5' : 2553,
 		     'pyxpm-feh-6' : 2554
@@ -41,7 +42,8 @@ def pyxpm_optsdb(n,ext='NEH'):
 kcu_host = "drp-srcf-cmp043"
 xpp_kcu_host = "drp-srcf-mon009"
 gpu_kcu_host = "drp-srcf-mon010"
-gpu_c11_host = "drp-srcf-gpu007"
+gpu007_c11 = "drp-srcf-gpu007"
+gpu002_c11 = "drp-srcf-gpu002"
 base_host = "drp-srcf-mon001"
 feh_host = "drp-srcf-mon001"
 fee_host  = "drp-neh-ctl002"
@@ -62,16 +64,17 @@ procmgr_config = [
     { host: base_host,     cores: 2, id:"pyxpm-6"  , port:"29455", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.1.105 "+pyxpm_optsdb(6)},   # TMO XPM
     { host: fee_host,      cores: 2, id:"pyxpm-10" , port:"29457", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.5.102 "+pyxpm_optsdb(10)},  # FEE XPM
     { host: fee_host,      cores: 2, id:"pyxpm-11" , port:"29450", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.5.104 "+pyxpm_optsdb(11)},  # FEE XPM
-    { host: gpu_kcu_host,  cores: 2, id:"pyxpm-12" , port:"29458", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_0 -G "+pyxpm_optsdb(12)}, # KCU XPM GPU
-    { host: gpu_c11_host,  cores: 2, id:"pyxpm-13" , port:"29465", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_2 -G "+pyxpm_optsdb(13)}, # C1100 XPM GPU
+    { host: gpu_kcu_host,  cores: 2, id:"pyxpm-12" , port:"29458", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_81 -G "+pyxpm_optsdb(12)}, # KCU XPM GPU
+    { host: gpu007_c11,    cores: 2, id:"pyxpm-13" , port:"29465", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_a1 -G "+pyxpm_optsdb(13)}, # C1100 XPM GPU
+    { host: gpu002_c11,    cores: 2, id:"pyxpm-14" , port:"29467", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_0 -G "+pyxpm_optsdb(14)}, # C1100 XPM GPU
     { host: base_host,     cores: 2, id:"pyxpm-feh-0"  , port:"29470", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.1.107 "+pyxpm_optsdb(0,'FEH')},   # XTPG HXR
     { host: base_host,     cores: 2, id:"pyxpm-feh-1"  , port:"29471", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.6.102 "+pyxpm_optsdb(1,'FEH')+" -L"}, # XPM FEH HXR
     { host: base_host,     cores: 2, id:"pyxpm-feh-2"  , port:"29472", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.7.102 "+pyxpm_optsdb(2,'FEH')+" -L"}, # XPM MFX HXR
-    { host: kcu_host,      cores: 2, id:"pyxpm-feh-3"  , port:"29473", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_0 "+pyxpm_optsdb(3,'FEH')}, # KCU XPM MFX
+    { host: kcu_host,      cores: 2, id:"pyxpm-feh-3"  , port:"29473", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_41 "+pyxpm_optsdb(3,'FEH')}, # KCU XPM MFX
     { host: feh_host,      cores: 2, id:"pyxpm-feh-4"  , port:"29474", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.8.102 "+pyxpm_optsdb(4,'FEH')}, # XPM FEH XPP
     { host: feh_host,      cores: 2, id:"pyxpm-feh-5"  , port:"29475", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.8.103 "+pyxpm_optsdb(5,'FEH')}, # XPM FEH XPP
-    { host: xpp_kcu_host,  cores: 2, id:"pyxpm-feh-6"  , port:"29476", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_0 "+pyxpm_optsdb(6,'FEH')}, # KCU XPM XPP
-
+    { host: xpp_kcu_host,  cores: 2, id:"pyxpm-feh-6"  , port:"29476", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_81 "+pyxpm_optsdb(6,'FEH')}, # KCU XPM XPP
+    { host: feh_host,      cores: 2, id:"pyxpm-feh-7"  , port:"29477", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.8.104 "+pyxpm_optsdb(7,'FEH')}, # XPM FEH XPP
 
 ## EPICS PV exporter
 # NEH
@@ -85,7 +88,9 @@ procmgr_config = [
 
  { host: gpu_kcu_host, cores: 1, id:"pvrtmon-gpu", port:"29463", flags:"s", env:epics_env, cmd:f"epics_exporter -M {prom_dir} -D tst/xpm-12/DAQ:NEH:XPM:12 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac"},
 
- { host: gpu_c11_host, cores: 1, id:"pvrtmon-gpu2", port:"29464", flags:"s", env:epics_env, cmd:f"epics_exporter -M {prom_dir} -D tst/xpm-13/DAQ:NEH:XPM:13 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac"},
+ { host: gpu007_c11, cores: 1, id:"pvrtmon-gpu2", port:"29464", flags:"s", env:epics_env, cmd:f"epics_exporter -M {prom_dir} -D tst/xpm-13/DAQ:NEH:XPM:13 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac"},
+
+ { host: gpu002_c11, cores: 1, id:"pvrtmon-gpu3", port:"29468", flags:"s", env:epics_env, cmd:f"epics_exporter -M {prom_dir} -D tst/xpm-14/DAQ:NEH:XPM:14 -G Us:RxLinkUp,Us:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac"},
 # FEH
  { host: base_host, cores: 1, id:"pvrtmon-feh-0", port:"29490", flags:"s", env:epics_env, cmd:f"epics_exporter -H txi -I feh-xpm-0 -M {prom_dir} -P DAQ:FEH:XPM:0 -G Cu:RxLinkUp,Cu:RxDspErrs RunTime Run NumL0Acc L0AccRate NumL0Inp L0InpRate DeadFrac"},
 
