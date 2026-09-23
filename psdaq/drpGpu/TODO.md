@@ -341,11 +341,27 @@ experimenting on a node other people depend on.
 | node | datadev cards | GPUs | dkms | notes |
 |---|---|---|---|---|
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
-| gpu003 | 1 | 1 A5000 | **no** | Gabriel's; conversion pending |
+| gpu003 | 1 | 1 A5000 | yes | Gabriel's; converted 2026-09-23, now identical to gpu001 |
 | gpu005 | 6 | 1 H100 NVL at `47:00.0` | no | **the first big-box GPU node, so it differs throughout** -- see below |
 | gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5`; fully set up 2026-09-23 |
 | gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
 | gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
+
+**State of the fleet, end of 2026-09-23.**  Only gpu005 and gpu007 are now unconverted.
+
+| node | driver | dev names | threads/NUMA | `CoreSpecCount` |
+|---|---|---|---|---|
+| gpu001 | 7.6.0-17 | hex | 1 / 2 | 4 |
+| gpu003 | 7.6.0-33 | hex | 1 / 2 | 4 |
+| gpu005 | 7.4.0 | **decimal** | **2** / 2 | **2** -- under-reserving |
+| gpu006 | 7.6.0-33 | hex | 1 / 2 | 4 |
+| gpu007 | 7.6.0-29 | hex | **2** / 2 | **3** -- under-reserving |
+| gpu008 | 7.6.0-27 | hex | 1 / 2 | 4 |
+
+The two SMT-on nodes are the two whose `CpuSpecList` does not reserve whole cores; that resolves
+itself when they get the BIOS treatment, since `0-3` then means four whole cores.  Driver versions
+are deliberately mixed -- gpu003 and gpu006 carry PR #323's branch head, which Ric is content to
+leave until 7.7.0 is released.
 
 ### gpu005 is the odd one out, for historical reasons
 
@@ -2289,6 +2305,38 @@ Three consequences:
   `/boot/loader/entries/*.conf`, not from `grub.cfg`.  Editing `/etc/default/grub` alone
   looks like it worked and changes nothing at the next boot; `grub2-mkconfig` must
   regenerate, and `grubby --info=DEFAULT` is how to confirm *before* rebooting.
+
+### gpu003 converted, 2026-09-23 -- but the driver had no file on disk
+
+The last hex-datadev conversion, and the trap was not the one the notes predicted.  The notes
+warned that gpu003 has no `/etc/modprobe.d/datadev.conf`, so a naive conversion would take every
+parameter from built-in defaults; that was true but harmless, since its `Buffer Mode` was already
+2.  The real problem:
+
+    lsmod   ->  datadev loaded, refcnt 0
+    modinfo ->  ERROR: Module datadev not found
+    find /lib/modules/$(uname -r) -name 'datadev*'  ->  nothing
+
+**The module was resident with no `.ko` anywhere on disk**, `insmod`'d from a build tree that had
+since gone.  Two consequences: dropping in `datadev.conf` would have done nothing, because
+`/etc/modprobe.d` is read by `modprobe` and `modprobe` could not find the module -- it would have
+looked like the conf was being ignored; and `modprobe -r` would have been a one-way door, leaving
+the node with no driver to load back.  So the order had to be dkms install *first*, then the conf.
+Worth checking `modinfo -F filename datadev` on any node before touching its driver.
+
+Result: driver `7.6.0-33-ga9ad928`, `/dev/datadev_02`, `Buffer Size 4096`, `Gres=gpu:dd02:1(S:1)`,
+`CoreSpecCount=4`.  gpu008's `datadev.conf` was copied verbatim, so the CPU-side DMA went from
+256 MB (1024 x 128 kB) to 4 MB (1024 x 4 kB); the GPU DRP is unaffected either way, since its
+buffers come from `gpuAddNvidiaMemory()` and are sized by `drp_gpu`.
+
+**gpu003 and gpu001 are now byte-identical in both `slurm.conf` and `gres.conf`** apart from the
+node name, which is a useful invariant to preserve -- both are 2 x 8 x 1 with one A5000 on bus 81
+and one card on bus 02, so even the gres type `dd02` coincides.  gpu001 gained `CpuSpecList=0-3`
+in the same session; it had been reserving nothing at all.
+
+Neither node mounts WEKA yet but both have a `wekafs` fstab entry, so reserving cores 0-3 now
+means IT's "WEKA everywhere" ticket needs no follow-up Slurm change.  Note the cost is 4 of 16
+CPUs, 25% on these small nodes against 6% on the EPYC boxes.
 
 ### gpu006 converted, 2026-09-23, and `CpuSpecList` silently improved
 
