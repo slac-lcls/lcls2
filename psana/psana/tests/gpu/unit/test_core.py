@@ -1266,7 +1266,7 @@ class TestKvikioSlotBufferBudget:
             calls.append(nbytes)
             if fail_at is not None and nbytes >= fail_at:
                 raise RuntimeError("simulated cudaMalloc failure")
-            return TestKvikioSlotBufferBudget._FakeArr(nbytes)
+            return np.empty(nbytes, dtype=dtype)
 
         rdr = object.__new__(KvikioGpuReader)
         rdr.cp = SimpleNamespace(empty=_empty, uint8="uint8")

@@ -105,26 +105,8 @@ def _compute_calib_constants_cpu(det, canonical_segment_ids=None):
 
 def _upload_fixed_arrays(arrays, budget=None):
     """Reserve fixed storage before upload; retain failed asynchronous work."""
-    cp = _cupy()
-    nbytes = sum(int(a.nbytes) for a in arrays)
-    if budget is not None:
-        budget.reserve(nbytes)
-    uploaded = []
-    try:
-        for array in arrays:
-            uploaded.append(cp.asarray(array))
-    except BaseException:
-        try:
-            cp.cuda.get_current_stream().synchronize()
-        except BaseException:
-            if budget is not None:
-                budget._failed_allocations.append((tuple(uploaded), tuple(arrays)))
-            raise
-        uploaded.clear()
-        if budget is not None:
-            budget.release(nbytes)
-        raise
-    return tuple(uploaded)
+    from .gpu_allocation import upload_owned
+    return upload_owned(_cupy(), arrays, budget)
 
 
 def prep_calib_constants(det, canonical_segment_ids=None, *, budget=None):

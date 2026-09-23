@@ -6,6 +6,8 @@ from typing import Iterator
 
 import numpy as np
 
+from psana.gpu.gpu_allocation import owned_empty, allocation_requirement, backing_capacity
+
 from psana.gpu.gpu_calib import (
     assemble_image as assemble_calib_image,
     fused_calib_gpu,
@@ -235,16 +237,12 @@ class GPUDetector:
 
     def setup_geometry(self, det):
         """Build the GPU image-scatter map from a psana detector."""
-        old_bytes = self.memory_bytes()['geometry']
         geometry = prepare_geometry(det, self._canonical_segment_ids, budget=self._budget)
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
-            if self._budget is not None:
-                self._budget.release(old_bytes)
 
     def setup_geometry_from_arrays(self, ix_all, iy_all):
         """Build the GPU image-scatter map from coordinate-index arrays."""
-        old_bytes = self.memory_bytes()['geometry']
         geometry = prepare_geometry_from_arrays(
             ix_all,
             iy_all,
@@ -253,8 +251,6 @@ class GPUDetector:
         )
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
-            if self._budget is not None:
-                self._budget.release(old_bytes)
 
     def assemble_image(self, calib_gpu, stream=None):
         """Scatter canonical calibrated segments into a 2-D GPU image."""
@@ -338,9 +334,11 @@ class GPUDetector:
         total       sum of the above
         """
         def _nb(arr):
-            return int(arr.nbytes) if arr is not None else 0
+            return backing_capacity(arr) if arr is not None else 0
 
         constants   = _nb(self.peds_gpu) + _nb(self.gmask_gpu)
+        borrowed = constants if self._is_calib_follower else 0
+        constants -= borrowed
         geometry    = _nb(self._scatter_ix) + _nb(self._scatter_iy)
         routing     = 0
         calib_slots = sum(_nb(b) for b in (self._calib_slot_bufs or []))
@@ -351,6 +349,7 @@ class GPUDetector:
         total       = constants + geometry + routing + calib_slots + raw_slots
         return {
             'constants':   constants,
+            'borrowed_constants': borrowed,
             'geometry':    geometry,
             'routing':     routing,
             'calib_slots': calib_slots,
@@ -398,18 +397,15 @@ class GPUDetector:
                  (int(n_events) * self._n_segs_calib, self._present_slot_bufs[slot])]
         if not self._passthrough:
             items.append((pixels * 2, self._raw_slot_bufs[slot]))
-        return [(need, int(a.nbytes) if a is not None else 0) for need, a in items]
+        return [allocation_requirement(_cupy(), need, a) for need, a in items]
 
     def trim_slot_buffers(self):
         """Caller must first retire every execution/result lease."""
         for buffers in (self._calib_slot_bufs, self._raw_slot_bufs, self._present_slot_bufs):
             for slot, buf in enumerate(buffers):
                 if buf is not None:
-                    nbytes = int(buf.nbytes)
                     buffers[slot] = None
                     del buf
-                    if self._budget is not None:
-                        self._budget.release(nbytes)
 
     def _slot_buffer(self, buffers, slot, shape, dtype, label):
         """Return a reusable slot view, growing its backing array only."""
@@ -419,18 +415,9 @@ class GPUDetector:
         buf = buffers[slot]
         old_size = int(buf.nbytes) if buf is not None else 0
         if old_size < needed:
-            if self._budget is not None:
-                self._budget.reserve(needed)
-            try:
-                new_buf = cp.empty(nitems, dtype=dtype)
-            except Exception:
-                if self._budget is not None:
-                    self._budget.release(needed)
-                raise
+            new_buf = owned_empty(cp, nitems, dtype, self._budget, 'detector')
             buffers[slot] = new_buf
             buf = new_buf
-            if self._budget is not None:
-                self._budget.release(old_size)
             if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
                 free_b, _ = cp.cuda.Device().mem_info
                 print(

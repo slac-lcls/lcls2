@@ -54,6 +54,7 @@ def io(monkeypatch):
             size = self.size - 1 if self.number == state.short else self.size
             payload = state.files[self.handle.path][self.offset:self.offset + size]
             self.dst[:len(payload)] = np.frombuffer(payload, dtype=np.uint8)
+            self.dst = None  # completed fake futures retain observations, not buffers
             return len(payload)
 
     class File:
@@ -117,7 +118,8 @@ def test_reader_preserves_logical_bytes_and_reports_physical_requests(io, bulk, 
 def test_failures_drain_every_started_future_once_and_disable_reuse(io, kind, number):
     io.files = {"/fast": bytes(range(64))}
     setattr(io, {"submit": "fail_submit", "get": "fail_get", "short": "short"}[kind], number)
-    reader = KvikioGpuReader(bulk_read=True)
+    budget = _GpuBudget(12)
+    reader = KvikioGpuReader(bulk_read=True, budget=budget)
     descriptors = [desc(i, 0, i * 8) for i in range(3)]
     with pytest.raises(RuntimeError, match="file=/fast") as error:
         pending = issue(reader, descriptors, dm(io.files))
@@ -126,6 +128,12 @@ def test_failures_drain_every_started_future_once_and_disable_reuse(io, kind, nu
     assert len(io.futures) == (1 if kind == "submit" else 3)
     assert all(f.gets == 1 for f in io.futures)
     assert not reader._pending
+    reader.trim_free_buffers()
+    # The saved exception/read still owns the failed generation after cache
+    # removal. Draining and prohibiting reuse must not erase that live charge.
+    assert reader.memory_bytes()['raw_input_slots'] == 0
+    assert budget.committed() == 12
+    assert sum(a['capacity'] for a in budget.allocation_snapshot()) == 12
     with pytest.raises(RuntimeError, match="closed or failed"):
         issue(reader, descriptors, dm(io.files))
     reader.close()

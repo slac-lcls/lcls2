@@ -7,9 +7,8 @@ state machine documented in docs/memory_backpressure_and_results.md:
 
 Slot leases and CUDA completion tokens connect the producer to terminal
 consumers. The intended rule is that a slot cannot be recycled until all of
-them complete. Parsed-input leases collect multiple consumers; a normal result
-lease currently records one terminal consumer, as documented in
-docs/known_issues.md.
+them complete. Input and result leases collect every terminal consumer and
+prevent reuse while a registered view is still open.
 """
 
 import os
@@ -129,6 +128,7 @@ class EventPool:
             raise
 
         self._slots[old.slot_id] = None
+        old.gpu_results_by_ts = {ts: dict.fromkeys(results) for ts, results in old.gpu_results_by_ts.items()}
         old.input_dgrams_by_ts = {}
         old.input_leases_by_ts = {}
         old.gpu_event_dgrams = ()
@@ -201,6 +201,7 @@ class EventPool:
             input_dgrams_by_ts, input_leases_by_ts = {}, {}
             for event in gpu_event_dgrams:
                 lease = InputSlotLease(result_ready, event.input_windows)
+                event.bind_lease(lease)
                 input_dgrams_by_ts[event.timestamp] = event
                 input_leases_by_ts[event.timestamp] = lease
                 all_leases.append(lease)
@@ -261,6 +262,7 @@ class EventPool:
                 for lease in record.leases:
                     lease.wait_until_safe_to_reuse()
                 self._slots[slot] = None
+                record.gpu_results_by_ts = {ts: dict.fromkeys(results) for ts, results in record.gpu_results_by_ts.items()}
                 record.input_dgrams_by_ts = {}
                 record.input_leases_by_ts = {}
                 record.gpu_event_dgrams = ()
