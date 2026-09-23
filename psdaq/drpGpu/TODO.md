@@ -101,9 +101,12 @@ CPU topology, which matters because `Cores=` depends on it and the nodes are not
 | gpu001 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
 | gpu003 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
 | gpu005 | Xeon Gold 6444Y | 2 x 16 x 2 | 2 | -- |
-| gpu006 | EPYC 9355 | 2 x 32 x **2** | **2** | 128 ✓ |
+| gpu006 | EPYC 9355 | 2 x 32 x 1 | 2 | 64 ✓ |
 | gpu007 | EPYC 9355 | 2 x 32 x **2** | **2** | **64 -- wrong, see below** |
-| gpu008 | EPYC 9355 | 2 x 32 x 1 | **8** | 64 ✓ |
+| gpu008 | EPYC 9355 | 2 x 32 x 1 | 2 | 64 ✓ |
+
+gpu006 and gpu008 are both SMT-off / NPS=1 as of 2026-09-23; gpu007 is the last EPYC box still
+2 x 32 x 2.  gpu008's NUMA count was 8 before its BIOS change.
 
 **gpu008 is the outlier, not gpu006/7, and the BIOS version is why.**  All three report the same
 board -- `H14DSG-O-CPU` rev 1.01 in an `AS -5126GS-TNRT` -- so Supermicro's on-arrival
@@ -115,14 +118,15 @@ answered by DMI.  The chassis DMI is only partly programmed anyway
 
 What differs between them is the firmware:
 
-| node | BIOS | date | hyperthreading | NUMA |
-|---|---|---|---|---|
-| gpu006 | 1.9 | 2026-01-23 | on | NPS=1 |
-| gpu007 | 1.9 | 2026-01-23 | on | NPS=1 |
-| gpu008 | **2.0** | **2026-04-01** | **off** | **NPS=4** |
+| node | BIOS | date | hyperthreading | NUMA | when |
+|---|---|---|---|---|---|
+| gpu006 | 1.9 | 2026-01-23 | on -> **off** | NPS=1 explicit | as found / 2026-09-23 |
+| gpu007 | 1.9 | 2026-01-23 | on | `Auto` | still to do |
+| gpu008 | **2.0** | **2026-04-01** | off | NPS=4 -> **NPS=1 explicit** | as found / 2026-09-22 |
 
 gpu008 took a BIOS update in April that the others did not, and its settings changed with it --
-either reset to new defaults or configured deliberately at the same time.
+either reset to new defaults or configured deliberately at the same time.  As of 2026-09-23
+gpu006 and gpu008 are both explicitly SMT-off and NPS1; only gpu007 is untouched.
 
 **NPS is "NUMA Per Socket", a BIOS setting rather than a property of the silicon.**  An EPYC
 socket is several chiplets around an I/O die, with memory controllers and PCIe roots distributed
@@ -339,7 +343,7 @@ experimenting on a node other people depend on.
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
 | gpu003 | 1 | 1 A5000 | **no** | Gabriel's; conversion pending |
 | gpu005 | 6 | 1 H100 NVL at `47:00.0` | no | **the first big-box GPU node, so it differs throughout** -- see below |
-| gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5` |
+| gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5`; fully set up 2026-09-23 |
 | gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
 | gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
 
@@ -2285,6 +2289,54 @@ Three consequences:
   `/boot/loader/entries/*.conf`, not from `grub.cfg`.  Editing `/etc/default/grub` alone
   looks like it worked and changes nothing at the next boot; `grub2-mkconfig` must
   regenerate, and `grubby --info=DEFAULT` is how to confirm *before* rebooting.
+
+### gpu006 converted, 2026-09-23, and `CpuSpecList` silently improved
+
+Done in one pass, Gabriel having freed the node: BIOS upload, reboot, `slurm.conf` edit and
+`gres.conf` regeneration.  Verified: `lscpu` 64 CPUs / 1 thread per core / 2 x 32 / **2 NUMA
+nodes** (0-31, 32-63); IOMMU off by both BIOS and cmdline with 0 groups; `gen_gres_conf --check`
+green at 2 records; `drp_gpu` installed with `cap_sys_admin=ep`; and slurmd reporting
+
+    Resource spec: Reserved abstract CPU IDs: 0-3
+    Resource spec: Reserved machine CPU IDs: 0-3
+
+identical, as SMT-off gives.  `slurm.conf` changed only `CPUs=128 -> 64` and
+`ThreadsPerCore=2 -> 1`; `CpuSpecList=0-3` was left alone.
+
+**That last point is the subtle win.**  `CpuSpecList=0-3` had been reserving only **two** cores,
+not four, because with SMT on machine core *n* is CPUs *n* and *n+64*, so the sibling threads
+64-67 stayed schedulable -- Slurm said as much with `CoreSpecCount=2`, which is easy to read past.
+With SMT off there are no siblings, so the same string now means four whole cores and
+`CoreSpecCount=4`.  The correct value *while* SMT was on would have been `CpuSpecList=0-7`.  Since
+the plan is SMT off everywhere, that case is deliberately not supported -- but gpu007 still has
+`CpuSpecList=2-5,64-65` and is still SMT-on, so it is under-reserving today.
+
+Deciding to reserve machine cores 0-3 unconditionally, rather than tracking WEKA's choice, is what
+makes this robust: core 0 for the OS and IB, cores 1-3 for WEKA, and Slurm needs no edit when
+WEKA moves or arrives.  There is an IT ticket to put WEKA on all these nodes.
+
+### gpu006's InfiniBand is down, and it is not the host
+
+Worth recording so it is not re-diagnosed.  `ibstatus` shows both ports DOWN, but only one is a
+fault:
+
+| port | netdev | phys state | cable | verdict |
+|---|---|---|---|---|
+| `mlx5_0` | `ibp113s0f0` | 2: Polling | **plugged** | the fault |
+| `mlx5_1` | `ibp113s0f1` | 3: Disabled | unplugged | **normal** -- gpu008 is identical |
+
+`mlx5_1: Disabled` is a red herring: gpu008 shows exactly the same because no cable is fitted, so
+`ibstatus` looks like two problems when there is one.
+
+Evidence that port 0 is a far-end problem: the kernel confirms the cable
+(`Port module event: module 0, Cable plugged`); the netdev is already admin-UP with `NO-CARRIER`;
+`phys_state` is `Polling`, i.e. sending training symbols and hearing nothing; **every counter is
+zero including `link_downed`**, so it never trained rather than trained and failed; there was no
+link-up in the previous boot either, so it predates the BIOS work; and gpu008, with the identical
+cable layout, reaches `ACTIVE / LinkUp / 200 Gb/sec (4X HDR)` with `sm_lid 0x1`.
+
+**This blocks WEKA on gpu006**, whose fstab names `net=ibp113s0f0` -- so the "WEKA everywhere"
+ticket is blocked on the fabric here, not on WEKA.  Gabriel has an IT ticket open; left with them.
 
 ### IOMMU must be off, and it was held by luck on two nodes
 
