@@ -27,14 +27,8 @@ def available():
         return False
 
 
-@pytest.mark.gpu
-@pytest.mark.skipif(not available(), reason='no CUDA device')
-@pytest.mark.parametrize('fast_padding,slow_padding', [
-    (0, 1024**2),
-    (16 * 1024, 64 * 1024),  # frequent small dgrams have the larger total footprint
-])
-def test_resident_fast_and_five_slow_reads_match_cpu(
-        tmp_path, mixed_packet, fast_padding, slow_padding):
+def residency_case(tmp_path, mixed_packet, fast_padding=0, slow_padding=1024**2):
+    """Real reader/parser/detector fixture shared with lifecycle acceptance."""
     import cupy as cp
     from psana import dgram
 
@@ -108,6 +102,26 @@ def test_resident_fast_and_five_slow_reads_match_cpu(
     m._n_events, m._pending_gpu_read = 0, None
     packet = mixed_packet(fast_size=fast_size, slow_size=slow_size,
                           timestamp_base=timestamp_base)
+    return NS(manager=m, packet=packet, expected=expected, handles=handles,
+              fast_size=fast_size, slow_size=slow_size,
+              resident_bytes=resident_bytes, per_dgram=per_dgram,
+              timestamp_base=timestamp_base)
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not available(), reason='no CUDA device')
+@pytest.mark.parametrize('fast_padding,slow_padding', [
+    (0, 1024**2),
+    (16 * 1024, 64 * 1024),  # frequent small dgrams have the larger total footprint
+])
+def test_resident_fast_and_five_slow_reads_match_cpu(
+        tmp_path, mixed_packet, fast_padding, slow_padding):
+    import cupy as cp
+    case = residency_case(tmp_path, mixed_packet, fast_padding, slow_padding)
+    m, packet, expected, handles = case.manager, case.packet, case.expected, case.handles
+    budget = m._gpu_budget
+    fast_size, slow_size = case.fast_size, case.slow_size
+    resident_bytes, per_dgram = case.resident_bytes, case.per_dgram
     fast_owner, fast_bytes, rows, slow_owners, observed = None, None, None, set(), []
     try:
         for envelope in m._process_batch({}, {0: (packet, [])}, {}):
