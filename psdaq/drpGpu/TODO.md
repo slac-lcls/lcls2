@@ -2427,9 +2427,16 @@ treatment.  So this is not a second ansible bug; it is the same bug, one limit s
 2. *Us:* the ceiling only permits the priority; something must still ask for it.  The
    config machinery already supports this -- an optional per-process `rtprio` field, which
    `slurm/utils.py:478` turns into a `/usr/bin/chrt -f <n> ` prefix on the command.  The
-   CPU DRP entries in `ric.cnf` use `rtprio:'50'`; the `drp_gpu` entries do not, so they
-   would stay at normal priority even after IT's change.  Adding `rtprio:'50'` to the
-   `gpu_cmd*` lines is the whole change on our side.
+   CPU DRP entries use `rtprio:'50'` (ten of them across the `cnf/` files, so that is the
+   house value); the `drp_gpu` entries do not, so they would stay at normal priority even
+   after IT's change.
+
+   The file to edit is **`~/lclsii/daq/runs/eb/data/srcf/gpu8.py`**, which is *not* in
+   either lcls2 tree -- `grep rtprio` across the repo finds `cnf/ric.cnf`, but that has
+   only gpu001 active and is not what the gpu008 runs use.  `gpu8.py` already imports
+   `rtprio` on line 3 and lists it as an optional field on line 97; it simply never uses
+   it.  So the change is adding `rtprio:'50'` to the five active `tstcam1_*` entries
+   (lines 117-122, with `tstcam1_4` commented out), and nothing else.
 
 Order matters: adding `rtprio` before IT's drop-in makes `chrt` fail and the process not
 start at all, which is worse than the warning.  Confirmed rather than assumed -- under
