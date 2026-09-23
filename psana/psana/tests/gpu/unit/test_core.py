@@ -1076,12 +1076,12 @@ class TestEstimateSubbatchBytes:
             n_segs=32, nrows=512, ncols=1024,
             n_routed_segs=12,
         )
-        expected = 32 * 512 * 1024 * (4 + 2) + 32 + 2 * 8
+        expected = 32 * 512 * 1024 * (4 + 2) + 32 + 2 * 7 * 8
         assert det.estimate_subbatch_bytes(1) == expected
 
     def test_formula_defaults_to_all_calib_segments(self):
         det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
-        expected = 1 * 8 * 256 * 512 * (4 + 2) + 8 + 2 * 8
+        expected = 1 * 8 * 256 * 512 * (4 + 2) + 8 + 2 * 7 * 8
         assert det.estimate_subbatch_bytes(1) == expected
 
 

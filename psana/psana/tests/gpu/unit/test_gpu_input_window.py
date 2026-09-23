@@ -70,6 +70,21 @@ def test_configured_ready_is_required_without_locator_wrappers():
     assert owner.close() and released == [True]
 
 
+def test_shared_locator_readiness_is_deduplicated_without_losing_consumers():
+    owner = window()
+    shared, fallback, consumer = Token(), Token(), Token()
+    owner.batch.locate = lambda handle, **kw: NS(ready=shared if handle == 0 else fallback)
+    owner.locate(0)
+    owner.locate(0)
+    owner.locate(1)
+    use = owner.acquire()
+    use.register_consumer_done(consumer)
+    use.register_consumer_done(consumer)
+    owner.close()
+    use.wait_until_safe_to_reuse()
+    assert shared.waits == fallback.waits == consumer.waits == 1
+
+
 def test_fast_input_survives_repeated_execution_retirement(monkeypatch):
     monkeypatch.setitem(sys.modules, 'cupy', NS(cuda=NS(Stream=Stream, Event=Token)))
     releases = []

@@ -78,6 +78,7 @@ def test_resident_fast_and_five_slow_reads_match_cpu(
     peds, gain = _upload_fixed_arrays((np.zeros(54, np.float32), np.ones(54, np.float32)), budget)
     detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=2, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=handles, n_slots=3, budget=budget)
+    detector.configure_gather(parser.handle_indices)
     per_dgram = parser.estimate_batch_bytes(1)
     resident_bytes = 1000 * (fast_size + per_dgram)
     slow_cost = slow_size + per_dgram + detector.estimate_subbatch_bytes(1)
