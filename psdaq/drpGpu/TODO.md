@@ -1083,6 +1083,21 @@ process to report anything.
     `pr-require-nvidia-for-gpu-build` branch.  Requires an sdfiana node: DAQ nodes
     cannot reach GitHub.
 
+- **`emulator/gpu_stub`'s `clean` target breaks CI intermittently, and it is not our
+  change when it does.**  `clean` recurses unguarded into `$(KERNELDIR)`
+  (`emulator/gpu_stub/Makefile:61`, and `data_dev/driver/Makefile` has the same pattern),
+  so it fails whenever the runner has no headers for its own kernel:
+
+      make[1]: *** /lib/modules/5.14.0-687.47.1.el9_8.x86_64/build: No such file or directory.  Stop.
+      make: *** [Makefile:61: clean] Error 2
+
+  Seen on `Phase 2: CPU Test (rockylinux:9)` with `CI_HOST_MATCH: 0`.  It is a runner
+  lottery, not a regression: PR #323's branch failed this way twice on 2026-09-16, passed
+  twice on 09-17/09-18 with nothing in that path changed, then failed again on 09-22.
+  Noted in #323's description as out of scope.  Worth checking the changed files before
+  believing a red Rocky 9 check -- and worth fixing upstream, since a `clean` that needs
+  kernel headers is wrong regardless of CI.
+
 - **An installer that checks the lcls2, driver and firmware builds against the current
   minimum versions.**  This is the right home for consistency checking; the
   alternative is every tool growing its own anomaly detection.  Two traps it should
@@ -2257,6 +2272,14 @@ than through a DRP that dies in detector configuration.  Needs `CAP_SYS_ADMIN`, 
 `rdmaTest.cu:206` calls `gpuMapHostFpgaMem` -> `cuMemHostRegister(..., IOMEMORY)`, the same
 call `drp_gpu` needs it for; simplest is `sudo`.
 
+`sudo` is not merely simplest, it is the only option from a build tree: **`setcap` on the
+binary under `~/git` fails with "Operation not supported", because home is NFS and NFS
+cannot carry file capabilities.** Hence the `install`-to-`/usr/local/bin`-then-`setcap`
+dance for `drp_gpu`; for a throwaway `rdmaTest` run, `sudo ./bin/rdmaTest ...` avoids it.
+Symptom if you forget: `CUDA driver error 800: operation not permitted` /
+`cuMemHostRegister ... failed: CUDA_ERROR_NOT_PERMITTED` / `Failed to map GpuAsyncCore
+registers`.
+
 Two things learned the hard way on 2026-09-15:
 
 - **`-s` must be a multiple of 64 KiB**, which is GPU page/BAR granularity and has nothing
@@ -2357,6 +2380,56 @@ for this a few days before 2026-09-14 --
 [ECS-11217](https://jira.slac.stanford.edu/browse/ECS-11217) -- since the `RLIMIT_RTPRIO`
 ceiling has to be raised in IT's ansible and cannot be set from our side.  Recorded so
 that a future rate shortfall is not misattributed.
+
+### IT's half is done; the message persists because Slurm does not read limits.d
+
+Checked on 2026-09-22, when IT reported the ticket complete but the DRP still printed the
+message.  **IT's change did land, and it is not lost** -- it survived the ansible
+stop/start done for the WEKA fstab work:
+
+    /etc/security/limits.d/50-sdf.conf:  *  soft/hard  rtprio  99
+    interactive shell:                   ulimit -Hr -> 99
+
+The message persists because `limits.d` is applied by **PAM**, and `slurm.conf` has
+`UsePam=no`, so a Slurm-launched job never consults it.  A job inherits slurmd's own
+limits, and slurmd is started by systemd, whose `DefaultLimitRTPRIO` is unset:
+
+    /proc/<slurmd>/limits:  Max locked memory      unlimited   <- LimitMEMLOCK=infinity
+                            Max realtime priority  0           <- never set, so 0
+
+Uniform across gpu001/3/6/7/8: `50-sdf.conf` present on every node, slurmd rtprio 0 on
+every node.  Note someone already hit this for MEMLOCK and fixed it the correct way, with
+`LimitMEMLOCK=infinity` in the slurmd unit -- RTPRIO simply did not get the same
+treatment.  So this is not a second ansible bug; it is the same bug, one limit short.
+
+**Two things are needed, and ours alone is not sufficient.**
+
+1. *IT:* add `LimitRTPRIO=99` to slurmd, via a drop-in rather than by editing the unit --
+   `LimitMEMLOCK` lives in the packaged `/usr/lib/systemd/system/slurmd.service`, so a
+   package update would revert an in-place edit:
+
+       /etc/systemd/system/slurmd.service.d/override.conf
+       [Service]
+       LimitRTPRIO=99
+
+   then `systemctl daemon-reload && systemctl restart slurmd`.  Verify with
+   `grep 'realtime priority' /proc/$(pgrep -x slurmd)/limits`, not with `ulimit` in a
+   login shell -- the login shell gets 99 from PAM and tells you nothing about jobs.
+
+2. *Us:* the ceiling only permits the priority; something must still ask for it.  The
+   config machinery already supports this -- an optional per-process `rtprio` field, which
+   `slurm/utils.py:478` turns into a `/usr/bin/chrt -f <n> ` prefix on the command.  The
+   CPU DRP entries in `ric.cnf` use `rtprio:'50'`; the `drp_gpu` entries do not, so they
+   would stay at normal priority even after IT's change.  Adding `rtprio:'50'` to the
+   `gpu_cmd*` lines is the whole change on our side.
+
+Order matters: adding `rtprio` before IT's drop-in makes `chrt` fail and the process not
+start at all, which is worse than the warning.  Confirmed rather than assumed -- under
+`ulimit -Hr 0`, `chrt -f 50 /bin/true` gives
+
+    chrt: failed to set pid 0's policy: Operation not permitted
+
+So confirm slurmd's limit first, with the `/proc/<slurmd>/limits` check above.
 
 ## Appendix: running the ePixUHR3x2 emulator, from Gabriel
 
