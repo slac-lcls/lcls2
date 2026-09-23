@@ -341,8 +341,9 @@ class _GpuMemStats:
     GPU categories (device VRAM):
         constants    calibration constants per detector (peds + gmask)
         geometry     scatter-index arrays for image assembly
+        routing      run-scoped canonical gather tables
         calib_slots  per-slot calibrated-output buffers (grow lazily)
-        raw_slots    per-slot raw-gather buffers (grow lazily)
+        raw_slots    raw-gather buffers, presence masks, and device row maps
         raw_input    KvikioGpuReader per-slot input buffers
         xtc_config   run-scoped flattened Configure tables
         xtc_slots    per-slot dgram, ShapesData, and field-locator tables
@@ -351,12 +352,13 @@ class _GpuMemStats:
         device_total total device memory
 
     Pinned-host category:
-        pinned       _D2hPipeline _PinnedSlot allocations
+        pinned       D2H buffers and detector row-map upload buffers
     """
 
     # per-detector breakdowns
     det_constants: dict = field(default_factory=dict)  # {det_name: bytes}
     det_geometry: dict = field(default_factory=dict)
+    det_routing: dict = field(default_factory=dict)
     det_calib_slots: dict = field(default_factory=dict)
     det_raw_slots: dict = field(default_factory=dict)
     # aggregate GPU
@@ -390,11 +392,13 @@ class _GpuMemStats:
         det_names = sorted(self.det_constants)
         for name in det_names:
             _log.info(
-                "GPU mem [%s] det=%s  constants=%s  geometry=%s  calib_slots=%s  raw_slots=%s",
+                "GPU mem [%s] det=%s  constants=%s  geometry=%s  routing=%s  "
+                "calib_slots=%s  raw_slots=%s",
                 self.label,
                 name,
                 self._mb(self.det_constants.get(name, 0)),
                 self._mb(self.det_geometry.get(name, 0)),
+                self._mb(self.det_routing.get(name, 0)),
                 self._mb(self.det_calib_slots.get(name, 0)),
                 self._mb(self.det_raw_slots.get(name, 0)),
             )
@@ -487,15 +491,17 @@ class GpuEventManager:
             s.borrowed += m.get("borrowed_constants", 0)
             s.det_constants[name] = m["constants"]
             s.det_geometry[name] = m["geometry"]
+            s.det_routing[name] = m["routing"]
             s.det_calib_slots[name] = m["calib_slots"]
             s.det_raw_slots[name] = m["raw_slots"]
+            s.pinned += det.pinned_bytes()
         if self.gpu_reader is not None and hasattr(self.gpu_reader, "memory_bytes"):
             s.raw_input = self.gpu_reader.memory_bytes()["raw_input_slots"]
         if self.gpu_xtc_parser is not None:
             parser_memory = self.gpu_xtc_parser.memory_bytes()
             s.xtc_config = parser_memory["config"]
             s.xtc_slots = parser_memory["batch_slots"]
-        s.pinned = sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
+        s.pinned += sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
@@ -503,6 +509,7 @@ class GpuEventManager:
             s.allocations = budget.allocation_snapshot()
             cached = (s.raw_input + s.xtc_config + s.xtc_slots
                       + sum(s.det_constants.values()) + sum(s.det_geometry.values())
+                      + sum(s.det_routing.values())
                       + sum(s.det_calib_slots.values()) + sum(s.det_raw_slots.values()))
             s.retained = max(0, s.committed - cached)
             s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
@@ -539,6 +546,7 @@ class GpuEventManager:
         s.log()
         hw = self._high_water
         for category, values in (("constants", s.det_constants), ("geometry", s.det_geometry),
+                                 ("routing", s.det_routing),
                                  ("calib_slots", s.det_calib_slots), ("raw_slots", s.det_raw_slots)):
             hw[category] = max(hw.get(category, 0), sum(values.values()))
         for category in ('committed', 'held', 'retained', 'failed', 'borrowed', 'cupy_used'):
@@ -554,11 +562,12 @@ class GpuEventManager:
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
         _log.info(
-            "GPU mem high-water  constants=%s  geometry=%s  calib_slots=%s  "
+            "GPU mem high-water  constants=%s  geometry=%s  routing=%s  calib_slots=%s  "
             "raw_slots=%s  raw_input=%s  xtc_config=%s  xtc_slots=%s  "
             "cupy_pool=%s  device_used=%s  pinned=%s",
             _fmt_mib(hw.get("constants", 0)),
             _fmt_mib(hw.get("geometry", 0)),
+            _fmt_mib(hw.get("routing", 0)),
             _fmt_mib(hw.get("calib_slots", 0)),
             _fmt_mib(hw.get("raw_slots", 0)),
             _fmt_mib(hw.get("raw_input", 0)),
@@ -829,6 +838,8 @@ class GpuEventManager:
             n_slots=pool_depth + int(self.dsparms.gpu_bulk_read),
             budget=self._gpu_budget,
         )
+        for _, gpu_detector in self.gpu_detectors.values():
+            gpu_detector.configure_gather(self.gpu_xtc_parser.handle_indices)
 
         self._setup_input_io()
 

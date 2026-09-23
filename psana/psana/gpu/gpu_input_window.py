@@ -42,6 +42,8 @@ class InputWindow:
         self._released = False
         self._release = release
         self._ready = [getattr(batch, 'walk_done', None)]
+        if getattr(batch, '_configured_backing', None) is not None:
+            self._ready.append(batch.configured_locations().ready)
         self._ready.extend(loc.ready for loc in getattr(batch, '_locators', {}).values())
 
     @property

@@ -43,6 +43,10 @@ from .config import (
     FIELD_RANK,
     FIELD_SHAPE_INDEX,
     FIELD_TYPE,
+    HANDLE_NAMES_INDEX,
+    HANDLE_FIELD_INDEX,
+    HANDLE_OUTPUT_INDEX,
+    HANDLE_NCOLS,
     NAMES_FIRST_FIELD,
     NAMES_ID,
     NAMES_NCOLS,
@@ -126,6 +130,40 @@ def _batch_storage(name):
     def set_(self, value):
         setattr(self, '_' + name, value)
     return property(get, set_)
+
+
+class ConfiguredFieldLocations:
+    """Internal gather descriptor following its parsed owner's lifetime."""
+
+    def __init__(self, owner):
+        self.owner = owner
+
+    def _active_owner(self):
+        if getattr(self.owner, '_retired', False):
+            raise RuntimeError("GPU batch storage is released")
+        return self.owner
+
+    @property
+    def backing(self):
+        return self._active_owner()._configured_backing
+
+    @property
+    def handle_indices(self):
+        return self._active_owner()._configured_indices
+
+    @property
+    def ready(self):
+        return self._active_owner()._configured_ready
+
+    @property
+    def capacity(self):
+        return int(self.backing.shape[1])
+
+    def wait_on(self, stream):
+        # Same-stream submission is already ordered. Keep the producer stream
+        # alive via owner so its identity cannot be reused before consumption.
+        if stream.ptr != self._active_owner().stream.ptr:
+            stream.wait_event(self.ready)
 
 
 class GpuEventBatch:
@@ -258,6 +296,52 @@ class GpuEventBatch:
             self.walk_done = cp.cuda.Event()
             self.walk_done.record(self.stream)
         self._locators = {}
+        self._configured_backing = None
+
+    def _locate_configured(self, handles, stream_handles, handle_table, backing,
+                          handle_indices):
+        """Decode configured fields in two launches on the parser stream.
+
+        The slot owns the backing allocation; retain it and the shared ready
+        event independently of the on-demand per-handle views. Unconfigured
+        requests retain their separate allocator and completion events.
+        """
+        cp = _cupy()
+        capacity = int(backing.shape[1])
+        # Retain scheduling tables through completion even if the pool is dropped.
+        self._location_tables = (stream_handles, handle_table)
+        if self.n_dgrams and handles:
+            n_rows = len(handles) * self.n_dgrams
+            _init_locators_kernel()(
+                ((n_rows + self.threads - 1) // self.threads,),
+                (self.threads,),
+                (backing, self.dgram_records_gpu, np.uint64(self.n_dgrams),
+                 np.uint64(capacity), np.uint64(len(handles))),
+                stream=self.stream,
+            )
+            _locate_fields_kernel()(
+                (self.n_dgrams,), (self.threads,),
+                (self.data_gpu, self.shape_refs_gpu, self.shape_counts_gpu,
+                 self.dgram_records_gpu, np.uint64(self.max_shapes_per_dgram),
+                 self.device_configs.names, self.device_configs.fields,
+                 np.uint64(self.device_configs.n_names),
+                 np.uint64(self.device_configs.n_streams), stream_handles,
+                 handle_table, np.uint64(capacity), backing),
+                stream=self.stream,
+            )
+        ready = cp.cuda.Event(disable_timing=True)
+        ready.record(self.stream)
+        self._configured_backing = backing
+        self._configured_indices = handle_indices
+        self._configured_ready = ready
+
+    def configured_locations(self):
+        """Return input-local combined storage without reading device metadata."""
+        if getattr(self, '_retired', False):
+            raise RuntimeError("GPU batch storage is released")
+        if self._configured_backing is None:
+            raise ValueError("canonical gathering requires configured field locations")
+        return ConfiguredFieldLocations(self)
 
     def retire(self):
         """Detach completed window storage, including bound slot allocators."""
@@ -265,6 +349,8 @@ class GpuEventBatch:
             locator.retire()
         self._locators.clear()
         self._locator_allocator = None
+        self._configured_backing = self._configured_ready = None
+        self._configured_indices = self._location_tables = None
         self.data_gpu = self.dgram_records_gpu = None
         self.shape_counts_gpu = self.shape_refs_gpu = None
         self.device_configs = None
@@ -272,7 +358,12 @@ class GpuEventBatch:
         self._retired = True
 
     def locate(self, handle, *, stream=None):
-        """Launch or return the device locator table for ``handle``."""
+        """Return a cached view, decoding only unconfigured handles on demand.
+
+        Configured fields were decoded on the parser stream. Their first access
+        creates only a view, sharing the configured-ready event; consumers must
+        still wait on that event before using the rows on another stream.
+        """
         if self.data_gpu is None:
             raise RuntimeError("GPU batch storage is released")
         if not isinstance(handle, GpuFieldHandle):
@@ -287,6 +378,16 @@ class GpuEventBatch:
         cached = self._locators.get(handle)
         if cached is not None:
             return cached
+
+        if self._configured_backing is not None:
+            index = self._configured_indices.get(handle)
+            if index is not None:
+                result = DeviceFieldLocators(
+                    handle, self._configured_backing[index, :self.n_dgrams],
+                    self._configured_ready,
+                )
+                self._locators[handle] = result
+                return result
 
         cp = _cupy()
         launch_stream = stream if stream is not None else self.stream
@@ -372,6 +473,16 @@ def _walk_kernel():
 @lru_cache(maxsize=1)
 def _locate_kernel():
     return _cupy().RawKernel(_kernel_source(), "locate_field")
+
+
+@lru_cache(maxsize=1)
+def _init_locators_kernel():
+    return _cupy().RawKernel(_kernel_source(), "init_locators")
+
+
+@lru_cache(maxsize=1)
+def _locate_fields_kernel():
+    return _cupy().RawKernel(_kernel_source(), "locate_fields")
 
 
 @lru_cache(maxsize=1)
@@ -561,12 +672,13 @@ void walk_xtc(const unsigned char* data,
     dgram[{DGRAM_STATUS}] = status;
 }}
 
-extern "C" __global__
-void locate_field(const unsigned char* data,
+__device__ __forceinline__
+void locate_field_ref(const unsigned char* data,
                   const unsigned long long* refs,
                   const unsigned long long* counts,
                   const unsigned long long* dgrams,
-                  unsigned long long n_dgrams,
+                  unsigned long long dgram_index,
+                  unsigned long long ref_index,
                   unsigned long long ref_capacity,
                   const unsigned long long* names,
                   const unsigned long long* fields,
@@ -575,12 +687,7 @@ void locate_field(const unsigned char* data,
                   unsigned long long target_field_index,
                   unsigned long long* locators)
 {{
-    const unsigned long long work =
-        static_cast<unsigned long long>(blockIdx.x) * blockDim.x + threadIdx.x;
-    const unsigned long long n_work = n_dgrams * ref_capacity;
-    if (work >= n_work) return;
-    const unsigned long long dgram_index = work / ref_capacity;
-    const unsigned long long ref_index = work - dgram_index * ref_capacity;
+    const unsigned long long work = dgram_index * ref_capacity + ref_index;
     unsigned long long* locator = locators + dgram_index * {LOC_NCOLS};
     const unsigned long long dgram_status =
         dgrams[dgram_index * {DGRAM_NCOLS} + {DGRAM_STATUS}];
@@ -713,6 +820,81 @@ void locate_field(const unsigned char* data,
     }}
     finish_locator(locator, {STATUS_BAD_CONFIG});
 }}
+
+extern "C" __global__
+void locate_field(const unsigned char* data,
+                  const unsigned long long* refs,
+                  const unsigned long long* counts,
+                  const unsigned long long* dgrams,
+                  unsigned long long n_dgrams,
+                  unsigned long long ref_capacity,
+                  const unsigned long long* names,
+                  const unsigned long long* fields,
+                  unsigned long long n_names,
+                  unsigned long long target_names_index,
+                  unsigned long long target_field_index,
+                  unsigned long long* locators)
+{{
+    const unsigned long long work =
+        static_cast<unsigned long long>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (work >= n_dgrams * ref_capacity) return;
+    locate_field_ref(data, refs, counts, dgrams, work / ref_capacity,
+                     work % ref_capacity, ref_capacity, names, fields, n_names,
+                     target_names_index, target_field_index, locators);
+}}
+
+extern "C" __global__
+void init_locators(unsigned long long* locators,
+                   const unsigned long long* dgrams,
+                   unsigned long long n_dgrams,
+                   unsigned long long capacity,
+                   unsigned long long n_handles)
+{{
+    const unsigned long long row =
+        static_cast<unsigned long long>(blockIdx.x) * blockDim.x + threadIdx.x;
+    if (row >= n_handles * n_dgrams) return;
+    const unsigned long long dgram = row % n_dgrams;
+    unsigned long long* locator =
+        locators + ((row / n_dgrams) * capacity + dgram) * {LOC_NCOLS};
+    for (int column = 0; column < {LOC_NCOLS}; ++column) locator[column] = 0;
+    const unsigned long long status = dgrams[dgram * {DGRAM_NCOLS} + {DGRAM_STATUS}];
+    locator[{LOC_STATUS}] = status == {STATUS_OK} ? {STATUS_NOT_PRESENT} : status;
+}}
+
+extern "C" __global__
+void locate_fields(const unsigned char* data,
+                   const unsigned long long* refs,
+                   const unsigned long long* counts,
+                   const unsigned long long* dgrams,
+                   unsigned long long ref_capacity,
+                   const unsigned long long* names,
+                   const unsigned long long* fields,
+                   unsigned long long n_names,
+                   unsigned long long n_streams,
+                   const unsigned long long* stream_handles,
+                   const unsigned long long* handles,
+                   unsigned long long capacity,
+                   unsigned long long* locators)
+{{
+    // One block per dgram; threads span only its stream's handles and actual
+    // references. Device metadata stays on the GPU throughout scheduling.
+    const unsigned long long dgram = blockIdx.x;
+    const unsigned long long* record = dgrams + dgram * {DGRAM_NCOLS};
+    if (record[{DGRAM_STATUS}] != {STATUS_OK}) return;
+    const unsigned long long stream = record[{DGRAM_STREAM_ID}];
+    if (stream >= n_streams) return;
+    const unsigned long long begin = stream_handles[stream];
+    const unsigned long long count = counts[dgram];
+    const unsigned long long n_work = (stream_handles[stream + 1] - begin) * count;
+    for (unsigned long long work = threadIdx.x; work < n_work; work += blockDim.x) {{
+        const unsigned long long* handle = handles + (begin + work / count) * {HANDLE_NCOLS};
+        locate_field_ref(data, refs, counts, dgrams, dgram, work % count,
+                         ref_capacity, names, fields, n_names,
+                         handle[{HANDLE_NAMES_INDEX}], handle[{HANDLE_FIELD_INDEX}],
+                         locators + handle[{HANDLE_OUTPUT_INDEX}] * capacity * {LOC_NCOLS});
+    }}
+}}
+
 """
 
 
