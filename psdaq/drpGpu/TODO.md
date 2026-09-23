@@ -1004,6 +1004,47 @@ process to report anything.
 
 ## Operations
 
+- **Let the low-demand control processes share one core, instead of taking one each.**
+  Ric's observation, 2026-09-23.  `xpmpva`, `groupca`, `daqstat`, `control` and
+  `control_gui` each get a whole CPU because `daqmgr` defaults `cores` to 1 and turns it
+  into `srun -c1`, yet none of them is compute-bound -- they are PV plumbing, a status
+  poller and a GUI.  Five CPUs for work that would fit comfortably in one.
+
+  It bites hardest on the small nodes.  `~/lclsii/daq/runs/eb/data/gpu001/gpu.py` on
+  gpu001 now asks for **exactly** `CPUEfctv=12`:
+
+  | process | cores | |
+  |---|---|---|
+  | `daqstat`, `control`, `control_gui`, `xpmpva`, `groupca` | 1 each = 5 | the waste |
+  | `teb0` | 2 | |
+  | `timing_2` | 2 | |
+  | `tstcam1_0` | 3 | |
+  | **total** | **12** | of 12 available |
+
+  Zero headroom: one more core anywhere and processes sit PENDING.  gpu001 lost 4 CPUs to
+  `CpuSpecList=0-3` on 2026-09-23, going from 16 effective to 12, which is what made this
+  tight.  (AMI is disabled in that config -- `#procmgr_config.extend(procmgr_ami)` -- or it
+  would already not fit.)
+
+  What I checked about feasibility.  `cores:N` becomes `srun -n1 -c{N}` in
+  `slurm/utils.py:516`, so the allocation is real.  The cluster is
+  `SelectType=select/cons_tres` with `CR_CORE`, and **`drpq` has `OverSubscribe=NO`**, so
+  packing several processes onto one CPU cannot be done by asking for it per job -- the
+  partition forbids it.  Two routes that do not need a partition change:
+
+  - **`srun --overlap`** lets steps share CPUs already allocated to the job.  Since these
+    five are steps of one `daqmgr` allocation, an `overlap: True` (or `cores: 0`) field
+    that emits `--overlap` and drops `-c` may be enough.  Needs testing: `--overlap`
+    relaxes step-level exclusivity, not the partition's `OverSubscribe`.
+  - **One shared step for all five**, i.e. a single `srun -c1` running them under a small
+    supervisor, so they share that CPU by ordinary kernel scheduling.  Coarser, but needs
+    nothing from Slurm and no config-syntax change.
+
+  Worth an experiment rather than a design: run the five with `--overlap` on a node with
+  little headroom and see whether Slurm accepts it.  If it does, the payoff is 4 CPUs back
+  on every node running a control set, which on a 16-CPU node is a third of what Slurm is
+  willing to give out.
+
 - **`CpuSpecList` does not reserve whole cores when hyperthreading is on.**  Found on
   drp-srcf-gpu006 on 2026-09-11, and it is a concrete mechanism for the open IT ticket
   about Slurm scheduling onto cores already saturated by WEKA.  The agreement is that
