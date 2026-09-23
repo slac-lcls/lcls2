@@ -6,7 +6,8 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from psana.gpu.gpu_budget import _GpuBudget
+from psana.gpu.gpu_budget import _GpuBudget, allocation_growth_bytes
+from psana.gpu.gpu_allocation import allocation_capacity
 from psana.gpu.gpu_calib import _upload_fixed_arrays
 from psana.gpu.gpu_detector import GPUDetector
 from psana.gpu.gpu_events import GpuEventManager
@@ -81,7 +82,17 @@ def test_resident_fast_and_five_slow_reads_match_cpu(
     resident_bytes = 1000 * (fast_size + per_dgram)
     slow_cost = slow_size + per_dgram + detector.estimate_subbatch_bytes(1)
     capacity = resident_bytes + 4 * slow_cost
-    budget._limit = budget.committed() + capacity
+    # Keep the same logical residency plan and explicitly budget the pool's
+    # rounded blocks: one resident input/parser set and two transient sets.
+    def rounding(n, dgram_size):
+        physical = (allocation_capacity(cp, n * dgram_size)
+                    + allocation_growth_bytes(parser.allocation_requirements(n)))
+        if n == 2:
+            physical += allocation_growth_bytes(detector.allocation_requirements(n, 0))
+            return physical - n * (dgram_size + per_dgram + detector.estimate_subbatch_bytes(1))
+        return physical - n * (dgram_size + per_dgram)
+    pool_rounding = rounding(1000, fast_size) + 2 * rounding(2, slow_size)
+    budget._limit = budget.committed() + capacity + pool_rounding
     m = GpuEventManager.__new__(GpuEventManager)
     m.dm = NS(xtc_files=paths, get_chunk_id=lambda _: 0, fds=[0, 1])
     m.dsparms = NS(gpu_bulk_read=True, n_gpu_streams=2, max_events=0)

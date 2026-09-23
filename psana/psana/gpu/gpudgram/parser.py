@@ -6,7 +6,6 @@ provides raw bytes and dgram records already resident on the GPU; all XTC walk
 results stay there for direct consumption by later CUDA kernels.
 """
 
-from dataclasses import dataclass
 from functools import lru_cache
 
 import numpy as np
@@ -88,25 +87,45 @@ STATUS_NAMES = {
 }
 
 
-@dataclass(frozen=True)
 class DeviceFieldLocators:
-    """One locator row per batch dgram for a resolved field handle.
+    """Locator rows with an optional event access boundary."""
 
-    ``rows_gpu`` is a ``uint64[n_dgrams, LOC_NCOLS]`` CuPy array.  A consumer
-    on another CUDA stream must call :meth:`wait_on` before launching work.
-    """
+    def __init__(self, handle, rows_gpu, ready, lease=None):
+        self.handle, self._rows_gpu, self.ready = handle, rows_gpu, ready
+        self._lease = lease
+        if lease is not None:
+            lease.on_retire(self.retire)
 
-    handle: GpuFieldHandle
-    rows_gpu: object
-    ready: object
+    def retire(self):
+        self._rows_gpu = None
+        self.ready = None
+
+    @property
+    def rows_gpu(self):
+        if self._lease is not None:
+            self._lease.require_active()
+        if self._rows_gpu is None:
+            raise RuntimeError("GPU locator storage is released")
+        return self._rows_gpu
 
     @property
     def n_dgrams(self):
         return int(self.rows_gpu.shape[0])
 
     def wait_on(self, stream):
+        rows = self.rows_gpu
         stream.wait_event(self.ready)
-        return self.rows_gpu
+        return rows
+
+
+def _batch_storage(name):
+    def get(self):
+        if getattr(self, '_retired', False):
+            raise RuntimeError("GPU batch storage is released")
+        return getattr(self, '_' + name)
+    def set_(self, value):
+        setattr(self, '_' + name, value)
+    return property(get, set_)
 
 
 class GpuEventBatch:
@@ -133,6 +152,11 @@ class GpuEventBatch:
     InputWindow to protect raw bytes and parser tables independently of
     execution slots; standalone callers must coordinate their own reuse.
     """
+
+    data_gpu = _batch_storage('data_gpu')
+    dgram_records_gpu = _batch_storage('dgram_records_gpu')
+    shape_counts_gpu = _batch_storage('shape_counts_gpu')
+    shape_refs_gpu = _batch_storage('shape_refs_gpu')
 
     def __init__(
         self,
@@ -235,8 +259,22 @@ class GpuEventBatch:
             self.walk_done.record(self.stream)
         self._locators = {}
 
+    def retire(self):
+        """Detach completed window storage, including bound slot allocators."""
+        for locator in self._locators.values():
+            locator.retire()
+        self._locators.clear()
+        self._locator_allocator = None
+        self.data_gpu = self.dgram_records_gpu = None
+        self.shape_counts_gpu = self.shape_refs_gpu = None
+        self.device_configs = None
+        self.walk_done = None
+        self._retired = True
+
     def locate(self, handle, *, stream=None):
         """Launch or return the device locator table for ``handle``."""
+        if self.data_gpu is None:
+            raise RuntimeError("GPU batch storage is released")
         if not isinstance(handle, GpuFieldHandle):
             raise TypeError("handle must be a GpuFieldHandle")
         if not 0 <= handle.stream_id < self.device_configs.n_streams:

@@ -99,6 +99,9 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
         # returns only variable storage; constants and Configure stay charged.
         fixed = parser.memory_bytes()['config'] + detector.memory_bytes()['constants']
         assert budget.committed() > fixed
+        # These public read/record aliases keep reader/parser backing charged
+        # even after retirement. Remove them before asserting cache-only cost.
+        del pending, read, record
         manager._trim_gpu_caches()
         assert budget.committed() == fixed
         budget._limit = fixed

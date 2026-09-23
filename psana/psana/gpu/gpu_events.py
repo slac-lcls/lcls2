@@ -363,6 +363,13 @@ class _GpuMemStats:
     raw_input: int = 0
     xtc_config: int = 0
     xtc_slots: int = 0
+    committed: int = 0
+    held: int = 0
+    retained: int = 0
+    failed: int = 0
+    borrowed: int = 0
+    allocations: tuple = ()
+    cupy_used: int = 0
     cupy_pool: int = 0
     device_used: int = 0
     device_total: int = 0
@@ -376,6 +383,10 @@ class _GpuMemStats:
 
     def log(self):
         """Emit a structured INFO log summarising the snapshot."""
+        _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s borrowed=%s pool_used=%s",
+                  self.label, self._mb(self.committed), self._mb(self.held),
+                  self._mb(self.retained), self._mb(self.failed),
+                  self._mb(self.borrowed), self._mb(self.cupy_used))
         det_names = sorted(self.det_constants)
         for name in det_names:
             _log.info(
@@ -473,6 +484,7 @@ class GpuEventManager:
         s = _GpuMemStats(label=label)
         for name, (_, det) in self.gpu_detectors.items():
             m = det.memory_bytes()
+            s.borrowed += m.get("borrowed_constants", 0)
             s.det_constants[name] = m["constants"]
             s.det_geometry[name] = m["geometry"]
             s.det_calib_slots[name] = m["calib_slots"]
@@ -484,6 +496,16 @@ class GpuEventManager:
             s.xtc_config = parser_memory["config"]
             s.xtc_slots = parser_memory["batch_slots"]
         s.pinned = sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
+        budget = getattr(self, '_gpu_budget', None)
+        if budget is not None:
+            from .gpu_allocation import backing_capacity
+            s.committed, s.held = budget.committed(), budget._held
+            s.allocations = budget.allocation_snapshot()
+            cached = (s.raw_input + s.xtc_config + s.xtc_slots
+                      + sum(s.det_constants.values()) + sum(s.det_geometry.values())
+                      + sum(s.det_calib_slots.values()) + sum(s.det_raw_slots.values()))
+            s.retained = max(0, s.committed - cached)
+            s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
         # Query CuPy pool and CUDA device info only when a GPU is active.
         # These calls fail on CPU-only nodes and are skipped silently.
         cupy_mod = sys.modules.get("cupy")
@@ -495,6 +517,7 @@ class GpuEventManager:
                 # destructor raises an unraisable CUDA driver exception.
                 if cupy_mod.cuda.runtime.getDeviceCount() <= 0:
                     return s
+                s.cupy_used = cupy_mod.get_default_memory_pool().used_bytes()
                 s.cupy_pool = cupy_mod.get_default_memory_pool().total_bytes()
                 free, total = cupy_mod.cuda.Device().mem_info
                 s.device_used = total - free
@@ -515,11 +538,11 @@ class GpuEventManager:
         s = self._snapshot_memory(label)
         s.log()
         hw = self._high_water
-        for name in s.det_constants:
-            hw["constants"] = max(hw.get("constants", 0), s.det_constants.get(name, 0))
-            hw["geometry"] = max(hw.get("geometry", 0), s.det_geometry.get(name, 0))
-            hw["calib_slots"] = max(hw.get("calib_slots", 0), s.det_calib_slots.get(name, 0))
-            hw["raw_slots"] = max(hw.get("raw_slots", 0), s.det_raw_slots.get(name, 0))
+        for category, values in (("constants", s.det_constants), ("geometry", s.det_geometry),
+                                 ("calib_slots", s.det_calib_slots), ("raw_slots", s.det_raw_slots)):
+            hw[category] = max(hw.get(category, 0), sum(values.values()))
+        for category in ('committed', 'held', 'retained', 'failed', 'borrowed', 'cupy_used'):
+            hw[category] = max(hw.get(category, 0), getattr(s, category))
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
         hw["xtc_config"] = max(hw.get("xtc_config", 0), s.xtc_config)
         hw["xtc_slots"] = max(hw.get("xtc_slots", 0), s.xtc_slots)
@@ -1382,12 +1405,14 @@ class GpuEventManager:
                             _, pending_0 = first_pending
                             gpu_read = self._wait_gpu_read(pending_0)
                             self._submit_gpu(subbatch, gpu_read, sb_envelopes)
+                            first_pending = pending_0 = gpu_read = None
                         else:
                             pending = yield from self._retire_issue_and_yield(
                                 subbatch
                             )
                             gpu_read = self._wait_gpu_read(pending)
                             self._submit_gpu(subbatch, gpu_read, sb_envelopes)
+                            pending = gpu_read = None
                 else:
                     # No GPU batch — yield CPU-only events directly.
                     for envelope in event_envelopes:
@@ -1433,17 +1458,18 @@ class GpuEventManager:
         """Drain in-flight work and close GPU reader resources once."""
         if self._closed:
             return
-        try:
-            yield from self._flush_event_pool()
-            self._drain_pending_gpu_read()
-            self._close_resident_input()
-            parser = getattr(self, "gpu_xtc_parser", None)
-            if parser is not None:
-                parser.close()
-        finally:
-            if self.gpu_reader is not None:
-                self.gpu_reader.close()
-            self._closed = True
+        yield from self._flush_event_pool()
+        self._drain_pending_gpu_read()
+        self._close_resident_input()
+        parser = getattr(self, "gpu_xtc_parser", None)
+        if parser is not None:
+            parser.close()
+        budget = getattr(self, '_gpu_budget', None)
+        if budget is not None:
+            budget.drain_failed_allocations()
+        if self.gpu_reader is not None:
+            self.gpu_reader.close()
+        self._closed = True
 
     def close(self):
         """Discard remaining deliveries while safely retiring their slots."""

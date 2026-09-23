@@ -681,12 +681,15 @@ class GpuStreamConfigTable:
                 f"Configure has no NamesId 0x{key[1]:x} in stream {key[0]}"
             ) from exc
 
-    def to_device(self, cp):
+    def to_device(self, cp, budget=None):
+        from psana.gpu.gpu_allocation import upload_owned
+        index, names, fields = upload_owned(cp, (
+            self.stream_names_index, self.names_table, self.fields_table), budget)
         return DeviceConfigTables(
             n_streams=self.n_streams,
             n_names=len(self.names),
             n_fields=len(self.fields_table),
-            stream_names_index=cp.asarray(self.stream_names_index),
-            names=cp.asarray(self.names_table),
-            fields=cp.asarray(self.fields_table),
+            stream_names_index=index,
+            names=names,
+            fields=fields,
         )

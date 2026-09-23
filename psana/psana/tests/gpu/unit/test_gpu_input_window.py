@@ -212,3 +212,38 @@ def test_failed_execution_keeps_its_input_reference_until_stream_drains(monkeypa
     failed_stream.fail = False
     list(pool.flush())
     assert fast.released and slow.released
+
+
+def test_partial_multi_owner_acquisition_returns_prior_reference(monkeypatch):
+    released = []
+    fast = window(release=lambda: released.append('fast'))
+    slow = window(1, release=lambda: released.append('slow'))
+    def fail():
+        assert fast.references == 1
+        raise RuntimeError('injected second owner acquisition failure')
+    monkeypatch.setattr(slow, 'acquire', fail)
+    with pytest.raises(RuntimeError, match='second owner acquisition failure'):
+        InputSlotLease(Token(), (fast, slow))
+    assert fast.references == slow.references == 0
+    assert not fast.released and not slow.released
+    assert fast.close() and slow.close()
+    assert released == ['fast', 'slow']
+
+
+def test_partial_multi_owner_view_fork_preserves_parent_and_returns_child(monkeypatch):
+    fast, slow = window(), window(1)
+    ready = Token()
+    parent = InputSlotLease(ready, (fast, slow))
+    assert not fast.close() and not slow.close()
+    def fail():
+        assert fast.references == 2
+        raise RuntimeError('injected second owner fork failure')
+    monkeypatch.setattr(parent._uses[1], 'fork', fail)
+    with pytest.raises(RuntimeError, match='second owner fork failure'):
+        parent.acquire_view()
+    assert fast.references == slow.references == 1
+    assert not fast.released and not slow.released and ready.waits == 0
+    parent.require_active()
+    parent.wait_until_safe_to_reuse()
+    assert fast.released and slow.released
+    assert fast.references == slow.references == 0

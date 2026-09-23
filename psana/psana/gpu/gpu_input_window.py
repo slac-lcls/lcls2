@@ -109,6 +109,11 @@ class InputWindow:
                 self._retiring = False  # closed, but completion can be retried
             raise
         with self._lock:
+            retire = getattr(self.batch, 'retire', None)
+            if retire is not None:
+                retire()
+            self.batch = None
+            self._ready.clear()
             self._released = True
             self._retiring = False
             self._release = None
@@ -146,6 +151,7 @@ class InputWindowUse:
             if not self._released:
                 self._closing = True
                 self.window._ready.extend(self._done)
+                self._done.clear()
                 self.window._uses.remove(self)
                 self._released = True
         return self.window._try_retire()
