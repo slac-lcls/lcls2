@@ -108,6 +108,15 @@ active metrics. Known instruments: asc, mfx, rix, tmo, tst, txi, ued, xpp.
 Once you have it (from either source), proceed to Step 1, which confirms
 metrics are actually flowing for it before loading the dashboard.
 
+**If `psana-daq` also handed off a scope** (live, or a past date/time
+range), use it instead of the "Default time ranges" table below: a live
+scope uses the defaults as normal, but a **past** scope means every query in
+this skill should use explicit `startTime`/`endTime` covering that session's
+window rather than a `now`-relative default. Derive the window the same way
+`psana-daq`'s autonomous sweep does for a past session — start from the
+session's log-prefix timestamp, end from the last-written log file's mtime
+— rather than re-deriving it independently here.
+
 If you need to see which instruments currently have *any* active DAQ metrics
 (e.g. the user isn't sure and there's no router context to fall back on),
 use this as a discovery aid — but treat its result as informational, not a
@@ -736,7 +745,20 @@ fine to the DAQ, but AMI/psplot/psana-live see event gaps.
     )
 
 **Interpretation:**
-- `MRQ_BufCt` = 0 = **monitoring data loss** — MEB can't request new events
+- `MRQ_BufCt` = 0 = **monitoring data loss** — MEB can't request new events.
+  **Caveat, not yet confirmed by a DAQ expert (added 2026-09-23, from a live
+  sweep):** a `0` sample alone can also reflect fast buffer turnover between
+  Prometheus scrapes rather than genuine exhaustion — one real 24h xpp sweep
+  saw `MRQ_BufCt=0` on 30 of 33 samples over 8h while `rate(MEB_EvtCt)`
+  tracked `rate(TEB_EvtCt)` almost exactly (120.04 vs 120.03) and
+  `MEB_PrcCt=0` (no buffers held by shmem clients) — i.e. monitoring was
+  fully keeping up. Before concluding data loss from `MRQ_BufCt=0` alone,
+  corroborate with `MEB_EvtCt`/`TEB_EvtCt` rate parity and `MEB_PrcCt`; if
+  both indicate healthy throughput, the `0` samples may be an artifact of
+  scrape timing rather than the failure mode described above. This
+  corroboration rule is a judgment call from one incident, not a verified
+  fact — treat `MRQ_BufCt=0` as before if these companion metrics also look
+  unhealthy or are unavailable.
 - `MRQ_BufCt` / `MRQ_BufCtMax` ratio < 25% = buffer pressure, investigate
   client speed
 - `MEB_PrcCt` high = many buffers held by shmem clients — slow AMI/psplot

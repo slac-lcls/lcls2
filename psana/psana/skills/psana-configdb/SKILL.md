@@ -62,8 +62,9 @@ Unlike the other endpoints above, `get_history` requires a JSON array body
 naming which dot-separated parameter(s) to track, with the first component
 being the device config name. Verified live against the production service:
 
-    curl -G https://pswww.slac.stanford.edu/ws/configdb/ws/configDB/get_history/xpp/BEAM/timing_0/ \
-         -d '["detName:RO"]'
+    curl -X GET https://pswww.slac.stanford.edu/ws/configdb/ws/configDB/get_history/xpp/BEAM/timing_0/ \
+         -H 'Content-Type: application/json' \
+         --data '["detName:RO"]'
 
 Verified sample response (abbreviated):
 
@@ -74,11 +75,22 @@ Verified sample response (abbreviated):
 Each entry has `date` (UTC ISO8601) and `key` (an integer config version
 number).
 
-**Gotcha:** calling `get_history` via plain `GET` with no body returns
-`{"success": false, "msg": "get_history: no POST data"}` — the JSON body is
-mandatory even though the HTTP verb is `GET` (the `curl -G ... -d '...'`
-idiom sends the `-d` payload as a URL-encoded query string on a GET
-request, despite the error message's wording).
+**Gotcha:** the discriminator is the **`Content-Type: application/json`
+header**, not the HTTP verb. Verified live, 2026-09-23, 4-way comparison
+against the production service:
+
+| Invocation | Result |
+|---|---|
+| `curl -G ... -d '[...]'` (no `Content-Type` header) | `500 {"success": false, "msg": "get_history: no POST data"}` |
+| `curl -X GET ... --data '[...]'` (no `Content-Type` header) | `500 {"success": false, "msg": "get_history: no POST data"}` |
+| `curl -X GET ... -H 'Content-Type: application/json' --data '[...]'` | `200 {"success": true, "value": [...]}` |
+| `curl -X POST ...` | `405 Method Not Allowed` |
+
+`-G` (which moves `-d`'s payload into the URL query string) is not the
+mechanism that makes this work — the service never inspects the query
+string for this endpoint. Without the header, the service reports "no POST
+data" regardless of how the body is attached to a `GET` request; the header
+is what makes it recognize the body at all.
 
 ### Equivalent read-only CLI
 

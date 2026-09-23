@@ -38,15 +38,33 @@ You may — and should — **recommend** a specific `setState`/`--transition`
 command, quoted exactly, with a stated reason. Present it as a suggestion for
 the human to run. Never run it yourself.
 
-## Confidence labelling
+## Provenance and confidence
 
-Every conclusion you report must carry one of these, and this skill's own
-claims are labelled the same way:
+These are two different axes — do not conflate them.
+
+**Provenance** labels how a specific claim or piece of evidence was
+*obtained*. This skill's own factual claims throughout are labelled this
+way (e.g. "*(inferred-from-code-only)*"), and any claim you report should
+be too:
 
 - **verified-live** — executed against the real service/filesystem
 - **verified-against-real-logs** — grepped from actual production log files
 - **inferred-from-code-only** — read from source, never operationally confirmed
 
+**Confidence** labels how sure a *diagnostic conclusion* is — an inference
+over one or more pieces of evidence, not a fact you obtained directly. Use
+a separate scale for this:
+
+- **high** — direct evidence names the failing component and the mechanism
+  is established
+- **medium** — evidence is consistent with this cause but doesn't isolate
+  it from other explanations
+- **low** — a plausible inference; competing explanations have not been
+  ruled out
+
+A conclusion built on `verified-live` evidence is not automatically
+`high` confidence, and a `low`-confidence guess can still cite
+`verified-live` evidence — the two labels answer different questions.
 Prefer a ranked "most likely / also possible" over one confident answer.
 
 **Citation policy:** citations in this skill derive from `lcls2_091826`. Grep

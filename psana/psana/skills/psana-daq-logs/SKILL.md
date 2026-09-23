@@ -62,9 +62,28 @@ started in the same DAQ session** — it is effectively a session ID.
 The newest session is often a short test with 0 errors; the session before it may
 be the one with 23 errors that the user actually wants to investigate.
 
+### If a scope was already handed off
+
+If `psana-daq` (the router) already established scope — live, or a past
+date/time range — before invoking this skill, use it instead of defaulting
+to "today":
+
+- **Live** → proceed directly with the current/newest session, no session
+  list needed.
+- **Past, with an exact `DD_HH:MM:SS` prefix already known** → skip session
+  selection entirely and scope straight to that prefix.
+- **Past, but only a vague date** (e.g. "yesterday", "last night", a bare
+  date) → run the session-selection mechanism below anchored on the
+  handed-off date instead of `date +%d` in step 1, so the list shown to the
+  user is for the right day rather than today.
+
+If no scope was handed off (this skill was invoked standalone), fall back to
+the full mechanism below, defaulting to today.
+
 ### Session selection — present a list and ask
 
-1. Get today's date: `date +%d` → e.g. `18`.
+1. Get the date to anchor on: the handed-off date if one was given (see
+   above), otherwise today's date: `date +%d` → e.g. `18`.
 2. Find sessions whose **last-written file's mtime is today** (not by prefix day —
    sessions span midnight; a prefix starting `09_08:19:07` may still be writing on
    the 17th). For each candidate prefix, compute and display:

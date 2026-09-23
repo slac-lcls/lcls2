@@ -14,13 +14,12 @@ always-loaded into every agent session today — a config change to make
 
 | Skill | Role | Purpose |
 |---|---|---|
-| `psana-daq` | Router | Entry point for a general DAQ issue with no specific angle yet. Routes to the other skills based on symptom. |
+| `psana-daq` | Router + composed sweep | Entry point for any DAQ issue. Dispatches to a single leaf skill when the report names a specific angle; runs an autonomous sweep across all leaf skills for a vague report and returns one ranked report. Establishes `hutch` and session scope (live/past) once, up front. |
 | `psana-daq-control` | Leaf | Run-control state machine, failed transitions, rollcall, `activedet.json`. Needs no Grafana, MCP, or ConfigDB — works when everything else is down. |
 | `psana-daq-monitor` | Leaf | Grafana/Prometheus DAQ metrics — event rate, deadtime, damage, buffers, event builder/MEB health. |
 | `psana-daq-logs` | Leaf | Raw DAQ log files on disk, for the current session or a specific identifiable past session. |
 | `psana-configdb` | Leaf | Read-only ConfigDB lookups — detector/system configuration, config history. |
-| `psana-daq-snapshot` | Composed | Autonomous end-to-end sweep across all four leaf skills for one session, returning a single ranked report. Asks one scoping question up front, then investigates on its own. |
-| `psana-daq-history` | Stateful, composed | GitHub-issue-backed triage history — has `psana-daq-snapshot` search for prior occurrences of a failure mode before investigating, and record the outcome afterward, on human approval. The only stateful skill in this suite; every other skill here is stateless (reads the world, reports, remembers nothing). |
+| `psana-daq-history` | Stateful, composed | GitHub-issue-backed triage history — has `psana-daq`'s autonomous sweep search for prior occurrences of a failure mode before investigating, and record the outcome afterward, on human approval. The only stateful skill in this suite; every other skill here is stateless (reads the world, reports, remembers nothing). |
 
 Each skill's `description:` frontmatter is the authoritative statement of when
 to load it — the purposes above are a short paraphrase, not a substitute for
@@ -28,18 +27,22 @@ reading the frontmatter or the skill itself.
 
 ## How they compose
 
-`psana-daq` establishes `hutch` (the target instrument/hutch) once and hands
-it off explicitly to whichever leaf skill it routes to, rather than having
-each leaf skill re-derive or re-ask for it.
+`psana-daq` establishes `hutch` (the target instrument/hutch) and session
+scope (live, or a past date/time range) once, and hands both off explicitly
+to whichever leaf skill it routes to, rather than having each leaf skill
+re-derive or re-ask for either.
 
-`psana-daq-snapshot` is not a fifth diagnostic technique — it is entirely
-composed of the four leaf skills' existing methods, called in sequence and
-cited by section rather than restated.
+`psana-daq`'s autonomous sweep (for vague reports) is not a fifth diagnostic
+technique — it is entirely composed of the four leaf skills' existing
+methods, called in sequence and cited by section rather than restated. It
+was originally a separate skill (`psana-daq-snapshot`) and was merged into
+the router because it had no inbound citations of its own, needed the
+router's identity/scope/preflight machinery to run, and its "vague report"
+trigger condition duplicated the router's own dispatch table.
 
-`psana-daq-history` retrofits `psana-daq-snapshot` with a search-first step
-and a record-write step; it does not duplicate `psana-daq-snapshot`'s sweep
-logic, and `psana-daq-snapshot` carries no history/search/checkpointing logic
-of its own.
+`psana-daq-history` retrofits `psana-daq`'s sweep with a search-first step
+and a record-write step; it does not duplicate the sweep logic, and the
+sweep carries no history/search/checkpointing logic of its own.
 
 ## Design principles
 
