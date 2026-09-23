@@ -342,26 +342,26 @@ experimenting on a node other people depend on.
 |---|---|---|---|---|
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
 | gpu003 | 1 | 1 A5000 | yes | Gabriel's; converted 2026-09-23, now identical to gpu001 |
-| gpu005 | 6 | 1 H100 NVL at `47:00.0` | no | **the first big-box GPU node, so it differs throughout** -- see below |
+| gpu005 | 6 | 1 H100 NVL at `47:00.0` | yes | converted 2026-09-23; **the first big-box GPU node, so it differs throughout** -- see below |
 | gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5`; fully set up 2026-09-23 |
 | gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
 | gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
 
-**State of the fleet, end of 2026-09-23.**  Only gpu005 and gpu007 are now unconverted.
+**State of the fleet, end of 2026-09-23.  Only gpu007 is left.**
 
-| node | driver | dev names | threads/NUMA | `CoreSpecCount` |
-|---|---|---|---|---|
-| gpu001 | 7.6.0-17 | hex | 1 / 2 | 4 |
-| gpu003 | 7.6.0-33 | hex | 1 / 2 | 4 |
-| gpu005 | 7.4.0 | **decimal** | **2** / 2 | **2** -- under-reserving |
-| gpu006 | 7.6.0-33 | hex | 1 / 2 | 4 |
-| gpu007 | 7.6.0-29 | hex | **2** / 2 | **3** -- under-reserving |
-| gpu008 | 7.6.0-27 | hex | 1 / 2 | 4 |
+| node | driver | dev names | threads/NUMA | `CoreSpecCount` | gres |
+|---|---|---|---|---|---|
+| gpu001 | 7.6.0-17 | hex | 1 / 2 | 4 | `dd02` |
+| gpu003 | 7.6.0-33 | hex | 1 / 2 | 4 | `dd02` |
+| gpu005 | 7.6.0-33 | hex | 1 / 2 | 4 | `dd45` |
+| gpu006 | 7.6.0-33 | hex | 1 / 2 | 4 | `dda1`, `ddd5` |
+| gpu007 | 7.6.0-29 | hex | **2** / 2 | **3** -- under-reserving | `dd84`, `ddd5` |
+| gpu008 | 7.6.0-27 | hex | 1 / 2 | 4 | 5 records |
 
-The two SMT-on nodes are the two whose `CpuSpecList` does not reserve whole cores; that resolves
-itself when they get the BIOS treatment, since `0-3` then means four whole cores.  Driver versions
-are deliberately mixed -- gpu003 and gpu006 carry PR #323's branch head, which Ric is content to
-leave until 7.7.0 is released.
+gpu007 is the last node still SMT-on, and therefore the last whose `CpuSpecList` does not reserve
+whole cores -- that resolves itself when it gets the BIOS treatment, since `0-3` then means four
+whole cores.  Driver versions are deliberately mixed: gpu003, gpu005 and gpu006 carry PR #323's
+branch head, which Ric is content to leave until 7.7.0 is released.
 
 ### gpu005 is the odd one out, for historical reasons
 
@@ -2378,6 +2378,47 @@ in the same session; it had been reserving nothing at all.
 Neither node mounts WEKA yet but both have a `wekafs` fstab entry, so reserving cores 0-3 now
 means IT's "WEKA everywhere" ticket needs no follow-up Slurm change.  Note the cost is 4 of 16
 CPUs, 25% on these small nodes against 6% on the EPYC boxes.
+
+### gpu005 converted, 2026-09-23 -- the least similar node, done last on purpose
+
+Deliberately sequenced after the others: gpu005 is the Intel outlier and needed *more* changes than
+any node, so it was split into BIOS, Slurm, then driver, with a stopping point between each.  Ric's
+reasoning for doing it at all rather than deferring: move the driver forward everywhere so people
+get used to the changes sooner.
+
+BIOS is an Intel board, so the settings map differently -- `Hyper-Threading [ALL]` rather than `SMT
+Control`, and **no NPS, Determinism or SDCI equivalents exist**.  `SNC=Auto` already gave one NUMA
+node per socket, which is what NPS1 achieves on the EPYC boxes, so nothing was needed there.  The
+second change was `Intel VT for Directed I/O (VT-d)` `Enable -> Disable`: the BIOS had the IOMMU
+*enabled* and only the kernel cmdline was keeping it off, the sharpest case of the belt-and-braces
+problem.
+
+Two traps found before touching it, both worth checking on any node:
+
+- **`datadev` was resident with no `.ko` on disk**, exactly as on gpu003, so the conf had to follow
+  a dkms install rather than precede it.  `modinfo -F filename datadev` is the check.
+- **`Buffer Mode` was 1 (BUFF_COHERENT) on all six cards**, unlike gpu003 which was already 2.  So
+  here the conf genuinely changed DMA behaviour, across six cards carrying three different
+  firmwares -- the reason this node went last.  It went through cleanly; all six now report mode 2
+  at 4096 bytes.
+- **`gen_gres_conf` refused outright** before the driver change: `GPUAsync Support : Disabled`,
+  because 7.4.0 was built without `DATA_GPU`.  So the driver was the gate on gres, not the naming.
+  After the install it reports `GpuAsyncCore Offset : 0x28000` like the others.
+
+Result: 32 CPUs / 1 thread per core / 2 x 16 / 2 NUMA nodes; driver `7.6.0-33-ga9ad928`; devices
+`datadev_45,46,ae,af,c0,c1`; `CPUEfctv=28`, `CoreSpecCount=4` (up from 2 -- the under-reservation
+fixing itself); `Gres=gpu:dd45:1(S:0)` with `--check` green.
+
+**Five of the six cards have no GPU to pair with**, which is correct rather than a fault: one H100
+for six cards, and `dd45` gets it on the same PCIe switch in NUMA 0.  The others cannot run
+`drp_gpu` at all, so one gres record is the right answer.
+
+Its WEKA situation is worth recording because it is not like the others: the fstab line names
+**`net=ibp1s0`, an interface that does not exist** -- the HCAs appear as `enp153s0f0np0` /
+`enp153s0f1np1` on bus 99 -- and both ports are in **Ethernet** link mode, down with no carrier.
+That is the "WEKA-unsupported IB/Ethernet mix" behind Cheolhong's 22 GB/s GDS figure, visible in
+the configuration.  So WEKA cannot mount there as written, and the fstab `num_cores` hazard did not
+apply to this reboot.
 
 ### gpu006 converted, 2026-09-23, and `CpuSpecList` silently improved
 
