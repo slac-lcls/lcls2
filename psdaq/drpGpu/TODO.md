@@ -2264,6 +2264,69 @@ it does have a native route worth testing before the January boxes arrive:
 compiling.  Needs an identical kernel *and* a matching nvidia module version, since the
 GPU build resolves nvidia's symbols.  **Untested** -- recorded as the lead, not a recipe.
 
+## The kernel command line: `/etc/default/grub` has several of our own lines
+
+Checked across gpu005-008 on 2026-09-23.  The file carries **multiple
+`GRUB_CMDLINE_LINUX` assignments** -- six of ours on gpu005, three on gpu006, four on
+gpu007, two on gpu008 -- plus exactly one Ansible line, which is the only one that
+*appends* (`="$GRUB_CMDLINE_LINUX ..."`) and is marked `#Managed by Ansible`.  Ours
+re-declare the whole string, Ansible's additions included, and then append per-node
+tuning.
+
+Three consequences:
+
+- **The last assignment wins**, so a fixed line number is the wrong thing to edit.  All
+  of our lines are byte-identical duplicates, so edit *all* of them or the file starts
+  contradicting itself.  `grub_iommu_generic.sh` in the session directory does this and
+  refuses if they are not identical.
+- **Ansible only owns its own line**, so per-node tuning does not need an IT ticket.
+  That line's additions do reach the live cmdline despite appearing to be overwritten.
+- **BLS is enabled** (`GRUB_ENABLE_BLSCFG=true`, UEFI), so the live arguments come from
+  `/boot/loader/entries/*.conf`, not from `grub.cfg`.  Editing `/etc/default/grub` alone
+  looks like it worked and changes nothing at the next boot; `grub2-mkconfig` must
+  regenerate, and `grubby --info=DEFAULT` is how to confirm *before* rebooting.
+
+### IOMMU must be off, and it was held by luck on two nodes
+
+NVIDIA require the IOMMU off for this use.  As found:
+
+| node | BIOS | kernel cmdline | runtime |
+|---|---|---|---|
+| gpu005 | VT-d **Enable** | `iommu=off amd_iommu=off intel_iommu=off` | off, by cmdline only |
+| gpu006 | IOMMU `Auto` | same three flags | off |
+| gpu007 | IOMMU `Disabled` | **nothing** | off, by BIOS only |
+| gpu008 | IOMMU `Disabled` | **nothing** | off, by BIOS only |
+
+So it was correct everywhere but by two different mechanisms, and on three nodes by a
+single setting with no backstop.  gpu005 is the sharp case: its BIOS has VT-d *enabled*
+and only the cmdline saves it.  The plan is both belts: the BIOS value explicit, and the
+cmdline flags present, on every node.
+
+### The `pci=` parameters were for a real failure that is now fixed
+
+gpu008 carried `pci=hpmemsize=pci=realloc` -- a malformed token (two options
+concatenated, the first with an empty value) that the kernel silently ignored, so
+*neither* option was in effect.  Jeremy added it when FPGA cards were failing to appear
+on the bus and sporadically disappearing.  **Root cause was bifurcation not being
+supported by the PCIe switches on the riser cards**, and bifurcation can only be
+configured for ports directly under the CPU's root complex (e.g. slot 7).  That is
+fixed and the situation is stable, so the parameters are no longer needed; Ric and
+Jeremy agreed on 2026-09-23 to drop it rather than repair it, and *not* to propagate
+`pci=realloc` to the other nodes.
+
+Worth knowing what the BAR complaints in `dmesg` actually are, since there are hundreds
+and they look alarming:
+
+- gpu008's 140 are **all** `[io size 0x1000]` -- legacy I/O port space on PCIe bridges,
+  a 64 KB architectural limit no kernel option can lift, and nothing here uses it.
+- gpu006's 84 non-io ones are `bridge window [mem size 0x00200000]`, 2 MB windows the
+  firmware speculatively reserves for **empty hotplug slots**.  That is what
+  `hpmemsize=64M` was aimed at.
+
+In both cases every real device has its BARs: all seven SLAC cards and the GPUs report
+zero unassigned regions, including the GPUs' 256 GB BAR1.  So the messages are cosmetic
+and `pci=realloc` would not change them.
+
 ## rdmaTest is the way to exercise the driver's GPU path without the DAQ
 
 `data_dev/app/bin/rdmaTest` (built with `make cuda`, not `make`) registers CUDA buffers via
