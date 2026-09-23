@@ -2404,17 +2404,25 @@ treatment.  So this is not a second ansible bug; it is the same bug, one limit s
 
 **Two things are needed, and ours alone is not sufficient.**
 
-1. *IT:* add `LimitRTPRIO=99` to slurmd, via a drop-in rather than by editing the unit --
-   `LimitMEMLOCK` lives in the packaged `/usr/lib/systemd/system/slurmd.service`, so a
-   package update would revert an in-place edit:
+1. *IT:* add `LimitRTPRIO=99` to slurmd.  As a systemd drop-in, not by editing the unit:
+   the three existing `Limit` lines are in `/usr/lib/systemd/system/slurmd.service`, which
+   is owned by the `slurm-slurmd` RPM, so a package update reverts anything added there.
+   A drop-in is a `.conf` fragment under `<unit>.service.d/`, which systemd parses after
+   the packaged unit and merges over it; `/etc` is config, so packages never touch it.
 
        /etc/systemd/system/slurmd.service.d/override.conf
        [Service]
        LimitRTPRIO=99
 
-   then `systemctl daemon-reload && systemctl restart slurmd`.  Verify with
-   `grep 'realtime priority' /proc/$(pgrep -x slurmd)/limits`, not with `ulimit` in a
-   login shell -- the login shell gets 99 from PAM and tells you nothing about jobs.
+   then `systemctl daemon-reload && systemctl restart slurmd`.  `systemctl cat slurmd`
+   afterwards lists both files, so the override is self-documenting.  IT already use this
+   exact pattern on these nodes -- `weka-agent`, `monit` and `SplunkForwarder` all have an
+   `override.conf` -- so it is their own convention, not a new technique.  There are no
+   slurmd drop-ins today.
+
+   Verify with `grep 'realtime priority' /proc/$(pgrep -x slurmd)/limits`, not with
+   `ulimit` in a login shell -- the login shell gets 99 from PAM and tells you nothing
+   about jobs.  That is the likely reason the ticket looked complete.
 
 2. *Us:* the ceiling only permits the priority; something must still ask for it.  The
    config machinery already supports this -- an optional per-process `rtprio` field, which
