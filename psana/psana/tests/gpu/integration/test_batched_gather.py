@@ -28,7 +28,7 @@ pytestmark = [pytest.mark.gpu, pytest.mark.skipif(
     not _gpu_available(), reason="no CUDA device available")]
 
 
-def _setup(cp, passthrough=False, budget=None):
+def _setup(cp, passthrough=False, budget=None, parser_slots=1):
     dtype = np.float32 if passthrough else np.uint16
 
     def entry(segment, names, det="camera"):
@@ -49,7 +49,7 @@ def _setup(cp, passthrough=False, budget=None):
                                     for s in (9, 4, 8)})
     # Handle order deliberately differs from both stream and canonical order.
     pool = GpuXtcBatchPool(configs, field_handles=tuple(reversed(configs.field_handles())),
-                           n_slots=1, budget=budget)
+                           n_slots=parser_slots, budget=budget)
     peds = None if passthrough else cp.full(3 * 3 * 300, 7, dtype=cp.float32)
     gains = None if passthrough else cp.full(3 * 3 * 300, 2, dtype=cp.float32)
     detector = gd.GPUDetector((3, 3, 100), peds, gains, binding, n_slots=1,

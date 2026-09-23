@@ -45,8 +45,29 @@ def _canonical_gather_table(binding, handle_indices):
     return streams, np.asarray(rows, dtype=np.uint64).reshape(-1, 4)
 
 
+# Each event/stream entry has (owner index, owner-local dgram row). Each
+# distinct owner has (raw pointer, raw bytes, locator pointer, capacity, count).
+# Admission conservatively allows one owner per entry. Both tables share one
+# device allocation and one pinned upload source.
+_GATHER_ROW_WORDS = 2
+_GATHER_OWNER_WORDS = 5
+_GATHER_MAP_BYTES_PER_ENTRY = (_GATHER_ROW_WORDS + _GATHER_OWNER_WORDS) * 8
+
+
+@dataclass(frozen=True)
+class _GatherInputs:
+    rows: object
+    owners: object
+    locations: tuple
+
+
 class _GatherMap:
-    """Slot-owned device map and pinned upload source, retired with results."""
+    """Slot-owned device map and pinned upload source, retired with results.
+
+    The EventPool leases every input window through execution completion,
+    including partial submission failures. Standalone callers must provide the
+    same lifetime guarantee. This cache retains no parsed owners after prepare.
+    """
 
     def __init__(self):
         self.device = None
@@ -54,36 +75,46 @@ class _GatherMap:
 
     def prepare(self, events, streams, stream, budget):
         cp = _cupy()
-        batch = events[0].batch
-        if batch is None:
-            raise ValueError("canonical gathering requires one parsed input owner")
         nitems = len(events) * len(streams)
+        required = nitems * _GATHER_MAP_BYTES_PER_ENTRY
         old_bytes = 0 if self.device is None else int(self.device.nbytes)
-        required = nitems * 8
         if required > old_bytes:
             pinned = cp.cuda.alloc_pinned_memory(required)
-            host = np.frombuffer(pinned, dtype=np.int64, count=nitems)
-            device = owned_empty(cp, nitems, cp.int64, budget, 'detector')
+            host = np.frombuffer(pinned, dtype=np.uint64, count=required // 8)
+            device = owned_empty(cp, required // 8, cp.uint64, budget, 'detector')
             self.host, self.device = host, device
-        host = self.host[:nitems].reshape(len(events), len(streams))
-        host.fill(-1)
+        row_words = nitems * _GATHER_ROW_WORDS
+        rows = self.host[:row_words].reshape(len(events), len(streams), _GATHER_ROW_WORDS)
+        rows.fill(np.iinfo(np.uint64).max)
+        owner_indices, locations = {}, []
         for i, event in enumerate(events):
-            if event.batch is not batch:
-                raise ValueError("canonical gathering requires one parsed input owner")
             for j, stream_id in enumerate(streams):
                 dgram = event.get(stream_id)
-                if dgram is not None:
-                    if dgram.batch is not batch or not 0 <= dgram.dgram_index < batch.n_dgrams:
-                        raise ValueError("invalid gather input owner or dgram row")
-                    host[i, j] = dgram.dgram_index
-        # The EventPool retains the parsed owner through queued kernels. Do not
-        # cache it here across retirement: that would retain old parser storage
-        # while the next parse replaces it. The result lease also protects the
-        # pinned source until this upload completes.
-        locations = batch.configured_locations()
-        view = self.device[:nitems]
-        view.set(host.reshape(-1), stream=stream)
-        return view, locations
+                if dgram is None:
+                    continue
+                batch = dgram._storage_batch()
+                if not 0 <= dgram.dgram_index < batch.n_dgrams:
+                    raise ValueError("invalid gather input owner or dgram row")
+                index = owner_indices.get(batch)
+                if index is None:
+                    index = len(locations)
+                    owner_indices[batch] = index
+                    location = batch.configured_locations()
+                    if batch.n_dgrams > location.capacity:
+                        raise ValueError("gather input count exceeds locator capacity")
+                    locations.append(location)
+                    start = row_words + index * _GATHER_OWNER_WORDS
+                    self.host[start:start + _GATHER_OWNER_WORDS] = (
+                        batch.data_gpu.data.ptr, batch.data_gpu.nbytes,
+                        location.backing.data.ptr, location.capacity, batch.n_dgrams,
+                    )
+                rows[i, j] = (index, dgram.dgram_index)
+        used = row_words + len(locations) * _GATHER_OWNER_WORDS
+        # Publish slot storage before uploading; failed uploads are drained by
+        # EventPool before this slot or its pinned source can be reused.
+        self.device[:used].set(self.host[:used], stream=stream)
+        return _GatherInputs(self.device[:row_words], self.device[row_words:used],
+                             tuple(locations))
 
 
 class _CanonicalGatherPlan:
@@ -99,21 +130,24 @@ class _CanonicalGatherPlan:
         self.ready.record(producer)
         self.ordered_streams = {producer.ptr: producer}
 
-    def gather(self, locations, rows, target, present, pixels, stream):
-        if locations.handle_indices is not self.handle_indices:
-            raise ValueError("gather plan does not match the configured locator layout")
+    def gather(self, inputs, target, present, pixels, stream):
+        for locations in inputs.locations:
+            if locations.handle_indices is not self.handle_indices:
+                raise ValueError("gather plan does not match the configured locator layout")
         if stream.ptr not in self.ordered_streams:
             stream.wait_event(self.ready)
             self.ordered_streams[stream.ptr] = stream
-        locations.wait_on(stream)
+        waited = set()
+        for locations in inputs.locations:
+            if id(locations.ready) not in waited:
+                locations.wait_on(stream)
+                waited.add(id(locations.ready))
         nsegments = int(self.table.shape[0])
         nrows = int(present.size)
         tiles = (pixels + 255) // 256
         _batched_gather_kernel(target.dtype)(
             (tiles * nrows,), (256,),
-            (locations.owner.data_gpu, np.uint64(locations.owner.data_gpu.nbytes),
-             locations.backing, np.uint64(locations.capacity),
-             np.uint64(locations.owner.n_dgrams), self.table, rows,
+            (inputs.owners, np.uint64(len(inputs.locations)), self.table, inputs.rows,
              np.uint64(len(self.streams)), np.uint64(nsegments),
              np.uint64(pixels), np.uint64(tiles), target, present),
             stream=stream,
@@ -495,13 +529,13 @@ class GPUDetector:
             bytes_per_event = n_pix_per_event * 4
         else:
             bytes_per_event = n_pix_per_event * (4 + 2)
-        return int(n_events * (bytes_per_event + n_segs + len(self._sources_by_stream) * 8))
+        return int(n_events * (bytes_per_event + n_segs + len(self._sources_by_stream) * _GATHER_MAP_BYTES_PER_ENTRY))
 
     def allocation_requirements(self, n_events, slot):
         pixels = int(n_events) * self._n_segs_calib * self._nrows * self._ncols
         items = [(pixels * 4, self._calib_slot_bufs[slot]),
                  (int(n_events) * self._n_segs_calib, self._present_slot_bufs[slot]),
-                 (int(n_events) * len(self._sources_by_stream) * 8,
+                 (int(n_events) * len(self._sources_by_stream) * _GATHER_MAP_BYTES_PER_ENTRY,
                   self._gather_maps[slot].device)]
         if not self._passthrough:
             items.append((pixels * 2, self._raw_slot_bufs[slot]))
@@ -581,13 +615,15 @@ class GPUDetector:
 
         sctx = stream if stream is not None else cp.cuda.Stream.null
         if self._gather_plan is None:
-            self.configure_gather(events_info[0].batch.configured_locations().handle_indices)
+            source = next(events_info[0][sid] for sid in self._sources_by_stream
+                          if sid in events_info[0])
+            self.configure_gather(source._storage_batch().configured_locations().handle_indices)
         with sctx:
             mapping = self._gather_maps[slot]
-            rows, locations = mapping.prepare(events_info, self._gather_plan.streams,
+            inputs = mapping.prepare(events_info, self._gather_plan.streams,
                                               sctx, self._budget)
             target = calib_slot if self._passthrough else raw_slot
-            self._gather_plan.gather(locations, rows, target, present_slot,
+            self._gather_plan.gather(inputs, target, present_slot,
                                      self._n_pix_seg, sctx)
         for event_index, event_dgrams in enumerate(events_info):
             lo = event_index * self._n_segs_calib
@@ -619,10 +655,9 @@ def _batched_gather_kernel(dtype):
     name = "gather_canonical_u16" if ctype == "unsigned short" else "gather_canonical_f32"
     return cp.RawKernel(f"""
 extern "C" __global__ void {name}(
-    const unsigned char* data, unsigned long long data_bytes,
-    const unsigned long long* locators, unsigned long long capacity,
-    unsigned long long n_dgrams, const unsigned long long* plan,
-    const long long* rows, unsigned long long n_streams,
+    const unsigned long long* owners, unsigned long long n_owners,
+    const unsigned long long* plan,
+    const unsigned long long* rows, unsigned long long n_streams,
     unsigned long long n_segments, unsigned long long pixels,
     unsigned long long tiles, {ctype}* out, unsigned char* present)
 {{
@@ -630,12 +665,24 @@ extern "C" __global__ void {name}(
     const unsigned long long pixel = ((unsigned long long)blockIdx.x % tiles)
                                      * blockDim.x + threadIdx.x;
     const unsigned long long* source = plan + (row % n_segments) * 4;
-    const long long dgram = rows[(row / n_segments) * n_streams + source[0]];
-    bool valid = dgram >= 0 && (unsigned long long)dgram < n_dgrams;
-    unsigned long long offset = 0;
+    const unsigned long long entry = ((row / n_segments) * n_streams + source[0]) * {_GATHER_ROW_WORDS};
+    const unsigned long long owner_index = rows[entry];
+    const unsigned long long dgram = rows[entry + 1];
+    bool valid = owner_index < n_owners;
+    const unsigned char* data = nullptr;
+    const unsigned long long* locators = nullptr;
+    unsigned long long data_bytes = 0, capacity = 0, offset = 0;
+    if (valid) {{
+        const unsigned long long* owner = owners + owner_index * {_GATHER_OWNER_WORDS};
+        data = reinterpret_cast<const unsigned char*>(owner[0]);
+        data_bytes = owner[1];
+        locators = reinterpret_cast<const unsigned long long*>(owner[2]);
+        capacity = owner[3];
+        valid = dgram < owner[4] && dgram < capacity;
+    }}
     if (valid) {{
         const unsigned long long* loc = locators +
-            (source[1] * capacity + (unsigned long long)dgram) * {LOC_NCOLS};
+            (source[1] * capacity + dgram) * {LOC_NCOLS};
         offset = loc[{LOC_OFFSET}];
         const unsigned long long nbytes = loc[{LOC_NBYTES}];
         valid = loc[{LOC_STATUS}] == {STATUS_FOUND} &&
