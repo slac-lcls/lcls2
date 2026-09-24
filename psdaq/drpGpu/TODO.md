@@ -2343,9 +2343,27 @@ Three consequences:
 - **Ansible only owns its own line**, so per-node tuning does not need an IT ticket.
   That line's additions do reach the live cmdline despite appearing to be overwritten.
 - **BLS is enabled** (`GRUB_ENABLE_BLSCFG=true`, UEFI), so the live arguments come from
-  `/boot/loader/entries/*.conf`, not from `grub.cfg`.  Editing `/etc/default/grub` alone
-  looks like it worked and changes nothing at the next boot; `grub2-mkconfig` must
-  regenerate, and `grubby --info=DEFAULT` is how to confirm *before* rebooting.
+  `/boot/loader/entries/*.conf`, not from `grub.cfg` -- and **`grub2-mkconfig` does not
+  rewrite those entries.**  Their `options` line is written at *kernel-install* time from
+  `GRUB_CMDLINE_LINUX` as it was then, so editing `/etc/default/grub` and running
+  `grub2-mkconfig` changes nothing until the next kernel is installed.  I got this wrong
+  first time round on gpu002 and gpu008: the file was right, the boot entries were
+  untouched, and the flags would have silently not applied.  `sudo grubby --info=ALL` shows
+  it -- `args=` with no `iommu` in it.
+
+  **Both steps are required**, and they serve different times:
+
+      # 1. the file, so a future kernel install inherits the flags
+      #    (grub_iommu_generic.sh)
+      # 2. the existing entries, so the next reboot actually gets them
+      sudo grubby --update-kernel=ALL --args="iommu=off amd_iommu=off intel_iommu=off"
+
+  `bls_iommu.sh` in the session directory does step 2 and refuses if step 1 is missing.
+  Note `--update-kernel=ALL` also fixes the **rescue** entry, which is the one you would
+  boot if something went wrong -- worth having right.
+
+  This is why gpu005 and gpu006 had the flags live while gpu002 and gpu008 did not: on the
+  first two the flags predate the current kernel install, so the entries inherited them.
 
 ### gpu003 converted, 2026-09-23 -- but the driver had no file on disk
 
