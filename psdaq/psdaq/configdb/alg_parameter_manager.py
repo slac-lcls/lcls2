@@ -21,6 +21,26 @@ from psdaq.configdb.alg_parameter_validator import (
 logger: logging.Logger = logging.getLogger(__name__)
 
 
+def normalize_version(version: str) -> str:
+    """Normalize an algorithm version to MAJOR.MINOR.MICRO format.
+
+    Args:
+        version (str): The possibly un-normalized version (e.g. v1).
+
+    Returns:
+        normalized_version (str): The normalized version (eg. 1.0.0).
+    """
+
+    m: Optional[re.Match] = re.fullmatch(
+        r"[vV]?(\d+)(?:\.(\d+))?(?:\.(\d+))?", str(version)
+    )
+    if m is None:
+        raise ValueError(
+            f"Invalid algorithm version {version!r}; expected [v]MAJOR[.MINOR[.MICRO]]"
+        )
+    return ".".join(g or "0" for g in m.groups())
+
+
 class Endpoint(str): ...
 
 
@@ -35,42 +55,55 @@ class GetAlgorithmSchemaEndpoint(Endpoint):
     """Endpoint to get the parameter validation schema for a specific algorithm version."""
 
     def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/get_algorithm/{name}/{version}/schema/")
+        return super().__new__(
+            cls, f"/get_algorithm/{name}/{normalize_version(version)}/schema/"
+        )
 
 
 class GetAlgorithmPresetsEndpoint(Endpoint):
     """Endpoint to get the list of named preset parameter sets for an algorithm version."""
 
     def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/get_algorithm/{name}/{version}/presets/")
+        return super().__new__(
+            cls, f"/get_algorithm/{name}/{normalize_version(version)}/presets/"
+        )
 
 
 class GetAlgorithmParamsEndpoint(Endpoint):
     """Endpoint to get a specific parameter set, or the latest parameter set."""
 
     def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/get_algorithm/{name}/{version}/params/")
+        return super().__new__(
+            cls, f"/get_algorithm/{name}/{normalize_version(version)}/params/"
+        )
 
 
 class AddAlgorithmEndpoint(Endpoint):
     """Endpoint to register a new algorithm, or to add a new version of an existing one."""
 
-    def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/new_algorithm/{name}/{version}/")
+    def __new__(cls, name: str, version: str, hutch: str):
+        return super().__new__(
+            cls, f"/new_algorithm/{hutch}/{name}/{normalize_version(version)}/"
+        )
 
 
 class AddAlgorithmParamsEndpoint(Endpoint):
     """Endpoint to add a new parameter set for a version of an algorithm."""
 
-    def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/add_algorithm_params/{name}/{version}/")
+    def __new__(cls, name: str, version: str, hutch: str):
+        return super().__new__(
+            cls, f"/add_algorithm_params/{hutch}/{name}/{normalize_version(version)}/"
+        )
 
 
 class UpdateAlgorithmMetadataEndpoint(Endpoint):
     """Endpoint to update metadata (e.g. GUI plugins) associated to an algorithm."""
 
-    def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/update_algorithm_metadata/{name}/{version}/")
+    def __new__(cls, name: str, version: str, hutch: str):
+        return super().__new__(
+            cls,
+            f"/update_algorithm_metadata/{hutch}/{name}/{normalize_version(version)}/",
+        )
 
 
 class RemoveAlgorithmVersionEndpoint(Endpoint):
@@ -79,8 +112,9 @@ class RemoveAlgorithmVersionEndpoint(Endpoint):
     If version is specified as `all` all algorithm versions will be dropped.
     """
 
-    def __new__(cls, name: str, version: str):
-        return super().__new__(cls, f"/remove_algorithm/{name}/{version}/")
+    def __new__(cls, name: str, version: str, hutch: str):
+        safe_ver: str = version if version == "all" else normalize_version(version)
+        return super().__new__(cls, f"/remove_algorithm/{hutch}/{name}/{safe_ver}/")
 
 
 class AddHutchEndpoint(Endpoint):
@@ -119,12 +153,16 @@ class DrpAlgParamManager:
         user: str,
         pw: str,
         timeout: int = 10,
+        hutch: Optional[str] = None, # Only used for authentication
     ):
         self.pswww_url: str = db_url
         self.configroot: str = configdb_root
         self.user: str = user
         self.password: str = pw
         self.timeout: int = timeout
+        self.hutch: str = hutch or (
+            self.user[:3] if self.user.endswith("opr") else "tst"
+        )
 
     @overload
     def _request(
@@ -230,17 +268,22 @@ class DrpAlgParamManager:
             json=json_data,
             timeout=self.timeout,
         )
-        resp.raise_for_status()
-        res_json = resp.json()
+
+        try:
+            res_json = resp.json()
+        except ValueError:
+            resp.raise_for_status()
+            raise
 
         # Handle standardized API response wrapper
         if isinstance(res_json, dict) and "success" in res_json:
             if not res_json["success"]:
                 raise RuntimeError(
-                    f"ConfigDB API Error ({res_json.get('status_code')}): {res_json.get('msg')}"
+                    f"ConfigDB API Error ({resp.status_code}): {res_json.get('msg')}"
                 )
             return res_json.get("value")
 
+        resp.raise_for_status()
         return res_json
 
     def list_algorithms(self) -> List[Dict[str, Any]]:
@@ -421,7 +464,9 @@ class DrpAlgParamManager:
             "soname": so,
         }
 
-        return self._request("POST", AddAlgorithmEndpoint(name, ver), json_data=payload)
+        return self._request(
+            "POST", AddAlgorithmEndpoint(name, ver, self.hutch), json_data=payload
+        )
 
     def list_presets(self, alg_name: str, version: str) -> List[Dict[str, Any]]:
         """Fetch the list of all parameter sets for an algorithm that have been named.
@@ -473,7 +518,9 @@ class DrpAlgParamManager:
         }
 
         result: Dict[str, str] = self._request(
-            "POST", AddAlgorithmParamsEndpoint(alg_name, version), json_data=payload
+            "POST",
+            AddAlgorithmParamsEndpoint(alg_name, version, self.hutch),
+            json_data=payload,
         )
 
         return result["params_id"]
@@ -494,7 +541,7 @@ class DrpAlgParamManager:
 
         return self._request(
             "POST",
-            UpdateAlgorithmMetadataEndpoint(alg_name, version),
+            UpdateAlgorithmMetadataEndpoint(alg_name, version, self.hutch),
             json_data=payload,
         )
 
@@ -512,7 +559,9 @@ class DrpAlgParamManager:
             version (str): The version of the DRP algorithm, or `all` to remove all.
         """
         logger.info(
-            self._request("POST", RemoveAlgorithmVersionEndpoint(alg_name, version))
+            self._request(
+                "POST", RemoveAlgorithmVersionEndpoint(alg_name, version, self.hutch)
+            )
         )
 
     def remove_all_algorithms(self) -> None:
@@ -526,7 +575,10 @@ class DrpAlgParamManager:
             for ver in alg["versions"]:
                 logger.info(f"Removing algorithm {alg_name} version {ver}")
                 logger.info(
-                    self._request("POST", RemoveAlgorithmVersionEndpoint(alg_name, ver))
+                    self._request(
+                        "POST",
+                        RemoveAlgorithmVersionEndpoint(alg_name, ver, self.hutch),
+                    )
                 )
 
     def attach_alg_to_detector(
@@ -593,7 +645,7 @@ class DrpAlgParamManager:
         # in the more human friendly dictionary like this.
         new_alg_ref: Dict[str, str] = {
             "alg_name": alg_name,
-            "version": version,
+            "version": normalize_version(version),
             "params_id": param_id,
             # TODO: Consider also including a "preset_name" here as well?
         }
@@ -708,25 +760,33 @@ class DrpAlgParamManager:
                     #       If this ever changes MUST do update here!!
                     # params_unsigned: Dict[str, Any] = int64_to_uint64(raw_params)
 
-                    typed_doc: Dict[str, Any] = convert_params_to_xtc2_format(
+                    typed_params: Dict[str, Any] = convert_params_to_xtc2_format(
                         params=raw_params, json_schema=schema, alg_name=alg_name
                     )
 
+                    # Separate the parameter types; enum definitions merge at the top level
+                    param_types: Dict[str, Any] = typed_params.pop(":types:")
+                    enum_defs: Dict[str, Any] = param_types.pop(":enum:", {})
+
                     # Add the shared library name, and type it
-                    typed_doc["soname"] = soname
-                    typed_doc[":types:"]["soname"] = "CHARSTR"
-
-                    # Remove types from parameter dict. Will merge into the top-level
-                    alg_types_only: Dict[str, Any] = typed_doc.pop(":types:")
-
-                    # Update config, and merge types
-                    updated_config[key] = typed_doc
-                    if ":enum:" in alg_types_only:
-                        top_enum: Dict[str, Any] = top_types.setdefault(":enum:", {})
-                        top_enum.update(alg_types_only[":enum:"])
-                    top_types[key] = {
-                        k: v for k, v in alg_types_only.items() if k != ":enum:"
+                    # Include the actual algorithm name and fully normalized version
+                    # as well, to make look-up easier on the C++ side
+                    # Parameters are nested under the parameters key, so no names are
+                    # reserved - algorithms can name their parameters as they wish
+                    updated_config[key] = {
+                        "name": alg_name,
+                        "version": normalize_version(version),
+                        "soname": soname,
+                        "parameters": typed_params,
                     }
+                    top_types[key] = {
+                        "name": "CHARSTR",
+                        "version": "CHARSTR",
+                        "soname": "CHARSTR",
+                        "parameters": param_types,
+                    }
+                    if enum_defs:
+                        top_types.setdefault(":enum:", {}).update(enum_defs)
 
                 except Exception as err:
                     logger.error(
