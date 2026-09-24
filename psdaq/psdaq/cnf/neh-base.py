@@ -66,7 +66,7 @@ procmgr_config = [
     { host: fee_host,      cores: 2, id:"pyxpm-11" , port:"29450", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.5.104 "+pyxpm_optsdb(11)},  # FEE XPM
     { host: gpu_kcu_host,  cores: 2, id:"pyxpm-12" , port:"29458", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_81 -G "+pyxpm_optsdb(12)}, # KCU XPM GPU
     { host: gpu007_c11,    cores: 2, id:"pyxpm-13" , port:"29465", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_a1 -G "+pyxpm_optsdb(13)}, # C1100 XPM GPU
-    { host: gpu002_c11,    cores: 2, id:"pyxpm-14" , port:"29467", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_0 -G "+pyxpm_optsdb(14)}, # C1100 XPM GPU
+    { host: gpu002_c11,    cores: 2, id:"pyxpm-14" , port:"29467", flags:"s", env:epics_env, cmd:"pykcuxpm --dev /dev/datadev_02 -G "+pyxpm_optsdb(14)}, # C1100 XPM GPU
     { host: base_host,     cores: 2, id:"pyxpm-feh-0"  , port:"29470", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.1.107 "+pyxpm_optsdb(0,'FEH')},   # XTPG HXR
     { host: base_host,     cores: 2, id:"pyxpm-feh-1"  , port:"29471", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.6.102 "+pyxpm_optsdb(1,'FEH')+" -L"}, # XPM FEH HXR
     { host: base_host,     cores: 2, id:"pyxpm-feh-2"  , port:"29472", flags:"s", env:epics_env, cmd:"pyxpm --ip 10.0.7.102 "+pyxpm_optsdb(2,'FEH')+" -L"}, # XPM MFX HXR
