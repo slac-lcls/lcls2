@@ -2403,11 +2403,13 @@ CPUs, 25% on these small nodes against 6% on the EPYC boxes.
 
 ### The A5000 in gpu002 is dead, has been moved once, and should probably be RMAed
 
-Recorded because the history is not otherwise written down anywhere.  This GPU **previously
-lived in gpu004**, where cold power cycles were already tried without success (Ric, 2026-09-23);
-it was moved to gpu002 and behaves identically there, including across the 2026-09-23 reboot.
-So it has failed in two chassis and survived a cold cycle in one -- that is a card fault, not a
-host or slot problem, and an RMA is the sensible next step.
+Recorded because the history is not otherwise written down anywhere.  This GPU **was in what
+was then called gpu004**, where cold power cycles were already tried without success (Ric,
+2026-09-23).  Ric's recollection, with the caveat that he was not present, is that the chassis
+was *renamed* gpu002 rather than the card being moved -- so treat this as one machine under two
+names, not two machines.  Either way the card has survived a cold power cycle and today's
+reboot, which points at the card rather than a transient state, and an RMA is the sensible next
+step.
 
 The failure is a **GSP boot timeout**.  Modern NVIDIA GPUs run firmware on an on-board
 microcontroller (the GPU System Processor); the kernel module waits for it at load time, and
@@ -2428,7 +2430,7 @@ Details for an RMA conversation:
 | | |
 |---|---|
 | card | NVIDIA RTX A5000, `GA102GL`, `10de:147e` |
-| location | `0000:82:00.0` in drp-srcf-gpu002 (previously drp-srcf-gpu004) |
+| location | `0000:82:00.0` in drp-srcf-gpu002 (the chassis formerly named gpu004) |
 | VBIOS | `94.02.6D.00.05` |
 | driver | NVIDIA open kernel module 595.91.07 |
 | symptom | GSP `GFW_BOOT` timeout at `progress 0x1`, `RmInitAdapter failed (0x62:0x55:2168)` |
@@ -2441,8 +2443,7 @@ in turn is why the `#NodeName=drp-srcf-gpu002 ... Type=nvidia_rtx_a5000` line in
 stays commented out.  Do not "fix" that by re-enabling it.
 
 Note the same GSP signature hit **gpu008's GPU5** four times, but there a reboot cleared it each
-time.  A GSP hang that a power cycle clears is transient; one that survives a cold cycle in two
-different chassis is not.
+time.  A GSP hang that a power cycle clears is transient; this one is not.
 
 ### gpu005 converted, 2026-09-23 -- the least similar node, done last on purpose
 
