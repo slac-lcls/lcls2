@@ -231,7 +231,7 @@ class GpuXtcBatchPool:
                 )
         return batch
 
-    def parse_window(self, gpu_read, stream, *, batch_id):
+    def parse_window(self, gpu_read, stream, *, batch_id, defer_retirement=False):
         """Lease a free input parser buffer independently of execution IDs."""
         from psana.gpu.gpu_input_window import InputWindow
 
@@ -243,7 +243,8 @@ class GpuXtcBatchPool:
         try:
             batch = self.parse(index, gpu_read.data_gpu, gpu_read.desc_table, stream)
             window = InputWindow(batch_id, self._next_window_id, batch,
-                                 gpu_read.desc_table, release=lambda: release(index))
+                                 gpu_read.desc_table, release=lambda: release(index),
+                                 defer_retirement=defer_retirement)
         except BaseException:
             # Submitted parser work must finish before either raw bytes or
             # partially populated tables can be reused. Preserve ownership if
@@ -273,7 +274,7 @@ class GpuXtcBatchPool:
             self._owners[index] = None
             self._failed_inputs.remove((index, stream, release_raw))
         for owner in tuple(self._owners):
-            if owner is not None and not owner.close():
+            if owner is not None and not owner.drain():
                 raise RuntimeError("GPU input still has planned or live uses")
 
     def estimate_batch_bytes(self, n_dgrams):

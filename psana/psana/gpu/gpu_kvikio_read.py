@@ -241,6 +241,43 @@ class KvikioGpuReader:
             self._slot_bufs[slot] = None
             del buf
 
+    def issue_group(self, group, *, slot_id):
+        """Read one Stage 1 group into an independently leased reader slot.
+
+        Opt-in adapter for the group pool. Keep the existing issue/wait path's
+        generation, budget, file ownership and failure-draining protections.
+        This does not change the production scheduler's issue_batch calls.
+        """
+        from types import SimpleNamespace
+        from .gpu_batch import GpuReadDesc
+        from .gpu_file_epochs import FileEpoch
+        from .gpu_budget import allocation_growth_bytes, GpuMemoryPressureError
+
+        if self._closed or self._failure is not None:
+            raise RuntimeError('GPU reader is closed or failed') from self._failure
+        if not self.bulk_read:
+            raise ValueError('group reads require the adjacent-range reader')
+        if not 0 <= slot_id < self._n_slots:
+            raise IndexError(slot_id)
+        cursor = group.file_offset
+        for d in group.dgrams:
+            if (d.file != group.file or d.stream_id != group.stream_id
+                    or d.file_offset != cursor or d.size <= 0):
+                raise ValueError('input group must contain contiguous dgrams from one stream/file')
+            cursor += d.size
+        if not group.dgrams or cursor - group.file_offset != group.size:
+            raise ValueError('input group byte count mismatch')
+        growth = allocation_growth_bytes(self.allocation_requirements(group.size, slot_id))
+        if self._budget is not None and growth > self._budget.allocation_available():
+            raise GpuMemoryPressureError(f'input group needs {growth} allocation bytes')
+        descs = tuple(GpuReadDesc(d.batch_event_index, d.timestamp, d.stream_id,
+                                 d.file_offset, d.size, d.smd_size, 1)
+                      for d in group.dgrams)
+        view = SimpleNamespace(iter_read_descs=lambda _: iter(descs))
+        epochs = {(d.batch_event_index, d.stream_id): FileEpoch(group.file, group.fence_id)
+                  for d in group.dgrams}
+        return self.issue_batch(view, None, slot_id=slot_id, file_epochs=epochs)
+
     def issue_batch(self, gpu_view, bd_dm, slot_id=None, *, file_epochs=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
 

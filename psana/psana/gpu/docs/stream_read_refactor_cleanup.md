@@ -1,7 +1,7 @@
 # Stream-read refactor: review and deferred cleanup
 
-Last reviewed: 2026-09-24, Stage 1, based on `84c49cdce` plus uncommitted
-planner/preview changes. This is the persistent cleanup checklist for later
+Last reviewed: 2026-09-24, Stage 2, based on Stage 1 commit `f3fee4f53` plus
+the independent ownership changes. This is the persistent cleanup checklist for later
 stages. Entries below are migration candidates, not authorization to delete
 live code or benchmark evidence now.
 
@@ -28,14 +28,13 @@ and 33,566,911,424 bytes.
 
 ## Required integration checks
 
-1. **Independent, nonblocking reclamation.** `InputWindow._try_retire()` in
-   `gpu_input_window.py` synchronizes every completion event after the last
-   reference is released. Reusing that call directly in the scheduler would
-   block the BD on one slow group. Stage 2 needs a readiness-query/try-reclaim
-   path and a collection of pending groups that can be polled independently.
-   Keep explicit blocking drains for shutdown and error cleanup. Preserve
-   planned uses, all consumer tokens, failure-safe retention and exactly-once
-   release; a refcount reaching zero alone does not establish GPU completion.
+1. **Independent, nonblocking reclamation: Stage 2 implemented.** Deferred
+   `InputWindow` retirement uses event readiness queries, and `InputGroupPool`
+   polls every group independently. Explicit `drain()` remains blocking for
+   shutdown/error cleanup. CPU failure tests and a real CUDA delayed-consumer
+   test passed; see `stream_read_refactor_stage2.md`. Stage 3 must opt into
+   this path and transfer planned uses into execution/event consumers; the
+   production default still uses blocking retirement.
 2. **No ordered-retirement shortcut.** A group's newest timestamp and the
    completion of a later group do not establish its readiness. Event identity
    and delivery ordering are distinct from input-buffer reclamation ordering.
@@ -67,7 +66,7 @@ Paths in this table are relative to `psana/psana/gpu`, except tests.
 | Resident orchestration | `gpu_events.py`: `_start_resident_input`, `_close_resident_input`, `_resident_window`, `_resident_streams`, extra input slot at `event_pool.depth` | Remove after group owners supply all event inputs and drain/error tests pass. Remove resident/transient branches in `_submit_gpu`, `_issue_gpu_read`, `_wait_gpu_read` and EB-boundary setup/teardown together. |
 | File-major bulk planner | `gpu_kvikio_read.py::_coalesced_plan` and its use of `gpu_read_plan.build_read_plan` | Retire the old production bulk branch after the new scheduler passes acceptance. Preserve file/chunk resolution, transition fences and the per-dgram bulk-off reference path. |
 | Shared descriptor validation | `gpu_stream_read_plan.py` currently builds and discards an old `ReadPlan` to reuse validation; imports private `_uint64` | Extract shared validation/types when wiring the new production path. Avoid constructing two plans per runtime batch. Keep duplicate, timestamp, overlap and integer checks. The old planner remains useful for comparison until its callers are audited. |
-| Reader storage | `gpu_kvikio_read.py`: `_slot_bufs`, `_input_holds`, `_generations`, single packed `PendingBatch.data_gpu` | Adapt to independent group backing in Stage 2. Preserve generation checks, pending destination/file ownership, full future draining and read-error poisoning. Never drop these protections as residency cleanup. |
+| Reader storage | `gpu_kvikio_read.py`: `_slot_bufs`, `_input_holds`, `_generations`, single packed `PendingBatch.data_gpu` | Stage 2's `issue_group` adapter and dedicated `InputGroupPool` now reuse these protections for independent groups. Keep them when migrating production; later remove duplicate planner work in the adapter after the old bulk branch is retired. |
 | Parsed input owners | `gpu_input_window.py`, `gpu_input.py` references/completion leases | Reuse or adapt; these are not obsolete. Add nonblocking reclamation and retain zero-copy field lifetime protection. |
 | Parser/gather implementation | `gpudgram` pools, `gpu_detector.py` canonical gather maps and kernels | Preserve B++ batching, owner mappings, reuse and lazy field access. A new I/O group must not automatically become a separate parser/calibration kernel launch. |
 | Residency tests | `tests/gpu/unit/test_gpu_admission.py`, `tests/gpu/integration/test_gpu_residency_device.py`, `tests/gpu/unit/test_gpu_residency.py` and resident cases in `test_core.py`/`test_gpu_retirement.py` | Replace policy-specific ranking expectations with group bounds/fairness tests after migration. Retain byte-budget, missing-event, transition, lifetime, failure and pixel checks. |
@@ -81,7 +80,8 @@ Paths in this table are relative to `psana/psana/gpu`, except tests.
 ## Stage gates
 
 - Stage 2: independent input ownership and completion polling, with CPU and
-  device lifetime/failure checks; production residency can remain temporarily.
+  device lifetime/failure checks; implemented and validated (69 CPU tests,
+  two device tests). Production residency remains temporarily.
 - Stage 3: switch the runtime scheduling policy and remove superseded branches
   only after all event-input construction, drains and error paths migrate.
 - Stage 4: correctness, retained-view, out-of-order completion, tight-budget,

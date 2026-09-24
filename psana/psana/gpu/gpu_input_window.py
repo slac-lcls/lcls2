@@ -16,7 +16,8 @@ class InputWindow:
     execution slot. There is deliberately no garbage-collection release path.
     """
 
-    def __init__(self, batch_id, window_id, batch, desc_table, *, release=None):
+    def __init__(self, batch_id, window_id, batch, desc_table, *, release=None,
+                 defer_retirement=False):
         self.batch_id = int(batch_id)
         self.window_id = int(window_id)
         self.batch = batch
@@ -41,6 +42,8 @@ class InputWindow:
         self._retiring = False
         self._released = False
         self._release = release
+        self._defer_retirement = bool(defer_retirement)
+        self._batch_retired = False
         self._ready = []
         self._ready_ids = set()
         self._add_ready((getattr(batch, 'walk_done', None),))
@@ -101,7 +104,23 @@ class InputWindow:
             self._closed = True
         return self._try_retire()
 
-    def _try_retire(self):
+    def poll(self):
+        """Reclaim a closed, unreferenced window only if all CUDA events are done.
+
+        Never waits for GPU work. The owner must keep polling deferred windows;
+        dropping a Python reference is not a completion or a reclaim operation.
+        """
+        return self._try_retire(blocking=False)
+
+    def drain(self):
+        """Close and block on completion; live/planned uses still prevent release."""
+        with self._lock:
+            self._closed = True
+        return self._try_retire(blocking=True)
+
+    def _try_retire(self, blocking=None):
+        if blocking is None:
+            blocking = not self._defer_retirement
         with self._lock:
             if self._released:
                 return True
@@ -112,7 +131,19 @@ class InputWindow:
         try:
             for event in ready:
                 if event is not None:
-                    event.synchronize()
+                    if blocking:
+                        event.synchronize()
+                    elif not event.done:
+                        with self._lock:
+                            self._retiring = False
+                        return False
+            # Detach aliases before making the backing reusable. Retrying a
+            # failed release must not retire an already-detached batch twice.
+            if not self._batch_retired:
+                retire = getattr(self.batch, 'retire', None)
+                if retire is not None:
+                    retire()
+                self._batch_retired = True
             if self._release is not None:
                 self._release()
         except BaseException:
@@ -120,9 +151,6 @@ class InputWindow:
                 self._retiring = False  # closed, but completion can be retried
             raise
         with self._lock:
-            retire = getattr(self.batch, 'retire', None)
-            if retire is not None:
-                retire()
             self.batch = None
             self._ready.clear()
             self._ready_ids.clear()
