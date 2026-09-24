@@ -99,6 +99,7 @@ CPU topology, which matters because `Cores=` depends on it and the nodes are not
 | node | CPU | sockets x cores x threads | NUMA | `slurm.conf` `CPUs=` |
 |---|---|---|---|---|
 | gpu001 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
+| gpu002 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
 | gpu003 | Xeon E5-2620 v4 | 2 x 8 x 1 | 2 | 16 |
 | gpu005 | Xeon Gold 6444Y | 2 x 16 x 2 | 2 | -- |
 | gpu006 | EPYC 9355 | 2 x 32 x 1 | 2 | 64 ✓ |
@@ -341,17 +342,20 @@ experimenting on a node other people depend on.
 | node | datadev cards | GPUs | dkms | notes |
 |---|---|---|---|---|
 | gpu001 | 1 | 1 A5000 | yes | published `dd02`; no timing while the NEH issue persists |
+| gpu002 | 1 | 1 A5000, **dead** | no | hosts XPM:14 on its datadev; no gres, see below |
 | gpu003 | 1 | 1 A5000 | yes | Gabriel's; converted 2026-09-23, now identical to gpu001 |
 | gpu005 | 6 | 1 H100 NVL at `47:00.0` | yes | converted 2026-09-23; **the first big-box GPU node, so it differs throughout** -- see below |
 | gpu006 | 3 | 2 H200 | yes | Mudit's, QSFP work; published `dda1`, `ddd5`; fully set up 2026-09-23 |
 | gpu007 | 3 | 2 H200 | yes | Matt's stand; hosts XPM:13 on `a1`; rename pending |
 | gpu008 | 7 | 6 H200 (one unreliable) | yes | published 5 records; `a1` is InterCardTest |
 
-**State of the fleet, end of 2026-09-23.  Only gpu007 is left.**
+**State of the fleet, end of 2026-09-23.  Only gpu007 is left.**  gpu002 had the BIOS
+treatment too, though it is not DRP-capable while its GPU is dead.
 
 | node | driver | dev names | threads/NUMA | `CoreSpecCount` | gres |
 |---|---|---|---|---|---|
 | gpu001 | 7.6.0-17 | hex | 1 / 2 | 4 | `dd02` |
+| gpu002 | -- | decimal | 1 / 2 | 4 | none -- dead GPU, hosts XPM:14 |
 | gpu003 | 7.6.0-33 | hex | 1 / 2 | 4 | `dd02` |
 | gpu005 | 7.6.0-33 | hex | 1 / 2 | 4 | `dd45` |
 | gpu006 | 7.6.0-33 | hex | 1 / 2 | 4 | `dda1`, `ddd5` |
@@ -2396,6 +2400,49 @@ in the same session; it had been reserving nothing at all.
 Neither node mounts WEKA yet but both have a `wekafs` fstab entry, so reserving cores 0-3 now
 means IT's "WEKA everywhere" ticket needs no follow-up Slurm change.  Note the cost is 4 of 16
 CPUs, 25% on these small nodes against 6% on the EPYC boxes.
+
+### The A5000 in gpu002 is dead, has been moved once, and should probably be RMAed
+
+Recorded because the history is not otherwise written down anywhere.  This GPU **previously
+lived in gpu004**, where cold power cycles were already tried without success (Ric, 2026-09-23);
+it was moved to gpu002 and behaves identically there, including across the 2026-09-23 reboot.
+So it has failed in two chassis and survived a cold cycle in one -- that is a card fault, not a
+host or slot problem, and an RMA is the sensible next step.
+
+The failure is a **GSP boot timeout**.  Modern NVIDIA GPUs run firmware on an on-board
+microcontroller (the GPU System Processor); the kernel module waits for it at load time, and
+here that wait never completes:
+
+    NVRM: GPU0 gpuWaitForGfwBootComplete_TU102: failed to wait for GFW_BOOT: (progress 0x1)
+    NVRM: GPU0 kgspWaitForGfwBootOk_TU102: failed to wait for GFW boot complete: 0x55
+    NVRM: GPU0 kgspWaitForGfwBootOk_TU102: (the GPU may be in a bad state and may need to be reset)
+    NVRM: GPU0 RmInitAdapter: Cannot initialize GSP firmware RM
+    NVRM: GPU 0000:82:00.0: RmInitAdapter failed! (0x62:0x55:2168)
+
+`progress 0x1` means the firmware starts and stalls almost immediately.  The card is
+electrically present throughout -- on the bus, PCIe 8 GT/s x16, `nvidia` driver bound -- while
+`nvidia-smi` reports `No devices found`.  The driver retries, so the messages repeat.
+
+Details for an RMA conversation:
+
+| | |
+|---|---|
+| card | NVIDIA RTX A5000, `GA102GL`, `10de:147e` |
+| location | `0000:82:00.0` in drp-srcf-gpu002 (previously drp-srcf-gpu004) |
+| VBIOS | `94.02.6D.00.05` |
+| driver | NVIDIA open kernel module 595.91.07 |
+| symptom | GSP `GFW_BOOT` timeout at `progress 0x1`, `RmInitAdapter failed (0x62:0x55:2168)` |
+
+`nvidia-smi -r` is not a remedy: it needs a working device to reset.
+
+**This is why gpu002 has no gres line and why XPM:14 runs there.**  With no usable GPU the node
+cannot host a GPU DRP, so its datadev card was given to `pykcuxpm` for XPM:14 instead -- which
+in turn is why the `#NodeName=drp-srcf-gpu002 ... Type=nvidia_rtx_a5000` line in `gres.conf`
+stays commented out.  Do not "fix" that by re-enabling it.
+
+Note the same GSP signature hit **gpu008's GPU5** four times, but there a reboot cleared it each
+time.  A GSP hang that a power cycle clears is transient; one that survives a cold cycle in two
+different chassis is not.
 
 ### gpu005 converted, 2026-09-23 -- the least similar node, done last on purpose
 
