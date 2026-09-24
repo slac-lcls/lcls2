@@ -2,6 +2,7 @@
 DRP algorithm parameter validation utilities.
 """
 
+import struct
 from typing import Any, Dict, List, Optional, Tuple
 
 # Import DAQ typerange or provide standalone fallback
@@ -181,7 +182,21 @@ def infer_xtc_type(prop_spec: Dict[str, Any]) -> str:
             return ref_type
 
     p_type: str = prop_spec.get("type", "string")
-    if p_type in ("boolean", "boolEnum"):
+    if p_type in (
+        "UINT8",
+        "UINT16",
+        "UINT32",
+        "UINT64",
+        "INT8",
+        "INT16",
+        "INT32",
+        "INT64",
+        "FLOAT",
+        "DOUBLE",
+        "CHARSTR",
+    ):
+        return p_type
+    elif p_type in ("boolean", "boolEnum"):
         return "UINT8"
     elif p_type == "string":
         return "CHARSTR"
@@ -237,7 +252,7 @@ def validate_parameters_against_schema(
         )
 
     properties: Dict[str, Any] = json_schema["properties"]
-    required: List[str] = properties.get("required", [])
+    required: List[str] = json_schema.get("required", [])
     for req_field in required:
         if req_field not in params:
             raise AlgValidationError(f"Missing required parameter: '{req_field}'")
@@ -288,8 +303,12 @@ def validate_parameters_against_schema(
             raise AlgValidationError(
                 f"Parameter '{key}' value '{val}' is not in allowed enum options: {spec['enum']}"
             )
-        if xtc_type in typerange and isinstance(val, int) and not isinstance(val, bool):
-            # Check precision/width
+        if (
+            typerange.get(xtc_type) is not None
+            and isinstance(val, int)
+            and not isinstance(val, bool)
+        ):
+            # Check precision/width (integer types)
             bounds: Tuple[int, int] = typerange[xtc_type]
             if val < bounds[0] or val > bounds[1]:
                 raise AlgValidationError(
@@ -318,6 +337,22 @@ def get_array_shape(val: Any) -> List[int]:
     return shape
 
 
+def _flatten(val: Any) -> List[Any]:
+    """Flatten a nested list in row-major form."""
+    if isinstance(val, (list, tuple)):
+        return [x for v in val for x in _flatten(v)]
+    return [val]
+
+
+def _to_xtc_scalar(xtc_type: str, val: Any) -> Any:
+    """Coerce floating points to exact XTC2 type expectations."""
+    if xtc_type == "FLOAT":
+        return struct.unpack("f", struct.pack("f", float(val)))[0]
+    if xtc_type == "DOUBLE":
+        return float(val)
+    return val
+
+
 def convert_params_to_xtc2_format(
     params: Dict[str, Any], json_schema: Dict[str, Any], alg_name: str = ""
 ) -> Dict[str, Any]:
@@ -343,6 +378,7 @@ def convert_params_to_xtc2_format(
     """
     types_dict: Dict[str, Any] = {}
     enum_defs: Dict[str, Any] = {}
+    typed_params: Dict[str, Any] = dict(params)
 
     properties: Dict[str, Any] = json_schema["properties"]
     for name, val in params.items():
@@ -357,11 +393,21 @@ def convert_params_to_xtc2_format(
             }
             enum_defs[enum_name] = enum_map
             types_dict[name] = enum_name
+            try:
+                typed_params[name] = spec["enum"].index(val)
+            except ValueError:
+                raise ValueError(
+                    f"Parameter '{name}' value {val!r} is not one of {spec['enum']}"
+                )
         elif param_type in ("boolean", "boolEnum"):
             enum_defs["boolEnum"] = {"False": 0, "True": 1}
             types_dict[name] = "boolEnum"
+            typed_params[name] = int(bool(val))
         elif param_type == "array":
             items_spec: Dict[str, Any] = spec.get("items", {})
+            while items_spec.get("type") == "array":
+                # Handle rank > 1
+                items_spec = items_spec.get("items", {})
             if "$ref" in items_spec:
                 elem_type = items_spec["$ref"].rstrip("/").rsplit("/", 1)[-1]
             elif "type" not in items_spec:
@@ -370,14 +416,15 @@ def convert_params_to_xtc2_format(
                 elem_type = items_spec["type"]
             shape: List[int] = get_array_shape(val)
             types_dict[name] = [elem_type, *shape]
+            typed_params[name] = [_to_xtc_scalar(elem_type, v) for v in _flatten(val)]
         else:
             xtc_type: str = infer_xtc_type(spec)
             types_dict[name] = xtc_type
+            typed_params[name] = _to_xtc_scalar(xtc_type, val)
 
     if enum_defs:
         types_dict[":enum:"] = enum_defs
 
-    typed_params = dict(params)
     typed_params[":types:"] = types_dict
 
     return typed_params
