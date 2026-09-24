@@ -72,6 +72,7 @@ import sys
 PROC_DATADEV = "/proc/datadev_"
 SYS_PCI      = "/sys/bus/pci/devices"
 PROC_NVIDIA  = "/proc/driver/nvidia/gpus"
+SYS_CPU      = "/sys/devices/system/cpu"        # Rebound by the tests to a fake tree
 
 
 def read_datadevs():
@@ -245,8 +246,8 @@ def core_map():
     which is the order Slurm derives too.
     """
     siblings = {}
-    for path in glob.glob("/sys/devices/system/cpu/cpu[0-9]*/topology/"
-                          "thread_siblings_list"):
+    for path in glob.glob(os.path.join(SYS_CPU, "cpu[0-9]*", "topology",
+                                       "thread_siblings_list")):
         try:
             with open(path) as f:
                 group = frozenset(parse_cpulist(f.read().strip()))
@@ -269,8 +270,8 @@ def socket_map():
     cpu_pkg, pkg_cores = {}, {}
     for cpu, core in mapping.items():
         try:
-            with open(f"/sys/devices/system/cpu/cpu{cpu}/topology/"
-                      "physical_package_id") as f:
+            with open(os.path.join(SYS_CPU, f"cpu{cpu}", "topology",
+                                   "physical_package_id")) as f:
                 pkg = int(f.read().strip())
         except (OSError, ValueError):
             return None

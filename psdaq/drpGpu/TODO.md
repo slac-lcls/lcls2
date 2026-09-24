@@ -240,10 +240,12 @@ Two other resolutions worth a look while deciding:
 
 **Two things lost, both worth noting:**
 
-- **The `Cores=` socket-boundary bug becomes undetectable.**  With NPS=1 a NUMA node *is* a
-  socket, so the wrong definition and the right one coincide.  gpu008 at NPS=4 was the only node
-  that could catch a regression there, and after this none can.  That makes the outstanding
-  `gen_gres_conf` unit test the only guard.
+- ~~**The `Cores=` socket-boundary bug becomes undetectable.**~~  **Covered by
+  `psdaq/psdaq/slurm/test_gen_gres_conf.py` as of 2026-09-24.**  With NPS=1 a NUMA node *is* a
+  socket, so the wrong definition and the right one coincide; gpu008 at NPS=4 was the only node
+  that could catch a regression and none can now.  The tests build a synthetic
+  `/sys/devices/system/cpu`, so they can assert topologies no node has -- NPS=4 among them -- and
+  they were checked by mutation: reverting `gpu_cores()` to the NUMA-node form fails two of them.
 - `gen_gres_conf` prints each card's `numa_node`, which degrades to socket granularity.  Nothing
   acts on it, but regenerated blocks will disagree with published ones in the comments.
 
