@@ -354,18 +354,22 @@ treatment too, though it is not DRP-capable while its GPU is dead.
 
 | node | driver | dev names | threads/NUMA | `CoreSpecCount` | gres |
 |---|---|---|---|---|---|
-| gpu001 | 7.6.0-17 | hex | 1 / 2 | 4 | `dd02` |
-| gpu002 | -- | decimal | 1 / 2 | 4 | none -- dead GPU, hosts XPM:14 |
+| gpu001 | 7.6.0-35 | hex | 1 / 2 | 4 | `dd02` |
+| gpu002 | 7.6.0-33 | hex | 1 / 2 | 4 | none -- dead GPU, hosts XPM:14 |
 | gpu003 | 7.6.0-33 | hex | 1 / 2 | 4 | `dd02` |
-| gpu005 | 7.6.0-33 | hex | 1 / 2 | 4 | `dd45` |
-| gpu006 | 7.6.0-33 | hex | 1 / 2 | 4 | `dda1`, `ddd5` |
+| gpu005 | 7.6.0-35 | hex | 1 / 2 | 4 | `dd45` |
+| gpu006 | 7.6.0-35 | hex | 1 / 2 | 4 | `dda1`, `ddd5` |
 | gpu007 | 7.6.0-29 | hex | **2** / 2 | **3** -- under-reserving | `dd84`, `ddd5` |
-| gpu008 | 7.6.0-27 | hex | 1 / 2 | 4 | 5 records |
+| gpu008 | 7.6.0-35 | hex | 1 / 2 | 4 | 5 records |
 
 gpu007 is the last node still SMT-on, and therefore the last whose `CpuSpecList` does not reserve
-whole cores -- that resolves itself when it gets the BIOS treatment, since `0-3` then means four
-whole cores.  Driver versions are deliberately mixed: gpu003, gpu005 and gpu006 carry PR #323's
-branch head, which Ric is content to leave until 7.7.0 is released.
+whole cores -- it also still needs the grub IOMMU flags, and its `CpuSpecList=2-5,64-65` is the
+hand-computed abstract-ID translation of WEKA's scattered set, which becomes a plain `0-3` once SMT
+is off.  It has hex device names already.  **Matt has the GPU DAQ running there as of 2026-09-24**,
+so it is a real test stand and no longer freely reboot-able -- coordinate with him -- that resolves itself when it gets the BIOS treatment, since `0-3` then means four
+whole cores.  Driver versions: **PR #323 was merged to `pre-release`** and gpu001, gpu005, gpu006 and gpu008
+moved to `7.6.0-35-gdd3c0ff` on 2026-09-24.  gpu002, gpu003 and gpu007 were busy and still carry
+earlier builds; nothing depends on them matching, only on each node being self-consistent.
 
 ### gpu005 is the odd one out, for historical reasons
 
@@ -1897,6 +1901,42 @@ Its receive side was degraded too: over the 18.5 h between two Allocates it logg
 link resets**, 2043 decode and 1967 disparity errors -- about 5 resets and 110 errors per
 hour, against zero on the other four.  After the `TxPhyPllReset` it read **zero on all
 three**, matching a healthy card exactly, so the reset cleaned up both directions.
+
+### 2026-09-23/24: all six stuck at RxClock 0.0 MHz -- only a power cycle cleared it
+
+A different and more severe instance, worth keeping separate from the single-link cases above
+because the remedy differs.  After gpu008's 2026-09-23 reboot the DAQ would not allocate and
+**all five** DRPs failed configuration with
+
+    WARNING:root:XPM Remote link id register illegal value: 0xffffffff. Trying RxPllReset.
+    CRITICAL:root:XPM Remote link id register illegal value: 0xffffffff. Aborting.  Try TxPllReset.
+
+Note the distinction from 2026-09-15: there, *one* link read a **valid** remote id while the XPM
+saw the feedback direction dead.  Here every link read `0xffffffff` -- nothing answering at all.
+**When all links fail at once, suspect a common cause rather than N PLL faults**, and do not
+reach for `TxPhyPllReset`.
+
+Ric, Cheolhong and Matt found the firmware **stuck on all six datadevs with `RxClock = 0.0 MHz`**,
+and **a power cycle of gpu008 cleared it**.  A warm `reboot` had not: the 2026-09-23 reboot is
+what the node came up from into this state.  So the stuck condition survives a warm reboot and a
+driver reload but not a loss of slot power -- the same distinction that matters for GSP hangs on
+the GPUs.
+
+Two dead ends recorded so they are not repeated:
+
+- I first blamed `ERROR:root:CuTiming not locked` in XPM:14's log.  **Wrong**: XPM:14 *is* a
+  timing source, so it has no upstream to lock to and that message is expected there.
+- The version-skew theory did not hold either.  XPM:14 ran release `lcls2_082726`, predating
+  Cheolhong's 2026-08-31 firmware update, but **both XPM cards report firmware built 20 August**
+  (`xpmGenC1100 ... Aug 20 ... by chan01`, `Firmware Version 0x3100000`), and XPM:13 on gpu007
+  ran the same combination successfully.  Between `lcls2_082726` and `lcls2_091426` exactly one
+  Python file differs in the whole `psdaq` tree, and that change is for the *network*-attached XPM
+  path, not the KCU/PCIe path `pykcuxpm` uses.
+
+Worth noting `pyxpm/xpm/Top.py:272` has a firmware-version check that **can never fire**:
+`fwVersion` defaults to 0 and the test is `if fwVersion < self.fwVersion`.  A register-map bump is
+exactly what it should catch, so it is worth fixing if software/firmware skew is ever a real
+suspect.
 
 ### Root cause, from Cheolhong on 2026-09-16
 
