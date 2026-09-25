@@ -83,6 +83,9 @@ class KvikioGpuReader:
         self._files = {}
         self._latest_files = {}
         self._pending = []
+        # Bulk reads retain each acquired handle until every future in its
+        # batch drains. Counts replace rescanning all pending batches at prune.
+        self._pending_file_refs = {}
         self._closed = False
         self._failure = None
         self._input_holds = {}
@@ -370,6 +373,8 @@ class KvikioGpuReader:
             for r in ranges:
                 cu_file = self._file_for_identity(r.file)
                 pending.handles.append((r.file, cu_file))
+                if self.bulk_read:
+                    self._pending_file_refs[r.file] = self._pending_file_refs.get(r.file, 0) + 1
                 dst = data_gpu[r.device_offset:r.device_offset + r.size]
                 future = cu_file.pread(dst, size=r.size, file_offset=r.file_offset,
                                        task_size=self.task_size)
@@ -410,6 +415,16 @@ class KvikioGpuReader:
             self._total_issue_to_complete_ns += end - pending.issued_ns
             pending.completed = True
             self._pending = [p for p in self._pending if p is not pending]
+            if self.bulk_read:
+                # Release only after draining ALL futures, including short
+                # reads and partial submission failures. completed guards
+                # repeated wait_batch calls against releasing twice.
+                for identity, _ in pending.handles:
+                    remaining = self._pending_file_refs[identity] - 1
+                    if remaining:
+                        self._pending_file_refs[identity] = remaining
+                    else:
+                        del self._pending_file_refs[identity]
             if pending.error is None:
                 self._total_useful_bytes += sum(int(row[DESC_READ_SIZE]) for row in pending.desc_table)
             else:
@@ -462,7 +477,10 @@ class KvikioGpuReader:
 
     def _prune_files(self):
         retained = set(self._latest_files.values())
-        retained.update(identity for p in self._pending for identity, _ in p.handles)
+        if self.bulk_read:
+            retained.update(self._pending_file_refs)
+        else:
+            retained.update(identity for p in self._pending for identity, _ in p.handles)
         for identity in tuple(self._files):
             if identity not in retained:
                 self._files[identity].close()
