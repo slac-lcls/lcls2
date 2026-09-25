@@ -7,8 +7,8 @@
 # tag repo can be re-cloned at any time. All new tags are pushed in a single push.
 #
 # Usage: ./single_push_collective_tag.sh [--dry-run] <hutch_name> <root_dir> <tag_repo_path> <prefix>
-# ./single_push_collective_tag.sh tmo /path/to/repos /path/to/tag_repo ami
-# ./single_push_collective_tag.sh --dry-run tmo /path/to/repos /path/to/tag_repo lcls
+# ./single_push_collective_tag.sh tmo /path/to/repos /path/to/tag_repo <prefix>
+# ./single_push_collective_tag.sh --dry-run tmo /path/to/repos /path/to/tag_repo <prefix>
 #
 #   --dry-run   Report what would be tagged, but do not create or push any tags.
 #
@@ -42,7 +42,7 @@ PREFIX="${ARGS[3]}"
 if [ -z "$HUTCH_NAME" ] || [ -z "$ROOT_DIR" ] || [ -z "$TAG_REPO_PATH" ] || [ -z "$PREFIX" ]; then
     echo -e "${RED}Error: Hutch name, root directory path, tag repo path, and prefix are required${NC}"
     echo "Usage: $0 [--dry-run] <hutch_name> <root_dir> <tag_repo_path> <prefix>"
-    echo "Example: $0 tmo /path/to/repos /path/to/tag_repo ami"
+    echo "Example: $0 tmo /path/to/repos /path/to/tag_repo <prefix>"
     exit 1
 fi
 

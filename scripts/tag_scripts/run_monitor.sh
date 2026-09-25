@@ -1,9 +1,12 @@
 #!/bin/bash
-# Run the branch or tag job for every monitored hutch, one after another
+# Run the branch or tag job for this repo's project, for every monitored hutch,
+# one hutch after another
 #
-# For each hutch, runs the job for both lcls2 and ami against the shared branch/tag
-# repos under $REL. Runs never overlap: a run waits for any earlier one to finish,
-# because every hutch uses the same four repos.
+# PROJECT below names the project (the repo this copy lives in) and PREFIX the
+# production clone directories it covers. The job uses the project's shared
+# branch/tag repo under $REL. Runs never overlap: a run waits for any earlier one
+# to finish. The lock is in LOG_BASE, so it is also shared with the monitor jobs
+# of any other project that uses the same LOG_BASE.
 #
 # Usage:
 #   ./run_monitor.sh [--dry-run] <branch|tag> [hutch ...]
@@ -14,14 +17,17 @@
 #   --dry-run  Passed to the job scripts; nothing is committed, tagged or pushed,
 #              and no failure email is sent
 #
-# Logs, one per hutch/project/job per run:
-#   <LOG_BASE>/<hutch>/<lcls2|ami>_<branch|tag>/<YYYY-MM-DD_HHMMSS>.log
+# Logs, one per hutch/job per run:
+#   <LOG_BASE>/<hutch>/<PROJECT>_<branch|tag>/<YYYY-MM-DD_HHMMSS>.log
 # Branch failure reports:
-#   <LOG_BASE>/<hutch>/<lcls2|ami>_branch/failed_runs/
+#   <LOG_BASE>/<hutch>/<PROJECT>_branch/failed_runs/
 #
 # Exit status: 0 if every job succeeded, 1 otherwise.
 
 # ====== CONFIGURATION ======
+PROJECT=lcls2               # this repo; its shared repos are $REL/{branch,tag}_repo_$PROJECT/$PROJECT
+PREFIX=lcls                 # production clones are $REL/<hutch>/$PREFIX*
+
 REL="${REL:-/sdf/group/lcls/ds/ana/sw/conda2/rel}"
 
 # Hutches run by default. Add a hutch here once its production clones are in $REL/<hutch>.
@@ -79,62 +85,60 @@ fi
 # Only one run at a time
 exec 9> "$LOG_BASE/.run_monitor.lock"
 if ! flock -w "$LOCK_WAIT" 9; then
-    msg="run_monitor.sh $JOB on $(hostname) at $(date): an earlier run still held the lock after ${LOCK_WAIT}s. This run was skipped."
+    msg="run_monitor.sh ${PROJECT} ${JOB} on $(hostname) at $(date): an earlier run still held the lock after ${LOCK_WAIT}s. This run was skipped."
     echo "$msg"
-    send_mail "Monitor $JOB job skipped" "$msg"
+    send_mail "Monitor ${PROJECT} ${JOB} job skipped" "$msg"
     exit 1
+fi
+
+if [ "$JOB" = "branch" ]; then
+    REPO="$REL/branch_repo_${PROJECT}/${PROJECT}"
+else
+    REPO="$REL/tag_repo_${PROJECT}/${PROJECT}"
 fi
 
 RUN_STAMP=$(date +%Y-%m-%d_%H%M%S)
 RESULTS=()
 FAILED=()
 
-echo "=== run_monitor.sh ${JOB} ${DRY_RUN_ARGS[*]} started $(date) on $(hostname) ==="
+echo "=== run_monitor.sh ${PROJECT} ${JOB} ${DRY_RUN_ARGS[*]} started $(date) on $(hostname) ==="
 echo "Hutches: ${RUN_HUTCHES[*]}"
 
 for hutch in "${RUN_HUTCHES[@]}"; do
-    for prefix in lcls ami; do
-        if [ "$prefix" = "lcls" ]; then
-            project=lcls2
-        else
-            project=ami
-        fi
+    job_dir="$LOG_BASE/$hutch/${PROJECT}_${JOB}"
+    log="$job_dir/${RUN_STAMP}.log"
+    root_dir="$REL/$hutch"
 
-        job_dir="$LOG_BASE/$hutch/${project}_${JOB}"
-        log="$job_dir/${RUN_STAMP}.log"
-        root_dir="$REL/$hutch"
+    if [ ! -d "$root_dir" ]; then
+        FAILED+=("$hutch: $root_dir does not exist")
+        RESULTS+=("FAILED  $hutch  ($root_dir does not exist)")
+        continue
+    fi
 
-        if [ ! -d "$root_dir" ]; then
-            FAILED+=("$hutch $project: $root_dir does not exist")
-            RESULTS+=("FAILED  $hutch $project  ($root_dir does not exist)")
-            continue
-        fi
+    if ! mkdir -p "$job_dir"; then
+        FAILED+=("$hutch: could not create $job_dir")
+        RESULTS+=("FAILED  $hutch  (could not create $job_dir)")
+        continue
+    fi
 
-        if ! mkdir -p "$job_dir"; then
-            FAILED+=("$hutch $project: could not create $job_dir")
-            RESULTS+=("FAILED  $hutch $project  (could not create $job_dir)")
-            continue
-        fi
+    if [ "$JOB" = "branch" ]; then
+        LOG_ROOT="$LOG_BASE/$hutch" "$SCRIPT_DIR/branch_out.sh" "${DRY_RUN_ARGS[@]}" \
+            "$hutch" "$root_dir" "$REPO" "$PREFIX" > "$log" 2>&1
+    else
+        "$SCRIPT_DIR/single_push_collective_tag.sh" "${DRY_RUN_ARGS[@]}" \
+            "$hutch" "$root_dir" "$REPO" "$PREFIX" > "$log" 2>&1
+    fi
+    rc=$?
 
-        if [ "$JOB" = "branch" ]; then
-            LOG_ROOT="$LOG_BASE/$hutch" "$SCRIPT_DIR/branch_out.sh" "${DRY_RUN_ARGS[@]}" \
-                "$hutch" "$root_dir" "$REL/branch_repo_${project}/${project}" "$prefix" > "$log" 2>&1
-        else
-            "$SCRIPT_DIR/single_push_collective_tag.sh" "${DRY_RUN_ARGS[@]}" \
-                "$hutch" "$root_dir" "$REL/tag_repo_${project}/${project}" "$prefix" > "$log" 2>&1
-        fi
-        rc=$?
+    if [ $rc -eq 0 ]; then
+        RESULTS+=("ok      $hutch  $log")
+    else
+        RESULTS+=("FAILED  $hutch  $log")
+        FAILED+=("$hutch: exit $rc, see $log")
+    fi
 
-        if [ $rc -eq 0 ]; then
-            RESULTS+=("ok      $hutch $project  $log")
-        else
-            RESULTS+=("FAILED  $hutch $project  $log")
-            FAILED+=("$hutch $project: exit $rc, see $log")
-        fi
-
-        # Remove old run logs (failure reports in failed_runs/ are kept)
-        find "$job_dir" -maxdepth 1 -name '*.log' -mtime +"$LOG_KEEP_DAYS" -delete
-    done
+    # Remove old run logs (failure reports in failed_runs/ are kept)
+    find "$job_dir" -maxdepth 1 -name '*.log' -mtime +"$LOG_KEEP_DAYS" -delete
 done
 
 echo ""
@@ -142,7 +146,7 @@ printf '%s\n' "${RESULTS[@]}"
 echo "=== finished $(date): ${#FAILED[@]} failed ==="
 
 if [ ${#FAILED[@]} -gt 0 ]; then
-    send_mail "Monitor $JOB job FAILED on $(hostname)" "run_monitor.sh $JOB on $(hostname), started ${RUN_STAMP}
+    send_mail "Monitor ${PROJECT} ${JOB} job FAILED on $(hostname)" "run_monitor.sh ${PROJECT} ${JOB} on $(hostname), started ${RUN_STAMP}
 
 Failed:
 $(printf '  %s\n' "${FAILED[@]}")

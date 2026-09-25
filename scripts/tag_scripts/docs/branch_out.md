@@ -10,8 +10,8 @@ Watches each hutch's production DAQ clones for local changes (files edited, adde
 |---|---|
 | `hutch_name` | Hutch, e.g. `xpp`. Used as the start of the branch name. |
 | `root_dir` | Directory holding that hutch's production clones, e.g. `rel/xpp`. |
-| `branch_dir` | A clone of `lcls2` or `ami` used only to build and push these branches. |
-| `prefix` | `lcls` for lcls2 clones, `ami` for ami clones. Only directories whose names start with it are processed. |
+| `branch_dir` | A clone of `lcls2` used only to build and push these branches: `rel/branch_repo_lcls2/lcls2`. |
+| `prefix` | `lcls`. Only directories whose names start with it are processed. |
 | `--dry-run` | Report which files would change on which branches. Nothing in the branch repo is modified, and nothing is committed or pushed. |
 
 Environment variable `LOG_ROOT` sets where failure reports are written (default `/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs`).
@@ -55,11 +55,7 @@ export GIT_OPTIONAL_LOCKS=0
 
 ```bash
 log_dir() {
-    case "$PREFIX" in
-        lcls) echo "${LOG_ROOT}/lcls2_branch" ;;
-        ami)  echo "${LOG_ROOT}/ami_branch" ;;
-        *)    echo "${LOG_ROOT}/${PREFIX:-unknown}_branch" ;;
-    esac
+    echo "${LOG_ROOT}/$(basename "${BRANCH_DIR:-unknown}")_branch"
 }
 ```
 
@@ -82,7 +78,7 @@ handle_error() {
 trap 'handle_error $LINENO' ERR
 ```
 
-`log_dir` reads the script's `$PREFIX` variable. Earlier versions used `$4` inside the handler, but inside a function `$4` is the *function's* fourth argument, which was never passed. Every report therefore went to an `unknown_branch/` folder.
+`log_dir` names the folder after the branch repo's directory, so for `rel/branch_repo_lcls2/lcls2` reports go to `<LOG_ROOT>/lcls2_branch/failed_runs/`. Earlier versions used `$4` inside the handler, but inside a function `$4` is the *function's* fourth argument, which was never passed. Every report therefore went to an `unknown_branch/` folder.
 
 ### 2. Arguments
 
@@ -214,7 +210,8 @@ mapfile -d '' touched < "$TMP_FILE"
 | changed in the clone, and was deleted there | `delete` | delete it on the branch |
 | **not** changed in the clone any more, but still changed on the branch | `restore` | reset it to the clone's commit (or remove it, if it isn't in that commit) |
 
-The `restore` row is what makes the branch follow production when a change is **undone**. Earlier versions only copied the currently-changed files on top of the old branch, so a reverted change stayed on the branch forever. It also cleans up junk files that older versions pushed, like the `.setup_env_newtest.sh.swp` on `xpp-lcls2_060226`.
+The `restore` row is what makes the branch follow production when a change is **undone**. Earlier versions only copied the currently-changed files on top of the old branch, so a reverted change stayed on the branch forever. It also cleans up junk files that older versions pushed (for example, editor swap files).
+One real case: the old script pushed `.setup_env_newtest.sh.swp` to `xpp-lcls2_060226`, and the first run of this version removes it.
 
 Files that already match are dropped from the plan, by comparing git's content hashes:
 
@@ -259,7 +256,7 @@ copy: a.txt
 restore: b.txt ..."
 ```
 
-The commit message says where the change came from, and lists every file and action. `PROJECT` is the branch repo's directory name (`lcls2` or `ami`); earlier versions always said "lcls2".
+The commit message says where the change came from, and lists every file and action. `PROJECT` is the branch repo's directory name (`lcls2`); earlier versions had the project name hardcoded.
 
 ```bash
 if git rev-parse --verify --quiet "refs/remotes/origin/${BRANCH_NAME}" >/dev/null; then

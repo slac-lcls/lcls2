@@ -50,14 +50,11 @@ JUNK_PATTERN='(^|/)(\.[^/]*\.sw[a-p]|[^/]*~|\.#[^/]*|#[^/]*#)$'
 export GIT_OPTIONAL_LOCKS=0
 
 # ====== LOGGING SETUP ======
-# Failure reports go to <LOG_ROOT>/<lcls2|ami>_branch/failed_runs, one file per failure
+# Failure reports go to <LOG_ROOT>/<project>_branch/failed_runs, one file per failure,
+# where <project> is the branch repo's directory name
 
 log_dir() {
-    case "$PREFIX" in
-        lcls) echo "${LOG_ROOT}/lcls2_branch" ;;
-        ami)  echo "${LOG_ROOT}/ami_branch" ;;
-        *)    echo "${LOG_ROOT}/${PREFIX:-unknown}_branch" ;;
-    esac
+    echo "${LOG_ROOT}/$(basename "${BRANCH_DIR:-unknown}")_branch"
 }
 
 # Writes a detailed failure report. $1 = reason
@@ -168,7 +165,7 @@ PREFIX="${ARGS[3]}"
 if [ -z "$HUTCH_NAME" ] || [ -z "$ROOT_DIR" ] || [ -z "$BRANCH_DIR" ] || [ -z "$PREFIX" ]; then
     echo -e "${RED}Error: Hutch name, root directory, branch directory, and prefix are required ${NC}"
     echo "Usage: $0 [--dry-run] <hutch_name> <root_dir> <branch_dir> <prefix>"
-    echo "Example: $0 tmo /path/to/clones /path/to/branch_repo lcls"
+    echo "Example: $0 tmo /path/to/clones /path/to/branch_repo <prefix>"
     exit 1
 fi
 

@@ -1,6 +1,6 @@
 # `run_monitor.sh`
 
-The script cron runs. It runs one job type (`branch` or `tag`) for every monitored hutch, for both lcls2 and ami, one after another, and handles logging, locking and failure email.
+The script cron runs. It runs one job type (`branch` or `tag`) for `lcls2`, for every monitored hutch, one after another, and handles logging, locking and failure email.
 
 ```
 ./run_monitor.sh [--dry-run] <branch|tag> [hutch ...]
@@ -19,9 +19,9 @@ Exit status is `0` if every job succeeded, `1` otherwise.
 
 ## Why a wrapper
 
-- **One cron line per job, however many hutches.** Without it, each hutch needs four crontab lines (lcls2/ami × branch/tag). With six hutches that's 24 lines, and adding a hutch means editing the crontab.
-- **The four branch/tag repos are shared by every hutch.** If two jobs used the same repo at the same time, they would switch branches under each other and hit git's lock files. The wrapper runs everything one at a time and holds a lock so two runs can never overlap.
-- **Logs and email in one place.** Each job gets a dated log, and a run sends at most one email listing everything that failed.
+- **One cron line per job, however many hutches.** Without it, each hutch needs its own branch and tag crontab lines. With six hutches that's 12 lines, and adding a hutch means editing the crontab.
+- **The branch and tag repos are shared by every hutch.** If two jobs used the same repo at the same time, they would switch branches under each other and hit git's lock files. The wrapper runs hutches one at a time and holds a lock so two runs can never overlap.
+- **Logs and email in one place.** Each hutch gets a dated log per run, and a run sends at most one email listing everything that failed.
 
 ---
 
@@ -30,6 +30,9 @@ Exit status is `0` if every job succeeded, `1` otherwise.
 ### 1. Configuration
 
 ```bash
+PROJECT=lcls2
+PREFIX=lcls
+
 REL="${REL:-/sdf/group/lcls/ds/ana/sw/conda2/rel}"
 
 HUTCHES=(xpp)
@@ -42,12 +45,16 @@ MAIL_TO="${MAIL_TO-mavaylon@slac.stanford.edu}"
 
 | Setting | Meaning |
 |---|---|
-| `REL` | Root of the release area. Production clones are in `$REL/<hutch>`, and the shared repos are in `$REL/branch_repo_*` and `$REL/tag_repo_*`. |
+| `PROJECT` | The project this copy runs: `lcls2`, the repo it lives in. Its shared repos are `$REL/branch_repo_lcls2/lcls2` and `$REL/tag_repo_lcls2/lcls2`. |
+| `PREFIX` | Production clones handled: directories in `$REL/<hutch>` whose names start with `lcls`. |
+| `REL` | Root of the release area. Production clones are in `$REL/<hutch>`. |
 | `HUTCHES` | Hutches run by default. Add a hutch here to bring it under monitoring. |
 | `LOG_BASE` | Where logs go. |
 | `LOG_KEEP_DAYS` | Run logs older than this are deleted. |
 | `LOCK_WAIT` | Seconds to wait for an earlier run to finish (2 hours). |
 | `MAIL_TO` | Failure email address. Set it to empty (`MAIL_TO=`) to turn off email. |
+
+`PROJECT` and `PREFIX` are the only lines that differ between the copies of this script kept in other repos. Everything else, including `branch_out.sh` and `single_push_collective_tag.sh`, is identical.
 
 `REL`, `LOG_BASE`, `LOCK_WAIT` and `MAIL_TO` can also be set from the environment. That's handy for testing against a copy. `MAIL_TO` uses `${MAIL_TO-…}` (no colon), so setting it to an *empty* value really turns email off instead of falling back to the default.
 
@@ -67,7 +74,7 @@ The first non-flag argument is the job (`branch` or `tag`); anything after it is
 ```bash
 exec 9> "$LOG_BASE/.run_monitor.lock"
 if ! flock -w "$LOCK_WAIT" 9; then
-    ... send_mail "Monitor $JOB job skipped" ...
+    ... send_mail "Monitor ${PROJECT} ${JOB} job skipped" ...
     exit 1
 fi
 ```
@@ -76,63 +83,59 @@ fi
 - `flock -w 7200 9` takes an exclusive lock on it, waiting up to 2 hours if another run holds it.
 - The lock is released automatically when the script exits, even if it crashes.
 
-It's a single lock for both job types. So if a branch run is still going when the tag run starts, the tag run waits for it. If the lock is still held after `LOCK_WAIT`, something is stuck: the run is skipped and an email is sent.
+It's a single lock file in `LOG_BASE`, so it covers both job types, and it is also shared with the monitor jobs of any other project that uses the same `LOG_BASE`. If another run is still going when this one starts, this one waits. If the lock is still held after `LOCK_WAIT`, something is stuck: the run is skipped and an email is sent.
 
 ### 4. The loop
 
 ```bash
 for hutch in "${RUN_HUTCHES[@]}"; do
-    for prefix in lcls ami; do
-        ...
-        job_dir="$LOG_BASE/$hutch/${project}_${JOB}"
-        log="$job_dir/${RUN_STAMP}.log"
-        root_dir="$REL/$hutch"
+    job_dir="$LOG_BASE/$hutch/${PROJECT}_${JOB}"
+    log="$job_dir/${RUN_STAMP}.log"
+    root_dir="$REL/$hutch"
 ```
 
-For each hutch it runs the job for lcls2 and then ami, choosing the matching shared repo:
+For each hutch it runs the job against the project's shared repo (`REPO`, the branch or tag repo, chosen once before the loop):
 
 ```bash
 if [ "$JOB" = "branch" ]; then
     LOG_ROOT="$LOG_BASE/$hutch" "$SCRIPT_DIR/branch_out.sh" "${DRY_RUN_ARGS[@]}" \
-        "$hutch" "$root_dir" "$REL/branch_repo_${project}/${project}" "$prefix" > "$log" 2>&1
+        "$hutch" "$root_dir" "$REPO" "$PREFIX" > "$log" 2>&1
 else
     "$SCRIPT_DIR/single_push_collective_tag.sh" "${DRY_RUN_ARGS[@]}" \
-        "$hutch" "$root_dir" "$REL/tag_repo_${project}/${project}" "$prefix" > "$log" 2>&1
+        "$hutch" "$root_dir" "$REPO" "$PREFIX" > "$log" 2>&1
 fi
 ```
 
-- Each job's full output goes to its own log file.
-- For the branch job, `LOG_ROOT` is set to the hutch's log folder. `branch_out.sh`'s failure reports then land next to that hutch's run logs, in `<hutch>/<project>_branch/failed_runs/`.
-- If `$REL/<hutch>` doesn't exist (for example, a typo in `HUTCHES`), that entry fails without creating any log folders.
-- After each job, run logs older than `LOG_KEEP_DAYS` in that folder are deleted. `-maxdepth 1` keeps `failed_runs/` out of it, so failure reports are kept until someone removes them.
+- Each hutch's full output goes to its own log file.
+- For the branch job, `LOG_ROOT` is set to the hutch's log folder. `branch_out.sh`'s failure reports then land next to that hutch's run logs, in `<hutch>/lcls2_branch/failed_runs/`.
+- If `$REL/<hutch>` doesn't exist (for example, a typo in `HUTCHES`), that hutch fails without creating any log folders.
+- After each hutch, run logs older than `LOG_KEEP_DAYS` in that folder are deleted. `-maxdepth 1` keeps `failed_runs/` out of it, so failure reports are kept until someone removes them.
 
 ### 5. Log layout
 
 ```
 cron_logs/
   .run_monitor.lock
-  run_monitor.log                      ← wrapper summaries (cron appends here)
+  run_monitor_lcls2.log                  ← wrapper summaries (cron appends here)
   xpp/
     lcls2_branch/2026-09-26_020000.log
     lcls2_branch/failed_runs/…_FAILED.log
-    ami_branch/…
     lcls2_tag/…
-    ami_tag/…
   tmo/
     …
 ```
 
-Each run gets a new, timestamped file. Earlier versions wrote to one fixed file per job and overwrote it every run, which is why the cause of the 2026-09-13 failure was lost.
+Each run gets a new, timestamped file. Earlier versions wrote to one fixed file per job and overwrote it every run, which is how the cause of a failure on 2026-09-13 was lost.
 
 ### 6. Summary and email
 
 ```
-ok      xpp lcls2  /…/cron_logs/xpp/lcls2_branch/2026-09-26_020000.log
-ok      xpp ami    /…/cron_logs/xpp/ami_branch/2026-09-26_020000.log
+ok      xpp  /…/cron_logs/xpp/lcls2_branch/2026-09-26_020000.log
+ok      tmo  /…/cron_logs/tmo/lcls2_branch/2026-09-26_020000.log
 === finished …: 0 failed ===
 ```
 
-One line per hutch/project goes to stdout, and cron appends it to `run_monitor.log`. If anything failed, one email goes to `MAIL_TO` listing each failure and its log, and the script exits `1`. No email is sent in a dry run.
+One line per hutch goes to stdout, and cron appends it to `run_monitor_lcls2.log`. If anything failed, one email goes to `MAIL_TO` listing each failure and its log, and the script exits `1`. No email is sent in a dry run.
 
 ---
 

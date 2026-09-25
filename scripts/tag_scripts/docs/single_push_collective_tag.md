@@ -10,8 +10,8 @@ Tags the commit each production DAQ clone in a hutch was installed from, so ther
 |---|---|
 | `hutch_name` | Hutch, e.g. `xpp`. Used as the start of the tag name. |
 | `root_dir` | Directory holding that hutch's production clones, e.g. `rel/xpp`. |
-| `tag_repo_path` | A clone of `lcls2` or `ami` used only to create and push tags. |
-| `prefix` | `lcls` for lcls2 clones, `ami` for ami clones. Only directories whose names start with it are tagged. |
+| `tag_repo_path` | A clone of `lcls2` used only to create and push tags: `rel/tag_repo_lcls2/lcls2`. |
+| `prefix` | `lcls`. Only directories whose names start with it are tagged. |
 | `--dry-run` | Report what would be tagged; create and push nothing. |
 
 Exit status is `0` if every matching clone is tagged (or already was), `1` if anything failed.
@@ -23,8 +23,8 @@ Exit status is `0` if every matching clone is tagged (or already was), `1` if an
 For every production clone, the script answers two questions: *which commit was it installed from*, and *when*. It then makes sure GitHub has a tag `<hutch>-<YYYYMMDD>` pointing at that commit.
 
 ```
-root_dir/lcls2_090826  ──(reflog: cloned at 3b91cb4 on 2026-09-08)──►  tag xpp-20260908 → 3b91cb4
-root_dir/lcls2_091826  ──(reflog: cloned at … on 2026-09-18)────────►  tag xpp-20260918 → …
+root_dir/lcls2_090826  ──(reflog: cloned at <commit A> on 2026-09-08)──►  tag xpp-20260908 → <commit A>
+root_dir/lcls2_091826  ──(reflog: cloned at <commit B> on 2026-09-18)──►  tag xpp-20260918 → <commit B>
 ```
 
 Tags are created in a separate **tag repo**, not in the production clones. The production clones are only read.
@@ -102,7 +102,7 @@ for item in "$ROOT_DIR"/*; do
         fi
 ```
 
-Every directory in `root_dir` that is a git repo **and** whose name starts with `prefix` is processed. A hutch directory holds both `lcls2_*` and `ami_*` clones, so the prefix picks one set. Anything else is ignored, such as helper scripts or `old_build_scripts/`.
+Every directory in `root_dir` that is a git repo **and** whose name starts with `prefix` is processed. A hutch directory holds clones of more than one repo, so the prefix picks out the `lcls2` ones (`lcls*`). Anything else is ignored, such as helper scripts or `old_build_scripts/`.
 
 ### 5. Find the clone commit and date from the reflog
 
