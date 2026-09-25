@@ -300,13 +300,28 @@ reset_branch_repo() {
 
 `reset --hard` and `clean -fd` throw away any half-applied changes. That's safe only because step 5 verified the repo was clean before any sync started, so anything there now came from this run.
 
-**A bash detail that matters here:** `set -e` is *switched off* inside a function called as the condition of an `if` (`if sync_repo ...`). So `sync_repo` can't rely on `set -e` to stop at a failing command. Every command that can fail is checked explicitly, mostly through the small `run` helper, which records the failed command in `FAIL_STEP`:
+**A bash detail that matters here:** `set -e` is *switched off* inside a function called as the condition of an `if` (`if sync_repo ...`). So `sync_repo` can't rely on `set -e` to stop at a failing command. Every command that can fail is checked explicitly, mostly through the small `run` helper. It records the failed command **and git's reason** in `FAIL_STEP`, and still prints the full error output to the log:
 
 ```bash
 run() {
-    "$@" || { FAIL_STEP="failed: $*"; return 1; }
+    if "$@" 2> "$ERR_FILE"; then
+        cat "$ERR_FILE" >&2
+        return 0
+    fi
+    cat "$ERR_FILE" >&2
+    FAIL_STEP="failed: $*$(err_suffix)"
+    return 1
 }
 ```
+
+`err_suffix` picks git's actual reason out of its error output. Git often ends with a generic line: `error: failed to push some refs`, or for SSH problems `...and the repository exists.` So it quotes the last two lines that carry a real reason (`fatal:`, `error:`, `remote:`, `! [rejected] …`, `Permission denied`), falling back to the last non-empty line. For example:
+
+```
+failed: git push -q -u origin xpp-lcls2_060226 (git@github.com: Permission denied (publickey).; fatal: Could not read from remote repository.)
+failed: git push -q -u origin xpp-lcls2_060226 (! [rejected] xpp-lcls2_060226 -> xpp-lcls2_060226 (non-fast-forward))
+```
+
+The git calls that read the clone (`rev-parse`, `diff`, `ls-files`) add the same suffix to their failure reasons. The reason appears in the error line, in the summary, in the failure report, and (through `run_monitor.sh`) in the failure email.
 
 ### 8. Summary and exit status
 

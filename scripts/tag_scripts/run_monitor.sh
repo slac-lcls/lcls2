@@ -97,9 +97,23 @@ else
     REPO="$REL/tag_repo_${PROJECT}/${PROJECT}"
 fi
 
+# The per-clone lines from a job log's "=== Summary ===" section, as
+# "failed: <clone>: <reason>" or "skipped: <clone>: <reason>"
+summary_items() {
+    awk '
+        /^=== Summary ===/        { in_summary = 1; next }
+        !in_summary               { next }
+        /^Failed:/                { section = "failed"; next }
+        /^Skipped:/               { section = "skipped"; next }
+        /^[A-Za-z]/               { section = ""; next }
+        section && /- /           { sub(/^(### )?[[:space:]]*- /, ""); print section ": " $0 }
+    ' "$1"
+}
+
 RUN_STAMP=$(date +%Y-%m-%d_%H%M%S)
 RESULTS=()
 FAILED=()
+DETAILS=()
 
 echo "=== run_monitor.sh ${PROJECT} ${JOB} ${DRY_RUN_ARGS[*]} started $(date) on $(hostname) ==="
 echo "Hutches: ${RUN_HUTCHES[*]}"
@@ -130,11 +144,23 @@ for hutch in "${RUN_HUTCHES[@]}"; do
     fi
     rc=$?
 
+    details=$(summary_items "$log")
     if [ $rc -eq 0 ]; then
         RESULTS+=("ok      $hutch  $log")
     else
         RESULTS+=("FAILED  $hutch  $log")
         FAILED+=("$hutch: exit $rc, see $log")
+        if ! grep -q '^failed: ' <<< "$details"; then
+            # No per-clone failure listed (e.g. the shared repo itself had a problem):
+            # show the end of the log instead
+            details+="${details:+$'\n'}$(grep -v '^[[:space:]]*$' "$log" | tail -n 4 | sed 's/^/log: /')"
+        fi
+    fi
+    if [ -n "$details" ]; then
+        DETAILS+=("$hutch:")
+        while IFS= read -r line; do
+            DETAILS+=("    $line")
+        done <<< "$details"
     fi
 
     # Remove old run logs (failure reports in failed_runs/ are kept)
@@ -143,6 +169,10 @@ done
 
 echo ""
 printf '%s\n' "${RESULTS[@]}"
+if [ ${#DETAILS[@]} -gt 0 ]; then
+    echo "Details:"
+    printf '  %s\n' "${DETAILS[@]}"
+fi
 echo "=== finished $(date): ${#FAILED[@]} failed ==="
 
 if [ ${#FAILED[@]} -gt 0 ]; then
@@ -150,6 +180,9 @@ if [ ${#FAILED[@]} -gt 0 ]; then
 
 Failed:
 $(printf '  %s\n' "${FAILED[@]}")
+
+Details (per clone):
+$(printf '  %s\n' "${DETAILS[@]}")
 
 All results:
 $(printf '  %s\n' "${RESULTS[@]}")"

@@ -226,7 +226,24 @@ for i in "${!SAFE_DIRS[@]}"; do
 done
 
 TMP_FILE=$(mktemp)
-trap 'rm -f "$TMP_FILE"' EXIT
+ERR_FILE=$(mktemp)   # stderr of the last checked command, so failure reasons can quote git's own message
+trap 'rm -f "$TMP_FILE" "$ERR_FILE"' EXIT
+
+# " (<git's reason>)" from ERR_FILE, or nothing if it's empty. Git often ends with a
+# generic line ("error: failed to push some refs", "...and the repository exists."),
+# so this quotes the last two lines that carry a real reason (fatal:, error:, remote:,
+# "! [rejected] ...", "Permission denied"), falling back to the last non-empty line.
+err_suffix() {
+    local e
+    e=$(grep -E 'fatal:|error:|remote:[[:space:]]*[^[:space:]]|![[:space:]]*\[|Permission denied' "$ERR_FILE" |
+        grep -v 'failed to push some refs' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//; s/[[:space:]]\{2,\}/ /g' | tail -n 2 | paste -sd ';' - | sed 's/;/; /g')
+    if [ -z "$e" ]; then
+        e=$(grep -v '^[[:space:]]*$' "$ERR_FILE" | tail -n 1)
+    fi
+    if [ -n "$e" ]; then
+        echo " ($e)"
+    fi
+}
 
 # ====== PREPARE BRANCH REPO (once) ======
 cd "$BRANCH_DIR"
@@ -294,23 +311,26 @@ sync_repo() {
     echo -e "${GREEN}Processing matching repo:${NC} $MONITOR_REPO"
 
     # --- Read the production clone (read-only) ---
-    if ! GIT_HASH=$(git -C "$MONITOR_REPO" rev-parse HEAD); then
-        FAIL_STEP="could not read HEAD of $MONITOR_REPO"
+    if ! GIT_HASH=$(git -C "$MONITOR_REPO" rev-parse HEAD 2> "$ERR_FILE"); then
+        cat "$ERR_FILE" >&2
+        FAIL_STEP="could not read HEAD of $MONITOR_REPO$(err_suffix)"
         return 1
     fi
     echo "GIT_HASH=${GIT_HASH:0:9}"
     echo "BRANCH_NAME=${BRANCH_NAME}"
 
     # Modified/deleted tracked files, staged or not
-    if ! git -C "$MONITOR_REPO" diff -z --name-only --no-renames HEAD > "$TMP_FILE"; then
-        FAIL_STEP="git diff failed in $MONITOR_REPO"
+    if ! git -C "$MONITOR_REPO" diff -z --name-only --no-renames HEAD > "$TMP_FILE" 2> "$ERR_FILE"; then
+        cat "$ERR_FILE" >&2
+        FAIL_STEP="git diff failed in $MONITOR_REPO$(err_suffix)"
         return 1
     fi
     mapfile -d '' tracked < "$TMP_FILE"
 
     # New files, respecting .gitignore
-    if ! git -C "$MONITOR_REPO" ls-files -z --others --exclude-standard > "$TMP_FILE"; then
-        FAIL_STEP="git ls-files failed in $MONITOR_REPO"
+    if ! git -C "$MONITOR_REPO" ls-files -z --others --exclude-standard > "$TMP_FILE" 2> "$ERR_FILE"; then
+        cat "$ERR_FILE" >&2
+        FAIL_STEP="git ls-files failed in $MONITOR_REPO$(err_suffix)"
         return 1
     fi
     mapfile -d '' untracked < "$TMP_FILE"
@@ -349,8 +369,9 @@ sync_repo() {
 
     # Files to look at: everything changed in the clone, plus everything the branch
     # currently changes (so changes that were reverted in the clone get reverted here)
-    if ! git diff -z --name-only --no-renames "$GIT_HASH" "$base_ref" > "$TMP_FILE"; then
-        FAIL_STEP="git diff $GIT_HASH $base_ref failed"
+    if ! git diff -z --name-only --no-renames "$GIT_HASH" "$base_ref" > "$TMP_FILE" 2> "$ERR_FILE"; then
+        cat "$ERR_FILE" >&2
+        FAIL_STEP="git diff $GIT_HASH $base_ref failed$(err_suffix)"
         return 1
     fi
     mapfile -d '' touched < "$TMP_FILE"
@@ -469,9 +490,17 @@ $(for i in "${!plan_file[@]}"; do echo "${plan_action[$i]}: ${plan_file[$i]}"; d
     return 0
 }
 
-# Run a command; on failure record it in FAIL_STEP
+# Run a command; on failure record it in FAIL_STEP together with the last line of its
+# error output (e.g. "failed: git push -q -u origin xpp-x (fatal: Could not read from
+# remote repository.)"). The error output is still printed to the log.
 run() {
-    "$@" || { FAIL_STEP="failed: $*"; return 1; }
+    if "$@" 2> "$ERR_FILE"; then
+        cat "$ERR_FILE" >&2
+        return 0
+    fi
+    cat "$ERR_FILE" >&2
+    FAIL_STEP="failed: $*$(err_suffix)"
+    return 1
 }
 
 # Put the branch repo back on a clean master after a failed sync, so the next repo starts clean.

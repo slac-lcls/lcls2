@@ -172,6 +172,26 @@ resolve_tag_name() {
     return 1
 }
 
+# stderr of git tag / git push, so failure reasons can quote git's own message
+ERR_FILE=$(mktemp)
+trap 'rm -f "$ERR_FILE"' EXIT
+
+# " (<git's reason>)" from ERR_FILE, or nothing if it's empty. Git often ends with a
+# generic line ("error: failed to push some refs", "...and the repository exists."),
+# so this quotes the last two lines that carry a real reason (fatal:, error:, remote:,
+# "! [rejected] ...", "Permission denied"), falling back to the last non-empty line.
+err_suffix() {
+    local e
+    e=$(grep -E 'fatal:|error:|remote:[[:space:]]*[^[:space:]]|![[:space:]]*\[|Permission denied' "$ERR_FILE" |
+        grep -v 'failed to push some refs' | sed 's/^[[:space:]]*//; s/[[:space:]]*$//; s/[[:space:]]\{2,\}/ /g' | tail -n 2 | paste -sd ';' - | sed 's/;/; /g')
+    if [ -z "$e" ]; then
+        e=$(grep -v '^[[:space:]]*$' "$ERR_FILE" | tail -n 1)
+    fi
+    if [ -n "$e" ]; then
+        echo " ($e)"
+    fi
+}
+
 TAGS_TO_PUSH=()
 ALREADY_TAGGED=()
 SKIPPED=()
@@ -266,12 +286,13 @@ for item in "$ROOT_DIR"/*; do
                     if git tag -a "$TAG_NAME" "$GIT_HASH" -m "Tag for ${HUTCH_NAME} install
 Commit: ${GIT_HASH}
 Repo: ${REPO_NAME}
-Path: ${item}"; then
+Path: ${item}" 2> "$ERR_FILE"; then
                         TAGS_TO_PUSH+=("$TAG_NAME")
                         RUN_TAGS["$TAG_NAME"]="$GIT_HASH"
                     else
+                        cat "$ERR_FILE" >&2
                         echo -e "${RED}  Error: Failed to create tag ${TAG_NAME}${NC}"
-                        FAILED+=("${REPO_NAME}: git tag failed")
+                        FAILED+=("${REPO_NAME}: git tag ${TAG_NAME} failed$(err_suffix)")
                     fi
                 fi
                 ;;
@@ -293,11 +314,13 @@ else
     for tag in "${TAGS_TO_PUSH[@]}"; do
         REFSPECS+=("refs/tags/${tag}")
     done
-    if git push origin "${REFSPECS[@]}"; then
+    if git push origin "${REFSPECS[@]}" 2> "$ERR_FILE"; then
+        cat "$ERR_FILE" >&2
         echo -e "${GREEN}All tags pushed successfully${NC}"
     else
+        cat "$ERR_FILE" >&2
         echo -e "${RED}Error: Tag push failed. The tags stay in the local tag repo and will be pushed on the next run.${NC}"
-        FAILED+=("push of: ${TAGS_TO_PUSH[*]}")
+        FAILED+=("push of ${TAGS_TO_PUSH[*]} failed$(err_suffix)")
     fi
 fi
 

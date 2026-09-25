@@ -130,12 +130,35 @@ Each run gets a new, timestamped file. Earlier versions wrote to one fixed file 
 ### 6. Summary and email
 
 ```
-ok      xpp  /…/cron_logs/xpp/lcls2_branch/2026-09-26_020000.log
+FAILED  xpp  /…/cron_logs/xpp/lcls2_branch/2026-09-26_020000.log
 ok      tmo  /…/cron_logs/tmo/lcls2_branch/2026-09-26_020000.log
-=== finished …: 0 failed ===
+Details:
+  xpp:
+      failed: lcls2_060226: failed: git push -q -u origin xpp-lcls2_060226 (git@github.com: Permission denied (publickey).; fatal: Could not read from remote repository.)
+      skipped: lcls2_031125: no clone entry in reflog
+=== finished …: 1 failed ===
 ```
 
-One line per hutch goes to stdout, and cron appends it to `run_monitor_lcls2.log`. If anything failed, one email goes to `MAIL_TO` listing each failure and its log, and the script exits `1`. No email is sent in a dry run.
+One line per hutch goes to stdout, and cron appends it to `run_monitor_lcls2.log`.
+
+**Details** name the hutch, the clone and the reason for every failed or skipped clone, so you can see what went wrong without opening the logs. After each hutch, `summary_items` reads the job log's `=== Summary ===` section, which both job scripts end with, and turns each listed clone into a `failed: <clone>: <reason>` or `skipped: <clone>: <reason>` line:
+
+```bash
+summary_items() {
+    awk '
+        /^=== Summary ===/        { in_summary = 1; next }
+        !in_summary               { next }
+        /^Failed:/                { section = "failed"; next }
+        /^Skipped:/               { section = "skipped"; next }
+        /^[A-Za-z]/               { section = ""; next }
+        section && /- /           { sub(/^(### )?[[:space:]]*- /, ""); print section ": " $0 }
+    ' "$1"
+}
+```
+
+If a hutch failed but its log lists no failed clone, the problem was with the shared repo itself (for example `Base repo is not clean`) or the script stopped early. In that case the last 4 non-empty lines of the log are shown instead, prefixed `log:`.
+
+If anything failed, one email goes to `MAIL_TO` with the failed hutches and their logs, the same **Details**, and all results, and the script exits `1`. Skipped clones appear in the details but never cause an email on their own: an old clone whose reflog has expired would otherwise trigger one every week. No email is sent in a dry run.
 
 ---
 

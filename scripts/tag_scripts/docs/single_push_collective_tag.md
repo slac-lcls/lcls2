@@ -191,7 +191,7 @@ git push origin "${REFSPECS[@]}"
 
 Only the tags created (or left unpushed) in this run are pushed, together in one `git push`. Earlier versions used `git push origin --tags`, which pushes every local tag, and pushed on every run even with nothing new.
 
-If the push fails (for example, a network problem), the tags stay in the local tag repo. The next run finds them as "only in the local tag repo, same commit" (`push` in the table above) and pushes them then.
+If the push fails (for example, a network problem), it's recorded under **Failed** with git's reason, picked out of its error output the same way as in `branch_out.sh` (`err_suffix`), e.g. `push of xpp-20260918 failed (git@github.com: Permission denied (publickey).; fatal: Could not read from remote repository.)`. A failed `git tag` is recorded the same way. The tags stay in the local tag repo. The next run finds them as "only in the local tag repo, same commit" (`push` in the table above) and pushes them then.
 
 ### 10. Summary and exit status
 
