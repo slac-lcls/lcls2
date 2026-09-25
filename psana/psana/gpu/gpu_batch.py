@@ -82,26 +82,6 @@ class GpuBatchFormatError(ValueError):
 
 
 @dataclass(frozen=True)
-class GpuReadSelection:
-    """Input-only descriptor subset retaining original event/stream identity."""
-
-    descriptors: tuple
-
-    @classmethod
-    def from_view(cls, view, bd_dm, stream_ids, *, exclude=False):
-        selected = frozenset(stream_ids)
-        return cls(tuple(d for d in view.iter_read_descs(bd_dm)
-                         if (d.stream_id in selected) != exclude))
-
-    @property
-    def total_read_bytes(self):
-        return sum(d.size for d in self.descriptors)
-
-    def iter_read_descs(self, bd_dm):
-        return iter(self.descriptors)
-
-
-@dataclass(frozen=True)
 class GpuBatchHeader:
     magic: int
     version: int

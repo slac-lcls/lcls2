@@ -4,7 +4,7 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from test_gpu_residency_device import available, residency_case
+from gpu_group_fixture import available, group_case
 from psana.gpu import gpu_events
 from psana.gpu.gpu_detector import _CanonicalGatherPlan
 from psana.psexp import TransitionId
@@ -15,19 +15,22 @@ pytestmark = [pytest.mark.gpu, pytest.mark.skipif(
 
 @pytest.mark.parametrize('stop', ['max_events', 'generator_close', 'read_failure', 'gather_failure'])
 @pytest.mark.parametrize('d2h', [0, 7])
-def test_resident_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, monkeypatch, stop, d2h):
-    case = residency_case(tmp_path, mixed_packet)
+def test_group_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, monkeypatch, stop, d2h):
+    case = group_case(tmp_path, mixed_packet)
     m = case.manager
+    # Force several executions so early close and a later read failure occur
+    # while earlier parsed inputs and deliveries are live.
+    m._admission_capacity = 4 * 1024**2
     if d2h:
         m._d2h_pipelines = {'slow.calib': gpu_events._D2hPipeline('slow.calib', d2h)}
     windows = []
-    parse = m.gpu_xtc_parser.parse_window
+    parse = m.gpu_xtc_parser.parse_groups
 
     def track(*args, **kwargs):
         window = parse(*args, **kwargs)
-        windows.append(window)
+        windows.extend(window)
         return window
-    monkeypatch.setattr(m.gpu_xtc_parser, 'parse_window', track)
+    monkeypatch.setattr(m.gpu_xtc_parser, 'parse_groups', track)
     if stop == 'max_events':
         m.dsparms.max_events = 203
     elif stop == 'read_failure':
@@ -45,7 +48,8 @@ def test_resident_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, mo
         def fail_second_read(*args, **kwargs):
             pending = issue(*args, **kwargs)
             calls.append(len(pending.futures))
-            if len(calls) == 2:
+            if windows and not any(c is False for c in calls):
+                calls.append(False)
                 r, size, future = pending.futures[0]
                 pending.futures[0] = (r, size, FailedFuture(future))
             return pending
@@ -92,16 +96,16 @@ def test_resident_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, mo
 def test_beginstep_updates_after_drain_and_endrun_finishes_once(
         tmp_path, mixed_packet, monkeypatch):
     import cupy as cp
-    case = residency_case(tmp_path, mixed_packet)
+    case = group_case(tmp_path, mixed_packet)
     m, detector = case.manager, case.manager.gpu_detectors['slow'][1]
     saved, windows, transitions = [], [], []
-    parse = m.gpu_xtc_parser.parse_window
+    parse = m.gpu_xtc_parser.parse_groups
 
     def track(*args, **kwargs):
         window = parse(*args, **kwargs)
-        windows.append(window)
+        windows.extend(window)
         return window
-    monkeypatch.setattr(m.gpu_xtc_parser, 'parse_window', track)
+    monkeypatch.setattr(m.gpu_xtc_parser, 'parse_groups', track)
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
     peds, gains = np.full(54, 7, np.float32), np.full(54, 2, np.float32)
 
@@ -119,7 +123,8 @@ def test_beginstep_updates_after_drain_and_endrun_finishes_once(
 
     def process(packet):
         samples = []
-        for envelope in m._process_batch({}, {0: (packet, [])}, {}):
+        from itertools import chain
+        for envelope in chain(m._process_batch({}, {0: (packet, [])}, {}), m._flush_event_pool()):
             state = envelope.gpu_state
             if state._gpu_results:
                 i = state._event_dgrams.batch_event_index

@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 import time
 from typing import List, Tuple
 
@@ -8,7 +8,7 @@ import numpy as np
 from .gpu_allocation import owned_empty, allocation_requirement, backing_capacity
 
 from .gpu_read_plan import (
-    LogicalDgram, ReadPlan, ReadRange, ResolvedDgram, ResolvedFile, build_read_plan,
+    LogicalDgram, ReadPlan, ReadRange, ResolvedDgram, ResolvedFile,
     _uint64, validate_read_descriptors,
 )
 
@@ -296,8 +296,8 @@ class KvikioGpuReader:
         if self._input_holds.get(slot, 0):
             raise RuntimeError(f"GPU raw buffer {slot} is owned by an input window")
 
-    def issue_batch(self, gpu_view, bd_dm, slot_id=None, *, file_epochs=None) -> "PendingBatch":
-        """Issue GDS reads for a GPU batch non-blocking.
+    def issue_batch(self, gpu_view, bd_dm, slot_id=None) -> "PendingBatch":
+        """Issue per-dgram reads for a bulk-off GPU batch non-blocking.
 
         All KvikIO pread() calls are issued immediately and return futures.
         The caller can do other work (e.g. CPU EventManager path) before
@@ -310,9 +310,6 @@ class KvikioGpuReader:
         slot_id  : int or None
             Explicit reusable-buffer slot coordinated with EventPool.  When
             None, use this reader's internal round-robin order.
-        file_epochs : mapping or None
-            Required in bulk mode: (original event index, stream) to FileEpoch
-            mapping resolved from the complete EB/SMD envelope before I/O.
 
         Returns
         -------
@@ -320,6 +317,8 @@ class KvikioGpuReader:
         """
         if self._closed or self._failure is not None:
             raise RuntimeError("GPU reader is closed or failed") from self._failure
+        if self.bulk_read:
+            raise ValueError('bulk reads require issue_group with a resolved StreamReadGroup')
         read_descs = tuple(gpu_view.iter_read_descs(bd_dm))
         # Use the pre-allocated per-slot buffer when available.
         # Only re-allocate when the current buffer is too small (grows lazily).
@@ -329,40 +328,22 @@ class KvikioGpuReader:
             slot = self._slot_idx % self._n_slots
             self._slot_idx += 1
         self._check_slot_available(slot)
-        existing = self._slot_bufs[slot]
-        old_size = int(existing.nbytes) if existing is not None else 0
-        capacity = (max(old_size, self._budget.allocation_available()) if self._budget is not None
-                    else sum(d.size for d in read_descs))
         desc_table = self._build_desc_table(read_descs)
-        plan = None
-        if self.bulk_read:
-            if file_epochs is None:
-                raise ValueError("bulk reads require resolved file_epochs before submission")
-            plan = self._coalesced_plan(read_descs, file_epochs, capacity)
-            for row, logical in zip(desc_table, plan.logical_dgrams):
-                row[DESC_DEVICE_OFFSET] = logical.device_offset
-            ranges = plan.physical_ranges
-            total_nbytes = plan.capacity_bytes
-            for desc in read_descs:
-                self._latest_files[desc.stream_id] = file_epochs[
-                    (desc.batch_event_index, desc.stream_id)
-                ].file
-        else:
-            ranges = []
-            identities = {}
-            for desc, row in zip(read_descs, desc_table):
-                if desc.stream_id not in identities:
-                    identities[desc.stream_id] = ResolvedFile(
-                        os.path.realpath(str(bd_dm.xtc_files[desc.stream_id])),
-                        int(bd_dm.get_chunk_id(desc.stream_id) or 0),
-                    )
-                identity = identities[desc.stream_id]
-                self._latest_files[desc.stream_id] = identity
-                if desc.size:
-                    ranges.append(ReadRange(identity, desc.offset, desc.size,
-                                            int(row[DESC_DEVICE_OFFSET])))
-            total_nbytes = sum(d.size for d in read_descs)
-        return self._submit_read(desc_table, ranges, total_nbytes, slot, plan)
+        ranges = []
+        identities = {}
+        for desc, row in zip(read_descs, desc_table):
+            if desc.stream_id not in identities:
+                identities[desc.stream_id] = ResolvedFile(
+                    os.path.realpath(str(bd_dm.xtc_files[desc.stream_id])),
+                    int(bd_dm.get_chunk_id(desc.stream_id) or 0),
+                )
+            identity = identities[desc.stream_id]
+            self._latest_files[desc.stream_id] = identity
+            if desc.size:
+                ranges.append(ReadRange(identity, desc.offset, desc.size,
+                                        int(row[DESC_DEVICE_OFFSET])))
+        total_nbytes = sum(d.size for d in read_descs)
+        return self._submit_read(desc_table, ranges, total_nbytes, slot, None)
 
     def _submit_read(self, desc_table, ranges, total_nbytes, slot, plan):
         """Shared allocation, file ownership, submission and failure draining."""
@@ -501,33 +482,6 @@ class KvikioGpuReader:
             if identity not in retained:
                 self._files[identity].close()
                 del self._files[identity]
-
-    @staticmethod
-    def _coalesced_plan(read_descs, file_epochs, capacity):
-        # Each transition is a read fence. Plan independently on either side,
-        # then rebase into one existing slot while retaining logical row order.
-        groups = {}
-        for i, d in enumerate(read_descs):
-            epoch = file_epochs[(d.batch_event_index, d.stream_id)]
-            groups.setdefault(epoch.fence, []).append((i, ResolvedDgram(
-                d.batch_event_index, d.timestamp, d.stream_id, epoch.file,
-                d.offset, d.size, d.smd_size,
-            )))
-        ranges, logical = [], [None] * len(read_descs)
-        cursor = 0
-        for group in groups.values():
-            part = build_read_plan((d for _, d in group), capacity_bytes=capacity - cursor)
-            first_range = len(ranges)
-            ranges.extend(replace(r, device_offset=r.device_offset + cursor)
-                          for r in part.physical_ranges)
-            for (i, _), row in zip(group, part.logical_dgrams):
-                logical[i] = LogicalDgram(
-                    row.source,
-                    None if row.range_index is None else row.range_index + first_range,
-                    0 if row.range_index is None else row.device_offset + cursor,
-                )
-            cursor += part.capacity_bytes
-        return ReadPlan(0, 0, tuple(ranges), tuple(logical), cursor, cursor, cursor)
 
     @staticmethod
     def _build_desc_table(read_descs):

@@ -7,7 +7,8 @@ group dependencies and the shared budget before submitting any request.
 from dataclasses import dataclass, replace
 from typing import Optional, Tuple
 
-from .gpu_read_plan import ResolvedDgram, ResolvedFile, _uint64, build_read_plan
+from .gpu_read_plan import (ResolvedDgram, ResolvedFile, _uint64,
+                            validate_read_descriptors, ordered_nonoverlapping_indices)
 
 
 @dataclass(frozen=True)
@@ -78,9 +79,8 @@ def build_stream_read_plan(descriptors, *, n_events, batch_id=0,
     descriptors = tuple(descriptors)
     if any(not isinstance(d, ResolvedDgram) for d in descriptors):
         raise TypeError('descriptors must contain ResolvedDgram records')
-    total = sum(d.size for d in descriptors)
-    # Reuse the existing duplicate, timestamp, overlap and uint64 validation.
-    build_read_plan(descriptors, capacity_bytes=total, batch_id=batch_id)
+    total = validate_read_descriptors(descriptors, (1 << 64) - 1)
+    ordered_nonoverlapping_indices(descriptors)
     events = sorted({d.batch_event_index for d in descriptors})
     if events and events[-1] >= n_events:
         raise ValueError('descriptor event is outside this batch')

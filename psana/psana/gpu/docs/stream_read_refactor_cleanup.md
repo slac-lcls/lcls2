@@ -62,6 +62,21 @@ and 33,566,911,424 bytes.
 
 ## Cleanup inventory and removal gates
 
+Follow-up item 3 is implemented in [legacy cleanup](stream_read_legacy_cleanup.md).
+The table records the original removal gates; the current disposition below
+supersedes their pending wording.
+
+- Residency ranking/orchestration, `GpuReadSelection`, legacy reader bulk
+  planning, policy fixtures and timing hooks: removed or migrated with
+  replacement assertions mapped in that report.
+- Stream-plan validation now shares descriptor and overlap validation without
+  constructing a discarded generic `ReadPlan`.
+- Input owners, parser arenas, gathers, bulk-off, historical evidence and
+  source-only preview support remain.
+- Untracked old policy diagnostics remain historical, requiring the old
+  runtime; backend-neutral I/O wording and performance follow-up are deferred.
+
+
 Paths in this table are relative to `psana/psana/gpu`, except tests.
 
 | Area | Existing code or overlap | Later action and gate |
@@ -92,8 +107,9 @@ completed eight audited cold/warm controls with the current code. Bulk-on
 median loop time remains 5.42% higher cold and 23.77% higher warm; throughput
 work is deferred. The [broader ownership matrix](stream_read_ownership_acceptance.md)
 now passes 18 new retained-view, tight-budget, and delayed-consumer A100 cases
-alongside 20 regressions. Legacy fixture/branch removal remains open and requires
-mapping replacement assertions before deletion. The entries below preserve the earlier stage evidence
+alongside 20 regressions. [Legacy fixture/branch cleanup](stream_read_legacy_cleanup.md)
+is implemented with its replacement assertions mapped and validation recorded.
+The entries below preserve the earlier stage evidence
 and do not supersede this checkpoint.
 
 2026-09-25 follow-up: [controller lifecycle and transition validation](stream_read_stage4_correctness.md)

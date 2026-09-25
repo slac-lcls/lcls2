@@ -1,17 +1,24 @@
 """File lifetime across overlapping reads, chunk changes, and failure drains."""
 import pytest
 
-from psana.gpu.gpu_file_epochs import FileEpoch
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-from psana.gpu.gpu_read_plan import ResolvedFile
+from psana.gpu.gpu_read_plan import ReadRange, ResolvedFile
 from test_gpu_bulk_read import io, desc, dm, view  # noqa: F401 (shared fixture)
 
 
 def submit(reader, descriptors, paths, slot):
-    epochs = {(d.batch_event_index, d.stream_id): FileEpoch(ResolvedFile(p, 0), 0)
-              for d, p in zip(descriptors, paths)}
-    return reader.issue_batch(view(descriptors), dm(paths), slot_id=slot,
-                              file_epochs=epochs)
+    if not reader.bulk_read:
+        return reader.issue_batch(view(descriptors), dm(paths), slot_id=slot)
+    # Inject multiple physical requests directly into the shared submission
+    # engine to cover partial failure after acquiring several file references.
+    table = reader._build_desc_table(descriptors)
+    ranges = []
+    for d, path, row in zip(descriptors, paths, table):
+        identity = ResolvedFile(path, 0)
+        reader._latest_files[d.stream_id] = identity
+        if d.size:
+            ranges.append(ReadRange(identity, d.offset, d.size, int(row[5])))
+    return reader._submit_read(table, ranges, sum(d.size for d in descriptors), slot, None)
 
 
 @pytest.mark.parametrize('bulk', [True, False])

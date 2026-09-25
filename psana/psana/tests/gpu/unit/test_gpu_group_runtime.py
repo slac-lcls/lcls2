@@ -4,7 +4,7 @@ from types import SimpleNamespace as NS
 import pytest
 
 from test_gpu_bulk_read import io
-from test_gpu_residency import manager
+from group_test_support import manager
 from test_gpu_input_window import Token
 from psana.gpu.gpu_input_group import InputGroupPool
 from psana.gpu.gpu_input_window import InputWindow
@@ -269,3 +269,25 @@ def test_transition_completion_failure_preserves_owner_and_retries(io, monkeypat
     m.close()
     assert len(delivered) == 12
     assert_closed(m, io)
+
+
+def test_hybrid_cpu_envelopes_keep_their_payload(io, mixed_packet, monkeypatch):
+    from psana.event import EventEnvelope
+    from psana.gpu import gpu_events
+    m = build(io, monkeypatch)
+    cpu = [NS(timestamp=lambda i=i: 1000+i, service=lambda: 12, env=lambda: 12 << 24, detector_payload=i)
+           for i in range(7)]
+    class CpuEvents:
+        exit_id = 0
+        def __init__(self, *args):
+            pass
+        def __iter__(self):
+            return iter(EventEnvelope([dg, None]) for dg in cpu)
+    monkeypatch.setattr(gpu_events, 'EventManager', CpuEvents)
+    m.max_retries, m.use_smds = 0, False
+    yielded = list(m._process_batch({0: (b'cpu batch', [])},
+                                    {0: (mixed_packet(n_events=7, interval=2), [])}, {}))
+    yielded.extend(m.finish())
+    assert [e.dgrams[0] for e in yielded] == cpu
+    assert all(e.gpu_state is not None for e in yielded)
+    m.close()
