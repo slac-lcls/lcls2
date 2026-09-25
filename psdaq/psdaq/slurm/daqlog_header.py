@@ -41,14 +41,22 @@ def get_output_header(job_name, platform, nodelist, daq_cmd):
     git_describe = None
     if "TESTRELDIR" in env_dict:
         try:
+            # TESTRELDIR points at <root>/install (compiled output only); source is at
+            # os.path.dirname(TESTRELDIR). git -C TESTRELDIR walks up to <root>, then
+            # validates ownership of <root> — which fails (owned by psrel:xs, not the
+            # running operator). Using explicit --git-dir/<root> skips repo discovery
+            # entirely, so the ownership check is never triggered.
+            root = os.path.dirname(os.environ["TESTRELDIR"])
             git_output = subprocess.check_output(
-                ["git", "-C", os.environ["TESTRELDIR"], "describe", "--dirty", "--tag"],
+                ["git", "--git-dir", os.path.join(root, ".git"),
+                 "--work-tree", root,
+                 "describe", "--dirty", "--tag"],
                 stderr=subprocess.STDOUT,
                 text=True
             ).strip()
             git_describe = git_output
         except subprocess.CalledProcessError as e:
-            logger.warning(
+            logger.debug(
                 "Git describe failed for TESTRELDIR '%s': %s",
                 os.environ["TESTRELDIR"],
                 e.output.strip()
