@@ -211,7 +211,7 @@ public:
   void destroyHostBuffers();
   void createCalibBuffers(unsigned nElements);
   void destroyCalibBuffers();
-  void createReduceBuffers(size_t nBytes, size_t reserved);
+  void createReduceBuffers(size_t nBytes, size_t reserved, size_t rawBytes = 0);
   void destroyReduceBuffers();
   using vecpu32_t = std::vector<uint32_t*>;
   const auto& hostWrtBufs()      const { return m_hostWrtBufs; }
@@ -220,7 +220,20 @@ public:
   size_t hostWrtBufsSize()       const { return m_hostWrtBufsSize; }
   size_t calibBufsSize()         const { return m_calibBufsSize; }
   size_t reduceBufsSize()        const { return m_reduceBufsSize; }
+  // Bytes reserved ahead of the reduced payload for the datagram header alone.
+  // The recorder grows backwards into this from wherever its block starts, so
+  // this bounds the header, not the header plus raw.
   size_t reduceBufsReserved()    const { return m_reduceBufsRsvd; }
+  // Bytes reserved between the header reserve and the reduced payload, for a
+  // block of raw data.  Zero unless the Detector asked for one.  The raw block
+  // begins at reduceBuffers_d()[idx*stride] - reduceBufsRaw().
+  size_t reduceBufsRaw()         const { return m_reduceBufsRaw; }
+  // The buffer-to-buffer stride: every region a reduce buffer comprises.  Use
+  // this to index reduceBuffers_d() -- `&reduceBuffers_d()[idx * stride]` -- in
+  // preference to adding the parts up, which silently goes wrong when a region
+  // is added.
+  size_t reduceBufsStride()      const
+  { return m_reduceBufsRsvd + m_reduceBufsRaw + m_reduceBufsSize; }
 public:
   int64_t nPgpInUser () const { return dmaGetRxBuffinUserCount  (fd()); }
   int64_t nPgpInHw   () const { return dmaGetRxBuffinHwCount    (fd()); }
@@ -239,6 +252,7 @@ private:
   float*                    m_calibBuffers_d;   // [nBuffers * nElements]
   size_t                    m_reduceBufsSize;
   size_t                    m_reduceBufsRsvd;
+  size_t                    m_reduceBufsRaw;
   uint8_t*                  m_reduceBuffers_d;  // [nBuffers * nBytes]
 };
 

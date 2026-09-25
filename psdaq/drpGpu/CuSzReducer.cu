@@ -80,7 +80,9 @@ void CuSzReducer::reduce(cudaGraphExec_t,
   auto dataBuffers  = m_pool.reduceBuffers_d();
   auto dataBufsRsvd = m_pool.reduceBufsReserved();
   auto dataBufsSz   = m_pool.reduceBufsSize();
-  auto dataBufsCnt  = (dataBufsRsvd + dataBufsSz) / sizeof(*dataBuffers);
+  // The stride is every region of a reduce buffer, not just the reserve plus
+  // payload, so that `&dataBuffers[idx * dataBufsCnt]` indexes buffer idx
+  auto dataBufsCnt  = m_pool.reduceBufsStride() / sizeof(*dataBuffers);
 
   auto calibBuffer = &calibBuffers[index * calibBufsCnt];
   auto dataBuffer  = &dataBuffers[index * dataBufsCnt];

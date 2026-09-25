@@ -200,6 +200,8 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   m_calibBufsSize   (0),
   m_calibBuffers_d  (nullptr),
   m_reduceBufsSize  (0),
+  m_reduceBufsRsvd  (0),
+  m_reduceBufsRaw   (0),
   m_reduceBuffers_d (nullptr)
 {
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
@@ -531,41 +533,56 @@ void MemPoolGpu::destroyCalibBuffers()
   }
 }
 
-void MemPoolGpu::createReduceBuffers(size_t nBytes, size_t reserved)
+void MemPoolGpu::createReduceBuffers(size_t nBytes, size_t reserved, size_t rawBytes)
 {
   if (m_reduceBufsSize) {
     logging::error("Attempt to reallocate ReduceBuffers");
     return;
   }
 
-  // Round up both nBytes and reserved to an integer number of uint64_ts for
-  // buffer alignment purposes
+  // Round each region up to an integer number of uint64_ts for buffer alignment
+  // purposes.  rawBytes is rounded on its own so that the raw block, and hence
+  // the header that abuts it, stays aligned.
   nBytes   = sizeof(uint64_t)*((nBytes   + sizeof(uint64_t)-1)/sizeof(uint64_t));
   reserved = sizeof(uint64_t)*((reserved + sizeof(uint64_t)-1)/sizeof(uint64_t));
+  rawBytes = sizeof(uint64_t)*((rawBytes + sizeof(uint64_t)-1)/sizeof(uint64_t));
 
-  // Allocate nBufs buffers for reduced data on the GPU,
-  // reserving space at the front for the datagram header
+  // Allocate nBufs buffers for reduced data on the GPU, reserving space at the
+  // front for the datagram header and, when the Detector asks for it, for a
+  // block of raw data ahead of the reduced payload.  Each buffer looks like
+  //
+  //   [ hdr reserve ][ raw reserve ][ reduced payload ]
+  //                                 ^ m_reduceBuffers_d
+  //
+  // and the recorder grows *backwards* from m_reduceBuffers_d, by the header
+  // alone or by the raw block plus the header, so that whatever is written is
+  // contiguous and unused reserve never reaches the file.  See
+  // Gpu::TebReceiver::recorder().  Keeping m_reduceBuffers_d on the reduced
+  // payload means a Reducer's `&dataBuffers[idx * dataBufsCnt]` stays correct
+  // whether or not raw is present, so no reducer needs to know about raw.
   uint8_t* reduceBufferBase;
   auto   nBufs = nbuffers();
-  size_t size  = (nBytes + reserved) * sizeof(*m_reduceBuffers_d);
+  size_t size  = (nBytes + reserved + rawBytes) * sizeof(*m_reduceBuffers_d);
   chkError(cudaMalloc(&reduceBufferBase,    nBufs * size));
   chkMemory          ( reduceBufferBase,    nBufs,  size, "reduceBufferBase");
   chkError(cudaMemset( reduceBufferBase, 0, nBufs * size));
-  m_reduceBuffers_d = reduceBufferBase + reserved;
+  m_reduceBuffers_d = reduceBufferBase + reserved + rawBytes;
 
-  m_reduceBufsSize = nBytes;           // Doesn't include the reserved portion!
+  m_reduceBufsSize = nBytes;           // Doesn't include the reserved portions!
   m_reduceBufsRsvd = reserved;
+  m_reduceBufsRaw  = rawBytes;
 
   auto sz = size / sizeof(*m_reduceBuffers_d);
-  logging::info("Reduce buffers: [base %p] %p : %p, size %u * (%zu + %zu) B\n", reduceBufferBase,
-                &m_reduceBuffers_d[0], &m_reduceBuffers_d[(nBufs-1) * sz], nBufs, reserved, nBytes);
+  logging::info("Reduce buffers: [base %p] %p : %p, size %u * (%zu + %zu + %zu) B\n", reduceBufferBase,
+                &m_reduceBuffers_d[0], &m_reduceBuffers_d[(nBufs-1) * sz], nBufs, reserved, rawBytes, nBytes);
 }
 
 void MemPoolGpu::destroyReduceBuffers()
 {
   if (m_reduceBufsSize) {
-    chkError(cudaFree(m_reduceBuffers_d - m_reduceBufsRsvd));
+    chkError(cudaFree(m_reduceBuffers_d - m_reduceBufsRsvd - m_reduceBufsRaw));
     m_reduceBufsSize = 0;
     m_reduceBufsRsvd = 0;
+    m_reduceBufsRaw  = 0;
   }
 }

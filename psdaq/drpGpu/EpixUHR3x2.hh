@@ -53,10 +53,31 @@ public:
   unsigned     subframeCount()     const override { return NumSubFrames; }
   unsigned     firstDataSubframe() const override { return FirstDataTdest; }
 
+  // Bytes of raw data to reserve ahead of each reduce buffer's payload.  Non-zero
+  // only in pass-through mode, where the recorded data *is* the raw frame.  Fixed
+  // size, with zeros for any ASIC that is withheld or delivers short, so offline
+  // sees one shape whatever the ASIC configuration -- as the CPU DRP does.
+  size_t       rawSize()           const override
+  { return m_passthru ? NPixels * sizeof(uint16_t) : 0; }
+
+  // [NumAsics][AsicPixels], the same shape Drp::EpixUHR3x2 writes, so that offline
+  // sees one array whichever DRP produced the file
+  unsigned     rawShape(unsigned* shape) const override
+  {
+    if (!m_passthru)  return 0;
+    shape[0] = NumAsics;
+    shape[1] = AsicPixels;
+    return 2;
+  }
+
   // Launches the _event kernel template instantiated with this detector's
-  // fp16 -> fp32 policy, from this .so, so that it is inlined into the kernel
+  // per-element policy, from this .so, so that it is inlined into the kernel
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
+private:
+  // Record the panel's data as it arrives, uncalibrated and unreduced.  Set from
+  // the `raw` kwarg for now; stage 2 will derive it from the CALIB config alias.
+  bool m_passthru{false};
 };
 
   } // Gpu

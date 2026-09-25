@@ -84,6 +84,25 @@ public:
   // reordering of them is the Detector's business.
   virtual unsigned     firstDataSubframe() const { return 0; }
 
+  // Bytes to reserve in each reduce buffer, between the space kept for the
+  // datagram header and the reduced payload, for a block of raw data that is
+  // recorded alongside -- or instead of -- the reduced data.  Zero when the
+  // Detector wants none, which is the usual case.
+  //
+  // The recorder writes one contiguous block starting at the datagram header, so
+  // this space is skipped rather than written when the event carries no raw data.
+  // Keeping it here rather than after the payload means a Reducer's
+  // `&dataBuffers[idx * dataBufsCnt]` is unaffected by its presence, so no
+  // Reducer needs to know about raw data at all.
+  virtual size_t       rawSize()           const { return 0; }
+
+  // The shape of the raw block, for whoever writes its Xtc array description.
+  // Fills `shape` and returns the rank, or 0 when the Detector has no raw block or
+  // wants it described as a flat run of bytes.  Only the Detector knows how it
+  // laid the block out, so it is asked rather than the shape being inferred from
+  // rawSize().
+  virtual unsigned     rawShape(unsigned* shape) const { return 0; }
+
   // Record this detector's per-event kernel into the given stream.
   //
   // Host-side and called once per graph recording, so the virtual costs nothing.

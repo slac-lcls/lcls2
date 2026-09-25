@@ -231,8 +231,11 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
   if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
-  auto maxSize = memPool.reduceBufsReserved() + memPool.reduceBufsSize();
-  //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), maxSize);
+  // The buffer-to-buffer stride, which is every region a buffer comprises: the
+  // header reserve, the raw reserve (usually zero) and the reduced payload
+  auto rawSize = memPool.reduceBufsRaw();
+  auto maxSize = memPool.reduceBufsStride();
+  //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu + rawSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), rawSize, maxSize);
 
   auto& drp = static_cast<PGPDrp&>(m_drp);
 
@@ -386,7 +389,12 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       }
 
       cpSize  = headerSize;
-      buffer -= headerSize;             // Points to the start of the Dgram
+      // Step back over the raw block, if this Detector has one, so that the Dgram
+      // header abuts it and the whole thing -- header, raw, reduced payload -- is
+      // one contiguous region for a single write.  With no raw block this is the
+      // original arithmetic and the header abuts the reduced payload directly, so
+      // no gap appears in the file either way.
+      buffer -= rawSize + headerSize;   // Points to the start of the Dgram
       dgSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
     } else {  // Transitions
       cpSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!

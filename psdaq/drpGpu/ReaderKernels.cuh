@@ -78,6 +78,9 @@ struct EventKernelArgs
   size_t                       hdrBufsCnt;
   float*                       calibBuffers;  // [nBuffers * calibBufsCnt]
   size_t                       calibBufsCnt;
+  uint8_t*                     rawBuffers;    // The raw block ahead of each reduce
+  size_t                       rawStride;     // buffer, or nullptr/0 when the
+  size_t                       rawBufsCnt;    // Detector asked for none
   EvtBatcherSubFrames const*   subFrames;     // nullptr when the data isn't batched
   unsigned const*              evtStatus;     // An EventStatus, set by _waitForDMA
   uint64_t*                    stateMon;
@@ -90,6 +93,11 @@ struct EventPayload
   size_t                     size;       // DmaDsc::size, i.e. bytes of 'data'
   float*                     out;        // This event's calibrated buffer
   size_t                     outCnt;     // Elements available in 'out'
+  uint8_t*                   raw;        // This event's raw block, which sits just
+  size_t                     rawCnt;     // below its reduced payload; null/0 unless
+                                         // the Detector asked for one.  Written
+                                         // instead of 'out' by a pass-through
+                                         // policy, which does not calibrate.
   EvtBatcherSubFrames const* subFrames;  // The cached scan; null when not batched
   bool                       batched;    // The Detector presents sub-frames
   bool                       hasData;    // This event bears detector data, which
@@ -153,6 +161,12 @@ void _event(EventKernelArgs const args, Calib const calib)
                           dmaSize,
                           &args.calibBuffers[pblBufIdx * args.calibBufsCnt],
                           args.calibBufsCnt,
+                          // The raw block sits immediately below this event's
+                          // reduced payload, so it is reached by stepping back
+                          // from there rather than by indexing a base of its own
+                          args.rawBuffers ? &args.rawBuffers[pblBufIdx * args.rawStride]
+                                          : nullptr,
+                          args.rawBufsCnt,
                           args.subFrames,
                           batched,
                           hasData,

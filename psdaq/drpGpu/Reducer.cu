@@ -75,10 +75,19 @@ Reducer::Reducer(const Parameters&                  para,
   auto totalSize   = headerSize + payloadSize;
   if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
-  // Prepare buffers to receive the reduced data,
-  // prepended with some reserved space for the datagram header.
+  // Space for a block of raw data ahead of the reduced payload, if the Detector
+  // asked for one.  In pass-through mode the raw block *is* the recorded data and
+  // the reduced payload is unused, but it is still sized above so that a Reducer
+  // which does run -- the usual case -- has somewhere to write.
+  auto rawSize = det.rawSize();
+  if (rawSize)
+    logging::warning("Reserving %zu B per buffer for raw data ahead of the reduced payload",
+                     rawSize);
+
+  // Prepare buffers to receive the reduced data, prepended with reserved space for
+  // the datagram header and, when asked for, for raw data.
   // The application sees only the pointer to the data buffer.
-  m_pool.createReduceBuffers(payloadSize, headerSize);
+  m_pool.createReduceBuffers(payloadSize, headerSize, rawSize);
 
   // Set up the worker queues to fit all buffers
   if (m_para.nworkers) {
@@ -413,7 +422,9 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   auto dataBuffers  = m_pool.reduceBuffers_d();
   auto dataBufsRsvd = m_pool.reduceBufsReserved();
   auto dataBufsSz   = m_pool.reduceBufsSize();
-  auto dataBufsCnt  = (dataBufsRsvd + dataBufsSz) / sizeof(*dataBuffers);
+  // The stride is every region of a reduce buffer, not just the reserve plus
+  // payload, so that `&dataBuffers[idx * dataBufsCnt]` indexes buffer idx
+  auto dataBufsCnt  = m_pool.reduceBufsStride() / sizeof(*dataBuffers);
 
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
                "Reducer stream begin capture failed")) {

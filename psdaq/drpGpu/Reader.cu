@@ -517,6 +517,12 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto const calibBuffers_d = m_pool.calibBuffers_d();
   auto const calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers_d);
+  // The raw block, when the Detector asked for one, is the region just below each
+  // reduce buffer's payload.  Hand the kernel the first event's block and the
+  // buffer-to-buffer stride; the payload base itself is the Reducer's business.
+  auto const rawBufsCnt     = m_pool.reduceBufsRaw();
+  auto const rawStride      = m_pool.reduceBufsStride();
+  auto const rawBuffers_d   = rawBufsCnt ? m_pool.reduceBuffers_d() - rawBufsCnt : nullptr;
   auto const nRdrShft       = ffs(m_nReaders) - 1; // log2(nReaders)
 
   // Determine how many processing resources to reserve for the Reader kernel
@@ -578,6 +584,9 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                              hostWrtBufsCnt,
                              calibBuffers_d,
                              calibBufsCnt,
+                             rawBuffers_d,
+                             rawStride,
+                             rawBufsCnt,
                              m_subFrames[reader].d,
                              m_evtStatus_d[reader],
                              m_metrics.states[reader]};

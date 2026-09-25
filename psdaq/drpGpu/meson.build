@@ -264,6 +264,22 @@ cuda_inc_dir = include_directories([
     ],
   )
 
+  # Not a reducer: the shim that lets the recorder handle unreduced pass-through
+  # data.  See PassthruShim.hh.
+  PassthruShim_lib = shared_library('PassthruShim',
+    'PassthruShim.cu',
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    link_with: [],
+    cuda_args: cuda_args,
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      nlohmann_json_dep,
+    ],
+  )
+
   LcReducer_lib = shared_library('LcReducer',
     'LcReducer.cu',
     include_directories: [
