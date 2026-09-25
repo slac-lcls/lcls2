@@ -43,12 +43,14 @@ The production clones are only **read**. All the work happens in the separate **
 ```bash
 set -e
 LOG_ROOT="${LOG_ROOT:-/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs}"
-JUNK_PATTERN='(^|/)(\.[^/]*\.sw[a-p]|[^/]*~|\.#[^/]*|#[^/]*#)$'
+JUNK_PATTERN='(^|/)(\.[^/]*\.sw[a-p]|[^/]*~|\.#[^/]*|#[^/]*#|[^/]*\.out)$'
 export GIT_OPTIONAL_LOCKS=0
 ```
 
 - **`set -e`** stops the script on the first failing command, except in the per-clone section (see step 7).
-- **`JUNK_PATTERN`** matches editor swap and backup files: vim's `.name.swp`, emacs's `name~`, `.#name` and `#name#`. These show up whenever someone has a file open in production, and they are never synced.
+- **`JUNK_PATTERN`** matches files that are never synced:
+  - editor swap and backup files (vim's `.name.swp`, emacs's `name~`, `.#name` and `#name#`), which show up whenever someone has a file open in production
+  - `*.out` files: saved command output. The first case found was `junk.out`, a 632 KB saved `git diff` in one of tmo's clones. Neither repo tracks any `*.out` file, so this can't hide a real change.
 - **`GIT_OPTIONAL_LOCKS=0`**: even "read-only" git commands like `git status` quietly rewrite a repo's index file to cache file timestamps. This setting turns that off, so the script never writes anything into the production clones and never holds a lock that could get in the way of someone working there.
 
 #### Failure reports

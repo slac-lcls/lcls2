@@ -31,7 +31,7 @@ PREFIX=lcls                 # production clones are $REL/<hutch>/$PREFIX*
 REL="${REL:-/sdf/group/lcls/ds/ana/sw/conda2/rel}"
 
 # Hutches run by default. Add a hutch here once its production clones are in $REL/<hutch>.
-HUTCHES=(xpp)
+HUTCHES=(mfx rix tmo txi ued xpp)
 
 LOG_BASE="${LOG_BASE:-$REL/cron_logs}"
 LOG_KEEP_DAYS=90            # run logs older than this are deleted

@@ -35,7 +35,7 @@ PREFIX=lcls
 
 REL="${REL:-/sdf/group/lcls/ds/ana/sw/conda2/rel}"
 
-HUTCHES=(xpp)
+HUTCHES=(mfx rix tmo txi ued xpp)
 
 LOG_BASE="${LOG_BASE:-$REL/cron_logs}"
 LOG_KEEP_DAYS=90

@@ -43,8 +43,9 @@ set -e
 
 LOG_ROOT="${LOG_ROOT:-/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs}"
 
-# Editor swap/backup files that are never synced (vim .x.swp, emacs x~ / .#x / #x#)
-JUNK_PATTERN='(^|/)(\.[^/]*\.sw[a-p]|[^/]*~|\.#[^/]*|#[^/]*#)$'
+# Files that are never synced: editor swap/backup files (vim .x.swp, emacs x~ / .#x / #x#)
+# and saved command output (*.out, e.g. a git diff dump). Neither repo tracks any *.out file.
+JUNK_PATTERN='(^|/)(\.[^/]*\.sw[a-p]|[^/]*~|\.#[^/]*|#[^/]*#|[^/]*\.out)$'
 
 # Don't let read-only git commands (e.g. git status) rewrite the production clones' index
 export GIT_OPTIONAL_LOCKS=0
@@ -337,7 +338,7 @@ sync_repo() {
 
     for file in "${tracked[@]}" "${untracked[@]}"; do
         if [[ "$file" =~ $JUNK_PATTERN ]]; then
-            echo ".. $file skipped (editor swap/backup file)"
+            echo ".. $file skipped (matches JUNK_PATTERN: swap/backup/output file)"
             continue
         fi
         want["$file"]=1
