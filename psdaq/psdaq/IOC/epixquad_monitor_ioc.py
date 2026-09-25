@@ -621,6 +621,25 @@ class EpixQuadBoard(pyrogue.Root):
                             break
                     root.SystemRegs.AdcBypass.set(False)
                     data['logs']['info'].append("Reset of asic mask complete")
+                # check if the adc test is failed
+                adc_fail = root.SystemRegs.AdcTestFailed.get()
+                if adc_fail:
+                    data['logs']['warn'].append("Board boot issue: adc test failed - attempting to rerun")
+                    root.SystemRegs.TrigEn.set(False)
+                    root.SystemRegs.AdcReqStart.set(True)
+                    time.sleep(0.1)
+                    root.SystemRegs.AdcReqStart.set(False)
+                    start = time.time()
+                    timeout = 1.0 # wait max one second
+                    while root.SystemRegs.AdcTestDone.get() != 1:
+                        time.sleep(0.1)
+                        if time.time() - start > timeout:
+                            data['logs']['warn'].append("Wait for AdcTestDone timed out")
+                            break
+                    adc_fail = root.SystemRegs.AdcTestFailed.get()
+                    data['logs']['info'].append(f"AdcTest completed with result: AdcTestFailed = {adc_fail}")
+                    root.SystemRegs.TrigEn.set(True)
+
 
                 # configure the monitoring registers
                 root.EpixQuadMonitor.MonitorEn.set(flag)
