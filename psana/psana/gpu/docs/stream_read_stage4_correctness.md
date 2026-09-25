@@ -1,5 +1,10 @@
 # Stage 4 follow-up: controller lifecycle and transition drains
 
+Subsequent validation: [the ownership acceptance matrix](stream_read_ownership_acceptance.md)
+adds 18 real-GPU retained-view, tight-budget, and delayed-consumer cases;
+all 38 new/existing A100 cases passed. The scope below records the earlier
+transition-specific checkpoint.
+
 2026-09-25, branch `codex/psana2-gpu-bulk-batched-integration`, based on
 `c8f6b6cdf` plus the existing working-tree bulk-target and benchmark changes.
 
