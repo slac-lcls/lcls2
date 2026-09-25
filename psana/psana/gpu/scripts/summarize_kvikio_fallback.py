@@ -1,5 +1,6 @@
 """Audit actual fallback triplets and partition the read interval by occupancy."""
 import json
+from bisect import bisect_right
 from pathlib import Path
 import statistics
 import sys
@@ -52,7 +53,7 @@ def occupancy(records, batches):
     """
     starts = np.array([b['issued_ns'] for b in batches], dtype=np.int64)
     ends = np.array([b['wait_end'] for b in batches], dtype=np.int64)
-    assert np.all(starts[1:] >= ends[:-1])
+    assert np.all(ends >= starts)
     n = len(records)
     points = np.concatenate((records['start'], records['end'], starts, ends)).astype(np.int64)
     category = np.concatenate((records['kind'] != 1, records['kind'] != 1,
@@ -63,12 +64,47 @@ def occupancy(records, batches):
     points, category, delta = points[order], category[order], delta[order]
     live = [np.cumsum(np.where(category == k, delta, 0))[:-1] for k in range(3)]
     duration = np.diff(points)
-    inside = live[2] == 1
+    inside = live[2] > 0
     labels = {0: 'neither', 1: 'POSIX_only', 2: 'H2D_or_wait_only', 3: 'POSIX_and_H2D_or_wait'}
     state = (live[0] > 0).astype(np.int8) + 2 * (live[1] > 0)
     result = {label: int(duration[inside & (state == key)].sum()) / 1e9 for key, label in labels.items()}
-    assert abs(sum(result.values()) - int((ends-starts).sum())/1e9) < 1e-6
+    assert abs(sum(result.values()) - int(duration[inside].sum())/1e9) < 1e-6
     return result
+
+
+def attribute_ranges(meta, reads):
+    """Match native operations to unique physical ranges, independent of dispatch.
+
+    The native global batch tag indicates submission progress when a worker
+    starts, so it cannot identify the owner when multiple groups are pending.
+    This benchmark reads each file range once. Reject duplicates, gaps, or
+    overlapping requested ranges instead of guessing attribution.
+    """
+    requests = {}
+    for b in meta['batches']:
+        for r in b['ranges']:
+            requests.setdefault(r['file'], []).append((r['offset'], r['offset']+r['size'], b['batch']))
+    for path, ranges in requests.items():
+        ranges.sort()
+        assert all(a[1] <= b[0] for a, b in zip(ranges, ranges[1:])), path
+    starts = {path: [r[0] for r in ranges] for path, ranges in requests.items()}
+    coverage = {(path, i): [] for path, ranges in requests.items() for i in range(len(ranges))}
+    assigned = []
+    for read in reads:
+        path = meta['fd_paths'][str(int(read['fd']))]
+        offset, size = int(read['offset']), int(read['size'])
+        i = bisect_right(starts[path], offset)-1
+        assert i >= 0
+        lo, hi, batch = requests[path][i]
+        assert lo <= offset and offset+size <= hi
+        coverage[path, i].append((offset, offset+size))
+        assigned.append(batch)
+    for (path, i), pieces in coverage.items():
+        pieces.sort()
+        lo, hi, _ = requests[path][i]
+        assert pieces and pieces[0][0] == lo and pieces[-1][1] == hi
+        assert all(a[1] == b[0] for a, b in zip(pieces, pieces[1:]))
+    return np.asarray(assigned, dtype=np.int64)
 
 
 def audit_trace(metadata):
@@ -98,14 +134,19 @@ def audit_trace(metadata):
     start = np.array([b['issued_ns'] for b in batches], dtype=np.uint64)
     end = np.array([b['wait_end'] for b in batches], dtype=np.uint64)
     assert np.all((data['batch'] >= 1) & (data['batch'] <= len(batches)))
-    assert np.all(data['start'] >= start[data['batch']-1])
-    assert np.all(data['end'] <= end[data['batch']-1])
+    assigned = (attribute_ranges(meta, reads) if meta.get('attribution') == 'file_ranges'
+                else reads['batch'].astype(np.int64))
+    for rows in (reads, copies, syncs):
+        assert np.all(rows['start'] >= start[assigned-1])
+        assert np.all(rows['end'] <= end[assigned-1])
     expected_bytes = sum(b['requested_bytes'] for b in batches)
-    expected_ops = sum((r['size']+1048575)//1048576 for b in batches for r in b['ranges'])
+    task_size = int(meta.get('task_size', 1 << 20))
+    assert task_size > 0
+    expected_ops = sum((r['size']+task_size-1)//task_size for b in batches for r in b['ranges'])
     assert int(reads['size'].sum()) == int(copies['size'].sum()) == expected_bytes
     assert len(reads) == expected_ops, (len(reads), expected_ops)
     for b in batches:
-        selected = reads[reads['batch'] == b['batch']]
+        selected = reads[assigned == b['batch']]
         assert int(selected['size'].sum()) == b['requested_bytes']
     operations = {}
     for label, rows in [('POSIX', reads), ('H2D_API', copies), ('stream_wait', syncs)]:
@@ -114,12 +155,14 @@ def audit_trace(metadata):
             mean_ms=float(durations.mean()), p50_ms=float(np.median(durations)),
             p95_ms=float(np.percentile(durations, 95)), max_ms=float(durations.max()))
     sizes, counts = np.unique(reads['size'], return_counts=True)
+    wall = occupancy(data, batches)
     result = dict(metadata=str(path), batches=len(batches), api_requests=sum(b['requests'] for b in batches),
-        bytes=expected_bytes, read_interval_s=int((end-start).sum())/1e9,
+        bytes=expected_bytes, read_interval_s=sum(wall.values()),
+        read_interval_sum_s=int((end-start).sum())/1e9,
         issue_s=sum(b['issue_end']-b['issued_ns'] for b in batches)/1e9,
         before_wait_s=sum(b['wait_begin']-b['issue_end'] for b in batches)/1e9,
         completion_wait_s=sum(b['wait_end']-b['wait_begin'] for b in batches)/1e9,
-        operations=operations, wall_occupancy_s=occupancy(data, batches),
+        operations=operations, wall_occupancy_s=wall,
         workers=len(np.unique(reads['tid'])), size_counts={str(int(s)): int(n) for s,n in zip(sizes,counts)},
         file_concurrency=file_concurrency(data))
     if 'caller_tid' in meta:

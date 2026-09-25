@@ -9,6 +9,7 @@ from .gpu_allocation import owned_empty, allocation_requirement, backing_capacit
 
 from .gpu_read_plan import (
     LogicalDgram, ReadPlan, ReadRange, ResolvedDgram, ResolvedFile, build_read_plan,
+    _uint64, validate_read_descriptors,
 )
 
 
@@ -245,15 +246,12 @@ class KvikioGpuReader:
             del buf
 
     def issue_group(self, group, *, slot_id):
-        """Read one Stage 1 group into an independently leased reader slot.
+        """Submit one already-planned, contiguous group without legacy replanning.
 
-        Opt-in adapter for the group pool. Keep the existing issue/wait path's
-        generation, budget, file ownership and failure-draining protections.
-        This does not change the production scheduler's issue_batch calls.
+        Shared descriptor validation and submission preserve byte bounds,
+        duplicate rejection, buffer ownership, and failure draining. Each call
+        remains its own read fence; groups are never merged here.
         """
-        from types import SimpleNamespace
-        from .gpu_batch import GpuReadDesc
-        from .gpu_file_epochs import FileEpoch
         from .gpu_budget import allocation_growth_bytes, GpuMemoryPressureError
 
         if self._closed or self._failure is not None:
@@ -262,25 +260,41 @@ class KvikioGpuReader:
             raise ValueError('group reads require the adjacent-range reader')
         if not 0 <= slot_id < self._n_slots:
             raise IndexError(slot_id)
-        cursor = group.file_offset
+        size = _uint64('group.size', group.size)
+        offset = _uint64('group.file_offset', group.file_offset)
+        validate_read_descriptors(group.dgrams, size)
+        cursor = offset
         for d in group.dgrams:
             if (d.file != group.file or d.stream_id != group.stream_id
                     or d.file_offset != cursor or d.size < 0
                     or (d.size == 0 and len(group.dgrams) != 1)):
                 raise ValueError('input group must contain contiguous dgrams from one stream/file')
             cursor += d.size
-        if not group.dgrams or cursor - group.file_offset != group.size:
+        if not group.dgrams or cursor - offset != size:
             raise ValueError('input group byte count mismatch')
-        growth = allocation_growth_bytes(self.allocation_requirements(group.size, slot_id))
+        growth = allocation_growth_bytes(self.allocation_requirements(size, slot_id))
         if self._budget is not None and growth > self._budget.allocation_available():
             raise GpuMemoryPressureError(f'input group needs {growth} allocation bytes')
-        descs = tuple(GpuReadDesc(d.batch_event_index, d.timestamp, d.stream_id,
-                                 d.file_offset, d.size, d.smd_size, 1)
-                      for d in group.dgrams)
-        view = SimpleNamespace(iter_read_descs=lambda _: iter(descs))
-        epochs = {(d.batch_event_index, d.stream_id): FileEpoch(group.file, group.fence_id)
-                  for d in group.dgrams}
-        return self.issue_batch(view, None, slot_id=slot_id, file_epochs=epochs)
+        self._check_slot_available(slot_id)
+        ranges = (ReadRange(group.file, offset, size, 0),) if size else ()
+        desc_table = np.empty((len(group.dgrams), DESC_NCOLS), dtype=np.uint64)
+        logical = []
+        for row, d in zip(desc_table, group.dgrams):
+            device_offset = d.file_offset - offset if d.size else 0
+            row[:] = (d.batch_event_index, d.stream_id, d.timestamp,
+                      d.file_offset, d.size, device_offset)
+            logical.append(LogicalDgram(d, 0 if d.size else None, device_offset))
+        # Preserve plan metadata for diagnostics without sorting, coalescing,
+        # converting descriptors, or rebuilding file-epoch maps.
+        plan = ReadPlan(0, 0, ranges, tuple(logical), size, size, size)
+        self._latest_files[group.stream_id] = group.file
+        return self._submit_read(desc_table, ranges, size, slot_id, plan)
+
+    def _check_slot_available(self, slot):
+        if any(p.slot_id == slot for p in self._pending):
+            raise RuntimeError(f"GPU input slot {slot} still has pending I/O")
+        if self._input_holds.get(slot, 0):
+            raise RuntimeError(f"GPU raw buffer {slot} is owned by an input window")
 
     def issue_batch(self, gpu_view, bd_dm, slot_id=None, *, file_epochs=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
@@ -314,10 +328,7 @@ class KvikioGpuReader:
         else:
             slot = self._slot_idx % self._n_slots
             self._slot_idx += 1
-        if any(p.slot_id == slot for p in self._pending):
-            raise RuntimeError(f"GPU input slot {slot} still has pending I/O")
-        if self._input_holds.get(slot, 0):
-            raise RuntimeError(f"GPU raw buffer {slot} is owned by an input window")
+        self._check_slot_available(slot)
         existing = self._slot_bufs[slot]
         old_size = int(existing.nbytes) if existing is not None else 0
         capacity = (max(old_size, self._budget.allocation_available()) if self._budget is not None
@@ -351,6 +362,11 @@ class KvikioGpuReader:
                     ranges.append(ReadRange(identity, desc.offset, desc.size,
                                             int(row[DESC_DEVICE_OFFSET])))
             total_nbytes = sum(d.size for d in read_descs)
+        return self._submit_read(desc_table, ranges, total_nbytes, slot, plan)
+
+    def _submit_read(self, desc_table, ranges, total_nbytes, slot, plan):
+        """Shared allocation, file ownership, submission and failure draining."""
+        existing = self._slot_bufs[slot]
         self._ensure_slot_buffer(slot, total_nbytes)
         data_gpu = self._slot_bufs[slot][:total_nbytes]
         if os.environ.get('PSANA_GPU_MEM_DEBUG'):

@@ -69,7 +69,8 @@ def no_calibration_services(constants_path=None):
 def diagnostic_hooks(variant, include_jf=False):
     from psana.gpu.gpu_kvikio_read import KvikioGpuReader
     from psana.psexp.event_manager import EventManager
-    issue, wait, read = KvikioGpuReader.issue_batch, KvikioGpuReader.wait_batch, EventManager._read
+    issue_name = '_submit_read' if hasattr(KvikioGpuReader, '_submit_read') else 'issue_batch'
+    issue, wait, read = getattr(KvikioGpuReader, issue_name), KvikioGpuReader.wait_batch, EventManager._read
 
     def issued(self, *args, **kwargs):
         start = time.perf_counter()
@@ -101,7 +102,8 @@ def diagnostic_hooks(variant, include_jf=False):
             counts['cpu_bd_reads'] += 1
         return read(self, *args, **kwargs)
     if variant != 'A' or include_jf:
-        KvikioGpuReader.issue_batch, KvikioGpuReader.wait_batch = issued, waited
+        setattr(KvikioGpuReader, issue_name, issued)
+        KvikioGpuReader.wait_batch = waited
     EventManager._read = cpu_read
 
 
