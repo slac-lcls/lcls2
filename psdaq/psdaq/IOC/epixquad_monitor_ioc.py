@@ -1,41 +1,70 @@
-import sys
+"""
+epixquad_monitor_ioc.py
+
+Read the ePixQuad environmental monitor stream via rogue and publish it as
+EPICS PVs.
+
+The ePixQuad sends monitor packets on a dedicated PGP virtual channel carrying
+38 slow-ADC/I2C readings: sensor and electronics temperatures, humidity, LDO
+currents and temperatures, power-supply rails and optical transceiver
+diagnostics.  See CHANNEL_DEFS below for the full channel mapping.
+
+Unlike the ePix100, the ePixQuad also needs a small "enable" packet written back
+on the same virtual channel to start and stop the stream, in addition to the
+register configuration.
+
+Some of the readings (the thermistor sensor temperatures and the power-supply
+analog/digital values) are produced by the on-board MicroBlaze.  On detectors
+whose MicroBlaze is not functional, pass --no-microblaze: those channels are
+then published as 0.0 and excluded from the packet and temperature checks.
+
+Requirements (same environment as the DAQ epixquad configuration):
+    rogue  pyrogue  ePixQuad  caproto
+
+Usage examples:
+    # publish decoded values as EPICS PVs under the default prefix:
+    epixquad_monitor_ioc
+
+    # non-default prefix and hardware, with a dead MicroBlaze:
+    epixquad_monitor_ioc --prefix DET:EPIX:CMP004: --dev /dev/datadev_1 --no-microblaze
+
+The monitor stream and auto trigger are enabled by writing 1 to the SET_MONITOR
+PV (this needs exclusive SRP access, so no DAQ can be configuring the detector
+at the same time).
+"""
+
 import time
-import struct
-import logging
-import threading
 import numpy as np
-import multiprocessing as mp
-from typing import Any, Optional
+from typing import Any, Dict
+
 # rougue imports
 from psdaq.utils import enable_epix_quad
 import ePixQuad
 import rogue
 import rogue.hardware.axi
-import rogue.interfaces.stream
 import rogue.protocols.srp
 import pyrogue
 # caproto imports
 import caproto as ca
-from caproto import config_caproto_logging
 from caproto.server import (
-        PVGroup, PvpropertyDouble,
-        PvpropertyInteger,
-        PvpropertyString,
-        PvpropertyChar,
         PvpropertyEnum,
-        template_arg_parser,
         pvproperty,
+        template_arg_parser,
         run
 )
-from caproto.server.records import (
-        AoFields,
-        AiFields,
-        LongoutFields,
-        LonginFields,
-        BiFields,
-        StringinFields,
-        WaveformFields,
-        MbbiFields
+from caproto.server.records import BiFields
+# shared monitoring IOC code
+from psdaq.IOC.epix_monitor_base import (
+        EpixMonitoringIOCBase,
+        MonitorPacket,
+        add_common_args,
+        counter_pv,
+        current_pv,
+        humidity_pv,
+        setup_logging,
+        string_pv,
+        temp_pv,
+        voltage_pv,
 )
 
 
@@ -134,7 +163,7 @@ class EpixQuadMonitorUtils:
         return TthermK
 
 
-CHANNEL_DEFS: dict[int, Any] = {
+CHANNEL_DEFS: Dict[int, Any] = {
     0: dict(
         name="SHT31 Humidity",
         unit="%",
@@ -366,7 +395,7 @@ CHANNEL_DEFS: dict[int, Any] = {
 }
 
 
-class EpixQuadMonitorPacket:
+class EpixQuadMonitorPacket(MonitorPacket):
     """
     One ePixQuad monitor stream packet.
 
@@ -376,164 +405,18 @@ class EpixQuadMonitorPacket:
       ...
       word[53]        : channel 37
 
-    Channel mapping (reconstructed from old C++ IOC/AMI1):
-      ch  0  (word[16])  SHT31 Humidity       %
-      ch  1  (word[17])  SHT31 Temp.          °C
-      ch  2  (word[18])  NCT218 Local Temp.   °C
-      ch  3  (word[19])  NCT218 Remote Temp.  °C
-      ch  4  (word[20])  ASIC_A0_2V5 Curr.    A
-      ch  5  (word[21])  ASIC_A1_2V5 Curr.    A
-      ch  6  (word[22])  ASIC_A2_2V5 Curr.    A
-      ch  7  (word[23])  ASIC_A3_2V5 Curr.    A
-      ch  8  (word[24])  ASIC_D0_2V5 Curr.    mA
-      ch  9  (word[25])  ASIC_D1_2V5 Curr.    mA
-      ch 10  (word[26])  Therm0 Temp.         °C
-      ch 11  (word[27])  Therm1 Temp.         °C
-      ch 12  (word[28])  PwrDigCurr           A
-      ch 13  (word[29])  PwrDigVin            V
-      ch 14  (word[30])  PwrDigTemp           °C
-      ch 15  (word[31])  PwrAnaCurr           A
-      ch 16  (word[32])  PwrAnaVin            V
-      ch 17  (word[33])  PwrAnaTemp           °C
-      ch 18  (word[34])  A0_2_5V_H Temp.      °C
-      ch 19  (word[35])  A0_2_5V_L Temp.      °C
-      ch 20  (word[36])  A1_2_5V_H Temp.      °C
-      ch 21  (word[37])  A1_2_5V_L Temp.      °C
-      ch 22  (word[38])  A2_2_5V_H Temp.      °C
-      ch 23  (word[39])  A2_2_5V_L Temp.      °C
-      ch 24  (word[40])  A3_2_5V_H Temp.      °C
-      ch 25  (word[41])  A3_2_5V_L Temp.      °C
-      ch 26  (word[42])  D0_2_5V Temp.        °C
-      ch 27  (word[43])  D1_2_5V Temp.        °C
-      ch 28  (word[44])  A0_1_8V Temp.        °C
-      ch 29  (word[45])  A1_1_8V Temp.        °C
-      ch 30  (word[46])  A2_1_8V Temp.        °C
-      ch 31  (word[47])  PcbAnaTemp0          °C
-      ch 32  (word[48])  PcbAnaTemp1          °C
-      ch 33  (word[49])  PcbAnaTemp2          °C
-      ch 34  (word[50])  TrOptTemp            °C
-      ch 35  (word[51])  TrOptVcc             V
-      ch 36  (word[52])  TrOptTxPwr           uW
-      ch 37  (word[53])  TrOptRxPwr           uW
-
-    Values are uint16.  Channels 38-63 are unused/unconnected.
-    Negative readings on startup or unconnected sensors are normal.
+    See CHANNEL_DEFS above for the channel mapping.  Values are uint16;
+    channels 38-63 are unused/unconnected.
     """
 
-    N_WORDS = 80
+    STRUCT_FMT = "<80H"
+    HEADER_WORDS = 16
     N_CHANNELS = 38
-    HEADER_BYTES = 16
-    PACKET_BYTES = N_WORDS * 2  # 68
-
-    def __init__(self, data: bytes):
-        if len(data) < self.PACKET_BYTES:
-            raise ValueError(
-                f"Packet too short: {len(data)} B  (expected {self.PACKET_BYTES} B)"
-            )
-        self.raw = struct.unpack_from("<80H", data)
+    CHANNEL_DEFS = CHANNEL_DEFS
 
     @property
-    def counter(self) -> int:
-        return self.raw[0]
-
-    @property
-    def header(self) -> tuple[int, ...]:
-        return self.raw[0:self.HEADER_BYTES]
-
-    def channel_raw(self, ch: int) -> int:
-        """Raw signed int32 for channel ch (0–15)."""
-        return self.raw[ch + self.HEADER_BYTES]
-
-    def channel_value(self, ch: int) -> Optional[float]:
-        """Converted physical value for a defined channel, or None if undefined."""
-        if ch not in CHANNEL_DEFS:
-            return None
-        return CHANNEL_DEFS[ch]["conv"](self.raw[ch + self.HEADER_BYTES])
-
-    def as_dict(self) -> dict:
-        """Return {sensor_name: physical_value} for all defined channels."""
-        return {
-            defn["name"]: defn["conv"](self.raw[ch + self.HEADER_BYTES])
-            for ch, defn in CHANNEL_DEFS.items()
-        }
-
-    def pv_data(self) -> dict:
-        """Return {pv_name: physical_value} for all defined channels."""
-        return {
-            defn["pv_signal"]: defn["conv"](self.raw[ch + self.HEADER_BYTES])
-            for ch, defn in CHANNEL_DEFS.items()
-        }
-
-    def __str__(self) -> str:
-        lines = [f"  counter : {self.counter}"]
-        for ch, defn in CHANNEL_DEFS.items():
-            raw = self.raw[ch + self.HEADER_BYTES]
-            val = defn["conv"](raw)
-            lines.append(
-                f"  {defn['name']:<28s}: {val:8.2f} {defn['unit']}  (raw={raw})"
-            )
-        return "\n".join(lines)
-
-
-class MonitorStreamWriter(rogue.interfaces.stream.Master):
-    def __init__(self, vc: int):
-        super().__init__()
-        self.vc = vc
-        self.n_sent = 0
-        self.n_errors = 0
-        self.log = logging.getLogger(f"caproto.{__name__}")
-
-    def enable(self, flag):
-        payload = struct.pack("<4I", 0, flag, 0, 0)
-        size = len(payload)
-        self.log.info(f"[VC={self.vc}] sending enable packet #{self.n_sent}: {payload}")
-        frame = self._reqFrame(size, True)
-        with frame.lock():
-            frame.write(payload, 0)
-            frame.setChannel(self.vc)
-        try:
-            self._sendFrame(frame)
-            self.n_sent += 1
-        except Exception as exc:
-            self.n_errors += 1
-            self.log.error(f"[VC={self.vc}] enable packet write error: {exc}  ({payload})")
-            self.log.exception(f"  exception traceback:")
-
-
-class MonitorStreamReader(rogue.interfaces.stream.Slave):
-    def __init__(self, vc: int, queue=None):
-        super().__init__()
-        self.vc = vc
-        self.queue = queue
-        self.n_received = 0
-        self.n_errors = 0
-        self.last_packet = None
-        self.log = logging.getLogger(f"caproto.{__name__}")
-
-    def _acceptFrame(self, frame: rogue.interfaces.stream.Frame):
-        with frame.lock():
-            size = frame.getPayload()
-            buf = bytearray(size)
-            frame.read(buf, 0)
-
-        self.n_received += 1
-        try:
-            pkt = EpixQuadMonitorPacket(bytes(buf))
-            self.last_packet = pkt
-
-            self.queue.put(pkt.pv_data())
-
-            self.log.info(
-                f"\n[VC={self.vc}] packet #{self.n_received}  ({size} B  "
-                f"counter=0x{pkt.counter:08x})"
-            )
-            self.log.debug(pkt)
-        except Exception as exc:
-            self.n_errors += 1
-            self.log.error(f"[VC={self.vc}] decode error: {exc}  ({size} B raw)")
-            if size <= 128:
-                self.log.error(f"  raw bytes: {buf.hex()}")
-            self.log.exception(f"  exception traceback:")
+    def header(self) -> tuple:
+        return self.raw[0:self.HEADER_WORDS]
 
 
 class EpixQuadBoard(pyrogue.Root):
@@ -645,7 +528,7 @@ class EpixQuadBoard(pyrogue.Root):
                 root.EpixQuadMonitor.MonitorEn.set(flag)
                 data['logs']['info'].append(f"set EpixQuadMonitor.MonitorEn to {flag}")
                 root.EpixQuadMonitor.TrigPrescaler.set(mon_prescale)
-                data['logs']['info'].append(f"set EpixQuadMonitor.TrigPrescaler to {flag}")
+                data['logs']['info'].append(f"set EpixQuadMonitor.TrigPrescaler to {mon_prescale}")
                 root.SystemRegs.TrigEn.set(1)
                 data['logs']['info'].append("set SystemRegs.TrigEn to 1")
                 root.SystemRegs.TrigSrcSel.set(3)
@@ -661,26 +544,39 @@ class EpixQuadBoard(pyrogue.Root):
             queue.put(data)
 
 
-class EpixQuadMonitoringIOC(PVGroup):
+class EpixQuadMonitoringIOC(EpixMonitoringIOCBase):
     """
-    A simple EPICS IOC defining a single integer process variable.
+    EPICS IOC publishing the ePixQuad environmental monitor readings.
     """
-    def __init__(self, *args, dev, lane, vc, regvc, has_microblaze, **kwargs):
-        self.dev = dev
-        self.lane = lane
-        self.vc = vc
-        self.dma_dest = lane << 8 | vc
-        self.regvc = regvc
+
+    board_cls = EpixQuadBoard
+    packet_cls = EpixQuadMonitorPacket
+    uses_enable_packet = True
+
+    # channels whose values come from the MicroBlaze, and so are meaningless on
+    # detectors where it is not functioning
+    microblaze_fixup_channels = {"temp1", "temp2", "ana_temp", "dig_temp"}
+    # sensor temps, with the reading below which the sensor is considered invalid
+    stemp_channels = {
+            ("temp1", -273.15),
+            ("temp2", -273.15),
+    }
+    # electronics temps, with the range outside which the reading is invalid
+    etemp_channels = {
+            ("temp3", -45.0, 130),
+            ("nct_loc_temp", 0.0, 200),
+            ("nct_fpga_temp", 0.0, 200),
+            ("ana_temp", 0.0, 200),
+            ("dig_temp", 0.0, 200),
+            ("tropt_temp", 0.0, 200),
+    }
+
+    def __init__(self, *args, has_microblaze, **kwargs):
         self.has_microblaze = has_microblaze
-        self.mon_reader = None
-        self.mon_writer = None
-        self.lastmontime = None
-        self.trigrateconv = 1000
         super().__init__(*args, **kwargs)
-        self.log = logging.getLogger(f"caproto.{__name__}")
 
     @property
-    def monitor_prescale(self):
+    def monitor_setting(self):
         """
         Monitor rate converted to a prescale value. Set to a minimum of 1.
         E.g.: a prescale of 10 means the monitoring will fire on every tenth trigger
@@ -689,13 +585,6 @@ class EpixQuadMonitoringIOC(PVGroup):
         if prescale == 0:
             prescale = 1
         return prescale
-
-    @property
-    def auto_trigger_period(self):
-        """
-        Auto trigger rate converted to period
-        """
-        return int(self.trigrateconv/self.set_auto_trig_rate.value)
 
     def check_packet(self, data):
         """
@@ -706,6 +595,14 @@ class EpixQuadMonitoringIOC(PVGroup):
             # only check these if the detector has a working microblaze
             channels.extend(["ana_temp", "dig_temp", "ana_in_v", "dig_in_v"])
         return all([data.get(d, 0) for d in channels])
+
+    def fixup_value(self, name, value):
+        """
+        Zero out the garbage values from a non-functioning microblaze.
+        """
+        if (not self.has_microblaze) and (name in self.microblaze_fixup_channels):
+            return 0.0
+        return value
 
     def check_temps(self, data):
         """
@@ -738,584 +635,130 @@ class EpixQuadMonitoringIOC(PVGroup):
 
         return stemp, etemp
 
+    async def update_extra(self, data):
+        """
+        Publish the derived sensor/electronics temperature validity flags.
+        """
+        stemp, etemp = self.check_temps(data)
+        await self.stemp_ok.write(value=stemp)
+        await self.etemp_ok.write(value=etemp)
 
-    def configure(self, flag, mon_period, trig_period):
-        self.log.debug(f"Starting register process: dev - {self.dev}, lane,vc - {self.lane},{self.regvc}")
-        queue = mp.Queue()
-        proc = mp.Process(target=EpixQuadBoard.configure,
-                          args=(self.dev, self.lane, self.regvc, flag, mon_period, trig_period, queue))
-        proc.start()
-
-        data = queue.get()
-        # wait for response from process
-        proc.join()
-
-        if data:
-            self.log.debug("Register process has exitted successfully")
-        else:
-            self.log.error(f"Register process has failed!")
-
-        # send the special monitor enable packet
-        if self.mon_writer is not None:
-            self.mon_writer.enable(flag)
-
-        return data
-
-    async def __ainit__(self, async_lib):
-        self.async_lib = async_lib
-        queue = async_lib.ThreadsafeQueue()
-        self.log.info(f"Initializing monitor stream dma: dev - {self.dev}, dest,lane,vc - {self.dma_dest},{self.lane},{self.vc}")
-        dma = rogue.hardware.axi.AxiStreamDma(self.dev, self.dma_dest, True)
-        self.mon_reader = MonitorStreamReader(vc=self.vc, queue=queue)
-        self.mon_writer = MonitorStreamWriter(vc=self.vc)
-        pyrogue.streamConnect(dma, self.mon_reader)
-        pyrogue.streamConnect(self.mon_writer, dma)
-
-        try:
-            count = 0
-            errcount = 0
-            self.lastmontime = time.time()
-            while True:
-                data = await queue.async_get()
-                if self.check_packet(data):
-                    self.lastmontime= time.time()
-                    for name, value in data.items():
-                        if hasattr(self, name):
-                            # fixup up garbage values if microblaze is not functioning
-                            if (not self.has_microblaze) and (name in self.microblaze_fixup_channels):
-                                value = 0.0
-                            await getattr(self, name).write(value=value)
-                    stemp, etemp = self.check_temps(data)
-                    await self.stemp_ok.write(value=stemp)
-                    await self.etemp_ok.write(value=etemp)
-                    count += 1
-                    await self.moncnt.write(value=count)
-                else:
-                    self.log.error(f"Bad monitoring packet returned by the detector: {data}")
-                    errcount += 1
-                    await self.monerrcnt.write(value=errcount)
-        except Exception:
-            self.log.exception("Server monitoring queue reader encountered an error:")
-        finally:
-            self.log.info("Server monitoring queue reader exitted.")
-
-    # This creates a PV named 'simple:number' with a default value of 42
-    set_monitor = pvproperty(name="SET_MONITOR",
-                             value=0,
-                             dtype=PvpropertyInteger[LongoutFields],
-                             record=LongoutFields,
-                             doc="Start/Stop epixMon")
-    moncnt = pvproperty(name="MONCNT",
-                        value=0,
-                        dtype=PvpropertyInteger[LonginFields],
-                        record=LonginFields,
-                        doc="epix monitor counts")
-    monerrcnt = pvproperty(name="MONERRCNT",
-                           value=0,
-                           dtype=PvpropertyInteger[LonginFields],
-                           record=LonginFields,
+    monerrcnt = counter_pv(name="MONERRCNT",
                            doc="epix monitor error counts")
-    monchk = pvproperty(name="MONCHK",
-                        value=0,
-                        dtype=PvpropertyInteger[LonginFields],
-                        record=LonginFields,
-                        upper_alarm_limit=0.5,
-                        lower_alarm_limit=-0.5,
-                        upper_warning_limit=0.5,
-                        lower_warning_limit=-0.5,
-                        alarm_group="monchk",
-                        doc="epixMon check")
-    monchkdelay = pvproperty(name="MONCHKDELAY",
-                             value=5,
-                             dtype=PvpropertyInteger[LonginFields],
-                             record=LonginFields,
-                             doc="epix check delay")
-    new_firmware = pvproperty(name="NEW_FIRMWARE",
-                              value=2,
-                              dtype=PvpropertyEnum[MbbiFields],
-                              record=MbbiFields,
-                              enum_strings=["epix100a", "epix10ka", "lcls2"],
-                              doc="epix firmware type")
-    set_monitor_rate = pvproperty(name="SET_MONITOR_RATE",
-                                  value=1.0,
-                                  dtype=PvpropertyDouble[AoFields],
-                                  record=AoFields,
-                                  precision=1,
-                                  units="Hz",
-                                  doc="Set the monitor update rate for epixMon")
-    set_auto_trig_rate = pvproperty(name="SET_AUTO_TRIG_RATE",
-                                    value=10.0,
-                                    dtype=PvpropertyDouble[AoFields],
-                                    record=AoFields,
-                                    precision=1,
-                                    units="Hz",
-                                    doc="Set the auto trigger rate for epixMon")
-    temp1 = pvproperty(name="TEMP1",
-                       value=-99.0,
-                       dtype=PvpropertyDouble[AiFields],
-                       record=AiFields,
-                       upper_alarm_limit=1000.0,
-                       lower_alarm_limit=0.0,
-                       upper_warning_limit=1000.0,
-                       lower_warning_limit=0.0,
-                       alarm_group="temp1",
-                       precision=2,
-                       units="C",
-                       doc="Therm0 Temp")
-    temp2 = pvproperty(name="TEMP2",
-                       value=-99.0,
-                       dtype=PvpropertyDouble[AiFields],
-                       record=AiFields,
-                       upper_alarm_limit=1000.0,
-                       lower_alarm_limit=0.0,
-                       upper_warning_limit=1000.0,
-                       lower_warning_limit=0.0,
-                       alarm_group="temp2",
-                       precision=2,
-                       units="C",
-                       doc="Therm1 Temp")
-    temp3 = pvproperty(name="TEMP3",
-                       value=-99.0,
-                       dtype=PvpropertyDouble[AiFields],
-                       record=AiFields,
-                       upper_alarm_limit=1000.0,
-                       lower_alarm_limit=0.0,
-                       upper_warning_limit=1000.0,
-                       lower_warning_limit=0.0,
-                       alarm_group="temp3",
-                       precision=2,
-                       units="C",
-                       doc="SHT31 Temp")
-    humidity = pvproperty(name="HUMIDITY",
-                          value=0.0,
-                          dtype=PvpropertyDouble[AiFields],
-                          record=AiFields,
-                          upper_alarm_limit=101.0,
-                          lower_alarm_limit=-1.0,
-                          upper_warning_limit=101.0,
-                          lower_warning_limit=-1.0,
-                          alarm_group="humidity",
-                          precision=2,
-                          units="%",
-                          doc="SHT31 Humidity")
-    ana_in_v = pvproperty(name="ANA_IN_V",
-                          value=0.0,
-                          dtype=PvpropertyDouble[AiFields],
-                          record=AiFields,
-                          upper_alarm_limit=100.0,
-                          lower_alarm_limit=-1.0,
-                          upper_warning_limit=100.0,
-                          lower_warning_limit=-1.0,
-                          alarm_group="ana_in_v",
-                          precision=3,
-                          units="V",
-                          doc="Analog Voltage")
-    dig_in_v = pvproperty(name="DIG_IN_V",
-                          value=0.0,
-                          dtype=PvpropertyDouble[AiFields],
-                          record=AiFields,
-                          upper_alarm_limit=100.0,
-                          lower_alarm_limit=-1.0,
-                          upper_warning_limit=100.0,
-                          lower_warning_limit=-1.0,
-                          alarm_group="dig_in_v",
-                          precision=3,
-                          units="V",
-                          doc="Digital Voltage")
-    asic_ana_cur = pvproperty(name="ASIC_ANA_CUR",
-                              value=0.0,
-                              dtype=PvpropertyDouble[AiFields],
-                              record=AiFields,
-                              upper_alarm_limit=100.0,
-                              lower_alarm_limit=-1.0,
-                              upper_warning_limit=100.0,
-                              lower_warning_limit=-1.0,
-                              alarm_group="asic_ana_cur",
-                              precision=3,
-                              units="A",
-                              doc="ASIC Analog Current")
-    asic_dig_cur = pvproperty(name="ASIC_DIG_CUR",
-                              value=0.0,
-                              dtype=PvpropertyDouble[AiFields],
-                              record=AiFields,
-                              upper_alarm_limit=100.0,
-                              lower_alarm_limit=-1.0,
-                              upper_warning_limit=100.0,
-                              lower_warning_limit=-1.0,
-                              alarm_group="asic_dig_cur",
-                              precision=3,
-                              units="A",
-                              doc="ASIC Digital Current")
-    ana_temp = pvproperty(name="ANA_TEMP",
-                          value=-99.0,
-                          dtype=PvpropertyDouble[AiFields],
-                          record=AiFields,
-                          upper_alarm_limit=1000.0,
-                          lower_alarm_limit=0.0,
-                          upper_warning_limit=1000.0,
-                          lower_warning_limit=0.0,
-                          alarm_group="ana_temp",
-                          precision=2,
-                          units="C",
-                          doc="PwrAnaTemp")
-    dig_temp = pvproperty(name="DIG_TEMP",
-                          value=-99.0,
-                          dtype=PvpropertyDouble[AiFields],
-                          record=AiFields,
-                          upper_alarm_limit=1000.0,
-                          lower_alarm_limit=0.0,
-                          upper_warning_limit=1000.0,
-                          lower_warning_limit=0.0,
-                          alarm_group="dig_temp",
-                          precision=2,
-                          units="C",
-                          doc="PwrDigTemp")
-    nct_loc_temp = pvproperty(name="NCT_LOC_TEMP",
-                              value=-99.0,
-                              dtype=PvpropertyDouble[AiFields],
-                              record=AiFields,
-                              upper_alarm_limit=1000.0,
-                              lower_alarm_limit=0.0,
-                              upper_warning_limit=1000.0,
-                              lower_warning_limit=0.0,
-                              alarm_group="nct_loc_temp",
-                              precision=2,
-                              units="C",
-                              doc="NCT218 Local Temp.")
-    nct_fpga_temp = pvproperty(name="NCT_FPGA_TEMP",
-                               value=-99.0,
-                               dtype=PvpropertyDouble[AiFields],
-                               record=AiFields,
-                               upper_alarm_limit=1000.0,
-                               lower_alarm_limit=0.0,
-                               upper_warning_limit=1000.0,
-                               lower_warning_limit=0.0,
-                               alarm_group="nct_fpga_temp",
-                               precision=2,
-                               units="C",
-                               doc="NCT218 Remote Temp.")
-    asic_a0_2v5_cur = pvproperty(name="ASIC_A0_2V5_CUR",
-                                 value=0.0,
-                                 dtype=PvpropertyDouble[AiFields],
-                                 record=AiFields,
-                                 upper_alarm_limit=100.0,
-                                 lower_alarm_limit=-1.0,
-                                 upper_warning_limit=100.0,
-                                 lower_warning_limit=-1.0,
+    temp1 = temp_pv(name="TEMP1",
+                    alarm_group="temp1",
+                    doc="Therm0 Temp")
+    temp2 = temp_pv(name="TEMP2",
+                    alarm_group="temp2",
+                    doc="Therm1 Temp")
+    temp3 = temp_pv(name="TEMP3",
+                    alarm_group="temp3",
+                    doc="SHT31 Temp")
+    humidity = humidity_pv(name="HUMIDITY",
+                           alarm_group="humidity",
+                           doc="SHT31 Humidity")
+    ana_temp = temp_pv(name="ANA_TEMP",
+                       alarm_group="ana_temp",
+                       doc="PwrAnaTemp")
+    dig_temp = temp_pv(name="DIG_TEMP",
+                       alarm_group="dig_temp",
+                       doc="PwrDigTemp")
+    nct_loc_temp = temp_pv(name="NCT_LOC_TEMP",
+                           alarm_group="nct_loc_temp",
+                           doc="NCT218 Local Temp.")
+    nct_fpga_temp = temp_pv(name="NCT_FPGA_TEMP",
+                            alarm_group="nct_fpga_temp",
+                            doc="NCT218 Remote Temp.")
+    asic_a0_2v5_cur = current_pv(name="ASIC_A0_2V5_CUR",
                                  alarm_group="asic_a0_2v5_cur",
-                                 precision=3,
-                                 units="A",
                                  doc="ASIC_A0_2V5 Curr.")
-    asic_a1_2v5_cur = pvproperty(name="ASIC_A1_2V5_CUR",
-                                 value=0.0,
-                                 dtype=PvpropertyDouble[AiFields],
-                                 record=AiFields,
-                                 upper_alarm_limit=100.0,
-                                 lower_alarm_limit=-1.0,
-                                 upper_warning_limit=100.0,
-                                 lower_warning_limit=-1.0,
+    asic_a1_2v5_cur = current_pv(name="ASIC_A1_2V5_CUR",
                                  alarm_group="asic_a1_2v5_cur",
-                                 precision=3,
-                                 units="A",
                                  doc="ASIC_A1_2V5 Curr.")
-    asic_a2_2v5_cur = pvproperty(name="ASIC_A2_2V5_CUR",
-                                 value=0.0,
-                                 dtype=PvpropertyDouble[AiFields],
-                                 record=AiFields,
-                                 upper_alarm_limit=100.0,
-                                 lower_alarm_limit=-1.0,
-                                 upper_warning_limit=100.0,
-                                 lower_warning_limit=-1.0,
+    asic_a2_2v5_cur = current_pv(name="ASIC_A2_2V5_CUR",
                                  alarm_group="asic_a2_2v5_cur",
-                                 precision=3,
-                                 units="A",
                                  doc="ASIC_A2_2V5 Curr.")
-    asic_a3_2v5_cur = pvproperty(name="ASIC_A3_2V5_CUR",
-                                 value=0.0,
-                                 dtype=PvpropertyDouble[AiFields],
-                                 record=AiFields,
-                                 upper_alarm_limit=100.0,
-                                 lower_alarm_limit=-1.0,
-                                 upper_warning_limit=100.0,
-                                 lower_warning_limit=-1.0,
+    asic_a3_2v5_cur = current_pv(name="ASIC_A3_2V5_CUR",
                                  alarm_group="asic_a3_2v5_cur",
-                                 precision=3,
-                                 units="A",
                                  doc="ASIC_A3_2V5 Curr.")
-    asic_d0_2v5_cur = pvproperty(name="ASIC_D0_2V5_CUR",
-                                 value=0.0,
-                                 dtype=PvpropertyDouble[AiFields],
-                                 record=AiFields,
-                                 upper_alarm_limit=100000.0,
-                                 lower_alarm_limit=-1.0,
-                                 upper_warning_limit=100000.0,
-                                 lower_warning_limit=-1.0,
+    asic_d0_2v5_cur = current_pv(name="ASIC_D0_2V5_CUR",
+                                 units="mA",
+                                 hilim=100000.0,
                                  alarm_group="asic_d0_2v5_cur",
-                                 precision=3,
-                                 units="mA",
                                  doc="ASIC_D0_2V5 Curr.")
-    asic_d1_2v5_cur = pvproperty(name="ASIC_D1_2V5_CUR",
-                                 value=0.0,
-                                 dtype=PvpropertyDouble[AiFields],
-                                 record=AiFields,
-                                 upper_alarm_limit=100000.0,
-                                 lower_alarm_limit=-1.0,
-                                 upper_warning_limit=100000.0,
-                                 lower_warning_limit=-1.0,
-                                 alarm_group="asic_d1_2v5_cur",
-                                 precision=3,
+    asic_d1_2v5_cur = current_pv(name="ASIC_D1_2V5_CUR",
                                  units="mA",
+                                 hilim=100000.0,
+                                 alarm_group="asic_d1_2v5_cur",
                                  doc="ASIC_D1_2V5 Curr.")
-    asic_a0_2v5_h_temp = pvproperty(name="ASIC_A0_2V5_H_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a0_2v5_h_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A0_2V5_H Temp.")
-    asic_a0_2v5_l_temp = pvproperty(name="ASIC_A0_2V5_L_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a0_2v5_l_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A0_2V5_L Temp.")
-    asic_a1_2v5_h_temp = pvproperty(name="ASIC_A1_2V5_H_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a1_2v5_h_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A1_2V5_H Temp.")
-    asic_a1_2v5_l_temp = pvproperty(name="ASIC_A1_2V5_L_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a1_2v5_l_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A1_2V5_L Temp.")
-    asic_a2_2v5_h_temp = pvproperty(name="ASIC_A2_2V5_H_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a2_2v5_h_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A2_2V5_H Temp.")
-    asic_a2_2v5_l_temp = pvproperty(name="ASIC_A2_2V5_L_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a2_2v5_l_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A2_2V5_L Temp.")
-    asic_a3_2v5_h_temp = pvproperty(name="ASIC_A3_2V5_H_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a3_2v5_h_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A3_2V5_H Temp.")
-    asic_a3_2v5_l_temp = pvproperty(name="ASIC_A3_2V5_L_TEMP",
-                                    value=-99.0,
-                                    dtype=PvpropertyDouble[AiFields],
-                                    record=AiFields,
-                                    upper_alarm_limit=1000.0,
-                                    lower_alarm_limit=0.0,
-                                    upper_warning_limit=1000.0,
-                                    lower_warning_limit=0.0,
-                                    alarm_group="asic_a3_2v5_l_temp",
-                                    precision=2,
-                                    units="C",
-                                    doc="ASIC_A3_2V5_L Temp.")
-    asic_d0_2v5_temp = pvproperty(name="ASIC_D0_2V5_TEMP",
-                                  value=-99.0,
-                                  dtype=PvpropertyDouble[AiFields],
-                                  record=AiFields,
-                                  upper_alarm_limit=1000.0,
-                                  lower_alarm_limit=0.0,
-                                  upper_warning_limit=1000.0,
-                                  lower_warning_limit=0.0,
-                                  precision=2,
-                                  alarm_group="asic_d0_2v5_temp",
-                                  units="C",
-                                  doc="ASIC_D0_2V5 Temp.")
-    asic_d1_2v5_temp = pvproperty(name="ASIC_D1_2V5_TEMP",
-                                  value=-99.0,
-                                  dtype=PvpropertyDouble[AiFields],
-                                  record=AiFields,
-                                  upper_alarm_limit=1000.0,
-                                  lower_alarm_limit=0.0,
-                                  upper_warning_limit=1000.0,
-                                  lower_warning_limit=0.0,
-                                  alarm_group="asic_d1_2v5_temp",
-                                  precision=2,
-                                  units="C",
-                                  doc="ASIC_D1_2V5 Temp.")
-    asic_a0_1v8_temp = pvproperty(name="ASIC_A0_1V8_TEMP",
-                                  value=-99.0,
-                                  dtype=PvpropertyDouble[AiFields],
-                                  record=AiFields,
-                                  upper_alarm_limit=1000.0,
-                                  lower_alarm_limit=0.0,
-                                  upper_warning_limit=1000.0,
-                                  lower_warning_limit=0.0,
-                                  alarm_group="asic_a0_1v8_temp",
-                                  precision=2,
-                                  units="C",
-                                  doc="ASIC_A0_1V8 Temp.")
-    asic_a1_1v8_temp = pvproperty(name="ASIC_A1_1V8_TEMP",
-                                  value=-99.0,
-                                  dtype=PvpropertyDouble[AiFields],
-                                  record=AiFields,
-                                  upper_alarm_limit=1000.0,
-                                  lower_alarm_limit=0.0,
-                                  upper_warning_limit=1000.0,
-                                  lower_warning_limit=0.0,
-                                  alarm_group="asic_a1_1v8_temp",
-                                  precision=2,
-                                  units="C",
-                                  doc="ASIC_A1_1V8 Temp.")
-    asic_a2_1v8_temp = pvproperty(name="ASIC_A2_1V8_TEMP",
-                                  value=-99.0,
-                                  dtype=PvpropertyDouble[AiFields],
-                                  record=AiFields,
-                                  upper_alarm_limit=1000.0,
-                                  lower_alarm_limit=0.0,
-                                  upper_warning_limit=1000.0,
-                                  lower_warning_limit=0.0,
-                                  alarm_group="asic_a2_1v8_temp",
-                                  precision=2,
-                                  units="C",
-                                  doc="ASIC_A2_1V8 Temp.")
-    pcb_ana_temp0 = pvproperty(name="PCB_ANA_TEMP0",
-                               value=-99.0,
-                               dtype=PvpropertyDouble[AiFields],
-                               record=AiFields,
-                               upper_alarm_limit=1000.0,
-                               lower_alarm_limit=0.0,
-                               upper_warning_limit=1000.0,
-                               lower_warning_limit=0.0,
-                               alarm_group="pcb_ana_temp0",
-                               precision=2,
-                               units="C",
-                               doc="PcbAnaTemp0")
-    pcb_ana_temp1 = pvproperty(name="PCB_ANA_TEMP1",
-                               value=-99.0,
-                               dtype=PvpropertyDouble[AiFields],
-                               record=AiFields,
-                               upper_alarm_limit=1000.0,
-                               lower_alarm_limit=0.0,
-                               upper_warning_limit=1000.0,
-                               lower_warning_limit=0.0,
-                               alarm_group="pcb_ana_temp1",
-                               precision=2,
-                               units="C",
-                               doc="PcbAnaTemp1")
-    pcb_ana_temp2 = pvproperty(name="PCB_ANA_TEMP2",
-                               value=-99.0,
-                               dtype=PvpropertyDouble[AiFields],
-                               record=AiFields,
-                               upper_alarm_limit=1000.0,
-                               lower_alarm_limit=0.0,
-                               upper_warning_limit=1000.0,
-                               lower_warning_limit=0.0,
-                               alarm_group="pcb_ana_temp2",
-                               precision=2,
-                               units="C",
-                               doc="PcbAnaTemp2")
-    tropt_temp = pvproperty(name="TROPT_TEMP",
-                            value=-99.0,
-                            dtype=PvpropertyDouble[AiFields],
-                            record=AiFields,
-                            upper_alarm_limit=1000.0,
-                            lower_alarm_limit=0.0,
-                            upper_warning_limit=1000.0,
-                            lower_warning_limit=0.0,
-                            alarm_group="tropt_temp",
-                            precision=2,
-                            units="C",
-                            doc="TrOptTemp")
-    tropt_volt = pvproperty(name="TROPT_VOLT",
-                            value=0.0,
-                            dtype=PvpropertyDouble[AiFields],
-                            record=AiFields,
-                            upper_alarm_limit=100.0,
-                            lower_alarm_limit=-1.0,
-                            upper_warning_limit=100.0,
-                            lower_warning_limit=-1.0,
+    asic_a0_2v5_h_temp = temp_pv(name="ASIC_A0_2V5_H_TEMP",
+                                 alarm_group="asic_a0_2v5_h_temp",
+                                 doc="ASIC_A0_2V5_H Temp.")
+    asic_a0_2v5_l_temp = temp_pv(name="ASIC_A0_2V5_L_TEMP",
+                                 alarm_group="asic_a0_2v5_l_temp",
+                                 doc="ASIC_A0_2V5_L Temp.")
+    asic_a1_2v5_h_temp = temp_pv(name="ASIC_A1_2V5_H_TEMP",
+                                 alarm_group="asic_a1_2v5_h_temp",
+                                 doc="ASIC_A1_2V5_H Temp.")
+    asic_a1_2v5_l_temp = temp_pv(name="ASIC_A1_2V5_L_TEMP",
+                                 alarm_group="asic_a1_2v5_l_temp",
+                                 doc="ASIC_A1_2V5_L Temp.")
+    asic_a2_2v5_h_temp = temp_pv(name="ASIC_A2_2V5_H_TEMP",
+                                 alarm_group="asic_a2_2v5_h_temp",
+                                 doc="ASIC_A2_2V5_H Temp.")
+    asic_a2_2v5_l_temp = temp_pv(name="ASIC_A2_2V5_L_TEMP",
+                                 alarm_group="asic_a2_2v5_l_temp",
+                                 doc="ASIC_A2_2V5_L Temp.")
+    asic_a3_2v5_h_temp = temp_pv(name="ASIC_A3_2V5_H_TEMP",
+                                 alarm_group="asic_a3_2v5_h_temp",
+                                 doc="ASIC_A3_2V5_H Temp.")
+    asic_a3_2v5_l_temp = temp_pv(name="ASIC_A3_2V5_L_TEMP",
+                                 alarm_group="asic_a3_2v5_l_temp",
+                                 doc="ASIC_A3_2V5_L Temp.")
+    asic_d0_2v5_temp = temp_pv(name="ASIC_D0_2V5_TEMP",
+                               alarm_group="asic_d0_2v5_temp",
+                               doc="ASIC_D0_2V5 Temp.")
+    asic_d1_2v5_temp = temp_pv(name="ASIC_D1_2V5_TEMP",
+                               alarm_group="asic_d1_2v5_temp",
+                               doc="ASIC_D1_2V5 Temp.")
+    asic_a0_1v8_temp = temp_pv(name="ASIC_A0_1V8_TEMP",
+                               alarm_group="asic_a0_1v8_temp",
+                               doc="ASIC_A0_1V8 Temp.")
+    asic_a1_1v8_temp = temp_pv(name="ASIC_A1_1V8_TEMP",
+                               alarm_group="asic_a1_1v8_temp",
+                               doc="ASIC_A1_1V8 Temp.")
+    asic_a2_1v8_temp = temp_pv(name="ASIC_A2_1V8_TEMP",
+                               alarm_group="asic_a2_1v8_temp",
+                               doc="ASIC_A2_1V8 Temp.")
+    pcb_ana_temp0 = temp_pv(name="PCB_ANA_TEMP0",
+                            alarm_group="pcb_ana_temp0",
+                            doc="PcbAnaTemp0")
+    pcb_ana_temp1 = temp_pv(name="PCB_ANA_TEMP1",
+                            alarm_group="pcb_ana_temp1",
+                            doc="PcbAnaTemp1")
+    pcb_ana_temp2 = temp_pv(name="PCB_ANA_TEMP2",
+                            alarm_group="pcb_ana_temp2",
+                            doc="PcbAnaTemp2")
+    tropt_temp = temp_pv(name="TROPT_TEMP",
+                         alarm_group="tropt_temp",
+                         doc="TrOptTemp")
+    tropt_volt = voltage_pv(name="TROPT_VOLT",
                             alarm_group="tropt_volt",
-                            precision=3,
-                            units="V",
                             doc="TrOptVcc")
-    tropt_txpwr = pvproperty(name="TROPT_TXPWR",
-                             value=0.0,
-                             dtype=PvpropertyDouble[AiFields],
-                             record=AiFields,
-                             upper_alarm_limit=100000.0,
-                             lower_alarm_limit=-1.0,
-                             upper_warning_limit=100000.0,
-                             lower_warning_limit=-1.0,
+    tropt_txpwr = current_pv(name="TROPT_TXPWR",
+                             units="uW",
+                             hilim=100000.0,
                              alarm_group="tropt_txpwr",
-                             precision=3,
-                             units="uW",
                              doc="TrOptTxPwr")
-    tropt_rxpwr = pvproperty(name="TROPT_RXPWR",
-                             value=0.0,
-                             dtype=PvpropertyDouble[AiFields],
-                             record=AiFields,
-                             upper_alarm_limit=100000.0,
-                             lower_alarm_limit=-1.0,
-                             upper_warning_limit=100000.0,
-                             lower_warning_limit=-1.0,
-                             alarm_group="tropt_rxpwr",
-                             precision=3,
+    tropt_rxpwr = current_pv(name="TROPT_RXPWR",
                              units="uW",
+                             hilim=100000.0,
+                             alarm_group="tropt_rxpwr",
                              doc="TrOptRxPwr")
-    stemp_ok = pvproperty(name="STEMP_OK",
-                          value=0,
-                          dtype=PvpropertyInteger[LonginFields],
-                          record=LonginFields,
+    stemp_ok = counter_pv(name="STEMP_OK",
                           alarm_group="stemp_ok",
                           doc="epix sensor temp OK")
-    etemp_ok = pvproperty(name="ETEMP_OK",
-                          value=0,
-                          dtype=PvpropertyInteger[LonginFields],
-                          record=LonginFields,
+    etemp_ok = counter_pv(name="ETEMP_OK",
                           alarm_group="etemp_ok",
                           doc="epix electronics temp OK")
     microblaze = pvproperty(name="MICROBLAZE",
@@ -1325,84 +768,14 @@ class EpixQuadMonitoringIOC(PVGroup):
                             alarm_group="microblaze",
                             enum_strings=["NO", "YES"],
                             doc="epix has working MicroBlaze")
-    firmware_version = pvproperty(name="FWVERSION",
-                                  value="",
-                                  dtype=PvpropertyString[StringinFields],
-                                  record=StringinFields,
-                                  doc="epix fw version")
-    firmware_githash = pvproperty(name="FWGITHASH",
-                                  value="",
-                                  dtype=PvpropertyString[StringinFields],
-                                  record=StringinFields,
-                                  doc="epix fw githash")
-    firmware_bldstr = pvproperty(name="FWBLDSTR",
-                                 value="",
-                                 dtype=PvpropertyChar[WaveformFields],
-                                 record=WaveformFields,
-                                 string_encoding='ascii',
-                                 max_length=256,
-                                 doc="epix fw build str")
-    carrier_id_0 = pvproperty(name="CARRIER_ID_0",
-                              value="",
-                              dtype=PvpropertyString[StringinFields],
-                              record=StringinFields,
-                              doc="epix carrier id 0")
-    carrier_id_1 = pvproperty(name="CARRIER_ID_1",
-                              value="",
-                              dtype=PvpropertyString[StringinFields],
-                              record=StringinFields,
-                              doc="epix carrier id 1")
-    carrier_id_2 = pvproperty(name="CARRIER_ID_2",
-                              value="",
-                              dtype=PvpropertyString[StringinFields],
-                              record=StringinFields,
-                              doc="epix carrier id 2")
-    carrier_id_3 = pvproperty(name="CARRIER_ID_3",
-                              value="",
-                              dtype=PvpropertyString[StringinFields],
-                              record=StringinFields,
-                              doc="epix carrier id 3")
-    stemp_channels = {
-            ("temp1", -273.15),
-            ("temp2", -273.15),
-    }
-    etemp_channels = {
-            ("temp3", -45.0, 130),
-            ("nct_loc_temp", 0.0, 200),
-            ("nct_fpga_temp", 0.0, 200),
-            ("ana_temp", 0.0, 200),
-            ("dig_temp", 0.0, 200),
-            ("tropt_temp", 0.0, 200),
-    }
-    microblaze_fixup_channels = {"temp1", "temp2", "ana_temp", "dig_temp"}
- 
-    @monchk.scan(period=1.0, use_scan_field=True)
-    async def monchk(self, instance, async_lib):
-        """
-        Scan this record
-        """
-        if self.lastmontime is not None:
-            curtime = time.time()
-            checkval = curtime-self.lastmontime > self.monchkdelay.value
-            await instance.write(value=checkval)
-
-    @set_monitor.putter
-    async def set_monitor(self, instance, flag):
-        if flag:
-            state = 'on'
-        else:
-            state = 'off'
-        self.log.info(f"Requested epix register configure - monitoring {state}")
-        data = await self.async_lib.library.to_thread(self.configure, bool(flag), self.monitor_prescale, self.auto_trigger_period)
-        self.log.info("Epix register configuration completed")
-        for name, value in data.items():
-            if name == 'logs':
-                for log_name, msgs in value.items():
-                    log_level = logging.getLevelName(log_name.upper())
-                    for msg in msgs:
-                        self.log.log(log_level, msg)
-            elif hasattr(self, name):
-                await getattr(self, name).write(value=value)
+    carrier_id_0 = string_pv(name="CARRIER_ID_0",
+                             doc="epix carrier id 0")
+    carrier_id_1 = string_pv(name="CARRIER_ID_1",
+                             doc="epix carrier id 1")
+    carrier_id_2 = string_pv(name="CARRIER_ID_2",
+                             doc="epix carrier id 2")
+    carrier_id_3 = string_pv(name="CARRIER_ID_3",
+                             doc="epix carrier id 3")
 
     @microblaze.startup
     async def microblaze(self, instance, async_lib):
@@ -1421,30 +794,7 @@ def main():
         default_prefix="DET:EPIX:CMP004:",
         desc="Read ePixQuad environmental monitor packets via rogue and publish via caproto IOC"
     )
-    parser.add_argument(
-        "--dev",
-        default="/dev/datadev_0",
-        help="PCIe DMA device (default: /dev/datadev_0)",
-    )
-    parser.add_argument(
-        "--lane",
-        default=0,
-        type=int,
-        help="PGP lane number (default: 0)",
-    )
-    parser.add_argument(
-        "--vc",
-        default=3,
-        type=int,
-        help="Monitor stream virtual channel to listen on "
-        "(default: 3 — first bypassed channel in EventBuilder)",
-    )
-    parser.add_argument(
-        "--regvc",
-        default=1,
-        type=int,
-        help="Register virtual channel (default: 1)"
-    )
+    add_common_args(parser, regvc=1)
     parser.add_argument(
         "--no-microblaze",
         action='store_false',
@@ -1455,17 +805,7 @@ def main():
     args = parser.parse_args()
     ioc_options, run_options = split_args(args)
 
-    # Initialize the logger
-    if args.verbose is not None:
-        if args.verbose == 0:
-            log_level = logging.WARN
-        elif args.verbose == 1:
-            log_level = logging.INFO
-        else:
-            log_level = logging.DEBUG
-    else:
-        log_level = logging.WARN
-    config_caproto_logging(level=log_level)
+    setup_logging(args)
 
     # Start the server
     ioc = EpixQuadMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, regvc=args.regvc, has_microblaze=args.microblaze, **ioc_options)
