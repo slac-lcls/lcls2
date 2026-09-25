@@ -90,8 +90,10 @@ Current checkpoint, 2026-09-25: all three profiled CPU-overhead changes are
 implemented and validated. The [10,000-event comparison](performance/stream_read_current_10k.md)
 completed eight audited cold/warm controls with the current code. Bulk-on
 median loop time remains 5.42% higher cold and 23.77% higher warm; throughput
-work is deferred. Broader retained-view/tight-budget device coverage and legacy
-removal are still open. The entries below preserve the earlier stage evidence
+work is deferred. The [broader ownership matrix](stream_read_ownership_acceptance.md)
+now passes 18 new retained-view, tight-budget, and delayed-consumer A100 cases
+alongside 20 regressions. Legacy fixture/branch removal remains open and requires
+mapping replacement assertions before deletion. The entries below preserve the earlier stage evidence
 and do not supersede this checkpoint.
 
 2026-09-25 follow-up: [controller lifecycle and transition validation](stream_read_stage4_correctness.md)
