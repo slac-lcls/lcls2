@@ -54,6 +54,8 @@ git clone git@github.com:slac-lcls/lcls2.git rel/branch_repo_lcls2/lcls2
 
 Keep it outside the hutch directories. To update the scripts, merge the change into the branch this checkout follows, then run `git pull` in it.
 
+**The same `scripts/tag_scripts/` folder (scripts and docs) is also in the `ami` repo, as an identical copy.** cron runs only the `lcls2` copy. The scripts don't care which repo they come from, because the repo paths and `prefix` are arguments. When you change the scripts, make the same change in both repos so the copies don't drift apart.
+
 ---
 
 ## Account and host
