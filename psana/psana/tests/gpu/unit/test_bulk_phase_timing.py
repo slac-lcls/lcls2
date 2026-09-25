@@ -75,7 +75,7 @@ def test_caller_time_at_yield_is_excluded():
 
 
 @pytest.mark.parametrize('filename,cls,method,kind', [
-    ('gpu_kvikio_read.py', 'KvikioGpuReader', 'issue_batch', 'read_submit'),
+    ('gpu_kvikio_read.py', 'KvikioGpuReader', '_submit_read', 'read_submit'),
     ('gpu_stream.py', 'EventPool', 'submit', 'pool_submit'),
     ('gpu_stream.py', 'EventPool', 'flush', 'pool_flush'),
     ('gpu_stream.py', 'EventPool', 'begin_retire_next', 'producer_retire'),

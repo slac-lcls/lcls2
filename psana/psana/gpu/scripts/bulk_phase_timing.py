@@ -167,8 +167,9 @@ def install(variant, nvtx=None):
                                        source_sha256=hashlib.sha256(source.encode()).hexdigest(),
                                        ranges=ranges))
 
+    submit_method = '_submit_read' if hasattr(Reader, '_submit_read') else 'issue_batch'
     for owner, method, kind in (
-        (Reader, 'issue_batch', 'read_submit'),
+        (Reader, submit_method, 'read_submit'),
         (Pool, 'submit', 'pool_submit'),
         (Pool, 'flush', 'pool_flush'),
         (Pool, 'begin_retire_next', 'producer_retire'),
@@ -209,7 +210,8 @@ def install(variant, nvtx=None):
         (Manager, '_submit_gpu', 'manager.submit'),
         (Manager, '_yield_ready', 'delivery.events'),
         (GpuFileEpochs, 'resolve', 'read.file_epochs'),
-        (Reader, 'issue_batch', 'read.submit'),
+        (Reader, submit_method, 'read.submit'),
+        (Reader, 'issue_group', 'read.group'),
         (Reader, '_ensure_slot_buffer', 'read.buffer'),
         (Reader, '_coalesced_plan', 'read.coalesce'),
         (Reader, 'wait_batch', 'read.wait'),

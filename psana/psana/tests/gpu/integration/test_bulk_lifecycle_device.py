@@ -31,7 +31,7 @@ def test_resident_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, mo
     if stop == 'max_events':
         m.dsparms.max_events = 203
     elif stop == 'read_failure':
-        issue = m.gpu_reader.issue_batch
+        issue = m.gpu_reader._submit_read
         calls = []
 
         class FailedFuture:
@@ -49,7 +49,7 @@ def test_resident_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, mo
                 r, size, future = pending.futures[0]
                 pending.futures[0] = (r, size, FailedFuture(future))
             return pending
-        monkeypatch.setattr(m.gpu_reader, 'issue_batch', fail_second_read)
+        monkeypatch.setattr(m.gpu_reader, '_submit_read', fail_second_read)
     elif stop == 'gather_failure':
         gather = _CanonicalGatherPlan.gather
 
