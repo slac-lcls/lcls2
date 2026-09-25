@@ -158,6 +158,30 @@ def validate_read_descriptors(descriptors, capacity_bytes, max_read_bytes=_U64_M
     return useful_bytes
 
 
+def ordered_nonoverlapping_indices(descriptors):
+    """Validate nonempty physical spans and return their file/offset ordering.
+
+    Use after descriptor validation. Empty rows cause no physical read and do
+    not constrain spans. Both planners share these overlap semantics.
+    """
+    ordered = sorted(
+        (i for i, desc in enumerate(descriptors) if desc.size),
+        key=lambda i: (descriptors[i].file, descriptors[i].file_offset),
+    )
+    previous = None
+    for i in ordered:
+        desc = descriptors[i]
+        if previous is not None and previous.file == desc.file:
+            end = previous.file_offset + previous.size
+            if desc.file_offset < end:
+                raise ValueError(
+                    f"overlapping dgrams in {desc.file}: offset={desc.file_offset} "
+                    f"precedes previous end={end}"
+                )
+        previous = desc
+    return ordered
+
+
 def build_read_plan(
     descriptors: Iterable[ResolvedDgram],
     *,
@@ -191,10 +215,7 @@ def build_read_plan(
     descriptors = tuple(descriptors)
     useful_bytes = validate_read_descriptors(descriptors, capacity_bytes, max_read_bytes)
 
-    ordered = sorted(
-        (i for i, desc in enumerate(descriptors) if desc.size),
-        key=lambda i: (descriptors[i].file, descriptors[i].file_offset),
-    )
+    ordered = ordered_nonoverlapping_indices(descriptors)
     ranges = []
     logical = [LogicalDgram(desc, None, 0) for desc in descriptors]
     cursor = 0
@@ -204,11 +225,6 @@ def build_read_plan(
         adjacent = False
         if previous is not None and previous.file == desc.file:
             end = previous.file_offset + previous.size
-            if desc.file_offset < end:
-                raise ValueError(
-                    f"overlapping dgrams in {desc.file}: offset={desc.file_offset} "
-                    f"precedes previous end={end}"
-                )
             adjacent = desc.file_offset == end
         if adjacent and previous.size + desc.size <= max_read_bytes:
             ranges[-1] = replace(previous, size=previous.size + desc.size)

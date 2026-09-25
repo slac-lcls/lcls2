@@ -7,7 +7,6 @@ import numpy as np
 import pytest
 
 from psana.gpu.gpu_batch import GpuReadDesc
-from psana.gpu.gpu_file_epochs import GpuFileEpochs
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpu_stream import EventPool
 from psana.gpu.gpudgram.batch import GpuXtcBatchPool
@@ -47,10 +46,9 @@ def test_retained_input_bytes_and_locators_survive_slow_slot_reuse(tmp_path):
                  for i, (off, size, ts) in enumerate(records)]
     off, size, ts = records[1]
     slow_desc = [GpuReadDesc(1, ts, 1, off, size, 0, 1)]
-    epochs = GpuFileEpochs(dm).resolve(fast_desc + slow_desc, [])
     configs = GpuStreamConfigTable.from_configs([config, config])
     handles = [configs.resolve('xppcspad', 1, 'raw', 'arrayRaw', stream_id=i) for i in range(2)]
-    reader = KvikioGpuReader(n_slots=2)
+    reader = KvikioGpuReader(n_slots=2, bulk_read=False)
     parser = GpuXtcBatchPool(configs, field_handles=handles, n_slots=2)
     pool = EventPool(n=1)
     parse_stream = cp.cuda.Stream(non_blocking=True)
@@ -58,7 +56,7 @@ def test_retained_input_bytes_and_locators_survive_slow_slot_reuse(tmp_path):
     def read(descs, slot):
         return reader.wait_batch(reader.issue_batch(
             NS(iter_read_descs=lambda _: iter(descs)), dm,
-            slot_id=slot, file_epochs=epochs))
+            slot_id=slot))
 
     fast = parser.parse_window(read(fast_desc, 0), parse_stream, batch_id=9)
     planned = fast.acquire()

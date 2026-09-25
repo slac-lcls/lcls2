@@ -2,40 +2,20 @@
 import numpy as np
 import pytest
 
-from test_gpu_residency_device import available, residency_case
-from psana.gpu.gpu_input_group import InputGroupPool
-from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+from gpu_group_fixture import available, group_case
 from psana.gpu.gpudgram import parser as parser_module
 from psana.gpu.gpudgram.parser import LOC_OFFSET, LOC_STATUS, STATUS_FOUND
 
 
-def group_case(tmp_path, mixed_packet, fast_padding=0):
-    case = residency_case(tmp_path, mixed_packet, fast_padding=fast_padding)
-    m = case.manager
-    m.gpu_reader.close()
-    m.gpu_reader = KvikioGpuReader(n_slots=2020, budget=m._gpu_budget)
-    m._group_inputs = InputGroupPool(m.gpu_reader)
-    # Allow two execution arenas and two arenas retained by small streams.
-    from psana.gpu.gpudgram.batch import GpuXtcBatchPool
-    m.gpu_xtc_parser.close()
-    m.gpu_xtc_parser = GpuXtcBatchPool(
-        m.gpu_xtc_parser.configs, field_handles=case.handles, n_slots=5, budget=m._gpu_budget)
-    for _, det in m.gpu_detectors.values():
-        det._gather_plan = None
-        det.configure_gather(m.gpu_xtc_parser.handle_indices)
-    m._gpu_budget._limit = 64 * 1024**2
-    m._admission_capacity = 16 * 1024**2
-    return case
-
-
 @pytest.mark.gpu
 @pytest.mark.skipif(not available(), reason='no CUDA device')
-@pytest.mark.parametrize('fast_padding', [0, 16 * 1024])
+@pytest.mark.parametrize('fast_padding,slow_padding', [(0, 1024**2),
+    (16 * 1024, 1024**2), (16 * 1024, 64 * 1024)])
 def test_production_groups_match_pixels_and_keep_batched_parser_launches(
-        tmp_path, mixed_packet, monkeypatch, fast_padding):
+        tmp_path, mixed_packet, monkeypatch, fast_padding, slow_padding):
     import cupy as cp
 
-    case = group_case(tmp_path, mixed_packet, fast_padding)
+    case = group_case(tmp_path, mixed_packet, fast_padding, slow_padding)
     m = case.manager
     launches = dict(walk=0, init=0, locate=0)
     parses = []

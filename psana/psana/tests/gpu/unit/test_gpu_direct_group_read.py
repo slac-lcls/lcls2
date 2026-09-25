@@ -1,4 +1,4 @@
-"""Direct group submission matches the legacy adapter's bytes and validation."""
+"""Direct group submission matches the independent CPU reference plan."""
 from dataclasses import replace
 import random
 from types import SimpleNamespace as NS
@@ -6,11 +6,9 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from psana.gpu.gpu_batch import GpuReadDesc
 from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
-from psana.gpu.gpu_file_epochs import FileEpoch
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-from psana.gpu.gpu_read_plan import ResolvedDgram, ResolvedFile
+from psana.gpu.gpu_read_plan import ResolvedDgram, ResolvedFile, build_read_plan
 from psana.gpu.gpu_stream_read_plan import StreamReadGroup
 from test_gpu_bulk_read import io  # noqa: F401
 
@@ -24,16 +22,7 @@ def group(sizes=(4, 8), events=(3, 1), *, offset=5, path='/data', fence=0):
                            sum(sizes), tuple(rows), True)
 
 
-def legacy(reader, g, slot):
-    descs = tuple(GpuReadDesc(d.batch_event_index, d.timestamp, d.stream_id,
-                              d.file_offset, d.size, d.smd_size, 1) for d in g.dgrams)
-    epochs = {(d.batch_event_index, d.stream_id): FileEpoch(g.file, g.fence_id)
-              for d in g.dgrams}
-    return reader.issue_batch(NS(iter_read_descs=lambda _: iter(descs)), None,
-                              slot_id=slot, file_epochs=epochs)
-
-
-def test_direct_group_matches_legacy_rows_ranges_and_bytes(io, monkeypatch):
+def test_direct_group_matches_reference_rows_ranges_and_bytes(io, monkeypatch):
     io.files = {'/data': bytes(range(256))}
     reader = KvikioGpuReader(n_slots=2)
     rng = random.Random(260925)
@@ -43,18 +32,20 @@ def test_direct_group_matches_legacy_rows_ranges_and_bytes(io, monkeypatch):
         groups.append(group(tuple(rng.randrange(1, 12) for _ in range(n)),
                             tuple(rng.sample(range(100), n)), offset=rng.randrange(20)))
     for g in groups:
-        reference = legacy(reader, g, 0)
+        reference = build_read_plan(g.dgrams, capacity_bytes=g.size)
         with monkeypatch.context() as patch:
             def no_legacy(*args, **kwargs):
                 raise AssertionError('direct group invoked legacy replanning')
             patch.setattr(reader, 'issue_batch', no_legacy)
-            patch.setattr(reader, '_coalesced_plan', no_legacy)
             direct = reader.issue_group(g, slot_id=1)
-        assert direct.plan == reference.plan
-        np.testing.assert_array_equal(direct.desc_table, reference.desc_table)
-        assert [(r, n) for r, n, _ in direct.futures] == [(r, n) for r, n, _ in reference.futures]
-        a, b = reader.wait_batch(reference), reader.wait_batch(direct)
-        np.testing.assert_array_equal(a.data_gpu, b.data_gpu)
+        assert direct.plan.physical_ranges == reference.physical_ranges
+        assert direct.plan.logical_dgrams == reference.logical_dgrams
+        expected = [(d.batch_event_index, d.stream_id, d.timestamp, d.file_offset,
+                     d.size, row.device_offset)
+                    for d, row in zip(g.dgrams, reference.logical_dgrams)]
+        np.testing.assert_array_equal(direct.desc_table, expected)
+        assert [(r, n) for r, n, _ in direct.futures] == [(r, r.size) for r in reference.physical_ranges]
+        b = reader.wait_batch(direct)
         assert bytes(b.data_gpu) == io.files['/data'][g.file_offset:g.file_offset + g.size]
     reader.close()
 

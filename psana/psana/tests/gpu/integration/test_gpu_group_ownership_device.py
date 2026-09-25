@@ -6,8 +6,7 @@ from psana.gpu import gpu_events
 from psana.gpu.gpu_budget import GpuMemoryPressureError
 from psana.gpu.gpu_input import GpuDetectorBinding
 from psana.gpu.gpu_stream import EventPool
-from test_gpu_group_schedule_device import group_case
-from test_gpu_residency_device import available
+from gpu_group_fixture import available, group_case
 
 pytestmark = [pytest.mark.gpu, pytest.mark.skipif(
     not available(), reason='no CUDA device')]
