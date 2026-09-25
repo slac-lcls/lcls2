@@ -129,8 +129,10 @@ def run(a, n, timed):
     global active
     kwargs = dict(exp='mfx101210926', run=387, dir=a.directory,
                     detectors=['jungfrau', 'feespec'] if a.include_jf else ['feespec'], max_events=n,
-                    batch_size=100, n_gpu_streams=1, gpu_memory_budget_gb=8,
+                    batch_size=100, n_gpu_streams=a.pool_depth, gpu_memory_budget_gb=8,
                     gpu_d2h_chunk_size=0, skip_calib_load='all', log_level='ERROR')
+    if a.bulk_target_bytes is not None:
+        kwargs['gpu_bulk_target_bytes'] = a.bulk_target_bytes
     if a.variant != 'A':
         kwargs.update(gpu_det=['jungfrau', 'feespec'] if a.include_jf else 'feespec',
                       gpu_bulk_read=a.variant == 'E-on')
@@ -140,6 +142,9 @@ def run(a, n, timed):
     run = next(ds.runs())
     cpu_detector = run.Detector('feespec') if a.variant == 'A' else None
     assert ds.dsparms.batch_size == 100
+    assert ds.dsparms.n_gpu_streams == a.pool_depth
+    if a.bulk_target_bytes is not None:
+        assert ds.dsparms.gpu_bulk_target_bytes == a.bulk_target_bytes
     if is_bd:
         import cupy as cp
         result = cp.empty(n, dtype=cp.int64)
@@ -157,6 +162,13 @@ def run(a, n, timed):
     trace_active = timed and a.fallback_trace is not None
     if trace_active:
         a.fallback_trace.begin()
+    if timed and a.pipeline_stats is not None:
+        a.pipeline_stats.begin()
+    profiler = None
+    if timed and is_bd and a.python_profile:
+        import cProfile
+        profiler = cProfile.Profile()
+        profiler.enable()
     start = time.perf_counter()
     for i, evt in enumerate(run.events()):
         stamps.append(int(evt.timestamp))
@@ -187,6 +199,10 @@ def run(a, n, timed):
     if is_bd:
         cp.cuda.Device().synchronize()
     elapsed = time.perf_counter() - start
+    if profiler is not None:
+        profiler.disable()
+        profiler.dump_stats(a.python_profile)
+    pipeline_result = a.pipeline_stats.end() if timed and a.pipeline_stats is not None else None
     active = False
     fallback_result = a.fallback_trace.end(a.fallback_output) if trace_active else None
     comm.Barrier()
@@ -200,7 +216,8 @@ def run(a, n, timed):
         sums_digest = hashlib.sha256(result.get().tobytes()).hexdigest()
     gathered = comm.gather(dict(rank=rank, elapsed=elapsed, timestamps=stamps,
         sums_sha256=sums_digest, arrays_sha256=array_digest.hexdigest(),
-        counts=counts, jf_checks=jf_checks, fallback_trace=fallback_result,
+        counts=counts, jf_checks=jf_checks, fallback_trace=fallback_result, pipeline_stats=pipeline_result,
+        python_profile=str(a.python_profile) if profiler is not None else None,
         affinity=sorted(os.sched_getaffinity(0))), root=0)
     if not timed and a.warmup_reference and rank == 0:
         reference = json.loads(Path(a.warmup_reference).read_text())
@@ -243,7 +260,8 @@ def run(a, n, timed):
             raise RuntimeError(f'Insufficient physical NIC traffic for cold: {rx}')
         seconds = max(r['elapsed'] for r in gathered)
         output = dict(variant=a.variant, cache=a.cache, diagnostic=a.diagnostic, include_jf=a.include_jf,read_stats=a.read_stats,
-            events=n, loop_s=seconds, events_per_s=n/seconds,
+            events=n, pool_depth=a.pool_depth, bulk_target_bytes=a.bulk_target_bytes,
+            task_size=a.task_size, loop_s=seconds, events_per_s=n/seconds,
             input_gbps=reference['payload_bytes']/seconds/1e9,
             array_gbps=n*8192/seconds/1e9, payload_bytes=reference['payload_bytes'],
             timestamp_sha256=timestamp_hash, sums_sha256=bd['sums_sha256'],
@@ -277,11 +295,19 @@ def main():
     p.add_argument('--warmup-reference')
     p.add_argument('--range-manifest')
     p.add_argument('--read-stats', action='store_true')
+    p.add_argument('--bulk-target-bytes', type=int, default=None,
+                   help='Override the runtime bulk target; omit for historical builds')
+    p.add_argument('--task-size', type=int, default=1 << 20)
+    p.add_argument('--pool-depth', type=int, choices=(1, 2), default=1)
+    p.add_argument('--pipeline-stats', action='store_true')
+    p.add_argument('--python-profile', type=Path,
+                   help='BD-only cProfile of the measured loop; excludes warmup and cache preparation')
     p.add_argument('--fallback-library')
     p.add_argument('--fallback-output')
     a = p.parse_args()
     assert a.events > 0 and a.warmup_events > 0
     assert not (a.read_stats and a.diagnostic)
+    assert not (a.python_profile and (a.pipeline_stats or a.fallback_library or a.diagnostic))
     a.cache_ranges = None
     if a.range_manifest:
         manifest = json.loads(Path(a.range_manifest).read_text())
@@ -300,7 +326,7 @@ def main():
         import cupy as cp
         import kvikio, kvikio.defaults as defaults
         import psana
-        assert (bool(defaults.compat_mode()), defaults.get_num_threads(), defaults.task_size()) == (True,8,1048576)
+        assert (bool(defaults.compat_mode()), defaults.get_num_threads(), defaults.task_size()) == (True,8,a.task_size)
         bus = cp.cuda.runtime.deviceGetPCIBusId(0)
         print('RUNTIME '+json.dumps(dict(psana=psana.__file__,cupy=cp.__version__,
             kvikio=kvikio.__version__,gpu=bus.decode() if isinstance(bus,bytes) else bus,
@@ -315,6 +341,11 @@ def main():
         if is_bd:
             from kvikio_fallback_trace import FallbackTrace
             a.fallback_trace = FallbackTrace(a.fallback_library)
+    pipeline_stats = a.pipeline_stats
+    a.pipeline_stats = None
+    if pipeline_stats and is_bd:
+        from pipeline_stats import PipelineStats
+        a.pipeline_stats = PipelineStats()
     diagnostic = a.diagnostic
     a.diagnostic = diagnostic or bool(a.warmup_reference)
     run(a,a.warmup_events,False)
