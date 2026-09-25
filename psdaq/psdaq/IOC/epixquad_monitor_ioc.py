@@ -486,7 +486,7 @@ class MonitorStreamWriter(rogue.interfaces.stream.Master):
     def enable(self, flag):
         payload = struct.pack("<4I", 0, flag, 0, 0)
         size = len(payload)
-        self.log.info("[VC={self.vc}] sending enable packet #{self.n_sent}: {payload}")
+        self.log.info(f"[VC={self.vc}] sending enable packet #{self.n_sent}: {payload}")
         frame = self._reqFrame(size, True)
         with frame.lock():
             frame.write(payload, 0)
@@ -581,7 +581,7 @@ class EpixQuadBoard(pyrogue.Root):
 
     @staticmethod
     def configure(dev, lane, vc, flag, mon_prescale, trig_period, queue):
-        data = {}
+        data = {'logs': {'info': [], 'warn': [], 'error': []}}
         try:
             with EpixQuadBoard(dev, lane, vc) as root:
                 # read firmware info
@@ -593,9 +593,11 @@ class EpixQuadBoard(pyrogue.Root):
                 data["firmware_bldstr"] = bldstr
                 # read carrier id info
                 if not root.check_carried_ids():
+                    data['logs']['warn'].append("Board boot issue: invalid carrierId - attempting to reset")
                     root.SystemRegs.CarrierIdRst.set(True)
                     time.sleep(0.1)
                     root.SystemRegs.CarrierIdRst.set(False)
+                    data['logs']['info'].append("Reset of carrierIds complete")
                 for i in range(4):
                     cid_lo = root.SystemRegs.CarrierIdLow[i].get()
                     cid_hi = root.SystemRegs.CarrierIdHigh[i].get()
@@ -603,6 +605,7 @@ class EpixQuadBoard(pyrogue.Root):
                 # check if the asic mask is zero
                 asic_mask = root.SystemRegs.AsicMask.get()
                 if asic_mask == 0:
+                    data['logs']['warn'].append("Board boot issue: asic mask is zero - attempting to reset")
                     # this needs to set to fix this just calling AdcReqStart is not enough
                     root.SystemRegs.AdcBypass.set(True)
                     root.SystemRegs.AdcReqStart.set(True)
@@ -614,16 +617,26 @@ class EpixQuadBoard(pyrogue.Root):
                     while root.SystemRegs.AdcTestDone.get() != 1:
                         time.sleep(0.1)
                         if time.time() - start > timeout:
+                            data['logs']['warn'].append("Wait for AdcTestDone timed out")
                             break
                     root.SystemRegs.AdcBypass.set(False)
+                    data['logs']['info'].append("Reset of asic mask complete")
 
                 # configure the monitoring registers
                 root.EpixQuadMonitor.MonitorEn.set(flag)
+                data['logs']['info'].append(f"set EpixQuadMonitor.MonitorEn to {flag}")
                 root.EpixQuadMonitor.TrigPrescaler.set(mon_prescale)
+                data['logs']['info'].append(f"set EpixQuadMonitor.TrigPrescaler to {flag}")
                 root.SystemRegs.TrigEn.set(1)
+                data['logs']['info'].append("set SystemRegs.TrigEn to 1")
                 root.SystemRegs.TrigSrcSel.set(3)
+                data['logs']['info'].append("set SystemRegs.TrigSrcSel to 3")
                 root.SystemRegs.AutoTrigEn.set(1)
+                data['logs']['info'].append("set SystemRegs.AutoTrigEn to 1")
                 root.SystemRegs.AutoTrigPerMs.set(trig_period)
+                data['logs']['info'].append(f"set SystemRegs.AutoTrigPerMs to {trig_period}")
+        except Exception as exc:
+            data['logs']['error'].append(f"exception encountering during configuration: {exc}")
         finally:
             # send the firmware info back
             queue.put(data)
@@ -759,6 +772,7 @@ class EpixQuadMonitoringIOC(PVGroup):
                     count += 1
                     await self.moncnt.write(value=count)
                 else:
+                    self.log.error(f"Bad monitoring packet returned by the detector: {data}")
                     errcount += 1
                     await self.monerrcnt.write(value=errcount)
         except Exception:
@@ -1363,7 +1377,12 @@ class EpixQuadMonitoringIOC(PVGroup):
         data = await self.async_lib.library.to_thread(self.configure, bool(flag), self.monitor_prescale, self.auto_trigger_period)
         self.log.info("Epix register configuration completed")
         for name, value in data.items():
-            if hasattr(self, name):
+            if name == 'logs':
+                for log_name, msgs in value.items():
+                    log_level = logging.getLevelName(log_name.upper())
+                    for msg in msgs:
+                        self.log.log(log_level, msg)
+            elif hasattr(self, name):
                 await getattr(self, name).write(value=value)
 
     @microblaze.startup
