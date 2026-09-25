@@ -54,6 +54,10 @@ Keep it outside the hutch directories. To update the scripts, merge the change i
 
 `run_monitor.sh` has `PROJECT=lcls2` and `PREFIX=lcls` at the top; that is what makes this copy handle `lcls2`. The same scripts are kept in other DAQ repos with their own `PROJECT`/`PREFIX`. The job scripts `branch_out.sh` and `single_push_collective_tag.sh` are identical in every copy. When you fix something in them, make the same change in every copy.
 
+### Prerequisites
+
+The scripts need **bash 4.4+** (for `mapfile -d ''`), **git 2.31+** (for `GIT_CONFIG_COUNT`), and `flock` and `mail`. On 2026-09-25, `sdfcron001` had RHEL 8.10, bash 4.4.20, git 2.43.7, `/bin/flock` and `/bin/mail`. All production clones and the shared repos were owned by `psrel`.
+
 ---
 
 ## Account and host

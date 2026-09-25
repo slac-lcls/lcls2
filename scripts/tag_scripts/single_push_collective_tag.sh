@@ -16,12 +16,16 @@
 
 set -e
 
-# Colors for output
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+# Colors for output, only when writing to a terminal, so log files stay plain text
+if [ -t 1 ]; then
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m' # No Color
+else
+    RED='' GREEN='' YELLOW='' BLUE='' NC=''
+fi
 
 DRY_RUN=false
 ARGS=()
@@ -191,9 +195,11 @@ for item in "$ROOT_DIR"/*; do
 
         echo -e "${BLUE}Found git repo: ${REPO_NAME}${NC}"
 
-        # Get the clone commit hash
+        # Get the clone commit hash and time from the reflog's clone entry.
+        # With --date=unix, %gd prints the entry as HEAD@{<seconds since epoch>}.
         cd "$item"
-        GIT_HASH=$(git reflog --grep-reflog=clone -n 1 --format='%H' 2>/dev/null || true)
+        CLONE_ENTRY=$(git reflog --grep-reflog=clone -n 1 --date=unix --format='%H %gd' 2>/dev/null || true)
+        GIT_HASH="${CLONE_ENTRY%% *}"
 
         if [ -z "$GIT_HASH" ]; then
             # Reflog entries expire (90 days by default), after which the clone
@@ -206,7 +212,7 @@ for item in "$ROOT_DIR"/*; do
         fi
         echo -e "${GREEN}  Clone Hash: ${GIT_HASH}${NC}"
 
-        CLONE_TIME=$(git reflog --grep-reflog=clone -n 1 --date=unix 2>/dev/null | sed -n 's/.*HEAD@{\([0-9]*\)}:.*/\1/p')
+        CLONE_TIME=$(sed -n 's/.*HEAD@{\([0-9]*\)}.*/\1/p' <<< "$CLONE_ENTRY")
 
         if [ -z "$CLONE_TIME" ]; then
             echo -e "${YELLOW}  Warning: Could not determine clone time${NC}"

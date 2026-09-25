@@ -108,17 +108,21 @@ Every directory in `root_dir` that is a git repo **and** whose name starts with 
 
 ```bash
 cd "$item"
-GIT_HASH=$(git reflog --grep-reflog=clone -n 1 --format='%H' 2>/dev/null || true)
+CLONE_ENTRY=$(git reflog --grep-reflog=clone -n 1 --date=unix --format='%H %gd' 2>/dev/null || true)
+GIT_HASH="${CLONE_ENTRY%% *}"
 ...
-CLONE_TIME=$(git reflog --grep-reflog=clone -n 1 --date=unix 2>/dev/null | sed -n 's/.*HEAD@{\([0-9]*\)}:.*/\1/p')
+CLONE_TIME=$(sed -n 's/.*HEAD@{\([0-9]*\)}.*/\1/p' <<< "$CLONE_ENTRY")
 DATE_STR=$(date -d @"$CLONE_TIME" +%Y%m%d)
 ```
 
 The **reflog** is git's local diary of where `HEAD` has been. The very first entry in a fresh clone is `clone: from https://github.com/...`, recorded with the commit that was checked out and the time it happened.
 
 - `--grep-reflog=clone -n 1` finds that entry.
-- `--format='%H'` gives its commit hash. This is the commit the clone was installed from, even if someone later pulled or checked out something else.
-- `--date=unix` makes git print the entry as `HEAD@{1757372400}: clone: ...`, and the `sed` pulls out that number, the moment of the clone. `date` turns it into `YYYYMMDD`.
+- `--format='%H %gd'` prints two things from it on one line, e.g. `c627e5e6… HEAD@{1790347793}`:
+  - `%H` is the commit hash. This is the commit the clone was installed from, even if someone later pulled or checked out something else. `${CLONE_ENTRY%% *}` keeps the part before the space.
+  - `%gd` is the entry's name, which `--date=unix` turns into `HEAD@{<seconds since 1970>}`, the moment of the clone. The `sed` pulls out that number and `date` turns it into `YYYYMMDD`.
+
+Both come from a single `git reflog` call.
 
 **Why not the commit's own date (`%ct`)?** That's when the commit was *written*, which can be weeks before it was installed. The reflog time is when the clone actually happened.
 

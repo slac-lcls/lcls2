@@ -59,7 +59,7 @@ log_dir() {
 }
 ```
 
-`write_failure_report "<reason>"` writes a file to `<log_dir>/failed_runs/<timestamp>_<hutch>_<repo>_FAILED.log` containing:
+`write_failure_report "<reason>"` writes a file to `<log_dir>/failed_runs/<timestamp>_<hutch>_<repo>_FAILED.log` (ending in `_FAILED_DRYRUN.log` during a dry run, so dry-run problems aren't mistaken for real failures) containing:
 - the reason
 - the inputs
 - the clone being processed, its commit and branch name

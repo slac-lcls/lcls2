@@ -70,6 +70,9 @@ write_failure_report() {
 
     timestamp=$(date +%Y-%m-%d_%H%M%S)
     failed_log="${failed_log_dir}/${timestamp}_${HUTCH_NAME:-unknown}_${REPO_NAME:-setup}_FAILED.log"
+    if [ "$DRY_RUN" = true ]; then
+        failed_log="${failed_log%.log}_DRYRUN.log"
+    fi
 
     {
         echo "=========================================="
@@ -140,11 +143,16 @@ handle_error() {
 trap 'handle_error $LINENO' ERR
 # ====== END LOGGING SETUP ======
 
-# Colors for output
-RED='### \033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='-- \033[1;33m'
-NC='\033[0m' # No Color
+# Colors for output, only when writing to a terminal, so log files stay plain text.
+# The "### " and "-- " markers are kept either way, so errors and notes are easy to grep.
+if [ -t 1 ]; then
+    RED='### \033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='-- \033[1;33m'
+    NC='\033[0m' # No Color
+else
+    RED='### ' GREEN='' YELLOW='-- ' NC=''
+fi
 
 DRY_RUN=false
 ARGS=()
@@ -223,7 +231,6 @@ trap 'rm -f "$TMP_FILE"' EXIT
 # ====== PREPARE BRANCH REPO (once) ======
 cd "$BRANCH_DIR"
 echo ""
-echo -e "${GREEN}LOCAL${NC}"
 echo -e "${YELLOW}Preparing branch repo ${NC}"
 
 # Note: The branch repo should never have changes. If it does, we do not want to stash and have it be forgotten
@@ -285,7 +292,6 @@ sync_repo() {
     FAIL_STEP=""
 
     echo -e "${GREEN}Processing matching repo:${NC} $MONITOR_REPO"
-    echo -e "${GREEN} REMOTE FOLDER ${NC}"
 
     # --- Read the production clone (read-only) ---
     if ! GIT_HASH=$(git -C "$MONITOR_REPO" rev-parse HEAD); then
@@ -403,7 +409,7 @@ sync_repo() {
     if [ ${#plan_file[@]} -gt 0 ] || [ "$base_desc" = "local branch not yet on origin" ]; then
         run git checkout -q -B "$BRANCH_NAME" "$base_ref" || return 1
 
-        echo -e "${GREEN}Synching folders ${NC}"
+        echo -e "${GREEN}Syncing files ${NC}"
         for i in "${!plan_file[@]}"; do
             file="${plan_file[$i]}"
             case "${plan_action[$i]}" in
