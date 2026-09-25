@@ -87,6 +87,7 @@ class _GpuXtcSlotBuffers:
     shape_refs: object = None
     locators: dict = field(default_factory=dict)
     locator_backing: object = None
+    input_bases: object = None
 
     def batched_locator_rows(self, n_handles, n_dgrams):
         """Return [handle, capacity, column] storage; tails keep capacity strides."""
@@ -135,10 +136,36 @@ class _GpuXtcSlotBuffers:
     @property
     def memory_bytes(self):
         arrays = (self.dgram_records, self.shape_counts, self.shape_refs,
-                  self.locator_backing)
+                  self.locator_backing, self.input_bases)
         return sum(backing_capacity(array) for array in arrays if array is not None) + sum(
             backing_capacity(array) for array in self.locators.values()
         )
+
+
+class _ParsedGroupSet:
+    """Shared parser arena; raw backing still retires independently per group."""
+
+    def __init__(self, pool, index, batch):
+        self.pool, self.index, self.batch = pool, index, batch
+        self.windows = {}
+
+    def release(self, group_index):
+        self.windows.pop(group_index, None)
+        if not self.windows:
+            self.batch.retire()
+            self.pool._owners[self.index] = None
+
+    def drain(self):
+        error = None
+        for window in tuple(self.windows.values()):
+            try:
+                window.drain()
+            except BaseException as exc:
+                if error is None:
+                    error = exc
+        if error is not None:
+            raise error
+        return not self.windows
 
 
 class GpuXtcBatchPool:
@@ -193,7 +220,7 @@ class GpuXtcBatchPool:
             for _ in range(self.n_slots)
         ]
 
-    def parse(self, slot_id, data_gpu, desc_table, stream):
+    def parse(self, slot_id, data_gpu, desc_table, stream, *, input_bases_gpu=None):
         """Walk one completed read and locate configured fields on ``stream``."""
         from .parser import GpuEventBatch
 
@@ -219,6 +246,7 @@ class GpuXtcBatchPool:
             stream_ids_by_dgram=np.array(
                 desc_table[:, DESC_STREAM_ID], dtype=np.uint64, copy=True
             ),
+            input_bases_gpu=input_bases_gpu,
         )
         if self.field_handles:
             with stream:
@@ -266,6 +294,103 @@ class GpuXtcBatchPool:
         self._next_window_id += 1
         return window
 
+    def parse_groups(self, reads, stream, *, batch_id):
+        """Three parser launches for many raw groups, with separate raw leases.
+
+        Group views share parser rows until the last group retires. Their raw
+        buffers and field offsets stay independent; no raw payload is copied.
+        """
+        from .parser import GpuEventBatch
+        from psana.gpu.gpu_input_window import InputWindow
+
+        reads = tuple(reads)
+        if not reads:
+            return ()
+        try:
+            index = self._owners.index(None)
+        except ValueError:
+            raise RuntimeError('no free GPU input parser storage') from None
+        releases = []
+        batch = None
+        windows = []
+
+        def release_all():
+            # Some child windows may exist even if a later constructor failed.
+            # Drain/detach them explicitly; their shared-arena callbacks form
+            # cycles and otherwise retain allocation charges until Python GC.
+            for window in windows:
+                window.drain()
+            windows.clear()
+            for release in releases:
+                release()
+            if batch is not None and not getattr(batch, '_retired', False):
+                batch.retire()
+
+        try:
+            for read in reads:
+                releases.append(read.retain_input())
+            table = np.concatenate([read.desc_table for read in reads])
+            n_rows = len(table)
+            bases = np.empty((n_rows, 3), dtype=np.uint64)
+            cursor = 0
+            for read in reads:
+                count = len(read.desc_table)
+                bases[cursor:cursor + count, 0] = read.data_gpu.data.ptr
+                bases[cursor:cursor + count, 1] = read.data_gpu.nbytes
+                bases[cursor:cursor + count, 2] = np.arange(count, dtype=np.uint64)
+                cursor += count
+            slot = self._slots[index]
+            slot.input_bases, device_bases = slot._rows(slot.input_bases, n_rows, (3,))
+            device_bases.set(bases, stream=stream)
+            batch = self.parse(index, reads[0].data_gpu, table, stream,
+                               input_bases_gpu=device_bases)
+            shared = _ParsedGroupSet(self, index, batch)
+            cursor = 0
+            for group_index, (read, release_raw) in enumerate(zip(reads, releases)):
+                count = len(read.desc_table)
+                start, stop = cursor, cursor + count
+                child = GpuEventBatch.__new__(GpuEventBatch)
+                child.__dict__ = batch.__dict__.copy()
+                child.data_gpu = read.data_gpu
+                child.n_dgrams = count
+                child.dgram_records_gpu = batch.dgram_records_gpu[start:stop]
+                child.shape_counts_gpu = batch.shape_counts_gpu[start:stop]
+                child.shape_refs_gpu = batch.shape_refs_gpu[start:stop]
+                child.stream_ids_by_dgram = batch.stream_ids_by_dgram[start:stop]
+                child._input_bases_gpu = None
+                child._locators = {}
+                if batch._configured_backing is not None:
+                    child._configured_backing = batch._configured_backing[:, start:stop]
+                child._locator_allocator = (
+                    lambda handle, n, a=start, b=stop:
+                    slot.locator_rows(handle, n_rows)[a:b])
+
+                def release(i=group_index, raw=release_raw):
+                    raw()
+                    shared.release(i)
+
+                window = InputWindow(batch_id, self._next_window_id, child,
+                                     read.desc_table, release=release,
+                                     defer_retirement=True)
+                self._next_window_id += 1
+                shared.windows[group_index] = window
+                windows.append(window)
+                cursor = stop
+            self._owners[index] = shared
+            # Only children need a raw-array facade after submission. Shared
+            # metadata must not keep a retired first group's raw alias alive.
+            batch.data_gpu = None
+            return tuple(windows)
+        except BaseException:
+            try:
+                stream.synchronize()
+                release_all()
+            except BaseException:
+                self._owners[index] = stream
+                self._failed_inputs.append((index, stream, release_all))
+                raise
+            raise
+
     def close(self):
         """Drain inputs after execution/event references have been released."""
         for index, stream, release_raw in tuple(self._failed_inputs):
@@ -288,7 +413,7 @@ class GpuXtcBatchPool:
         )
         return n_dgrams * per_dgram
 
-    def allocation_requirements(self, n_dgrams):
+    def allocation_requirements(self, n_dgrams, *, groups=False):
         """Growth requests for the free parser slot parse_window will choose."""
         try:
             index = self._owners.index(None)
@@ -299,6 +424,8 @@ class GpuXtcBatchPool:
                 (self.max_shapes_per_dgram * REF_NCOLS * 8, slot.shape_refs)]
         if self.field_handles:
             rows.append((len(self.field_handles) * LOC_NCOLS * 8, slot.locator_backing))
+        if groups:
+            rows.append((3 * 8, slot.input_bases))
         return [allocation_requirement(self.cp, int(n_dgrams) * size, a)
                 for size, a in rows]
 

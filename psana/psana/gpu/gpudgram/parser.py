@@ -157,7 +157,9 @@ class ConfiguredFieldLocations:
 
     @property
     def capacity(self):
-        return int(self.backing.shape[1])
+        # Group views slice the dgram axis while preserving the shared arena's
+        # handle stride. Gather kernels need that stride, not the slice length.
+        return int(self.backing.strides[0] // (LOC_NCOLS * 8))
 
     def wait_on(self, stream):
         # Same-stream submission is already ordered. Keep the producer stream
@@ -209,6 +211,7 @@ class GpuEventBatch:
         shape_refs_gpu=None,
         locator_allocator=None,
         stream_ids_by_dgram=None,
+        input_bases_gpu=None,
     ):
         cp = _cupy()
         _require_device_array(data_gpu, cp.uint8, 1, "data_gpu")
@@ -223,9 +226,14 @@ class GpuEventBatch:
         _validate_device_configs(device_configs, cp)
 
         self.data_gpu = data_gpu
+        self._input_bases_gpu = input_bases_gpu
         self.device_configs = device_configs
         self.dgram_records_gpu = dgram_records_gpu
         self.n_dgrams = int(dgram_records_gpu.shape[0])
+        if input_bases_gpu is not None:
+            _require_device_array(input_bases_gpu, cp.uint64, 2, 'input_bases_gpu')
+            if input_bases_gpu.shape != (self.n_dgrams, 3):
+                raise ValueError('input base table must have one pointer/size/index row per dgram')
         if stream_ids_by_dgram is None:
             self.stream_ids_by_dgram = None
         else:
@@ -290,6 +298,7 @@ class GpuEventBatch:
                         self.shape_refs_gpu,
                         self.shape_counts_gpu,
                         np.uint64(self.max_shapes_per_dgram),
+                        input_bases_gpu if input_bases_gpu is not None else np.uint64(0),
                     ),
                     stream=self.stream,
                 )
@@ -326,7 +335,8 @@ class GpuEventBatch:
                  self.device_configs.names, self.device_configs.fields,
                  np.uint64(self.device_configs.n_names),
                  np.uint64(self.device_configs.n_streams), stream_handles,
-                 handle_table, np.uint64(capacity), backing),
+                 handle_table, np.uint64(capacity), backing,
+                 self._input_bases_gpu if self._input_bases_gpu is not None else np.uint64(0)),
                 stream=self.stream,
             )
         ready = cp.cuda.Event(disable_timing=True)
@@ -351,6 +361,7 @@ class GpuEventBatch:
         self._locator_allocator = None
         self._configured_backing = self._configured_ready = None
         self._configured_indices = self._location_tables = None
+        self._input_bases_gpu = None
         self.data_gpu = self.dgram_records_gpu = None
         self.shape_counts_gpu = self.shape_refs_gpu = None
         self.device_configs = None
@@ -564,11 +575,16 @@ void walk_xtc(const unsigned char* data,
               unsigned long long n_streams,
               unsigned long long* refs,
               unsigned long long* counts,
-              unsigned long long ref_capacity)
+              unsigned long long ref_capacity,
+              const unsigned long long* input_bases)
 {{
     const unsigned long long index =
         static_cast<unsigned long long>(blockIdx.x) * blockDim.x + threadIdx.x;
     if (index >= n_dgrams) return;
+    if (input_bases) {{
+        data = reinterpret_cast<const unsigned char*>(input_bases[index * 3]);
+        data_nbytes = input_bases[index * 3 + 1];
+    }}
 
     unsigned long long* dgram = dgrams + index * {DGRAM_NCOLS};
     dgram[{DGRAM_STATUS}] = {STATUS_BAD_DGRAM};
@@ -659,7 +675,7 @@ void walk_xtc(const unsigned char* data,
             }}
             unsigned long long* row =
                 refs + (index * ref_capacity + count) * {REF_NCOLS};
-            row[{REF_DGRAM_INDEX}] = index;
+            row[{REF_DGRAM_INDEX}] = input_bases ? input_bases[index * 3 + 2] : index;
             row[{REF_CONFIG_NAMES_INDEX}] = names_index;
             row[{REF_OFFSET}] = dgram_offset + node_offset;
             row[{REF_EXTENT}] = extent;
@@ -874,11 +890,14 @@ void locate_fields(const unsigned char* data,
                    const unsigned long long* stream_handles,
                    const unsigned long long* handles,
                    unsigned long long capacity,
-                   unsigned long long* locators)
+                   unsigned long long* locators,
+                   const unsigned long long* input_bases)
 {{
     // One block per dgram; threads span only its stream's handles and actual
     // references. Device metadata stays on the GPU throughout scheduling.
     const unsigned long long dgram = blockIdx.x;
+    if (input_bases)
+        data = reinterpret_cast<const unsigned char*>(input_bases[dgram * 3]);
     const unsigned long long* record = dgrams + dgram * {DGRAM_NCOLS};
     if (record[{DGRAM_STATUS}] != {STATUS_OK}) return;
     const unsigned long long stream = record[{DGRAM_STREAM_ID}];
