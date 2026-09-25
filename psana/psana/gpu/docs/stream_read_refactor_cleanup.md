@@ -77,6 +77,7 @@ Paths in this table are relative to `psana/psana/gpu`, except tests.
 | Field-view lease breadth | `InputSlotLease.acquire_view`, `_GpuFieldViewContext` | Existing field-view contexts conservatively fork all input owners for their event. Safe but a long external consumer of one small field can also retain that event's JF inputs. Check selective source-owner leases during retained-view acceptance; do not infer that independent group ownership already narrows every public consumer lease. |
 | Residency tests | `tests/gpu/unit/test_gpu_admission.py`, `tests/gpu/integration/test_gpu_residency_device.py`, `tests/gpu/unit/test_gpu_residency.py` and resident cases in `test_core.py`/`test_gpu_retirement.py` | Replace policy-specific ranking expectations with group bounds/fairness tests after migration. Retain byte-budget, missing-event, transition, lifetime, failure and pixel checks. |
 | Timing hooks | `scripts/bulk_phase_timing.py`, `summarize_bulk_phases.py` | Update resident method hooks and phase labels when those methods change; retain old frozen campaign scripts for interpreting baseline evidence. |
+| Native trace attribution | `scripts/kvikio_fallback_trace.py`, `summarize_kvikio_fallback.py` | Stage 4 performance work replaced serial-batch assumptions with unique file/range attribution and union wall time. The global submission tag cannot identify owners of overlapping reads. Keep historical metadata support and the overlap/duplicate/interval audit tests. |
 | I/O diagnostic wording | `gpu_events.py` fallback/GDS startup messages hardcode NVMe and infer causes from compatibility mode | Replace with backend-neutral storage wording when updating I/O diagnostics. Compatibility mode alone does not identify the filesystem, cache state or reason GDS is unavailable; the Weka benchmark already demonstrates why the current message is misleading. |
 | Earlier policy diagnostics | Untracked `scripts/compare_admission_priority.py`, `trace_bulk_reads.py`, `run_trace_bulk_reads_{sdf,perlmutter}.sbatch` | They exercise/override the existing residency policy. Decide whether to archive or port after Stage 3. They were intentionally excluded from the latest benchmark commit; they are not evidence of the new scheduler. |
 | Deferred materializer proposal | `docs/proposals/detector_materialization_ownership.md` | Keep marked deferred. This refactor retains leased XTC field views; do not accidentally reintroduce mandatory field copies or duplicate JF gathering. |
@@ -84,6 +85,38 @@ Paths in this table are relative to `psana/psana/gpu`, except tests.
 | Scratch duplicates | Frozen benchmark helpers, installations, native traces and Stage 1 source snapshots | Preserve until accepted evidence is durably retained and dependencies are checked. Repository benchmark helpers are now maintained; frozen copies intentionally identify prior results. No bulk scratch/log deletion as part of code cleanup. |
 
 ## Stage gates
+
+Current checkpoint, 2026-09-25: all three profiled CPU-overhead changes are
+implemented and validated. The [10,000-event comparison](performance/stream_read_current_10k.md)
+completed eight audited cold/warm controls with the current code. Bulk-on
+median loop time remains 5.42% higher cold and 23.77% higher warm; throughput
+work is deferred. Broader retained-view/tight-budget device coverage and legacy
+removal are still open. The entries below preserve the earlier stage evidence
+and do not supersede this checkpoint.
+
+2026-09-25 follow-up: [controller lifecycle and transition validation](stream_read_stage4_correctness.md)
+adds 12 CPU cases and two real-CUDA regressions. BeginStep/EndRun now drain
+unreferenced deferred group windows after flushing executions; a failed drain
+preserves ownership and blocks dispatch until retry. The 400-test CPU suite and
+10 targeted A100 tests pass. Broader retained-view/tight-budget device matrices,
+10k acceptance, and legacy removal remain gated below.
+
+[CPU profiling](performance/stream_read_cpu_profile.md), job 39067790, completed
+all 16 controls/profiles. Repeated slot selection, pending-file scans, and
+legacy-plan rebuilding are measured follow-up targets. Bulk-on controls remain
+12.3% slower cold and 22.9% slower warm by median loop time on that allocation.
+The severe earlier warm slowdown did not recur; its cause remains unresolved.
+
+The user subsequently named the next phase **Stage 4 performance acceptance**.
+Its completed 1k comparison is recorded in
+[the Stage 4 report](performance/stream_read_stage4_acceptance.md): job 39028351
+passed all 20 sample audits and restored bulk-on file concurrency, but bulk-on
+loop time remains 14.7% higher cold and 30.7% higher warm than bulk off.
+The removal gates below retain the original stage numbering; that performance
+sweep does not discharge the broader correctness or 10k acceptance gates.
+Next profile group submission/setup/retirement before changing ownership or
+removing fallback coverage. The Stage 3 pre-commit review increased device
+coverage to 29 tests and fixed partial parser-child cleanup.
 
 - Stage 2: independent input ownership and completion polling, with CPU and
   device lifetime/failure checks; implemented and validated (69 CPU tests,

@@ -82,20 +82,45 @@ def prefix_residency(path, length):
 
 def cache_inputs(directory, mode, prepare=True, include_jf=False, ranges=None):
     if ranges is not None:
-        if mode != 'cold':
-            raise ValueError('bounded-prefix cache preparation is cold-only')
-        rows = []
+        if mode not in ('cold', 'warm'):
+            raise ValueError('cache mode must be cold or warm')
+        paths = []
         for name, length in sorted(ranges.items()):
             path = Path(directory)/name
             assert Path(name).name == name
-            if prepare:
+            if not 0 < length <= path.stat().st_size:
+                raise ValueError('invalid measured input extent')
+            paths.append((path, length))
+        # Large measured prefixes also need NUMA-distributed page allocation.
+        # Only the cache helper runs interleaved; timed MPI workers are unchanged.
+        interleave = prepare and mode == 'warm' and sum(n for _, n in paths) >= 64 * 1024**3
+        if interleave:
+            subprocess.run(['numactl', '--interleave=all', sys.executable,
+                            str(Path(__file__).with_name('warm_cache.py')), '--prefixes',
+                            json.dumps([(str(p), n) for p, n in paths])], check=True)
+        for path, length in paths:
+            if prepare and not interleave:
                 with path.open('rb', buffering=0) as source:
-                    os.fsync(source.fileno())
-                    # Evict the entire private file, verify only the tested prefix.
-                    os.posix_fadvise(source.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
+                    if mode == 'cold':
+                        os.fsync(source.fileno())
+                        # Evict the private file, verify only the tested prefix.
+                        os.posix_fadvise(source.fileno(), 0, 0, os.POSIX_FADV_DONTNEED)
+                    else:
+                        remaining = length
+                        while remaining:
+                            chunk = source.read(min(4 * 1024**2, remaining))
+                            if not chunk:
+                                raise RuntimeError(f'short warm-prefix read: {path}')
+                            remaining -= len(chunk)
+        # Check all prefixes after preparation, so later reads cannot silently
+        # evict an earlier file and still pass the warm gate.
+        rows = []
+        for path, length in paths:
             row = prefix_residency(path, length)
-            if prepare and row['resident_fraction'] > .01:
+            if prepare and mode == 'cold' and row['resident_fraction'] > .01:
                 raise RuntimeError(f'Cold prefix residency too high: {row}')
+            if mode == 'warm' and row['resident_fraction'] < .99:
+                raise RuntimeError(f'Warm prefix residency too low: {row}')
             rows.append(row)
         pages = sum(r['pages'] for r in rows)
         resident = sum(r['resident_pages'] for r in rows)
