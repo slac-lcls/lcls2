@@ -73,12 +73,11 @@ in both modes, inside the measured loop. It is a shared short-run cost rather
 than an explanation specific to bulk on. The earlier large warm depth-1
 slowdown has not been causally established by this profile.
 
-The next bounded change should address repeated slot selection and pending-file
-scans first. Preserve and rerun the controller failure/transition coverage
-added in [Stage 4 correctness](../stream_read_stage4_correctness.md), then compare
-controls on the same allocation before making a throughput claim.
+These findings motivated the three completed changes below. The profile
+remains historical baseline evidence; see the [current checklist](../stream_read_refactor_cleanup.md)
+for ownership acceptance, completed cleanup and deferred performance work.
 
-## Next optimization candidates
+## Follow-up implementation status
 
 1. Avoid reconstructing and rescanning all raw-slot candidates per group.
    Preserve best-fit reuse, deterministic ties, small-stream credits, busy
@@ -96,10 +95,11 @@ controls on the same allocation before making a throughput claim.
    Implemented and measured: [direct group results](stream_read_direct_group.md).
    Correctness passed; throughput acceptance remains unresolved.
 
-Measure these changes independently against controls before claiming a speedup.
-Do not reduce ownership charges or remove completion dependencies to lower
-overhead. Broader correctness and legacy-removal gates remain in
-[the cleanup checklist](../stream_read_refactor_cleanup.md).
+Each change received an isolated comparison; the later
+[10k bulk-off/on comparison](stream_read_current_10k.md) still found higher
+bulk-on loop times. Broader ownership acceptance and legacy cleanup are now
+complete, as recorded in [the checklist](../stream_read_refactor_cleanup.md).
+Ownership charges and completion dependencies remain required.
 
 ## Artifacts
 

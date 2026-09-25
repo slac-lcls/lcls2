@@ -1,151 +1,122 @@
-# Stream-read refactor: review and deferred cleanup
+# Stream-read refactor: completion checklist
 
-Last reviewed: 2026-09-24, Stage 3, based on Stage 2 commit `b24eed98c` plus
-the stream scheduling integration. This is the persistent cleanup checklist for later
-stages. Entries below are migration candidates, not authorization to delete
-live code or benchmark evidence now.
+Last reviewed: **2026-09-25**, after cleanup commit `cc4451b3c`.
+The four follow-up items agreed after the 10,000-event comparison are complete.
+Correctness and cleanup acceptance passed; throughput improvement has not been
+established. Performance work remains deferred.
 
-## Stage 1 review outcome
+## Follow-up completion
 
-No remaining blocker found for the CPU-only request planner and real-SMD
-preview. It is not yet a production scheduler or a runtime memory reservation.
+These item numbers refer to the recent follow-up list, not the original
+implementation stages or the campaign later named “Stage 4 performance.”
 
-Review fixes:
-
-- Missing event entries in `fence_by_event` now raise a descriptive ValueError
-  before planning, rather than leaking a KeyError. Added a regression test.
-- The source-only unit-test loader uses a private module alias so collection
-  does not overwrite `psana.gpu.gpu_stream_read_plan` for other tests.
-- The preview stats the BigData file before opening the SMD fd, avoiding a
-  leaked descriptor if the data file is missing.
-- The planner docstring explicitly distinguishes batch-local dependencies
-  from the runtime credit that must survive across EB batches.
-
-Validation: **60 tests passed** (14 Stage 1 and 46 existing read-plan cases).
-The original real-data preview remains historical evidence from its recorded
-source hash; post-review replay matched all ten complete plans exactly: 5,019 requests
-and 33,566,911,424 bytes.
-
-## Required integration checks
-
-1. **Independent, nonblocking reclamation: Stage 2 implemented.** Deferred
-   `InputWindow` retirement uses event readiness queries, and `InputGroupPool`
-   polls every group independently. Explicit `drain()` remains blocking for
-   shutdown/error cleanup. CPU failure tests and a real CUDA delayed-consumer
-   test passed; see `stream_read_refactor_stage2.md`. Stage 3 bulk-on production
-   now uses this path and transfers planned uses into execution/event consumers.
-   Bulk-off retains its existing
-   retirement behavior.
-2. **No ordered-retirement shortcut.** A group's newest timestamp and the
-   completion of a later group do not establish its readiness. Event identity
-   and delivery ordering are distinct from input-buffer reclamation ordering.
-3. **Small-stream credits span batches.** `after_group` is batch-local and
-   group identity is `(batch_id, group_id)`. An empty dependency on a new
-   batch's first small group does not permit reading it while an earlier
-   batch's small group still has planned or active consumers.
-4. **Avoid availability deadlocks.** With one outstanding small group, an
-   execution batch must not wait for the next small group while holding the
-   planned uses that prevent its predecessor from retiring. Split execution
-   at available small-group coverage where necessary. Keep batched kernels;
-   recheck B++ launch counts after integration rather than assuming them.
-   Stage 3 splits at the next small group's first event and shares three parser
-   launches across independent raw groups. The real 1k case used 29 parser
-   batches versus bulk-off's 20; boundaries add batches, not launches per read.
-5. **Progress bound is not peak memory.** The planner checks one largest raw
-   request per stream. Runtime must reserve actual input concurrency, parser
-   tables, raw/calibrated results, scratch, retained consumers and allocation
-   growth under the shared budget. Never issue every listed group at once.
-6. **Plan order is not worker placement.** KvikIO still splits large requests
-   and defers sub-threshold reads to future retrieval. Stage 3 must honor
-   dependencies while skipping blocked streams, then verify actual overlap
-   with native traces. The CPU preview does not prove runtime concurrency.
-
-## Cleanup inventory and removal gates
-
-Follow-up item 3 is implemented in [legacy cleanup](stream_read_legacy_cleanup.md).
-The table records the original removal gates; the current disposition below
-supersedes their pending wording.
-
-- Residency ranking/orchestration, `GpuReadSelection`, legacy reader bulk
-  planning, policy fixtures and timing hooks: removed or migrated with
-  replacement assertions mapped in that report.
-- Stream-plan validation now shares descriptor and overlap validation without
-  constructing a discarded generic `ReadPlan`.
-- Input owners, parser arenas, gathers, bulk-off, historical evidence and
-  source-only preview support remain.
-- Untracked old policy diagnostics remain historical, requiring the old
-  runtime; backend-neutral I/O wording and performance follow-up are deferred.
-
-
-Paths in this table are relative to `psana/psana/gpu`, except tests.
-
-| Area | Existing code or overlap | Later action and gate |
+| Item | Status | Evidence |
 |---|---|---|
-| Residency ranking | `gpu_admission.py`: `_ResidentCandidate`, `_ResidencyDecision`, `_resident_candidates`, `allow_residency`, resident fields in `AdmissionPlan` | Superseded in production bulk-on by `GroupReadSchedule`. Still exercised by legacy fixtures. Migrate those policy assertions during Stage 4, then remove ranking. Preserve `plan_admission(...allow_residency=False)` and minimum-event/working-set checks used by both active paths. |
-| Resident orchestration | `gpu_events.py`: `_start_resident_input`, `_close_resident_input`, `_resident_window`, `_resident_streams`, extra input slot at `event_pool.depth` | Stage 3 production no longer starts resident inputs. Legacy test fixtures still use these methods; remove them together with resident branches in `_submit_legacy_gpu`, `_issue_gpu_read`, `_wait_gpu_read` and EB-boundary setup after Stage 4 covers the replacement failure/transition paths. |
-| File-major bulk planner | `gpu_kvikio_read.py::_coalesced_plan` and its use of `gpu_read_plan.build_read_plan` | Retire the old production bulk branch after the new scheduler passes acceptance. Preserve file/chunk resolution, transition fences and the per-dgram bulk-off reference path. |
-| Shared descriptor validation | `gpu_stream_read_plan.py` currently builds and discards an old `ReadPlan` to reuse validation; imports private `_uint64` | Extract shared validation/types when wiring the new production path. Avoid constructing two plans per runtime batch. Keep duplicate, timestamp, overlap and integer checks. The old planner remains useful for comparison until its callers are audited. |
-| Reader storage | `gpu_kvikio_read.py`: `_slot_bufs`, `_input_holds`, `_generations`, single packed `PendingBatch.data_gpu` | Stage 2's `issue_group` adapter and dedicated `InputGroupPool` now reuse these protections for independent groups. Keep them when migrating production; later remove duplicate planner work in the adapter after the old bulk branch is retired. |
-| Parsed input owners | `gpu_input_window.py`, `gpu_input.py` references/completion leases | Reuse or adapt; these are not obsolete. Add nonblocking reclamation and retain zero-copy field lifetime protection. |
-| Parser/gather implementation | `gpudgram` pools, `gpu_detector.py` canonical gather maps and kernels | Preserve B++ batching, owner mappings, reuse and lazy field access. A new I/O group must not automatically become a separate parser/calibration kernel launch. |
-| Shared parser arenas | `GpuXtcBatchPool.parse_groups`, `_ParsedGroupSet`, multi-base pointer table, strided group locator views | Implemented in Stage 3. Keep per-group raw leases and shared metadata retention distinct. Extend partial multi-group setup/failure injection during Stage 4 before deleting older ownership fixtures. |
-| Field-view lease breadth | `InputSlotLease.acquire_view`, `_GpuFieldViewContext` | Existing field-view contexts conservatively fork all input owners for their event. Safe but a long external consumer of one small field can also retain that event's JF inputs. Check selective source-owner leases during retained-view acceptance; do not infer that independent group ownership already narrows every public consumer lease. |
-| Residency tests | `tests/gpu/unit/test_gpu_admission.py`, `tests/gpu/integration/test_gpu_residency_device.py`, `tests/gpu/unit/test_gpu_residency.py` and resident cases in `test_core.py`/`test_gpu_retirement.py` | Replace policy-specific ranking expectations with group bounds/fairness tests after migration. Retain byte-budget, missing-event, transition, lifetime, failure and pixel checks. |
-| Timing hooks | `scripts/bulk_phase_timing.py`, `summarize_bulk_phases.py` | Update resident method hooks and phase labels when those methods change; retain old frozen campaign scripts for interpreting baseline evidence. |
-| Native trace attribution | `scripts/kvikio_fallback_trace.py`, `summarize_kvikio_fallback.py` | Stage 4 performance work replaced serial-batch assumptions with unique file/range attribution and union wall time. The global submission tag cannot identify owners of overlapping reads. Keep historical metadata support and the overlap/duplicate/interval audit tests. |
-| I/O diagnostic wording | `gpu_events.py` fallback/GDS startup messages hardcode NVMe and infer causes from compatibility mode | Replace with backend-neutral storage wording when updating I/O diagnostics. Compatibility mode alone does not identify the filesystem, cache state or reason GDS is unavailable; the Weka benchmark already demonstrates why the current message is misleading. |
-| Earlier policy diagnostics | Untracked `scripts/compare_admission_priority.py`, `trace_bulk_reads.py`, `run_trace_bulk_reads_{sdf,perlmutter}.sbatch` | They exercise/override the existing residency policy. Decide whether to archive or port after Stage 3. They were intentionally excluded from the latest benchmark commit; they are not evidence of the new scheduler. |
-| Deferred materializer proposal | `docs/proposals/detector_materialization_ownership.md` | Keep marked deferred. This refactor retains leased XTC field views; do not accidentally reintroduce mandatory field copies or duplicate JF gathering. |
-| Preview bootstrapping | `scripts/preview_stream_read_plan.py --planner-source`, private source-only test loading | Revisit once the new planner is installed normally. Keep the preview's limitation explicit: aligned six-stream, c000 benchmark metadata, not a general live EventBuilder implementation. |
-| Scratch duplicates | Frozen benchmark helpers, installations, native traces and Stage 1 source snapshots | Preserve until accepted evidence is durably retained and dependencies are checked. Repository benchmark helpers are now maintained; frozen copies intentionally identify prior results. No bulk scratch/log deletion as part of code cleanup. |
+| 1. Review and commit outstanding runtime, test, benchmark and report changes | Complete | Transition drains/configuration `3ca412d70`; direct group submission/trace attribution `717c7c9a3`; audited harness and 10k report `d4cd86d10`. |
+| 2. Broader GPU ownership acceptance | Complete, `4821499c0` | [Ownership report](stream_read_ownership_acceptance.md): 18 new A100 cases for retained public views, 4/8 MiB budgets, depth 1/2, D2H, and independent delayed consumers; 38 tests passed in that campaign. |
+| 3. Remove obsolete code after mapping replacement coverage | Complete, `cc4451b3c` | [Cleanup report](stream_read_legacy_cleanup.md): residency policy/orchestration and reader bulk adapter removed; fixtures and timing hooks migrated. Final acceptance: 430 CPU checks (406 unit + 24 harness), 53 A100 tests, and timing-hook installation. |
+| 4. Reconcile this checklist with completed optimization, ownership, 10k and cleanup work | Complete | Current status, retained contracts and deferred work are recorded here. Historical reports retain the scope and source identity of their own campaigns. |
 
-## Stage gates
+## Three CPU-overhead optimizations
 
-Current checkpoint, 2026-09-25: all three profiled CPU-overhead changes are
-implemented and validated. The [10,000-event comparison](performance/stream_read_current_10k.md)
-completed eight audited cold/warm controls with the current code. Bulk-on
-median loop time remains 5.42% higher cold and 23.77% higher warm; throughput
-work is deferred. The [broader ownership matrix](stream_read_ownership_acceptance.md)
-now passes 18 new retained-view, tight-budget, and delayed-consumer A100 cases
-alongside 20 regressions. [Legacy fixture/branch cleanup](stream_read_legacy_cleanup.md)
-is implemented with its replacement assertions mapped and validation recorded.
-The entries below preserve the earlier stage evidence
-and do not supersede this checkpoint.
+All three original profiling candidates are implemented. Their profiled savings
+are local costs, not additive predictions of end-to-end speedup.
 
-2026-09-25 follow-up: [controller lifecycle and transition validation](stream_read_stage4_correctness.md)
-adds 12 CPU cases and two real-CUDA regressions. BeginStep/EndRun now drain
-unreferenced deferred group windows after flushing executions; a failed drain
-preserves ownership and blocks dispatch until retry. The 400-test CPU suite and
-10 targeted A100 tests pass. Broader retained-view/tight-budget device matrices,
-10k acceptance, and legacy removal remain gated below.
+| Original candidate | Implementation | Evidence |
+|---|---|---|
+| Repeated raw-slot selection, about 0.60 s per 1k events | Per-planning-call capacity index, `23600736f`; preserves best fit, deterministic ties, busy-slot exclusion, stream credits and replacement reservations | [Slot-selection results](performance/stream_read_slot_index.md): over 93% less profiled selection time. |
+| Pending-file ownership scans, about 0.40 s per 1k events | Bulk-on per-file reference counts, `c3357e622`; acquired handles remain live until all associated futures drain | [File-ownership results](performance/stream_read_file_refs.md), including short reads, partial submission failure and out-of-order completion. Applies after each completed group. |
+| Legacy-plan reconstruction, about 0.25 s per 1k events | Direct group submission/shared validation, `717c7c9a3`; unused reader adapter and discarded stream-planner reference-plan construction removed in `cc4451b3c` | [Direct-group results](performance/stream_read_direct_group.md): 26–33% less profiled group-submission time; [cleanup coverage](stream_read_legacy_cleanup.md). |
 
-[CPU profiling](performance/stream_read_cpu_profile.md), job 39067790, completed
-all 16 controls/profiles. Repeated slot selection, pending-file scans, and
-legacy-plan rebuilding are measured follow-up targets. Bulk-on controls remain
-12.3% slower cold and 22.9% slower warm by median loop time on that allocation.
-The severe earlier warm slowdown did not recur; its cause remains unresolved.
+The [original CPU profile](performance/stream_read_cpu_profile.md), job 39067790,
+is the historical source of those candidate costs. It predates these changes.
 
-The user subsequently named the next phase **Stage 4 performance acceptance**.
-Its completed 1k comparison is recorded in
-[the Stage 4 report](performance/stream_read_stage4_acceptance.md): job 39028351
-passed all 20 sample audits and restored bulk-on file concurrency, but bulk-on
-loop time remains 14.7% higher cold and 30.7% higher warm than bulk off.
-The removal gates below retain the original stage numbering; that performance
-sweep does not discharge the broader correctness or 10k acceptance gates.
-Next profile group submission/setup/retirement before changing ownership or
-removing fallback coverage. The Stage 3 pre-commit review increased device
-coverage to 29 tests and fixed partial parser-child cleanup.
+## Longer-run acceptance and performance status
 
-- Stage 2: independent input ownership and completion polling, with CPU and
-  device lifetime/failure checks; implemented and validated (69 CPU tests,
-  two device tests). Production residency remains temporarily.
-- Stage 3: switch the runtime scheduling policy and remove superseded branches
-  only after all event-input construction, drains and error paths migrate.
-  Production group scheduling is implemented; 375 CPU tests, 26 GPU tests and
-  the real 1k JF+feespec smoke check pass. Remaining legacy fixture/branch removal
-  is explicitly gated on Stage 4 replacement coverage.
-- Stage 4: correctness, retained-view, out-of-order completion, tight-budget,
-  transition and early-exit acceptance.
-- Stage 5: cold Weka traces/controls with verified eviction, then warm/10k
-  acceptance. Finish policy-test and timing-tool cleanup before committing the
-  completed migration. Preserve historical benchmark summaries and provenance.
+The [10,000-event comparison](performance/stream_read_current_10k.md), job
+**39084570**, completed eight audited controls: bulk off/on, cold/warm, two
+rounds with reversed order. All event, checksum, sampled pixel, payload,
+request-count, cache, placement and provenance checks passed.
+
+| Cache | Bulk off events/s | Bulk on events/s | Bulk-on median loop-time increase |
+|---|---:|---:|---:|
+| Cold | 134.15 | 127.26 | 5.42% |
+| Warm | 304.32 | 245.88 | 23.77% |
+
+Both modes used the same frozen runtime with all three optimizations, one A100,
+one BD, batch 100, depth 1, 8 GiB GPU budget, 4 MiB bulk/task sizes and eight
+KvikIO workers in CPU-fallback mode. Bulk on reduced requests from 60,000 to
+50,182 without improving throughput.
+
+This comparison **predates cleanup `cc4451b3c`**. The cleaned runtime passed
+CPU and device correctness acceptance; it has not received a new 10k throughput
+comparison. Correctness tests do not establish a performance result for it.
+The cause of the remaining bulk-on overhead and historical warm variability
+remains unresolved. No throughput win or true-GDS, live-data, or multi-BD scaling
+acceptance is claimed.
+
+## Cleanup disposition
+
+Paths are relative to `psana/psana/gpu`, except tests.
+
+| Area | Current disposition |
+|---|---|
+| Residency ranking and orchestration | Removed: candidate ranking/diagnostics, resident admission fields, `GpuReadSelection`, resident start/close and mixed resident/transient branches. Complete-event admission remains. |
+| File-major bulk adapter | `_coalesced_plan` and the bulk branch of `issue_batch` removed. Bulk on uses resolved `issue_group`; bulk off retains per-dgram `issue_batch`. |
+| Shared validation | Descriptor and overlap validation shared without constructing a discarded reference plan in the stream planner. Generic `build_read_plan` remains a CPU reference. |
+| Residency fixtures | Removed after migration. Group tests retain byte-budget, identity, missing-event, tail, hybrid CPU payload, transition, failure and pixel assertions. The exact mapping is in the cleanup report. |
+| Timing and native tracing | Maintained timing hooks use group issue/submit; all 41 patches install. File/range attribution and union wall time support overlapping native reads. Historical result formats and frozen scripts remain preserved. |
+| Reader storage and parsed owners | Retained: slot generations, raw-input holds, `InputWindow`, input references and completion leases. These implement the active ownership contract. |
+| Parser arenas and detector gathers | Retained: batched multi-base parsing, shared metadata, canonical gather maps, lazy field access and partial-setup failure quarantine/retry. |
+| Old untracked policy diagnostics | `compare_admission_priority.py`, `trace_bulk_reads.py` and their launchers remain untouched historical tools requiring the old runtime. They are not current group diagnostics. |
+| Scratch artifacts | Frozen installations, tests, traces, scripts and logs retained. No scratch/log deletion is part of this completion. |
+
+## Contracts to preserve
+
+- Reclaim each input group only after all planned uses and consumer completion
+  tokens finish. A later timestamp or completed later group cannot release it.
+- Carry small-stream credits across EB batches. Split executions at available
+  group coverage so an execution cannot hold the credit needed for its own
+  missing input. Skip blocked streams where independent work is available.
+- Reserve actual rounded allocation growth, including old-plus-new replacement
+  peaks, raw/parser/output storage, fixed/cache allocations and live aliases.
+  The planner's progress bound is not a runtime peak-memory measurement.
+- Keep parser/gather launches batched across independent read groups. Request
+  ordering alone does not prove native worker concurrency.
+- Drain dependent work before BeginStep calibration replacement and EndRun
+  dispatch. Preserve ownership after a failed drain so retry remains safe.
+- Keep bulk-off behavior and byte/pixel parity coverage. Public field contexts
+  still conservatively retain every input owner for their event.
+
+## Deferred and optional work
+
+| Item | Status |
+|---|---|
+| Explain bulk-on overhead/warm variability and improve throughput | Deferred by the user. Resume with the maintained audited harness and frozen runtime; rerun cold/warm controls when performance work resumes. |
+| Selective field-owner leases | Optional. Current contexts safely retain all event input owners; narrower leases require new source-selection and delayed-consumer tests. |
+| Backend-neutral I/O diagnostics | Optional. Startup wording still mentions NVMe and infers causes from compatibility mode; that mode alone does not identify storage or explain why GDS is unavailable. |
+| Preview bootstrap simplification | Optional. Preserve the preview's aligned six-stream, c000 metadata limitation; it is not a general live EventBuilder. |
+| Detector materialization proposal | Deferred. Keep leased XTC field views; mandatory copies and duplicate Jungfrau gathering are outside this refactor. |
+
+## Historical stage evidence
+
+Original stage numbering is retained in report titles for provenance; none of
+these older “remaining work” sections supersedes the current checklist.
+
+- [Stage 1 planner](stream_read_refactor_stage1.md): CPU-only planning and
+  real-SMD preview. Review fixed missing fences, isolated source-only test
+  loading, and SMD-fd cleanup; 60 tests passed. Replay preserved 5,019 requests
+  and 33,566,911,424 bytes across the ten recorded plans.
+- [Stage 2 ownership](stream_read_refactor_stage2.md): independent input groups
+  and nonblocking completion polling, with CPU and real-CUDA failure/lifetime
+  coverage.
+- [Stage 3 integration](stream_read_refactor_stage3.md): production group
+  scheduling and batched multi-buffer parsing, followed by partial parser-child
+  cleanup fixes. Its temporarily retained residency branches are now removed.
+- [Stage 4 correctness](stream_read_stage4_correctness.md): controller lifecycle,
+  transition drains and retry safety; subsequently extended by the ownership
+  and cleanup campaigns above.
+- [Stage 4 performance campaign](performance/stream_read_stage4_acceptance.md):
+  earlier audited 1k controls/traces. Original “Stage 5 longer-run acceptance”
+  is covered by the later 10k campaign for its recorded runtime; performance
+  improvement remains deferred.
