@@ -957,7 +957,8 @@ class GpuEventManager:
                 self._event_memory(gpu_view), batch_id=self._input_batch_id,
                 capacity=self._admission_capacity,
                 parser_bytes=self.gpu_xtc_parser.estimate_batch_bytes(1) + 24,
-                depth=self.event_pool.depth)
+                depth=self.event_pool.depth,
+                target_bytes=getattr(self.dsparms, "gpu_bulk_target_bytes", 1 << 20))
             return [GpuSubbatchView(gpu_view, a, b)
                     for a, b in self._group_schedule.execution_ranges]
         from .gpu_admission import plan_admission
@@ -1101,6 +1102,11 @@ class GpuEventManager:
         needs_drain = any(service in (TransitionId.BeginStep, TransitionId.EndRun) for service, _ in pending_transitions)
         if needs_drain:
             yield from self._flush_event_pool()
+            # Group input leases transfer completion to deferred windows. An
+            # empty execution pool alone does not finish those consumers.
+            inputs = getattr(self, '_group_inputs', None)
+            if inputs is not None:
+                inputs.drain_idle()
 
         for service, dgrams in pending_transitions:
             if service == TransitionId.EndRun:

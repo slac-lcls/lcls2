@@ -9,13 +9,7 @@ from psana.gpu.gpudgram import parser as parser_module
 from psana.gpu.gpudgram.parser import LOC_OFFSET, LOC_STATUS, STATUS_FOUND
 
 
-@pytest.mark.gpu
-@pytest.mark.skipif(not available(), reason='no CUDA device')
-@pytest.mark.parametrize('fast_padding', [0, 16 * 1024])
-def test_production_groups_match_pixels_and_keep_batched_parser_launches(
-        tmp_path, mixed_packet, monkeypatch, fast_padding):
-    import cupy as cp
-
+def group_case(tmp_path, mixed_packet, fast_padding=0):
     case = residency_case(tmp_path, mixed_packet, fast_padding=fast_padding)
     m = case.manager
     m.gpu_reader.close()
@@ -31,6 +25,18 @@ def test_production_groups_match_pixels_and_keep_batched_parser_launches(
         det.configure_gather(m.gpu_xtc_parser.handle_indices)
     m._gpu_budget._limit = 64 * 1024**2
     m._admission_capacity = 16 * 1024**2
+    return case
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not available(), reason='no CUDA device')
+@pytest.mark.parametrize('fast_padding', [0, 16 * 1024])
+def test_production_groups_match_pixels_and_keep_batched_parser_launches(
+        tmp_path, mixed_packet, monkeypatch, fast_padding):
+    import cupy as cp
+
+    case = group_case(tmp_path, mixed_packet, fast_padding)
+    m = case.manager
     launches = dict(walk=0, init=0, locate=0)
     parses = []
     for name, label in (('_walk_kernel', 'walk'), ('_init_locators_kernel', 'init'),
@@ -85,6 +91,74 @@ def test_production_groups_match_pixels_and_keep_batched_parser_launches(
         assert m._gpu_budget._held == 0
         assert all(owner.released for owner in snapshots)
     finally:
+        m.close()
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not available(), reason='no CUDA device')
+@pytest.mark.parametrize('transition', ['BeginStep', 'EndRun'])
+def test_group_transition_drains_deferred_field_consumer(tmp_path, mixed_packet, monkeypatch, transition):
+    from types import SimpleNamespace as NS
+    from psana.psexp import TransitionId
+    from psana.gpu import gpu_events
+    import cupy as cp
+
+    case = group_case(tmp_path, mixed_packet)
+    m = case.manager
+    service = getattr(TransitionId, transition)
+    consumer = cp.cuda.Stream(non_blocking=True)
+    delayed = cp.RawKernel(r'''
+    extern "C" __global__ void delayed_read(const unsigned char* src,
+                                           unsigned char* dst) {
+        unsigned long long start = clock64();
+        while (clock64() - start < 150000000ULL) {}
+        dst[0] = src[0];
+    }
+    ''', 'delayed_read')
+    delayed.compile()
+    observed = cp.empty(1, dtype=cp.uint8)
+    done = cp.cuda.Event(disable_timing=True)
+    held, delivered, dispatched = [], [], []
+
+    def consume(envelopes):
+        for envelope in envelopes:
+            state = envelope.gpu_state
+            index = state._event_dgrams.batch_event_index
+            delivered.append(index)
+            if index == 999:
+                owner = state._event_dgrams[0].owner
+                raw = owner.batch.data_gpu
+                expected = int(raw[0].get())
+                child = state._input_lease.acquire_view()
+                consumer.wait_event(child.result_ready)
+                delayed((1,), (1,), (raw, observed), stream=consumer)
+                done.record(consumer)
+                child.register_consumer_done(done)
+                child.wait_until_safe_to_reuse()
+                assert not done.done
+                held.append((owner, expected))
+
+    def dispatch(dgrams):
+        assert done.done and not m.event_pool.active_count
+        assert held[0][0].released
+        assert not m._group_inputs.live_keys
+        dispatched.append(dgrams[0].service())
+
+    # This test isolates transition ordering; the fixture's detector has no
+    # CPU calibration service. Existing multi-owner tests check new constants.
+    m.run = NS(_handle_transition=dispatch)
+    monkeypatch.setattr(m, '_dispatch_transition', lambda service, dgrams: dispatch(dgrams))
+    monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
+    dg = NS(service=lambda: service)
+    try:
+        consume(m._process_batch({}, {0: (case.packet, [])}, {}))
+        consume(m._handle_steps({0: ([(service, [dg])], [])}))
+        assert delivered == list(range(1000))
+        assert dispatched == [service]
+        assert int(observed.get()[0]) == held[0][1]
+        assert m._gpu_budget._held == 0
+    finally:
+        consumer.synchronize()
         m.close()
 
 

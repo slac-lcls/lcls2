@@ -274,6 +274,9 @@ def test_bulk_default_requires_supported_gpu_packet_path_only_for_gpu():
     replace(cpu, intg_det="jungfrau", timestamps=np.array([100]))
     ds = MinimalDataSource(gpu_det="jungfrau")
     assert ds.gpu_bulk_read and ds.dsparms.gpu_bulk_read
+    assert ds.dsparms.gpu_bulk_target_bytes == 1 << 20
+    ds4 = MinimalDataSource(gpu_det="jungfrau", gpu_bulk_target_bytes=4 << 20)
+    assert ds4.gpu_bulk_target_bytes == ds4.dsparms.gpu_bulk_target_bytes == 4 << 20
     p = DsParms(*args, gpu_det="jungfrau")
     assert p.gpu_bulk_read
     with pytest.raises(NotImplementedError, match="ordinary GPUBAT1"):
@@ -357,3 +360,13 @@ def test_completed_read_pin_blocks_reuse_until_all_input_owners_release(io):
     with pytest.raises(RuntimeError, match="obsolete GPU read"):
         result.retain_input()
     reader.close()
+
+
+@pytest.mark.parametrize("value,error", [(True, TypeError), (1.5, TypeError),
+    ("4194304", TypeError), (None, TypeError), (0, ValueError), (-1, ValueError),
+    (1 << 64, ValueError)])
+def test_bulk_target_validation(value, error):
+    from psana.psexp.ds_base import DsParms
+    with pytest.raises(error, match="gpu_bulk_target_bytes"):
+        DsParms(5, 0, 0, False, None, "", 0, False, [], 0, [], "",
+                gpu_bulk_target_bytes=value)
