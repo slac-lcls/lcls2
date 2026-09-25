@@ -604,16 +604,28 @@ class EpixQuadMonitoringIOC(EpixMonitoringIOCBase):
             return 0.0
         return value
 
+    @property
+    def ignored_temp_channels(self):
+        """
+        Temperature channels to leave out of the validity checks.  Without a
+        working microblaze these are forced to 0.0 by fixup_value, which would
+        otherwise read as a plausible temperature.
+        """
+        if self.has_microblaze:
+            return frozenset()
+        return self.microblaze_fixup_channels
+
     def check_temps(self, data):
         """
         Check that at least on the of the sensor or electronics temps are valid
         """
         stemp = False
         etemp = False
+        ignored = self.ignored_temp_channels
 
         # loop over the sensor temps to find if at least one is valid
         for channame, lowlim in self.stemp_channels:
-            if channame in self.microblaze_fixup_channels:
+            if channame in ignored:
                 # values in this case are bad so ignore them
                 continue
             if hasattr(self, channame):
@@ -624,7 +636,7 @@ class EpixQuadMonitoringIOC(EpixMonitoringIOCBase):
 
         # loop over the elec temps to find if at least one is valid
         for channame, lowlim, highlim in self.etemp_channels:
-            if channame in self.microblaze_fixup_channels:
+            if channame in ignored:
                 # values in this case are bad so ignore them
                 continue
             if hasattr(self, channame):
