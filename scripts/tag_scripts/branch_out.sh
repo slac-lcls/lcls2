@@ -1,6 +1,15 @@
 #!/bin/bash
-# Sync tracked changes from matching source lcls2 repos to a branch repo
-# Creates a branch and commits the changes locally
+# Sync local changes in matching production repos to per-repo branches in a branch repo
+#
+# For each production clone under <root_dir> whose name starts with <prefix>, the
+# branch <hutch_name>-<repo_name> is made to match that clone exactly: the commit the
+# clone is on, plus its uncommitted changes (modified and deleted tracked files, and
+# new files that are not ignored by .gitignore). Editor swap/backup files are skipped.
+# Changes are committed and pushed to origin.
+#
+# The production clones are only read, never modified.
+# origin (GitHub) is the source of truth for which branches exist, so the local
+# branch repo can be re-cloned at any time.
 #
 # Arguments:
 #   <hutch_name>
@@ -17,44 +26,54 @@
 #       Filter applied to repo names inside <root_dir>.
 #       Only repos whose names START WITH this prefix are considered.
 #
+#   --dry-run
+#       Report what would change, without modifying the branch repo, committing
+#       or pushing. Uses the branch repo's current view of origin (no fetch).
+#
+# Environment:
+#   LOG_ROOT   Directory for failure reports
+#              (default: /sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs)
+#
 # Usage:
-#   ./branch_out.sh <hutch_name> <root_dir> <branch_dir> <prefix>
+#   ./branch_out.sh [--dry-run] <hutch_name> <root_dir> <branch_dir> <prefix>
+#
+# Exit status: 0 if every matching repo synced, 1 otherwise.
 
 set -e
 
-# ====== LOGGING SETUP ======
-# Determine log directory based on PREFIX and common path structure
-# This will be set based on where cron redirects output
-# For lcls prefix -> /sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/lcls2_branch
-# For ami prefix -> /sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/ami_branch
+LOG_ROOT="${LOG_ROOT:-/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs}"
 
-# Error handler - writes detailed failure log
-handle_error() {
-    local exit_code=$?
-    local line_number=$1
-    
-    # Determine log directory from script arguments
-    # PREFIX is $4, will be set later but we need it in the trap
-    local script_prefix="${4:-unknown}"
-    
-    # Derive log directory
-    if [ "$script_prefix" = "lcls" ]; then
-        LOG_DIR="/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/lcls2_branch"
-    elif [ "$script_prefix" = "ami" ]; then
-        LOG_DIR="/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/ami_branch"
-    else
-        LOG_DIR="/sdf/group/lcls/ds/ana/sw/conda2/rel/cron_logs/${script_prefix}_branch"
+# Editor swap/backup files that are never synced (vim .x.swp, emacs x~ / .#x / #x#)
+JUNK_PATTERN='(^|/)(\.[^/]*\.sw[a-p]|[^/]*~|\.#[^/]*|#[^/]*#)$'
+
+# Don't let read-only git commands (e.g. git status) rewrite the production clones' index
+export GIT_OPTIONAL_LOCKS=0
+
+# ====== LOGGING SETUP ======
+# Failure reports go to <LOG_ROOT>/<lcls2|ami>_branch/failed_runs, one file per failure
+
+log_dir() {
+    case "$PREFIX" in
+        lcls) echo "${LOG_ROOT}/lcls2_branch" ;;
+        ami)  echo "${LOG_ROOT}/ami_branch" ;;
+        *)    echo "${LOG_ROOT}/${PREFIX:-unknown}_branch" ;;
+    esac
+}
+
+# Writes a detailed failure report. $1 = reason
+write_failure_report() {
+    local reason="$1"
+    local failed_log_dir failed_log timestamp
+
+    failed_log_dir="$(log_dir)/failed_runs"
+    if ! mkdir -p "$failed_log_dir"; then
+        echo "Could not create ${failed_log_dir}; failure report not written" >&2
+        return 0
     fi
-    
-    # Create failed_runs directory if it doesn't exist
-    FAILED_LOG_DIR="${LOG_DIR}/failed_runs"
-    mkdir -p "$FAILED_LOG_DIR"
-    
-    # Generate failed log filename with timestamp
-    TIMESTAMP=$(date +%Y-%m-%d_%H%M%S)
-    FAILED_LOG="${FAILED_LOG_DIR}/${TIMESTAMP}_FAILED.log"
-    
-    # Write detailed failure information
+
+    timestamp=$(date +%Y-%m-%d_%H%M%S)
+    failed_log="${failed_log_dir}/${timestamp}_${HUTCH_NAME:-unknown}_${REPO_NAME:-setup}_FAILED.log"
+
     {
         echo "=========================================="
         echo "BRANCH SCRIPT FAILURE REPORT"
@@ -63,8 +82,8 @@ handle_error() {
         echo "Timestamp: $(date)"
         echo "Hostname: $(hostname)"
         echo "Script: ${BASH_SOURCE[0]}"
-        echo "Exit Code: $exit_code"
-        echo "Failed at Line: $line_number"
+        echo "Reason: ${reason}"
+        echo "Dry run: ${DRY_RUN}"
         echo ""
         echo "--- Input Parameters ---"
         echo "HUTCH_NAME: ${HUTCH_NAME:-<not set>}"
@@ -83,34 +102,40 @@ handle_error() {
         echo "Git Hash: ${GIT_HASH:-<not set>}"
         echo "Branch Name: ${BRANCH_NAME:-<not set>}"
         echo "Changed Files:"
-        if [ -n "$CHANGED_FILES" ]; then
-            echo "$CHANGED_FILES"
+        if [ ${#CHANGED_FILES[@]} -gt 0 ]; then
+            printf '%s\n' "${CHANGED_FILES[@]}"
         else
             echo "<none>"
         fi
         echo ""
-        
+
         # Try to get git status from both repos if they're set
         if [ -n "$MONITOR_REPO" ] && [ -d "$MONITOR_REPO/.git" ]; then
             echo "--- Source Repo Git Status ---"
-            (cd "$MONITOR_REPO" 2>/dev/null && git status 2>&1) || echo "Could not get git status"
+            git -C "$MONITOR_REPO" status 2>&1 || echo "Could not get git status"
             echo ""
         fi
-        
+
         if [ -n "$BRANCH_DIR" ] && [ -d "$BRANCH_DIR/.git" ]; then
             echo "--- Branch Repo Git Status ---"
-            (cd "$BRANCH_DIR" 2>/dev/null && git status 2>&1) || echo "Could not get git status"
+            git -C "$BRANCH_DIR" status 2>&1 || echo "Could not get git status"
             echo ""
         fi
-        
+
         echo "=========================================="
         echo "END FAILURE REPORT"
         echo "=========================================="
-    } > "$FAILED_LOG" 2>&1
-    
+    } > "$failed_log" 2>&1
+
     echo ""
-    echo "FAILURE LOG WRITTEN TO: $FAILED_LOG" >&2
-    
+    echo "FAILURE LOG WRITTEN TO: $failed_log" >&2
+}
+
+# Error handler for unexpected failures outside the per-repo sync (e.g. fetch)
+handle_error() {
+    local exit_code=$?
+    local line_number=$1
+    write_failure_report "Unexpected error at line ${line_number} (exit code ${exit_code})"
     exit $exit_code
 }
 
@@ -124,26 +149,39 @@ GREEN='\033[0;32m'
 YELLOW='-- \033[1;33m'
 NC='\033[0m' # No Color
 
-HUTCH_NAME="$1"
-ROOT_DIR="$2"
-BRANCH_DIR="$3"
-PREFIX="$4"
+DRY_RUN=false
+ARGS=()
+for arg in "$@"; do
+    if [ "$arg" = "--dry-run" ]; then
+        DRY_RUN=true
+    else
+        ARGS+=("$arg")
+    fi
+done
+
+HUTCH_NAME="${ARGS[0]}"
+ROOT_DIR="${ARGS[1]}"
+BRANCH_DIR="${ARGS[2]}"
+PREFIX="${ARGS[3]}"
 
 # Check for required arguments
-if [ -z "$1" ] || [ -z "$2" ] || [ -z "$3" ] || [ -z "$4" ]; then
+if [ -z "$HUTCH_NAME" ] || [ -z "$ROOT_DIR" ] || [ -z "$BRANCH_DIR" ] || [ -z "$PREFIX" ]; then
     echo -e "${RED}Error: Hutch name, root directory, branch directory, and prefix are required ${NC}"
-    echo "Usage: $0 <hutch_name> <root_dir> <branch_dir> <prefix>"
-    echo "Example: $0 tmo /path/to/clones /path/to/branch_repo lcls2"
+    echo "Usage: $0 [--dry-run] <hutch_name> <root_dir> <branch_dir> <prefix>"
+    echo "Example: $0 tmo /path/to/clones /path/to/branch_repo lcls"
     exit 1
 fi
 
 echo ""
 echo -e "======= ${GREEN} Start hutch analysis ${NC}"
 echo "Parameters provided: "
-echo -e "${YELLOW}HUTCH_NAME=${HUTCH_NAME}"
-echo -e "${YELLOW}ROOT_DIR=${ROOT_DIR}"
-echo -e "${YELLOW}BRANCH_DIR=${BRANCH_DIR}"
-echo -e "${YELLOW}PREFIX=${PREFIX}"
+echo -e "${YELLOW}HUTCH_NAME=${HUTCH_NAME}${NC}"
+echo -e "${YELLOW}ROOT_DIR=${ROOT_DIR}${NC}"
+echo -e "${YELLOW}BRANCH_DIR=${BRANCH_DIR}${NC}"
+echo -e "${YELLOW}PREFIX=${PREFIX}${NC}"
+if $DRY_RUN; then
+    echo -e "${YELLOW}DRY RUN: the branch repo will not be modified, nothing will be committed or pushed${NC}"
+fi
 
 # Validate root directory exists
 if [ ! -d "$ROOT_DIR" ]; then
@@ -157,144 +195,316 @@ if [ ! -d "$BRANCH_DIR/.git" ]; then
     exit 1
 fi
 
-MONITOR_REPO=""
-LATEST_CLONE_TIME=0
+PROJECT=$(basename "$BRANCH_DIR")
 
-if ! git config --global --get-all safe.directory 2>/dev/null | grep -Fxq '*'; then
-    git config --global --add safe.directory '*' || \
-        echo "Warning: could not update global safe.directory; continuing"
-fi
-
-FOUND_MATCH=false
-
+# Find the matching production clones
+CANDIDATES=()
 for candidate in "$ROOT_DIR"/*; do
     [ -d "$candidate" ] || continue
+    [[ "$(basename "$candidate")" == ${PREFIX}* ]] || continue
+    [ -d "$candidate/.git" ] || continue
+    CANDIDATES+=("$candidate")
+done
 
-    REPO_NAME=$(basename "$candidate")
+if [ ${#CANDIDATES[@]} -eq 0 ]; then
+    echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' ${NC}"
+    exit 1
+fi
 
-    # Only process repos that start with the requested prefix
-    if [[ "$REPO_NAME" != ${PREFIX}* ]]; then
-        continue
+# Trust exactly these repos in git's ownership check (safe.directory), for this
+# process only. Nothing is added to the global git config.
+SAFE_DIRS=("$BRANCH_DIR" "${CANDIDATES[@]}")
+export GIT_CONFIG_COUNT=${#SAFE_DIRS[@]}
+for i in "${!SAFE_DIRS[@]}"; do
+    export "GIT_CONFIG_KEY_${i}=safe.directory"
+    export "GIT_CONFIG_VALUE_${i}=$(cd "${SAFE_DIRS[$i]}" && pwd -P)"
+done
+
+TMP_FILE=$(mktemp)
+trap 'rm -f "$TMP_FILE"' EXIT
+
+# ====== PREPARE BRANCH REPO (once) ======
+cd "$BRANCH_DIR"
+echo ""
+echo -e "${GREEN}LOCAL${NC}"
+echo -e "${YELLOW}Preparing branch repo ${NC}"
+
+# Note: The branch repo should never have changes. If it does, we do not want to stash and have it be forgotten
+# We will abort until the user resolves a clean local repo. This command checks tracked and untracked files.
+if [ -n "$(git status --porcelain)" ]; then
+    echo -e "${RED}Error: Base repo is not clean. Aborting.${NC}"
+    write_failure_report "Branch repo is not clean"
+    exit 1
+fi
+
+if $DRY_RUN; then
+    echo -e "${YELLOW}[dry-run] Not fetching; using the branch repo's last fetch of origin${NC}"
+else
+    echo -e "Fetching from origin..."
+    git fetch --prune origin
+
+    echo -e "Switching to master branch..."
+    git checkout -q master
+
+    # master is only where the repo rests between syncs, so failing to update it isn't fatal
+    if ! git merge --ff-only -q origin/master; then
+        echo -e "${YELLOW}Warning: could not fast-forward master to origin/master; continuing${NC}"
     fi
+fi
+echo -e "${GREEN}Branch repo ready${NC}"
+echo ""
 
-    # Must be a git repo
-    if [ ! -d "$candidate/.git" ]; then
-        continue
+# ====== PER-REPO SYNC ======
+
+# Blob hash of a file in the production clone (symlinks hash their target path, as git stores them)
+worktree_blob() {
+    local path="$1"
+    if [ -L "$path" ]; then
+        printf '%s' "$(readlink "$path")" | git hash-object --stdin
+    else
+        git hash-object -- "$path"
     fi
+}
 
-    FOUND_MATCH=true
-    MONITOR_REPO="$candidate"
+# Blob hash of a file at a commit in the branch repo, or empty if it isn't there
+commit_blob() {
+    git -C "$BRANCH_DIR" rev-parse --verify --quiet "$1:$2" 2>/dev/null || true
+}
+
+# Syncs one production clone to its branch. Returns 1 on failure with FAIL_STEP set.
+# This runs as the condition of an `if`, where `set -e` does not apply, so every
+# step that can fail is checked explicitly.
+sync_repo() {
+    local base_ref base_desc file source_blob base_blob hash_blob ahead
+    local -a tracked untracked touched
+    local -A want=()
+    local -A seen=()
+
+    MONITOR_REPO="$1"
+    REPO_NAME=$(basename "$MONITOR_REPO")
+    BRANCH_NAME="${HUTCH_NAME}-${REPO_NAME}"
+    GIT_HASH=""
+    CHANGED_FILES=()
+    FAIL_STEP=""
 
     echo -e "${GREEN}Processing matching repo:${NC} $MONITOR_REPO"
-
-    # Get short git hash from source repo
-    cd "$MONITOR_REPO"
     echo -e "${GREEN} REMOTE FOLDER ${NC}"
-    echo -e "${YELLOW}Move to monitored folder ${NC}"
 
-    GIT_HASH=$(git rev-parse --short HEAD)
-    BRANCH_NAME="${HUTCH_NAME}-${REPO_NAME}"
-
-    echo "GIT_HASH=${GIT_HASH}"
+    # --- Read the production clone (read-only) ---
+    if ! GIT_HASH=$(git -C "$MONITOR_REPO" rev-parse HEAD); then
+        FAIL_STEP="could not read HEAD of $MONITOR_REPO"
+        return 1
+    fi
+    echo "GIT_HASH=${GIT_HASH:0:9}"
     echo "BRANCH_NAME=${BRANCH_NAME}"
 
-    echo -e "${YELLOW}diff folder with origin ${NC}"
-    # Get list of all modified tracked files (staged + unstaged)
-    git status
-    git add --all
-    CHANGED_FILES=$(git diff --name-only HEAD)
-
-    if [ -z "$CHANGED_FILES" ]; then
-        echo -e "${YELLOW}No tracked changes to sync for ${REPO_NAME}. Skipping.${NC}"
-        continue
+    # Modified/deleted tracked files, staged or not
+    if ! git -C "$MONITOR_REPO" diff -z --name-only --no-renames HEAD > "$TMP_FILE"; then
+        FAIL_STEP="git diff failed in $MONITOR_REPO"
+        return 1
     fi
+    mapfile -d '' tracked < "$TMP_FILE"
 
-    echo -e "${YELLOW}Files to sync: ${NC}"
-    echo "$CHANGED_FILES"
-    echo ""
-
-    # Create new branch in branch repo
-    cd "$BRANCH_DIR"
-    echo -e "${GREEN}LOCAL${NC}"
-    echo -e "${YELLOW}move to branch folder ${NC}"
-    echo -e "${YELLOW}Restoring repository to master branch...${NC}"
-
-    # Note: The branch repo should never have changes. If it does, we do not want to stash and have it be forgotten
-    # We will abort until the user resolves a clean local repo. This command checks tracked and untracked files.
-    if [ -n "$(git status --porcelain)" ]; then
-        echo -e "${RED}Error: Base repo is not clean. Aborting.${NC}"
-        exit 1
+    # New files, respecting .gitignore
+    if ! git -C "$MONITOR_REPO" ls-files -z --others --exclude-standard > "$TMP_FILE"; then
+        FAIL_STEP="git ls-files failed in $MONITOR_REPO"
+        return 1
     fi
+    mapfile -d '' untracked < "$TMP_FILE"
 
-    # Switch to master branch
-    echo -e "Switching to master branch..."
-    if git show-ref --verify --quiet refs/heads/master; then
-        git checkout master
-    else
-        echo -e "${RED}Error: 'master' branch does not exist${NC}"
-        exit 1
-    fi
-
-    # Pull latest changes from remote
-    echo -e "Pulling latest changes from remote..."
-    git pull
-
-    echo -e "${GREEN}Repository restored to original state in master/main${NC}"
-    echo ""
-
-    if git show-ref --verify --quiet refs/heads/"$BRANCH_NAME"; then
-        echo -e "${YELLOW}Branch '$BRANCH_NAME' exists. Switching to it... ${NC}"
-        git checkout "$BRANCH_NAME"
-
-        echo -e "${YELLOW}Pulling latest changes for existing branch...${NC}"
-        git pull origin "$BRANCH_NAME" || true
-    else
-        echo -e "${YELLOW}Branch '$BRANCH_NAME' does not exist. Creating and switching to it... ${NC}"
-        git checkout "$GIT_HASH"
-        echo -e "${GREEN}Checking hash ${GIT_HASH} ${NC} "
-        git checkout -b "$BRANCH_NAME"
-    fi
-
-    # Copy each changed file
-    echo -e "${GREEN}Synching folders ${NC}"
-
-    for file in $CHANGED_FILES; do
-        if [ -f "$MONITOR_REPO/$file" ]; then
-            mkdir -p "$(dirname "$file")"
-            cp "$MONITOR_REPO/$file" "$file"
-            git add "$file"
-            echo ".. $file synced and added to git"
-        else
-            if [ -f "$file" ]; then
-                echo ".. $file deleted in source"
-                git rm "$file"
-            else
-                echo ".. $file doesn't exist in local repo. Delete not needed, skipping"
-            fi
+    for file in "${tracked[@]}" "${untracked[@]}"; do
+        if [[ "$file" =~ $JUNK_PATTERN ]]; then
+            echo ".. $file skipped (editor swap/backup file)"
+            continue
         fi
+        want["$file"]=1
+        CHANGED_FILES+=("$file")
     done
 
-    # Commit
-    echo -e "${GREEN}Commit${NC}"
-    if git diff --cached --quiet; then
-        echo -e "${YELLOW}No changes to commit ${NC}"
+    # --- Pick what the branch starts from ---
+    if ! cd "$BRANCH_DIR"; then
+        FAIL_STEP="could not cd to $BRANCH_DIR"
+        return 1
+    fi
+
+    if ! git rev-parse --verify --quiet "${GIT_HASH}^{commit}" >/dev/null; then
+        FAIL_STEP="commit $GIT_HASH not found in branch repo (does the production clone have local commits?)"
+        return 1
+    fi
+
+    if git rev-parse --verify --quiet "refs/remotes/origin/${BRANCH_NAME}" >/dev/null; then
+        base_ref="origin/${BRANCH_NAME}"
+        base_desc="existing branch on origin"
+    elif git rev-parse --verify --quiet "refs/heads/${BRANCH_NAME}" >/dev/null; then
+        base_ref="refs/heads/${BRANCH_NAME}"
+        base_desc="local branch not yet on origin"
     else
-       echo -e "${GREEN}Committing changes in branch ${BRANCH_NAME} ${NC}"
-       git commit -m "Sync from lcls2 (${BRANCH_NAME})
+        base_ref="$GIT_HASH"
+        base_desc="new branch from clone commit"
+    fi
+    echo -e "${YELLOW}Branch '${BRANCH_NAME}': ${base_desc}${NC}"
+
+    # Files to look at: everything changed in the clone, plus everything the branch
+    # currently changes (so changes that were reverted in the clone get reverted here)
+    if ! git diff -z --name-only --no-renames "$GIT_HASH" "$base_ref" > "$TMP_FILE"; then
+        FAIL_STEP="git diff $GIT_HASH $base_ref failed"
+        return 1
+    fi
+    mapfile -d '' touched < "$TMP_FILE"
+
+    # --- Plan: one action per file whose branch content must change ---
+    # copy    = take the file from the clone
+    # delete  = the file was deleted in the clone
+    # restore = the clone no longer changes this file, so reset it to the clone's commit
+    local -a plan_action plan_file
+    for file in "${CHANGED_FILES[@]}" "${touched[@]}"; do
+        [ -z "${seen[$file]}" ] || continue
+        seen["$file"]=1
+
+        base_blob=$(commit_blob "$base_ref" "$file")
+        if [ -n "${want[$file]}" ]; then
+            if [ -e "$MONITOR_REPO/$file" ] || [ -L "$MONITOR_REPO/$file" ]; then
+                if ! source_blob=$(worktree_blob "$MONITOR_REPO/$file"); then
+                    FAIL_STEP="could not read $MONITOR_REPO/$file"
+                    return 1
+                fi
+                [ "$source_blob" = "$base_blob" ] && continue
+                plan_action+=("copy")
+            else
+                [ -z "$base_blob" ] && continue
+                plan_action+=("delete")
+            fi
+        else
+            hash_blob=$(commit_blob "$GIT_HASH" "$file")
+            [ "$hash_blob" = "$base_blob" ] && continue
+            plan_action+=("restore")
+        fi
+        plan_file+=("$file")
+    done
+
+    if [ ${#plan_file[@]} -eq 0 ]; then
+        echo -e "${YELLOW}Branch already matches ${REPO_NAME}. Nothing to sync.${NC}"
+    else
+        echo -e "${YELLOW}Files to sync: ${NC}"
+        for i in "${!plan_file[@]}"; do
+            echo "  ${plan_action[$i]}: ${plan_file[$i]}"
+        done
+    fi
+
+    if $DRY_RUN; then
+        if [ ${#plan_file[@]} -gt 0 ]; then
+            echo -e "${GREEN}[dry-run] Would commit ${#plan_file[@]} file(s) to ${BRANCH_NAME} and push${NC}"
+        elif [ "$base_desc" = "local branch not yet on origin" ]; then
+            echo -e "${GREEN}[dry-run] Would push ${BRANCH_NAME} (not yet on origin)${NC}"
+        fi
+        echo ""
+        return 0
+    fi
+
+    # --- Apply ---
+    # Also needed with nothing to sync when the branch only exists locally, so it gets pushed
+    if [ ${#plan_file[@]} -gt 0 ] || [ "$base_desc" = "local branch not yet on origin" ]; then
+        run git checkout -q -B "$BRANCH_NAME" "$base_ref" || return 1
+
+        echo -e "${GREEN}Synching folders ${NC}"
+        for i in "${!plan_file[@]}"; do
+            file="${plan_file[$i]}"
+            case "${plan_action[$i]}" in
+                copy)
+                    run mkdir -p "$(dirname "$file")" || return 1
+                    run rm -f "$file" || return 1
+                    run cp -pP "$MONITOR_REPO/$file" "$file" || return 1
+                    run git add -f -- "$file" || return 1
+                    echo ".. $file synced and added to git"
+                    ;;
+                delete)
+                    run git rm -q --ignore-unmatch -- "$file" || return 1
+                    echo ".. $file deleted in source"
+                    ;;
+                restore)
+                    if [ -n "$(commit_blob "$GIT_HASH" "$file")" ]; then
+                        run git checkout -q "$GIT_HASH" -- "$file" || return 1
+                    else
+                        run git rm -q --ignore-unmatch -- "$file" || return 1
+                    fi
+                    echo ".. $file no longer changed in source, reset"
+                    ;;
+            esac
+        done
+
+        # Commit
+        echo -e "${GREEN}Commit${NC}"
+        if git diff --cached --quiet; then
+            echo -e "${YELLOW}No changes to commit ${NC}"
+        else
+            echo -e "${GREEN}Committing changes in branch ${BRANCH_NAME} ${NC}"
+            run git commit -q -m "Sync from ${PROJECT} (${BRANCH_NAME})
 Source: $MONITOR_REPO
 Source commit: $GIT_HASH
 Files synced:
-$CHANGED_FILES"
+$(for i in "${!plan_file[@]}"; do echo "${plan_action[$i]}: ${plan_file[$i]}"; done)" || return 1
+        fi
 
-       echo ""
-       echo "=== Sync Complete ==="
-       echo "Branch created: $BRANCH_NAME"
-       echo "Pushing to $BRANCH_NAME..."
-       git push -u origin "$BRANCH_NAME"
+        # Push whenever the branch has commits origin doesn't, including ones left
+        # over from an earlier run whose push failed
+        if git rev-parse --verify --quiet "refs/remotes/origin/${BRANCH_NAME}" >/dev/null; then
+            ahead=$(git rev-list --count "origin/${BRANCH_NAME}..${BRANCH_NAME}")
+        else
+            ahead=1
+        fi
+        if [ "$ahead" -gt 0 ]; then
+            echo "Pushing to $BRANCH_NAME..."
+            run git push -q -u origin "$BRANCH_NAME" || return 1
+            echo ""
+            echo "=== Sync Complete ==="
+            echo "Branch pushed: $BRANCH_NAME"
+        fi
+
+        run git checkout -q master || return 1
+    fi
+    echo ""
+    return 0
+}
+
+# Run a command; on failure record it in FAIL_STEP
+run() {
+    "$@" || { FAIL_STEP="failed: $*"; return 1; }
+}
+
+# Put the branch repo back on a clean master after a failed sync, so the next repo starts clean.
+# Safe because the repo was verified clean before any sync started.
+reset_branch_repo() {
+    git -C "$BRANCH_DIR" reset -q --hard &&
+        git -C "$BRANCH_DIR" clean -fdq &&
+        git -C "$BRANCH_DIR" checkout -q master
+}
+
+FAILED=()
+SYNCED=0
+for candidate in "${CANDIDATES[@]}"; do
+    if sync_repo "$candidate"; then
+        SYNCED=$((SYNCED + 1))
+    else
+        echo -e "${RED}Error: ${REPO_NAME}: ${FAIL_STEP}${NC}"
+        FAILED+=("${REPO_NAME}: ${FAIL_STEP}")
+        write_failure_report "$FAIL_STEP"
+        if ! $DRY_RUN && ! reset_branch_repo; then
+            echo -e "${RED}Error: could not reset branch repo after failure. Aborting.${NC}"
+            write_failure_report "Could not reset branch repo after failure in ${REPO_NAME}"
+            exit 1
+        fi
+        echo ""
     fi
 done
 
-if ! $FOUND_MATCH; then
-    echo -e "${RED}Error: No matching git repo found in $ROOT_DIR with prefix '$PREFIX' ${NC}"
+echo "=== Summary ==="
+echo "Repos processed: ${#CANDIDATES[@]}"
+echo "Succeeded:       ${SYNCED}"
+echo "Failed:          ${#FAILED[@]}"
+for f in "${FAILED[@]}"; do
+    echo -e "${RED}  - ${f}${NC}"
+done
+
+if [ ${#FAILED[@]} -gt 0 ]; then
     exit 1
 fi
