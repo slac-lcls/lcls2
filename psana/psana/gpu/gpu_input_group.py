@@ -4,6 +4,7 @@ The pool owns a dedicated KvikioGpuReader's slots. A small stream keeps its
 credit until its group's last planned/active/CUDA consumer finishes, including
 across EB batches. Polling examines all groups rather than a retirement queue.
 """
+from bisect import bisect_left
 from dataclasses import dataclass, field
 
 import numpy as np
@@ -50,16 +51,31 @@ class InputGroupPool:
         self.poll()
         busy = {g.slot for g in self._groups.values()}
         small = set(self._small)
+        # Snapshot availability/capacity once per plan. Sorting by slot as the
+        # secondary key preserves the old lowest-ID tie break. Keep the index
+        # local: growth, trimming and completion are reflected on the next call.
+        free = [i for i in range(self.reader._n_slots) if i not in busy]
+        capacities = {i: self.reader._slot_bufs[i].nbytes for i in free
+                      if self.reader._slot_bufs[i] is not None}
+        cached = sorted((capacity, i) for i, capacity in capacities.items())
+        first_free = 0
         result = []
         for group in groups:
             if group.small and group.stream_id in small:
                 return None
-            free = [i for i in range(self.reader._n_slots) if i not in busy]
-            if not free:
+            if len(result) == len(free):
                 return None
-            fits = [i for i in free if self.reader._slot_bufs[i] is not None
-                    and self.reader._slot_bufs[i].nbytes >= group.size]
-            slot = min(fits, key=lambda i: self.reader._slot_bufs[i].nbytes) if fits else free[0]
+            fit = bisect_left(cached, (group.size, -1))
+            if fit < len(cached):
+                _, slot = cached.pop(fit)
+            else:
+                # No cached buffer fits: grow the lowest free slot, even if
+                # another slot has a larger (but still undersized) allocation.
+                while free[first_free] in busy:
+                    first_free += 1
+                slot = free[first_free]
+                if slot in capacities:
+                    cached.pop(bisect_left(cached, (capacities[slot], slot)))
             result.append(slot)
             busy.add(slot)
             if group.small:
