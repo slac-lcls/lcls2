@@ -42,8 +42,8 @@ Requirements:
 
 To re-create one (as `psrel`):
 ```
-rm -rf rel/branch_repo_lcls2/lcls2
-git clone git@github.com:slac-lcls/lcls2.git rel/branch_repo_lcls2/lcls2
+rm -rf /sdf/group/lcls/ds/ana/sw/conda2/rel/branch_repo_lcls2/lcls2
+git clone git@github.com:slac-lcls/lcls2.git /sdf/group/lcls/ds/ana/sw/conda2/rel/branch_repo_lcls2/lcls2
 ```
 
 ### The scripts checkout
@@ -87,50 +87,31 @@ The scripts need **bash 4.4+** (for `mapfile -d ''`), **git 2.31+** (for `GIT_CO
 
 ---
 
-## One-time setup (as `psrel` on `sdfcron001`)
-
-These are per account, not per project. If they were already done while setting up another project's monitoring, skip them.
-
-1. **Git identity**, so branch commits aren't attributed to a name git makes up:
-   ```
-   git config --global user.name "<name>"
-   git config --global user.email "<email>"
-   ```
-2. **Remove the global `safe.directory '*'`** added by earlier versions of `branch_out.sh`. The script now trusts only the repos it uses, for its own process.
-   ```
-   git config --global --get-all safe.directory            # see what's there
-   git config --global --unset-all safe.directory '^\*$'   # removes only the '*' entry
-   ```
-3. **Check SSH push access:** `ssh -T git@github.com` should greet the account.
-
----
-
 ## Setting up (and moving from the old setup)
 
 The old setup ran two crontab lines for `lcls2`, for `xpp` only, from two different checkouts on `features/scripts`: `rel/xpp/branch_lcls2` for the branch job, and the tag repo `rel/tag_repo_lcls2/lcls2` itself for the tag job. The lines are the ones whose arguments end in `rel/branch_repo_lcls2/lcls2 lcls` and `rel/tag_repo_lcls2/lcls2 lcls`. Logs went to fixed files that were overwritten every run.
 
 All as `psrel` on `sdfcron001`:
 
-1. **Check the shared repos.** They should already exist, with SSH remotes and clean working trees:
+1. **Check GitHub access.** It should greet the account:
    ```
-   R=/sdf/group/lcls/ds/ana/sw/conda2/rel
-   for r in branch_repo_lcls2/lcls2 tag_repo_lcls2/lcls2; do
-     echo "$r: $(git -C $R/$r remote get-url origin)  $(git -C $R/$r status --porcelain | wc -l) changed files"
-   done
+   ssh -T git@github.com
    ```
-   Each line should show `git@github.com:slac-lcls/lcls2.git` and `0 changed files`. If a repo is missing, clone it (see "The shared branch and tag repos").
-2. **Create the scripts checkout**, on the branch that has these scripts (`master` once merged):
+2. **Check the shared repos.** They should already exist. Each command should print nothing (no uncommitted changes):
    ```
-   mkdir -p $R/monitor_scripts
-   git clone -b <branch> git@github.com:slac-lcls/lcls2.git $R/monitor_scripts/lcls2
-   ls $R/monitor_scripts/lcls2/scripts/tag_scripts
+   git -C /sdf/group/lcls/ds/ana/sw/conda2/rel/branch_repo_lcls2/lcls2 status --short
+   git -C /sdf/group/lcls/ds/ana/sw/conda2/rel/tag_repo_lcls2/lcls2 status --short
    ```
-3. **Do the one-time setup** above, if not already done.
+   If a repo is missing, clone it (see "The shared branch and tag repos").
+3. **Create the scripts checkout**, on the branch that has these scripts (`master` once merged):
+   ```
+   mkdir -p /sdf/group/lcls/ds/ana/sw/conda2/rel/monitor_scripts
+   git clone -b <branch> git@github.com:slac-lcls/lcls2.git /sdf/group/lcls/ds/ana/sw/conda2/rel/monitor_scripts/lcls2
+   ```
 4. **Dry run**, and read the logs it points to:
    ```
-   S=$R/monitor_scripts/lcls2/scripts/tag_scripts
-   $S/run_monitor.sh --dry-run branch
-   $S/run_monitor.sh --dry-run tag
+   /sdf/group/lcls/ds/ana/sw/conda2/rel/monitor_scripts/lcls2/scripts/tag_scripts/run_monitor.sh --dry-run branch
+   /sdf/group/lcls/ds/ana/sw/conda2/rel/monitor_scripts/lcls2/scripts/tag_scripts/run_monitor.sh --dry-run tag
    ```
    When tested on 2026-09-25, a dry run for `xpp` showed:
    - **tag:** two new tags, `xpp-20260918` and `xpp-20260924` (clones installed since the last tag run on 2026-09-13). The other 17 were already tagged.
@@ -144,7 +125,7 @@ All as `psrel` on `sdfcron001`:
 7. **Clean up** once the new setup has run for a while. None of this is needed for it to work:
    - Old log folders at the top of `rel/cron_logs/`: `lcls2_branch/`, `lcls2_tag/`, and `unknown_branch/` (failure reports from the old script). New logs are under `rel/cron_logs/<hutch>/`.
    - `rel/xpp/branch_lcls2`, the old scripts checkout inside a hutch directory. **Only remove it once `crontab -l` shows no line using it**: the old setup ran other jobs from it too.
-   - The tag repo `rel/tag_repo_lcls2/lcls2` is checked out on `features/scripts`, because the old tag lines ran the script from inside it. Once no crontab line uses it, switch it back: `git -C $R/tag_repo_lcls2/lcls2 checkout master`.
+   - The tag repo `rel/tag_repo_lcls2/lcls2` is checked out on `features/scripts`, because the old tag lines ran the script from inside it. Once no crontab line uses it, switch it back: `git -C /sdf/group/lcls/ds/ana/sw/conda2/rel/tag_repo_lcls2/lcls2 checkout master`.
    - **Staged changes in the xpp production clones**, left behind by the old script's `git add --all` (e.g. `rel/xpp/lcls2_060226`). They're harmless, and the new script doesn't care. Clearing them (`git reset` in each clone, which only unstages and doesn't change any file) touches production, so agree it with the hutch first.
 
 ---
@@ -154,8 +135,8 @@ All as `psrel` on `sdfcron001`:
 1. Make sure the hutch's clones are in `rel/<hutch>/` (installed with `install_release_daq.sh`).
 2. **Dry run for just that hutch** and read the logs:
    ```
-   $S/run_monitor.sh --dry-run branch <hutch>
-   $S/run_monitor.sh --dry-run tag <hutch>
+   /sdf/group/lcls/ds/ana/sw/conda2/rel/monitor_scripts/lcls2/scripts/tag_scripts/run_monitor.sh --dry-run branch <hutch>
+   /sdf/group/lcls/ds/ana/sw/conda2/rel/monitor_scripts/lcls2/scripts/tag_scripts/run_monitor.sh --dry-run tag <hutch>
    ```
    The first real run creates a branch for every clone with local changes, and a tag for every clone whose reflog still has its clone entry (normally clones up to about 90 days old). Older clones show up as skipped.
 3. **Add the hutch to `HUTCHES`** in `run_monitor.sh`, commit and push it, and `git pull` in `rel/monitor_scripts/lcls2`.
