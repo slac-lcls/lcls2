@@ -835,7 +835,7 @@ class GpuEventManager:
         self.gpu_xtc_parser = GpuXtcBatchPool(
             self.gpu_xtc_configs,
             field_handles=xtc_field_handles,
-            n_slots=pool_depth + int(self.dsparms.gpu_bulk_read),
+            n_slots=pool_depth + (len(self.configs) + 1 if self.dsparms.gpu_bulk_read else 0),
             budget=self._gpu_budget,
         )
         for _, gpu_detector in self.gpu_detectors.values():
@@ -899,13 +899,18 @@ class GpuEventManager:
         local to this BD and run, independent of individual detector adapters.
         """
         self.gpu_reader = KvikioGpuReader(
-            n_slots=getattr(self.dsparms, "n_gpu_streams", 2) + int(self.dsparms.gpu_bulk_read),
+            n_slots=(getattr(self.dsparms, 'n_gpu_streams', 2)
+                     * max(1, self.dsparms.batch_size) * max(1, len(self.configs))
+                     + len(self.configs) if self.dsparms.gpu_bulk_read
+                     else getattr(self.dsparms, 'n_gpu_streams', 2)),
             budget=self._gpu_budget,
             bulk_read=self.dsparms.gpu_bulk_read,
         )
         if self.dsparms.gpu_bulk_read:
             from psana.gpu.gpu_file_epochs import GpuFileEpochs
             self._gpu_file_epochs = GpuFileEpochs(self.dm)
+            from psana.gpu.gpu_input_group import InputGroupPool
+            self._group_inputs = InputGroupPool(self.gpu_reader)
 
     # ------------------------------------------------------------------
     # Phase 3: byte-bounded subbatch helpers
@@ -945,6 +950,16 @@ class GpuEventManager:
 
     def _split_subbatches(self, gpu_view, *, allow_residency=False) -> list:
         """Admit complete events; fail before I/O when a minimum event cannot fit."""
+        if getattr(self, '_group_inputs', None) is not None:
+            from .gpu_group_schedule import GroupReadSchedule
+            self._group_schedule = GroupReadSchedule(
+                tuple(gpu_view.iter_read_descs(self.dm)), self._gpu_read_files,
+                self._event_memory(gpu_view), batch_id=self._input_batch_id,
+                capacity=self._admission_capacity,
+                parser_bytes=self.gpu_xtc_parser.estimate_batch_bytes(1) + 24,
+                depth=self.event_pool.depth)
+            return [GpuSubbatchView(gpu_view, a, b)
+                    for a, b in self._group_schedule.execution_ranges]
         from .gpu_admission import plan_admission
         parser = getattr(self, 'gpu_xtc_parser', None)
         per_dgram = parser.estimate_batch_bytes(1) if parser is not None else 0
@@ -1027,6 +1042,8 @@ class GpuEventManager:
         """Called only after execution leases drain; input pins remain authoritative."""
         if self.event_pool.active_count:
             raise RuntimeError('cannot trim detector buffers with active executions')
+        if getattr(self, '_group_inputs', None) is not None:
+            self._group_inputs.drain_idle()
         self.gpu_reader.trim_free_buffers()
         if self.gpu_xtc_parser is not None:
             self.gpu_xtc_parser.trim_free_buffers()
@@ -1119,30 +1136,97 @@ class GpuEventManager:
         hold = getattr(self, '_gpu_read_reservation', None)
         try:
             with hold if hold is not None else nullcontext():
-                resident = getattr(self, '_resident_window', None)
-                transient = None
-                kwargs = {}
-                try:
-                    if resident is not None:
-                        if gpu_read is not None:
-                            transient = self.gpu_xtc_parser.parse_window(
-                                gpu_read, self.event_pool.next_stream,
-                                batch_id=self._input_batch_id)
-                        kwargs['input_windows'] = ((resident, transient) if transient is not None
-                                                   else (resident,))
-                    record = self.event_pool.submit(
-                        subbatch, gpu_read, event_envelopes, self.gpu_detectors,
-                        xtc_parser=self.gpu_xtc_parser,
-                        batch_id=getattr(self, "_input_batch_id", 0), **kwargs,
-                    )
-                finally:
-                    if transient is not None:
-                        transient.close()
+                if getattr(self, '_group_inputs', None) is not None:
+                    record = self._submit_group_gpu(subbatch, gpu_read, event_envelopes)
+                else:
+                    record = self._submit_legacy_gpu(subbatch, gpu_read, event_envelopes)
         finally:
             self._close_gpu_reservation()
         for pipe in self._d2h_pipelines.values():
             pipe.schedule(record)
         return record
+
+    def _submit_legacy_gpu(self, subbatch, gpu_read, event_envelopes):
+        resident = getattr(self, '_resident_window', None)
+        transient = None
+        kwargs = {}
+        try:
+            if resident is not None:
+                if gpu_read is not None:
+                    transient = self.gpu_xtc_parser.parse_window(
+                        gpu_read, self.event_pool.next_stream,
+                        batch_id=self._input_batch_id)
+                kwargs['input_windows'] = ((resident, transient) if transient is not None
+                                           else (resident,))
+            record = self.event_pool.submit(
+                subbatch, gpu_read, event_envelopes, self.gpu_detectors,
+                xtc_parser=self.gpu_xtc_parser,
+                batch_id=getattr(self, "_input_batch_id", 0), **kwargs,
+            )
+        finally:
+            if transient is not None:
+                transient.close()
+        return record
+
+    def _submit_group_gpu(self, subbatch, pending, event_envelopes):
+        inputs = self._group_inputs
+        inputs.parse_groups(pending, self.gpu_xtc_parser, self.event_pool.next_stream)
+        groups = self._group_schedule.groups_for(subbatch._start, subbatch._end)
+        windows, uses, transferred = [], {}, []
+        try:
+            for group in groups:
+                key = (self._input_batch_id, group.group_id)
+                window = inputs.window(key)
+                windows.append(window)
+                for d in group.dgrams:
+                    if subbatch._start <= d.batch_event_index < subbatch._end:
+                        use = inputs.take_use(key, d.batch_event_index)
+                        transferred.append(use)
+                        uses.setdefault(window, use)
+            return self.event_pool.submit(
+                subbatch, None, event_envelopes, self.gpu_detectors,
+                batch_id=self._input_batch_id, input_windows=windows, input_uses=uses)
+        finally:
+            error = None
+            for use in transferred:
+                try:
+                    use.wait_until_safe_to_reuse()
+                except BaseException as exc:
+                    if error is None:
+                        error = exc
+            if error is not None:
+                raise error
+
+    def _issue_group_reads(self, subbatch, slot_id):
+        from .gpu_budget import allocation_growth_bytes
+        inputs = self._group_inputs
+        groups = self._group_schedule.new_groups(subbatch._start, subbatch._end)
+        slots = inputs.plan_slots(groups)
+        if slots is None:
+            raise GpuMemoryPressureError('input groups await stream credit or raw slots')
+        requirements = []
+        for group, slot in zip(groups, slots):
+            requirements += self.gpu_reader.allocation_requirements(group.size, slot)
+        n_dgrams = sum(len(group.dgrams) for group in groups)
+        if n_dgrams:
+            requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams, groups=True)
+        events = self._event_memory(subbatch)
+        for _, det in self.gpu_detectors.values():
+            count = sum(det.binding.has_sources({s for s, _ in e.streams}) for e in events)
+            requirements += det.allocation_requirements(count, slot_id)
+        hold = self._gpu_budget.hold(allocation_growth_bytes(requirements),
+                                     margin=self._admission_margin)
+        self._gpu_read_reservation = hold
+        pending = []
+        self._pending_gpu_read = pending
+        with hold:
+            for group, slot in zip(groups, slots):
+                key = inputs.issue(self._input_batch_id, group, slot_id=slot)
+                if key is None:
+                    raise RuntimeError('reserved input group became unavailable')
+                pending.append(key)
+                self._group_schedule.issued.add(group.group_id)
+        return pending
 
     @staticmethod
     def _is_fully_host_backed(ready):
@@ -1199,6 +1283,8 @@ class GpuEventManager:
         if (getattr(self, '_pending_gpu_read', None) is not None
                 or getattr(self, '_gpu_read_reservation', None) is not None):
             raise RuntimeError("a pre-issued GPU read is already outstanding")
+        if getattr(self, '_group_inputs', None) is not None:
+            return self._issue_group_reads(subbatch, slot_id)
         kwargs = {}
         if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
             kwargs["file_epochs"] = self._gpu_read_files
@@ -1224,6 +1310,10 @@ class GpuEventManager:
         if pending is None and getattr(self, '_resident_window', None) is not None:
             return None  # this execution uses only already-resident input
         try:
+            if getattr(self, '_group_inputs', None) is not None:
+                for key in pending:
+                    self._group_inputs.read(key)
+                return pending
             return self.gpu_reader.wait_batch(pending)
         except BaseException:
             self._close_gpu_reservation()
@@ -1236,7 +1326,11 @@ class GpuEventManager:
         pending = getattr(self, '_pending_gpu_read', None)
         try:
             if pending is not None:
-                self.gpu_reader.wait_batch(pending)
+                if getattr(self, '_group_inputs', None) is not None:
+                    for key in pending:
+                        self._group_inputs.read(key)
+                else:
+                    self.gpu_reader.wait_batch(pending)
         finally:
             self._pending_gpu_read = None
             self._close_gpu_reservation()
@@ -1324,7 +1418,8 @@ class GpuEventManager:
                     all_subbatches.extend(self._split_subbatches(
                         gpu_view, allow_residency=bool(getattr(self.dsparms, 'gpu_bulk_read', False))))
 
-                if all_subbatches and self._last_admission_plan.resident_streams:
+                if (all_subbatches and getattr(self, '_group_inputs', None) is None
+                        and self._last_admission_plan.resident_streams):
                     # Bound resident input to one EB batch. Complete old consumers
                     # before repurposing cached capacity for its full input.
                     yield from self._flush_event_pool()
@@ -1472,6 +1567,8 @@ class GpuEventManager:
         yield from self._flush_event_pool()
         self._drain_pending_gpu_read()
         self._close_resident_input()
+        if getattr(self, '_group_inputs', None) is not None:
+            self._group_inputs.close()
         parser = getattr(self, "gpu_xtc_parser", None)
         if parser is not None:
             parser.close()

@@ -262,7 +262,8 @@ class KvikioGpuReader:
         cursor = group.file_offset
         for d in group.dgrams:
             if (d.file != group.file or d.stream_id != group.stream_id
-                    or d.file_offset != cursor or d.size <= 0):
+                    or d.file_offset != cursor or d.size < 0
+                    or (d.size == 0 and len(group.dgrams) != 1)):
                 raise ValueError('input group must contain contiguous dgrams from one stream/file')
             cursor += d.size
         if not group.dgrams or cursor - group.file_offset != group.size:

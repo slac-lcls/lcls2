@@ -45,7 +45,28 @@ class InputGroupPool:
     def live_keys(self):
         return tuple(self._groups)
 
-    def issue(self, batch_id, group):
+    def plan_slots(self, groups):
+        """Choose distinct available slots before a combined allocation hold."""
+        self.poll()
+        busy = {g.slot for g in self._groups.values()}
+        small = set(self._small)
+        result = []
+        for group in groups:
+            if group.small and group.stream_id in small:
+                return None
+            free = [i for i in range(self.reader._n_slots) if i not in busy]
+            if not free:
+                return None
+            fits = [i for i in free if self.reader._slot_bufs[i] is not None
+                    and self.reader._slot_bufs[i].nbytes >= group.size]
+            slot = min(fits, key=lambda i: self.reader._slot_bufs[i].nbytes) if fits else free[0]
+            result.append(slot)
+            busy.add(slot)
+            if group.small:
+                small.add(group.stream_id)
+        return tuple(result)
+
+    def issue(self, batch_id, group, *, slot_id=None):
         """Return (batch, group) key, or None for slot/small-stream backpressure.
 
         No GPU wait is introduced here. Poll completed groups before choosing
@@ -59,14 +80,17 @@ class InputGroupPool:
             raise ValueError(f'duplicate live input group {key}')
         if group.small and group.stream_id in self._small:
             return None
-        busy = {g.slot for g in self._groups.values()}
-        free = [i for i in range(self.reader._n_slots) if i not in busy]
-        if not free:
-            return None
-        # Prefer a reusable fitting buffer to allocating another generation.
-        fits = [i for i in free if self.reader._slot_bufs[i] is not None
-                and self.reader._slot_bufs[i].nbytes >= group.size]
-        slot = min(fits, key=lambda i: self.reader._slot_bufs[i].nbytes) if fits else free[0]
+        if slot_id is None:
+            slots = self.plan_slots((group,))
+            if slots is None:
+                return None
+            slot = slots[0]
+        else:
+            slot = int(slot_id)
+            if not 0 <= slot < self.reader._n_slots:
+                raise IndexError(slot)
+            if any(g.slot == slot for g in self._groups.values()):
+                return None
         state = _GroupState(key, group, slot)
         self._groups[key] = state
         if group.small:
@@ -136,6 +160,30 @@ class InputGroupPool:
             raise RuntimeError('input group is not parsed')
         return state.planned.pop(event_index)
 
+    def window(self, key):
+        window = self._groups[key].window
+        if window is None:
+            raise RuntimeError('input group is not parsed')
+        return window
+
+    def parse_groups(self, keys, parser, stream):
+        keys = tuple(keys)
+        if not keys:
+            return ()
+        if len({key[0] for key in keys}) != 1:
+            raise ValueError('cannot parse groups from different EB batches together')
+        windows = parser.parse_groups([self.read(key) for key in keys], stream,
+                                      batch_id=keys[0][0])
+        try:
+            for key, window in zip(keys, windows):
+                self.bind(key, window)
+        finally:
+            # Unbound windows still belong to the parser pool if setup fails;
+            # close root acquisitions so parser.close can drain them.
+            for window in windows:
+                window.close()
+        return windows
+
     def poll(self):
         """Reclaim every ready group, including later ones; never synchronize CUDA."""
         reclaimed, error = [], None
@@ -152,6 +200,16 @@ class InputGroupPool:
         if error is not None:
             raise error
         return tuple(reclaimed)
+
+    def drain_idle(self):
+        """Pressure/shutdown fallback after execution delivery has drained.
+
+        Planned/live consumers stay protected. Normal collection uses poll().
+        """
+        for state in tuple(self._groups.values()):
+            if state.window is not None and not state.window.references:
+                state.window.drain()
+        return self.poll()
 
     def _forget(self, state):
         if state.release_raw is not None:

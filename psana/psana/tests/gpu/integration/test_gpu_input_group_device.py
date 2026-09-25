@@ -23,7 +23,8 @@ def available():
 
 @pytest.mark.gpu
 @pytest.mark.skipif(not available(), reason='no CUDA device')
-def test_later_group_reuses_storage_while_earlier_cuda_consumers_run(tmp_path):
+@pytest.mark.parametrize('batched', [False, True])
+def test_later_group_reuses_storage_while_earlier_cuda_consumers_run(tmp_path, batched):
     import cupy as cp
     from psana import dgram
 
@@ -74,7 +75,8 @@ def test_later_group_reuses_storage_while_earlier_cuda_consumers_run(tmp_path):
     done = cp.cuda.Event(disable_timing=True)
     try:
         keys = [inputs.issue(0, g) for g in groups]
-        windows = [inputs.parse(k, parser, parsing) for k in keys]
+        windows = (inputs.parse_groups(keys, parser, parsing) if batched
+                   else [inputs.parse(k, parser, parsing) for k in keys])
         parsing.synchronize()
         raw = windows[0].batch.data_gpu
         locators = windows[0].locate(handles[0]).rows_gpu
