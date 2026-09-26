@@ -11,6 +11,13 @@ Implementation tracking: the internal Stage 1 raw-preparation extraction is
 described in [Stage 1 findings](../user_kernel_stage1_findings_20260926.md).
 The public callback and publication APIs below remain proposed.
 
+**Revised direction after Stage 1:** remove calibration completely from the GPU
+runtime, including the no-callback default. Calibration and image algorithms
+belong in user callbacks/examples. See the
+[removal dependency audit](calibration_runtime_removal_20260926.md).
+Stage 1 preserved legacy behavior as an extraction checkpoint; that behavior
+is no longer a requirement for the completed design.
+
 This is the canonical design for the implementation task. It supersedes the earlier
 version at this path that required declared scratch/output arenas. It captures
 the uncommitted September 17 draft from the stale
@@ -27,8 +34,8 @@ has not been changed and is no longer needed to read this proposal.
 ## Recommendation
 
 Add one user callback inside psana's existing BD execution loop, after input
-reads, GPU XTC parsing, and any requested dense gather. An explicitly configured
-callback replaces automatic detector calibration. The callback queues any CUDA
+reads, GPU XTC parsing, and any requested dense gather. Remove automatic detector
+calibration entirely. An explicitly configured callback queues any CUDA
 or CuPy algorithm on the supplied stream and publishes named device outputs.
 Psana records completion and starts asynchronous D2H; the public event loop
 only consumes results.
@@ -195,15 +202,16 @@ for run in ds.runs():
 exact constructor validation will be finalized during implementation; this
 example is not executable against the baseline.
 
-`gpu_fn=None` preserves today's built-in processing. Supplying one task replaces
-that processing for the selected GPU path: prepare declared inputs/constants,
-then invoke the task. Do not run hidden calibration first or allocate the old
+`gpu_fn=None` enables no automatic GPU algorithm or output publication; selected
+GPU inputs remain available through parsed-field access. Supplying one task
+prepares declared inputs/constants, then invokes the task. Do not run hidden
+calibration first or allocate the old
 calibrated-output slots. Parser-only inputs do not require a Jungfrau adapter.
 In `inputs`, a dense adapter name such as `"jungfrau.raw"` requests preparation;
 a `(detector, algorithm, field)` tuple requests device field descriptors only.
-All selected detectors use this replacement rule; mixed automatic/task pipelines
-can wait. Existing public parser fields remain available under their current
-lease rules.
+All selected detectors use this input/task path; there is no automatic
+calibration mode. Existing public parser fields remain available under their
+current lease rules.
 
 The callback runs once for each selected L1Accept with GPU input descriptors,
 inside its BD process. No callbacks for transitions or events having no selected
@@ -365,7 +373,7 @@ distribution can still populate the source dictionary for normal psana users.
 The producer's `evt.calibconst(det, key)` retrieves the already staged device
 array; it never fetches calibration data or starts an upload in the event hot
 path. Psana owns and budgets these uploads. For v1 each BD owns its requested
-device copies; the legacy two-buffer CUDA IPC scheme is bypassed. Retain per-GPU
+device copies; remove the legacy two-buffer CUDA IPC scheme. Retain per-GPU
 BD-count budgeting and account for every BD's copies. General sharing by declared
 key is a later optimization requiring peer-safe refresh and ownership.
 Fetch pointers each invocation; drain local users before any replacement at a
@@ -452,9 +460,9 @@ existing submission/wait boundary, coalescing, and group input reuse.
 
 One producer event per execution subbatch is sufficient initially. Psana then
 queues copies for **every published output**, using a copy stream that waits on
-that event. Publication implies host delivery in this prototype, independent of
-the legacy calibrated-result `gpu_d2h_chunk_size=0` default. An implementation
-must make that policy explicit rather than silently falling back to lazy copies.
+that event. Publication implies host delivery in this prototype. The legacy
+image-count `gpu_d2h_chunk_size` option is retired; it does not control task
+outputs. Do not silently fall back to lazy copies at event-loop access.
 A copy completion event may cover several outputs. Each output retains its own
 name, shape, dtype, event identity, and host slice.
 
@@ -594,8 +602,10 @@ records the branch point, concrete first change, source areas, and stage gates.
 Implement in this order. Each stage has an exit check; later stages must not
 restore implicit calibration dependencies removed by Stage 1. The public
 callback mode is complete only after delivery and lifecycle validation pass.
-`gpu_fn=None` keeps the existing default behavior. Share routing, reads, parser,
-input ownership, and delivery machinery; avoid a second independent scheduler.
+`gpu_fn=None` retains GPU input routing/parsing and explicit parsed-field access,
+with no automatic calibration, image assembly, synthetic results, or output D2H.
+Share routing, reads, parser, input ownership, and delivery machinery; avoid a
+second independent scheduler or a legacy calibration mode.
 
 ### Stage 1 — Separate staged inputs from built-in calibration
 
@@ -619,16 +629,16 @@ pedestals for their shape or introducing per-event locator D2H.
 The following dependencies were rechecked in the current source and belong in
 this separation, beyond removal of the calibration launch:
 
-| Current dependency | Callback-mode change |
+| Current dependency | Removal / replacement |
 |---|---|
 | `_setup_gpu_pipeline()` derives dense shape from `calibconst['pedestals']` and gates support on calibration adapters | Establish raw layout independently; a detector with no calibration dictionary can still provide raw input |
-| `_compute_calib_constants_cpu()` / `prep_calib_constants()` select pedestals/gain/offset, invoke `_mask()` or status fallback, combine values, flatten/cast, and upload two arrays | Remove this entire recipe from automatic callback setup; Stage 2 uploads only declared dictionary values |
+| `_compute_calib_constants_cpu()` / `prep_calib_constants()` select pedestals/gain/offset, invoke `_mask()` or status fallback, combine values, flatten/cast, and upload two arrays | Remove this entire recipe from runtime setup; Stage 2 uploads only declared dictionary values |
 | `GPUDetector.process_batch()` allocates `_calib_slot_bufs`, launches calibration and zeros missing calibrated rows | Separate gather/presence; any calibrated output and its missing-data treatment belong to user code |
 | `GPUDetector` assumes raw uint16 versus float32 passthrough and rejects `cmpars` | Bind the requested field/layout explicitly; do not label pre-calibrated `fex` as raw or impose the legacy kernel's algorithm limitations on callbacks |
-| `_setup_jungfrau_shared_calib()` and `_setup_jungfrau_shared_caches()` eagerly build CPU derived arrays during MPI run initialization | Exclude callback-only detector work using a consistent target list on all participating ranks; preserve needed CPU/hybrid consumers and collective ordering |
-| `_setup_gpu_geometry()` plus `setup_geometry[_from_arrays]()` prepare/upload image scatter indices | Skip these for callback detector-plane inputs; image assembly is not a prerequisite for calibration |
-| `_make_gpu_event_manager()` and `share_calib_between_gpu_peers()` expect the fixed `peds_gpu`/`gmask_gpu` pair | Bypass legacy leader/follower allocation suppression and handle exchange in callback mode; retain device assignment and per-GPU BD-count budgeting |
-| `_dispatch_transition()` and `GPUDetector.beginstep()` recompute/update the same two arrays | Replace callback-mode refresh with the declared input store and drain discipline in Stage 2 |
+| `_setup_jungfrau_shared_calib()` and `_setup_jungfrau_shared_caches()` eagerly build CPU derived arrays during MPI run initialization | Exclude GPU-exclusive detector work using a consistent target list on all participating ranks; preserve needed CPU/hybrid consumers and collective ordering |
+| `_setup_gpu_geometry()` plus `setup_geometry[_from_arrays]()` prepare/upload image scatter indices | Remove automatic GPU geometry setup; user code owns image algorithms |
+| `_make_gpu_event_manager()` and `share_calib_between_gpu_peers()` expect the fixed `peds_gpu`/`gmask_gpu` pair | Remove calibration leader/follower allocation suppression and handle exchange; retain device assignment and per-GPU BD-count budgeting |
+| `_dispatch_transition()` and `GPUDetector.beginstep()` recompute/update the same two arrays | Remove the recipe; Stage 2 uses a declared input store with the existing drain discipline |
 | Detector byte estimates, allocation reservations, trimming, and memory statistics include calibrated outputs/geometry/two constants | Account for reader/parser, staged raw/presence, and actual requested constant allocations; omit removed legacy buffers |
 | `optimal_kernel_batch_size()` derives the automatic batch choice from the calibration launch | Use a documented callback-independent default or explicit batch setting; retain byte-based subbatch admission |
 | `EventPool.submit()` manufactures `.calib`/`.raw` keys, `_D2hPipeline` targets `.calib`, and `GpuEventState.get()` qualifies bare names | Separate input bindings from results; Stage 4 delivers only published names with exact lookup |
@@ -646,7 +656,32 @@ Main files: [gpu_events.py](../../gpu_events.py),
 **Exit check:** a raw-only preparation test with empty calibration requests and
 no available pedestals succeeds. Instrument/disable legacy preparation, mask,
 geometry, and kernel entry points so the test fails if any is called. Verify no
-legacy output/constant allocations and unchanged default calibration results.
+legacy output/constant allocations. Stage 1's completed extraction also verified
+unchanged default calibration results as a historical checkpoint; the revised
+design removes that default in Stage 1b.
+
+### Stage 1b — Remove automatic GPU calibration
+
+Apply the [removal audit](calibration_runtime_removal_20260926.md): remove the
+legacy detector producer, automatic derived constants/geometry, BeginStep recipe,
+fixed-pair CUDA IPC, calibration-specific accounting/batching, synthetic result
+names, and image-shaped float32 D2H. Retain raw preparation, parsed-field access,
+input ownership and completion. Move numerical helpers to explicit example/test
+support; runtime imports must not depend on them. Retire nonzero
+`gpu_d2h_chunk_size` requests with an actionable error instead of silently
+ignoring them. Generic publication delivery arrives in Stage 4.
+
+Filter MPI derived CPU cache targets consistently to exclude GPU-exclusive
+detectors while retaining CPU/hybrid consumers. Keep source calibration
+loading/distribution, GPU assignment, per-GPU BD counts, and transition drains.
+This removes the old processing path before task wiring instead of maintaining
+two processing modes through the remaining stages.
+
+**Exit check:** serial/MPI GPU input processing succeeds without pedestals or any
+built-in calibration/geometry invocation; no synthetic outputs or output D2H;
+CPU/hybrid calibration and shared-memory collectives remain correct. Preserve
+batched parser/gather behavior and input lifetime tests. Callback execution and
+generic output delivery are not claimed until Stages 2–4 are complete.
 
 ### Stage 2 — Stage requested calibration-dictionary values
 
@@ -664,8 +699,8 @@ the accessor performs neither database I/O nor lazy H2D. No synthetic `gain_mask
 automatic mask computation, inverse gain, offset folding, or hidden float32 cast.
 
 Reserve actual upload bytes before allocation. Initially allocate one requested
-copy per BD and charge it to that BD's quota; do not leave followers without
-constants after bypassing the old IPC path. Expose dense-input segment identity
+copy per BD and charge it to that BD's quota; the old calibration leader/follower
+IPC path has been removed. Expose dense-input segment identity
 and document how it maps to the unchanged calibration layout. Establish an upload
 completion dependency before any callback uses the arrays.
 
@@ -711,8 +746,8 @@ Generalize D2H and host tokens to named contiguous arrays with per-publication
 dtype, shape, and byte extent, including scalar counts, empty arrays, uint8
 masks, and small histograms. Accept changing layouts under the same name.
 User code controls publication cadence independently of callback scheduling.
-Publication triggers host staging after producer completion regardless of the legacy
-`gpu_d2h_chunk_size=0` default. Callback result lookup uses the exact published key;
+Publication triggers host staging after producer completion; the old image-count
+`gpu_d2h_chunk_size` option is retired. Result lookup uses the exact published key;
 `jungfrau_threshold` must not become `jungfrau.jungfrau_threshold` under the old
 single-detector alias rule. Input names are not automatically published outputs.
 
@@ -745,7 +780,7 @@ Deliver a Jungfrau callback that consumes requested dictionary arrays and produc
 an azimuthal histogram using user-owned output memory, with calibrated data as
 an optional validation output. Keep threshold/mask/count as additional coverage.
 Compare with the CPU/reference algorithm using identical offset, gain, mask, and
-common-mode settings; the built-in GPU kernel does not implement every CPU option.
+common-mode settings; the reference GPU kernel does not implement every CPU option.
 Demonstrate CuPy and a compiled native launcher using the same staging contract.
 
 Use Jungfrau calibration plus azimuthal integration as the first end-to-end acceptance case.
@@ -809,8 +844,9 @@ correctness acceptance, not a throughput claim.
 
 Acceptance for that implementation:
 
-- Default no-callback calibration remains pixel-exact; injected calibration is
-  not run twice. Changing the threshold changes both published outputs.
+- No-callback GPU processing performs no calibration or automatic output D2H.
+  Explicit user calibration remains pixel-exact against its stated reference;
+  changing the threshold changes both published outputs.
 - In callback mode, an empty constant declaration performs no calibration
   preparation/upload. Requesting only `pedestals` uploads the original pedestal
   array without offsets or masks; requesting only `pixel_gain` uploads original

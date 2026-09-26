@@ -144,9 +144,11 @@ draining when extending the pipeline.
   remain follow-ups, not prerequisites.
 - `GpuTask` declares a callable, input selectors, and exact calibration keys.
   Psana resolves input metadata and stages only the requested constants.
-- `gpu_fn=None` preserves existing calibration. An explicit callback replaces
-  automatic processing on the selected GPU path; it can launch user calibration
-  and additional kernels on the supplied stream.
+- Following the user's post-Stage-1 direction, remove built-in calibration
+  completely from the GPU runtime. `gpu_fn=None` retains GPU input parsing but
+  produces no synthetic results or automatic output D2H. Calibration and other
+  processing require an explicit user callback. See the
+  [removal audit](calibration_runtime_removal_20260926.md) and Stage 1b plan.
 - Scheduling occurs inside the GPU subbatch producer, before public delivery.
   The initial callback takes `(evt, stream)` once per selected event; a true
   batch callback can follow. No task launch occurs from the public event loop.
