@@ -3,9 +3,7 @@ import math
 import sys
 from contextlib import nullcontext
 from dataclasses import dataclass, field
-from queue import Empty, SimpleQueue
 
-import numpy as np
 
 _log = logging.getLogger(__name__)
 
@@ -14,8 +12,6 @@ from psana.event import EventEnvelope
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
 from psana.gpu.gpu_budget import GpuMemoryPressureError
-from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
-from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
 from psana.gpu.gpu_input import GpuDetectorBinding
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpudgram import GpuStreamConfigTable, GpuXtcBatchPool
@@ -82,250 +78,6 @@ def _iter_step_events(batch_bytes, configs):
         yield service, dgrams
 
 
-class _PendingD2H:
-    """Token held by GPUResult while its async D→H is in-flight.
-
-    Created by _D2hPipeline._schedule_chunk() immediately after issuing
-    cudaMemcpyAsync.  GPUResult.on_cpu calls .get() to wait for the
-    transfer and retrieve the host copy.
-
-    Reference-counts the parent _PinnedSlot so the slot is not reused
-    until every event in the chunk has called on_cpu (or been GC'd).
-    """
-
-    __slots__ = ("_pslot", "_row", "_n_segs")
-
-    def __init__(self, pslot, row: int, n_segs: int):
-        self._pslot = pslot
-        self._row = row
-        self._n_segs = n_segs
-
-    def get(self) -> np.ndarray:
-        """Block until D→H complete; return numpy copy; release slot ref."""
-        self._pslot.done_event.synchronize()
-        data = self._pslot.arr[self._row, : self._n_segs].copy()
-        self._pslot.dec_ref()
-        self._pslot = None
-        return data
-
-    def __del__(self):
-        # Safety: if the user never calls on_cpu, release the ref anyway.
-        if self._pslot is not None:
-            self._pslot.dec_ref()
-            self._pslot = None
-
-
-class _PinnedSlot:
-    """One pre-allocated page-locked host buffer for one D→H chunk.
-
-    Pre-allocated during _D2hPipeline.__init__ so that cudaMallocHost
-    page-lock latency does not appear in the event loop timing.
-
-    Reference-counted: claim(n) marks n events in-flight; dec_ref()
-    releases one reference, and when the count reaches 0 the slot puts
-    itself back into the pipeline's _available SimpleQueue so
-    _get_free_slot() can retrieve it on the next call.
-    """
-
-    def __init__(
-        self,
-        max_segs: int,
-        nrows: int,
-        ncols: int,
-        chunk_size: int,
-        available,
-    ):
-        import cupy as cp
-        import threading
-
-        nbytes = chunk_size * max_segs * nrows * ncols * 4  # float32
-        self._mem = cp.cuda.alloc_pinned_memory(nbytes)
-        self.arr = np.frombuffer(
-            self._mem,
-            dtype=np.float32,
-            count=chunk_size * max_segs * nrows * ncols,
-        ).reshape(chunk_size, max_segs, nrows, ncols)
-        self.done_event = cp.cuda.Event(disable_timing=True)
-        self._refs = 0
-        self._available = available   # SimpleQueue[_PinnedSlot] from _D2hPipeline
-        # Guards the decrement-and-check in dec_ref() so that concurrent
-        # calls (e.g. multiple threads calling on_cpu on events from the
-        # same chunk) cannot produce a lost-update on _refs and silently
-        # prevent the slot from being returned to the free pool.
-        self._refs_lock = threading.Lock()
-
-    def claim(self, n: int):
-        """Mark n events as in-flight on this slot."""
-        self._refs = n
-
-    def dec_ref(self):
-        """Release one event reference; return slot to free pool when all done.
-
-        The decrement-and-check is protected by _refs_lock so that
-        concurrent dec_ref() calls from different threads (e.g. when
-        multiple events from the same chunk have on_cpu called in parallel)
-        cannot race and produce a lost update on _refs.  Releases after the
-        reference count reaches zero are ignored so a slot is never queued
-        in the free pool more than once.
-        """
-        with self._refs_lock:
-            if self._refs <= 0:
-                return
-            self._refs -= 1
-            freed = self._refs == 0
-        if freed:
-            self._available.put(self)  # return slot to the free pool
-
-
-class _D2hPipeline:
-    """Internal GpuEventManager D→H pipeline (not user-facing).
-
-    Issues async D→H from an EventPool slot as soon as its final GPU work is
-    submitted.  Result delivery remains separate: GPUResult.on_cpu later waits
-    on the attached token and copies out of pinned memory.
-
-    Activated by DataSource(gpu_d2h_chunk_size=N).  N=0 (default)
-    bypasses the pipeline; on_cpu then triggers a blocking D→H on first
-    access (existing behaviour).
-    """
-
-    def __init__(self, det_key: str, chunk_size: int, n_pinned_slots: int = 2):
-        self._key = det_key
-        self._chunk_size = chunk_size
-        self._n_pinned_slots = max(2, int(n_pinned_slots))
-
-        # _available is a SimpleQueue of free _PinnedSlot objects.
-        # _get_free_slot() calls get_nowait() — O(1), thread-safe, no scan.
-        # dec_ref() calls put(self) when a slot's ref count reaches 0.
-        # Using a queue instead of a Semaphore + in_use flag + scan loop
-        # reduces three separate mechanisms to one and also eliminates the
-        # TOCTOU gap between "slot found free" and "slot claimed".
-        self._available: SimpleQueue = SimpleQueue()
-
-        # Lazy: shape not known until first event.
-        self._pinned_pool: list = []
-        self._d2h_stream = None
-        self._n_segs: int | None = None
-        self._nrows: int | None = None
-        self._ncols: int | None = None
-
-    def schedule(self, slot_record):
-        """Arm D→H for every matching result in one execution slot.
-
-        This runs immediately after EventPool.submit().  It never waits for
-        normal asynchronous copies: the D→H stream waits on the slot's
-        result-ready event and records its own completion event.  If all pinned
-        buffers are retained, the result is copied synchronously now and cached
-        so a later on_cpu() can never read a reused GPU slot.
-        """
-        items = []
-        key = self._key
-        for envelope in slot_record.event_envelopes:
-            ts = utils.first_timestamp(envelope.dgrams)
-            arr = slot_record.gpu_results_by_ts.get(ts, {}).get(key)
-            if arr is None:
-                continue
-            lease = slot_record.leases_by_ts.get(ts, {}).get(key)
-            items.append((ts, lease, arr))
-
-        if not items:
-            return
-        if self._n_segs is None:
-            self._init(items[0][2])
-
-        for start in range(0, len(items), self._chunk_size):
-            self._schedule_chunk(slot_record, items[start:start + self._chunk_size])
-
-    def pinned_bytes(self) -> int:
-        """Return bytes of pinned (page-locked) host memory currently
-        allocated by this pipeline's _PinnedSlot pool.
-        Used by GpuEventManager.log_memory() for Phase-0 accounting.
-        """
-        return sum(s.arr.nbytes for s in self._pinned_pool)
-
-    # ------------------------------------------------------------------ #
-    # Internal helpers                                                     #
-    # ------------------------------------------------------------------ #
-
-    def _init(self, arr):
-        import cupy as cp
-
-        self._n_segs = int(arr.shape[0])
-        self._nrows = int(arr.shape[1])
-        self._ncols = int(arr.shape[2])
-        for _ in range(self._n_pinned_slots):
-            slot = _PinnedSlot(self._n_segs, self._nrows, self._ncols, self._chunk_size, self._available)
-            self._pinned_pool.append(slot)
-            self._available.put(slot)   # all slots start free
-        self._d2h_stream = cp.cuda.Stream(non_blocking=True)
-
-    def _get_free_slot(self):
-        """Return a free _PinnedSlot, or None if all slots are occupied.
-
-        SimpleQueue.get_nowait() is O(1), thread-safe, and atomically
-        removes the slot from the free pool — eliminating the Semaphore +
-        in_use scan that three separate mechanisms previously handled.
-
-        Returns None when the queue is empty.  schedule() then materializes an
-        independent CPU result before the execution slot can be reused.
-        """
-        try:
-            return self._available.get_nowait()
-        except Empty:
-            return None   # queue empty — schedule() materializes CPU data now
-
-    def _schedule_chunk(self, slot_record, chunk):
-        """Issue one pinned D→H chunk, or materialize a safe CPU fallback."""
-        import cupy as cp
-        n_evts = len(chunk)
-
-        pslot = self._get_free_slot()
-
-        # No free pinned slot: materialize while the device lease is valid.
-        # Deferring arr.get() until on_cpu() would allow this execution slot to
-        # be overwritten first when callers retain event contexts.
-        if pslot is None:
-            for ts, lease, arr in chunk:
-                if lease is not None and lease.result_ready is not None:
-                    lease.result_ready.synchronize()
-                slot_record.cached_cpu_results_by_ts.setdefault(ts, {})[
-                    self._key
-                ] = arr.get()
-            return
-
-        # ── Issue async D→H ───────────────────────────────────────────────
-        pslot.claim(n_evts)
-        stream = self._d2h_stream
-        row_nbytes = self._n_segs * self._nrows * self._ncols * 4
-        dst_base = pslot.arr.ctypes.data
-        leases_out = []
-
-        for i, (_, lease, arr) in enumerate(chunk):
-            if lease is not None and lease.result_ready is not None:
-                stream.wait_event(lease.result_ready)
-            cp.cuda.runtime.memcpyAsync(
-                dst_base + i * row_nbytes,
-                arr.data.ptr,
-                arr.nbytes,
-                cp.cuda.runtime.memcpyDeviceToHost,
-                stream.ptr,
-            )
-            if lease is not None:
-                leases_out.append(lease)
-
-        # Record done_event and register on leases.
-        pslot.done_event.record(stream)
-        for lease in leases_out:
-            lease.register_consumer_done(pslot.done_event)
-
-        # Store host-result tokens on the execution record.  Context delivery
-        # later attaches them to GPUResult without scheduling new CUDA work.
-        for i, (ts, _, _) in enumerate(chunk):
-            slot_record.pending_d2h_by_ts.setdefault(ts, {})[self._key] = (
-                _PendingD2H(pslot, i, self._n_segs)
-            )
-
-
 def _fmt_mib(n: int) -> str:
     """Format byte count as MiB string for logging."""
     return f"{n / 1024**2:.1f} MiB"
@@ -339,11 +91,6 @@ class _GpuMemStats:
     to update per-category high-water marks.
 
     GPU categories (device VRAM):
-        constants    calibration constants per detector (peds + gmask)
-        geometry     scatter-index arrays for image assembly
-        routing      run-scoped canonical gather tables
-        calib_slots  per-slot calibrated-output buffers (grow lazily)
-        raw_slots    raw-gather buffers, presence masks, and device row maps
         raw_input    KvikioGpuReader per-slot input buffers
         xtc_config   run-scoped flattened Configure tables
         xtc_slots    per-slot dgram, ShapesData, and field-locator tables
@@ -352,15 +99,10 @@ class _GpuMemStats:
         device_total total device memory
 
     Pinned-host category:
-        pinned       D2H buffers and detector row-map upload buffers
+        pinned       framework-owned host staging
     """
 
-    # per-detector breakdowns
-    det_constants: dict = field(default_factory=dict)  # {det_name: bytes}
-    det_geometry: dict = field(default_factory=dict)
-    det_routing: dict = field(default_factory=dict)
-    det_calib_slots: dict = field(default_factory=dict)
-    det_raw_slots: dict = field(default_factory=dict)
+    input_bytes: dict = field(default_factory=dict)
     # aggregate GPU
     raw_input: int = 0
     xtc_config: int = 0
@@ -389,19 +131,6 @@ class _GpuMemStats:
                   self.label, self._mb(self.committed), self._mb(self.held),
                   self._mb(self.retained), self._mb(self.failed),
                   self._mb(self.borrowed), self._mb(self.cupy_used))
-        det_names = sorted(self.det_constants)
-        for name in det_names:
-            _log.info(
-                "GPU mem [%s] det=%s  constants=%s  geometry=%s  routing=%s  "
-                "calib_slots=%s  raw_slots=%s",
-                self.label,
-                name,
-                self._mb(self.det_constants.get(name, 0)),
-                self._mb(self.det_geometry.get(name, 0)),
-                self._mb(self.det_routing.get(name, 0)),
-                self._mb(self.det_calib_slots.get(name, 0)),
-                self._mb(self.det_raw_slots.get(name, 0)),
-            )
         _log.info(
             "GPU mem [%s] raw_input=%s  xtc_config=%s  xtc_slots=%s  "
             "cupy_pool=%s  device_used=%s / %s  pinned=%s",
@@ -434,9 +163,6 @@ class GpuEventManager:
         dsparms,
         run,
         smdr_man=None,
-        setup_geometry=True,
-        prebuilt_geometry=None,
-        calib_leader=True,
         n_bd_per_gpu=1,
     ):
         self.configs = configs
@@ -446,10 +172,7 @@ class GpuEventManager:
         self.shared_state = shared_state
         self.dsparms = dsparms
         self.run = run
-        self._d2h_pipelines: dict = {}  # populated at end of __init__
         self.smdr_man = smdr_man
-        self._setup_geometry = setup_geometry
-        self._prebuilt_geometry = prebuilt_geometry  # {det_name: (ix_all, iy_all)}
         # BD workers sharing this rank's physical GPU.  Sizes the auto VRAM
         # budget so N ranks on one device do not each claim the whole device.
         self._n_bd_per_gpu = max(1, int(n_bd_per_gpu or 1))
@@ -462,8 +185,8 @@ class GpuEventManager:
         self._closed = False
 
         self.gpu_det_names = list(dsparms.gpu_detector_names)
-        self.gpu_detectors = {}
         self.gpu_detector_bindings = {}
+        self.input_preparers = {}
         self.event_pool = None
         self.gpu_reader = None
         self.gpu_xtc_configs = None
@@ -473,7 +196,7 @@ class GpuEventManager:
         # drain it before gpu_reader.close() releases its buffers.
         self._pending_gpu_read = None
 
-        self._setup_gpu_pipeline(calib_leader=calib_leader)
+        self._setup_gpu_pipeline()
 
     def __iter__(self):
         return self
@@ -486,32 +209,21 @@ class GpuEventManager:
     def _snapshot_memory(self, label: str) -> _GpuMemStats:
         """Collect a _GpuMemStats snapshot from all pipeline components."""
         s = _GpuMemStats(label=label)
-        for name, (_, det) in self.gpu_detectors.items():
-            m = det.memory_bytes()
-            s.borrowed += m.get("borrowed_constants", 0)
-            s.det_constants[name] = m["constants"]
-            s.det_geometry[name] = m["geometry"]
-            s.det_routing[name] = m["routing"]
-            s.det_calib_slots[name] = m["calib_slots"]
-            s.det_raw_slots[name] = m["raw_slots"]
-            s.pinned += det.pinned_bytes()
+        for name, preparer in getattr(self, "input_preparers", {}).items():
+            s.input_bytes[name] = preparer.memory_bytes()["total"]
+            s.pinned += preparer.pinned_bytes()
         if self.gpu_reader is not None and hasattr(self.gpu_reader, "memory_bytes"):
             s.raw_input = self.gpu_reader.memory_bytes()["raw_input_slots"]
         if self.gpu_xtc_parser is not None:
             parser_memory = self.gpu_xtc_parser.memory_bytes()
             s.xtc_config = parser_memory["config"]
             s.xtc_slots = parser_memory["batch_slots"]
-        s.pinned += sum(p.pinned_bytes() for p in self._d2h_pipelines.values())
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
             s.committed, s.held = budget.committed(), budget._held
             s.allocations = budget.allocation_snapshot()
-            cached = (s.raw_input + s.xtc_config + s.xtc_slots
-                      + sum(s.det_constants.values()) + sum(s.det_geometry.values())
-                      + sum(s.det_routing.values())
-                      + sum(s.det_calib_slots.values()) + sum(s.det_raw_slots.values()))
-            s.retained = max(0, s.committed - cached)
+            s.retained = max(0, s.committed - s.raw_input - s.xtc_config - s.xtc_slots - sum(s.input_bytes.values()))
             s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
         # Query CuPy pool and CUDA device info only when a GPU is active.
         # These calls fail on CPU-only nodes and are skipped silently.
@@ -545,10 +257,6 @@ class GpuEventManager:
         s = self._snapshot_memory(label)
         s.log()
         hw = self._high_water
-        for category, values in (("constants", s.det_constants), ("geometry", s.det_geometry),
-                                 ("routing", s.det_routing),
-                                 ("calib_slots", s.det_calib_slots), ("raw_slots", s.det_raw_slots)):
-            hw[category] = max(hw.get(category, 0), sum(values.values()))
         for category in ('committed', 'held', 'retained', 'failed', 'borrowed', 'cupy_used'):
             hw[category] = max(hw.get(category, 0), getattr(s, category))
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
@@ -562,14 +270,8 @@ class GpuEventManager:
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
         _log.info(
-            "GPU mem high-water  constants=%s  geometry=%s  routing=%s  calib_slots=%s  "
-            "raw_slots=%s  raw_input=%s  xtc_config=%s  xtc_slots=%s  "
-            "cupy_pool=%s  device_used=%s  pinned=%s",
-            _fmt_mib(hw.get("constants", 0)),
-            _fmt_mib(hw.get("geometry", 0)),
-            _fmt_mib(hw.get("routing", 0)),
-            _fmt_mib(hw.get("calib_slots", 0)),
-            _fmt_mib(hw.get("raw_slots", 0)),
+            "GPU mem high-water raw_input=%s xtc_config=%s xtc_slots=%s "
+            "cupy_pool=%s device_used=%s pinned=%s",
             _fmt_mib(hw.get("raw_input", 0)),
             _fmt_mib(hw.get("xtc_config", 0)),
             _fmt_mib(hw.get("xtc_slots", 0)),
@@ -578,75 +280,9 @@ class GpuEventManager:
             _fmt_mib(hw.get("pinned", 0)),
         )
 
-    def _setup_legacy_detector(self, det_name, det, detector_binding, source_shape,
-                               is_pre_calibrated, drp_classes, calib_leader, rank):
-        """Keep automatic calibration/geometry setup outside input preparation.
-
-        Shared serial/MPI manager boundary. Callback setup will construct a
-        DenseInputPreparer instead; MPI's earlier shared CPU caches and peer
-        exchange must also be selected consistently when that mode is wired.
-        """
-        from psana.gpu.gpu_mpi import log_gpu_mem
-
-        canonical_segment_ids = detector_binding.canonical_segment_ids
-        peds_gpu = None
-        gmask_gpu = None
-        if is_pre_calibrated:
-            _log.info(
-                "GPU detector %r: drp_classes=%s — using passthrough mode "
-                "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
-                det_name, sorted(drp_classes),
-            )
-        elif not calib_leader:
-            # Follower BD rank sharing a GPU with the leader.
-            # is_calib_leader() returned False before _setup_gpu_pipeline() was
-            # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
-            # share_calib_between_gpu_peers() will populate them later via
-            # CUDA IPC handles from the leader — at zero allocation cost.
-            _log.info(
-                "GPU detector %r: follower BD rank — skipping prep_calib_constants; "
-                "calibration constants will be shared from leader via CUDA IPC",
-                det_name,
-            )
-
-        # Canonical ordering is established before constants are copied.
-        # Raw, calibration constants, geometry, and every downstream
-        # operation therefore share the same detector-row contract.
-        det_shape = (
-            len(canonical_segment_ids),
-            int(source_shape[-2]),
-            int(source_shape[-1]),
-        )
-        if not is_pre_calibrated and calib_leader:
-            peds_gpu, gmask_gpu = prep_calib_constants(
-                det, canonical_segment_ids=canonical_segment_ids,
-                budget=self._gpu_budget,
-            )
-            log_gpu_mem(
-                f"after prep_calib_constants ({det_name})", rank=rank
-            )
-
-        gpu_detector = GPUDetector(
-            det_shape=det_shape,
-            peds_gpu=peds_gpu,
-            gmask_gpu=gmask_gpu,
-            binding=detector_binding,
-            n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
-            budget=self._gpu_budget,
-            passthrough=is_pre_calibrated,
-        )
-        if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
-            ix_all, iy_all = self._prebuilt_geometry[det_name]
-            gpu_detector.setup_geometry_from_arrays(ix_all, iy_all)
-        elif self._setup_geometry:
-            gpu_detector.setup_geometry(det)
-        log_gpu_mem(f"after setup_geometry ({det_name})", rank=rank)
-
-        return gpu_detector
-
-    def _setup_gpu_pipeline(self, calib_leader=True):
+    def _setup_gpu_pipeline(self):
         """Initialize this BD's run-scoped GPU resources and processing pipeline."""
-        # Budget must exist before constructing GPUDetector objects.
+        # Budget must exist before constructing input resources.
         from psana.gpu.gpu_budget import _GpuBudget
 
         budget_gb = float(getattr(self.dsparms, "gpu_memory_budget_gb", 0) or 0)
@@ -658,7 +294,6 @@ class GpuEventManager:
             # path); the serial path has a single rank and so keeps 1.
             self._gpu_budget = _GpuBudget.auto(n_bd_ranks=self._n_bd_per_gpu)
 
-        opt_batch_sizes = []
         ids_table = getattr(self.dsparms, "det_stream_ids_table", {})
         segments_table = getattr(
             self.dsparms, "det_stream_segments_table", {}
@@ -706,28 +341,6 @@ class GpuEventManager:
 
         log_gpu_mem("_setup_gpu_pipeline entry", rank=_rank)
         for det_name in self.gpu_det_names:
-            try:
-                det = self.run.Detector(det_name)
-            except Exception as exc:
-                det = None
-                _log.info(
-                    "GPU detector %r: no CPU Detector implementation; parser field "
-                    "access remains available (%s)",
-                    det_name,
-                    exc,
-                )
-            det_info_table = getattr(self.dsparms, "det_info_table", {})
-            det_type = getattr(
-                det,
-                "_dettype",
-                det_info_table.get(det_name, (None, None))[0],
-            )
-
-            # Determine whether bigdata carries raw uint16 ADC data ('raw'
-            # drp_class) or DRP-calibrated float32 data ('fex' or similar).
-            drp_classes = {k[1] for k in self.run.detinfo if k[0] == det_name}
-            is_pre_calibrated = 'raw' not in drp_classes
-
             stream_segments = dict(segments_table.get(det_name, {}))
             gpu_stream_ids = streams_by_detector[det_name]
             configured_segment_ids = sorted({
@@ -735,38 +348,11 @@ class GpuEventManager:
                 for stream_id in gpu_stream_ids
                 for segment_id in stream_segments.get(stream_id, ())
             })
-            detector_api = next(
-                (
-                    getattr(det, drp_class, None)
-                    for drp_class in sorted(drp_classes)
-                    if det is not None
-                    if hasattr(
-                        getattr(det, drp_class, None),
-                        "_sorted_segment_inds",
-                    )
-                ),
-                None,
-            )
-            canonical_segment_ids = list(
-                getattr(detector_api, "_sorted_segment_inds", configured_segment_ids)
-            )
-            routed_segment_ids = set(configured_segment_ids)
-            if routed_segment_ids != set(canonical_segment_ids):
-                raise RuntimeError(
-                    f"GPU detector {det_name!r} must route all detector segments: "
-                    f"configured={canonical_segment_ids}, "
-                    f"routed={sorted(routed_segment_ids)}"
-                )
-
+            canonical_segment_ids = configured_segment_ids
             routed_stream_segments = {
                 stream_id: tuple(stream_segments.get(stream_id, ()))
                 for stream_id in gpu_stream_ids
             }
-            adapter_alg_names = (
-                {"raw"}
-                if not is_pre_calibrated
-                else set(drp_classes) - {"config"}
-            )
             field_handles_by_name = (
                 self.gpu_xtc_configs.detector_field_handles(
                     det_name,
@@ -785,63 +371,16 @@ class GpuEventManager:
             for handles in field_handles_by_name.values():
                 xtc_field_handles.extend(handles.values())
 
-            calibconst = getattr(det, "calibconst", {}) or {}
-            pedestals = calibconst.get("pedestals")
-            source_shape = None
-            if (
-                pedestals is not None
-                and len(pedestals) > 0
-                and pedestals[0] is not None
-            ):
-                source_shape = getattr(pedestals[0], "shape", None)
-            adapter_supported = det is not None and source_shape is not None and (
-                is_pre_calibrated or det_type == "jungfrau"
-            )
-            field_handles_by_segment = {}
-            if adapter_supported:
-                field_handles_by_segment = (
-                    self.gpu_xtc_configs.detector_array_handles(
-                        det_name,
-                        stream_segments=routed_stream_segments,
-                        alg_names=adapter_alg_names,
-                        element_size=4 if is_pre_calibrated else 2,
-                    )
-                )
-
             detector_binding = GpuDetectorBinding(
                 det_name,
                 canonical_segment_ids=canonical_segment_ids,
-                field_handles_by_segment=field_handles_by_segment,
+                field_handles_by_segment={},
                 field_handles_by_name=field_handles_by_name,
             )
             self.gpu_detector_bindings[det_name] = detector_binding
 
-            if not adapter_supported:
-                reason = (
-                    "no pedestal-derived dense shape"
-                    if source_shape is None
-                    else f"no calibration adapter for detector type {det_type!r}"
-                )
-                _log.info(
-                    "GPU detector %r: exposing parser fields without calib/raw "
-                    "result materialization (%s)",
-                    det_name,
-                    reason,
-                )
-                continue
-
-            xtc_field_handles.extend(field_handles_by_segment.values())
-
-            gpu_detector = self._setup_legacy_detector(
-                det_name, det, detector_binding, source_shape, is_pre_calibrated,
-                drp_classes, calib_leader, _rank,
-            )
-            det_shape = gpu_detector.det_shape
-            opt_batch_sizes.append(optimal_kernel_batch_size(det_shape))
-            self.gpu_detectors[det_name] = (det, gpu_detector)
-
         if not self.dsparms.batch_size:
-            self.dsparms.batch_size = min(opt_batch_sizes) if opt_batch_sizes else 1
+            self.dsparms.batch_size = 1
 
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
         self.event_pool = EventPool(n=pool_depth)
@@ -856,28 +395,7 @@ class GpuEventManager:
             n_slots=pool_depth + (len(self.configs) + 1 if self.dsparms.gpu_bulk_read else 0),
             budget=self._gpu_budget,
         )
-        for _, gpu_detector in self.gpu_detectors.values():
-            gpu_detector.configure_gather(self.gpu_xtc_parser.handle_indices)
-
         self._setup_input_io()
-
-        # Internal D→H pipeline — activated when gpu_d2h_chunk_size > 0.
-        # Transfers calibrated results to pinned host memory in chunks so that
-        # evt.gpu.get('det.calib').on_cpu returns without triggering
-        # an additional synchronous D→H at the user's call site.
-        chunk_size = getattr(self.dsparms, "gpu_d2h_chunk_size", 0) or 0
-        if chunk_size > 0 and self.gpu_detectors:
-            # One pipeline per GPU detector key.
-            self._d2h_pipelines = {
-                f"{det_name}.calib": _D2hPipeline(
-                    det_key=f"{det_name}.calib",
-                    chunk_size=chunk_size,
-                    n_pinned_slots=pool_depth,
-                )
-                for det_name in self.gpu_detectors
-            }
-        else:
-            self._d2h_pipelines = {}
 
         # Report which I/O path kvikio will use for this run.
         # GDS (compat_mode=False) reads NVMe → GPU VRAM directly (fast).
@@ -900,7 +418,7 @@ class GpuEventManager:
         self._high_water: dict = {}
         self._first_batch_logged = False
 
-        # Log fixed allocations (constants + geometry already on GPU).
+        # Log framework-owned input allocations.
         try:
             self.log_memory("after_setup")
         except Exception:
@@ -957,13 +475,11 @@ class GpuEventManager:
             streams = tuple((int(d['stream_id']), int(d['bd_size']))
                             for d in parent.desc_rows_for_event(i)
                             if int(d['flags']) & GPU_DESC_FLAG_VALID)
-            present = {s for s, _ in streams}
-            detector_bytes = sum(
-                det.estimate_subbatch_bytes(1)
-                for _, det in self.gpu_detectors.values()
-                if det.binding.has_sources(present)
-            )
-            events.append(AdmissionEvent(streams, detector_bytes))
+            present = {stream for stream, _ in streams}
+            prepared_bytes = sum(p.estimate_subbatch_bytes(1)
+                                 for p in getattr(self, "input_preparers", {}).values()
+                                 if p.binding.has_sources(present))
+            events.append(AdmissionEvent(streams, prepared_bytes))
         return events
 
     def _split_subbatches(self, gpu_view) -> list:
@@ -1002,14 +518,14 @@ class GpuEventManager:
         return requirements
 
     def _reserve_gpu_subbatch(self, subbatch, slot):
-        """Hold reader/parser/detector growth before any read is submitted."""
+        """Hold reader/parser growth before any read is submitted."""
         from .gpu_budget import allocation_growth_bytes
-        events = self._event_memory(subbatch)
         requirements = self._input_allocation_requirements(
             subbatch, slot)
-        for _, det in self.gpu_detectors.values():
-            n_events = sum(det.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += det.allocation_requirements(n_events, slot)
+        events = self._event_memory(subbatch)
+        for preparer in getattr(self, "input_preparers", {}).values():
+            count = sum(preparer.binding.has_sources({s for s, _ in e.streams}) for e in events)
+            requirements += preparer.allocation_requirements(count, slot)
         return self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=getattr(self, '_admission_margin', 0))
 
@@ -1023,14 +539,14 @@ class GpuEventManager:
     def _trim_gpu_caches(self):
         """Called only after execution leases drain; input pins remain authoritative."""
         if self.event_pool.active_count:
-            raise RuntimeError('cannot trim detector buffers with active executions')
+            raise RuntimeError('cannot trim input buffers with active executions')
         if getattr(self, '_group_inputs', None) is not None:
             self._group_inputs.drain_idle()
         self.gpu_reader.trim_free_buffers()
         if self.gpu_xtc_parser is not None:
             self.gpu_xtc_parser.trim_free_buffers()
-        for _, det in self.gpu_detectors.values():
-            det.trim_slot_buffers()
+        for preparer in getattr(self, "input_preparers", {}).values():
+            preparer.trim_slot_buffers()
 
     def _next_batch(self):
         if self.smdr_man is None:
@@ -1049,25 +565,7 @@ class GpuEventManager:
                 self._batch_iter = next(self.smdr_man)
                 self._has_gpu_batch_iter = hasattr(self._batch_iter, "next_with_gpu")
 
-    def _refresh_legacy_calibration(self):
-        """Refresh the built-in recipe only, after the caller drains its users."""
-        for det_info in self.gpu_detectors.values():
-            det, gpu_detector = det_info[0], det_info[1]
-            # Skip constant computation for passthrough detectors — they have
-            # no calibration constants, and beginstep() is a no-op for them.
-            if getattr(gpu_detector, '_passthrough', False):
-                continue
-            peds, gmask = _compute_calib_constants_cpu(
-                det,
-                canonical_segment_ids=gpu_detector.canonical_segment_ids,
-            )
-            gpu_detector.beginstep(peds, gmask)
-
-
     def _dispatch_transition(self, service, dgrams):
-        if service == TransitionId.BeginStep:
-            self._refresh_legacy_calibration()
-
         self.run._handle_transition(dgrams)
 
     def _handle_steps(self, step_dict):
@@ -1124,7 +622,7 @@ class GpuEventManager:
         return EventEnvelope(dgrams=envelope.dgrams, gpu_state=state)
 
     def _submit_gpu(self, subbatch, gpu_read, event_envelopes):
-        """Submit one device slot and arm its automatic D→H immediately."""
+        """Submit one input execution with its completion and owner leases."""
         hold = getattr(self, '_gpu_read_reservation', None)
         try:
             with hold if hold is not None else nullcontext():
@@ -1134,13 +632,11 @@ class GpuEventManager:
                     record = self._submit_per_dgram_gpu(subbatch, gpu_read, event_envelopes)
         finally:
             self._close_gpu_reservation()
-        for pipe in self._d2h_pipelines.values():
-            pipe.schedule(record)
         return record
 
     def _submit_per_dgram_gpu(self, subbatch, gpu_read, event_envelopes):
         return self.event_pool.submit(
-            subbatch, gpu_read, event_envelopes, self.gpu_detectors,
+            subbatch, gpu_read, event_envelopes, getattr(self, "input_preparers", {}),
             xtc_parser=self.gpu_xtc_parser,
             batch_id=getattr(self, "_input_batch_id", 0))
 
@@ -1160,7 +656,7 @@ class GpuEventManager:
                         transferred.append(use)
                         uses.setdefault(window, use)
             return self.event_pool.submit(
-                subbatch, None, event_envelopes, self.gpu_detectors,
+                subbatch, None, event_envelopes, getattr(self, "input_preparers", {}),
                 batch_id=self._input_batch_id, input_windows=windows, input_uses=uses)
         finally:
             error = None
@@ -1187,9 +683,9 @@ class GpuEventManager:
         if n_dgrams:
             requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams, groups=True)
         events = self._event_memory(subbatch)
-        for _, det in self.gpu_detectors.values():
-            count = sum(det.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += det.allocation_requirements(count, slot_id)
+        for preparer in getattr(self, "input_preparers", {}).values():
+            count = sum(preparer.binding.has_sources({s for s, _ in e.streams}) for e in events)
+            requirements += preparer.allocation_requirements(count, slot_id)
         hold = self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=self._admission_margin)
         self._gpu_read_reservation = hold
@@ -1203,26 +699,6 @@ class GpuEventManager:
                 pending.append(key)
                 self._group_schedule.issued.add(group.group_id)
         return pending
-
-    @staticmethod
-    def _is_fully_host_backed(ready):
-        """Return True when every slot-backed result has a host handoff.
-
-        A pending pinned D2H token or an independent CPU fallback both make
-        the corresponding result safe after its device slot is reused.
-        """
-        if ready is None:
-            return True
-        # Parsed input has no automatic host handoff. Preserve the yield window
-        # so detector-independent field access can register its own consumer.
-        if getattr(ready, "input_dgrams_by_ts", {}):
-            return False
-        for ts, results in ready.gpu_results_by_ts.items():
-            pending = ready.pending_d2h_by_ts.get(ts, {})
-            cached = ready.cached_cpu_results_by_ts.get(ts, {})
-            if any(key not in pending and key not in cached for key in results):
-                return False
-        return True
 
     def _yield_ready(self, ready, device_released=False):
         if ready is None:
@@ -1303,33 +779,8 @@ class GpuEventManager:
             self._close_gpu_reservation()
 
     def _retire_issue_and_yield(self, subbatch):
-        """Retire one slot, issue its replacement read, and yield its result.
-
-        Automatic-D2H results are already host-backed.  Their terminal D2H
-        consumer is joined first, then the freed slot receives the replacement
-        H2D before CPU code sees the old event.  External-GPU mode retains the
-        original yield-first registration window so a user kernel can attach a
-        completion event before the slot is released.
-        """
+        """Expose parsed inputs before draining consumers and reusing a slot."""
         ready = self.event_pool.begin_retire_next()
-        release_before_yield = (
-            bool(self._d2h_pipelines) and self._is_fully_host_backed(ready)
-        )
-
-        if release_before_yield:
-            self.event_pool.finish_retire_next()
-            slot = self.event_pool.next_slot_id
-            try:
-                pending = self._issue_gpu_read(subbatch, slot)
-            except GpuMemoryPressureError:
-                yield from self._yield_ready(ready, device_released=True)
-                ready = None
-                yield from self._flush_event_pool()
-                self._trim_gpu_caches()
-                return self._issue_gpu_read(subbatch, self.event_pool.next_slot_id)
-            yield from self._yield_ready(ready, device_released=True)
-            return pending
-
         try:
             yield from self._yield_ready(ready)
         finally:

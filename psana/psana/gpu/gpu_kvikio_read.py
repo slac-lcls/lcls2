@@ -13,7 +13,7 @@ from .gpu_read_plan import (
 )
 
 
-# Descriptor-table columns shared by the reader and GPUDetector.  The table
+# Descriptor-table columns shared by the reader and DenseInputPreparer.  The table
 # stays in CPU memory; only the raw XTC byte buffer is transferred to the GPU.
 DESC_EVENT_INDEX = 0
 DESC_STREAM_ID = 1

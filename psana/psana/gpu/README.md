@@ -2,7 +2,7 @@
 
 The psana2 GPU path moves selected detector streams through a GPU-oriented
 EventBuilder batch, reads bigdata into device memory, parses XTC on the GPU,
-and exposes lease-aware detector results through normal `psana.Event` objects.
+and exposes lease-aware parsed detector fields through normal `psana.Event` objects.
 
 The documents are grouped by status. Current-design documents describe this
 branch and should be kept synchronized with code. Proposal documents are for
@@ -10,6 +10,15 @@ review and are not API commitments. Performance documents record measurements
 and the configurations that produced them.
 
 ## Current design
+
+Stage 1b removes built-in GPU calibration, geometry, calibrated output buffers,
+and image-specific automatic D2H. GPU routing currently exposes parsed inputs;
+`GpuTask` and publication are not implemented yet. Start with the
+[input-only example](examples/input_only.py) and
+[Stage 1b findings](docs/user_kernel_stage1b_findings_20260926.md).
+Nonzero `gpu_d2h_chunk_size` and unfinished `gpu_fn` configurations fail explicitly.
+CPU/hybrid detector calibration remains available through normal CPU APIs.
+
 
 - [Architecture overview](docs/architecture_overview.md): components,
   boundaries, routing modes, and supported scope.

@@ -32,6 +32,7 @@ assert os.environ['PS_EB_NODES'] == '1' and os.environ['PS_SRV_NODES'] == '0'
 
 
 def main():
+    raise SystemExit("This historical calibration scaling harness requires callback support; use examples/input_only.py for input-only diagnostics. Baseline: 1d484d43d.")
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--directory', required=True)
     p.add_argument('--reference', required=True)

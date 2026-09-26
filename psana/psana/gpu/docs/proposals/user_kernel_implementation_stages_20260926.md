@@ -116,7 +116,8 @@ loading, generic CUDA IPC constant sharing, and performance tuning are follow-up
 - Store generated validation artifacts on scratch and concise findings in the
   repository. Do not reuse historical performance numbers as new acceptance.
 
-Status: Stage 1 implemented and validated on CPU and A100.
-Stage 1b and Stages 2–6 remain pending. Next implementation action: remove the
-built-in GPU calibration path according to the removal audit, then implement
-task declaration, selective constant uploads, and serial/MPI task setup.
+Status: Stages 1 and 1b implemented and validated on CPU and A100, including
+four-rank MPI exclusive/hybrid acceptance. See
+[Stage 1b findings](../user_kernel_stage1b_findings_20260926.md).
+Stages 2–6 remain pending. Next: task declaration, selective constant uploads,
+and serial/MPI task setup on the input-only runtime.

@@ -8,9 +8,9 @@ GPUResult
     until the Python generator advances.
 
 SlotLease
-    Completion token linking one event's calibrated output view to the
+    Completion token linking one event's output view to the
     EventPool slot it was produced in.  Created by EventPool.submit(),
-    consumed immediately by GpuEventManager._D2hPipeline for automatic D→H, and
+    consumed by registered downstream operations, and
     attached to GPUResult when the event is later delivered.
 
 GpuEventState
@@ -146,16 +146,14 @@ class GPUResult:
     Attributes
     ----------
     on_gpu : cp.ndarray
-        Calibrated array on device.  Never triggers a D→H transfer.
+        Result array on device.  Never triggers a D→H transfer.
     on_cpu : np.ndarray
-        Host copy. If GpuEventManager has already transferred this result via
-        its internal D→H pipeline (gpu_d2h_chunk_size > 0), waits for that
-        token when necessary and caches an independent NumPy result. Otherwise
+        Host copy. If a host delivery token is attached, waits for that token
+        when necessary and caches an independent NumPy result. Otherwise
         performs one blocking D→H on first access and caches the result.
     _lease : SlotLease | None
-        Slot ownership token. Used by GpuEventManager._D2hPipeline to issue
-        direct async D→H from the slot view and signal when the slot is
-        safe to recycle.  User code should not access _lease directly.
+        Slot ownership token. Registered consumers signal when storage is
+        safe to recycle. User code should not access _lease directly.
     _cpu_cache : np.ndarray | None
         Cached independent CPU result. Set after GpuEventManager's pinned
         D→H completes or by the synchronous fallback.  When set, on_cpu
@@ -195,13 +193,12 @@ class GPUResult:
             raise RuntimeError(
                 f"{accessor} is unavailable because automatic D2H completed "
                 "and the EventPool device slot was released before this event "
-                "was yielded. Use on_cpu, or set gpu_d2h_chunk_size=0 for a "
-                "GPU consumer."
+                "was yielded. Use on_cpu to access the host result."
             )
 
     @property
     def on_gpu(self):
-        """Return an independent D→D copy of the calibrated result.
+        """Return an independent D→D copy of the result.
 
         The copy is not tied to the EventPool slot buffer — the slot can
         be recycled after the copy completes. A completion event is recorded
@@ -243,14 +240,13 @@ class GPUResult:
         if self._pending_d2h is not None:
             raise RuntimeError(
                 "on_gpu_view is unavailable after automatic D2H has been "
-                "scheduled. Use gpu_d2h_chunk_size=0 for a zero-copy GPU "
-                "consumer, or use on_gpu for an independent D→D copy."
+                "scheduled. Use on_gpu for an independent D→D copy."
             )
         return _GpuViewContext(self, stream)
 
     @property
     def on_cpu(self):
-        """Return the calibrated result as a NumPy ndarray on the host.
+        """Return the result as a NumPy ndarray on the host.
 
         Three paths in priority order:
 
@@ -389,12 +385,6 @@ class GpuEventState:
         if resolved not in self._cache:
             if resolved not in self._gpu_results:
                 available = sorted(self._gpu_results)
-                if resolved.endswith('.image'):
-                    raise KeyError(
-                        f"'{key}' (→ '{resolved}') not available — "
-                        f"geometry may not have been loaded.  "
-                        f"Available GPU keys: {available}"
-                    )
                 if resolved == key:
                     raise KeyError(
                         f"'{key}' not available.  "

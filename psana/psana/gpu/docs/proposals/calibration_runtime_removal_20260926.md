@@ -3,7 +3,8 @@
 2026-09-26. Source audit at `7d0b5941e` on
 `codex/psana2-gpu-user-kernels`. This records the user's revised direction:
 remove built-in calibration completely from the GPU runtime, including its
-no-callback default. Removal is not implemented by this audit.
+no-callback default. Removal is now implemented; see [Stage 1b findings](../user_kernel_stage1b_findings_20260926.md).
+The dependencies below describe the audited pre-removal source.
 
 ## Finding
 
@@ -36,7 +37,7 @@ milestones: removal must not be described as completed callback support.
 | [MPI CPU caches](../../../psexp/mpi_ds.py) `_setup_jungfrau_shared_calib`, `_setup_jungfrau_shared_caches` | Eagerly builds derived CPU calibration/masks/geometry even for GPU-exclusive detectors | Exclude GPU-exclusive detectors using the same target list on every participating shared-memory rank. Preserve CPU/hybrid detector consumers and their collectives |
 | [Transitions and accounting](../../gpu_events.py) `_refresh_legacy_calibration`, memory statistics/admission; [detector estimates](../../gpu_detector.py) | BeginStep recomputes two arrays; accounting expects constants/geometry/calibrated-slot keys | Remove the recipe but retain transition drains. Account for actual framework-owned input buffers and declared uploads; do not reserve or manage user scratch/output allocations |
 | [Result access](../../context.py) `GpuEventState.get` | Qualifies bare names with a detector and special-cases `.image` failures | Stage 4 uses exact publication names; preserve terminal-copy readiness and owner retention without detector-output assumptions |
-| [Algorithm module](../../gpu_calib.py), `cuda/fused_calib.cuh` | Runtime imports calibration, mask preparation, and image assembly helpers | Move useful numerical implementations to explicit example/test support and remove runtime imports/exports. No hidden wrapper may restore automatic calibration |
+| `gpu_calib.py` (removed), `cuda/fused_calib.cuh` | Runtime imports calibration, mask preparation, and image assembly helpers | Move useful numerical implementations to explicit example/test support and remove runtime imports/exports. No hidden wrapper may restore automatic calibration |
 
 ## What needs care, rather than another architecture
 
