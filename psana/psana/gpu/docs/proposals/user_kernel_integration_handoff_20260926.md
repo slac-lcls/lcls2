@@ -2,6 +2,12 @@
 
 2026-09-26. **Preparation only; no user-task API implemented.**
 
+The detailed design has been promoted to the canonical
+[User GPU kernel support proposal](user_gpu_pipeline.md). This file retains
+checkpoint, provenance, and validation information; implementation decisions
+belong in that proposal. The earlier handoff's requirement to declare managed
+scratch/output arenas is superseded by user-owned allocation and publication.
+
 ## Starting point
 
 - Branch: `codex/psana2-gpu-bulk-batched-integration`.
@@ -9,6 +15,8 @@
 - Pre-merge checkpoint: `6041ba64d5275feded6a9073aa19e2d0dc7d0e07`.
 - Master brought into this branch: `f743ef5be` from `origin/master`.
 - Merge commit: `b307ceb7a`.
+- Current proposal review baseline: `d63f45d27`, which also includes the
+  remote branch's completed JF+feespec scaling report.
 - The merge had no conflicts. `dgrammanager.py` preserves master's loop that
   discards pre-Configure shared-memory datagrams and the GPU branch's
   multi-stream detector/segment routing tables.
@@ -24,10 +32,10 @@ task's changes.
 
 ## Read these first
 
-1. [User GPU pipeline](user_gpu_pipeline.md): the consolidated proposal for
-   invoking user CUDA/CuPy work inside the BD producer, before yielding Event.
-   It covers declared inputs/scratch/outputs, calibration placement, stream
-   ordering, asynchronous D2H, error handling, and open API decisions.
+1. [User GPU kernel support](user_gpu_pipeline.md): the canonical detailed
+   proposal for `GpuTask(function, inputs, calibconst)`, internal producer
+   dispatch, user-owned allocations, `evt.publish(name, array)`, and bounded
+   asynchronous host delivery. It does not require advance input/output sizes.
 2. [Memory backpressure and results](../memory_backpressure_and_results.md):
    current ownership, byte accounting, result access, and retirement contracts.
 3. [Architecture overview](../architecture_overview.md),
@@ -41,6 +49,20 @@ task's changes.
    baseline configurations. These do not validate a future user-task pipeline.
 
 ## Historical design and task context
+
+The matching user-callback design was found as an **uncommitted** September 17
+edit in the stale `codex/psana2-gpu-user-callback` worktree, based on `8f94e3c7b`:
+
+```text
+/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-user-callback/psana/psana/gpu/docs/proposals/user_gpu_pipeline.md
+SHA256: 1bffe2efc33390392f858433f914ac9b55e7ee7e004832b7199bb13d80bfffba
+```
+
+That content is now captured and updated in the current proposal. There is no
+need to merge or depend on the old worktree to recover the design. Its old
+whole-stream residency model and single-consumer result-lease claim were
+replaced with the current read-group and multi-consumer ownership contracts.
+The old worktree and its uncommitted edits remain untouched.
 
 Commit `192333e26` consolidated and removed earlier design documents. Read them
 from Git history when details are useful; do not restore old registries or
@@ -92,33 +114,41 @@ Run / BigDataNode -> Events -> GpuEventManager
 - `gpu_input.py`, `gpu_input_group.py`, and `gpudgram/` provide field binding,
   parsed input access, input ownership, and completion tracking.
 - `gpu_budget.py` and `gpu_allocation.py` account for managed device storage.
-  Independent user allocations are outside that ledger today; declared task
-  scratch/output arenas must participate in admission.
+  User scratch/output allocations remain outside that ledger in the proposed
+  first implementation. Psana-managed prepared inputs and requested constants
+  participate in device admission; pinned output staging has its own aggregate
+  byte cap. Publication retains owners without taking over allocation policy.
 
 Both `SlotLease` and `InputSlotLease` already collect multiple consumer events.
 Older proposals claiming a single terminal result event are stale. Preserve
 open-view protection, completion tracking, failure cleanup, and transition
 draining when extending the pipeline.
 
-## Decisions for the new task
+## Direction for the new task
 
-- Define whether a configured task pipeline replaces or extends built-in
-  calibration; preserve default behavior when no tasks are configured.
-- Choose event versus batch invocation and the minimum Python/compiled ABI.
-  Keep the current batched parser and descriptor path intact.
-- Define setup, BeginStep refresh, teardown, and persistent-state ordering
-  across execution slots.
-- Declare input fields and maximum scratch/output capacities before admission.
-  Specify conditional skips, absent data, variable-length counts, and outputs
-  that alias an input rather than own independent storage.
-- Select outputs for automatic D2H and define retention/backpressure. A fixed
-  number of output slots alone is not a byte-budget policy.
-- Specify failure behavior after some work has already been enqueued.
+- `GpuTask` declares a callable, input selectors, and exact calibration keys.
+  Psana resolves input metadata and stages only the requested constants.
+- `gpu_fn=None` preserves existing calibration. An explicit callback replaces
+  automatic processing on the selected GPU path; it can launch user calibration
+  and additional kernels on the supplied stream.
+- Scheduling occurs inside the GPU subbatch producer, before public delivery.
+  The initial callback takes `(evt, stream)` once per selected event; a true
+  batch callback can follow. No task launch occurs from the public event loop.
+- User code allocates scratch and outputs. `keepalive()` retains temporaries;
+  `publish()` registers exact output names, metadata, and owners. No advance
+  scratch/output shape declarations or psana-managed device arenas are required.
+- Psana records producer completion and schedules every published output for
+  host delivery. `.on_cpu` consumes the host token; it does not launch tasks or
+  initiate the normal D2H. A bounded synchronous fallback handles pinned pressure.
+- Preserve event identity, input-owner dependencies, multi-consumer leases,
+  and drain-before-release behavior, including errors and transitions.
 
-The first concrete milestone should be a small internal threshold/reduction
-prototype with declared output buffers, followed by conditional bounded peak
-output and stateful accumulation cases. Resolve the contract before committing
-to registry, dependency-graph, or CUDA Graph APIs.
+Use the proposal's staged implementation and acceptance checks. The first
+end-to-end case is Jungfrau threshold/mask/count, followed by conditional peak
+output and stateful accumulation. EpixUHR coverage is retained as a follow-up.
+The numerical pinned cap, public import spelling, lifecycle conveniences, and
+any direct native ABI still need implementation decisions. Do not reopen the
+deferred structural simplification merely to start this task.
 
 Acceptance must cover output identity/pixels, missing and conditional results,
 partial subbatches, multiple consumer streams, tight budgets, delayed consumers,
