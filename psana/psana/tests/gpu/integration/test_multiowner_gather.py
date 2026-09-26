@@ -83,23 +83,15 @@ def test_multiowner_pixels_reuse_and_constant_launch_count(monkeypatch, passthro
         assert left.batch.configured_locations().capacity != right.batch.configured_locations().capacity
         windows = (left, right)
         gv = NS(iter_events=lambda: (specs[i] for i in indices))
-        record = executions.submit(gv, None, [], {'camera': (None, detector)},
+        record = executions.submit(gv, None, [], {'camera': detector},
                                    input_windows=windows, batch_id=7)
         for window in windows:
             assert window.batch._locators == {}  # no per-field wrapper/launch loop
             if window not in retained:
                 window.close()
         assert executions.begin_retire_next() is record
-        for i in indices:
-            results = record.gpu_results_by_ts[specs[i].timestamp]
-            if not passthrough:
-                np.testing.assert_array_equal(results['camera.raw'].get(), expected[i])
-            calib = expected[i].astype(np.float32)
-            if not passthrough:
-                present = np.any(expected[i], axis=(1, 2))
-                calib[present] = (calib[present] - 7) * 2
-            np.testing.assert_array_equal(results['camera.calib'].get(), calib)
-        del results
+        for row, i in enumerate(indices):
+            np.testing.assert_array_equal(record.prepared_inputs["camera"].data[row].get(), expected[i])
         executions.finish_retire_next()
         for window in windows:
             assert window.released == (window not in retained)
@@ -143,7 +135,7 @@ def test_partial_map_upload_failure_retains_owners_until_retry(monkeypatch):
     monkeypatch.setattr(gd._GatherMap, 'prepare', fail_after_upload)
     gv = NS(iter_events=lambda: iter(specs))
     with pytest.raises(RuntimeError, match='unproven completion'):
-        executions.submit(gv, None, [], {'camera': (None, detector)},
+        executions.submit(gv, None, [], {'camera': detector},
                           input_windows=windows, batch_id=7)
     assert executions.active_count == 1
     for window in windows:

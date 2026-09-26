@@ -55,7 +55,7 @@ def test_production_groups_match_pixels_and_keep_batched_parser_launches(
             np.testing.assert_array_equal(actual, expected)
             if 1 in dgrams:
                 expected.flat[0] = 1000 + event
-                np.testing.assert_array_equal(cp.asnumpy(state._gpu_results['slow.raw'])[0], expected)
+                np.testing.assert_array_equal(state.detector('slow').field('raw', 'arrayRaw').on_cpu[1], expected)
             observed.append(event)
 
         for envelope in m._process_batch({}, {0: (case.packet, [])}, {}):
@@ -124,8 +124,7 @@ def test_group_transition_drains_deferred_field_consumer(tmp_path, mixed_packet,
         assert not m._group_inputs.live_keys
         dispatched.append(dgrams[0].service())
 
-    # This test isolates transition ordering; the fixture's detector has no
-    # CPU calibration service. Existing multi-owner tests check new constants.
+    # Exercise transition ordering independently of user processing.
     m.run = NS(_handle_transition=dispatch)
     monkeypatch.setattr(m, '_dispatch_transition', lambda service, dgrams: dispatch(dgrams))
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))

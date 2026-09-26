@@ -316,6 +316,7 @@ def main():
         assert len(a.cache_ranges) == (6 if a.include_jf else 1)
     a.jf_reference = {}
     if a.include_jf:
+        raise SystemExit("The historical JF calibration workload requires callback support; feespec-only variants remain available. Baseline: 1d484d43d.")
         assert a.constants and a.jf_reference_path
         # The JSON contains the trusted CPU raw/calibrated checks from the JF baseline.
         a.jf_reference = {r['timestamp']:r for r in json.loads(Path(a.jf_reference_path).read_text())}

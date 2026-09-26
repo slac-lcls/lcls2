@@ -16,7 +16,8 @@ runtime, including the no-callback default. Calibration and image algorithms
 belong in user callbacks/examples. See the
 [removal dependency audit](calibration_runtime_removal_20260926.md).
 Stage 1 preserved legacy behavior as an extraction checkpoint; that behavior
-is no longer a requirement for the completed design.
+is no longer a requirement for the completed design. Stage 1b removal is
+implemented; see [findings](../user_kernel_stage1b_findings_20260926.md).
 
 This is the canonical design for the implementation task. It supersedes the earlier
 version at this path that required declared scratch/output arenas. It captures
@@ -649,7 +650,7 @@ source dictionary or normal CPU detector APIs. In mixed CPU/GPU jobs, do not
 disable CPU processing or skip a shared-memory collective on only some ranks.
 
 Main files: [gpu_events.py](../../gpu_events.py),
-[gpu_detector.py](../../gpu_detector.py), [gpu_calib.py](../../gpu_calib.py),
+[gpu_detector.py](../../gpu_detector.py), `gpu_calib.py` (removed in Stage 1b),
 [gpu_stream.py](../../gpu_stream.py), [gpu_mpi.py](../../gpu_mpi.py),
 [mpi_ds.py](../../../psexp/mpi_ds.py), and [context.py](../../context.py).
 

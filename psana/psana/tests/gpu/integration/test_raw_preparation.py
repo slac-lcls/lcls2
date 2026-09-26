@@ -6,7 +6,7 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from psana.gpu import gpu_calib, gpu_detector as gd, gpu_events
+from psana.gpu import gpu_detector as gd
 from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
 from psana.gpu.gpu_input import GpuDetectorBinding, GpuEventDgrams, InputSlotLease
 from psana.gpu.gpudgram.batch import GpuXtcBatchPool
@@ -81,14 +81,7 @@ def test_raw_only_pixels_presence_reuse_owners_and_one_gather(monkeypatch, rank)
     import cupy as cp
 
     def forbidden(*args, **kwargs):
-        raise AssertionError('legacy calibration/geometry entered raw preparation')
-    for module, names in ((gpu_calib, ('_compute_calib_constants_cpu', 'prep_calib_constants',
-                                       'prepare_geometry', 'prepare_geometry_from_arrays',
-                                       'fused_calib_gpu')),
-                          (gd, ('fused_calib_gpu', 'prepare_geometry', 'prepare_geometry_from_arrays')),
-                          (gpu_events, ('prep_calib_constants', '_compute_calib_constants_cpu'))):
-        for name in names:
-            monkeypatch.setattr(module, name, forbidden)
+        raise AssertionError("per-handle locator call in raw preparation")
     budget = _GpuBudget(64 * 1024**2)
     parser, raw = setup_raw(budget, rank)
     producer, execution, consumer = [cp.cuda.Stream(non_blocking=True) for _ in range(3)]

@@ -62,7 +62,7 @@ class DsParms:
     gpu_det: object = None  # str | list[str] | None
     hybrid_det: object = None  # str | list[str] | None
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
-    gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
+    gpu_d2h_chunk_size: int = 0  # retired; only zero is accepted
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
     gpu_bulk_read: bool = True  # adjacent per-stream input groups
     gpu_bulk_target_bytes: int = 1 << 20  # small-dgram classification and coalescing limit
@@ -73,6 +73,8 @@ class DsParms:
     hybrid_stream_ids: list = None  # list[int] | None
 
     def __post_init__(self):
+        if self.gpu_d2h_chunk_size:
+            raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
         if type(self.gpu_bulk_target_bytes) is not int:
             raise TypeError("gpu_bulk_target_bytes must be an int")
         if not 0 < self.gpu_bulk_target_bytes <= (1 << 64) - 1:
@@ -301,6 +303,11 @@ class DataSourceBase(abc.ABC):
             log_level = getattr(logging, log_level.upper(), logging.INFO)
         utils.configure_logging(level=log_level, logfile=log_file, timestamp=False)
         self.logger = utils.get_logger(name=utils.get_class_name(self))
+
+        if kwargs.get("gpu_fn") is not None:
+            raise NotImplementedError("gpu_fn callbacks are not implemented yet; GPU routing currently exposes parsed inputs only")
+        if kwargs.get("gpu_d2h_chunk_size", 0):
+            raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
 
         # Default values
         self.batch_size = kwargs.get("batch_size", 1000)
