@@ -194,16 +194,32 @@ void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, st
     }
 #endif
 
-    if (subframes[3].num_elem() != expectedsize) {
+    static unsigned sizecount = 0;
+    if (subframes[3].num_elem() < expectedsize) {
+        // this is serious
         printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
         // raise damage here
+        xtc.damage.increase(XtcData::Damage::MissingData);
+        // copy but don't bother unscrambling
+        // note: aframe can be smaller than num_elem in the subframe since it is not sized to include the env and calib rows
+        // (only the actual data pixels) while expectedsize does include the calib and env rows.
+        // In the case we get the full image data rows but only partial env/calib rows copying the full subframe would
+        // exceed the allocated size of aframe.
+        memcpy(aframe.data(), subframes[3].data(), std::min(subframes[3].num_elem(), aframe.num_elem()*sizeof(uint16_t)));
     }
+    else {
+        if (sizecount < 10 && subframes[3].num_elem() > expectedsize) {
+            // this is known but not understood
+            printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
+            sizecount++;
+        }
 
-    uint16_t* indata = (uint16_t*)(subframes[3].data()+headersize);
-    // unscramble asics like lcls1's pds/epix100a/Epix100aServer.cc
-    for(unsigned i=0; i<nasicrows; i++) {
-        memcpy(aframe.data()+(nasicrows+i+0)*ncols, indata+(2*i+0)*ncols, ncols*sizeof(uint16_t));
-        memcpy(aframe.data()+(nasicrows-i-1)*ncols, indata+(2*i+1)*ncols, ncols*sizeof(uint16_t));
+        uint16_t* indata = (uint16_t*)(subframes[3].data()+headersize);
+        // unscramble asics like lcls1's pds/epix100a/Epix100aServer.cc
+        for(unsigned i=0; i<nasicrows; i++) {
+            memcpy(aframe.data()+(nasicrows+i+0)*ncols, indata+(2*i+0)*ncols, ncols*sizeof(uint16_t));
+            memcpy(aframe.data()+(nasicrows-i-1)*ncols, indata+(2*i+1)*ncols, ncols*sizeof(uint16_t));
+        }
     }
 
     // feels like we need to unscramble environmental/calibration rows too?

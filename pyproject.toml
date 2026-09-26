@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "psana"
-version="4.3.3"
+version="4.3.4"
 requires-python = ">=3.9"
 
 # Core dependencies.
@@ -18,7 +18,7 @@ dependencies = [
     "requests",     # 10 imports, 10 files - HTTP requests
     "psutil",       # 14 imports, 12 files - system utilities
     # amitypes is the import name; amityping is the distribution name.
-    "amityping @ git+https://github.com/slac-lcls/amityping.git@f17e33641d69e0788d3c7fbabeceb162bcfb4bba",
+    "amityping",
     "lcls-krtc",       # import name 'krtc' -- Kerberos auth for calib-web access (MDBWebUtils/CalibConstants)
     "prometheus_client",  # psexp/prometheus_manager.py, core DataSource chain
     "pymongo",         # provides bson.objectid.ObjectId, used by pscalib/calib/MDBUtils.py
@@ -112,6 +112,7 @@ geometry_image = "psana.app.geometry_image:do_main"
 calib_prefetch = "psana.pscalib.app.calib_prefetch.__main__:main"
 optical_metrology_check = "psana.pscalib.app.optical_metrology_check:do_main"
 optical_metrology_epix10ka2m = "psana.pscalib.app.optical_metrology_epix10ka2m:do_main"
+jwt = "psana.pscalib.app.jwt:do_main"
 make_or_print_npyarray = "psana.app.make_or_print_numpy_array:do_main"
 det_calib_ave_and_max = "psana.app.det_calib_ave_and_max:__main__"
 

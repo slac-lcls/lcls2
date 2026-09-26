@@ -371,9 +371,11 @@ int ZmqSocket::poll(short events, long timeout)
 CollectionApp::CollectionApp(const std::string &managerHostname,
                              int platform,
                              const std::string &level,
-                             const std::string &alias) :
+                             const std::string &alias,
+			     const std::string &device) :
     m_level(level),
     m_alias(alias),
+    m_device(device),
     m_pushSocket{&m_context, ZMQ_PUSH},
     m_subSocket{&m_context, ZMQ_SUB},
     m_inprocRecv{&m_context, ZMQ_PAIR},
@@ -417,7 +419,7 @@ void CollectionApp::handleRollcall(const json &msg)
     int pid = getpid();
     m_id = std::hash<std::string>{}(std::string(hostname) + std::to_string(pid));
     json body;
-    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}, {"alias", m_alias}}}};
+    body[m_level] = {{"proc_info", {{"host", hostname}, {"pid", pid}, {"alias", m_alias}, {"device", m_device}}}};
     json answer = createMsg("rollcall", msg["header"]["msg_id"], m_id, body);
     reply(answer);
 }

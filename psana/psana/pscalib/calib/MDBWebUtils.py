@@ -71,25 +71,74 @@ import json as jsonmet
 import psana.detector.Utils as ut
 #import psana.detector.utils_psana as up # dict_filter
 
-USE_QUERY_STR = True # True # False # True - for old version of query
+def has_kerberos_ticket():
+    """dynamically check if user has a valid Kerberos ticket."""
+    try:
+        return not call(["klist", "-s"])
+    except FileNotFoundError:
+        # klist isn't installed in this environment (e.g. the manylinux
+        # wheel-test container) - treat as "no Kerberos ticket" rather
+        # than crashing the whole module import.
+        return False
 
+has_kerb = has_kerberos_ticket()
 jwt = os.getenv('CALIB_JWT', None)
 has_jwt = bool(jwt)
-info_jwt = 'using jwt' if has_jwt else 'using kerberos, NO jwt available'
-msg_jwt = 'importing psana.pscalib.calib.MDBWebUtils'\
-    '\nusing jwt' if has_jwt else 'using kerberos, NO jwt available'\
-    '\nmake env CALIB_JWT using:'\
-    '\n  source psana/psana/pscalib/calib/get_JWT_from_s3df.sh'\
-    '\nor'\
-    '\n  source psana/psana/pscalib/calib/get_JWT_from_kerberos.sh'\
+
+USE_QUERY_STR = not has_jwt # True - for old version with kerberos
+
+def path_to_pscalib_calib(path_to_conda2_bin='/sdf/group/lcls/ds/ana/sw/conda2/manage/bin', ext=''):
+    """returns path to <lcls2_MMDDYY>/psana/psana/pscalib/calib/ in release lcls2_MMDDYY
+       for access scripts get_JWT_from_kerberos.sh, get_JWT_from_s3df.sh
+       path to release is defined by the link <path_to_conda2_bin>/psconda{ext}.sh, where
+       ext=''/'previous'/'test' to destinguish between psconda.sh/pscondaprevious.sh/pscondatest.sh, respectively
+    """
+    from pathlib import Path
+    p = f'{path_to_conda2_bin}/psconda{ext}.sh' # link to:
+    target = str(Path(p).resolve())        #/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_080526/setup_env.sh
+    path_to_rel = target.rsplit('/', 1)[0] #/sdf/group/lcls/ds/ana/sw/conda2/rel/lcls2_080526
+    path_to_calib = path_to_rel + '/psana/psana/pscalib/calib'
+    #print(f'\npath_to_psconda: {p}\n  target       : {target}\n  path_to_rel  : {path_to_rel}\n  path_to_calib: {path_to_calib}')
+    return path_to_calib
+
+
+PASS_TO_REL_CALIB = path_to_pscalib_calib(ext='test') # ext=''/'previous'/'test'
+
+info_missing_jwt = 'JWT TICKET IS UNAVAILABLE OR EXPIRED'\
+      +'\n  make env CALIB_JWT using command:'\
+      +f'\n    source {PASS_TO_REL_CALIB}/get_JWT_from_s3df.sh'\
+      +'\n  or (if kerberos available):'\
+      +f'\n    source {PASS_TO_REL_CALIB}/get_JWT_from_kerberos.sh\n'\
+
+info_missing_kerb = 'KERBEROS TICKET IS UNAVAILABLE OR EXPIRED'\
+      +'\n  make kerberos using command: kinit (klist, kdestroy)\n'
+
+info_missing_tickets = f'\n{info_missing_jwt}\n{info_missing_kerb}'
+
+info_ticket = f'\nusing jwt, CALIB_JWT: {jwt[:20]}...' if has_jwt else\
+              f'\nusing kerberos, {info_missing_jwt}' if has_kerb else\
+              info_missing_tickets
 
 session = req.Session() if has_jwt else None
 if has_jwt:
     session.headers.update({'Authorization': 'Bearer ' + jwt })
     logger.debug(f'jwt: {str(jwt)}')
 
-print(msg_jwt)
-#logger.info(msg_jwt)
+#print('MDBWebUtils: ' + info_ticket)
+#logger.info(info_ticket)
+
+def check_ticket(exit_if_invalid=True, output=logger.debug):
+    """dynamically check any ticket and send message to output method"""
+    if has_jwt:
+        output('use JWT ticket')
+        return True
+    elif has_kerberos_ticket():
+        output('using kerberos, JWT ticket is missing, try command: jwt')
+        return True
+    output(info_missing_tickets)
+    if exit_if_invalid:
+        sys.exit('\nEXIT DUE TO MISSING KERBEROS OR JWT TICKET, check status and get help with command: jwt')
+    return False
 
 
 def info_dict(d, cmt='', offset='  '):
@@ -135,7 +184,7 @@ def info_detnames(ldocs, keys=('_id','short','time_stamp','long'), nmax=10, sep=
 
 
 def post(url, data=None, doc={}, **kwa):
-    logger.debug(f'post url: {url}  ticket: {info_jwt}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
+    logger.debug(f'post url: {url}  ticket: {info_ticket}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
     if has_jwt:
         if data is None:
             if 'headers' in doc.keys():
@@ -145,7 +194,7 @@ def post(url, data=None, doc={}, **kwa):
             return session.post(url, data=data, headers={"Content-Type": "application/json"})
     else:
         krbh = cc.krbheaders() # krbh['Content-Type'] = 'application/octet-stream'
-        logger.debug(f'post url: {url}  ticket: {info_jwt}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
+        logger.debug(f'post url: {url}  ticket: {info_ticket}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
         logger.debug(f'post krbheaders: {jsonmet.dumps(krbh, indent=2)}')
         resp = req.post(url, headers=krbh, json=dict(doc), data=data)
         logger.debug(f'post resp: {resp.text}')
@@ -159,9 +208,11 @@ def put(url, doc, **kwa):
 
 
 def get(url, query=None, timeout=180, **kwa):
-    logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_jwt}')
+    logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_ticket}')
     if has_jwt:
-        return session.get(url, json=query, timeout=timeout)
+        r = session.get(url, json=query, timeout=timeout)
+        logger.debug(f'ZZZZ get for jwt  url: {url}  query: {str(query)}  ticket: {info_ticket}  resp.ok: {r.ok}') #resp: {r.text[:100]}')
+        return r
     else:
         krbh = cc.krbheaders() # inside: krbh['Content-Type'] = 'application/octet-stream'
         logger.debug(f'\nget: krbheaders {jsonmet.dumps(krbh, indent=2)}')
@@ -172,26 +223,8 @@ def get(url, query=None, timeout=180, **kwa):
 def delete_cmd(url):
     resp = session.delete(url) if has_jwt else\
            req.delete(url, headers=cc.krbheaders())
-    logger.debug(f'delete for url: {url}  ticket: {info_jwt}  resp.ok: {resp.ok}')
+    logger.info(f'delete for url: {url}  ticket: {info_ticket}  resp.ok: {resp.ok}')
     return resp
-
-
-def has_kerberos_ticket():
-    """Checks to see if the user has a valid Kerberos ticket."""
-    return not call(["klist", "-s"])
-
-
-def check_ticket(exit_if_invalid=True):
-    if has_jwt:
-        logger.debug('use JWT ticket')
-        return True
-    if has_kerberos_ticket():
-        logger.debug('using kerberos, JWT ticket is missing')
-        return True
-    logger.error('KERBEROS AND JWT TICKETS ARE UNAVAILABLE OR EXPIRED')
-    if exit_if_invalid:
-        sys.exit('FIX KERBEROS OR JWT TICKET - use command "kinit" or check its status with command "klist"')
-    return False
 
 
 def query_id_pro_str(query):
@@ -210,7 +243,7 @@ def query_id_pro(query):
 
 
 def request(url, query=None, timeout=180, **kwa):
-    logger.debug(f'in request for url: {url} and query: {str(query)}     {info_jwt}')
+    logger.debug(f'in request for url: {url} and query: {str(query)}     {info_ticket}')
     #t0_sec = time()
     #r = req.get(url, query, timeout=180)
     #r = session.get(url, params={'query_string':str(query)}, timeout=180) if has_jwt else\
@@ -259,7 +292,7 @@ def find_docs(dbname, colname, query={}, **kwa):
         r = request(uri, {"query_string": query_string})
 
     else: # NEW VERSION using query as dict/json:
-        logger.info(f'XXXX find_docs uri: {uri} query: {str(query)}')
+        logger.debug(f'find_docs uri: {uri} query: {str(query)}')
         r = request(uri, query=query) # query = {'_id': bson.ObjectId(doc_id), ...}
 
     if ut.is_true(r is None, 'find_docs resp is None for url: {uri}', logger_method=logger.debug): return None
@@ -453,23 +486,22 @@ def print_docs_for_ctype(docs_for_type, ct, detname_short='epix100_000002'):
 def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None, dbsuffix='', **kwa):
     """ USED BY psana/psexp/ds_base.py, psana/psana/psexp/run.py TO RETRIEVE ALL CONSTANTS FROM DB
         Returns constants for all ctype-s."""
-    t0_sec = time()
     ctype=None
     longname = det
 
-    #if not ('epixuhr3x2' in longname): return None
-
-    logger.debug(f'calib_constants_all_types longname: {longname}  exp: {exp}  run: {str(run)}  time_sec: {time_sec}  vers: {vers}')
+    #if not ('epixuhr3x2' in longname):
+    #    logger.warning(f'WARNING calib_constants_all_types IS IGNORED for NON-epixuhr3x2 longname: {longname}')
+    #    return None
 
     db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
     dbname = db_det if dbsuffix or (exp is None) else db_exp
 
-    logger.debug(f'XXXX dbname: {dbname}  db_det: {db_det}  db_exp: {db_exp}  colname: {colname}  query: {query}  dbsuffix: {dbsuffix}')
-    #logger.debug('time 1: %.6f sec - for DB %s generate query %s' % (time()-t0_sec, dbname, query))
-
     docs = find_docs(dbname, colname, query)
-    logger.debug('XXXX calib_constants_all_types after find_docs: number of docs found: %s\n\n' % (str(len(docs)) if docs is not None else None))
     #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))
+
+    logger.debug(f'calib_constants_all_types longname: {longname}  exp: {exp}  run: {str(run)}  time_sec: {time_sec}  vers: {vers}'\
+               +f'\n  dbname: {dbname}  db_det: {db_det}  db_exp: {db_exp}  colname: {colname}  query: {query}  dbsuffix: {dbsuffix}'\
+               +'\n  after find_docs: number of docs found: %s\n' % (str(len(docs)) if docs is not None else None))
 
     resp = {}
     if docs is not None:
@@ -733,7 +765,7 @@ def _short_detector_name(detname, dbname=cc.DETNAMESDB, add_shortname=False):
     query = {'long':detname}
     ldocs = find_docs(dbname, colname, query=query)
 
-    logger.debug(f'ZZZZ _short_detector_name: db/collection {dbname}/{colname} query={query} list of docs: {info_ldocs(ldocs)}')
+    logger.debug(f'_short_detector_name: db/collection {dbname}/{colname} query={query} list of docs: {info_ldocs(ldocs)}')
 
     if ldocs is None:
         logger.warning(f'db/collection {dbname}/{colname} NO DOCUMENT FOUND FOR long detname {detname}')
@@ -785,7 +817,7 @@ def pro_detector_name(detname, add_shortname=False, **kwa): # DEPRECATED: maxsiz
     assert isinstance(detname, str), f'non-string detname: {str(detname)}'
     short = _short_detector_name(detname, add_shortname=add_shortname)
 
-    logger.debug(f'ZZZZ pro_detector_name detname: {detname} short: {short} add_shortname: {add_shortname}')
+    logger.debug(f'pro_detector_name detname: {detname} short: {short} add_shortname: {add_shortname}')
 
     return short
     #return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
@@ -831,7 +863,7 @@ def delete_document(dbname, colname, doc_id, **kwa):
     """Deletes document for specified _id from database/collection."""
     check_ticket()
     r = delete_cmd(cc.URL_KRB+dbname+'/'+colname+'/'+ doc_id)
-    logger.debug(r.text)
+    logger.info(r.text)
     return r
 
 
@@ -878,7 +910,8 @@ def delete_document_and_data(dbname, colname, doc_id, **kwa):
 def delete_documents(dbname, colname, doc_ids, **kwa):
     resp = None
     for doc_id in doc_ids:
-        isok = delete_document_and_data(dbname, colname, doc_id)
+        isok = delete_document(dbname, colname, doc_id) if dbname == 'cdb_detnames' else\
+               delete_document_and_data(dbname, colname, doc_id)
         logger.debug(f'resp.ok {isok}')
 
 
@@ -974,7 +1007,7 @@ def valid_post_privilege(dbname):
         if cc.krbheaders() is None:
            return False
 
-    logger.info(info_jwt)
+    logger.info(info_ticket)
 
     r = request(url_ws, timeout=180)
 

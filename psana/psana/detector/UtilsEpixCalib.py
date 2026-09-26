@@ -309,6 +309,7 @@ def save_constants_in_repository(dic_consts, **kwa):
     segids   = kwa.get('segment_ids', [])
     segind   = kwa.get('segind', 0)
     gainmode = kwa.get('gainmode', None)
+    fdark    = kwa.get('dark_factor', None)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -325,21 +326,30 @@ def save_constants_in_repository(dic_consts, **kwa):
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
 
+    ctypes_for_dark_factor = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min')
+
     repoman = set_repoman_and_logger(kwa)
 
     logger.info('uniqueid %s' % uniqueid)
     segid = uniqueid.split('_')[1]
 
-    logger.info('\nsave segment constants for gain mode:%s in repo for segment id: %s' % (gainmode, segid))
+    logger.info(f'\nsave segment constants for gain mode:{gainmode} in repo for segment id: {segid}')
 
     for ctype, nda in dic_consts.items():
+        if fdark is not None and ctype in (ctypes_for_dark_factor):
+            dtype = nda.dtype
+            logger.info(f'apply dark factor {fdark} to {ctype} due to data bits shift left')
+            arr = nda.astype(np.float64)
+            arr *= fdark
+            #if dtype == np.uint16 and fdark == 0.5: nda = np.right_shift(nda,1)
+            nda = arr.astype(dtype)
 
         dir_ct = repoman.makedir_ctype(segid, ctype)
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
 
         fname = calib_file_name(fprefix, ctype, gainmode)
         fmt = CTYPE_FMT.get(ctype,'%.5f')
-        logger.info(info_ndarr(nda, '   %s' % ctype))  # shape:(4, 192, 384)
+        logger.info(info_ndarr(nda, f'  {ctype}'))  # shape:(4, 192, 384)
 
         save_ndarray_in_textfile(nda, fname, filemode, fmt)
         ###save_2darray_in_textfile(nda, fname, filemode, fmt)
@@ -435,7 +445,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
       dir_ct = repoman.makedir_ctype(segid, ctype)
       fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
       logger.info('=========================== combine calib array for %s' % ctype
-                 +'\n  shortname:%s\n  tsshort:%s\n  expname:%s\n  runnum:%d\n  dir_ct:%s\n  fprefix:%s\n\n'%\
+                 +'\n  shortname:%s\n  tsshort:%s\n  expname:%s\n  runnum:%d\n  dir_ct:%s\n  fprefix:%s\n'%\
                   (shortname, tsshort, expname, runnum, dir_ct, fprefix))
       dic_nda = {}
 
