@@ -606,6 +606,14 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     }
 
     TransitionId::Value transitionId = timingHeader->service();
+    /* 
+    const uint32_t* pdata_32 = reinterpret_cast<const uint32_t*>(timingHeader);
+    logging::critical("PGPReader data (%3d): \n", size);
+    for (int i = 0; i < (size >> 2); i++) {
+       logging::critical("%08x", pdata_32[i]);
+    }
+    */
+
     const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
     auto pid = reinterpret_cast<const uint64_t*>(data)[0]; // PulseId
     auto ts  = reinterpret_cast<const uint64_t*>(data)[1]; // Timestamp

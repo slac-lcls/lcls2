@@ -187,6 +187,7 @@ class ts_connector:
         self.ctxt.put(pvL0Reset,self.readout_group_mask)
 
     def check_errors(self,header):
+        return
         ctxt = Context('pva')
         values_rxerri  = ctxt.get(self.pvnames_rxerri)
         for i,pv in enumerate(self.pvnames_rxerri):
