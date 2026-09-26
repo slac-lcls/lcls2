@@ -3,6 +3,10 @@
 **Status:** Proposed for team review; no public API in this document is
 implemented or committed.
 
+Preparation checkpoint: [user-kernel integration handoff, 2026-09-26](user_kernel_integration_handoff_20260926.md).
+The interface below remains proposed; the handoff identifies current code,
+historical designs, and decisions still needed before implementation.
+
 ## Goal
 
 Psana should stage detector data and calibration metadata in GPU memory, invoke
@@ -197,11 +201,12 @@ Device consumption uses the existing result rules:
 - A slot is reusable only after its producer, automatic D2H, and registered GPU
   consumers have all completed.
 
-That last rule is a requirement for this proposal, not yet a complete property
-of `SlotLease`: the current detector-result lease stores only one downstream
-event. A user-task implementation must collect all terminal consumers (as the
-current parsed-input `InputSlotLease` does) before it can safely fan one output
-out to multiple streams.
+Rechecked 2026-09-26: both detector-result `SlotLease` and parsed-input
+`InputSlotLease` collect multiple consumer completion events. Result-slot
+retirement rejects open views and waits for the registered completions. The
+earlier single-consumer limitation is obsolete. A user-task implementation must
+preserve this behavior for every published output; unregistered streams and
+escaped device pointers are not protected by Python references alone.
 
 ## Calibration placement
 

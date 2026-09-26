@@ -26,6 +26,8 @@ and the configurations that produced them.
 
 - [User GPU pipeline](docs/proposals/user_gpu_pipeline.md): user CUDA or CuPy
   work scheduled inside psana's BD batch pipeline.
+- [User-kernel preparation handoff](docs/proposals/user_kernel_integration_handoff_20260926.md):
+  master merge, design history, current integration boundary, and open decisions.
 - [AMI integration](docs/proposals/ami_integration.md): possible psana2 GPU and
   AMI integration; retained for evaluation.
 
