@@ -46,10 +46,53 @@ Output metadata is obtained when the user publishes an actual array/view.
 Native publication still needs pointer, device, dtype, shape/byte extent, and
 an allocation owner; this is registration metadata, not advance allocation sizing.
 
+Output size, shape, dtype, and publication frequency belong to the user.
+Small reductions, histograms, and occasional summaries are the expected case;
+full calibrated images are only one possible output. Automatic D2H must copy
+the published byte extent and preserve its metadata, without assuming float32,
+three-dimensional images, a fixed layout per name, or one result per event.
+Psana observes CUDA completion and retains registered references; it does not
+allocate, resize, pool, or budget the user's kernel scratch and output buffers.
+
 Start with one callback, one supplied stream, and host-delivered outputs. A
 callback can launch calibration, thresholding, reductions, or several other
 kernels in sequence. No task graph, registry, task list, managed scratch API,
 CUDA Graph interface, or user event-loop scheduling is needed.
+
+### Implementation priority and launch overhead
+
+The implementation order is **simple structure, minimum viable code addition,
+then measured optimization**. Extend the existing producer, ownership, and
+delivery path with a small callback boundary. Do not introduce a task scheduler,
+registry, or general execution graph to anticipate future workloads. Correctness
+and asynchronous lifetime remain required at every stage.
+
+Kernel submission count is nevertheless a known cost, not a hypothetical one.
+The [batched-locator fix](../performance/batched_locators_sdf.md) replaced a CPU
+loop issuing location work for 192 configured handles with shared device tables
+and batched initialization/decoding. For the recorded 20-event workload, parser
+kernel launches fell from 385 to 3 per subbatch, with a shared locator-ready
+event. The [matched comparison](../performance/batched_locators_abo_sdf.md)
+records the recovered host submission time and the limits of its attribution.
+This does not imply that all CPU loops are costly: host bookkeeping that creates
+views is different from a loop submitting CUDA work for every table or field.
+
+Preserve batched parsing and dense preparation when inserting callbacks. Resolve
+input selectors and Configure bindings at setup; do not re-walk configuration
+tables or submit per-field/per-segment preparation inside each callback. Keep
+one producer-completion event per subbatch initially. Publication captures host
+metadata and owners without launching a metadata kernel or synchronizing the GPU.
+
+The initial per-event callback is a simplicity choice, not a performance claim:
+if a user launches K kernels on each of E events, that adds K*E submissions even
+when outputs are tiny or rarely published. Record callback invocations, user
+kernel launches, framework launches, CUDA event operations, and D2H copies
+separately in focused diagnostics. Sparse publication reduces copies; it does
+not by itself reduce computation. Measure host submission time and end-to-end
+time before choosing a batch callback, fusion, or copy coalescing. Those are
+follow-ups, not prerequisites for the first working example. Preserve the
+current no-callback path and its launch structure during integration; keep
+throughput assertions out of correctness tests.
 
 ## Current implementation and required changes
 
@@ -92,7 +135,8 @@ Sources: [orchestration](../../gpu_events.py), [execution](../../gpu_stream.py),
 2. **Automatic D2H is image-specific.** `_D2hPipeline._init()` assumes rank 3;
    `_PinnedSlot` and row offsets assume float32. Merely adding a named output
    would mishandle uint8 masks or scalar counts. Use shape, dtype, and byte size
-   per named output. See [gpu_events.py](../../gpu_events.py).
+   per publication, including changes under the same name on later events.
+   See [gpu_events.py](../../gpu_events.py).
 3. **Multiple consumer completions are already supported.** `SlotLease` and
    `InputSlotLease` collect terminal events and protect open views. Preserve
    this behavior; no lease redesign is implied. Host-only task outputs and
@@ -170,7 +214,9 @@ public Event is yielded. The proposed first callback granularity is one event
 within that submission, with one producer-completion event after the callback
 loop. That does not require per-event I/O or per-event host synchronization.
 A true batch callback is a later optimization, not a reason to move dispatch
-into `run.events()` or `.on_cpu`.
+into `run.events()` or `.on_cpu`. Keep prepared inputs and ownership organized
+at the existing subbatch boundary so later batching does not require a second
+scheduler; do not implement an unused batch-callback API in advance.
 
 ```text
 psana, for each admitted GPU subbatch:
@@ -233,9 +279,13 @@ Publish accepts supported numeric dtypes, including uint8 masks and uint32
 counts, with host-known shapes including scalar shape `()`. It validates device,
 contiguity, dtype, byte size, and name uniqueness within this event. It copies
 metadata and retains the owner immediately; it does not read array contents.
-For the first implementation, each name has one fixed shape/dtype per run;
-subsequent mismatches fail clearly. Device-dependent variable-length results use
-a fixed-capacity array plus a device count, published separately.
+Each publication carries its own shape, dtype, and byte extent. The same name
+may have a different layout or size on a later event; a name is not a fixed
+buffer schema. Scalars, empty arrays, vectors, and multidimensional arrays are
+valid. Unsupported dtypes and invalid metadata still fail clearly. Metadata
+must be host-known at publication: a length computed only on the GPU cannot
+silently trigger a host synchronization to discover the transfer size. Such
+algorithms can publish a user-chosen capacity plus a device count separately.
 
 Output names are exact user-chosen keys. No unqualified aliases are inferred.
 Duplicate publications or collisions with reserved input/result names fail.
@@ -243,6 +293,15 @@ No output is implicitly published for intermediates. Publishing before launching
 the producer is valid: D2H is queued only after successful callback return and
 the recorded producer event. Returning without publication produces no task
 result; `get(name)` then raises `KeyError`.
+
+Publication frequency is independent of callback invocation frequency. A
+callback may publish every event, every N events, conditionally, or never;
+no frequency declaration or framework sampling rule is required. An event
+without publication causes no task-output D2H, placeholder allocation, or
+replay of the previous result. Psana associates a result with the event that
+publishes it. For accumulated results the user defines the contributing window
+and can publish its count or range metadata alongside the result. Such state
+is local to each BD unless the application explicitly combines it across BDs.
 
 ### Inputs without a hidden synchronization
 
@@ -395,6 +454,24 @@ must make that policy explicit rather than silently falling back to lazy copies.
 A copy completion event may cover several outputs. Each output retains its own
 name, shape, dtype, event identity, and host slice.
 
+Use publication records rather than detector-image rows. A record contains
+event identity, exact name, device pointer and owner, dtype, shape, byte extent,
+producer-completion dependency, and host-delivery token. Allocate host staging
+by bytes, copy exactly that extent, and reconstruct the NumPy result using
+that record's dtype and shape. Never derive offsets using `nsegs*nrows*ncols*4`
+or cache the first output's layout as the layout of later publications. Empty
+arrays require no payload transfer but still honor producer completion and
+return their declared shape/dtype. Copies can be grouped as an optimization;
+delivery must not wait for an unpublished future result to fill an image chunk.
+
+CUDA events determine readiness, not callback return, elapsed time, publication
+cadence, or advancement of the Python iterator. `producer_done` proves that
+the user kernels finished; `host_done`, recorded after copies waiting on
+`producer_done`, proves that CPU-visible bytes are ready. Waiting only for
+`producer_done` is insufficient for asynchronous D2H. The event-loop accessor
+uses the terminal host token; completion events do not themselves own memory,
+so registration must also retain the backing allocations until completion.
+
 `on_cpu` waits only for its host token and returns an independent, cached NumPy
 array, including any necessary pinned-to-ordinary-host copy. It never invokes
 the task and does not initiate the normal D2H transfer. Copy readiness at the
@@ -507,6 +584,9 @@ merge arbitrary CPU/GPU raw partials before callbacks.
 
 ## Implementation stages
 
+The [task branch implementation checklist](user_kernel_implementation_stages_20260926.md)
+records the branch point, concrete first change, source areas, and stage gates.
+
 Implement in this order. Each stage has an exit check; later stages must not
 restore implicit calibration dependencies removed by Stage 1. The public
 callback mode is complete only after delivery and lifecycle validation pass.
@@ -602,6 +682,9 @@ several BDs on one GPU. No callback-time constant upload is permitted.
 Implement the producer context and `userfunc(evt, stream)` dispatch in
 `EventPool.submit()` after requested input preparation. Call once per selected
 event with GPU descriptors, regardless of how many requested detectors it has.
+Reuse the existing batched parser/gather submission; the event loop here must
+not repeat that work for each input selector. Keep callback dispatch small and
+separate from the user's kernel sequence.
 Restrict dispatch to delivery identities before calling user code, including
 `max_events` tails; preserve original event indexes with missing detectors.
 The stream is the current execution slot's stream and is made current for CuPy.
@@ -620,9 +703,11 @@ selection, and callback exceptions cannot release or overwrite live storage.
 
 ### Stage 4 — Deliver exactly the published results to the CPU
 
-Generalize D2H and host tokens to named contiguous arrays with fixed per-name
-dtype/shape for the run, including scalar counts and uint8 masks. Publication
-triggers host staging after producer completion regardless of the legacy
+Generalize D2H and host tokens to named contiguous arrays with per-publication
+dtype, shape, and byte extent, including scalar counts, empty arrays, uint8
+masks, and small histograms. Accept changing layouts under the same name.
+User code controls publication cadence independently of callback scheduling.
+Publication triggers host staging after producer completion regardless of the legacy
 `gpu_d2h_chunk_size=0` default. Callback result lookup uses the exact published key;
 `jungfrau_threshold` must not become `jungfrau.jungfrau_threshold` under the old
 single-detector alias rule. Input names are not automatically published outputs.
@@ -634,20 +719,32 @@ unavailable slots or capacity. Attach host tokens by event identity and make
 callback outputs. Retain all submission owners through its last output copy;
 copy failures drain already queued transfers before releasing owners.
 
-**Exit check:** publish mask/count, no outputs, multiple names, and newly appearing
-names. Verify exact lookup with one and multiple detectors, dtype/shape errors,
-ignored outputs, retained events, oversized outputs, and delayed D2H during slot
-reuse. Pinned capacity stays bounded and delivery never waits on itself.
+**Exit check:** publish mask/count, no outputs, multiple names, newly appearing
+names, and changing shapes/dtypes under the same name. Verify scalar and empty
+outputs, conditional/every-N-event publication, exact lookup with one and
+multiple detectors, invalid metadata, ignored outputs, retained events,
+oversized outputs, and delayed D2H during slot reuse. Retained earlier results
+keep their own metadata. Pinned capacity stays bounded and delivery never waits
+on itself or for a later publication. No user device buffer is allocated,
+resized, pooled, or charged to the psana device budget by result delivery.
 
 ### Stage 5 — Validate the first user kernels
 
+The September 26 source search selects **user calibration followed by azimuthal
+integration** as the first example passed through `DataSource(gpu_fn=...)`.
+See [kernel sources and callback adaptations](calib_azint_callback_sources_20260926.md)
+for Amanda's CUDA kernels, Stefano's sparse integration alternative, pinned
+source revisions, and the ownership/numerical changes needed before reuse.
+Both stages execute in the user callback; psana delivers the published histogram.
+
 Deliver a Jungfrau callback that consumes requested dictionary arrays and produces
-calibrated data, a threshold mask, and a count using user-owned output memory.
+an azimuthal histogram using user-owned output memory, with calibrated data as
+an optional validation output. Keep threshold/mask/count as additional coverage.
 Compare with the CPU/reference algorithm using identical offset, gain, mask, and
 common-mode settings; the built-in GPU kernel does not implement every CPU option.
 Demonstrate CuPy and a compiled native launcher using the same staging contract.
 
-Use Jungfrau threshold/mask/count as the first end-to-end acceptance case.
+Use Jungfrau calibration plus azimuthal integration as the first end-to-end acceptance case.
 Then add conditional no-output, bounded peak-list plus device-count, and
 per-slot accumulation cases. A device-only decision must not require a blocking
 host read to decide output allocation; use fixed capacity and a device count.
@@ -718,6 +815,13 @@ Acceptance for that implementation:
   and unsupported selectors fail clearly.
 - Multiple dtypes, scalar output, no output, missing input/segments, absent or
   invalid locator status, partial subbatches, and `max_events` preserve identity.
+- Change shape, dtype, and byte extent under one output name, retaining earlier
+  events while later results arrive. Include empty arrays and publication only
+  every N events. Verify exact output metadata, no stale-result replay, and no
+  task-output transfer or placeholder allocation on unpublished events.
+- Delay D2H after producer completion and verify `.on_cpu` waits for the copy's
+  terminal event. CUDA events govern readiness while registered owner references
+  preserve storage; neither mechanism substitutes for the other.
 - Cover `Corrupted` damage rejection and an otherwise valid field with a
   non-`Corrupted` damage flag. The latter remains present and is eligible for
   counting under the documented v1 policy; do not silently equate presence with
