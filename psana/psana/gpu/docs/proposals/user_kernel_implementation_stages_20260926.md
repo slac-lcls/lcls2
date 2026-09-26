@@ -1,6 +1,8 @@
 # User-kernel implementation stages
 
-2026-09-26. Planning checkpoint; runtime implementation has not started.
+2026-09-26. Implementation tracking; the initial planning checkpoint was
+`480f7074c`. See [Stage 1 findings](../user_kernel_stage1_findings_20260926.md)
+for the raw-preparation extraction and validation evidence.
 
 - Task branch: `codex/psana2-gpu-user-kernels`.
 - Parent branch: `codex/psana2-gpu-bulk-batched-integration`.
@@ -100,5 +102,6 @@ loading, generic CUDA IPC constant sharing, and performance tuning are follow-up
 - Store generated validation artifacts on scratch and concise findings in the
   repository. Do not reuse historical performance numbers as new acceptance.
 
-Status: branch and plan prepared; Stages 1–6 pending. Next action: Stage 1 raw
-preparation extraction and focused correctness validation.
+Status: Stage 1 implemented and validated on CPU and A100.
+Stages 2–6 remain pending. Next implementation action: Stage 2
+task declaration, selective constant uploads, and serial/MPI setup selection.

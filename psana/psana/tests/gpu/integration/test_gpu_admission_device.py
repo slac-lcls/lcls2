@@ -56,10 +56,11 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
     detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=1, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=(handle,), n_slots=1, budget=budget)
     detector.configure_gather(parser.handle_indices)
-    reader = KvikioGpuReader(n_slots=1, budget=budget)
+    # This fixture exercises per-dgram admission, without an InputGroupPool.
+    reader = KvikioGpuReader(n_slots=1, budget=budget, bulk_read=False)
     manager = GpuEventManager.__new__(GpuEventManager)
     manager.dm = NS(xtc_files=[path], get_chunk_id=lambda _: 0)
-    manager.dsparms = NS(gpu_bulk_read=True)
+    manager.dsparms = NS(gpu_bulk_read=False)
     manager.gpu_reader, manager.gpu_xtc_parser = reader, parser
     manager.gpu_detectors = {'xppcspad': (None, detector)}
     manager.event_pool = EventPool(n=1)

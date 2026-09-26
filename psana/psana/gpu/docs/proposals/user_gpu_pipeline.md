@@ -4,10 +4,14 @@
 **Review baseline:** `d63f45d27`,
 `codex/psana2-gpu-bulk-batched-integration`, 2026-09-26, after merging master.
 **Scope:** Producer-side user kernel submission, input/constant preparation,
-named output publication, and asynchronous CPU delivery. No runtime changes
-are part of this document update.
+named output publication, and asynchronous CPU delivery. The public contract
+remains proposed until staged implementation and acceptance complete.
 
-This is the canonical proposal for the next task. It supersedes the earlier
+Implementation tracking: the internal Stage 1 raw-preparation extraction is
+described in [Stage 1 findings](../user_kernel_stage1_findings_20260926.md).
+The public callback and publication APIs below remain proposed.
+
+This is the canonical design for the implementation task. It supersedes the earlier
 version at this path that required declared scratch/output arenas. It captures
 the uncommitted September 17 draft from the stale
 `codex/psana2-gpu-user-callback` worktree and the user's September 26
