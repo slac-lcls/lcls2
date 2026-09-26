@@ -96,6 +96,10 @@ argument incompatibility before test submission; its partial snapshot is unused.
 
 ## Stage 2 boundary
 
+Historical next-step notes below predate the user's request to remove calibration
+completely. The [removal audit](proposals/calibration_runtime_removal_20260926.md)
+adds Stage 1b first; the legacy path will be deleted, not retained behind a mode.
+
 The raw-only component is exercised internally, not selected by DataSource yet.
 Stage 2 must wire task declarations and exact constant uploads, select the
 preparer in manager setup, and consistently bypass MPI's earlier derived CPU
