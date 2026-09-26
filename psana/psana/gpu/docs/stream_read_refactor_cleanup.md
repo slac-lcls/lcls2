@@ -3,7 +3,12 @@
 Last reviewed: **2026-09-25**, after cleanup commit `cc4451b3c`.
 The four follow-up items agreed after the 10,000-event comparison are complete.
 Correctness and cleanup acceptance passed; throughput improvement has not been
-established. Performance work remains deferred.
+established. Bulk-on throughput optimization remains deferred. A subsequent
+user request started a [Jungfrau-only scaling validation](performance/jungfrau_current_scaling.md)
+before the user-kernel milestone. That campaign completed as job **39104724**:
+8 pixel preflights and 32 timed samples passed, including final hash verification.
+See its report for the post-cleanup JF-only scaling baseline and variability;
+the mixed-detector throughput investigation remains deferred.
 
 ## Follow-up completion
 
@@ -49,11 +54,13 @@ KvikIO workers in CPU-fallback mode. Bulk on reduced requests from 60,000 to
 50,182 without improving throughput.
 
 This comparison **predates cleanup `cc4451b3c`**. The cleaned runtime passed
-CPU and device correctness acceptance; it has not received a new 10k throughput
-comparison. Correctness tests do not establish a performance result for it.
+CPU and device correctness acceptance and subsequently completed the separate
+[JF-only 10k scaling comparison](performance/jungfrau_current_scaling.md).
+There has been no new post-cleanup mixed-detector 10k comparison.
 The cause of the remaining bulk-on overhead and historical warm variability
-remains unresolved. No throughput win or true-GDS, live-data, or multi-BD scaling
-acceptance is claimed.
+remains unresolved. No general bulk-on throughput win or true-GDS/live-data
+acceptance is claimed. Multi-BD scaling evidence is limited to the JF-only
+campaign's recorded settings and four topologies.
 
 ## Cleanup disposition
 

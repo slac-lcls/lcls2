@@ -31,6 +31,16 @@ and the configurations that produced them.
 
 ## Performance evidence
 
+- [Code-size simplification handoff](docs/simplification_baseline_20260925.md):
+  committed baseline, completed JF results, mixed-detector campaign and invariants.
+- [Jungfrau single-node scaling](docs/performance/jungfrau_single_node_sdf.md):
+  the historical 10,000-event cold/warm 1/2/4-GPU, multi-BD matrix, including
+  the 1-GPU/4-BD cold and 4-GPU/8-BD warm results.
+
+- [Current Jungfrau scaling campaign](docs/performance/jungfrau_current_scaling.md):
+  current-code multi-GPU/BD rerun, validation gates and job status.
+- [JF + feespec one-GPU scaling](docs/performance/jf_feespec_single_gpu_scaling.md):
+  batch-20 cold/warm, bulk off/on comparison with 1, 2 and 4 BDs.
 - [GPU pipeline baseline](docs/performance/gpu_pipeline_baseline.md): initial
   CPU/GPU throughput comparison and bottleneck observations.
 - [D2H bandwidth](docs/performance/d2h_bandwidth.md): measured D2H sampling and
