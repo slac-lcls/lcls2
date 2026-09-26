@@ -30,6 +30,12 @@ Start implementation on a separate task branch/worktree from the validated
 merged branch. Keep old experiments, logs, and validation symlinks out of that
 task's changes.
 
+**Task branch created September 26:** `codex/psana2-gpu-user-kernels`, from
+`6e5b8d0d096c769f9538064635db72a0b72d4bca`, in the existing active worktree.
+The design clarifications and source search carry forward on this branch.
+See the [implementation stages](user_kernel_implementation_stages_20260926.md);
+runtime work remains pending.
+
 ## Read these first
 
 1. [User GPU kernel support](user_gpu_pipeline.md): the canonical detailed
@@ -126,6 +132,13 @@ draining when extending the pipeline.
 
 ## Direction for the new task
 
+- Priority: simple structure, minimum viable code addition, then measured
+  optimization. Reuse the existing producer/ownership/delivery path. Preserve
+  the parser's batched launches; do not reintroduce CPU loops that submit GPU
+  work per Configure handle, field, or segment. The first per-event callback
+  is intentionally simple, but its user kernel launch count must be measured
+  separately from output frequency and D2H volume. Batch callbacks and fusion
+  remain follow-ups, not prerequisites.
 - `GpuTask` declares a callable, input selectors, and exact calibration keys.
   Psana resolves input metadata and stages only the requested constants.
 - `gpu_fn=None` preserves existing calibration. An explicit callback replaces
@@ -137,15 +150,27 @@ draining when extending the pipeline.
 - User code allocates scratch and outputs. `keepalive()` retains temporaries;
   `publish()` registers exact output names, metadata, and owners. No advance
   scratch/output shape declarations or psana-managed device arenas are required.
+- Output size, shape, dtype, and publication frequency are user-defined.
+  Metadata belongs to each publication, not a fixed per-name/run schema.
+  Replace the legacy float32 image D2H assumptions with byte-oriented delivery;
+  expect small reductions and occasional summaries, while supporting explicit
+  full-image publication. Events without publication cause no task-output copy.
 - Psana records producer completion and schedules every published output for
   host delivery. `.on_cpu` consumes the host token; it does not launch tasks or
   initiate the normal D2H. A bounded synchronous fallback handles pinned pressure.
+- CUDA completion events determine readiness. CPU access requires completion
+  of D2H after the producer, not only kernel completion. Retaining registered
+  owners through those events does not transfer user allocation/reuse policy
+  to psana; psana budgets its own input and host-staging storage only.
 - Preserve event identity, input-owner dependencies, multi-consumer leases,
   and drain-before-release behavior, including errors and transitions.
 
 Use the proposal's staged implementation and acceptance checks. The first
-end-to-end case is Jungfrau threshold/mask/count, followed by conditional peak
-output and stateful accumulation. EpixUHR coverage is retained as a follow-up.
+end-to-end case is user calibration plus azimuthal integration inside one
+callback passed through DataSource; see the
+[September 26 kernel source search](calib_azint_callback_sources_20260926.md).
+Threshold/mask/count, conditional peak output, and stateful accumulation provide
+additional coverage. EpixUHR coverage is retained as a follow-up.
 The numerical pinned cap, public import spelling, lifecycle conveniences, and
 any direct native ABI still need implementation decisions. Do not reopen the
 deferred structural simplification merely to start this task.
