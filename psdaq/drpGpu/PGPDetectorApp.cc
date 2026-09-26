@@ -835,6 +835,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "gpuId")          continue;  // GPU DRP
         if (kwargs.first == "imageCheck")     continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
+        if (kwargs.first == "raw")            continue;  // GPU DRP, pass-through mode
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_l1_verify")  continue;  // GPU DRP Simulator
@@ -851,7 +852,22 @@ int main(int argc, char* argv[])
     initShutdownSignals(para.alias, [](){ exit(0); });
 
     para.batchSize = 1; // Max # of DMA buffers queued for freeing - Must be a power of 2
-    para.maxTrSize = 256 * 1024;
+    // Smaller than the CPU DRP's 8 MiB (drp/drp.cc) because here it does double duty: it
+    // bounds a transition's Xtc *and* floors the reduce buffers' payload (Reducer.cu), so
+    // every byte is multiplied by nbuffers() of GPU memory.
+    //
+    // It must still fit the largest Configure.  ePixUHR3x2's configuration is ~880 kB of
+    // JSON, and BEBDetector::_addJson builds it into a temporary buffer *also* sized
+    // maxTrSize before copying it into the transition Xtc -- so this value bounds both the
+    // config and the thing it has to fit inside, and a value that is too small fails at
+    // whatever it is raised to rather than by a fixed shortfall.  256 kiB and 512 kiB both
+    // failed that way on drp-srcf-gpu006 on 2026-09-25.
+    //
+    // @todo: These two uses want separate values, at which point the transition bound can
+    //        be generous and the payload sized from what the Reducer needs.  See the
+    //        "maxTrSize does two unrelated jobs" item in TODO.md.  2 MiB costs ~4 GiB of
+    //        GPU memory at nbuffers = 2048, all of it unused in pass-through mode.
+    para.maxTrSize = 2 * 1024 * 1024;
     try {
         Drp::Gpu::PGPDetectorApp app(para);
         app.initialize();

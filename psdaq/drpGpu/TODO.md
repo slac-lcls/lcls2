@@ -724,6 +724,80 @@ process to report anything.
 
 ## Performance and structure
 
+- **`maxTrSize` does two unrelated jobs and wants to be two numbers.**  It bounds a
+  transition's Xtc -- `Drp::Detector`'s `m_xtcbuf(para->maxTrSize)`, reached through
+  `trXtcBufEnd()` -- *and* it floors the reduce buffers' payload, at `Reducer.cu`:
+
+      if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
+
+  So a value chosen to fit the largest Configure is multiplied by `nbuffers()` of GPU
+  memory, and a value chosen to bound the payload may be too small for a Configure.  The
+  two pull in opposite directions.
+
+  Worse, `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON config into a
+  *temporary* buffer **also** sized `maxTrSize` and then copies its payload into the
+  transition Xtc.  So one number bounds both the config and the thing it must fit inside,
+  and a value that is too small fails at whatever it is raised to rather than by a fixed
+  shortfall.
+
+  Found on 2026-09-25: ePixUHR3x2's Configure on drp-srcf-gpu006 aborted with
+
+      Xtc.hh:111: Insufficient space for 524 bytes (... extent 262012)    # 256 kiB
+      Xtc.hh:111: Insufficient space for 760 bytes (... extent 524036)    # 512 kiB
+
+  The extent grew to fill whatever it was given, which is the tell.  **`epixuhr3x2_0`'s
+  configuration is 902026 bytes of JSON**, so neither limit was close; the "overflowed by
+  392 bytes" reading of the first failure was where it stopped, not what it needed.  Raised
+  to 2 MiB, which costs ~4 GiB of GPU memory at `nbuffers = 2048`, all of it unused in
+  pass-through mode since `PassthruShim::payloadSize()` is 0.  The CPU DRP's 8 MiB would
+  cost ~16 GiB.
+
+  Making either a kwarg would help, but the coupling is the real problem -- raising one for a
+  detector's sake silently enlarges every reduce buffer.
+
+### Give transitions their own buffer, so a Configure cannot dominate the L1A buffers
+
+Ric's proposal, 2026-09-25, and the numbers argue for it strongly.  **The special case already
+exists; it just does not pay its way.**  What is already true:
+
+- transitions already take a **separate branch** in the recorder,
+  `buffer -= sizeof(Dgram)` rather than the L1A path's arithmetic
+  (`PGPDetector.cc`, the `else { // Transitions` arm);
+- Configure already has a **dedicated buffer index**, `m_configureIndex`, and is re-copied to
+  the GPU at BeginRun from a separate *host*-side `m_configureBuffer`;
+- `ReducerAlgo::payloadSize()` is already **silently overridden** by the `maxTrSize` floor in
+  `Reducer.cu`, whose only purpose is to make every L1A buffer big enough for a transition.
+
+So the present design carves a Configure-shaped hole out of **all `nbuffers()`** to serve
+something that happens once per run.  The shape of the change:
+
+    createReduceBuffers(payloadSize, headerSize, rawBytes);  // payload = the algo's ask
+    createTransitionBuffers(maxTrSize, nTrBuffers);          // a handful, not nbuffers()
+
+then delete the `if (totalSize < m_para.maxTrSize)` floor and point the existing transition
+branch at the new allocation.
+
+**What it saves**, with `raw` = 387072 B for ePixUHR3x2 and a real reducer asking for an fp32
+frame:
+
+| | `nbuffers` = 2048 | `nbuffers` = 32768 (1 s of latency at 33 kHz) |
+|---|---|---|
+| today, payload floored at 2 MiB | 4.74 GiB | **75.81 GiB** |
+| transitions separated | 2.22 GiB | **35.44 GiB** |
+
+At the buffer count 1 s of latency actually wants, it **halves** GPU memory -- 40 GiB back on a
+140 GiB card -- and it decouples the two, so a detector with a larger Configure costs one buffer
+instead of 32768.  It is also paying now, not just later: the 2 MiB set on 2026-09-25 costs
+~4 GiB that pass-through never touches, `PassthruShim::payloadSize()` being 0.
+
+Arguably this is *less* complex than what is there: it **removes** a coupling rather than adding
+a mechanism, and `payloadSize()` starts meaning what it says.  The care needed is that
+transitions and L1As then index different allocations, so anything computing
+`&reduceBuffers_d()[index * stride]` must know which kind it holds -- but that code already
+branches on `isEvent()`.  Size it for a few transitions rather than one: Configure, BeginRun,
+BeginStep and Enable can be in flight together, and the recorder holds Configure to re-write it
+at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
+
 - **Nothing coordinates the green context split with the kernels' launch geometry.**
   There are three independent hard-coded SM tables, and they disagree:
 
@@ -2486,6 +2560,54 @@ stays commented out.  Do not "fix" that by re-enabling it.
 
 Note the same GSP signature hit **gpu008's GPU5** four times, but there a reboot cleared it each
 time.  A GSP hang that a power cycle clears is transient; this one is not.
+
+### Pass-through reached Paused on gpu006, 2026-09-25, and what it took
+
+First run of the pass-through work (`features/gpu-raw-calib`) against the hardware emulator.
+It reached **Paused**, which validates the whole transition path with the raw region in it:
+
+    EpixUHR3x2: pass-through mode -- recording raw u16, uncalibrated and unreduced
+    PassthruShim: recording 387072 B of raw data per event, unreduced
+    Reduce buffers: ... size 2048 * (80 + 387072 + 2097072) B
+    PGPReader / Collector / TebRcvr / Recorder  all saw Configure
+
+**Still unproven: no L1Accept has passed through the pass-through kernel.**  So the per-element
+copy, the recorder's contiguous-region arithmetic and the file layout are all untested.  Three
+things gate that: the trigger setup below, an output path (WEKA is not mounted on gpu006 --
+`/cds/data/drpsrcf` is a bare empty mountpoint there, Gabriel has an IT ticket for the IB link;
+`-o /home/claus/data` is the workaround), and then the XTC comparison against the CPU DRP.
+
+**Four of my bugs, none of which compiling would have caught:**
+
+1. `raw` was missing from the kwarg allowlist in `PGPDetectorApp.cc`, so the DRP died at startup
+   with `Unrecognized kwarg 'raw=1'`.  The allowlist working as intended.
+2. `maxTrSize` was 256 kiB, too small for an ePixUHR3x2 Configure.
+3. Raising it to 512 kiB failed identically, because the extent **grows to fill whatever it is
+   given** -- see the `maxTrSize` item above.  `epixuhr3x2_0`'s config is 902026 bytes of JSON.
+4. Settled at 2 MiB.
+
+The lesson for the plan's verification section: it checked that the code compiled and installed,
+so a runtime-only failure like a kwarg allowlist was invisible until the thing actually ran.
+
+**The ASIC-ordering question is answered.**  Gabriel confirms the CPU DRP's output order is
+correct, so identity is right and the `AsicForDataSubFrame = {1,3,5,0,2,4}` comment at
+`EpixUHR3x2.hh:31-37` -- *"Anything writing XTC must descramble with this"* -- is **wrong**.  He
+is looking into it.  Keeping identity was what made the CPU comparison meaningful; had the code
+been "fixed" to match the comment, the comparison would have failed for the wrong reason.  The
+comment wants correcting or deleting on `features/gpu`, being pre-existing.
+
+**The trigger setup is what blocks L1Accepts.**  `xpmpva` shows the sequence is not currently
+loaded.  Gabriel's notes in the appendix below specify it, and happily for the same XPM
+`gpu6.py` already uses (`groupca DAQ:FEH 4`):
+
+- Timing's readout group: event code **278**
+- The ePixUHR readout group: event code **277**
+- The run trigger: **276**, already in configdb, so possibly nothing to change there
+- He programmed `DAQ:FEH:XPM:4` on **Seq Engine 5**
+
+So what is missing is the sequencer programming, not the XPM choice.  Without it the DAQ goes
+into deadtime immediately.  There is an `xpm-seq` skill for LCLS-II sequence programming if
+reprogramming from those three codes is preferable to waiting.
 
 ### gpu005 converted, 2026-09-23 -- the least similar node, done last on purpose
 
