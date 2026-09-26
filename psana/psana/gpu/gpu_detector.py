@@ -18,6 +18,7 @@ from psana.gpu.gpu_calib import (
 )
 from psana.gpu.gpu_input import GpuDetectorBinding
 from psana.gpu.gpudgram.batch import (
+    LOC_DIM0,
     LOC_NBYTES,
     LOC_NCOLS,
     LOC_OFFSET,
@@ -130,7 +131,7 @@ class _CanonicalGatherPlan:
         self.ready.record(producer)
         self.ordered_streams = {producer.ptr: producer}
 
-    def gather(self, inputs, target, present, pixels, stream):
+    def gather(self, inputs, target, present, pixels, stream, shape=None):
         for locations in inputs.locations:
             if locations.handle_indices is not self.handle_indices:
                 raise ValueError("gather plan does not match the configured locator layout")
@@ -149,7 +150,9 @@ class _CanonicalGatherPlan:
             (tiles * nrows,), (256,),
             (inputs.owners, np.uint64(len(inputs.locations)), self.table, inputs.rows,
              np.uint64(len(self.streams)), np.uint64(nsegments),
-             np.uint64(pixels), np.uint64(tiles), target, present),
+             np.uint64(pixels), np.uint64(tiles),
+             np.uint64(shape[0] if shape else 0), np.uint64(shape[1] if shape else 0),
+             target, present),
             stream=stream,
         )
 
@@ -243,7 +246,184 @@ class EventContext:
     image_gpu: object = None    # cp.ndarray float32 or None
 
 
-class GPUDetector:
+@dataclass(frozen=True)
+class PreparedInputBatch:
+    """Borrowed dense inputs in event order; the execution lease owns storage."""
+
+    events: tuple
+    data: object       # (events, segments, rows, columns), original input dtype
+    present: object    # (events, segments), uint8; parser/gather validity
+
+
+class DenseInputPreparer:
+    """Batched dense field preparation without calibration or output storage.
+
+    Shape comes from an explicit supported detector adapter, never constants.
+    The caller retains input windows and retires execution consumers before
+    reusing/trimming slots, exactly as for GPUDetector. Preparation queues one
+    gather per nonempty subbatch; it performs no locator metadata D2H.
+    """
+
+    def __init__(self, det_shape, binding, *, dtype=np.uint16, n_slots=2,
+                 budget=None, validate_shape=True):
+        if not isinstance(binding, GpuDetectorBinding):
+            raise TypeError("binding must be a GpuDetectorBinding")
+        if (len(det_shape) != 3 or
+                any(int(n) != n or n <= 0 for n in det_shape)):
+            raise ValueError("det_shape must contain three positive dimensions")
+        self.det_shape = tuple(int(n) for n in det_shape)
+        self.binding = binding
+        self._canonical_segment_ids = binding.canonical_segment_ids
+        self._n_segs_calib, self._nrows, self._ncols = self.det_shape
+        if len(self._canonical_segment_ids) != self._n_segs_calib:
+            raise ValueError("canonical_segment_ids must contain one entry per detector segment")
+        self._n_pix_seg = self._nrows * self._ncols
+        self._dtype = np.dtype(dtype)
+        if self._dtype not in (np.dtype(np.uint16), np.dtype(np.float32)):
+            raise TypeError("dense preparation supports uint16 and float32")
+        self._pixel_bytes = self._dtype.itemsize
+        self._validate_shape = bool(validate_shape)
+        self._field_handles_by_segment = binding.field_handles_by_segment
+        self._sources_by_stream = binding.sources_by_stream
+        if not self._field_handles_by_segment:
+            raise ValueError("dense preparation requires a field for every segment")
+        for segment, handle in self._field_handles_by_segment.items():
+            if handle.rank <= 0 or handle.element_size != self._pixel_bytes:
+                raise ValueError(f"segment {segment}: incompatible dense field layout")
+            if validate_shape and (handle.rank not in (2, 3) or
+                                   handle.type != (1 if self._dtype == np.uint16 else 8)):
+                raise ValueError(f"segment {segment}: unsupported dense field type/rank")
+        if int(n_slots) != n_slots or n_slots <= 0:
+            raise ValueError("n_slots must be a positive integer")
+        self._n_slots = int(n_slots)
+        self._budget = budget
+        self._raw_slot_bufs = [None] * self._n_slots
+        self._present_slot_bufs = [None] * self._n_slots
+        self._gather_maps = [_GatherMap() for _ in range(self._n_slots)]
+        self._gather_plan = None
+
+    @classmethod
+    def jungfrau_raw(cls, configs, binding, **kwargs):
+        """Bind Jungfrau raw panels using Configure membership/type/rank.
+
+        Jungfrau's supported panel is (1, 512, 1024) or (512, 1024), as
+        specified by drp/Jungfrau.cc and SegGeometryJungfrauV2. Names provides
+        type/rank, not runtime dimensions; the gather validates those on GPU.
+        Rows follow binding.canonical_segment_ids. Calibration arrays retain
+        their full physical-segment axis: select [:, segment_ids, ...] in user
+        code rather than assuming dense row index equals physical segment ID.
+        """
+        for segment, handle in binding.field_handles_by_segment.items():
+            names = configs.names_for_id(handle.stream_id, handle.names_id)
+            field = names.fields[handle.field_index]
+            if (names.det_name != binding.det_name or names.segment != segment or
+                    names.det_type != "jungfrau" or names.alg_name != "raw" or
+                    field.name != "raw" or
+                    configs.resolve(binding.det_name, segment, "raw", "raw",
+                                    stream_id=handle.stream_id) != handle):
+                raise ValueError("unsupported Jungfrau raw Configure binding")
+        return cls((len(binding.canonical_segment_ids), 512, 1024), binding,
+                   dtype=np.uint16, **kwargs)
+
+    @property
+    def canonical_segment_ids(self):
+        return self._canonical_segment_ids
+
+    def configure_gather(self, handle_indices):
+        """Upload fixed canonical routing once, after parser setup."""
+        if self._gather_plan is not None:
+            if self._gather_plan.handle_indices is not handle_indices:
+                raise ValueError("cannot replace a live canonical gather plan")
+            return
+        self._gather_plan = _CanonicalGatherPlan(
+            self.binding, handle_indices, self._budget,
+        )
+
+    def prepare_batch(self, gpu_events, stream=None, slot_id=None, *, _buffers=None):
+        """Queue one gather and return borrowed event-major data/presence.
+
+        Events without any source dgram are omitted without changing identity.
+        Missing/rejected fields have zero data and presence. `_buffers` lets
+        the legacy float32 passthrough use its existing calibrated slot directly.
+        """
+        events = tuple(event for event in gpu_events if self.binding.has_sources(event))
+        if not events:
+            return None
+        if slot_id is None:
+            raise ValueError("dense preparation requires an EventPool slot_id")
+        cp = _cupy()
+        slot = int(slot_id) % self._n_slots
+        shape = (len(events) * self._n_segs_calib, self._nrows, self._ncols)
+        data = self._slot_buffer(self._raw_slot_bufs if _buffers is None else _buffers,
+                                 slot, shape, self._dtype, "input")
+        present = self._slot_buffer(self._present_slot_bufs, slot,
+                                   (len(events), self._n_segs_calib), np.uint8,
+                                   "field-presence")
+        sctx = stream if stream is not None else cp.cuda.Stream.null
+        if self._gather_plan is None:
+            source = next(events[0][sid] for sid in self._sources_by_stream if sid in events[0])
+            self.configure_gather(source._storage_batch().configured_locations().handle_indices)
+        with sctx:
+            inputs = self._gather_maps[slot].prepare(events, self._gather_plan.streams,
+                                                     sctx, self._budget)
+            self._gather_plan.gather(inputs, data, present, self._n_pix_seg, sctx,
+                                     shape=self.det_shape[-2:] if self._validate_shape else None)
+        return PreparedInputBatch(events, data.reshape((len(events),) + self.det_shape), present)
+
+    def memory_bytes(self):
+        raw = (sum(backing_capacity(b) for b in self._raw_slot_bufs if b is not None)
+               + sum(backing_capacity(b) for b in self._present_slot_bufs if b is not None)
+               + sum(backing_capacity(m.device) for m in self._gather_maps if m.device is not None))
+        routing = backing_capacity(self._gather_plan.table) if self._gather_plan else 0
+        return dict(raw_slots=raw, routing=routing, total=raw + routing)
+
+    def pinned_bytes(self) -> int:
+        """Host row-map upload buffers, reported separately from device bytes."""
+        return sum(int(m.host.nbytes) for m in self._gather_maps
+                   if m.host is not None)
+
+    def estimate_subbatch_bytes(self, n_events):
+        return max(0, int(n_events)) * (
+            int(np.prod(self.det_shape)) * self._pixel_bytes + self._n_segs_calib
+            + len(self._sources_by_stream) * _GATHER_MAP_BYTES_PER_ENTRY)
+
+    def allocation_requirements(self, n_events, slot):
+        items = [(int(n_events) * int(np.prod(self.det_shape)) * self._pixel_bytes,
+                  self._raw_slot_bufs[slot]),
+                 (int(n_events) * self._n_segs_calib, self._present_slot_bufs[slot]),
+                 (int(n_events) * len(self._sources_by_stream) * _GATHER_MAP_BYTES_PER_ENTRY,
+                  self._gather_maps[slot].device)]
+        return [allocation_requirement(_cupy(), need, a) for need, a in items]
+
+    def trim_slot_buffers(self):
+        """Caller must first retire every execution/input consumer lease."""
+        self._raw_slot_bufs = [None] * self._n_slots
+        self._present_slot_bufs = [None] * self._n_slots
+        self._gather_maps = [_GatherMap() for _ in range(self._n_slots)]
+
+    def _slot_buffer(self, buffers, slot, shape, dtype, label):
+        """Return a reusable slot view, growing its backing array only."""
+        cp = _cupy()
+        nitems = int(np.prod(shape))
+        needed = nitems * np.dtype(dtype).itemsize
+        buf = buffers[slot]
+        old_size = int(buf.nbytes) if buf is not None else 0
+        if old_size < needed:
+            new_buf = owned_empty(cp, nitems, dtype, self._budget, 'detector')
+            buffers[slot] = new_buf
+            buf = new_buf
+            if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
+                free_b, _ = cp.cuda.Device().mem_info
+                print(
+                    f'[GPU-MEM] {label} slot grow: '
+                    f'need={needed/1e9:.1f}GB free={free_b/1e9:.1f}GB',
+                    flush=True,
+                )
+        return buf[:nitems].reshape(shape)
+
+
+
+class GPUDetector(DenseInputPreparer):
     """Per-event GPU calibration fed by GPU XTC field locators.
 
     Configure-derived field handles identify one array payload per physical
@@ -262,108 +442,19 @@ class GPUDetector:
         order. The binding is independent of calibration and payload shape.
     """
 
-    def __init__(self, det_shape, peds_gpu, gmask_gpu,
-                 binding,
-                 cmpars=None,
-                 n_slots=2,
-                 budget=None,
-                 passthrough=False):
-        self.det_shape         = tuple(det_shape)
-        self.peds_gpu          = peds_gpu
-        self.gmask_gpu         = gmask_gpu
-        self._n_segs_calib     = int(det_shape[0])
-        self._nrows            = int(det_shape[1])
-        self._ncols            = int(det_shape[2])
-        self._n_pix_seg        = self._nrows * self._ncols
-        if not isinstance(binding, GpuDetectorBinding):
-            raise TypeError("binding must be a GpuDetectorBinding")
-        self.binding = binding
-        self._canonical_segment_ids = binding.canonical_segment_ids
-        if len(self._canonical_segment_ids) != self._n_segs_calib:
-            raise ValueError(
-                "canonical_segment_ids must contain one entry per detector "
-                f"segment: got {len(self._canonical_segment_ids)}, "
-                f"expected {self._n_segs_calib}"
-            )
-        self._budget = budget  # _GpuBudget | None
-
-        self._field_handles_by_segment = binding.field_handles_by_segment
-        self._sources_by_stream = binding.sources_by_stream
-        for segment_id, handle in self._field_handles_by_segment.items():
-            if handle.rank <= 0:
-                raise ValueError(
-                    f"segment {segment_id} handle must select an array field"
-                )
-        # Passthrough mode: bigdata is already calibrated float32 from the DRP.
-        # Skip fused_calib_gpu entirely; just read and reshape the float32 pixels.
-        self._passthrough = bool(passthrough)
-        # Bytes per pixel in the bigdata stream.
-        # Determined from drp_class_name via run.detinfo — the same source the
-        # CPU path uses (Name::DataType in the XTC Names Configure container):
-        #   drp_class_name == 'raw'  → uint16 (2 bytes)  → passthrough=False
-        #   drp_class_name == 'fex'  → float32 (4 bytes) → passthrough=True
-        # This is always known at construction time; no bigdata inspection needed.
-        self._pixel_bytes = 4 if passthrough else 2
-        incompatible = {
-            segment_id: handle.element_size
-            for segment_id, handle in self._field_handles_by_segment.items()
-            if handle.element_size != self._pixel_bytes
-        }
-        if incompatible:
-            raise ValueError(
-                "Configure field element sizes do not match detector mode: "
-                f"expected {self._pixel_bytes}, got {incompatible}"
-            )
-        # CPU-side cache for beginstep() change detection.
-        self._peds_cpu_cache   = None
-        self._gmask_cpu_cache  = None
-        # Geometry scatter map for image assembly (set by setup_geometry()).
-        self._scatter_ix   = None   # cp.ndarray int64, flat
-        self._scatter_iy   = None   # cp.ndarray int64, flat
-        self._image_shape  = None   # (nrows_img, ncols_img)
-        # True when peds_gpu/gmask_gpu are shared views owned by another rank
-        # (set by share_calib_between_gpu_peers() for follower BD ranks).
-        # beginstep() skips the H→D write on followers to avoid a race with
-        # the leader writing to the same shared GPU memory.
-        self._is_calib_follower = False
-        # Per-slot canonical raw and calibrated buffers. Both cover the whole
-        # batch because EventContext exposes per-event views after all detector
-        # work has been queued. Their EventPool lease prevents overwrite until
-        # downstream consumers finish.
-        # One buffer per EventPool slot, grown lazily to fit the first batch.
-        # Reused across batches to prevent CuPy pool fragmentation that causes
-        # OOM with large batch sizes.  Each slot's buffer is written by the GPU
-        # calibration kernel and protected by the EventPool lease until its
-        # registered terminal consumer completes.  on_gpu returns an independent
-        # device copy; on_gpu_view keeps the slot leased through user GPU work.
-        self._n_slots         = int(n_slots)
-        self._raw_slot_bufs   = [None] * self._n_slots   # uint16 per slot
-        self._calib_slot_bufs = [None] * self._n_slots   # cp.ndarray per slot
-        self._present_slot_bufs = [None] * self._n_slots  # uint8 per slot
-        self._gather_maps = [_GatherMap() for _ in range(self._n_slots)]
-        self._gather_plan = None
-        # Common-mode correction — not yet implemented on GPU.
+    def __init__(self, det_shape, peds_gpu, gmask_gpu, binding,
+                 cmpars=None, n_slots=2, budget=None, passthrough=False):
         if cmpars is not None:
-            raise NotImplementedError(
-                "Common-mode correction (cmpars) is not yet implemented for "
-                "the GPU calibration path.  Pass cmpars=None (default) or "
-                "omit the argument.  Implement Phase F3 (common-mode CUDA "
-                "kernel) before using cmpars with GPUDetector."
-            )
-
-    @property
-    def canonical_segment_ids(self):
-        return self._canonical_segment_ids
-
-    def configure_gather(self, handle_indices):
-        """Upload fixed canonical routing once, after parser setup."""
-        if self._gather_plan is not None:
-            if self._gather_plan.handle_indices is not handle_indices:
-                raise ValueError("cannot replace a live canonical gather plan")
-            return
-        self._gather_plan = _CanonicalGatherPlan(
-            self.binding, handle_indices, self._budget,
-        )
+            raise NotImplementedError("Common-mode correction (cmpars) is not yet implemented for the GPU calibration path")
+        super().__init__(det_shape, binding, dtype=np.float32 if passthrough else np.uint16,
+                         n_slots=n_slots, budget=budget, validate_shape=False)
+        self.peds_gpu = peds_gpu
+        self.gmask_gpu = gmask_gpu
+        self._passthrough = bool(passthrough)
+        self._peds_cpu_cache = self._gmask_cpu_cache = None
+        self._scatter_ix = self._scatter_iy = self._image_shape = None
+        self._is_calib_follower = False
+        self._calib_slot_bufs = [None] * self._n_slots
 
     # ------------------------------------------------------------------
     # Geometry — image assembly
@@ -492,11 +583,6 @@ class GPUDetector:
             'total':       total,
         }
 
-    def pinned_bytes(self) -> int:
-        """Host row-map upload buffers, reported separately from device bytes."""
-        return sum(int(m.host.nbytes) for m in self._gather_maps
-                   if m.host is not None)
-
     def estimate_subbatch_bytes(self, n_events: int) -> int:
         """Estimate device VRAM needed for calibration of n_events events.
 
@@ -550,100 +636,28 @@ class GPUDetector:
                     del buf
         self._gather_maps = [_GatherMap() for _ in range(self._n_slots)]
 
-    def _slot_buffer(self, buffers, slot, shape, dtype, label):
-        """Return a reusable slot view, growing its backing array only."""
-        cp = _cupy()
-        nitems = int(np.prod(shape))
-        needed = nitems * np.dtype(dtype).itemsize
-        buf = buffers[slot]
-        old_size = int(buf.nbytes) if buf is not None else 0
-        if old_size < needed:
-            new_buf = owned_empty(cp, nitems, dtype, self._budget, 'detector')
-            buffers[slot] = new_buf
-            buf = new_buf
-            if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
-                free_b, _ = cp.cuda.Device().mem_info
-                print(
-                    f'[GPU-MEM] {label} slot grow: '
-                    f'need={needed/1e9:.1f}GB free={free_b/1e9:.1f}GB',
-                    flush=True,
-                )
-        return buf[:nitems].reshape(shape)
-
-    def process_batch(self, gpu_events,
-                      stream=None, slot_id=None) -> Iterator[EventContext]:
-        """Assemble canonical detector arrays from device field locators.
-
-        ``GpuEventDgrams`` maps event streams to dense dgram indices once for
-        every detector consumer. Configure-selected handles and GPU-produced
-        locator rows provide every payload address; pixel bytes remain on the
-        device.
-        """
-        cp = _cupy()
-        events_info = [
-            event_dgrams
-            for event_dgrams in gpu_events
-            if self.binding.has_sources(event_dgrams)
-        ]
-
-        if not events_info:
+    def process_batch(self, gpu_events, stream=None, slot_id=None) -> Iterator[EventContext]:
+        """Prepare dense inputs, then run the existing calibration recipe."""
+        prepared = self.prepare_batch(gpu_events, stream, slot_id,
+                                      _buffers=self._calib_slot_bufs if self._passthrough else None)
+        if prepared is None:
             return
-        if slot_id is None:
-            raise ValueError("GPUDetector.process_batch requires an EventPool slot_id")
-
-        slot = int(slot_id) % self._n_slots
-        batch_shape = (
-            len(events_info) * self._n_segs_calib,
-            self._nrows,
-            self._ncols,
-        )
-        calib_slot = self._slot_buffer(
-            self._calib_slot_bufs, slot, batch_shape, np.float32, "calib"
-        )
-        raw_slot = None
-        if not self._passthrough:
-            raw_slot = self._slot_buffer(
-                self._raw_slot_bufs, slot, batch_shape, np.uint16, "raw"
-            )
-        present_slot = self._slot_buffer(
-            self._present_slot_bufs,
-            slot,
-            (len(events_info), self._n_segs_calib),
-            np.uint8,
-            "field-presence",
-        )
-
+        cp = _cupy()
+        if self._passthrough:
+            calibrated = prepared.data
+        else:
+            calibrated = self._slot_buffer(
+                self._calib_slot_bufs, int(slot_id) % self._n_slots,
+                prepared.data.shape, np.float32, "calib")
         sctx = stream if stream is not None else cp.cuda.Stream.null
-        if self._gather_plan is None:
-            source = next(events_info[0][sid] for sid in self._sources_by_stream
-                          if sid in events_info[0])
-            self.configure_gather(source._storage_batch().configured_locations().handle_indices)
-        with sctx:
-            mapping = self._gather_maps[slot]
-            inputs = mapping.prepare(events_info, self._gather_plan.streams,
-                                              sctx, self._budget)
-            target = calib_slot if self._passthrough else raw_slot
-            self._gather_plan.gather(inputs, target, present_slot,
-                                     self._n_pix_seg, sctx)
-        for event_index, event_dgrams in enumerate(events_info):
-            lo = event_index * self._n_segs_calib
-            hi = lo + self._n_segs_calib
-            calib_out = calib_slot[lo:hi]
-            raw_out = None if raw_slot is None else raw_slot[lo:hi]
-            present = present_slot[event_index]
-
-            with sctx:
-                if not self._passthrough:
-                    fused_calib_gpu(
-                        raw_out, self.peds_gpu, self.gmask_gpu, out=calib_out
-                    )
-                    _zero_missing_rows_gpu(calib_out, present)
-
-            yield EventContext(
-                timestamp=event_dgrams.timestamp,
-                calib_gpu=calib_out,
-                raw_gpu=raw_out,
-            )
+        for i, event in enumerate(prepared.events):
+            raw = None if self._passthrough else prepared.data[i]
+            out = calibrated[i]
+            if not self._passthrough:
+                with sctx:
+                    fused_calib_gpu(raw, self.peds_gpu, self.gmask_gpu, out=out)
+                    _zero_missing_rows_gpu(out, prepared.present[i])
+            yield EventContext(timestamp=event.timestamp, calib_gpu=out, raw_gpu=raw)
 
 
 @lru_cache(maxsize=2)
@@ -659,7 +673,8 @@ extern "C" __global__ void {name}(
     const unsigned long long* plan,
     const unsigned long long* rows, unsigned long long n_streams,
     unsigned long long n_segments, unsigned long long pixels,
-    unsigned long long tiles, {ctype}* out, unsigned char* present)
+    unsigned long long tiles, unsigned long long expected_rows,
+    unsigned long long expected_cols, {ctype}* out, unsigned char* present)
 {{
     const unsigned long long row = (unsigned long long)blockIdx.x / tiles;
     const unsigned long long pixel = ((unsigned long long)blockIdx.x % tiles)
@@ -689,6 +704,12 @@ extern "C" __global__ void {name}(
                 loc[{LOC_TYPE}] == source[2] && loc[{LOC_RANK}] == source[3] &&
                 nbytes == pixels * sizeof({ctype}) &&
                 offset <= data_bytes && nbytes <= data_bytes - offset;
+        if (valid && expected_rows) {{
+            const bool rank3 = source[3] == 3;
+            const unsigned long long dim = {LOC_DIM0} + (rank3 ? 1 : 0);
+            valid = (source[3] == 2 || (rank3 && loc[{LOC_DIM0}] == 1)) &&
+                    loc[dim] == expected_rows && loc[dim + 1] == expected_cols;
+        }}
     }}
     if (pixel == 0) present[row] = valid ? 1 : 0;
     if (pixel < pixels) {{

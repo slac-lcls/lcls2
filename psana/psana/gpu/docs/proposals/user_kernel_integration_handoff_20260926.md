@@ -34,7 +34,10 @@ task's changes.
 `6e5b8d0d096c769f9538064635db72a0b72d4bca`, in the existing active worktree.
 The design clarifications and source search carry forward on this branch.
 See the [implementation stages](user_kernel_implementation_stages_20260926.md);
-runtime work remains pending.
+the internal raw-preparation boundary is now implemented and its validation is
+tracked in [Stage 1 findings](../user_kernel_stage1_findings_20260926.md).
+The historical implementation-boundary notes below describe the handoff baseline;
+the findings and current code describe subsequent task-branch changes.
 
 ## Read these first
 

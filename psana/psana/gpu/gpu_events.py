@@ -578,6 +578,72 @@ class GpuEventManager:
             _fmt_mib(hw.get("pinned", 0)),
         )
 
+    def _setup_legacy_detector(self, det_name, det, detector_binding, source_shape,
+                               is_pre_calibrated, drp_classes, calib_leader, rank):
+        """Keep automatic calibration/geometry setup outside input preparation.
+
+        Shared serial/MPI manager boundary. Callback setup will construct a
+        DenseInputPreparer instead; MPI's earlier shared CPU caches and peer
+        exchange must also be selected consistently when that mode is wired.
+        """
+        from psana.gpu.gpu_mpi import log_gpu_mem
+
+        canonical_segment_ids = detector_binding.canonical_segment_ids
+        peds_gpu = None
+        gmask_gpu = None
+        if is_pre_calibrated:
+            _log.info(
+                "GPU detector %r: drp_classes=%s — using passthrough mode "
+                "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
+                det_name, sorted(drp_classes),
+            )
+        elif not calib_leader:
+            # Follower BD rank sharing a GPU with the leader.
+            # is_calib_leader() returned False before _setup_gpu_pipeline() was
+            # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
+            # share_calib_between_gpu_peers() will populate them later via
+            # CUDA IPC handles from the leader — at zero allocation cost.
+            _log.info(
+                "GPU detector %r: follower BD rank — skipping prep_calib_constants; "
+                "calibration constants will be shared from leader via CUDA IPC",
+                det_name,
+            )
+
+        # Canonical ordering is established before constants are copied.
+        # Raw, calibration constants, geometry, and every downstream
+        # operation therefore share the same detector-row contract.
+        det_shape = (
+            len(canonical_segment_ids),
+            int(source_shape[-2]),
+            int(source_shape[-1]),
+        )
+        if not is_pre_calibrated and calib_leader:
+            peds_gpu, gmask_gpu = prep_calib_constants(
+                det, canonical_segment_ids=canonical_segment_ids,
+                budget=self._gpu_budget,
+            )
+            log_gpu_mem(
+                f"after prep_calib_constants ({det_name})", rank=rank
+            )
+
+        gpu_detector = GPUDetector(
+            det_shape=det_shape,
+            peds_gpu=peds_gpu,
+            gmask_gpu=gmask_gpu,
+            binding=detector_binding,
+            n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
+            budget=self._gpu_budget,
+            passthrough=is_pre_calibrated,
+        )
+        if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
+            ix_all, iy_all = self._prebuilt_geometry[det_name]
+            gpu_detector.setup_geometry_from_arrays(ix_all, iy_all)
+        elif self._setup_geometry:
+            gpu_detector.setup_geometry(det)
+        log_gpu_mem(f"after setup_geometry ({det_name})", rank=rank)
+
+        return gpu_detector
+
     def _setup_gpu_pipeline(self, calib_leader=True):
         """Initialize this BD's run-scoped GPU resources and processing pipeline."""
         # Budget must exist before constructing GPUDetector objects.
@@ -766,59 +832,11 @@ class GpuEventManager:
 
             xtc_field_handles.extend(field_handles_by_segment.values())
 
-            peds_gpu = None
-            gmask_gpu = None
-            if is_pre_calibrated:
-                _log.info(
-                    "GPU detector %r: drp_classes=%s — using passthrough mode "
-                    "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
-                    det_name, sorted(drp_classes),
-                )
-            elif not calib_leader:
-                # Follower BD rank sharing a GPU with the leader.
-                # is_calib_leader() returned False before _setup_gpu_pipeline() was
-                # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
-                # share_calib_between_gpu_peers() will populate them later via
-                # CUDA IPC handles from the leader — at zero allocation cost.
-                _log.info(
-                    "GPU detector %r: follower BD rank — skipping prep_calib_constants; "
-                    "calibration constants will be shared from leader via CUDA IPC",
-                    det_name,
-                )
-
-            # Canonical ordering is established before constants are copied.
-            # Raw, calibration constants, geometry, and every downstream
-            # operation therefore share the same detector-row contract.
-            det_shape = (
-                len(canonical_segment_ids),
-                int(source_shape[-2]),
-                int(source_shape[-1]),
+            gpu_detector = self._setup_legacy_detector(
+                det_name, det, detector_binding, source_shape, is_pre_calibrated,
+                drp_classes, calib_leader, _rank,
             )
-            if not is_pre_calibrated and calib_leader:
-                peds_gpu, gmask_gpu = prep_calib_constants(
-                    det, canonical_segment_ids=canonical_segment_ids,
-                    budget=self._gpu_budget,
-                )
-                log_gpu_mem(
-                    f"after prep_calib_constants ({det_name})", rank=_rank
-                )
-
-            gpu_detector = GPUDetector(
-                det_shape=det_shape,
-                peds_gpu=peds_gpu,
-                gmask_gpu=gmask_gpu,
-                binding=detector_binding,
-                n_slots=getattr(self.dsparms, "n_gpu_streams", 2),
-                budget=self._gpu_budget,
-                passthrough=is_pre_calibrated,
-            )
-            if self._prebuilt_geometry and det_name in self._prebuilt_geometry:
-                ix_all, iy_all = self._prebuilt_geometry[det_name]
-                gpu_detector.setup_geometry_from_arrays(ix_all, iy_all)
-            elif self._setup_geometry:
-                gpu_detector.setup_geometry(det)
-            log_gpu_mem(f"after setup_geometry ({det_name})", rank=_rank)
-
+            det_shape = gpu_detector.det_shape
             opt_batch_sizes.append(optimal_kernel_batch_size(det_shape))
             self.gpu_detectors[det_name] = (det, gpu_detector)
 
@@ -1031,19 +1049,24 @@ class GpuEventManager:
                 self._batch_iter = next(self.smdr_man)
                 self._has_gpu_batch_iter = hasattr(self._batch_iter, "next_with_gpu")
 
+    def _refresh_legacy_calibration(self):
+        """Refresh the built-in recipe only, after the caller drains its users."""
+        for det_info in self.gpu_detectors.values():
+            det, gpu_detector = det_info[0], det_info[1]
+            # Skip constant computation for passthrough detectors — they have
+            # no calibration constants, and beginstep() is a no-op for them.
+            if getattr(gpu_detector, '_passthrough', False):
+                continue
+            peds, gmask = _compute_calib_constants_cpu(
+                det,
+                canonical_segment_ids=gpu_detector.canonical_segment_ids,
+            )
+            gpu_detector.beginstep(peds, gmask)
+
+
     def _dispatch_transition(self, service, dgrams):
         if service == TransitionId.BeginStep:
-            for det_info in self.gpu_detectors.values():
-                det, gpu_detector = det_info[0], det_info[1]
-                # Skip constant computation for passthrough detectors — they have
-                # no calibration constants, and beginstep() is a no-op for them.
-                if getattr(gpu_detector, '_passthrough', False):
-                    continue
-                peds, gmask = _compute_calib_constants_cpu(
-                    det,
-                    canonical_segment_ids=gpu_detector.canonical_segment_ids,
-                )
-                gpu_detector.beginstep(peds, gmask)
+            self._refresh_legacy_calibration()
 
         self.run._handle_transition(dgrams)
 
