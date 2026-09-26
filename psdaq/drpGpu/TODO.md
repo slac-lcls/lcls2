@@ -2589,12 +2589,17 @@ things gate that: the trigger setup below, an output path (WEKA is not mounted o
 The lesson for the plan's verification section: it checked that the code compiled and installed,
 so a runtime-only failure like a kwarg allowlist was invisible until the thing actually ran.
 
-**The ASIC-ordering question is answered.**  Gabriel confirms the CPU DRP's output order is
-correct, so identity is right and the `AsicForDataSubFrame = {1,3,5,0,2,4}` comment at
-`EpixUHR3x2.hh:31-37` -- *"Anything writing XTC must descramble with this"* -- is **wrong**.  He
-is looking into it.  Keeping identity was what made the CPU comparison meaningful; had the code
-been "fixed" to match the comment, the comparison would have failed for the wrong reason.  The
-comment wants correcting or deleting on `features/gpu`, being pre-existing.
+**The ASIC-ordering question is answered, and the stale table is gone.**  Gabriel confirms the
+CPU DRP's output order is correct, so tdest 3+k is ASIC k and no remapping is needed.  The
+`AsicForDataSubFrame = {1,3,5,0,2,4}` table and its comment -- *"Anything writing XTC must
+descramble with this"* -- were **wrong**, and were also never referenced by any code: I wrote
+them in `e210c54e` when the GPU EpixUHR3x2 was first added, on an assumption that did not hold.
+Removed 2026-09-25.
+
+Keeping identity in the pass-through kernel was what made the CPU comparison meaningful; had the
+code been "corrected" to match that comment, the comparison would have failed for the wrong
+reason and the table would have looked vindicated.  A confident comment with no code depending
+on it is worth distrusting.
 
 **The trigger setup is what blocks L1Accepts.**  `xpmpva` shows the sequence is not currently
 loaded.  Gabriel's notes in the appendix below specify it, and happily for the same XPM

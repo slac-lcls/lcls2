@@ -25,16 +25,14 @@ public:  // ePixUHR3x2 parameters:
   //   tdest 0: Trigger (XPM), which is where the TimingHeader lives
   //   tdest 1: Event
   //   tdest 2: Timing
-  //   tdest 3-8: ASIC data, in the order the two unbatchers deliver it
+  //   tdest 3-8: ASIC data, one sub-frame per ASIC in ASIC order
   static const unsigned NumSubFrames    { 9 };
   static const unsigned FirstDataTdest  { 3 };
-  // The Reader concatenates the data sub-frames into the calibrated buffer in
-  // tdest order, so the ASICs arrive scrambled.  Physical arrangement is
-  //     A1 | A3 | A5
-  //     A0 | A2 | A4
-  // and the mapping is A0<->tdest6, A1<->tdest3, A2<->tdest7, A3<->tdest4,
-  // A4<->tdest8, A5<->tdest5.  Anything writing XTC must descramble with this.
-  static constexpr unsigned AsicForDataSubFrame[NumAsics] { 1, 3, 5, 0, 2, 4 };
+  // Data sub-frames are concatenated in tdest order, which is the order offline
+  // expects: Gabriel confirms (2026-09-25) that Drp::EpixUHR3x2 writes its array
+  // that way and that the order is correct, so tdest 3+k is ASIC k and no
+  // remapping is needed.  An AsicForDataSubFrame table asserting otherwise used
+  // to live here; it was never referenced and its premise was wrong.
 
 public:
   unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
