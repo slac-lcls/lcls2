@@ -12,11 +12,15 @@ and the configurations that produced them.
 ## Current design
 
 Stage 1b removes built-in GPU calibration, geometry, calibrated output buffers,
-and image-specific automatic D2H. GPU routing currently exposes parsed inputs;
-`GpuTask` and publication are not implemented yet. Start with the
+and image-specific automatic D2H. GPU routing currently exposes parsed inputs.
+Stage 2 adds host-only `GpuTask` declarations and requested input/constant setup;
+callback execution and publication remain unfinished. Start with the
 [input-only example](examples/input_only.py) and
 [Stage 1b findings](docs/user_kernel_stage1b_findings_20260926.md).
-Nonzero `gpu_d2h_chunk_size` and unfinished `gpu_fn` configurations fail explicitly.
+See [Stage 2 findings](docs/user_kernel_stage2_findings_20260927.md) for the
+declaration and upload contract. Nonzero `gpu_d2h_chunk_size` fails explicitly;
+`gpu_fn=GpuTask(...)` stages dependencies but rejects event processing until
+callback execution and publication are implemented.
 CPU/hybrid detector calibration remains available through normal CPU APIs.
 
 

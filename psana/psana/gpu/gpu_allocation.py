@@ -104,7 +104,8 @@ def upload_owned(cp, arrays, budget, category='fixed'):
     """
     if budget is None:
         return tuple(cp.asarray(a) for a in arrays)
-    arrays = tuple(np.ascontiguousarray(a) for a in arrays)
+    arrays = tuple(np.asarray(a) for a in arrays)
+    arrays = tuple(a if a.flags.c_contiguous else np.ascontiguousarray(a) for a in arrays)
     stream = cp.cuda.get_current_stream()
     hold = budget.hold(sum(allocation_capacity(cp, a.nbytes) for a in arrays))
     uploaded = []

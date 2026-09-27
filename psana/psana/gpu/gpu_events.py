@@ -187,6 +187,8 @@ class GpuEventManager:
         self.gpu_det_names = list(dsparms.gpu_detector_names)
         self.gpu_detector_bindings = {}
         self.input_preparers = {}
+        self._gpu_task = getattr(dsparms, "gpu_fn", None)
+        self._task_constants = None
         self.event_pool = None
         self.gpu_reader = None
         self.gpu_xtc_configs = None
@@ -395,6 +397,16 @@ class GpuEventManager:
             n_slots=pool_depth + (len(self.configs) + 1 if self.dsparms.gpu_bulk_read else 0),
             budget=self._gpu_budget,
         )
+        if self._gpu_task is not None:
+            from .gpu_task import prepare_task_inputs, RequestedConstants
+            self._gpu_task.validate_detectors(self.gpu_det_names)
+            self.input_preparers = prepare_task_inputs(
+                self._gpu_task, self.gpu_xtc_configs, self.gpu_detector_bindings,
+                n_slots=pool_depth, budget=self._gpu_budget)
+            for preparer in self.input_preparers.values():
+                preparer.configure_gather(self.gpu_xtc_parser.handle_indices)
+            self._task_constants = RequestedConstants(self._gpu_task.calibconst, self._gpu_budget)
+            self._task_constants.refresh(getattr(self.dsparms, 'calibconst', {}))
         self._setup_input_io()
 
         # Report which I/O path kvikio will use for this run.
@@ -567,6 +579,13 @@ class GpuEventManager:
 
     def _dispatch_transition(self, service, dgrams):
         self.run._handle_transition(dgrams)
+        constants = getattr(self, '_task_constants', None)
+        if service == TransitionId.BeginStep and constants is not None:
+            # _handle_steps already drained execution and input consumers.
+            # Resolve after the host transition; BeginStep does not fetch the DB.
+            if constants.refresh(getattr(self.dsparms, 'calibconst', {}),
+                                 before_upload=self._trim_gpu_caches):
+                self._subbatch_budget_bytes = self._compute_subbatch_budget()
 
     def _handle_steps(self, step_dict):
         end_run_seen = False
@@ -801,6 +820,10 @@ class GpuEventManager:
             yield from self._yield_ready(slot_data)
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
+        if getattr(self, '_gpu_task', None) is not None:
+            raise NotImplementedError(
+                'GpuTask dependencies are staged, but callback execution and publication '
+                'are not implemented yet (Stages 3 and 4)')
         n_events = self._n_events
         try:
             while True:
@@ -982,6 +1005,9 @@ class GpuEventManager:
             budget.drain_failed_allocations()
         if self.gpu_reader is not None:
             self.gpu_reader.close()
+        constants = getattr(self, '_task_constants', None)
+        if constants is not None:
+            constants.close()
         self._closed = True
 
     def close(self):
