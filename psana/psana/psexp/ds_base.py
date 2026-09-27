@@ -71,8 +71,16 @@ class DsParms:
     gpu_stream_ids: list = None  # list[int] | None
     # Subset of gpu_stream_ids that EventBuilder also retains in the CPU batch.
     hybrid_stream_ids: list = None  # list[int] | None
+    gpu_fn: object = None  # GpuTask | None; host-only declaration
 
     def __post_init__(self):
+        if self.gpu_fn is not None:
+            from psana.gpu.gpu_task import GpuTask
+            if not isinstance(self.gpu_fn, GpuTask):
+                raise TypeError("gpu_fn must be a GpuTask declaration")
+            if not self.gpu_enabled:
+                raise ValueError("gpu_fn requires gpu_det or hybrid_det")
+            self.gpu_fn.validate_detectors(self.gpu_detector_names)
         if self.gpu_d2h_chunk_size:
             raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
         if type(self.gpu_bulk_target_bytes) is not int:
@@ -284,6 +292,10 @@ class DataSourceBase(abc.ABC):
         Detectors whose complete streams are read only by the GPU path.
     hybrid_det : str or list[str]
         Detectors whose complete streams are read by both CPU and GPU paths.
+    gpu_fn : GpuTask, optional
+        Declare GPU inputs and exact calibration keys. Stage 2 stages these
+        dependencies; event processing rejects tasks until callback dispatch
+        is implemented. An omitted task batch size defaults to one.
     gpu_bulk_read : bool
         Coalesce adjacent per-stream input datagrams (default:
         True). Set False for per-dgram comparison/debugging. Applies only to
@@ -304,13 +316,18 @@ class DataSourceBase(abc.ABC):
         utils.configure_logging(level=log_level, logfile=log_file, timestamp=False)
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
-        if kwargs.get("gpu_fn") is not None:
-            raise NotImplementedError("gpu_fn callbacks are not implemented yet; GPU routing currently exposes parsed inputs only")
+        self.gpu_fn = kwargs.get("gpu_fn")
+        if self.gpu_fn is not None:
+            from psana.gpu.gpu_task import GpuTask
+            if not isinstance(self.gpu_fn, GpuTask):
+                raise TypeError("gpu_fn must be a GpuTask declaration")
+            if not kwargs.get("exp") or any(kwargs.get(key) for key in ("files", "shmem", "drp")):
+                raise NotImplementedError("gpu_fn requires the experiment/run GPU event path")
         if kwargs.get("gpu_d2h_chunk_size", 0):
             raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
 
         # Default values
-        self.batch_size = kwargs.get("batch_size", 1000)
+        self.batch_size = kwargs.get("batch_size", 1 if self.gpu_fn is not None else 1000)
         self.max_events = kwargs.get("max_events", 0)
         self.detectors = kwargs.get("detectors", [])
         self.xdetectors = kwargs.get("xdetectors", [])
@@ -361,7 +378,7 @@ class DataSourceBase(abc.ABC):
 
         # Final sanity check.
         # batch_size=0 is allowed when a GPU mode is set: GpuEventManager will
-        # auto-compute the optimal value from GPU detector properties.
+        # select a callback-independent default of one.
         if self.batch_size == 0 and not (self.gpu_det or self.hybrid_det):
             self.batch_size = 1  # default for CPU path
         assert self.batch_size >= 0, "batch_size must be >= 0"
@@ -383,6 +400,7 @@ class DataSourceBase(abc.ABC):
             smd_callback=self.smd_callback,
             gpu_det=self.gpu_det,
             hybrid_det=self.hybrid_det,
+            gpu_fn=self.gpu_fn,
             n_gpu_streams=self.n_gpu_streams,
             gpu_d2h_chunk_size=self.gpu_d2h_chunk_size,
             gpu_memory_budget_gb=self.gpu_memory_budget_gb,
@@ -424,6 +442,7 @@ class DataSourceBase(abc.ABC):
             "auto_tune",
             "gpu_det",
             "hybrid_det",
+            "gpu_fn",
             "n_gpu_streams",
             "gpu_d2h_chunk_size",
             "gpu_memory_budget_gb",

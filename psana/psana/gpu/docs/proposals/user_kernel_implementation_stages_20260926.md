@@ -122,5 +122,11 @@ four-rank MPI exclusive/hybrid acceptance. See
 Stage 1b performance acceptance is recorded in the
 [matched regression report](../performance/user_kernel_stage1_regression_20260926.md).
 The historical Stage 1 calibration-path timing finding does not gate the intended
-Stage 1b runtime. Stages 2–6 remain pending. Next: task declaration, selective constant uploads,
-and serial/MPI task setup on the input-only runtime.
+Stage 1b runtime.
+
+Stage 2 declaration, selective constant uploads, and serial/MPI task setup are
+implemented and validated. See the [Stage 2 findings](../user_kernel_stage2_findings_20260927.md)
+for the review fixes, ownership contract, and CPU/A100/MPI acceptance results.
+Stages 3–6 remain pending. Next: producer callback dispatch and owner retention,
+followed by generic publication and host delivery; declared tasks still reject
+event processing until those parts are available.
