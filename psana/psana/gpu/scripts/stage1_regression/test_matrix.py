@@ -36,3 +36,19 @@ def test_original_full_matrix_is_unchanged(monkeypatch):
     assert cases[32:] == [(1, b, mode, cache, 2, version)
                          for b in (4, 3, 2, 1) for cache in ('warm', 'cold')
                          for mode in ('on', 'off') for version in ('stage1b', 'stage1')]
+
+
+def test_controls_and_ab_are_interleaved_and_order_balanced(monkeypatch):
+    runner = load_runner(monkeypatch)
+    variants = ('control_a', 'control_b', 'stage1b', 'stage2')
+    cases = list(runner.timed_cases(((1, 1),), ('warm',), ('on',), variants, 6))
+    assert len(cases) == len(set(cases)) == 24
+    for rep in range(1, 7):
+        order = [c[-1] for c in cases if c[4] == rep]
+        assert order == list(variants if rep % 2 else reversed(variants))
+    assert sum(c[-1] == 'control_a' for c in cases) == 6
+    # First sample of the A/B pair is A in odd rounds and B in even rounds.
+    ab = [c[-1] for c in cases if c[-1] in ('stage1b', 'stage2')]
+    assert ab[::2].count('stage1b') == ab[::2].count('stage2') == 3
+    aa = [c[-1] for c in cases if c[-1].startswith('control_')]
+    assert aa[::2].count('control_a') == aa[::2].count('control_b') == 3

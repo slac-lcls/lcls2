@@ -1,6 +1,7 @@
 # User-kernel Stage 2 performance regression
 
-Status: submitted September 27, 2026; no throughput conclusion yet.
+Status: the initial campaign completed; warm 1-BD timing remains unresolved.
+An interleaved A/A control and balanced A/B follow-up is submitted below.
 
 The focused comparison uses the accepted Stage 1b checkpoint `600669d15` and
 Stage 2 `f5b4cfb0e`. Both run the existing read/parse/dense-raw preparation
@@ -13,11 +14,11 @@ measurement. Production runtime code is unchanged by the benchmark work.
 Frozen root:
 `/sdf/scratch/users/m/monarin/gpu-validation/jf-stage2-regression-20260927-r1`
 
-| Job | Purpose | Submission state |
+| Job | Purpose | Result |
 |---|---|---|
-| 39273214 | Six pixel/launch preflights | Submitted |
-| 39273215 | Matched throughput comparison | Depends on successful 39273214 |
-| 39273216 | Constant setup/refresh characterization | Submitted independently |
+| 39273214 | Six pixel/launch preflights | Passed |
+| 39273215 | Matched throughput comparison | Completed, exit 0; 24 timed samples and six preflights |
+| 39273216 | Constant setup/refresh characterization | Completed, exit 0; five repetitions at 1/2/4 workers |
 
 `commits.json`, `native-source.txt`, and `hashes.json` pin 2,441 frozen files,
 including runtime/native dependencies, scripts, and reference data. Generated
@@ -77,3 +78,54 @@ Callback throughput remains outside scope until Stages 3–4 are executable.
 coverage checks. They also confirm that the original 64-sample full matrix is
 unchanged. The first invocation from the unbuilt source package failed import
 collection; the standalone script copy avoids loading unbuilt psana extensions.
+
+## Initial results and the control follow-up
+
+The initial throughput job completed in 56 min 5 s on sdfampere027, with all
+24 timed samples, six preflights, final manifest verification, and private-stage
+cleanup complete. [Compact results](user_kernel_stage2_results_20260927.json)
+preserve per-sample timing, read waits, cache residency, allocation charges,
+preflight launch counts, and constant-cost measurements.
+
+| Configuration | Stage 1b median events/s | Stage 2 median events/s | Change |
+|---|---:|---:|---:|
+| Warm, 1 BD | 388.35 | 356.50 | -8.20% |
+| Warm, 2 BDs | 499.03 | 495.32 | -0.74% |
+| Warm, 4 BDs | 501.37 | 524.06 | +4.53% |
+| Cold, 4 BDs | 176.40 | 176.34 | -0.04% |
+
+Warm 1-BD paired loop-time increases were 7.07, 0.40, and 2.80 seconds;
+read-completion wait increases were 7.54, 0.41, and 3.36 seconds. First-delivery
+latencies stayed around 0.3 seconds and measured cache residency was 100%.
+This locates the observed delay in completion waits without identifying its
+cause. Stage 2 changed neither KvikIO's submission/completion implementation nor
+its fallback payload-copy path. Requested-constant code is bypassed here because
+`gpu_fn=None`. Performance acceptance remains open pending the control.
+
+Constant-store measurements were stable across 1/2/4 concurrent workers: roughly
+250 ms for 192-MiB gain staging, 260 ms for an unchanged-source scan without H2D,
+and 515 ms for changed-source comparison and upload. Committed storage was
+192 MiB per worker; replacement peaked at 384 MiB. These are separate feature
+costs and do not explain the input-only loop difference.
+
+Follow-up job **39298015** uses
+`/sdf/scratch/users/m/monarin/gpu-validation/jf-stage2-controls-20260927-r1`.
+It runs one GPU and one BD, warm cache, bulk on, with the same 10,000-event,
+batch-20/depth-1 workload, input reference, environment, and runtime snapshots.
+Four pixel preflights precede 24 timed samples in a single exclusive allocation:
+six A/A pairs and six A/B pairs, with an even number of alternating-order rounds.
+
+- `control_a` and `control_b` both alias the exact Stage 1b installation at
+  `600669d15`; the runner verifies resolved path and commit equality.
+- `stage1b` uses that same installation; `stage2` uses `f5b4cfb0e`.
+- Odd rounds run A/A then A/B; even rounds run B/A then the reversed A/A labels.
+  Each side therefore runs first three times, and pair order is balanced too.
+- Reuse the same per-sample checks and record loop, first-delivery, setup,
+  read-completion waits, and allocation charges. Do not interpret short
+  diagnostic preflight rates as throughput.
+
+The original node was occupied at submission, so the control may use another
+healthy A100 node. Both comparisons share their new allocation; conclusions use
+within-allocation pairs rather than comparing absolute rates across nodes.
+The control harness passed 34 standalone tests and its frozen manifest/alias
+checks before submission. No production runtime changed.

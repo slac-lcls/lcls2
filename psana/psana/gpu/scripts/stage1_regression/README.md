@@ -123,3 +123,14 @@ timing. Record the first repetition separately from allocator-warmed repeats.
 The test has idle/drained consumers and does not measure event-pool draining,
 input-cache trimming, database access, or end-to-end DataSource setup. Concurrent
 rank wall times, host RSS, upload bytes, and budget peaks are retained in JSON.
+
+For the 1-BD A/A control and balanced A/B follow-up, use
+`--comparison stage2-control --bds 1 --caches warm --modes on --repetitions 6`.
+The frozen runtime aliases `control_a`, `control_b`, and `stage1b` must resolve
+to the same installation and commit; `stage2` keeps the candidate installation.
+The runner validates those identities before staging data and requires an even
+repetition count. Each odd round runs `control_a, control_b, stage1b, stage2`;
+each even round reverses that order. This interleaves six A/A pairs with six A/B
+pairs in one allocation, balancing both within-pair order and which pair runs
+first. Four pixel preflights precede the 24 timed samples. Runtime and per-sample
+measurement code remain identical to the initial Stage 2 campaign.
