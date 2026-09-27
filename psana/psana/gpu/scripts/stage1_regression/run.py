@@ -59,7 +59,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root', type=Path, required=True)
     p.add_argument('--source', type=Path, required=True)
-    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2'), required=True)
+    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2', 'stage2-control'), required=True)
     p.add_argument('--smoke', action='store_true')
     p.add_argument('--modes', nargs='+', choices=('on', 'off'), default=['off', 'on'])
     p.add_argument('--bds', nargs='+', type=int, choices=(1, 2, 3, 4), default=[1, 2, 3, 4])
@@ -78,10 +78,21 @@ def main():
         p.error('--cold-bds requires cold cache and unique BD counts selected by --bds')
     points = tuple((1, b) for b in a.bds)
     variants = {'stage1': ('parent', 'stage1'), 'stage1b': ('stage1', 'stage1b'),
-                'stage2': ('stage1b', 'stage2')}[a.comparison]
+                'stage2': ('stage1b', 'stage2'),
+                'stage2-control': ('control_a', 'control_b', 'stage1b', 'stage2')}[a.comparison]
     workload = 'calib' if a.comparison == 'stage1' else 'input'
     root = a.root.resolve()
     verify(root)
+    commits = json.loads((root/'commits.json').read_text())
+    if a.comparison == 'stage2-control':
+        # Label-only controls must load precisely the same frozen installation
+        # as the A side of A/B. Resolve aliases before accepting this campaign.
+        paths = [(root/'runtimes'/v/'python').resolve()
+                 for v in ('control_a', 'control_b', 'stage1b')]
+        if len(set(paths)) != 1 or len({commits[v] for v in ('control_a', 'control_b', 'stage1b')}) != 1:
+            raise ValueError('A/A controls must alias the same Stage 1b runtime and commit')
+        if a.repetitions % 2:
+            p.error('stage2-control requires an even repetition count for balanced order')
     job = os.environ['SLURM_JOB_ID']
     output = root/('job-'+job)
     output.mkdir(exist_ok=False)
@@ -101,14 +112,14 @@ def main():
     assert '0' in os.environ['SLURM_JOB_GPUS'].split(','), 'GPU 0 must belong to allocation'
     assert gpus[0][0] == '0'
     provenance = dict(job=job, host=os.uname().nodename, affinity=affinity, gpus=gpus,
-        source=str(a.source), stage=str(stage), source_commits=json.loads((root/'commits.json').read_text()),
+        source=str(a.source), stage=str(stage), source_commits=commits,
         topology=subprocess.check_output(['nvidia-smi', 'topo', '-m'], text=True),
         filesystem=subprocess.check_output(['findmnt', '-T', str(stage)], text=True),
         block_devices=subprocess.check_output(['lsblk', '-o', 'NAME,MODEL,SIZE,TYPE,MOUNTPOINT'], text=True),
         settings=dict(events=10000, batch=20, depth=1, workers=8, task_mib=1,
                       bulk_target_mib=1, d2h=0, budget='automatic device_total/BD peers',
                       modes=a.modes, caches=a.caches, cold_bds=a.cold_bds, repetitions=a.repetitions,
-                      workload=workload, variants=variants,
+                      workload=workload, variants=variants, comparison=a.comparison,
                       consumer='timestamp only', smoke=a.smoke), points=points)
     save(output/'provenance.json', provenance)
     result_rows = []
