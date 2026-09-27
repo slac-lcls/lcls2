@@ -119,5 +119,8 @@ loading, generic CUDA IPC constant sharing, and performance tuning are follow-up
 Status: Stages 1 and 1b implemented and validated on CPU and A100, including
 four-rank MPI exclusive/hybrid acceptance. See
 [Stage 1b findings](../user_kernel_stage1b_findings_20260926.md).
-Stages 2–6 remain pending. Next: task declaration, selective constant uploads,
+Stage 1b performance acceptance is recorded in the
+[matched regression report](../performance/user_kernel_stage1_regression_20260926.md).
+The historical Stage 1 calibration-path timing finding does not gate the intended
+Stage 1b runtime. Stages 2–6 remain pending. Next: task declaration, selective constant uploads,
 and serial/MPI task setup on the input-only runtime.
