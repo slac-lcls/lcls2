@@ -51,6 +51,8 @@ CPU/hybrid detector calibration remains available through normal CPU APIs.
 
 - [Current Jungfrau scaling campaign](docs/performance/jungfrau_current_scaling.md):
   current-code multi-GPU/BD rerun, validation gates and job status.
+- [User-kernel Stage 1/1b regression check](docs/performance/user_kernel_stage1_regression_20260926.md):
+  matched JF-only comparisons on one GPU with 1–4 BDs.
 - [JF + feespec one-GPU scaling](docs/performance/jf_feespec_single_gpu_scaling.md):
   batch-20 cold/warm, bulk off/on comparison with 1, 2 and 4 BDs.
 - [GPU pipeline baseline](docs/performance/gpu_pipeline_baseline.md): initial
