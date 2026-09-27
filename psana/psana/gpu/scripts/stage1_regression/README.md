@@ -97,3 +97,29 @@ python collect.py --root FROZEN_ROOT --stage1-job 39192035 --stage1b-job 3919203
 The JSON, SVG, and PNG share the output basename. Plot ranges show the two
 repetitions, not confidence intervals. `summarize.py` can inspect partial jobs;
 its provisional output must not be presented as completed acceptance.
+
+## Stage 2 focused regression
+
+`--comparison stage2` compares frozen `stage1b` and `stage2` runtime directories.
+Both use the same benchmark-only dense-input request with `gpu_fn=None`;
+callback execution remains unavailable. The stage names in `commits.json` must
+identify the exact commits used. For the focused matrix:
+
+```bash
+python run.py --root FROZEN_ROOT --source JF_XTC_DIR --comparison stage2 \
+  --bds 1 2 4 --modes on --caches warm cold --cold-bds 4 --repetitions 3
+```
+
+This runs six 200-event pixel/launch preflights, 18 warm samples, and six cold
+samples. `--smoke` runs only the six preflights. Separate the setup/first-delivery
+and descriptive post-first-delivery metrics from primary loop throughput.
+
+`constant_cost.py` measures the Stage 2 constant store separately. Run five
+repetitions with 1, 2 and 4 MPI processes sharing their one assigned GPU, using
+`PS_PARALLEL=none` and the Stage 2 runtime on `PYTHONPATH`. It measures empty setup,
+gain-only setup, unchanged-source scans, and changed-source uploads. Loading the
+frozen dictionary, CUDA context initialization, and validation copies are outside
+timing. Record the first repetition separately from allocator-warmed repeats.
+The test has idle/drained consumers and does not measure event-pool draining,
+input-cache trimming, database access, or end-to-end DataSource setup. Concurrent
+rank wall times, host RSS, upload bytes, and budget peaks are retained in JSON.

@@ -1,4 +1,4 @@
-"""Matched Stage 1/1b comparisons with the established JF cache controls."""
+"""Matched staged-runtime comparisons with the established JF cache controls."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 import hashlib
@@ -43,15 +43,29 @@ def cache_preflight(root, log_path):
     print('CACHE_PREFLIGHT_PASS', flush=True)
 
 
+def timed_cases(points, caches, modes, variants, repetitions, cold_bds=None):
+    """Keep matched versions adjacent and reverse every order on even rounds."""
+    for rep in range(1, repetitions + 1):
+        for g, b in (points if rep % 2 else tuple(reversed(points))):
+            for cache in (caches if rep % 2 else tuple(reversed(caches))):
+                if cache == 'cold' and cold_bds is not None and b not in cold_bds:
+                    continue
+                for mode in (modes if rep % 2 else tuple(reversed(modes))):
+                    for variant in (variants if rep % 2 else tuple(reversed(variants))):
+                        yield g, b, mode, cache, rep, variant
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root', type=Path, required=True)
     p.add_argument('--source', type=Path, required=True)
-    p.add_argument('--comparison', choices=('stage1', 'stage1b'), required=True)
+    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2'), required=True)
     p.add_argument('--smoke', action='store_true')
     p.add_argument('--modes', nargs='+', choices=('on', 'off'), default=['off', 'on'])
     p.add_argument('--bds', nargs='+', type=int, choices=(1, 2, 3, 4), default=[1, 2, 3, 4])
     p.add_argument('--caches', nargs='+', choices=('cold', 'warm'), default=['cold', 'warm'])
+    p.add_argument('--cold-bds', nargs='+', type=int, choices=(1, 2, 3, 4),
+                   help='restrict cold-cache samples to these selected BD counts')
     p.add_argument('--repetitions', type=int, default=2)
     a = p.parse_args()
     if a.repetitions < 1:
@@ -59,8 +73,12 @@ def main():
     for values in (a.bds, a.caches, a.modes):
         if len(values) != len(set(values)):
             p.error('matrix selections must not contain duplicates')
+    if a.cold_bds is not None and ('cold' not in a.caches or
+            len(a.cold_bds) != len(set(a.cold_bds)) or not set(a.cold_bds) <= set(a.bds)):
+        p.error('--cold-bds requires cold cache and unique BD counts selected by --bds')
     points = tuple((1, b) for b in a.bds)
-    variants = ('parent', 'stage1') if a.comparison == 'stage1' else ('stage1', 'stage1b')
+    variants = {'stage1': ('parent', 'stage1'), 'stage1b': ('stage1', 'stage1b'),
+                'stage2': ('stage1b', 'stage2')}[a.comparison]
     workload = 'calib' if a.comparison == 'stage1' else 'input'
     root = a.root.resolve()
     verify(root)
@@ -89,7 +107,7 @@ def main():
         block_devices=subprocess.check_output(['lsblk', '-o', 'NAME,MODEL,SIZE,TYPE,MOUNTPOINT'], text=True),
         settings=dict(events=10000, batch=20, depth=1, workers=8, task_mib=1,
                       bulk_target_mib=1, d2h=0, budget='automatic device_total/BD peers',
-                      modes=a.modes, caches=a.caches, repetitions=a.repetitions,
+                      modes=a.modes, caches=a.caches, cold_bds=a.cold_bds, repetitions=a.repetitions,
                       workload=workload, variants=variants,
                       consumer='timestamp only', smoke=a.smoke), points=points)
     save(output/'provenance.json', provenance)
@@ -175,18 +193,16 @@ def main():
                 for variant in variants:
                     sample(g, b, mode, 'warm', 0, variant, diagnostic=True)
         if not a.smoke:
-            # Adjacent matched pairs; reverse all orders in every even round.
-            for rep in range(1, a.repetitions + 1):
-                for g, b in (points if rep % 2 else tuple(reversed(points))):
-                    for cache in (a.caches if rep % 2 else tuple(reversed(a.caches))):
-                        for mode in (a.modes if rep % 2 else tuple(reversed(a.modes))):
-                            for variant in (variants if rep % 2 else tuple(reversed(variants))):
-                                sample(g, b, mode, cache, rep, variant)
+            for case in timed_cases(points, a.caches, a.modes, variants,
+                                    a.repetitions, a.cold_bds):
+                sample(*case)
         verify(root)
         summaries = []
         if not a.smoke:
             for _, b in points:
                 for cache in a.caches:
+                    if cache == 'cold' and a.cold_bds is not None and b not in a.cold_bds:
+                        continue
                     for bulk in a.modes:
                         for variant in variants:
                             rows = [r for r in result_rows if not r['diagnostic'] and
