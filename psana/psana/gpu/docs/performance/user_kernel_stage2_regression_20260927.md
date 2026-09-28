@@ -1,7 +1,8 @@
 # User-kernel Stage 2 performance regression
 
-Status: the initial campaign completed; warm 1-BD timing remains unresolved.
-An interleaved A/A control and balanced A/B follow-up is submitted below.
+Status: accepted for proceeding to Stage 3 after the completed interleaved A/A
+control and balanced A/B follow-up. No repeatable slowdown above the 5% gate
+was observed; run-to-run variability prevents claiming a speedup or equivalence.
 
 The focused comparison uses the accepted Stage 1b checkpoint `600669d15` and
 Stage 2 `f5b4cfb0e`. Both run the existing read/parse/dense-raw preparation
@@ -100,7 +101,7 @@ latencies stayed around 0.3 seconds and measured cache residency was 100%.
 This locates the observed delay in completion waits without identifying its
 cause. Stage 2 changed neither KvikIO's submission/completion implementation nor
 its fallback payload-copy path. Requested-constant code is bypassed here because
-`gpu_fn=None`. Performance acceptance remains open pending the control.
+`gpu_fn=None`. This initial finding motivated the control below.
 
 Constant-store measurements were stable across 1/2/4 concurrent workers: roughly
 250 ms for 192-MiB gain staging, 260 ms for an unchanged-source scan without H2D,
@@ -129,3 +130,43 @@ healthy A100 node. Both comparisons share their new allocation; conclusions use
 within-allocation pairs rather than comparing absolute rates across nodes.
 The control harness passed 34 standalone tests and its frozen manifest/alias
 checks before submission. No production runtime changed.
+
+## Completed control and acceptance
+
+Job **39298015** completed with exit **0:0** in **1:05:18** on sdfampere014.
+All 24 timed samples and four pixel preflights passed. Final manifest verification
+and private node-local stage removal completed (`complete=true`). The
+[compact control evidence](user_kernel_stage2_controls_20260927.json) preserves
+all sample timings, paired changes, per-rank counts/charges, launch preflights,
+source identities, and log/manifest hashes.
+
+| Comparison | A median loop | B median loop | B rate change |
+|---|---:|---:|---:|
+| Identical Stage 1b code, A/A | 37.634 s | 37.652 s | -0.05% |
+| Stage 1b / Stage 2, A/B | 37.731 s | 36.104 s | +4.51% |
+
+Rates use 10,000 events divided by median loop seconds: Stage 1b 265.03 events/s
+and Stage 2 276.98 events/s. The Stage 2 median loop is 1.628 seconds shorter.
+This excludes DataSource/run setup and includes first-delivery work in the loop.
+
+Individual A/B paired rate changes were -0.65%, -11.28%, +1.02%, +5.36%,
++36.03%, and +39.75% (median paired change +3.19%). A/A paired changes ranged
+from -2.02% to +4.21%. The last round also sped up substantially for both
+identical-code control labels; late fast runs show much shorter read-completion
+waits. Even the first four balanced rounds give a median-loop rate change of
+about -0.97%, below the investigation threshold. These observations do not
+establish the cause of timing variability and do not support attributing the
+positive aggregate result to Stage 2 code.
+
+Every timed sample delivered the expected 10,000 events, 335,571,760,000 useful
+bytes and 50,000 requests, with zero CPU BD payload reads, 100% measured cache
+residency before/after, and identical peak owned-plus-held storage of
+1,344,113,152 bytes. Each preflight checked three pixel samples and recorded
+ten launches each for walk, locator initialization, field location, and gather.
+
+Decision: the initial warm 1-BD slowdown did not reproduce as a consistent
+Stage 2 penalty, and the other initial configurations already passed the gate.
+Accept Stage 2 for continued development and proceed to producer dispatch and
+owner retention. Preserve the timing evidence and rerun callback-path performance
+once the integrated publication/delivery path exists; this acceptance does not
+cover that future workload.
