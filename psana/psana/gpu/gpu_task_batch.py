@@ -65,13 +65,14 @@ class BatchInputContext:
     """Borrowed aligned inputs, valid until closed by the execution owner.
 
     timestamps/batch_event_indices are immutable host tuples; their *_gpu
-    counterparts are contiguous uint64 device arrays. Dense data/presence and
+    counterparts are contiguous uint64 device arrays, uploaded together on first
+    device-metadata access during the callback. Dense-only callbacks allocate
+    and upload no task metadata. Dense data/presence and
     field rows all use exactly this event ordering. Step/run/batch IDs are host
     scalars. Registered input leases must outlive every consumer of these views.
     """
     def __init__(self, events, task, prepared, bindings, constants, stream,
                  owners, *, budget=None, batch_id=0, run=None, step_generation=0):
-        import cupy as cp
         self.timestamps = tuple(int(e.timestamp) for e in events)
         self.batch_event_indices = tuple(int(e.batch_event_index) for e in events)
         self.batch_id, self.run, self.step_generation = batch_id, run, step_generation
@@ -83,6 +84,9 @@ class BatchInputContext:
         self._fields = {}
         self._timestamps_gpu = self._indices_gpu = None
         self.pinned_nbytes = 0
+        self._events, self._stream, self._owners, self._budget = events, stream, owners, budget
+        self._metadata_open = True
+        self._metadata_started = self._metadata_ready = False
         for name in task.inputs:
             if not isinstance(name, str):
                 continue
@@ -94,9 +98,18 @@ class BatchInputContext:
             identity = tuple((e.batch_event_index, e.timestamp) for e in value.events)
             if identity != tuple(zip(self.batch_event_indices, self.timestamps)):
                 raise ValueError('task dense input event identities are not aligned')
-        if not events:
-            return  # No allocations, transfers, or dispatch for an empty selection.
 
+    def _ensure_metadata(self):
+        if self._metadata_ready or not self.size:
+            return
+        if not self._metadata_open:
+            raise RuntimeError('device metadata must be requested during the callback')
+        if self._metadata_started:
+            raise RuntimeError('previous device metadata initialization failed')
+        self._metadata_started = True
+        import cupy as cp
+        task, bindings, events = self._task, self._bindings, self._events
+        stream, owners, budget = self._stream, self._owners, self._budget
         nbytes = metadata_bytes(task, bindings, self.size)
         pinned = cp.cuda.alloc_pinned_memory(nbytes)
         # Pinned pools may return a larger block. Only upload the logical
@@ -141,6 +154,12 @@ class BatchInputContext:
                 target[offset:offset+count].reshape(rows.shape), segments)
             offset += count
         target.set(host, stream=stream)  # One bulk upload, zero metadata kernels.
+        self._metadata_ready = True
+
+    def seal(self):
+        """Forbid new GPU work after callback return, before producer completion."""
+        self._metadata_open = False
+        self._events = self._stream = self._owners = self._budget = None
 
     def _require_active(self):
         if not self._active:
@@ -149,11 +168,13 @@ class BatchInputContext:
     @property
     def timestamps_gpu(self):
         self._require_active()
+        self._ensure_metadata()
         return self._timestamps_gpu
 
     @property
     def batch_event_indices_gpu(self):
         self._require_active()
+        self._ensure_metadata()
         return self._indices_gpu
 
     def _input(self, name):
@@ -175,6 +196,7 @@ class BatchInputContext:
         selector = (detector, algorithm, field)
         if selector not in self._task.inputs:
             raise KeyError(f'field {selector!r} was not declared')
+        self._ensure_metadata()
         return self._fields.get(selector)  # None only for an empty selection.
 
     def calibconst(self, detector, key):
@@ -194,6 +216,7 @@ class BatchInputContext:
         return self._bindings[detector].canonical_segment_ids
 
     def close(self):
+        self.seal()
         self._active = False
         self._task = self._prepared = self._bindings = self._constants = None
         self._fields.clear()

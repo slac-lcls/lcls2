@@ -14,9 +14,12 @@ def main():
     p.add_argument('--event-runtime', type=Path, required=True)
     p.add_argument('--batch-runtime', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--profiles', nargs='+', choices=('micro', 'jungfrau'), default=['micro', 'jungfrau'])
+    p.add_argument('--batch-metadata-policy', choices=('eager', 'on-demand'), default='on-demand')
     p.add_argument('--rounds', type=int, default=6)
-    p.add_argument('--micro-submissions', type=int, default=200)
-    p.add_argument('--jungfrau-submissions', type=int, default=50)
+    p.add_argument('--micro-submissions', type=int, default=2000)
+    p.add_argument('--jungfrau-submissions', type=int, default=200)
+    p.add_argument('--warmup-submissions', type=int, default=500)
     a = p.parse_args()
     if a.rounds < 2 or a.rounds % 2:
         p.error('use an even number of balanced rounds >= 2')
@@ -25,7 +28,7 @@ def main():
     cases = []
     start = time.monotonic()
     for round_id in range(1, a.rounds+1):
-        profiles = ('micro', 'jungfrau') if round_id % 2 else ('jungfrau', 'micro')
+        profiles = a.profiles if round_id % 2 else list(reversed(a.profiles))
         order = ('event', 'batch') if round_id % 2 else ('batch', 'event')
         for profile in profiles:
             for dispatch in order:
@@ -35,6 +38,8 @@ def main():
                 output = a.output/(name+'.json')
                 command = [sys.executable, str(script), '--output', str(output),
                            '--dispatch', dispatch, '--profile', profile, '--repetitions', '1',
+                           '--metadata-policy', a.batch_metadata_policy,
+                           '--warmup-submissions', str(a.warmup_submissions),
                            '--submissions', str(a.micro_submissions if profile == 'micro' else a.jungfrau_submissions)]
                 if round_id % 2 == 0: command.append('--reverse')
                 print('CALLBACK_CASE_START', name, flush=True)
@@ -51,7 +56,7 @@ def main():
                     {k: v for k, v in c.items() if k != 'data'} for c in cases], indent=2)+'\n')
                 print('CALLBACK_CASE_COMPLETE', name, round(time.monotonic()-case_start, 2), flush=True)
     summary = []
-    for profile in ('micro', 'jungfrau'):
+    for profile in a.profiles:
         for size in (1, 3, 20):
             for depth in (1, 2):
                 for mode in ('none', 'empty', 'scratch', 'publish', 'scratch_prealloc', 'publish_prealloc'):
@@ -72,8 +77,8 @@ def main():
                                 paired_deltas=[p['batch'][key]-p['event'][key] for p in pairs],
                                 paired_percent=[100*(p['batch'][key]/p['event'][key]-1) for p in pairs])
                     summary.append(row)
-    (a.output/'summary.json').write_text(json.dumps(dict(complete=True, rounds=a.rounds,
-        wall_seconds=time.monotonic()-start, event_runtime=str(a.event_runtime),
+    (a.output/'summary.json').write_text(json.dumps(dict(complete=True, rounds=a.rounds, profiles=a.profiles, batch_metadata_policy=a.batch_metadata_policy,
+        wall_seconds=time.monotonic()-start, warmup_submissions=a.warmup_submissions, event_runtime=str(a.event_runtime),
         batch_runtime=str(a.batch_runtime), summary=summary), indent=2)+'\n')
     print('CALLBACK_COMPARISON_COMPLETE', round(time.monotonic()-start, 2), flush=True)
 

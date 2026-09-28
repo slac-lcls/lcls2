@@ -3,8 +3,8 @@
 Status: required by the user on September 27. Stage 3a inputs are implemented
 and validated; see [findings](../user_kernel_stage3a_findings_20260927.md).
 Stage 3b single invocation/publication is also implemented and validated; see
-[findings](../user_kernel_stage3b_findings_20260927.md). Stage 3c measurements are running; performance
-acceptance remains pending. See the [campaign](../user_kernel_stage3c_findings_20260927.md).
+[findings](../user_kernel_stage3b_findings_20260927.md). Stage 3c is accepted after the on-demand metadata correction; scheduling
+counts and matched performance gates passed. See the [campaign](../user_kernel_stage3c_findings_20260927.md).
 This amendment supersedes the per-event callback contract and the deferral of
 batch callbacks in the original proposal, handoff, and implementation stages.
 Complete these Stage 3 corrections before Stage 4 public delivery.
@@ -49,7 +49,9 @@ Source: `gpu_task.py`, `gpu_producer.py`, `gpu_detector.py`, `gpu_stream.py`.
 - Generic field access returns batch descriptors referencing existing locator
   tables, with event/segment-to-window/row mappings and explicit absence.
   Support independent input-window bases. Prepare any required device mapping
-  in bulk; no locator D2H, per-event metadata kernels, or parser re-launches.
+  in one bulk upload on first device-metadata request inside the callback;
+  dense-only callbacks need no metadata upload. No locator D2H, per-event
+  metadata kernels, or parser re-launches.
 - Constants and canonical segment IDs remain shared read-only values. Specify
   which identity/mapping arrays are host or device data; kernels needing an
   identity array receive one bulk-prepared device representation.

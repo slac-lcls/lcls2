@@ -5,6 +5,7 @@ compilation, fixture uploads, preallocation and correctness copies are outside
 timing. The Jungfrau-shaped case is synthetic, not end-to-end JF throughput.
 """
 import argparse
+import gc
 from contextlib import contextmanager
 import json
 from pathlib import Path
@@ -77,13 +78,15 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--output', type=Path, required=True)
     p.add_argument('--dispatch', choices=('event', 'batch'), default='batch')
+    p.add_argument('--metadata-policy', choices=('eager', 'on-demand'), default='on-demand')
     p.add_argument('--profile', choices=('micro', 'jungfrau'), default='micro')
     p.add_argument('--repetitions', type=int, default=6)
-    p.add_argument('--submissions', type=int, default=200)
+    p.add_argument('--submissions', type=int, default=2000)
+    p.add_argument('--warmup-submissions', type=int, default=500)
     p.add_argument('--reverse', action='store_true')
     a = p.parse_args()
-    if a.repetitions < 1 or a.submissions < 1:
-        p.error('use positive submissions and repetitions')
+    if a.repetitions < 1 or a.submissions < 1 or a.warmup_submissions < 1:
+        p.error('use positive submissions, warmup submissions and repetitions')
     import cupy as cp
     import psana
     from psana.gpu import GpuTask, gpu_detector as gd
@@ -109,10 +112,11 @@ def main():
     scratch_kernel.compile()
     publish_kernel.compile()
     modes = ('none', 'empty', 'scratch', 'publish', 'scratch_prealloc', 'publish_prealloc')
-    result = dict(dispatch=a.dispatch, profile=a.profile, scope=__doc__, psana=psana.__file__,
+    result = dict(dispatch=a.dispatch, profile=a.profile, metadata_policy=a.metadata_policy, scope=__doc__, psana=psana.__file__,
                   cupy=cp.__version__, cuda=cp.cuda.runtime.runtimeGetVersion(),
                   device=str(cp.cuda.runtime.getDeviceProperties(0)['name']),
-                  repetitions=a.repetitions, submissions=a.submissions, preflights=[], samples=[])
+                  repetitions=a.repetitions, submissions=a.submissions,
+                  warmup_submissions=a.warmup_submissions, preflights=[], samples=[])
     a.output.parent.mkdir(parents=True, exist_ok=True)
 
     for batch_size in (1, 3, 20):
@@ -256,12 +260,17 @@ def main():
                     _, counts = run_case(mode, ncheck, check=True)
                 assert framework == dict(walk=0, init=0, locate=0, gather=ncheck,
                     completion_events=ncheck, gather_map_uploads=ncheck,
-                    task_metadata_uploads=ncheck if a.dispatch == 'batch' and mode != 'none' else 0), framework
+                    task_metadata_uploads=ncheck if a.dispatch == 'batch' and mode != 'none' and a.metadata_policy == 'eager' else 0), framework
                 result['preflights'].append(dict(mode=mode, batch_size=batch_size, depth=depth,
                     submissions=ncheck, framework=framework, user=counts))
             for rep in range(1, a.repetitions+1):
                 order = modes if (rep % 2 == 1) != a.reverse else tuple(reversed(modes))
                 for mode in order:
+                    # Pixel verification can leave the GPU idle for seconds.
+                    # Warm again immediately before each sample; reset host GC
+                    # outside timing, leaving collection enabled within loops.
+                    run_case(mode, a.warmup_submissions)
+                    gc.collect()
                     row, _ = run_case(mode, a.submissions)
                     row['repetition'] = rep
                     result['samples'].append(row)

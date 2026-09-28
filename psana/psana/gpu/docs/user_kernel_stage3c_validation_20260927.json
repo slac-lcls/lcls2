@@ -1,0 +1,316 @@
+{
+  "status": "accepted: correctness, per-subbatch scheduling, no repeatable performance regression above 5% gate",
+  "source_base": "be8541fdb020757f16e1efb642de93207c4bdcd8",
+  "source_files": {
+    "psana/psana/gpu/gpu_stream.py": "2ce4feba4dbeab8215ef9ede978ab808c3fbbc567913acbdfd7a138e975a2fbd",
+    "psana/psana/gpu/gpu_task_batch.py": "b92d563d092ffe2e81567f3c3ca33d6b1462676bf23f508e8b612710374e5b59",
+    "psana/psana/tests/gpu/unit/test_gpu_task_batch.py": "f3b598fb07bf40472451397dac3f1674ec2e832ba05dca0ccd9f0706343b35a0",
+    "psana/psana/tests/gpu/integration/test_gpu_task_batch_device.py": "ec58bb6d45ab117420efe275f0d6a89aee6ae1bae0e34e515a73f939d5942221"
+  },
+  "jobs": {
+    "cpu": 39318857,
+    "gpu": 39318858,
+    "mpi": 39318859,
+    "pilot": 39318894,
+    "full_comparison": 39319264,
+    "input_only": 39317728
+  },
+  "counts": {
+    "local_unit_passed": 449,
+    "main_passed": 516,
+    "main_skipped": 128,
+    "main_deselected": 7,
+    "byhand_passed": 4,
+    "device_passed": 128
+  },
+  "evidence_sha256": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/manifest.json": "0891cc6f9143a3bff9e42599cde6268c6ff706be7254144fac0e9ae07547564f",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/source.patch": "515638dbf62d6dfa3a6129a999643a513ba28a9cb2ee40f0aa00219213d5e235",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/main.log": "c260e084d69756d4d82e8f2ec242e18896f7a92e6502defb9eab7aa11bf5d389",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/byhand.log": "2199d45cc64aee9a7515b665d705d15dadf58a84bdbdb6236d1e7d92144edfb3",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/device.log": "901ad61817725529b42d04a794d475c6d26f7861d12cfd501380120fe25107a0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/cpu-39318857.log": "72b1e3d5b8b7a342559a4dfc08fb5ecd074fcb16f233f61a580d84c97f0f0aee",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/gpu-39318858.log": "4429e75a7902530fa7664089e1cd4e83effa12466bdd6f17ba61a5013e1470b9",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/mpi-39318859.log": "fee7d85100508b06247e3013ef8682124ac803c75039c405ec829702fc2ee307",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/mpi-reference.json": "c4051529204e1f7bfd9c2feadba3723a4484b073935470dcda07cc00925d6c55",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/mpi-exclusive.log": "a81bd259735c8df4d6a9dceab36f205fc3442481811a75e43b8e053c4a4ef8c0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/mpi-hybrid.log": "9b514ba67d1c3033b2219738ae385cd091251ee1e464d8bddf86c2d66f88e90e",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/mpi-task.log": "82092fce940bdef57b2d4804f1a2845a42c0a09e9c5eb8f140b78f490d328df1",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/pilot-39318894.log": "e22755afba9cd99688cf156b5ecdc53bb11bd411a6527d70337c2bf11b78a3c3",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3c-lazy-20260927-r1/pilot-39318894/summary.json": "50b29d36019e6315fafc16ecc454967480ac7c4c55861b96d5b9a9400c740d14",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-regression-20260927-r1/job-39317728/summary.json": "7d9723b989c0d8e31d6ddfb178b5efaa1cf660748c1289f710d1c51734701ac2",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-regression-20260927-r1/job-39317728/results.json": "353c82d22bc32c78cbdc120b7979b443bf9a251c83552004459dac9f86231311",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-regression-20260927-r1/job-39317728/provenance.json": "4206a4b83ff46e259896a34382370427735ec3988014b6f1f551a3e6d7696fbd",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-regression-20260927-r1/hashes.json": "e81684c8544a2057a1c22f25fd8fe0429475814a6c6ee024eab022ac10221993",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-regression-20260927-r1/commits.json": "025f8361dd9bad3e6dac02b97f618fa71601d5887e708480e3271a27069d7cf3",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-regression-20260927-r1/throughput-39317728.log": "a50af0ee28fb9c6b9c96c3688d47f9f4f63b49990928795890923f1368c9b20f",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/hashes.json": "af885bfd847e9e1fd6d852d276a1c0436fc102e65d2d3966e1e194ee55ff8e91",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/runtime-source.json": "11348639c69cc60c1b06104e29509711bcc0b1ee7819c253c329b3ae07581e0a",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/callback-39319264.log": "d86bdfef4d5e56c37d71b1356da1a8a604b10c68fabbf8ba180296e26babae1b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/summary.json": "cd53478bc6830b2245d1b58b7ff634d6e35f5954010d16c746ac35733e5e0de8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/progress.json": "1f173915b5a4e20ce5e1f15ce7ddc4fba531b981db4bb9e8b7f9ad9bddadf8ce",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r5-micro-event.json": "d5465858e3dd9693bebb077969a13bf15c633329c11bd4262e6a2f47c7ec3344",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r6-micro-event.json": "6235751fadb2b0bd43d8e1357026bbea05800d0d1eb073b7958906f2c41c22a8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r2-micro-event.json": "2f06b6919446c0332e5a07a1d2fb0fd1449813faf1d9a7c4150b82cf71a846f0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r2-jungfrau-batch.json": "9250e1d255a4c9750c42ecffc07354dcad63ad6061f72cb45db4e8125260f9b6",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r5-micro-batch.json": "80fa63d22514ab6e764e44c60de4985aaeac36eab574773642fb03c0897850cd",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r5-jungfrau-event.json": "4439ef2769bc99aef499f0757fb6c137cda3ebf894cc30edac16f1eb59b41b64",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r2-jungfrau-event.json": "1b812d7616c19f848a2a774d2b69cfb99f1caed034c25d1b73175f16936ef79d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r3-jungfrau-event.json": "f9da1fd3e30943b7b40051f56ce89495c6dad68a32a223f82962830bc9e7aefc",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r1-jungfrau-event.json": "9378cfa93bc32c7658de97e2ae38e06b27b7a47b383d53788c4ac4f97267336c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r4-jungfrau-event.json": "f25dd130bc9119513c307c78bab67ff4a1f9a5ca2166be6e215c1f6063e957bf",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r6-jungfrau-batch.json": "4a6e8b0a575b0585a0781f978f89cbb33be8874c55f5b87fdeb8119e27b3ac24",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r1-micro-batch.json": "e636b149f4a6d0bf62876dd534c68f0f34f650739f8c072a99d8fde29070db45",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r1-jungfrau-batch.json": "f53e80058f758324f60898d0f0aa40300e94ebd12a76a05b7f7a4dd9479df6df",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r5-jungfrau-batch.json": "d04ed4bbcce288a2ce860e49af8432e5f6c1d054a6ef7052b0628a62f71ce3e0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r3-jungfrau-batch.json": "fc61f2583b08efc3f34ae0d7f24e6a95c34589e3d0de52e315682d26eb319604",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r6-micro-batch.json": "d1980a7822f35cc9a2d48c8a371893cc773a45a92a7eb961217a9904e35fad66",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r3-micro-event.json": "113ee9355141e2dc25e0dd9dc271a90b6b8ca297180d7c3ef3988da5d755be4c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r1-micro-event.json": "91404e6690e25f3902d9a64644f0a841516fc71358a2fcef8fc6e1053865b55d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r4-jungfrau-batch.json": "2d162ccdf97ee15b37812c078472c2f9b8f6d3b77c17b911f73116f87959a06f",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r3-micro-batch.json": "79cff45e93fe43f6bc75982e0572fa69ce234a56b0eea06dc546de00aff6a0f4",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r4-micro-event.json": "3759a3bc58173fb627fcc7a9cb2b845bd04b6f1403244d1e5fa406a4ec9b949b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r4-micro-batch.json": "6c4fde345413d3159c7dd3f8f4147fee4aed33899ab10736842799e210251034",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r6-jungfrau-event.json": "3ce677f459d44d4823d61496603851473b5d0b847d87fc862278a43a5c387bda",
+    "/sdf/scratch/users/m/monarin/gpu-validation/jf-stage3c-lazy-callback-comparison-20260927-r1/job-39319264/r2-micro-batch.json": "7d80d8c5946f8f2d2f30dc48b9ea7edf43813ec9c9a2816267bcb7c6a5d42182"
+  },
+  "input_only": {
+    "complete": true,
+    "timed_samples": 40,
+    "pixel_preflights": 8,
+    "paired_results": [
+      {
+        "bds": 1,
+        "cache": "warm",
+        "variants": [
+          "control_a",
+          "control_b"
+        ],
+        "loop_seconds": [
+          [
+            36.07997659780085,
+            26.619838845916092,
+            27.789731653407216,
+            26.749597073998302
+          ],
+          [
+            41.46923716785386,
+            27.686374401673675,
+            29.159187145065516,
+            27.50989476405084
+          ]
+        ],
+        "paired_loop_percent": [
+          14.936984660853403,
+          4.006543998748535,
+          4.927919091620292,
+          2.8422771675749026
+        ],
+        "median_paired_loop_percent": 4.467231545184413,
+        "setup_seconds_max_rank": [
+          [
+            1.6828511841595173,
+            1.667412640992552,
+            1.5350368288345635,
+            1.7392056612297893
+          ],
+          [
+            1.626823206897825,
+            1.608237324282527,
+            1.669410543050617,
+            1.674383357167244
+          ]
+        ],
+        "median_paired_setup_delta_s": -0.05760164698585868
+      },
+      {
+        "bds": 1,
+        "cache": "warm",
+        "variants": [
+          "stage2",
+          "stage3"
+        ],
+        "loop_seconds": [
+          [
+            35.34175265999511,
+            26.708086175844073,
+            27.9774860618636,
+            27.200285696890205
+          ],
+          [
+            39.4667365308851,
+            28.36081450385973,
+            27.80807860987261,
+            26.84901158697903
+          ]
+        ],
+        "paired_loop_percent": [
+          11.671701487400309,
+          6.1881196471144095,
+          -0.6055134890118441,
+          -1.291435368825311
+        ],
+        "median_paired_loop_percent": 2.791303079051283,
+        "setup_seconds_max_rank": [
+          [
+            1.5289890570566058,
+            1.700181338004768,
+            1.794755656272173,
+            1.778836827725172
+          ],
+          [
+            1.6081636399030685,
+            1.6307492717169225,
+            1.66915721911937,
+            1.8461304889060557
+          ]
+        ],
+        "median_paired_setup_delta_s": -0.0010692025534808636
+      },
+      {
+        "bds": 2,
+        "cache": "warm",
+        "variants": [
+          "stage2",
+          "stage3"
+        ],
+        "loop_seconds": [
+          [
+            28.03070443496108,
+            24.25280685396865,
+            21.818070156034082,
+            20.67792766308412
+          ],
+          [
+            29.711804517079145,
+            21.381413102149963,
+            21.171851428691298,
+            21.855397494044155
+          ]
+        ],
+        "paired_loop_percent": [
+          5.997352246422061,
+          -11.839428603493051,
+          -2.961850991958903,
+          5.694331898946281
+        ],
+        "median_paired_loop_percent": 1.366240453493689,
+        "setup_seconds_max_rank": [
+          [
+            1.84051891323179,
+            1.8431700747460127,
+            1.8587377713993192,
+            1.8788021206855774
+          ],
+          [
+            1.9437931547872722,
+            1.8797944798134267,
+            1.8175626960583031,
+            1.921097797807306
+          ]
+        ],
+        "median_paired_setup_delta_s": 0.03946004109457135
+      },
+      {
+        "bds": 4,
+        "cache": "warm",
+        "variants": [
+          "stage2",
+          "stage3"
+        ],
+        "loop_seconds": [
+          [
+            26.11959073320031,
+            23.7258869856596,
+            23.59469472337514,
+            23.812226588837802
+          ],
+          [
+            25.346364848781377,
+            23.116087957285345,
+            21.46498222183436,
+            23.174701187293977
+          ]
+        ],
+        "paired_loop_percent": [
+          -2.9603292498610823,
+          -2.570184325428293,
+          -9.026234611253036,
+          -2.6773027678254624
+        ],
+        "median_paired_loop_percent": -2.8188160088432723,
+        "setup_seconds_max_rank": [
+          [
+            2.273309977725148,
+            2.4092459352687,
+            2.339158857241273,
+            2.184033011086285
+          ],
+          [
+            2.3064246620051563,
+            4.814531158190221,
+            2.3350253738462925,
+            2.344002502039075
+          ]
+        ],
+        "median_paired_setup_delta_s": 0.09654208761639893
+      },
+      {
+        "bds": 4,
+        "cache": "cold",
+        "variants": [
+          "stage2",
+          "stage3"
+        ],
+        "loop_seconds": [
+          [
+            32.17231403803453,
+            32.274894929956645,
+            31.853040338028222,
+            30.633743009064347
+          ],
+          [
+            32.5369645669125,
+            32.137686701025814,
+            30.2805274031125,
+            29.97775170719251
+          ]
+        ],
+        "paired_loop_percent": [
+          1.1334295955425455,
+          -0.42512370444148795,
+          -4.936775008689997,
+          -2.1414010742263234
+        ],
+        "median_paired_loop_percent": -1.2832623893339057,
+        "setup_seconds_max_rank": [
+          [
+            2.3575193071737885,
+            2.385139302816242,
+            2.3466866351664066,
+            2.211000424809754
+          ],
+          [
+            2.395628986880183,
+            4.77410046197474,
+            2.221326797734946,
+            2.196441958658397
+          ]
+        ],
+        "median_paired_setup_delta_s": 0.011775606777518988
+      }
+    ],
+    "acceptance": "No repeatable >5% loop regression beyond observed A/A variation. Warm/cold 4-BD round 2 startup outliers retained; other startup pairs near parity.",
+    "runtime_note": "Stage2 f5b4cfb0e versus Stage3b a1c7ae252 no-task path; on-demand candidate changes task-only BatchInputContext/dispatch. Candidate also directly covered by callback no-task controls."
+  },
+  "callback_comparison": {
+    "complete": true,
+    "rounds": 6,
+    "cases": 72,
+    "preflights": 864,
+    "samples": 864,
+    "maximum_case_median_loop_slowdown_percent": 1.6414027668776754,
+    "report": "user_kernel_stage3c_performance_20260928.json",
+    "scope": "Internal scheduling; public-loop comparison follows in Stage 4. Dense-only callbacks upload zero metadata; metadata-requesting correctness tests validate one bulk upload."
+  }
+}
