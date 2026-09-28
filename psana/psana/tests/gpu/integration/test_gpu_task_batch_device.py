@@ -49,7 +49,12 @@ def test_aligned_inputs_absent_detector_selection_and_bulk_upload(monkeypatch, s
             return self.array.set(*a, **kw)
     monkeypatch.setattr(gd, '_batched_gather_kernel', counted)
     monkeypatch.setattr(tb, 'owned_empty', lambda *a, **kw: UploadCounter(original_allocate(*a, **kw)))
-    task = GpuTask(lambda *a: None, ['camera.raw', 'other.raw', ('camera','raw','counter')],
+    def request_metadata(batch, stream):
+        # All GPU metadata is requested before producer completion is recorded.
+        assert batch.timestamps_gpu is not None
+        assert batch.batch_event_indices_gpu is not None
+        assert batch.field('camera','raw','counter') is not None
+    task = GpuTask(request_metadata, ['camera.raw', 'other.raw', ('camera','raw','counter')],
                    [('camera','gain')])
     pool = EventPool(n=1, budget=budget)
     rec = pool.submit(NS(iter_events=lambda:iter(specs)), None, envelopes(specs[:limit]),
@@ -167,7 +172,7 @@ def test_failed_metadata_upload_retains_pinned_source_and_charge_until_retry(mon
     monkeypatch.setattr(tb,'owned_empty',lambda *a,**kw:FailingUpload(allocate(*a,**kw)))
     with pytest.raises(RuntimeError,match='unproven metadata upload'):
         pool.submit(NS(iter_events=lambda:iter(specs)),None,envelopes(specs),
-                    input_windows=(window,),batch_id=7,task=GpuTask(lambda *a:None))
+                    input_windows=(window,),batch_id=7,task=GpuTask(lambda batch, stream:batch.timestamps_gpu))
     gc.collect()
     assert refs[0]() is not None and refs[0]().nbytes==16
     assert pool.pinned_bytes()>=16 and pool.active_count==1

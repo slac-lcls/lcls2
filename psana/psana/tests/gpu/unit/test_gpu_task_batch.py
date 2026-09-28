@@ -61,11 +61,16 @@ def test_pinned_pool_rounding_does_not_expand_device_upload(monkeypatch):
     events = (Event(3,100), Event(8,102))
     context = BatchInputContext(events, GpuTask(lambda *a:None), {}, {}, None,
                                None, owners, budget=budget)
+    assert budget.committed() == 0 and not owners and context.pinned_nbytes == 0
+    np.testing.assert_array_equal(context.timestamps_gpu, [100,102])
     assert budget.committed() == 32
     assert owners[0].host.nbytes == owners[0].device.nbytes == 32
     assert context.pinned_nbytes == owners[0].pinned_nbytes == 512
     np.testing.assert_array_equal(context.timestamps_gpu, [100,102])
     np.testing.assert_array_equal(context.batch_event_indices_gpu, [3,8])
+    context.seal()
+    np.testing.assert_array_equal(context.timestamps_gpu, [100,102])
+    assert len(owners) == 1 and budget.committed() == 32
 
 
 def test_task_admission_includes_absent_dense_rows_and_metadata(monkeypatch):
@@ -95,3 +100,38 @@ def test_task_admission_includes_absent_dense_rows_and_metadata(monkeypatch):
     manager._gpu_task = None
     assert manager._task_input_requirements(costs, 0) == []
     assert counts == [('fast', 2, 0), ('slow', 0, 0)]
+
+
+def test_dense_only_context_never_touches_cuda_and_cannot_upload_after_seal(monkeypatch):
+    monkeypatch.setitem(sys.modules, 'cupy', None)
+    events = (Event(3,100), Event(8,102))
+    data, presence = np.ones((2,1)), np.ones((2,1), dtype=bool)
+    owners = []
+    context = BatchInputContext(events, GpuTask(lambda *a:None, ['jf.raw']),
+        {'jf.raw':NS(events=events, data=data, present=presence)},
+        {'jf':NS(canonical_segment_ids=(4,))}, None, None, owners)
+    assert context.input('jf.raw') is data and context.present('jf.raw') is presence
+    assert context.timestamps == (100,102) and context.segment_ids('jf') == (4,)
+    assert not owners and context.pinned_nbytes == 0
+    context.seal()
+    with pytest.raises(RuntimeError, match='during the callback'):
+        context.timestamps_gpu
+    assert not owners and context.pinned_nbytes == 0
+
+
+def test_failed_metadata_initialization_cannot_expose_partial_views_or_retry(monkeypatch):
+    calls = []
+    class DeviceArray(np.ndarray):
+        def set(self, source, stream=None):
+            calls.append(1)
+            raise ValueError('upload failed')
+    monkeypatch.setitem(sys.modules, 'cupy', NS(
+        empty=lambda shape,dtype:np.empty(shape,dtype).view(DeviceArray),
+        cuda=NS(alloc_pinned_memory=lambda n:bytearray(n))))
+    owners = []
+    context = BatchInputContext((Event(3,100),), GpuTask(lambda *a:None), {}, {},
+                                None, None, owners)
+    with pytest.raises(ValueError, match='upload failed'): context.timestamps_gpu
+    for access in (lambda:context.timestamps_gpu, lambda:context.batch_event_indices_gpu):
+        with pytest.raises(RuntimeError, match='initialization failed'): access()
+    assert calls == [1] and len(owners) == 1

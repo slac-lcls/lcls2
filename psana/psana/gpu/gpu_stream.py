@@ -228,8 +228,11 @@ class EventPool:
                     stream, owners, budget=self._budget, batch_id=batch_id,
                     run=run, step_generation=step_generation)
                 from .gpu_producer import dispatch_task
-                dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
-                              owners, publications, publication_batches, producer_lease)
+                try:
+                    dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
+                                  owners, publications, publication_batches, producer_lease)
+                finally:
+                    batch_inputs.seal()
             result_ready = cp.cuda.Event(disable_timing=True)
             result_ready.record(stream)
             if producer_lease is not None:
