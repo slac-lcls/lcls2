@@ -1,0 +1,5 @@
+GEOMETRY baseline: ([{}, {'all_segs': True}], 'cache hit; no collective')
+GEOMETRY current:  ([{}], 'BD entered a shared-memory collective after setup')
+SERIAL public iterator close: {'closed': False, 'active_slots': 2, 'actions': ['producer drained']}
+SERIAL explicit private manager close: {'closed': True, 'active_slots': 0, 'actions': ['producer drained', 'producer drained', 'producer drained', 'reads drained', 'constants closed', 'output closed']}
+SERIAL internal iterator close during final flush: {'closed': False, 'active_slots': 1, 'actions': ['producer drained']}
