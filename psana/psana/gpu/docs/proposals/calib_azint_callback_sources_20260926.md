@@ -1,7 +1,9 @@
 # Calibration and azimuthal integration callback sources
 
-**September 28 status:** the batched `GpuTask` API is implemented; the scientific
-`CalibAzint` example remains pending (Stage 5). The dated source survey and
+**September 28 status:** the batched `GpuTask` API, external calibration (5a),
+and external radial integration (5b) are implemented and validated. See
+[Stage 5b findings](../user_kernel_stage5b_20260928.md) for the current example,
+count policy, real-geometry validation and q-space limitations. The dated source survey and
 illustrative per-event signatures below are historical. Adapt algorithms to
 `function(batch, stream)` using the [current guide](../user_task_results.md).
 

@@ -92,6 +92,15 @@ class JungfrauCalibration:
         return ctypes
 
     def __call__(self, batch, stream):
+        self.calibrate(batch, stream, publish=True)
+
+    def calibrate(self, batch, stream, *, publish=False, with_validity=False):
+        """Return device calibration and optional validity, retained by this batch.
+
+        Integration validity excludes absent/invalid-gain/masked pixels, zero or
+        nonfinite gains, and nonfinite calibrated values. Valid zero intensity
+        still counts. The standalone publication retains CPU-v3 pixel behavior.
+        """
         import cupy as cp
         raw = batch.input(self.inputs[0])
         present = batch.present(self.inputs[0])
@@ -104,24 +113,32 @@ class JungfrauCalibration:
         extra = constants.get('status_extra', raw)
         # Layout-specialized modules embed the tiny host segment map. There is
         # no per-event launch, constant conversion, segment-map upload or D2H.
-        key = (raw.device.id, segments, tuple(ctypes.items()))
+        key = (raw.device.id, segments, tuple(ctypes.items()), with_validity)
         with stream:
             kernel = self._kernels.get(key)
             if kernel is None:
-                kernel = cp.RawKernel(self._source(segments, ctypes), 'calibrate',
+                kernel = cp.RawKernel(self._source(segments, ctypes, with_validity=with_validity), 'calibrate',
                                       options=('--std=c++17', '--fmad=false'))
                 self._kernels[key] = kernel
             out = cp.empty(raw.shape, dtype=cp.float32)
-            batch.publish(self.output, out)  # Register ownership before submission.
+            valid = cp.empty(raw.shape, dtype=cp.uint8) if with_validity else None
+            if publish:
+                batch.publish(self.output, out)
+            else:
+                batch.keepalive(out)
+            if valid is not None:
+                batch.keepalive(valid)  # Register every owner before submission.
             kernel((min(65535, (raw.size + 255) // 256),), (256,),
                    (raw, present, peds, gain, offset, status, out,
                     np.uint64(raw.size), np.uint64(raw.shape[2] * raw.shape[3]),
                     np.uint64(peds.shape[1]), np.uint64(self.status_bits),
-                    extra, np.uint64(self.stextra_bits)), stream=stream)
+                    extra, np.uint64(self.stextra_bits),
+                    valid if valid is not None else raw), stream=stream)
         self.calls += 1
         self.events += batch.size
+        return out, valid
 
-    def _source(self, segments, types):
+    def _source(self, segments, types, *, with_validity=False):
         # Adapted from Amanda Shackelford's jungfrau_calib_pixel at
         # d5437f99dafa68c3071e437ae034457735f00888 (cuda/fused_calib.cuh).
         # This variant reads original constants and spans the event axis.
@@ -132,11 +149,12 @@ extern "C" __global__ void calibrate(
     const @STATUS@* status, float* out, unsigned long long total,
     unsigned long long panel_pixels, unsigned long long physical_segments,
     unsigned long long status_bits, const @EXTRA@* extra,
-    unsigned long long stextra_bits)
+    unsigned long long stextra_bits, unsigned char* valid)
 {
     const unsigned long long ids[] = {@SEGMENTS@};
     for (unsigned long long i = (unsigned long long)blockIdx.x * blockDim.x + threadIdx.x;
          i < total; i += (unsigned long long)gridDim.x * blockDim.x) {
+        if (@VALIDITY@) valid[i] = 0;
         unsigned long long row = i / panel_pixels;
         unsigned long long s = row % @NSEG@;
         unsigned long long pixel = ids[s] * panel_pixels + i % panel_pixels;
@@ -157,6 +175,8 @@ extern "C" __global__ void calibrate(
         @DIVTYPE@ inverse_source = gain[k] == 0 ? 0 : @DIV@(1, gain[k]);
         float inverse = (float)(inverse_source * (masked ? 0 : 1));
         out[i] = ((float)(raw[i] & 0x3fff) - ped) * inverse;
+        if (@VALIDITY@) valid[i] = !masked && gain[k] != 0 &&
+            isfinite(gain[k]) && isfinite(ped) && isfinite(out[i]);
     }
 }
 '''
@@ -169,7 +189,8 @@ extern "C" __global__ void calibrate(
                       SEGMENTS=','.join(str(int(s)) for s in segments), NSEG=str(len(segments)),
                       USE_OFFSET='true' if self.use_offset else 'false',
                       USE_STATUS='true' if self.status_bits else 'false',
-                      USE_EXTRA='true' if self.stextra_bits else 'false')
+                      USE_EXTRA='true' if self.stextra_bits else 'false',
+                      VALIDITY='true' if with_validity else 'false')
         for name, value in values.items():
             source = source.replace('@' + name + '@', value)
         return source

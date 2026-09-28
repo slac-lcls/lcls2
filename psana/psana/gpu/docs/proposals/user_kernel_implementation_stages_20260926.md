@@ -8,7 +8,8 @@ Stages 1–4, including Stage 3c acceptance, are complete. Stage 4 is committed
 as `9730a9982`; follow-up geometry and serial cleanup fixes are `10173a263` and
 `10df4c6e3`. Stage 5a external batched calibration is implemented and validated
 on CPU/A100 and serial/MPI, including exact default CPU-v3 parity; see [Stage 5a findings](../user_kernel_stage5a_20260928.md).
-Stages 5b/5c and 6 remain pending. The current public contract is in
+Stage 5b external batched radial integration is implemented and validated; see
+[Stage 5b findings](../user_kernel_stage5b_20260928.md). Stages 5c and 6 remain pending. The current public contract is in
 the [task/results guide](../user_task_results.md).
 See [Stage 3c campaign](../user_kernel_stage3c_findings_20260927.md).
 
