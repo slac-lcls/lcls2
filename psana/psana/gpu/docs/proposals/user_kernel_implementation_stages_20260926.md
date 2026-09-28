@@ -129,7 +129,10 @@ implemented and validated. See the [Stage 2 findings](../user_kernel_stage2_find
 for the review fixes, ownership contract, and CPU/A100/MPI acceptance results.
 The [Stage 2 performance report](../performance/user_kernel_stage2_regression_20260927.md)
 records the accepted completed A/A and A/B controls; no repeatable slowdown above
-the 5% investigation threshold was observed. Stages 3–6 remain pending.
-Next: producer callback dispatch and owner retention,
-followed by generic publication and host delivery; declared tasks still reject
-event processing until those parts are available.
+the 5% investigation threshold was observed.
+
+Stage 3 internal producer dispatch, publication registration, and owner retention
+are implemented and validated on CPU and A100, with MPI input/task setup regression
+checks. See the [Stage 3 findings](../user_kernel_stage3_findings_20260927.md).
+Stages 4–6 remain pending. Next: generic publication copies and host delivery;
+declared tasks still reject public event processing until Stage 4 is available.

@@ -1,7 +1,7 @@
 """Host-only task declarations and BD-owned requested calibration values.
 
-This module does not import CuPy at declaration time. Callback dispatch and
-publication are later implementation stages; declarations never invoke users.
+This module does not import CuPy at declaration time. Producer dispatch lives
+in gpu_producer; declarations never invoke users or create CUDA state.
 """
 from dataclasses import dataclass
 
@@ -44,8 +44,8 @@ class GpuTask:
     ``inputs`` contains ``"detector.raw"`` or (detector, algorithm, field)
     selectors. ``calibconst`` contains (detector, key) pairs. Both default to
     empty and duplicates are removed in declaration order. CUDA state belongs
-    inside the assigned worker, not in the declaration. Execution is not yet
-    available in Stage 2 and is rejected before processing event batches.
+    inside the assigned worker, not in the declaration. Public event processing
+    is rejected until Stage 4 publication delivery is available.
     """
     function: object
     inputs: tuple = ()
