@@ -336,10 +336,12 @@ class RunParallel(Run):
             setattr(iface, "_shared_calibc_cache", calibc_cache)
             try:
                 t0 = time.perf_counter()
-                iface._pixel_coords()
+                # All shared-memory ranks participate here. Later accessors
+                # use local fallback for variants that startup did not seed.
+                iface._pixel_coords(_initialize_shared=True)
                 t_coords = time.perf_counter() - t0
                 t0 = time.perf_counter()
-                iface._pixel_coord_indexes()
+                iface._pixel_coord_indexes(_initialize_shared=True)
                 t_indexes = time.perf_counter() - t0
                 t_cached = 0.0
                 cache_payload = None
