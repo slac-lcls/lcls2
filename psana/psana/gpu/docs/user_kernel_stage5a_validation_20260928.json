@@ -1,0 +1,599 @@
+{
+  "attempts": [
+    {
+      "device_log_sha256": "8d49cf2affe02df7a5da76968f7de503fb5062678ca6b40c7a25fb2741436a12",
+      "device_seconds": 219.47,
+      "device_tests": 150,
+      "elapsed": "00:05:59",
+      "exit_code": "1:0",
+      "external_example_passed": true,
+      "failure": "Validation driver retained a singleton dimension in public raw panels; user kernel unchanged.",
+      "job": 39372486,
+      "manifest_sha256": "0a70adbce7faed63a3713a8e25ed1f20c5f92f55ac7bca829cf8fc5028be05bd",
+      "node": "sdfampere038",
+      "root": "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage5a-20260928-r1",
+      "state": "FAILED"
+    },
+    {
+      "device_log_sha256": "458da3bfe75c159111418cf3fab369cf948454cd2e6b1551111a7ee8f85ffad8",
+      "device_seconds": 2.6,
+      "elapsed": "00:05:07",
+      "exit_code": "0:0",
+      "focused_device_tests": 9,
+      "job": 39372902,
+      "manifest_sha256": "db40d6c109ccbf1ad5b0f4b72e522ba5212bbcea0b93b5c37f5c2ba48ad110e9",
+      "node": "sdfampere016",
+      "root": "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage5a-20260928-r2",
+      "state": "COMPLETED"
+    }
+  ],
+  "base": "21a6628bbd17f0fffba9772fbaf464036e1cfbb6",
+  "environment": {
+    "cuda_runtime": 12090,
+    "cupy": "13.6.0",
+    "gds": false,
+    "native_install": "/sdf/scratch/users/m/monarin/gpu-validation/a-bpp-off-20260923/installs/Integrated"
+  },
+  "host_tests": 493,
+  "optional_outputs_match_across_modes": true,
+  "public_acceptance": {
+    "mpi-exclusive": {
+      "log_sha256": "3175cbc1626fee92a3de46ec1ccda725eeeeae417769cbed9b702b58e8d4ae79",
+      "mode": "exclusive",
+      "offset": true,
+      "ordered_outputs": [
+        [
+          4806054694728932589,
+          "fe3c60f2c247b431f85c08de587dc274270206384f8101226a9643fa6d6d273f"
+        ],
+        [
+          4806054694737321200,
+          "682048717434bb854b2aeefbfcd946fd0692358d0d3c07c72bbc25804835cb99"
+        ],
+        [
+          4806054694745578739,
+          "3df7c4be2249a25bc3ab6cfe211adb0ebeb24d634cd15c6652c37b962f39b9c1"
+        ],
+        [
+          4806054694753967350,
+          "bdea6388411a4729f5710fc3e11fb17f586b1327187634869c4a58df05aaf702"
+        ],
+        [
+          4806054694762224889,
+          "0839302f08bd0f4ee4c5ed79d3e42ab3c766f2ebdbefbffac43d9ae507eea61b"
+        ],
+        [
+          4806054694770613500,
+          "46d90ff0e9811d8e78651074aa76ef5c624e10e89fc16725de2feeafce416a9b"
+        ],
+        [
+          4806054694778871039,
+          "0faf5e43f12853b96add9cd1fba3c97c5f50a3c181c076e102c9e05e7d816929"
+        ],
+        [
+          4806054694787259650,
+          "5d102b7fe352d8989a49c66987b66521fb88690daca8704807c3a79d35250422"
+        ],
+        [
+          4806054694795648261,
+          "503fb10a4a6ca84abc64e744fd85ae1838a068d1d00a9e63e0ad5035073c7651"
+        ],
+        [
+          4806054694803905800,
+          "705da938bf0d6257c023b26418f73bfffc4711eab18e58474e8a2985861c3a3f"
+        ],
+        [
+          4806054694812294411,
+          "13bb6dd170e1bf8c87f0b01e51bc774387881b9c9f1e7997f68dd409fefb9bcc"
+        ],
+        [
+          4806054694820683022,
+          "71b4663b92997931aec1edd1b8d320c130d14c31e4ed4226f9c1eda7684c62fe"
+        ],
+        [
+          4806054694828940561,
+          "bc7989b11cf64e52b460a1263975f155f78842d4bff1d9f6f889a8ce7d345b80"
+        ]
+      ],
+      "pinned_bytes": 67108864,
+      "ranks": [
+        {
+          "batches": [],
+          "launches": 0,
+          "rank": 0,
+          "seen": []
+        },
+        {
+          "batches": [],
+          "launches": 0,
+          "rank": 1,
+          "seen": []
+        },
+        {
+          "batches": [
+            5
+          ],
+          "launches": 1,
+          "rank": 2,
+          "seen": [
+            [
+              4806054694770613500,
+              "46d90ff0e9811d8e78651074aa76ef5c624e10e89fc16725de2feeafce416a9b"
+            ],
+            [
+              4806054694778871039,
+              "0faf5e43f12853b96add9cd1fba3c97c5f50a3c181c076e102c9e05e7d816929"
+            ],
+            [
+              4806054694787259650,
+              "5d102b7fe352d8989a49c66987b66521fb88690daca8704807c3a79d35250422"
+            ],
+            [
+              4806054694795648261,
+              "503fb10a4a6ca84abc64e744fd85ae1838a068d1d00a9e63e0ad5035073c7651"
+            ],
+            [
+              4806054694803905800,
+              "705da938bf0d6257c023b26418f73bfffc4711eab18e58474e8a2985861c3a3f"
+            ]
+          ]
+        },
+        {
+          "batches": [
+            5,
+            3
+          ],
+          "launches": 2,
+          "rank": 3,
+          "seen": [
+            [
+              4806054694728932589,
+              "fe3c60f2c247b431f85c08de587dc274270206384f8101226a9643fa6d6d273f"
+            ],
+            [
+              4806054694737321200,
+              "682048717434bb854b2aeefbfcd946fd0692358d0d3c07c72bbc25804835cb99"
+            ],
+            [
+              4806054694745578739,
+              "3df7c4be2249a25bc3ab6cfe211adb0ebeb24d634cd15c6652c37b962f39b9c1"
+            ],
+            [
+              4806054694753967350,
+              "bdea6388411a4729f5710fc3e11fb17f586b1327187634869c4a58df05aaf702"
+            ],
+            [
+              4806054694762224889,
+              "0839302f08bd0f4ee4c5ed79d3e42ab3c766f2ebdbefbffac43d9ae507eea61b"
+            ],
+            [
+              4806054694812294411,
+              "13bb6dd170e1bf8c87f0b01e51bc774387881b9c9f1e7997f68dd409fefb9bcc"
+            ],
+            [
+              4806054694820683022,
+              "71b4663b92997931aec1edd1b8d320c130d14c31e4ed4226f9c1eda7684c62fe"
+            ],
+            [
+              4806054694828940561,
+              "bc7989b11cf64e52b460a1263975f155f78842d4bff1d9f6f889a8ce7d345b80"
+            ]
+          ]
+        }
+      ],
+      "status_bits": 65535
+    },
+    "mpi-hybrid": {
+      "log_sha256": "7080b03525ee4c521f248e012602f20365956d4d1d1a8c7f8c0883b6aa02dcbb",
+      "mode": "hybrid",
+      "offset": true,
+      "ordered_outputs": [
+        [
+          4806054694728932589,
+          "fe3c60f2c247b431f85c08de587dc274270206384f8101226a9643fa6d6d273f"
+        ],
+        [
+          4806054694737321200,
+          "682048717434bb854b2aeefbfcd946fd0692358d0d3c07c72bbc25804835cb99"
+        ],
+        [
+          4806054694745578739,
+          "3df7c4be2249a25bc3ab6cfe211adb0ebeb24d634cd15c6652c37b962f39b9c1"
+        ],
+        [
+          4806054694753967350,
+          "bdea6388411a4729f5710fc3e11fb17f586b1327187634869c4a58df05aaf702"
+        ],
+        [
+          4806054694762224889,
+          "0839302f08bd0f4ee4c5ed79d3e42ab3c766f2ebdbefbffac43d9ae507eea61b"
+        ],
+        [
+          4806054694770613500,
+          "46d90ff0e9811d8e78651074aa76ef5c624e10e89fc16725de2feeafce416a9b"
+        ],
+        [
+          4806054694778871039,
+          "0faf5e43f12853b96add9cd1fba3c97c5f50a3c181c076e102c9e05e7d816929"
+        ],
+        [
+          4806054694787259650,
+          "5d102b7fe352d8989a49c66987b66521fb88690daca8704807c3a79d35250422"
+        ],
+        [
+          4806054694795648261,
+          "503fb10a4a6ca84abc64e744fd85ae1838a068d1d00a9e63e0ad5035073c7651"
+        ],
+        [
+          4806054694803905800,
+          "705da938bf0d6257c023b26418f73bfffc4711eab18e58474e8a2985861c3a3f"
+        ],
+        [
+          4806054694812294411,
+          "13bb6dd170e1bf8c87f0b01e51bc774387881b9c9f1e7997f68dd409fefb9bcc"
+        ],
+        [
+          4806054694820683022,
+          "71b4663b92997931aec1edd1b8d320c130d14c31e4ed4226f9c1eda7684c62fe"
+        ],
+        [
+          4806054694828940561,
+          "bc7989b11cf64e52b460a1263975f155f78842d4bff1d9f6f889a8ce7d345b80"
+        ]
+      ],
+      "pinned_bytes": 67108864,
+      "ranks": [
+        {
+          "batches": [],
+          "launches": 0,
+          "rank": 0,
+          "seen": []
+        },
+        {
+          "batches": [],
+          "launches": 0,
+          "rank": 1,
+          "seen": []
+        },
+        {
+          "batches": [
+            5
+          ],
+          "launches": 1,
+          "rank": 2,
+          "seen": [
+            [
+              4806054694770613500,
+              "46d90ff0e9811d8e78651074aa76ef5c624e10e89fc16725de2feeafce416a9b"
+            ],
+            [
+              4806054694778871039,
+              "0faf5e43f12853b96add9cd1fba3c97c5f50a3c181c076e102c9e05e7d816929"
+            ],
+            [
+              4806054694787259650,
+              "5d102b7fe352d8989a49c66987b66521fb88690daca8704807c3a79d35250422"
+            ],
+            [
+              4806054694795648261,
+              "503fb10a4a6ca84abc64e744fd85ae1838a068d1d00a9e63e0ad5035073c7651"
+            ],
+            [
+              4806054694803905800,
+              "705da938bf0d6257c023b26418f73bfffc4711eab18e58474e8a2985861c3a3f"
+            ]
+          ]
+        },
+        {
+          "batches": [
+            5,
+            3
+          ],
+          "launches": 2,
+          "rank": 3,
+          "seen": [
+            [
+              4806054694728932589,
+              "fe3c60f2c247b431f85c08de587dc274270206384f8101226a9643fa6d6d273f"
+            ],
+            [
+              4806054694737321200,
+              "682048717434bb854b2aeefbfcd946fd0692358d0d3c07c72bbc25804835cb99"
+            ],
+            [
+              4806054694745578739,
+              "3df7c4be2249a25bc3ab6cfe211adb0ebeb24d634cd15c6652c37b962f39b9c1"
+            ],
+            [
+              4806054694753967350,
+              "bdea6388411a4729f5710fc3e11fb17f586b1327187634869c4a58df05aaf702"
+            ],
+            [
+              4806054694762224889,
+              "0839302f08bd0f4ee4c5ed79d3e42ab3c766f2ebdbefbffac43d9ae507eea61b"
+            ],
+            [
+              4806054694812294411,
+              "13bb6dd170e1bf8c87f0b01e51bc774387881b9c9f1e7997f68dd409fefb9bcc"
+            ],
+            [
+              4806054694820683022,
+              "71b4663b92997931aec1edd1b8d320c130d14c31e4ed4226f9c1eda7684c62fe"
+            ],
+            [
+              4806054694828940561,
+              "bc7989b11cf64e52b460a1263975f155f78842d4bff1d9f6f889a8ce7d345b80"
+            ]
+          ]
+        }
+      ],
+      "status_bits": 65535
+    },
+    "serial-base": {
+      "log_sha256": "5671b4d227511493eab4cb6720ebaa4768290a89c3fabd2d49d8ef5aa4855e15",
+      "mode": "serial",
+      "offset": false,
+      "ordered_outputs": [
+        [
+          4806054694728932589,
+          "f5e317ef9ba91f5f8a4e7ee377ae4bce47d3f1802f9a6495dd521544540171c4"
+        ],
+        [
+          4806054694737321200,
+          "40381dcd4ee2148b24d5b7698f744ece88ce051aa52a3fd45ba9102773e02bb1"
+        ],
+        [
+          4806054694745578739,
+          "d412a776865c61db5fe1e3b99f087774dd0f8a7df0e0b41cd6447a71de870f39"
+        ],
+        [
+          4806054694753967350,
+          "c1365791a27f7c1389feae35712cc1fa98c6c4e886cc8db765579042d343145b"
+        ],
+        [
+          4806054694762224889,
+          "34d3accdbd11eb4e7f2542096943302813b29f1f64ea266a3c6a780747918692"
+        ],
+        [
+          4806054694770613500,
+          "87cece33df2129cb70472674e17a610fc3e837f53dec30103e96e4e5ea16ea7e"
+        ],
+        [
+          4806054694778871039,
+          "9e002ef2824f6efb2cdf5684808b962e0cb2d6c48ca9c419e90ed74115bc226d"
+        ],
+        [
+          4806054694787259650,
+          "2a077276263d52417c33ee5359c25846646e815a17efd31d285de6101e9f50e3"
+        ],
+        [
+          4806054694795648261,
+          "bac48aae3e4f46d465206027488f6c216eb27a491202e35fa75af1733f8ccde6"
+        ],
+        [
+          4806054694803905800,
+          "89e2e04d2195a0ac7c4ccf00936294d9143c2aecb2010a6db7c351c78d7e9261"
+        ],
+        [
+          4806054694812294411,
+          "b82fa666d028d00b7185adbb1d716d942b1d08cdcbf1f39aad5d241712d67972"
+        ],
+        [
+          4806054694820683022,
+          "6a4e1dc729cd59263cac185d1bffe54a2b23fd816e57dcbf460946dbb0322b41"
+        ],
+        [
+          4806054694828940561,
+          "778e92804262843a59b6182b0a0808a0b66d531d434250905888000d9451f521"
+        ]
+      ],
+      "pinned_bytes": 67108864,
+      "ranks": [
+        {
+          "batches": [
+            5,
+            5,
+            3
+          ],
+          "launches": 3,
+          "rank": 0,
+          "seen": [
+            [
+              4806054694728932589,
+              "f5e317ef9ba91f5f8a4e7ee377ae4bce47d3f1802f9a6495dd521544540171c4"
+            ],
+            [
+              4806054694737321200,
+              "40381dcd4ee2148b24d5b7698f744ece88ce051aa52a3fd45ba9102773e02bb1"
+            ],
+            [
+              4806054694745578739,
+              "d412a776865c61db5fe1e3b99f087774dd0f8a7df0e0b41cd6447a71de870f39"
+            ],
+            [
+              4806054694753967350,
+              "c1365791a27f7c1389feae35712cc1fa98c6c4e886cc8db765579042d343145b"
+            ],
+            [
+              4806054694762224889,
+              "34d3accdbd11eb4e7f2542096943302813b29f1f64ea266a3c6a780747918692"
+            ],
+            [
+              4806054694770613500,
+              "87cece33df2129cb70472674e17a610fc3e837f53dec30103e96e4e5ea16ea7e"
+            ],
+            [
+              4806054694778871039,
+              "9e002ef2824f6efb2cdf5684808b962e0cb2d6c48ca9c419e90ed74115bc226d"
+            ],
+            [
+              4806054694787259650,
+              "2a077276263d52417c33ee5359c25846646e815a17efd31d285de6101e9f50e3"
+            ],
+            [
+              4806054694795648261,
+              "bac48aae3e4f46d465206027488f6c216eb27a491202e35fa75af1733f8ccde6"
+            ],
+            [
+              4806054694803905800,
+              "89e2e04d2195a0ac7c4ccf00936294d9143c2aecb2010a6db7c351c78d7e9261"
+            ],
+            [
+              4806054694812294411,
+              "b82fa666d028d00b7185adbb1d716d942b1d08cdcbf1f39aad5d241712d67972"
+            ],
+            [
+              4806054694820683022,
+              "6a4e1dc729cd59263cac185d1bffe54a2b23fd816e57dcbf460946dbb0322b41"
+            ],
+            [
+              4806054694828940561,
+              "778e92804262843a59b6182b0a0808a0b66d531d434250905888000d9451f521"
+            ]
+          ]
+        }
+      ],
+      "status_bits": 0
+    },
+    "serial-optional": {
+      "log_sha256": "58e49e1ce6696c4dd6162e62b5549e23020835377b31e80f276cc54f44f69578",
+      "mode": "serial",
+      "offset": true,
+      "ordered_outputs": [
+        [
+          4806054694728932589,
+          "fe3c60f2c247b431f85c08de587dc274270206384f8101226a9643fa6d6d273f"
+        ],
+        [
+          4806054694737321200,
+          "682048717434bb854b2aeefbfcd946fd0692358d0d3c07c72bbc25804835cb99"
+        ],
+        [
+          4806054694745578739,
+          "3df7c4be2249a25bc3ab6cfe211adb0ebeb24d634cd15c6652c37b962f39b9c1"
+        ],
+        [
+          4806054694753967350,
+          "bdea6388411a4729f5710fc3e11fb17f586b1327187634869c4a58df05aaf702"
+        ],
+        [
+          4806054694762224889,
+          "0839302f08bd0f4ee4c5ed79d3e42ab3c766f2ebdbefbffac43d9ae507eea61b"
+        ],
+        [
+          4806054694770613500,
+          "46d90ff0e9811d8e78651074aa76ef5c624e10e89fc16725de2feeafce416a9b"
+        ],
+        [
+          4806054694778871039,
+          "0faf5e43f12853b96add9cd1fba3c97c5f50a3c181c076e102c9e05e7d816929"
+        ],
+        [
+          4806054694787259650,
+          "5d102b7fe352d8989a49c66987b66521fb88690daca8704807c3a79d35250422"
+        ],
+        [
+          4806054694795648261,
+          "503fb10a4a6ca84abc64e744fd85ae1838a068d1d00a9e63e0ad5035073c7651"
+        ],
+        [
+          4806054694803905800,
+          "705da938bf0d6257c023b26418f73bfffc4711eab18e58474e8a2985861c3a3f"
+        ],
+        [
+          4806054694812294411,
+          "13bb6dd170e1bf8c87f0b01e51bc774387881b9c9f1e7997f68dd409fefb9bcc"
+        ],
+        [
+          4806054694820683022,
+          "71b4663b92997931aec1edd1b8d320c130d14c31e4ed4226f9c1eda7684c62fe"
+        ],
+        [
+          4806054694828940561,
+          "bc7989b11cf64e52b460a1263975f155f78842d4bff1d9f6f889a8ce7d345b80"
+        ]
+      ],
+      "pinned_bytes": 0,
+      "ranks": [
+        {
+          "batches": [
+            5,
+            5,
+            3
+          ],
+          "launches": 3,
+          "rank": 0,
+          "seen": [
+            [
+              4806054694728932589,
+              "fe3c60f2c247b431f85c08de587dc274270206384f8101226a9643fa6d6d273f"
+            ],
+            [
+              4806054694737321200,
+              "682048717434bb854b2aeefbfcd946fd0692358d0d3c07c72bbc25804835cb99"
+            ],
+            [
+              4806054694745578739,
+              "3df7c4be2249a25bc3ab6cfe211adb0ebeb24d634cd15c6652c37b962f39b9c1"
+            ],
+            [
+              4806054694753967350,
+              "bdea6388411a4729f5710fc3e11fb17f586b1327187634869c4a58df05aaf702"
+            ],
+            [
+              4806054694762224889,
+              "0839302f08bd0f4ee4c5ed79d3e42ab3c766f2ebdbefbffac43d9ae507eea61b"
+            ],
+            [
+              4806054694770613500,
+              "46d90ff0e9811d8e78651074aa76ef5c624e10e89fc16725de2feeafce416a9b"
+            ],
+            [
+              4806054694778871039,
+              "0faf5e43f12853b96add9cd1fba3c97c5f50a3c181c076e102c9e05e7d816929"
+            ],
+            [
+              4806054694787259650,
+              "5d102b7fe352d8989a49c66987b66521fb88690daca8704807c3a79d35250422"
+            ],
+            [
+              4806054694795648261,
+              "503fb10a4a6ca84abc64e744fd85ae1838a068d1d00a9e63e0ad5035073c7651"
+            ],
+            [
+              4806054694803905800,
+              "705da938bf0d6257c023b26418f73bfffc4711eab18e58474e8a2985861c3a3f"
+            ],
+            [
+              4806054694812294411,
+              "13bb6dd170e1bf8c87f0b01e51bc774387881b9c9f1e7997f68dd409fefb9bcc"
+            ],
+            [
+              4806054694820683022,
+              "71b4663b92997931aec1edd1b8d320c130d14c31e4ed4226f9c1eda7684c62fe"
+            ],
+            [
+              4806054694828940561,
+              "bc7989b11cf64e52b460a1263975f155f78842d4bff1d9f6f889a8ce7d345b80"
+            ]
+          ]
+        }
+      ],
+      "status_bits": 65535
+    }
+  },
+  "retry_changed_files": [
+    "psana/psana/tests/gpu/user_calibration_reference.py",
+    "psana/psana/tests/gpu/integration/user_calibration_driver.py"
+  ],
+  "runtime": "10df4c6e3",
+  "source_files": {
+    "psana/psana/gpu/examples/calibrate_jungfrau.py": "ab2893bee196a112bf0bc72ef3bc43e2755fc7a869e1d05b71416d57f3ee7b6b",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "8c6398cddea43686afc4303e71299f029f1194a1e07eb67fb4b7abee88ec20e4",
+    "psana/psana/tests/gpu/integration/test_user_jungfrau_calibration_device.py": "689cbc7443819cd558e0aafef0cf9aa49affa8b55844fc95c8617a53592d9467",
+    "psana/psana/tests/gpu/integration/user_calibration_driver.py": "a7b7e408cce4daaaf46e9fa32b6bced6f9a68a4e6649908b20cc6c089d36b454",
+    "psana/psana/tests/gpu/unit/test_user_jungfrau_calibration.py": "feec76cd0034ec7253e26bf1cdda082fc586a8f97c3d4b33816ed2f9d5997041",
+    "psana/psana/tests/gpu/user_calibration_reference.py": "1121ece68934ee09d8b12723a6a04463af1db2581bc050319ac9cc8bbd331e7c"
+  },
+  "verified_source_count": 913
+}
