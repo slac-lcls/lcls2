@@ -134,3 +134,33 @@ each even round reverses that order. This interleaves six A/A pairs with six A/B
 pairs in one allocation, balancing both within-pair order and which pair runs
 first. Four pixel preflights precede the 24 timed samples. Runtime and per-sample
 measurement code remain identical to the initial Stage 2 campaign.
+
+## Stage 3 controlled regression
+
+`--comparison stage3` compares `stage2` and `stage3`, with `control_a` and
+`control_b` aliasing the exact Stage 2 installation and commit. A/A runs only
+at warm 1 BD; other points run A/B only. Use an even number of rounds:
+
+```bash
+python run.py --root FROZEN_ROOT --source JF_XTC_DIR --comparison stage3 \
+  --bds 1 2 4 --modes on --caches warm cold --cold-bds 4 --repetitions 4
+```
+
+This gives 40 timed samples: 32 A/B samples across four configurations, plus
+eight A/A samples at warm 1 BD. Eight separate pixel/launch preflights run first.
+All existing cache, byte-count, identity, budget, manifest and cleanup checks
+apply. Both versions use `gpu_fn=None` with identical benchmark dense preparation.
+
+`callback_cost.py` measures Stage 3 internally using the synthetic GPU acceptance
+fixture (900 uint16 pixels per event). It compares no task, an empty callback,
+registered scratch plus one kernel, and a scalar publication plus one kernel.
+Batch sizes 1/20 and depths 1/2 run six alternating-order rounds. Compilation,
+parsing and initial preparation are outside timing; each submission still queues
+one dense gather. Fresh window facades reference immutable fixture storage and
+exercise normal leases without accumulating dependencies across repeated uses.
+
+Separate preflights check values, callback selection, publication sizes and one
+gather with zero repeated parser launches. Timed measurements separate submit,
+retire/drain and total loop time. This synthetic check includes no disk I/O,
+automatic publication D2H, or host delivery, and cannot predict full Jungfrau
+callback throughput. Its memory counters are post-drain values, not peaks.

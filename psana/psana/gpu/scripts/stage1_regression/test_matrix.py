@@ -52,3 +52,18 @@ def test_controls_and_ab_are_interleaved_and_order_balanced(monkeypatch):
     assert ab[::2].count('stage1b') == ab[::2].count('stage2') == 3
     aa = [c[-1] for c in cases if c[-1].startswith('control_')]
     assert aa[::2].count('control_a') == aa[::2].count('control_b') == 3
+
+
+def test_stage3_matrix_balances_pairs_and_limits_controls(monkeypatch):
+    runner = load_runner(monkeypatch)
+    variants = ('control_a', 'control_b', 'stage2', 'stage3')
+    cases = list(runner.timed_cases(((1,1),(1,2),(1,4)), ('warm','cold'),
+                                   ('on',), variants, 4, (4,), (1,)))
+    assert len(cases) == len(set(cases)) == 40
+    assert len([c for c in cases if c[3] == 'cold']) == 8
+    assert {(c[1],c[3]) for c in cases if c[-1].startswith('control_')} == {(1,'warm')}
+    for bds, cache in ((1,'warm'),(2,'warm'),(4,'warm'),(4,'cold')):
+        pairs = [c[-1] for c in cases if (c[1],c[3]) == (bds,cache)
+                 and c[-1] in ('stage2','stage3')]
+        assert pairs[::2].count('stage2') == pairs[::2].count('stage3') == 2
+    assert sum(len(runner.case_variants(variants,b,'warm',(1,))) for b in (1,2,4)) == 8

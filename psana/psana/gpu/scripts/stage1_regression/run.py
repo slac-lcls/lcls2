@@ -43,7 +43,14 @@ def cache_preflight(root, log_path):
     print('CACHE_PREFLIGHT_PASS', flush=True)
 
 
-def timed_cases(points, caches, modes, variants, repetitions, cold_bds=None):
+def case_variants(variants, bds, cache, control_bds=None):
+    if control_bds is not None and (bds not in control_bds or cache != 'warm'):
+        return tuple(v for v in variants if not v.startswith('control_'))
+    return variants
+
+
+def timed_cases(points, caches, modes, variants, repetitions, cold_bds=None,
+                control_bds=None):
     """Keep matched versions adjacent and reverse every order on even rounds."""
     for rep in range(1, repetitions + 1):
         for g, b in (points if rep % 2 else tuple(reversed(points))):
@@ -51,7 +58,8 @@ def timed_cases(points, caches, modes, variants, repetitions, cold_bds=None):
                 if cache == 'cold' and cold_bds is not None and b not in cold_bds:
                     continue
                 for mode in (modes if rep % 2 else tuple(reversed(modes))):
-                    for variant in (variants if rep % 2 else tuple(reversed(variants))):
+                    selected = case_variants(variants, b, cache, control_bds)
+                    for variant in (selected if rep % 2 else tuple(reversed(selected))):
                         yield g, b, mode, cache, rep, variant
 
 
@@ -59,7 +67,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root', type=Path, required=True)
     p.add_argument('--source', type=Path, required=True)
-    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2', 'stage2-control'), required=True)
+    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2', 'stage2-control', 'stage3'), required=True)
     p.add_argument('--smoke', action='store_true')
     p.add_argument('--modes', nargs='+', choices=('on', 'off'), default=['off', 'on'])
     p.add_argument('--bds', nargs='+', type=int, choices=(1, 2, 3, 4), default=[1, 2, 3, 4])
@@ -79,20 +87,25 @@ def main():
     points = tuple((1, b) for b in a.bds)
     variants = {'stage1': ('parent', 'stage1'), 'stage1b': ('stage1', 'stage1b'),
                 'stage2': ('stage1b', 'stage2'),
-                'stage2-control': ('control_a', 'control_b', 'stage1b', 'stage2')}[a.comparison]
+                'stage2-control': ('control_a', 'control_b', 'stage1b', 'stage2'),
+                'stage3': ('control_a', 'control_b', 'stage2', 'stage3')}[a.comparison]
+    control_bds = (1,) if a.comparison == 'stage3' else None
     workload = 'calib' if a.comparison == 'stage1' else 'input'
     root = a.root.resolve()
     verify(root)
     commits = json.loads((root/'commits.json').read_text())
-    if a.comparison == 'stage2-control':
+    if a.comparison in ('stage2-control', 'stage3'):
         # Label-only controls must load precisely the same frozen installation
         # as the A side of A/B. Resolve aliases before accepting this campaign.
-        paths = [(root/'runtimes'/v/'python').resolve()
-                 for v in ('control_a', 'control_b', 'stage1b')]
-        if len(set(paths)) != 1 or len({commits[v] for v in ('control_a', 'control_b', 'stage1b')}) != 1:
-            raise ValueError('A/A controls must alias the same Stage 1b runtime and commit')
+        baseline = 'stage2' if a.comparison == 'stage3' else 'stage1b'
+        labels = ('control_a', 'control_b', baseline)
+        paths = [(root/'runtimes'/v/'python').resolve() for v in labels]
+        if len(set(paths)) != 1 or len({commits[v] for v in labels}) != 1:
+            raise ValueError('A/A controls must alias the same baseline runtime and commit')
         if a.repetitions % 2:
-            p.error('stage2-control requires an even repetition count for balanced order')
+            p.error('controlled comparisons require an even repetition count for balanced order')
+        if a.comparison == 'stage3' and (1 not in a.bds or 'warm' not in a.caches):
+            p.error('stage3 requires warm 1-BD coverage for the A/A control')
     job = os.environ['SLURM_JOB_ID']
     output = root/('job-'+job)
     output.mkdir(exist_ok=False)
@@ -118,7 +131,8 @@ def main():
         block_devices=subprocess.check_output(['lsblk', '-o', 'NAME,MODEL,SIZE,TYPE,MOUNTPOINT'], text=True),
         settings=dict(events=10000, batch=20, depth=1, workers=8, task_mib=1,
                       bulk_target_mib=1, d2h=0, budget='automatic device_total/BD peers',
-                      modes=a.modes, caches=a.caches, cold_bds=a.cold_bds, repetitions=a.repetitions,
+                      modes=a.modes, caches=a.caches, cold_bds=a.cold_bds, control_bds=control_bds,
+                      repetitions=a.repetitions,
                       workload=workload, variants=variants, comparison=a.comparison,
                       consumer='timestamp only', smoke=a.smoke), points=points)
     save(output/'provenance.json', provenance)
@@ -201,11 +215,11 @@ def main():
 
         for g, b in provenance['points']:
             for mode in a.modes:
-                for variant in variants:
+                for variant in case_variants(variants, b, 'warm', control_bds):
                     sample(g, b, mode, 'warm', 0, variant, diagnostic=True)
         if not a.smoke:
             for case in timed_cases(points, a.caches, a.modes, variants,
-                                    a.repetitions, a.cold_bds):
+                                    a.repetitions, a.cold_bds, control_bds):
                 sample(*case)
         verify(root)
         summaries = []
@@ -215,7 +229,7 @@ def main():
                     if cache == 'cold' and a.cold_bds is not None and b not in a.cold_bds:
                         continue
                     for bulk in a.modes:
-                        for variant in variants:
+                        for variant in case_variants(variants, b, cache, control_bds):
                             rows = [r for r in result_rows if not r['diagnostic'] and
                                     (r['nbds'],r['cache'],r['bulk'],r['variant']) == (b,cache,bulk,variant)]
                             assert len(rows) == a.repetitions
