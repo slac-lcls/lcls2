@@ -1,7 +1,7 @@
 """Aligned input context for one selected execution subbatch (Stage 3a).
 
 All arrays/pointers are borrowed and read-only. EventPool owns their lifetime.
-Stage 3b will use this input boundary in the single-invocation producer context.
+The single-invocation producer context wraps this input boundary.
 No callback, publication, user allocation, or user kernel is scheduled here.
 """
 from dataclasses import dataclass

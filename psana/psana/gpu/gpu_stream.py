@@ -40,6 +40,7 @@ class _EventSlot:
     prepared_inputs: dict = field(default_factory=dict)
     producer_owners: list = field(default_factory=list)
     publications_by_ts: dict = field(default_factory=dict)
+    publication_batches: list = field(default_factory=list)
     batch_inputs: object = None
 
     def release_storage(self):
@@ -55,6 +56,7 @@ class _EventSlot:
         self.prepared_inputs = {}
         self.producer_owners.clear()
         self.publications_by_ts.clear()
+        self.publication_batches.clear()
         self.xtc_batch = None
         self.input_windows = ()
 
@@ -188,6 +190,7 @@ class EventPool:
         windows = tuple(input_windows)
         all_leases = []
         prepared, publications, owners = {}, {}, []
+        publication_batches = []
         producer_lease = None
         batch_inputs = None
         try:
@@ -225,11 +228,8 @@ class EventPool:
                     stream, owners, budget=self._budget, batch_id=batch_id,
                     run=run, step_generation=step_generation)
                 from .gpu_producer import dispatch_task
-                dispatch_task(task, gpu_event_dgrams, event_envelopes, prepared,
-                              detector_bindings or {}, task_constants, stream,
-                              owners, publications, producer_lease, batch_id=batch_id,
-                              run=run, step_generation=step_generation,
-                              selected_events=selected)
+                dispatch_task(task, batch_inputs, detector_bindings or {}, stream,
+                              owners, publications, publication_batches, producer_lease)
             result_ready = cp.cuda.Event(disable_timing=True)
             result_ready.record(stream)
             if producer_lease is not None:
@@ -260,6 +260,7 @@ class EventPool:
                 input_leases_by_ts=input_leases_by_ts,
                 prepared_inputs=prepared,
                 producer_owners=owners, publications_by_ts=publications,
+                publication_batches=publication_batches,
                 batch_inputs=batch_inputs,
             )
         except BaseException:
@@ -268,6 +269,7 @@ class EventPool:
             failed = _EventSlot(slot, {}, [], stream, all_leases, {},
                                 input_windows=windows, prepared_inputs=prepared,
                                 producer_owners=owners, publications_by_ts=publications,
+                                publication_batches=publication_batches,
                                 batch_inputs=batch_inputs)
             try:
                 stream.synchronize()
