@@ -40,9 +40,13 @@ class _EventSlot:
     prepared_inputs: dict = field(default_factory=dict)
     producer_owners: list = field(default_factory=list)
     publications_by_ts: dict = field(default_factory=dict)
+    batch_inputs: object = None
 
     def release_storage(self):
         """Detach device references only after all terminal leases finish."""
+        if self.batch_inputs is not None:
+            self.batch_inputs.close()
+            self.batch_inputs = None
         self.gpu_results_by_ts = {ts: dict.fromkeys(results)
                                  for ts, results in self.gpu_results_by_ts.items()}
         self.input_dgrams_by_ts = {}
@@ -68,9 +72,10 @@ class EventPool:
         Number of batches to keep in flight.  2 is a practical default.
     """
 
-    def __init__(self, n: int = 2):
+    def __init__(self, n: int = 2, *, budget=None):
         import cupy as cp
         self._n = n
+        self._budget = budget
         self._streams = [cp.cuda.Stream(non_blocking=True) for _ in range(n)]
         # Each slot is an _EventSlot or None. Its leases include terminal
         # result leases and references to independently owned input windows.
@@ -184,6 +189,7 @@ class EventPool:
         all_leases = []
         prepared, publications, owners = {}, {}, []
         producer_lease = None
+        batch_inputs = None
         try:
             if task is not None:
                 from .context import SlotLease
@@ -203,14 +209,27 @@ class EventPool:
             )
 
             gpu_results_by_ts = {}
-            for name, preparer in (input_preparers or {}).items():
-                prepared[name] = preparer.prepare_batch(gpu_event_dgrams, stream=stream, slot_id=slot)
+            selected = gpu_event_dgrams
             if task is not None:
+                from .gpu_task_batch import select_task_events, BatchInputContext
+                selected = select_task_events(gpu_event_dgrams, event_envelopes)
+            for name, preparer in (input_preparers or {}).items():
+                if task is None:
+                    prepared[name] = preparer.prepare_batch(selected, stream=stream, slot_id=slot)
+                else:
+                    prepared[name] = preparer.prepare_batch(selected, stream=stream,
+                                                           slot_id=slot, aligned=True)
+            if task is not None:
+                batch_inputs = BatchInputContext(
+                    selected, task, prepared, detector_bindings or {}, task_constants,
+                    stream, owners, budget=self._budget, batch_id=batch_id,
+                    run=run, step_generation=step_generation)
                 from .gpu_producer import dispatch_task
                 dispatch_task(task, gpu_event_dgrams, event_envelopes, prepared,
                               detector_bindings or {}, task_constants, stream,
                               owners, publications, producer_lease, batch_id=batch_id,
-                              run=run, step_generation=step_generation)
+                              run=run, step_generation=step_generation,
+                              selected_events=selected)
             result_ready = cp.cuda.Event(disable_timing=True)
             result_ready.record(stream)
             if producer_lease is not None:
@@ -241,17 +260,20 @@ class EventPool:
                 input_leases_by_ts=input_leases_by_ts,
                 prepared_inputs=prepared,
                 producer_owners=owners, publications_by_ts=publications,
+                batch_inputs=batch_inputs,
             )
         except BaseException:
             # Preserve every owner if CUDA completion cannot be established.
             # A subsequent close/flush can retry the same synchronization.
             failed = _EventSlot(slot, {}, [], stream, all_leases, {},
                                 input_windows=windows, prepared_inputs=prepared,
-                                producer_owners=owners, publications_by_ts=publications)
+                                producer_owners=owners, publications_by_ts=publications,
+                                batch_inputs=batch_inputs)
             try:
                 stream.synchronize()
                 for lease in all_leases:
                     lease.wait_until_safe_to_reuse()
+                failed.release_storage()
             except BaseException:
                 self._slots[slot] = failed
                 self._write_idx += 1
@@ -314,6 +336,12 @@ class EventPool:
     def active_count(self) -> int:
         """Occupied executions, including one exposed during retirement."""
         return sum(record is not None for record in self._slots)
+
+    def pinned_bytes(self):
+        """Include metadata uploads retained after an unproven failed drain."""
+        from .gpu_task_batch import _MetadataUpload
+        return sum(owner.pinned_nbytes for record in self._slots if record is not None
+                   for owner in record.producer_owners if isinstance(owner, _MetadataUpload))
 
     def __len__(self) -> int:
         return self._n

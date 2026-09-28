@@ -45,7 +45,9 @@ class GpuTask:
     selectors. ``calibconst`` contains (detector, key) pairs. Both default to
     empty and duplicates are removed in declaration order. CUDA state belongs
     inside the assigned worker, not in the declaration. Public event processing
-    is rejected until Stage 4 publication delivery is available.
+    is rejected until Stage 4 publication delivery is available. Stage 3a
+    prepares aligned BatchInputContext inputs; Stage 3b will replace this
+    internal per-event callable with function(batch, stream).
     """
     function: object
     inputs: tuple = ()

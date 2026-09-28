@@ -215,6 +215,8 @@ class GpuEventManager:
         for name, preparer in getattr(self, "input_preparers", {}).items():
             s.input_bytes[name] = preparer.memory_bytes()["total"]
             s.pinned += preparer.pinned_bytes()
+        if self.event_pool is not None and hasattr(self.event_pool, 'pinned_bytes'):
+            s.pinned += self.event_pool.pinned_bytes()
         if self.gpu_reader is not None and hasattr(self.gpu_reader, "memory_bytes"):
             s.raw_input = self.gpu_reader.memory_bytes()["raw_input_slots"]
         if self.gpu_xtc_parser is not None:
@@ -386,7 +388,7 @@ class GpuEventManager:
             self.dsparms.batch_size = 1
 
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
-        self.event_pool = EventPool(n=pool_depth)
+        self.event_pool = EventPool(n=pool_depth, budget=self._gpu_budget)
 
         # Eagerly locate every event field exposed by configured GPU detectors.
         # This makes arbitrary field access a budgeted part of each parser slot.
@@ -489,9 +491,14 @@ class GpuEventManager:
                             for d in parent.desc_rows_for_event(i)
                             if int(d['flags']) & GPU_DESC_FLAG_VALID)
             present = {stream for stream, _ in streams}
+            task = getattr(self, '_gpu_task', None)
             prepared_bytes = sum(p.estimate_subbatch_bytes(1)
                                  for p in getattr(self, "input_preparers", {}).values()
-                                 if p.binding.has_sources(present))
+                                 if (bool(present) if task is not None
+                                     else p.binding.has_sources(present)))
+            if task is not None and present:
+                from .gpu_task_batch import metadata_bytes
+                prepared_bytes += metadata_bytes(task, self.gpu_detector_bindings, 1)
             events.append(AdmissionEvent(streams, prepared_bytes))
         return events
 
@@ -536,11 +543,27 @@ class GpuEventManager:
         requirements = self._input_allocation_requirements(
             subbatch, slot)
         events = self._event_memory(subbatch)
-        for preparer in getattr(self, "input_preparers", {}).values():
-            count = sum(preparer.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += preparer.allocation_requirements(count, slot)
+        requirements += self._task_input_requirements(events, slot)
         return self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=getattr(self, '_admission_margin', 0))
+
+    def _task_input_requirements(self, events, slot):
+        """Conservative pre-selection bound, including every aligned input row."""
+        task = getattr(self, '_gpu_task', None)
+        selected_count = sum(bool(e.streams) for e in events)
+        requirements = []
+        for preparer in getattr(self, 'input_preparers', {}).values():
+            count = (selected_count if task is not None else
+                     sum(preparer.binding.has_sources({s for s, _ in e.streams})
+                         for e in events))
+            requirements += preparer.allocation_requirements(count, slot)
+        if task is not None:
+            import cupy as cp
+            from .gpu_allocation import allocation_requirement
+            from .gpu_task_batch import metadata_bytes
+            requirements.append(allocation_requirement(
+                cp, metadata_bytes(task, self.gpu_detector_bindings, selected_count), None))
+        return requirements
 
 
     def _close_gpu_reservation(self):
@@ -714,9 +737,7 @@ class GpuEventManager:
         if n_dgrams:
             requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams, groups=True)
         events = self._event_memory(subbatch)
-        for preparer in getattr(self, "input_preparers", {}).values():
-            count = sum(preparer.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += preparer.allocation_requirements(count, slot_id)
+        requirements += self._task_input_requirements(events, slot_id)
         hold = self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=self._admission_margin)
         self._gpu_read_reservation = hold
