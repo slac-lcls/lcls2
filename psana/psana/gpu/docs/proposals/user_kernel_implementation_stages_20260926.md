@@ -127,6 +127,9 @@ Stage 1b runtime.
 Stage 2 declaration, selective constant uploads, and serial/MPI task setup are
 implemented and validated. See the [Stage 2 findings](../user_kernel_stage2_findings_20260927.md)
 for the review fixes, ownership contract, and CPU/A100/MPI acceptance results.
-Stages 3–6 remain pending. Next: producer callback dispatch and owner retention,
+The [Stage 2 performance report](../performance/user_kernel_stage2_regression_20260927.md)
+records the accepted completed A/A and A/B controls; no repeatable slowdown above
+the 5% investigation threshold was observed. Stages 3–6 remain pending.
+Next: producer callback dispatch and owner retention,
 followed by generic publication and host delivery; declared tasks still reject
 event processing until those parts are available.
