@@ -189,6 +189,10 @@ class GpuEventManager:
         self.input_preparers = {}
         self._gpu_task = getattr(dsparms, "gpu_fn", None)
         self._task_constants = None
+        self._output_d2h = None
+        if self._gpu_task is not None:
+            from .gpu_d2h import PublicationD2H, DEFAULT_PINNED_BYTES
+            self._output_d2h = PublicationD2H(getattr(dsparms, 'gpu_d2h_pinned_bytes', DEFAULT_PINNED_BYTES))
         self._step_generation = 0
         self.event_pool = None
         self.gpu_reader = None
@@ -223,6 +227,9 @@ class GpuEventManager:
             parser_memory = self.gpu_xtc_parser.memory_bytes()
             s.xtc_config = parser_memory["config"]
             s.xtc_slots = parser_memory["batch_slots"]
+        output_d2h = getattr(self, '_output_d2h', None)
+        if output_d2h is not None:
+            s.pinned += output_d2h.pinned_bytes
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
@@ -677,6 +684,17 @@ class GpuEventManager:
                     record = self._submit_per_dgram_gpu(subbatch, gpu_read, event_envelopes)
         finally:
             self._close_gpu_reservation()
+        output_d2h = getattr(self, '_output_d2h', None)
+        if output_d2h is not None:
+            try:
+                output_d2h.enqueue(record)
+            except BaseException:
+                # Also protect the MPI process_batch path, which has no serial
+                # iterator close-on-error wrapper. Failed drains quarantine the
+                # occupied EventPool and every copy/producer owner for retry.
+                for _ in self.event_pool.flush():
+                    pass
+                raise
         return record
 
     def _submit_per_dgram_gpu(self, subbatch, gpu_read, event_envelopes):
@@ -853,10 +871,6 @@ class GpuEventManager:
             yield from self._yield_ready(slot_data)
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
-        if getattr(self, '_gpu_task', None) is not None:
-            raise NotImplementedError(
-                'GpuTask callback execution is available internally, but public '
-                'publication delivery is not implemented yet (Stage 4)')
         n_events = self._n_events
         try:
             while True:
@@ -1041,6 +1055,9 @@ class GpuEventManager:
         constants = getattr(self, '_task_constants', None)
         if constants is not None:
             constants.close()
+        output_d2h = getattr(self, '_output_d2h', None)
+        if output_d2h is not None:
+            output_d2h.close()
         self._closed = True
 
     def close(self):

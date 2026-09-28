@@ -67,7 +67,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--root', type=Path, required=True)
     p.add_argument('--source', type=Path, required=True)
-    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2', 'stage2-control', 'stage3'), required=True)
+    p.add_argument('--comparison', choices=('stage1', 'stage1b', 'stage2', 'stage2-control', 'stage3', 'stage4', 'stage4-public'), required=True)
     p.add_argument('--smoke', action='store_true')
     p.add_argument('--modes', nargs='+', choices=('on', 'off'), default=['off', 'on'])
     p.add_argument('--bds', nargs='+', type=int, choices=(1, 2, 3, 4), default=[1, 2, 3, 4])
@@ -88,24 +88,28 @@ def main():
     variants = {'stage1': ('parent', 'stage1'), 'stage1b': ('stage1', 'stage1b'),
                 'stage2': ('stage1b', 'stage2'),
                 'stage2-control': ('control_a', 'control_b', 'stage1b', 'stage2'),
-                'stage3': ('control_a', 'control_b', 'stage2', 'stage3')}[a.comparison]
-    control_bds = (1,) if a.comparison == 'stage3' else None
+                'stage3': ('control_a', 'control_b', 'stage2', 'stage3'),
+                'stage4': ('control_a', 'control_b', 'stage3c', 'stage4'),
+                'stage4-public': ('event_loop', 'batched_task')}[a.comparison]
+    if a.comparison == 'stage4-public' and (a.bds != [1] or a.caches != ['warm'] or a.repetitions % 2):
+        p.error('stage4-public requires warm 1-BD coverage and balanced even repetitions')
+    control_bds = (1,) if a.comparison in ('stage3', 'stage4') else None
     workload = 'calib' if a.comparison == 'stage1' else 'input'
     root = a.root.resolve()
     verify(root)
     commits = json.loads((root/'commits.json').read_text())
-    if a.comparison in ('stage2-control', 'stage3'):
+    if a.comparison in ('stage2-control', 'stage3', 'stage4'):
         # Label-only controls must load precisely the same frozen installation
         # as the A side of A/B. Resolve aliases before accepting this campaign.
-        baseline = 'stage2' if a.comparison == 'stage3' else 'stage1b'
+        baseline = {'stage3':'stage2', 'stage4':'stage3c', 'stage2-control':'stage1b'}[a.comparison]
         labels = ('control_a', 'control_b', baseline)
         paths = [(root/'runtimes'/v/'python').resolve() for v in labels]
         if len(set(paths)) != 1 or len({commits[v] for v in labels}) != 1:
             raise ValueError('A/A controls must alias the same baseline runtime and commit')
         if a.repetitions % 2:
             p.error('controlled comparisons require an even repetition count for balanced order')
-        if a.comparison == 'stage3' and (1 not in a.bds or 'warm' not in a.caches):
-            p.error('stage3 requires warm 1-BD coverage for the A/A control')
+        if a.comparison in ('stage3', 'stage4') and (1 not in a.bds or 'warm' not in a.caches):
+            p.error('controlled stage comparison requires warm 1-BD coverage for the A/A control')
     job = os.environ['SLURM_JOB_ID']
     output = root/('job-'+job)
     output.mkdir(exist_ok=False)
@@ -129,12 +133,12 @@ def main():
         topology=subprocess.check_output(['nvidia-smi', 'topo', '-m'], text=True),
         filesystem=subprocess.check_output(['findmnt', '-T', str(stage)], text=True),
         block_devices=subprocess.check_output(['lsblk', '-o', 'NAME,MODEL,SIZE,TYPE,MOUNTPOINT'], text=True),
-        settings=dict(events=10000, batch=20, depth=1, workers=8, task_mib=1,
+        settings=dict(events=10000, batch=20, depth=2 if a.comparison=='stage4-public' else 1, workers=8, task_mib=1,
                       bulk_target_mib=1, d2h=0, budget='automatic device_total/BD peers',
                       modes=a.modes, caches=a.caches, cold_bds=a.cold_bds, control_bds=control_bds,
                       repetitions=a.repetitions,
                       workload=workload, variants=variants, comparison=a.comparison,
-                      consumer='timestamp only', smoke=a.smoke), points=points)
+                      consumer='compact output on_cpu' if a.comparison=='stage4-public' else 'timestamp only', smoke=a.smoke), points=points)
     save(output/'provenance.json', provenance)
     result_rows = []
     try:
@@ -174,8 +178,9 @@ def main():
             runtime = root/'runtimes'/variant/'python'
             call_env = dict(env, SLURM_GPUS_ON_NODE=str(g), BENCH_PYTHON=str(runtime),
                             PYTHONPATH=str(runtime)+os.pathsep+env['PYTHONPATH'])
+            bench_script = 'public_bench.py' if a.comparison=='stage4-public' else 'bench.py'
             cmd = ['mpirun', '-n', str(b+2), '--oversubscribe', '--bind-to', 'none',
-                   sys.executable, '-u', str(root/'scripts/stage1_regression/bench.py'),
+                   sys.executable, '-u', str(root/'scripts/stage1_regression'/bench_script),
                    '--directory', str(stage), '--reference', str(root/'reference.json'),
                    '--pixels', str(root/'pixels.json'), '--constants', str(root/'constants.pkl.gz'),
                    '--bulk', bulk, '--events', '200' if diagnostic else '10000',
@@ -204,6 +209,10 @@ def main():
             assert (row['workload'], row['variant']) == (workload, variant)
             for gpu, bus in row['gpu_buses'].items():
                 assert bus.lower().split(':', 1)[-1] == gpus[int(gpu)][2].lower().split(':', 1)[-1]
+            if a.comparison=='stage4-public':
+                previous = [r for r in result_rows if r['diagnostic']==diagnostic]
+                if previous:
+                    assert row['public_result']['output_sha256']==previous[0]['public_result']['output_sha256']
             network_after = network_counters()
             row.update(cache=cache, repetition=rep, before=before,
                 network_bytes={k: network_after[k]-v for k,v in network_before.items()},
