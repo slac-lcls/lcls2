@@ -67,7 +67,9 @@ BatchEnvelope(smd, gpubat1)
        wait for the GPU read to finish
        translate read descriptors into device dgram records
        walk XTC and locate registered fields on the slot stream
-       retain input owners and record execution completion
+       prepare requested dense inputs and invoke the task once per subbatch
+       retain registered owners and record producer completion
+       queue each publication group once and record terminal copy completion
        correlate CPU and GPU records by timestamp
        attach GpuEventState to each EventEnvelope
   -> Events
@@ -127,14 +129,17 @@ Advancing the Python generator is not treated as proof that an asynchronous
 GPU consumer completed. `field.on_gpu_view(stream)` registers completion with
 an input lease. All registered consumer streams must finish before input storage
 can be reclaimed. Retained public views can keep input windows live beyond an
-execution. The old image D2H path is removed; generic publication is planned in
-[Stages 2–4](proposals/user_kernel_implementation_stages_20260926.md).
+execution. Named task outputs use batched publication groups and terminal copy
+events; host rows are independent after materialization. See the
+[task/results guide](user_task_results.md). Serial GPU runs support the same
+callback/publication contract and drain a started iterator on explicit close.
 
 ## Transitions
 
 The SMD packet in `BatchEnvelope` already contains transition and missing-step
 history. The GPU manager drains prior work before BeginStep or EndRun. It
-dispatches host transitions without preparing GPU calibration constants. CPU
+dispatches host transitions and refreshes requested original task constants
+after prior consumers drain. No built-in calibration algorithm runs. CPU
 MPI transitions continue through `Run._handle_transition()` and are swallowed
 from the public `run.events()` stream.
 

@@ -1,5 +1,14 @@
 # Overall user-kernel support review — 2026-09-28
 
+**Resolution update:** Stage 4 is committed as `9730a9982`. Finding 1 is fixed
+by `10173a263` ([geometry validation](geometry_cache_fallback_20260928.md));
+finding 2 is fixed by `10df4c6e3`
+([serial cleanup validation](serial_gpu_close_20260928.md)). Current API docs
+have been refreshed. The dated review below records the original findings and
+review scope; it does not describe those fixes as still open. Stage 5's scientific
+example and Stage 6's consolidated acceptance remain pending.
+
+
 Review basis: pre-user-kernel baseline `480f7074c` through `6291d21ed`, plus the
 current uncommitted Stage 4 runtime, tests, and performance evidence. This is a
 read-only runtime review; no implementation fixes or commits were made.
