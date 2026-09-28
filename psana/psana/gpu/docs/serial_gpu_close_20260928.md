@@ -6,7 +6,7 @@ and isolated-rank MPI validation remain consistent. No blocker or additional
 geometry change was found. Stage 4 and geometry were already committed as
 `9730a9982` and `10173a263` respectively.
 
-This change addresses the remaining serial cleanup finding from the
+Committed as `10df4c6e3`. This change addresses the remaining serial cleanup finding from the
 [overall review](user_kernel_overall_review_20260928.md).
 
 ## Behavior

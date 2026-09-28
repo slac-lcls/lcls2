@@ -32,4 +32,5 @@ The MPI test has a 90-second timeout and is included in `byhand_*` validation.
 
 Post-commit core, byhand/MPI, and public GPU-task integration results are recorded
 under `/sdf/scratch/users/m/monarin/gpu-validation/geometry-cache-fallback-20260928-r1`.
-The earlier serial early-close review finding remains a separate open issue.
+The separate serial early-close finding was subsequently fixed in `10df4c6e3`;
+see [serial cleanup validation](serial_gpu_close_20260928.md).

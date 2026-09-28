@@ -1,9 +1,13 @@
-# Current-runtime Jungfrau-only scaling
+# Current-runtime Jungfrau staging scaling
 
 Maintained MPI benchmark for `mfx101210926/r0387`, streams 005–009. The
 historical comparison is [Jungfrau single-node scaling](../../docs/performance/jungfrau_single_node_sdf.md).
-This harness measures the current runtime; it does not reproduce the old
-implementation commit.
+The maintained harness now measures read/parse/dense-gather staging without
+calibration or `GpuTask`. It uses the established benchmark-only
+`stage1_regression/input_adapter.py`; include that directory on `PYTHONPATH`
+and freeze/hash the adapter. Legacy frozen campaigns still contain the original
+calibration-enabled harness. Do not interpret their rate difference as a matched
+workload regression or a kernel batching gain.
 
 Default campaign: 1 GPU/1 BD, 1/4, 2/4 and 4/8; bulk off/on; cold/warm;
 10,000 events; two fresh-process repetitions with reversed topology, cache and
@@ -18,7 +22,7 @@ All JF-only batch, depth, KvikIO, budget, cache and timing settings are retained
 The timed consumer additionally reads feespec `raw.hproj` through its GPU field
 view and computes an int64 sum; only the compact result is copied after timing.
 Timestamp-matched CPU sums validate every event across BD distributions, while
-preflights compare all 200 feespec arrays and three JF raw/calibrated samples.
+preflights compare all 200 feespec arrays and three JF raw samples.
 Clear public field aliases before advancing the iterator to preserve ownership.
 
 Generate six-stream references with `prepare_feespec_reference.py` before
@@ -33,7 +37,7 @@ bulk target, batch 20, execution depth 1, no automatic D2H, and the current
 automatic per-BD GPU budget. Timed event loops only read timestamps. Setup before
 `run.events()`, local staging, cache preparation and teardown are excluded;
 lazy setup/BeginStep work inside that iterator remains included. Separate
-200-event preflight processes check three CPU-reference raw/calibrated arrays
+200-event preflight processes check three CPU-reference raw arrays
 for every topology/mode. Preflight timing is not throughput evidence.
 
 The five Jungfrau datagrams each exceed the target, so both modes must submit
@@ -67,16 +71,13 @@ Frozen cache helpers must include `common.py`, `warm_cache.py` and its dependenc
 executes the real NUMA-interleaved warm-cache subprocess with no input files;
 its diagnostics are saved in `cache-preflight.log` inside the job directory.
 
-Current campaign: `/sdf/scratch/users/m/monarin/gpu-validation/jf-current-scale-20260925-r4`.
-Exact submission is its `run.sbatch`; runtime/native dependencies and helper
-sources are frozen and hashed there. Preflight 39099796 passed both modes;
-job 39100314 passed eight pixel preflights and two cold timed samples before
-failing on the omitted cache-helper dependency. The corrected full campaign
-was submitted as job **39104724** on 2026-09-25;
-see the [current report](../../docs/performance/jungfrau_current_scaling.md) for
-status. Generated results stay on scratch.
+Current campaigns and comparisons are recorded in the
+[user-kernel scaling report](../../docs/performance/user_kernel_scaling_20260928.md).
+The pre-user-kernel campaign remains documented in the
+[historical September 26 report](../../docs/performance/jungfrau_current_scaling.md).
+Generated results stay on scratch.
 
-CPU checks: `test_contract.py` and `test_cache_preflight.py` (**19 passed**).
+CPU checks: all three `test_*.py` files (**26 passed**).
 With an installed or
 frozen psana runtime first on `PYTHONPATH`, import psana before invoking pytest
 so source-package collection does not hide its compiled extensions:

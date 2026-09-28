@@ -1,17 +1,18 @@
 # GPU memory, input access, and completion
 
-**Status:** Current after user-kernel Stage 1b, 2026-09-26.
+**Status:** Current after user-kernel Stage 4 and cleanup fixes, 2026-09-28.
 
 The runtime reads and parses GPU-selected streams and exposes leased input
 fields. Built-in calibration, geometry, calibrated output slots, fixed-pair
 CUDA IPC, and image-shaped automatic D2H have been removed. The previous version
 of this document is preserved at `1d484d43d`; its image-output settings and
-performance observations do not describe this input-only runtime.
+performance observations do not describe the current task-driven runtime.
 
 ## Ownership and budgets
 
 Framework-owned device memory includes Configure tables, reader buffers,
-parser/locator tables, and any explicitly selected dense input preparation.
+parser/locator tables, explicitly requested original task constants, and any
+selected dense input preparation.
 `DenseInputPreparer` budgets raw/presence buffers, canonical routing, and gather
 maps. Its host row-map uploads use pinned storage reported separately.
 
@@ -89,13 +90,15 @@ copies and cached host values can be retained after event iteration advances.
 
 There are no synthetic result keys for `.calib`, `.raw`, or `.image`.
 `gpu_d2h_chunk_size` accepts only its retired zero default; nonzero requests
-raise an error. No automatic output copy occurs. Explicit parsed-field access
+raise an error. Only explicitly published task outputs receive automatic copies.
+Explicit parsed-field access
 can still copy input data to the host.
 
 ## Transitions, failures, and cleanup
 
 BeginStep and EndRun drain dependent GPU input work before host transition
-handling. No GPU calibration refresh runs. EndRun, exhausted input, early iterator
+handling and replacement of requested task constants. No built-in calibration
+algorithm runs. EndRun, exhausted input, early iterator
 close, and `max_events` preserve the existing flush/close ordering.
 
 Partial submission failures drain queued work before releasing owners. If CUDA
@@ -103,13 +106,22 @@ completion cannot be established, the occupied execution and its owners remain
 available for a later cleanup attempt. Input consumers that are still active
 must not lose their backing allocation during trim or close.
 
-## User outputs in later stages
+## User outputs and host staging
 
-`GpuTask`, producer callbacks, and publication are still proposed. See the
-[canonical design](proposals/user_gpu_pipeline.md) for requested constant uploads,
-user-owned scratch/output allocations, and publication-specific dtype/shape/byte
-metadata. That design adds bounded host staging and terminal D2H events without
-restoring full-image float32 assumptions or framework-managed user device memory.
+After input preparation, `GpuTask` runs once per selected execution subbatch.
+User device allocations are retained through registered keepalive/publication
+owners. Copies are scheduled once per contiguous publication group, with one
+terminal copy event per execution. Empty groups require no payload copy.
+`.on_cpu` waits for readiness and materializes an independent row; it does not
+resubmit the callback or the normal group transfer.
 
-Stage 1b validation and removal counts are recorded in
-[the findings](user_kernel_stage1b_findings_20260926.md).
+The aggregate pinned output cap is 64 MiB per BD by default, including cached
+capacity and retained host tokens. A group that cannot fit takes a synchronous
+ordinary-host copy. The cap does not bound user-retained NumPy arrays or arbitrary
+user device allocations. Closing converts retained rows to ordinary NumPy
+storage and releases pinned capacity. If a CUDA drain fails, owners remain
+quarantined until safe cleanup can be retried.
+
+See the [task/results guide](user_task_results.md) for publication rules, memory
+limits, and the `closing(run.events())` early-exit protocol, and
+[Stage 4 findings](user_kernel_stage4_findings_20260928.md) for measured behavior.

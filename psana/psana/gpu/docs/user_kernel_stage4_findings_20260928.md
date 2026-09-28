@@ -2,8 +2,9 @@
 
 Implemented and reviewed after Stage 3c commit `6291d21ed` passed scheduling and
 performance gates. Implementation and correctness review are complete, and all performance
-collection and the focused recovery run have finished. Stage 4 remains
-uncommitted. Performance is workload-dependent; limitations are recorded below.
+collection and the focused recovery run have finished. Stage 4 is committed
+as `9730a9982`. Subsequent geometry (`10173a263`) and serial cleanup (`10df4c6e3`)
+fixes have separate validation reports; the timings below predate those fixes. Performance is workload-dependent; limitations are recorded below.
 
 ## Behavior and ownership
 
