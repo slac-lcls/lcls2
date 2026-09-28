@@ -163,7 +163,8 @@ class ProducerContext:
 
 
 def dispatch_task(task, events, envelopes, prepared, bindings, constants, stream,
-                  owners, publications, lease, *, batch_id, run, step_generation):
+                  owners, publications, lease, *, batch_id, run, step_generation,
+                  selected_events=None):
     """Invoke once per delivered event with GPU descriptors, after one gather.
 
     Selection precedes invocation, including when reads cover a max-events tail.
@@ -171,11 +172,14 @@ def dispatch_task(task, events, envelopes, prepared, bindings, constants, stream
     The caller retains owners even if this function raises after enqueueing work.
     """
     import cupy as cp
-    from psana import utils
-    selected = {int(utils.first_timestamp(e.dgrams)) for e in envelopes}
+    from .gpu_task_batch import select_task_events
+    if selected_events is None:
+        selected_events = select_task_events(events, envelopes)
     dense = {name: {} if value is None else {
         (event.batch_event_index, event.timestamp): (value, row)
-        for row, event in enumerate(value.events)} for name, value in prepared.items()}
+        for row, event in enumerate(value.events)
+        if not getattr(value, 'source_present', ()) or value.source_present[row]}
+        for name, value in prepared.items()}
     staged = {key: constants.get(*key) for key in task.calibconst}
     owners.extend(staged.values())
     reserved = set(bindings)
@@ -183,13 +187,9 @@ def dispatch_task(task, events, envelopes, prepared, bindings, constants, stream
         reserved.add(name + '.raw')
         reserved.update(f'{name}.{alg}.{field}' for alg, field in binding.fields)
     device = cp.cuda.Device().id
-    seen = set()
-    for event in events:
-        if not len(event) or event.timestamp not in selected:
-            continue
-        if event.timestamp in seen:
-            raise ValueError('duplicate selected GPU event timestamp')
-        seen.add(event.timestamp)
+    # Stage 3a prepares aligned batch inputs. Stage 3b replaces this historical
+    # per-event invocation/publication boundary with the batch callback.
+    for event in selected_events:
         outputs = {}
         publications[event.timestamp] = outputs
         context = ProducerContext(
