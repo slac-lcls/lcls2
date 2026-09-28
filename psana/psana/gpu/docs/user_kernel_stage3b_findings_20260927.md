@@ -2,8 +2,9 @@
 
 Implemented and validated on CPU and A100, with MPI input/setup acceptance.
 Public task event
-processing remains gated until Stage 4. Stage 3c performance acceptance has not
-started; the cancelled per-event regression campaign has not been restarted.
+processing remains gated until Stage 4. [Stage 3c measurements](user_kernel_stage3c_findings_20260927.md)
+have started after review; performance acceptance is pending. The cancelled
+per-event campaign is superseded by the corrected-runtime comparisons.
 
 ## Stage 3a review
 

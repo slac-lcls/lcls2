@@ -3,8 +3,8 @@
 Status: required by the user on September 27. Stage 3a inputs are implemented
 and validated; see [findings](../user_kernel_stage3a_findings_20260927.md).
 Stage 3b single invocation/publication is also implemented and validated; see
-[findings](../user_kernel_stage3b_findings_20260927.md). Stage 3c performance
-acceptance remains pending.
+[findings](../user_kernel_stage3b_findings_20260927.md). Stage 3c measurements are running; performance
+acceptance remains pending. See the [campaign](../user_kernel_stage3c_findings_20260927.md).
 This amendment supersedes the per-event callback contract and the deferral of
 batch callbacks in the original proposal, handoff, and implementation stages.
 Complete these Stage 3 corrections before Stage 4 public delivery.
