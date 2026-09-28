@@ -36,7 +36,7 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
         """cob=det.raw._seg_configs()[<seg-ind>].config - segment configuration object, where self=det.raw
            returns segment gain control bits # shape=(336, 576)
         """
-        return ueu.cbits_config_segment(cob)
+        return ueu.cbits_config_segment_3x2(cob)
 
     def raw(self, evt, sh_seg=(336,576)) -> Array3d:
         return ueu.raw_v01(self, evt, sh_seg=sh_seg)
