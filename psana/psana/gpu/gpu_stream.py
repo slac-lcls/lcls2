@@ -166,8 +166,8 @@ class EventPool:
         The default creates one input window for the existing subbatch. An
         internal caller may instead supply resident and transient windows;
         that caller controls when those windows close to new planned uses.
-        Internal task dispatch records publications but does not deliver them;
-        public task processing remains gated until Stage 4 host delivery.
+        Task dispatch records publications; GpuEventManager schedules their
+        grouped host delivery after submission succeeds.
         """
         import cupy as cp
         from psana.gpu.gpu_input import GpuEventDgrams, InputSlotLease

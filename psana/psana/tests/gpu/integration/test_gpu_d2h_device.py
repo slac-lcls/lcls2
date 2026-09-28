@@ -163,3 +163,62 @@ def test_serial_public_delivery_exact_keys_retained_events_and_input_access(monk
         assert manager._closed and manager._output_d2h.pinned_bytes==0
         for event in held:assert event.gpu.get('timestamp').on_cpu==event.timestamp
     finally:manager.close()
+
+
+@pytest.mark.parametrize('cap', [0, 8192])
+@pytest.mark.parametrize('exit_kind', ['explicit', 'break', 'error'])
+def test_serial_public_early_close_releases_task_owners(monkeypatch, cap, exit_kind):
+    from contextlib import closing
+    import cupy as cp
+    from psana import DataSource
+    from psana.psexp.run import Run
+
+    gain = np.array([3], np.uint32)
+    monkeypatch.setattr(Run, '_setup_run_calibconst', lambda run:
+                        setattr(run.dsparms, 'calibconst', {'jungfrau': {'pixel_gain': (gain, {})}}))
+    refs, calls = [], []
+    def callback(batch, stream):
+        calls.append(batch.size)
+        scratch = cp.empty((batch.size,), cp.uint32)
+        batch.keepalive(scratch)
+        output = cp.empty((batch.size,), cp.uint32)
+        batch.publish('count', output)
+        batch.publish('timestamp', batch.timestamps_gpu)
+        constant = batch.calibconst('jungfrau', 'pixel_gain')
+        refs.extend(weakref.ref(a) for a in (scratch, output, constant))
+        scratch.fill(1)
+        cp.add(scratch, constant, out=output)
+
+    ds = DataSource(
+        exp='mfx100848724', run=51, dir='/sdf/data/lcls/ds/prj/public01/xtc',
+        detectors=['jungfrau'], max_events=7, batch_size=3, gpu_det='jungfrau',
+        gpu_fn=GpuTask(callback, ['jungfrau.raw'], [('jungfrau', 'pixel_gain')]),
+        gpu_d2h_pinned_bytes=cap, n_gpu_streams=2,
+    )
+    run = next(ds.runs())
+    manager = run._evt_iter
+    held = []
+    def consume():
+        # Cleanup must come entirely from the public generator protocol.
+        with closing(run.events()) as events:
+            for event in events:
+                held.append(event)
+                assert manager.event_pool.active_count == 2
+                if exit_kind == 'error':
+                    raise ValueError('loop-body error')
+                if exit_kind == 'explicit':
+                    events.close()
+                break
+    if exit_kind == 'error':
+        with pytest.raises(ValueError, match='loop-body error'):
+            consume()
+    else:
+        consume()
+    assert manager._closed and manager.event_pool.active_count == 0
+    assert manager.event_pool._retiring is None
+    assert manager._output_d2h.pinned_bytes == 0
+    assert all(ref() is None for ref in refs)
+    assert len(calls) == 2 and len(held) == 1
+    assert held[0].gpu.get('count').on_cpu == 4
+    assert held[0].gpu.get('timestamp').on_cpu == held[0].timestamp
+    assert list(run.events()) == []
