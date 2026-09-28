@@ -71,7 +71,30 @@ can also force fallback because buffers are not evicted during the run.
 
 Copies are queued once per contiguous publication group, with one terminal
 completion event per execution. Slots/input owners stay protected until every
-copy finishes. CPU results are independent of slot reuse. Closing a run converts
+copy finishes. CPU results are independent of slot reuse. Closing the GPU event
+iterator or exhausting it converts
 any retained host rows to ordinary NumPy storage and releases its pinned cache.
 The cap does not bound user-retained NumPy results, input metadata staging, or
 user device arrays; each BD has its own cap. `gpu_d2h_chunk_size` remains retired.
+
+For deterministic cleanup when breaking early or when loop-body code raises,
+use the standard generator close protocol:
+
+```python
+from contextlib import closing
+
+for run in ds.runs():
+    with closing(run.events()) as events:
+        for evt in events:
+            process(evt)
+            if enough_results():
+                break
+```
+
+On serial GPU runs, closing a started event iterator is terminal: outstanding
+executions and copies drain, task owners retire, and later event iteration is
+empty. A bare `break` does not explicitly close an iterator retained elsewhere.
+Loop-body exceptions require the `closing` scope for this guarantee. CPU-only
+serial iteration keeps its previous behavior. MPI already connects generator
+closure to GPU cleanup; closing one rank's iterator is not a collective request
+to stop the entire MPI job. This protocol does not add a public `run.close()` API.

@@ -1,7 +1,7 @@
 import logging
 import math
 import sys
-from contextlib import nullcontext
+from contextlib import closing, nullcontext
 from dataclasses import dataclass, field
 
 
@@ -183,6 +183,7 @@ class GpuEventManager:
         self._n_events = 0
         self._done = False
         self._closed = False
+        self._closing = False
 
         self.gpu_det_names = list(dsparms.gpu_detector_names)
         self.gpu_detector_bindings = {}
@@ -209,6 +210,8 @@ class GpuEventManager:
         return self
 
     def __next__(self):
+        if self._closed:
+            raise StopIteration
         if self._iter is None:
             self._iter = self._events()
         return next(self._iter)
@@ -867,8 +870,11 @@ class GpuEventManager:
             return self._issue_gpu_read(subbatch, self.event_pool.next_slot_id)
 
     def _flush_event_pool(self):
-        for slot_data in self.event_pool.flush():
-            yield from self._yield_ready(slot_data)
+        # Explicitly unwind the current slot on generator close; do not rely
+        # on garbage collection of the pool's suspended registration window.
+        with closing(self.event_pool.flush()) as slots:
+            for slot_data in slots:
+                yield from self._yield_ready(slot_data)
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
         n_events = self._n_events
@@ -1040,7 +1046,13 @@ class GpuEventManager:
         """Drain in-flight work and close GPU reader resources once."""
         if self._closed:
             return
-        yield from self._flush_event_pool()
+        try:
+            yield from self._flush_event_pool()
+        finally:
+            self.close()
+
+    def _close_resources(self):
+        """Called after all executions have retired successfully."""
         self._drain_pending_gpu_read()
         if getattr(self, '_group_inputs', None) is not None:
             self._group_inputs.close()
@@ -1062,8 +1074,25 @@ class GpuEventManager:
 
     def close(self):
         """Discard remaining deliveries while safely retiring their slots."""
-        for _ in self.finish():
-            pass
+        if self._closed or getattr(self, '_closing', False):
+            return
+        self._closing = True
+        self._done = True
+        try:
+            iterator = getattr(self, '_iter', None)
+            # Unwind a suspended serial producer before starting a new drain.
+            # Calls from its own finally must not close a running generator.
+            if iterator is not None and not iterator.gi_running:
+                iterator.close()
+            pool = getattr(self, 'event_pool', None)
+            if getattr(pool, '_retiring', None) is not None:
+                pool.finish_retire_next()
+            for _ in self._flush_event_pool():
+                pass
+            self._close_resources()
+        finally:
+            # A failed join leaves owners intact and allows another close.
+            self._closing = False
 
     def _events(self):
         try:
@@ -1075,8 +1104,6 @@ class GpuEventManager:
                 yield from self._process_batch(
                     batch_dict, gpu_batch_dict, step_dict
                 )
-        except BaseException:
-            self.close()
-            raise
-        else:
             yield from self.finish()
+        finally:
+            self.close()
