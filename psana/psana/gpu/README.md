@@ -29,8 +29,11 @@ and performance. Subsequent fixes cover
 [noncollective geometry cache misses](docs/geometry_cache_fallback_20260928.md)
 and [serial iterator cleanup](docs/serial_gpu_close_20260928.md).
 Use `with closing(run.events())` for deterministic cleanup on early exit.
-The calibration-plus-azimuthal-integration example (Stage 5) and final consolidated
-acceptance (Stage 6) remain pending; see the
+The [external batched calibration example](docs/user_kernel_stage5a_20260928.md)
+is implemented and validated in Stage 5a on CPU/A100 and serial/MPI, including
+byte-for-byte default CPU-v3 calibration matches with matching constant selectors. Azimuthal integration
+and combined performance (Stages 5b/5c), plus final consolidated acceptance
+(Stage 6), remain pending; see the
 [stage tracker](docs/proposals/user_kernel_implementation_stages_20260926.md).
 
 
