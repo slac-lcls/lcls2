@@ -189,6 +189,7 @@ class GpuEventManager:
         self.input_preparers = {}
         self._gpu_task = getattr(dsparms, "gpu_fn", None)
         self._task_constants = None
+        self._step_generation = 0
         self.event_pool = None
         self.gpu_reader = None
         self.gpu_xtc_configs = None
@@ -579,6 +580,8 @@ class GpuEventManager:
 
     def _dispatch_transition(self, service, dgrams):
         self.run._handle_transition(dgrams)
+        if service == TransitionId.BeginStep:
+            self._step_generation = getattr(self, '_step_generation', 0) + 1
         constants = getattr(self, '_task_constants', None)
         if service == TransitionId.BeginStep and constants is not None:
             # _handle_steps already drained execution and input consumers.
@@ -657,7 +660,15 @@ class GpuEventManager:
         return self.event_pool.submit(
             subbatch, gpu_read, event_envelopes, getattr(self, "input_preparers", {}),
             xtc_parser=self.gpu_xtc_parser,
-            batch_id=getattr(self, "_input_batch_id", 0))
+            batch_id=getattr(self, "_input_batch_id", 0), **self._task_submission())
+
+    def _task_submission(self):
+        task = getattr(self, '_gpu_task', None)
+        if task is None:
+            return {}
+        return dict(task=task, detector_bindings=self.gpu_detector_bindings,
+                    task_constants=self._task_constants,
+                    run=self.run.runnum, step_generation=self._step_generation)
 
     def _submit_group_gpu(self, subbatch, pending, event_envelopes):
         inputs = self._group_inputs
@@ -676,7 +687,8 @@ class GpuEventManager:
                         uses.setdefault(window, use)
             return self.event_pool.submit(
                 subbatch, None, event_envelopes, getattr(self, "input_preparers", {}),
-                batch_id=self._input_batch_id, input_windows=windows, input_uses=uses)
+                batch_id=self._input_batch_id, input_windows=windows, input_uses=uses,
+                **self._task_submission())
         finally:
             error = None
             for use in transferred:
@@ -822,8 +834,8 @@ class GpuEventManager:
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
         if getattr(self, '_gpu_task', None) is not None:
             raise NotImplementedError(
-                'GpuTask dependencies are staged, but callback execution and publication '
-                'are not implemented yet (Stages 3 and 4)')
+                'GpuTask callback execution is available internally, but public '
+                'publication delivery is not implemented yet (Stage 4)')
         n_events = self._n_events
         try:
             while True:
