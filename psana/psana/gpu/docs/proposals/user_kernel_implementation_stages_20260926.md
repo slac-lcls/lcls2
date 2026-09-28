@@ -4,10 +4,14 @@
 execution subbatch and support batched scratch, kernels, and publications.
 The [batched scheduling amendment](user_kernel_batched_scheduling_20260927.md)
 supersedes the per-event contract and deferred-batching statements below.
-Stage 3a is complete; next work is Stage 3b–3c in that amendment, before Stage 4.
+Stages 3a and 3b are complete; next work is Stage 3c in that amendment, before Stage 4.
 
 Stage 3a aligned inputs are implemented and validated on CPU/A100, with MPI
 input/setup acceptance. See [Stage 3a findings](../user_kernel_stage3a_findings_20260927.md).
+
+Stage 3b single invocation and batched publications are implemented and validated
+on CPU/A100, with MPI input/setup acceptance. See
+[Stage 3b findings](../user_kernel_stage3b_findings_20260927.md).
 
 2026-09-26. Implementation tracking; the initial planning checkpoint was
 `480f7074c`. See [Stage 1 findings](../user_kernel_stage1_findings_20260926.md)
@@ -144,5 +148,5 @@ Stage 3 internal producer dispatch, publication registration, and owner retentio
 are implemented and validated on CPU and A100, with MPI input/task setup regression
 checks. See the [Stage 3 findings](../user_kernel_stage3_findings_20260927.md).
 That validation covers the original per-event implementation, not acceptance
-of batched scheduling. Stage 3a is now complete; Stage 3b–3c and Stages 4–6 remain pending.
+of batched scheduling. Stages 3a and 3b are now complete; Stage 3c and Stages 4–6 remain pending.
 Declared tasks still reject public event processing until Stage 4 is available.

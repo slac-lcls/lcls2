@@ -1,0 +1,121 @@
+{
+  "source_base": "3b3f567dc2e2bb32bd4eea82d5692fd52c9be798",
+  "native_source": "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage1b-20260926-r3/python",
+  "source_sha256": {
+    "psana/psana/gpu/gpu_detector.py": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac",
+    "psana/psana/gpu/gpu_producer.py": "1ffe9888fefb0764459f3874dd434fcbdeedc05b504bedc4e97550b44eadca82",
+    "psana/psana/gpu/gpu_stream.py": "2dd635c52fcbb01de2158f8744735f3ce716bb0ae92d96a89b348032ec583f35",
+    "psana/psana/gpu/gpu_task.py": "d603049fa49e4a11aab24610d8fb36c5040babcc146e36a95495f07ff0b8dad4",
+    "psana/psana/gpu/gpu_task_batch.py": "3122707bbbebb8e3520088c0487d1bd7e8405021b2475dab20d02e6d1e0406bf",
+    "psana/psana/gpu/scripts/stage1_regression/callback_cost.py": "9a666b40de4a0a9d8e186de5df9a8272da34931008023465836d2cc8007533a0",
+    "psana/psana/tests/gpu/unit/test_gpu_producer.py": "5a299b88a6f66b05daa305e11e269bac970286986505c6721305df68ed1fc926",
+    "psana/psana/tests/gpu/integration/test_gpu_producer_device.py": "5d52e385563d1772ca96f08b9a47d6f2e2427d3afb7e28b77b4d386a87eb4f59",
+    "psana/psana/tests/gpu/integration/test_gpu_task_batch_device.py": "858f698844d0c65a2eb08f3499783b33e708ae1a5b22a79f2ee22f1172e21ebf"
+  },
+  "jobs": [
+    {
+      "JobID": "39317358",
+      "State": "FAILED",
+      "ExitCode": "1:0",
+      "Elapsed": "00:04:39",
+      "NodeList": "sdfmilan262"
+    },
+    {
+      "JobID": "39317359",
+      "State": "COMPLETED",
+      "ExitCode": "0:0",
+      "Elapsed": "00:03:10",
+      "NodeList": "sdfampere004"
+    },
+    {
+      "JobID": "39317360",
+      "State": "COMPLETED",
+      "ExitCode": "0:0",
+      "Elapsed": "00:04:15",
+      "NodeList": "sdfampere020"
+    },
+    {
+      "JobID": "39317376",
+      "State": "COMPLETED",
+      "ExitCode": "0:0",
+      "Elapsed": "00:00:11",
+      "NodeList": "sdfampere026"
+    },
+    {
+      "JobID": "39317524",
+      "State": "COMPLETED",
+      "ExitCode": "0:0",
+      "Elapsed": "00:04:08",
+      "NodeList": "sdfmilan009"
+    }
+  ],
+  "results": {
+    "main.log": "514 passed, 128 skipped, 7 deselected in 113.73s (0:01:53)",
+    "byhand.log": "4 passed in 118.95s (0:01:58)",
+    "device.log": "128 passed, 36 warnings in 178.40s (0:02:58)"
+  },
+  "mpi": {
+    "ranks": 4,
+    "events_per_mode": 13,
+    "modes": [
+      "exclusive",
+      "hybrid"
+    ],
+    "exact_digests": true,
+    "task_roles": [
+      "smd0",
+      "eb",
+      "bd",
+      "bd"
+    ]
+  },
+  "structural_acceptance": {
+    "subbatch_sizes": [
+      20,
+      3,
+      1
+    ],
+    "pool_depths": [
+      1,
+      2
+    ],
+    "per_nonempty_subbatch": {
+      "callbacks": 1,
+      "scratch_allocations": 1,
+      "user_kernel_launches": 1,
+      "producer_completion_events": 1
+    }
+  },
+  "smoke": {
+    "preflights": 16,
+    "samples": 32,
+    "repetitions": 2,
+    "submissions": 1,
+    "performance_acceptance": false
+  },
+  "evidence_sha256": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r2/main.log": "13be709c36378299e2256cfcb001eba2c75abf93b9a2377344becb2e0c562b49",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r2/byhand.log": "16a8b06409a828023d135f05668aca390788085fc02c5b6f9b6e8e4e0b506e62",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r2/manifest.json": "2df067f2105e29ae117c69639caa14d6e6d1f8325fd80a271ddeb4bb79c42d06",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r2/source.patch": "a8d78c59c0940676bc92d11cd2d247a020b829995e33f35bf69e065354ccd784",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r2/cpu-39317524.log": "e22e4d2872f81e4b4f3196e1e78a390bda7d56a193f21a2bd760297f2d0b23a5",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r2/env.sh": "979e1f04b1fe697a2e3657f6ee765d080c1bb526341fd987fc6cba96faad122b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/manifest.json": "fa3e6b7dabc2d059ad655ea7d56d52ed0143b82ad9f60049c18fff89ad0f9cc5",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/source.patch": "fb9fec098a3688c9d408245940235fe35086c519f9dcdd168d1724aa78a0e79e",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/main.log": "2f2af143e0e0f76a3738ad8ba0ee67eb67e4abb73db8fc39073b4c1bbd132d55",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/byhand.log": "c44b9f0c902a233969f0329ae6873533968c442b35b02abf341761cd4a48133c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/device.log": "bcd0696bb29d053351500ae3b94ad4c28dc7d637233e9d8278a991c9828c2a69",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/gpu-39317359.log": "e74dcaebaa2bf46bf1027b795c5576ce8fe3fd6c6f5c2623a4e63e06d98cb84f",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/mpi-reference.log": "41e4ac6a5d6b4d6065468bd219963412877bbb5222aa33a7cb74e8c3c3726003",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/mpi-exclusive.log": "aa9f5d1fdaed44869e53788e753931374e01a5bbeb80ff59ca31e4ffe8c0f4bf",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/mpi-hybrid.log": "b9859ff90182b3f64bf8630b74c91156245175b8db3c5f249945ae63147194c0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/mpi-task.log": "c48b8fa9173386d2ff967f7bdff9805468cc9bf473789b6e3a5fdcdc86c14184",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/mpi-39317360.log": "e8a7a667ee9d9f4fecc0bea3c483bb706073fc9d349e1a22977738f38cd3907b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/callback-smoke.json": "5f1c882600c6b7fa664bc6e62554eacc0278ff9c010ee47ee41287507609f726",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/smoke-39317376.log": "e00b73f7a7250bfd569ea9e007004a58ec69073a70c36e408712f703cdf6b216",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage3b-20260927-r1/smoke.sbatch": "5efa596eb2b6d5f2456c3028d314cae7c855bacf257fb8c5c6e142e87c5220b2"
+  },
+  "scope": "Stage 3b internal batched producer/publication. No public delivery or throughput acceptance. GPU/MPI/smoke use r1; CPU/byhand use identical implementation/tests in r2 with a separate scratch working directory.",
+  "review": "No remaining Stage 3a runtime blockers. Moved descriptor-validation kernel into callback so producer completion covers it; removed temporary per-event adapter.",
+  "failed_attempts": "r1 CPU main: 513 passed, one existing shared-memory smalldata failure (server exited/client timed out, missing oneint). Full unchanged suite retried in r2; no shared-memory code/tests skipped or modified."
+}

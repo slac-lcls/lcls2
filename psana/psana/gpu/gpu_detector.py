@@ -152,7 +152,6 @@ class PreparedInputBatch:
     events: tuple
     data: object       # (events, segments, rows, columns), original input dtype
     present: object    # (events, segments), uint8; parser/gather validity
-    source_present: tuple = ()  # Host descriptor presence, not device field validity.
 
 
 class DenseInputPreparer:
@@ -271,9 +270,7 @@ class DenseInputPreparer:
                                                      sctx, self._budget)
             self._gather_plan.gather(inputs, data, present, self._n_pix_seg, sctx,
                                      shape=self.det_shape[-2:])
-        return PreparedInputBatch(events, data.reshape((len(events),) + self.det_shape), present,
-                                  tuple(self.binding.has_sources(event) for event in events)
-                                  if aligned else ())
+        return PreparedInputBatch(events, data.reshape((len(events),) + self.det_shape), present)
 
     def memory_bytes(self):
         raw = (sum(backing_capacity(b) for b in self._raw_slot_bufs if b is not None)

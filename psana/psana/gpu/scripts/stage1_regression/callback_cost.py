@@ -1,4 +1,4 @@
-"""Synthetic Stage 3 producer costs; no disk I/O or automatic output D2H.
+"""Synthetic batched Stage 3 producer costs; no disk I/O or automatic output D2H.
 
 Reuse the real-device acceptance fixture's immutable parsed uint16 payload.
 Fresh input-window facades exercise normal execution leases without accumulating
@@ -35,16 +35,19 @@ def main():
     from test_batched_gather import _setup, _input
 
     scratch_kernel = cp.RawKernel('''extern "C" __global__ void scratch(
-        const unsigned short* raw, unsigned short* out) {
+        const unsigned short* raw, unsigned short* out, unsigned long long n) {
         unsigned int i=blockIdx.x*blockDim.x+threadIdx.x;
-        if(i<900) out[i]=raw[i]+1;
+        if(i<n) out[i]=raw[i]+1;
     }''', 'scratch')
     publish_kernel = cp.RawKernel('''extern "C" __global__ void publish(
-        const unsigned short* raw, unsigned int* out) { *out=raw[300]+1; }
+        const unsigned short* raw, unsigned int* out, unsigned long long n) {
+        unsigned int i=blockIdx.x*blockDim.x+threadIdx.x;
+        if(i<n) out[i]=raw[i*900+300]+1;
+    }
     ''', 'publish')
     scratch_kernel.compile(); publish_kernel.compile()
     modes = ('none', 'empty', 'scratch', 'publish')
-    result = dict(scope=__doc__, psana=psana.__file__, cupy=cp.__version__,
+    result = dict(dispatch='one callback per execution subbatch', scope=__doc__, psana=psana.__file__, cupy=cp.__version__,
                   cuda=cp.cuda.runtime.runtimeGetVersion(), device=str(cp.cuda.runtime.getDeviceProperties(0)['name']),
                   repetitions=a.repetitions, submissions=a.submissions, preflights=[], samples=[])
     a.output.parent.mkdir(parents=True, exist_ok=True)
@@ -73,7 +76,7 @@ def main():
             cp.cuda.get_current_stream().synchronize()
 
             def run_case(mode, submissions, *, check=False):
-                pool = EventPool(n=depth)
+                pool = EventPool(n=depth, budget=budget)
                 calls = 0
                 def callback(evt, stream):
                     nonlocal calls
@@ -83,11 +86,11 @@ def main():
                     if mode == 'scratch':
                         out = cp.empty_like(raw)
                         evt.keepalive(out)
-                        scratch_kernel((4,), (256,), (raw, out), stream=stream)
+                        scratch_kernel(((raw.size+255)//256,), (256,), (raw, out, np.uint64(raw.size)), stream=stream)
                     else:
-                        out = cp.empty((), cp.uint32)
+                        out = cp.empty((evt.size,), cp.uint32)
                         evt.publish('value', out)
-                        publish_kernel((1,), (1,), (raw, out), stream=stream)
+                        publish_kernel(((evt.size+255)//256,), (256,), (raw, out, np.uint64(evt.size)), stream=stream)
                 task = None if mode == 'none' else GpuTask(callback, ['camera.raw'])
                 options = dict(task=task, detector_bindings={'camera': initial.binding})
                 submit_ns = retire_ns = 0
@@ -107,7 +110,7 @@ def main():
                 if check:
                     record.stream.synchronize()
                     np.testing.assert_array_equal(record.prepared_inputs['camera.raw'].data.get(), np.asarray(expected))
-                    assert calls == (0 if mode == 'none' else batch_size*submissions)
+                    assert calls == (0 if mode == 'none' else submissions)
                     if mode == 'publish':
                         assert len(record.publications_by_ts) == batch_size
                         for i,e in enumerate(specs):
@@ -118,8 +121,8 @@ def main():
                         assert not record.publications_by_ts
                     if mode == 'scratch':
                         arrays=[x for x in record.producer_owners if isinstance(x,cp.ndarray)]
-                        assert len(arrays)==batch_size
-                        for x,ref in zip(arrays,expected): np.testing.assert_array_equal(x.get(),ref+1)
+                        assert len(arrays)==1
+                        np.testing.assert_array_equal(arrays[0].get(),np.asarray(expected)+1)
                 t=time.perf_counter_ns()
                 for _ in pool.flush(): pass
                 retire_ns += time.perf_counter_ns()-t

@@ -101,13 +101,6 @@ def test_batched_field_kernel_independent_windows():
     stream = cp.cuda.Stream(non_blocking=True)
     windows = tuple(owner((i,),range(4),stream) for i in range(2))
     pool = EventPool(n=1, budget=budget)
-    rec = pool.submit(NS(iter_events=lambda:iter(specs)),None,envelopes(specs),
-        input_windows=windows,batch_id=7,
-        task=GpuTask(lambda *a:None,[('camera','raw','counter')]),
-        detector_bindings=bindings(parser,camera))
-    batch = rec.batch_inputs
-    field = batch.field('camera','raw','counter')
-    out = cp.empty((batch.size,3), cp.uint32)
     kernel = cp.RawKernel('''extern "C" __global__ void counters(
         const unsigned long long* fields, unsigned int* out, unsigned long long n) {
         unsigned long long i=blockIdx.x*blockDim.x+threadIdx.x;
@@ -120,8 +113,22 @@ def test_batched_field_kernel_independent_windows():
            f[6]!=4 || loc[9]!=4 || loc[8]>f[1] || 4>f[1]-loc[8]) return;
         out[i]=*(const unsigned int*)((const unsigned char*)f[0]+loc[8]);
     }''','counters')
-    # One user kernel operates on every event and segment; no host field reads.
-    kernel((1,), (128,), (field.rows,out,np.uint64(out.size)),stream=rec.stream)
+    calls=[]
+    def callback(batch, producer):
+        field=batch.field('camera','raw','counter')
+        out=cp.empty((batch.size,3),cp.uint32)
+        batch.publish('counters',out)
+        calls.append(batch.size)
+        # One kernel across all rows, before producer completion is recorded.
+        kernel((1,), (128,), (field.rows,out,np.uint64(out.size)),stream=producer)
+    rec = pool.submit(NS(iter_events=lambda:iter(specs)),None,envelopes(specs),
+        input_windows=windows,batch_id=7,
+        task=GpuTask(callback,[('camera','raw','counter')]),
+        detector_bindings=bindings(parser,camera))
+    assert calls==[4]
+    batch=rec.batch_inputs
+    field=batch.field('camera','raw','counter')
+    out=rec.publication_batches[0].array
     pool.begin_retire_next()
     wanted = np.array([[0,0,0], [0xffffffff,1,0xffffffff],
                        [2,2,2], [3,0xffffffff,3]], np.uint32)
