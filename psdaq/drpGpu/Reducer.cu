@@ -372,6 +372,7 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
                   unsigned const*              const __restrict__ index,
                   uint8_t*                     const __restrict__ dataBuffers,
                   size_t                       const              dataBufsCnt,
+                  size_t                       const              rawSize,
                   RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
                   uint64_t*                    const __restrict__ stateMon,
                   uint64_t*                    const __restrict__ outWtCtr,
@@ -380,7 +381,12 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
   if (*state == 2) {
     //*stateMon = 4;
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
-    auto dataSize = ((size_t*)data)[-1];
+    // The size the algorithm recorded, in the word just below whatever it wrote:
+    // below the payload normally, and below the raw block when the Detector asked
+    // for one, since the raw block occupies the space the size would otherwise use.
+    // Either way the slot is in the header reserve or the raw region, both of which
+    // are read here before the recorder copies the Dgram over them.
+    auto dataSize = ((size_t*)(data - rawSize))[-1];
     //printf("### _reducerLoop: pushing {%u, %lu}\n", *index, dataSize);
     bool rc;
     unsigned ns{8};
@@ -458,6 +464,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
                                     m_indices[worker],
                                     dataBuffers,
                                     dataBufsCnt,
+                                    m_pool.reduceBufsRaw(),
                                     m_outputQueues2[worker].d,
                                     m_metrics.state[worker],
                                     m_metrics.outWtCtr[worker],

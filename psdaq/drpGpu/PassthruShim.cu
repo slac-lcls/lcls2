@@ -10,10 +10,55 @@ using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp::Gpu;
 
+struct pass_domain{ static constexpr char const* name{"PassthruShim"}; };
+using pass_scoped_range = nvtx3::scoped_range_in<pass_domain>;
+
+
+// The whole of this shim's device work: no data is moved, because the Reader's
+// per-element policy already wrote the detector's data into the raw block ahead of
+// this buffer's payload.  All that remains is what the surrounding machinery needs:
+//
+//   * the recorded size, in the word just below what was written -- below the raw
+//     block here, where Reducer's _reducerLoop looks for it.  A reducer with no raw
+//     block writes it just below the payload instead; either way the slot lies in
+//     space the recorder only overwrites later, when it copies the Dgram, by which
+//     time the size has been read.
+//   * the state advance to 2, which is what tells _reducerLoop there is a result to
+//     post.  Without it the recorder blocks on Reducer::receive() for ever.
+//
+// One thread suffices, so this is launched <<<1, 1>>>.
+static __global__
+void _passthru(unsigned*       const __restrict__ state,
+               unsigned  const* const __restrict__ index,
+               uint8_t*        const __restrict__ dataBuffers,
+               size_t          const              dataBufsCnt,
+               size_t          const              rawSize,
+               unsigned*       const __restrict__ retCode)
+{
+  if (*state == 1) {
+    auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
+
+    // The size of the data to record.  Fixed: the raw block is sized at Configure
+    // by Detector::rawSize() and a short or withheld ASIC leaves zeros rather than
+    // shrinking it, so unlike a real reducer there is nothing to measure.
+    //
+    // Below the raw block, not below the payload: the raw block holds pixel data
+    // right up to the payload, so the usual slot would be clobbered by it.
+    size_t* const __restrict__ extent = &((size_t*)(data - rawSize))[-1];
+    *extent  = rawSize;
+    *retCode = 0;
+
+    __threadfence();                    // Publish the size before the state change
+
+    *state = 2;                         // Tell _reducerLoop to post the result
+  }
+}
+
 
 PassthruShim::PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo(para, pool, det),
-  m_rawSize  (det.rawSize())
+  m_rawSize  (det.rawSize()),
+  m_retCode_d(nullptr)
 {
   // Without a raw block there is nothing for this shim to report the size of, and
   // the recorder would write a zero-length payload for every event.  That is a
@@ -26,38 +71,55 @@ PassthruShim::PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detec
                       para.detName.c_str());
     abort();
   }
+  chkError(cudaMalloc(&m_retCode_d,    sizeof(*m_retCode_d)));
+  chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
+
   logging::warning("PassthruShim: recording %zu B of raw data per event, unreduced",
                    m_rawSize);
 }
 
-void PassthruShim::recordGraph(cudaStream_t       stream,
-                               unsigned*    const state,
-                               unsigned*    const index,
-                               float const* const calibBuffers,
-                               size_t       const calibBufsCnt,
-                               uint8_t*     const dataBuffers,
-                               size_t       const dataBufsCnt)
+PassthruShim::~PassthruShim()
 {
-  // Deliberately empty: the data is already where it needs to be, having been
-  // written to the raw block by the Reader's per-element policy.  hasGraph() is
-  // false, so this is never called, but the interface requires it.
+  if (m_retCode_d)  cudaFree(m_retCode_d);
 }
 
-void PassthruShim::reduce(cudaGraphExec_t,
-                          cudaStream_t,
-                          unsigned  index,
-                          size_t*   dataSize,
-                          unsigned* retCode)
+bool PassthruShim::hasGraph() const { return true; }
+
+void PassthruShim::recordGraph(cudaStream_t       stream,
+                               unsigned*    const state_d,
+                               unsigned*    const index_d,
+                               float const* const calibBuffers_d,
+                               size_t       const calibBufsCnt,
+                               uint8_t*     const dataBuffers_d,
+                               size_t       const dataBufsCnt)
 {
-  // Nothing to launch and nothing to wait for.  Report the fixed size of the raw
-  // block so the recorder can size its write, and a success code.
-  //
-  // Unlike a real reducer this does not read the size back from the GPU: the raw
-  // block's size is decided at Configure by Detector::rawSize() and cannot vary
-  // per event.  A short or withheld ASIC leaves zeros in place rather than
-  // shrinking the array, matching the CPU DRP, so the size is genuinely constant.
-  *dataSize = m_rawSize;
-  *retCode  = 0;
+  // calibBuffers_d is deliberately unused: pass-through bypasses the calibrated
+  // buffer entirely, so nothing populates it in this mode.  Anything downstream
+  // that reads it -- a TrgInpGen, say -- would be reading a stale or uninitialised
+  // buffer, which is why the trigger input must be data-independent here.
+  _passthru<<<1, 1, 0, stream>>>(state_d,
+                                 index_d,
+                                 dataBuffers_d,
+                                 dataBufsCnt,
+                                 m_rawSize,
+                                 m_retCode_d);
+  chkError(cudaGetLastError(), "Launch of _passthru kernel failed");
+}
+
+void PassthruShim::reduce(cudaGraphExec_t graph,
+                          cudaStream_t    stream,
+                          unsigned        index,
+                          size_t*         dataSize,
+                          unsigned*       retCode)
+{
+  pass_scoped_range r{/*"PassthruShim::reduce"*/}; // Expose function name via NVTX
+
+  // Only reached by the host-launched path, which this shim does not support.  In
+  // the graph case the graph is launched once by Reducer::startup() and relaunches
+  // itself from _reducerLoop, so nothing calls this.
+  logging::critical("PassthruShim::reduce: unreachable -- hasGraph() is true, so the "
+                    "graph relaunches itself and the host does not drive it");
+  abort();
 }
 
 int PassthruShim::configure(const nlohmann::json& configureMsg,

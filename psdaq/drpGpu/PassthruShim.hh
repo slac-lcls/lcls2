@@ -36,10 +36,16 @@ class PassthruShim : public ReducerAlgo
 {
 public:
   PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detector& det);
-  virtual ~PassthruShim() {}
+  virtual ~PassthruShim();
 
-  // No graph to launch, so nothing to capture and no device-side launch path
-  bool   hasGraph()    const override { return false; }
+  // True, like every other algorithm here.  It must be: with hasGraph() false and
+  // HOST_LAUNCHED_REDUCERS undefined -- which is how this is built -- Reducer skips
+  // configure(), skips setup() so no graph is recorded, and startup() launches
+  // nothing, because the branch that would start worker threads is compiled out.
+  // Nothing then posts a completion and the recorder blocks on receive() for ever.
+  // Removing hasGraph() and HOST_LAUNCHED_REDUCERS altogether is a separate TODO;
+  // until then this follows the graph path like the reducers do.
+  bool   hasGraph()    const override;
 
   // The reduced payload is unused in pass-through: the recorded data is the raw
   // block, which Detector::rawSize() sizes and MemPool reserves separately.
@@ -65,7 +71,8 @@ public:
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
-  size_t m_rawSize;                     // Bytes the Detector reserved for raw data
+  size_t    m_rawSize;                  // Bytes the Detector reserved for raw data
+  unsigned* m_retCode_d;                // Where the kernel reports success
 };
 
   } // Gpu
