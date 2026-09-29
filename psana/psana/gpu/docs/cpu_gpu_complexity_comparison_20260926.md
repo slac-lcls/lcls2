@@ -1,8 +1,205 @@
 # CPU/GPU path size and complexity comparison
 
-2026-09-26, checkpoint `31d68655a6f2fb711e2489f89d3149172b46dad3`.
-Static analysis of current tracked source, before structural simplification.
-No implementation or benchmark settings changed.
+Updated **2026-09-28** through user-kernel checkpoint
+`6ba5fa586af4b740b3d3b41c2499e471d7e08dce` (Stages 1–5b), with completed
+Stage 5c performance evidence. The September 26 analysis is preserved below as
+an explicitly historical baseline. Its old automatic GPU calibration and D2H
+descriptions do not describe the current task API.
+
+## Current assessment, including batched user kernels
+
+The GPU runtime now occupies **8,833 physical LOC in 26 files**, compared with
+**9,455 LOC in 24 files** at the September 26 checkpoint: **622 fewer lines
+(−6.6%)**. This includes **801 LOC** in four new task/input/publication modules.
+Removal of automatic calibration and its derived-constant/MPI setup, plus
+manager refactoring, more than offset those additions in physical source size.
+This is the net checkpoint-to-checkpoint change, including cleanup; it does not
+isolate the implementation cost of batching alone.
+
+Some algorithm code moved outside the runtime. The external Jungfrau calibration
+and integration implementations add **196 + 156 = 352 LOC**, including their
+embedded CUDA kernels. Counting those as well gives **9,185 LOC**, only **270
+lines (−2.9%)** below the old runtime total. The old runtime included calibration
+but not the new radial integration algorithm. The three example drivers add
+another **140 LOC**; runtime plus all five example files is **9,325 LOC**.
+These totals expose the scope change rather than treating moved code as deleted
+functionality. Tests, benchmark harnesses and documentation are excluded.
+
+CPU still has the simpler synchronous event/read path: **589 LOC** in the shared
+`Events` dispatcher and CPU `EventManager`, unchanged across these checkpoints.
+The GPU coordination/read group is **2,834 LOC**, before the additional task,
+publication and lifetime groups. The file-size gap remains substantial, but the
+GPU groups also implement device preparation, asynchronous execution, bounded
+memory and host delivery that the CPU pair does not provide. Neither their ratio
+nor the total GPU/CPU selected-source ratio measures matched functionality.
+
+Fewer lines do not mean fewer decisions. Across inventoried Python runtime files,
+source lines fell **6,732 → 6,525**, while function definitions rose
+**395 → 431** and control sites rose **1,076 → 1,122**. The generic task API adds
+validation and lifetime cases while separating responsibilities. These AST
+counts exclude native code and embedded CUDA control flow and are not cyclomatic
+complexity or performance measurements.
+
+## Responsibility changes since September 26
+
+The same disjoint inventory boundaries are used at both revisions; new generic
+task/publication files receive their own row. All sizes are physical LOC.
+
+| GPU responsibility | Sept. 26 | User-kernel checkpoint | Change |
+|---|---:|---:|---:|
+| Coordination/read scheduling | 3,192 | 2,834 | −358 |
+| Field/result API and input lifetime | 1,452 | 1,425 | −27 |
+| Quota/allocation | 418 | 419 | +1 |
+| Parser/configuration | 2,121 | 2,121 | 0 |
+| Detector/calibration inside runtime | 1,185 | 392 | −793 |
+| Generic task/input context/publication/D2H | 0 | 801 | +801 |
+| Descriptor ABI | 487 | 487 | 0 |
+| GPU MPI/sharing helpers | 547 | 316 | −231 |
+| Package exports | 53 | 38 | −15 |
+| **Runtime total** | **9,455** | **8,833** | **−622** |
+
+The 801-line row comprises `gpu_task.py` **143**, `gpu_task_batch.py` **223**,
+`gpu_producer.py` **209**, and `gpu_d2h.py` **226**. It includes task declarations,
+selective original-constant staging, selected event alignment, callback-scoped
+inputs, publication validation, pinned-memory accounting and host delivery.
+It is not 801 lines of kernel-launch code. Some responsibilities, especially
+D2H, previously lived inside other files; this row is not a pure net addition.
+
+The former detector/calibration group now consists of the **392-line**
+`gpu_detector.py`, which prepares dense inputs and gathers physical segments.
+`gpu_calib.py` and `cuda/fused_calib.cuh` were removed. The user algorithms own
+calibration arithmetic and integration. `gpu_events.py` shrank **1,532 → 1,109**
+lines, while `gpu_stream.py` grew **287 → 352** as it gained task execution and
+failure-safe owner retention.
+
+Coordination, field/lifetime handling, quotas and the new task/publication group
+together occupy **5,479 LOC (62.0%)** of the runtime, versus **5,062 (53.5%)** in
+the earlier grouping without task modules. Setup, diagnostics and API validation
+are included. Managing asynchronous ownership remains the largest maintenance
+surface even though total runtime size fell.
+
+The CPU/shared scopes also remain visible:
+
+| Selected scope | Sept. 26 LOC | Current LOC | Accounting boundary |
+|---|---:|---:|---|
+| CPU `Events` + `EventManager` | 589 | 589 | Event/read layer only; `Events` also dispatches GPU processing |
+| Native parser front end | 1,427 | 1,427 | `dgram.cc` + `container.cc`; XtcData dependencies excluded |
+| Jungfrau/inherited detector and native calibration files | 2,392 | 2,418 | Broader CPU functionality, including common-mode/other calibration variants; user integration not included |
+| Selected shared framework | 9,327 | 9,249 | Both paths depend on these files; they also contain GPU integration and unrelated modes |
+| Selected shared detector/cache support | 1,066 | 1,078 | Both paths; geometry/cache fixes contribute to the change |
+
+These overlapping responsibility scopes must not be summed into exclusive CPU
+and GPU pipeline totals. The full per-file inventories and consistently measured
+Python metrics are in the [source evidence](cpu_gpu_complexity_comparison_20260928.json).
+
+## User algorithm handling: CPU versus current GPU
+
+The current GPU flow is:
+
+```text
+DataSource(gpu_fn=GpuTask(...), batch_size=20)
+  -> assigned BD stages only declared original constants
+  -> read groups / device parsing / requested dense or field inputs
+  -> one callback per nonempty selected execution subbatch
+       -> user calibration kernel -> user integration kernel
+       -> publish named (N, ...) device results
+  -> psana records completion and copies publication groups to host
+  -> public event loop consumes each event's .on_cpu result
+```
+
+CPU user code normally calls `det.raw.calib(evt)`, then its own integration
+function, then consumes the result within the event loop. A CPU user can build
+their own batching or parallelism; the inspected CPU event path does not supply
+the GPU task execution/publication contract.
+
+| Responsibility | CPU user path | Batched GPU user path |
+|---|---|---|
+| Declare work | Ordinary Python calls in the event loop | Host-only `GpuTask(function, inputs=..., calibconst=...)` passed as `gpu_fn` |
+| Obtain inputs/constants | Detector methods and CPU calibration/cache infrastructure | Declare required inputs and exact constant keys; psana prepares aligned input rows and original arrays on the assigned worker |
+| Run calibration/integration | Synchronous CPU calls; integration remains user code | External callable receives `(batch, stream)`; the validated example launches two kernels for all selected rows |
+| Scratch and outputs | Python/NumPy allocation; some detector outputs are reused | User owns device scratch/output allocation; register owners with `keepalive` or `publish` before launch |
+| Deliver output | CPU result is already host-accessible | `publish(name, array)` enables grouped D2H and per-event `.on_cpu`; accessing the result does not launch the user callback |
+| Preserve inputs | Native views retain input bytes; copied/reused detector outputs have distinct contracts | Borrowed inputs/constants are read-only; leases and CUDA completion protect reuse |
+| Handle memory pressure | Read chunk sizes and allocator/reference lifetimes | Framework quotas cover owned inputs/parser/requested constants; user device scratch remains outside that quota; output pinned staging has a separate cap |
+| Finish or stop early | Normal iterator and CPU object cleanup | Drain queued kernels/copies and retire owners on exhaustion or explicit iterator close; serial and MPI paths require coverage |
+
+The GPU consumer loop is simpler than manually coordinating per-event device
+work, but the algorithm author still owns CUDA arithmetic, stream use, allocation
+policy and output shape. Psana owns scheduling, input readiness, publication
+completion and host delivery. This moves repeated coordination out of the user
+event loop; it does not eliminate its implementation or testing cost.
+
+One callback per subbatch is not one kernel total: the example has **one task,
+two kernels**. Per-event identity, result-row mapping and public Event delivery
+remain. Outputs are copied per publication group, so multiple separately
+published arrays may require multiple copies within one execution.
+
+**Default/API detail:** with `gpu_fn`, omitted `batch_size` defaults to **1**.
+Use `batch_size=20` to request multi-event batching; memory admission and tails
+can produce smaller execution subbatches. `batch_size=1` keeps the task but
+executes single-event batches and also changes upstream batching. `gpu_fn=None`
+omits user analysis and automatic task output delivery. `gpu_bulk_read` controls
+file-read grouping independently. There is no separate kernel-batching Boolean.
+See the [implemented task/results guide](user_task_results.md).
+
+## What the performance evidence establishes
+
+Completed Stage 5c job **39380082** passed all **16 diagnostics and 38 matched
+pairs**, including identical event-associated histogram hashes. Both variants
+use the same calibration/integration kernels, input batching and constants.
+The comparison changes per-event public-loop analysis versus pipeline-batched
+analysis; its reference uses a documented benchmark adapter to expose leased
+dense inputs. It is **not** a comparison against CPU calibration/integration.
+
+| Same-work GPU comparison | Per-event GPU rate | Batched GPU rate |
+|---|---:|---:|
+| 1 GPU / 1 BD, batch 20, depth 2, warm | 101.30 events/s | 355.28 events/s |
+| 4 GPUs / 4 BDs, batch 20, depth 2, warm | 354.39 events/s | 771.92 events/s |
+
+Rates are 10,000 divided by median event-loop seconds, excluding explicit
+DataSource/Run initialization but including lazy first-use work, I/O and output
+delivery. Bulk reads are ON in this comparison. The independent real-input
+kernel check also reproduced the timing benefit with hot buffers, separately
+from I/O, allocation and D2H. The completed report, review and timing checks are
+retained under
+`/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage5c-followup-20260928-r1/`
+in `report.md`, `review.json` and `plausibility.json`. The isolated check repeats
+the first real event; it supports timer plausibility without identifying every
+cause of the batching benefit.
+
+We can therefore say that the generic GPU API supports the intended batched
+user work and substantially improves these measured GPU workloads. We cannot
+claim a CPU/GPU throughput advantage from this experiment: that needs a matched
+CPU calibration-plus-integration benchmark with the same numerical policy,
+input/cache conditions, output contract and startup accounting. CPU has broader
+detector/entry-point coverage and calibration options. The external example
+does not implement all CPU common-mode or scientific integration corrections.
+The final lifecycle acceptance checklist and scaling interpretation also remain
+separate from this static complexity inventory.
+
+## Reproducing the updated inventory
+
+The [inventory script](../scripts/complexity_inventory.py) reads committed Git
+blobs, not mutable working files. It excludes GPU scripts/tests/docs/examples
+and the same three benchmark drivers from both runtime totals, asserts complete
+nonoverlapping group coverage, and counts user examples separately. Python
+source-line and control-site definitions match the historical method below.
+Recalculation reproduces the original **24 files / 9,455 LOC** exactly.
+
+```bash
+python psana/psana/gpu/scripts/complexity_inventory.py \
+  --before 31d68655a6f2fb711e2489f89d3149172b46dad3 \
+  --after 6ba5fa586af4b740b3d3b41c2499e471d7e08dce
+```
+
+This documentation update changes no runtime or benchmark settings and requires
+no performance rerun. The scheduled scaling completion report remains separate.
+
+## Historical analysis: September 26 checkpoint
+
+The remainder preserves the original analysis at
+`31d68655a6f2fb711e2489f89d3149172b46dad3`. References to “current” and source
+line numbers in this historical section refer to that revision only.
 
 The GPU-specific runtime occupies **9,455 physical LOC in 24 source files**.
 Its largest addition relative to the CPU path is orchestration and explicit

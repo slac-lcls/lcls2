@@ -1,0 +1,897 @@
+{
+  "after": {
+    "cpu_scopes": {
+      "detector_calibration": {
+        "files": {
+          "psana/psana/detector/UtilsJungfrau.py": {
+            "control_sites": 102,
+            "function_definitions": 24,
+            "physical_loc": 924,
+            "source_lines": 629
+          },
+          "psana/psana/detector/areadetector.py": {
+            "control_sites": 64,
+            "function_definitions": 40,
+            "physical_loc": 604,
+            "source_lines": 383
+          },
+          "psana/psana/detector/detector_impl.py": {
+            "control_sites": 22,
+            "function_definitions": 19,
+            "physical_loc": 204,
+            "source_lines": 160
+          },
+          "psana/psana/detector/jungfrau.py": {
+            "control_sites": 8,
+            "function_definitions": 7,
+            "physical_loc": 105,
+            "source_lines": 55
+          },
+          "psana/psana/pycalgos/UtilsDetector.cc": {
+            "physical_loc": 242
+          },
+          "psana/psana/pycalgos/UtilsDetector.hh": {
+            "physical_loc": 72
+          },
+          "psana/psana/pycalgos/utilsdetector.py": {
+            "control_sites": 1,
+            "function_definitions": 7,
+            "physical_loc": 127,
+            "source_lines": 58
+          },
+          "psana/psana/pycalgos/utilsdetector_ext.pyx": {
+            "physical_loc": 140
+          }
+        },
+        "physical_loc": 2418
+      },
+      "event_read": {
+        "files": {
+          "psana/psana/psexp/event_manager.py": {
+            "control_sites": 40,
+            "function_definitions": 12,
+            "physical_loc": 412,
+            "source_lines": 281
+          },
+          "psana/psana/psexp/events.py": {
+            "control_sites": 23,
+            "function_definitions": 5,
+            "physical_loc": 177,
+            "source_lines": 136
+          }
+        },
+        "physical_loc": 589
+      },
+      "native_parser": {
+        "files": {
+          "psana/src/container.cc": {
+            "physical_loc": 170
+          },
+          "psana/src/dgram.cc": {
+            "physical_loc": 1257
+          }
+        },
+        "physical_loc": 1427
+      },
+      "shared_detector": {
+        "files": {
+          "psana/psana/detector/calibconstants.py": {
+            "control_sites": 70,
+            "function_definitions": 33,
+            "physical_loc": 516,
+            "source_lines": 339
+          },
+          "psana/psana/detector/mask_algos.py": {
+            "control_sites": 28,
+            "function_definitions": 10,
+            "physical_loc": 272,
+            "source_lines": 127
+          },
+          "psana/psana/detector/shared_calibc_cache.py": {
+            "control_sites": 8,
+            "function_definitions": 12,
+            "physical_loc": 141,
+            "source_lines": 97
+          },
+          "psana/psana/detector/shared_geo_cache.py": {
+            "control_sites": 10,
+            "function_definitions": 13,
+            "physical_loc": 149,
+            "source_lines": 100
+          }
+        },
+        "physical_loc": 1078
+      },
+      "shared_framework": {
+        "files": {
+          "psana/psana/datasource.py": {
+            "control_sites": 43,
+            "function_definitions": 4,
+            "physical_loc": 256,
+            "source_lines": 208
+          },
+          "psana/psana/dgramlite.pyx": {
+            "physical_loc": 256
+          },
+          "psana/psana/dgrammanager.py": {
+            "control_sites": 105,
+            "function_definitions": 26,
+            "physical_loc": 730,
+            "source_lines": 525
+          },
+          "psana/psana/event.py": {
+            "control_sites": 19,
+            "function_definitions": 25,
+            "physical_loc": 227,
+            "source_lines": 138
+          },
+          "psana/psana/eventbuilder.pyx": {
+            "physical_loc": 975
+          },
+          "psana/psana/parallelreader.pyx": {
+            "physical_loc": 236
+          },
+          "psana/psana/psexp/calib_xtc.py": {
+            "control_sites": 54,
+            "function_definitions": 13,
+            "physical_loc": 319,
+            "source_lines": 229
+          },
+          "psana/psana/psexp/ds_base.py": {
+            "control_sites": 123,
+            "function_definitions": 35,
+            "physical_loc": 987,
+            "source_lines": 695
+          },
+          "psana/psana/psexp/eventbuilder_manager.py": {
+            "control_sites": 6,
+            "function_definitions": 4,
+            "physical_loc": 71,
+            "source_lines": 57
+          },
+          "psana/psana/psexp/mpi_ds.py": {
+            "control_sites": 138,
+            "function_definitions": 27,
+            "physical_loc": 852,
+            "source_lines": 683
+          },
+          "psana/psana/psexp/mpi_shmem.py": {
+            "control_sites": 11,
+            "function_definitions": 8,
+            "physical_loc": 141,
+            "source_lines": 81
+          },
+          "psana/psana/psexp/node.py": {
+            "control_sites": 192,
+            "function_definitions": 57,
+            "physical_loc": 1457,
+            "source_lines": 1146
+          },
+          "psana/psana/psexp/packet_footer.py": {
+            "control_sites": 5,
+            "function_definitions": 5,
+            "physical_loc": 60,
+            "source_lines": 38
+          },
+          "psana/psana/psexp/run.py": {
+            "control_sites": 107,
+            "function_definitions": 54,
+            "physical_loc": 940,
+            "source_lines": 685
+          },
+          "psana/psana/psexp/run_ctx.py": {
+            "control_sites": 0,
+            "function_definitions": 4,
+            "physical_loc": 39,
+            "source_lines": 21
+          },
+          "psana/psana/psexp/smdreader_manager.py": {
+            "control_sites": 47,
+            "function_definitions": 17,
+            "physical_loc": 422,
+            "source_lines": 270
+          },
+          "psana/psana/psexp/step.py": {
+            "control_sites": 13,
+            "function_definitions": 2,
+            "physical_loc": 86,
+            "source_lines": 71
+          },
+          "psana/psana/smdreader.pyx": {
+            "physical_loc": 1195
+          }
+        },
+        "physical_loc": 9249
+      }
+    },
+    "files": {
+      "__init__.py": {
+        "control_sites": 0,
+        "function_definitions": 0,
+        "physical_loc": 20,
+        "source_lines": 12
+      },
+      "context.py": {
+        "control_sites": 37,
+        "function_definitions": 22,
+        "physical_loc": 393,
+        "source_lines": 233
+      },
+      "gpu_admission.py": {
+        "control_sites": 13,
+        "function_definitions": 3,
+        "physical_loc": 69,
+        "source_lines": 51
+      },
+      "gpu_allocation.py": {
+        "control_sites": 24,
+        "function_definitions": 7,
+        "physical_loc": 133,
+        "source_lines": 89
+      },
+      "gpu_batch.py": {
+        "control_sites": 39,
+        "function_definitions": 17,
+        "physical_loc": 487,
+        "source_lines": 286
+      },
+      "gpu_budget.py": {
+        "control_sites": 25,
+        "function_definitions": 26,
+        "physical_loc": 286,
+        "source_lines": 169
+      },
+      "gpu_d2h.py": {
+        "control_sites": 43,
+        "function_definitions": 18,
+        "physical_loc": 226,
+        "source_lines": 175
+      },
+      "gpu_detector.py": {
+        "control_sites": 61,
+        "function_definitions": 18,
+        "physical_loc": 392,
+        "source_lines": 311
+      },
+      "gpu_events.py": {
+        "control_sites": 182,
+        "function_definitions": 44,
+        "physical_loc": 1109,
+        "source_lines": 870
+      },
+      "gpu_file_epochs.py": {
+        "control_sites": 22,
+        "function_definitions": 3,
+        "physical_loc": 94,
+        "source_lines": 71
+      },
+      "gpu_group_schedule.py": {
+        "control_sites": 21,
+        "function_definitions": 3,
+        "physical_loc": 75,
+        "source_lines": 61
+      },
+      "gpu_input.py": {
+        "control_sites": 118,
+        "function_definitions": 67,
+        "physical_loc": 835,
+        "source_lines": 691
+      },
+      "gpu_input_group.py": {
+        "control_sites": 59,
+        "function_definitions": 14,
+        "physical_loc": 267,
+        "source_lines": 192
+      },
+      "gpu_input_window.py": {
+        "control_sites": 26,
+        "function_definitions": 16,
+        "physical_loc": 197,
+        "source_lines": 149
+      },
+      "gpu_kvikio_read.py": {
+        "control_sites": 77,
+        "function_definitions": 20,
+        "physical_loc": 500,
+        "source_lines": 347
+      },
+      "gpu_mpi.py": {
+        "control_sites": 19,
+        "function_definitions": 6,
+        "physical_loc": 316,
+        "source_lines": 112
+      },
+      "gpu_producer.py": {
+        "control_sites": 25,
+        "function_definitions": 24,
+        "physical_loc": 209,
+        "source_lines": 155
+      },
+      "gpu_read_plan.py": {
+        "control_sites": 28,
+        "function_definitions": 7,
+        "physical_loc": 243,
+        "source_lines": 156
+      },
+      "gpu_stream.py": {
+        "control_sites": 42,
+        "function_definitions": 13,
+        "physical_loc": 352,
+        "source_lines": 239
+      },
+      "gpu_stream_read_plan.py": {
+        "control_sites": 24,
+        "function_definitions": 3,
+        "physical_loc": 125,
+        "source_lines": 87
+      },
+      "gpu_task.py": {
+        "control_sites": 26,
+        "function_definitions": 9,
+        "physical_loc": 143,
+        "source_lines": 103
+      },
+      "gpu_task_batch.py": {
+        "control_sites": 35,
+        "function_definitions": 15,
+        "physical_loc": 223,
+        "source_lines": 165
+      },
+      "gpudgram/__init__.py": {
+        "control_sites": 0,
+        "function_definitions": 0,
+        "physical_loc": 18,
+        "source_lines": 15
+      },
+      "gpudgram/batch.py": {
+        "control_sites": 49,
+        "function_definitions": 21,
+        "physical_loc": 453,
+        "source_lines": 369
+      },
+      "gpudgram/config.py": {
+        "control_sites": 84,
+        "function_definitions": 27,
+        "physical_loc": 726,
+        "source_lines": 608
+      },
+      "gpudgram/parser.py": {
+        "control_sites": 43,
+        "function_definitions": 28,
+        "physical_loc": 942,
+        "source_lines": 809
+      }
+    },
+    "groups": {
+      "coordination_reads": {
+        "files": [
+          "gpu_events.py",
+          "gpu_stream.py",
+          "gpu_kvikio_read.py",
+          "gpu_stream_read_plan.py",
+          "gpu_read_plan.py",
+          "gpu_group_schedule.py",
+          "gpu_file_epochs.py",
+          "gpu_admission.py",
+          "gpu_input_group.py"
+        ],
+        "physical_loc": 2834
+      },
+      "descriptor_abi": {
+        "files": [
+          "gpu_batch.py"
+        ],
+        "physical_loc": 487
+      },
+      "detector_calibration": {
+        "files": [
+          "gpu_detector.py"
+        ],
+        "physical_loc": 392
+      },
+      "exports": {
+        "files": [
+          "__init__.py",
+          "gpudgram/__init__.py"
+        ],
+        "physical_loc": 38
+      },
+      "fields_lifetime": {
+        "files": [
+          "gpu_input.py",
+          "context.py",
+          "gpu_input_window.py"
+        ],
+        "physical_loc": 1425
+      },
+      "gpu_mpi": {
+        "files": [
+          "gpu_mpi.py"
+        ],
+        "physical_loc": 316
+      },
+      "parser_config": {
+        "files": [
+          "gpudgram/config.py",
+          "gpudgram/batch.py",
+          "gpudgram/parser.py"
+        ],
+        "physical_loc": 2121
+      },
+      "quota_allocation": {
+        "files": [
+          "gpu_budget.py",
+          "gpu_allocation.py"
+        ],
+        "physical_loc": 419
+      },
+      "task_publication": {
+        "files": [
+          "gpu_task.py",
+          "gpu_task_batch.py",
+          "gpu_producer.py",
+          "gpu_d2h.py"
+        ],
+        "physical_loc": 801
+      }
+    },
+    "revision": "6ba5fa586af4b740b3d3b41c2499e471d7e08dce",
+    "runtime_files": 26,
+    "runtime_loc": 8833,
+    "user_examples": {
+      "examples/calibrate_jungfrau.py": {
+        "control_sites": 5,
+        "function_definitions": 1,
+        "physical_loc": 54,
+        "source_lines": 36
+      },
+      "examples/input_only.py": {
+        "control_sites": 4,
+        "function_definitions": 1,
+        "physical_loc": 34,
+        "source_lines": 22
+      },
+      "examples/integrate_jungfrau.py": {
+        "control_sites": 6,
+        "function_definitions": 1,
+        "physical_loc": 52,
+        "source_lines": 41
+      },
+      "examples/jungfrau_azimuthal_integration.py": {
+        "control_sites": 13,
+        "function_definitions": 4,
+        "physical_loc": 156,
+        "source_lines": 124
+      },
+      "examples/jungfrau_calibration.py": {
+        "control_sites": 37,
+        "function_definitions": 7,
+        "physical_loc": 196,
+        "source_lines": 153
+      }
+    }
+  },
+  "before": {
+    "cpu_scopes": {
+      "detector_calibration": {
+        "files": {
+          "psana/psana/detector/UtilsJungfrau.py": {
+            "control_sites": 102,
+            "function_definitions": 24,
+            "physical_loc": 924,
+            "source_lines": 629
+          },
+          "psana/psana/detector/areadetector.py": {
+            "control_sites": 60,
+            "function_definitions": 38,
+            "physical_loc": 578,
+            "source_lines": 368
+          },
+          "psana/psana/detector/detector_impl.py": {
+            "control_sites": 22,
+            "function_definitions": 19,
+            "physical_loc": 204,
+            "source_lines": 160
+          },
+          "psana/psana/detector/jungfrau.py": {
+            "control_sites": 8,
+            "function_definitions": 7,
+            "physical_loc": 105,
+            "source_lines": 55
+          },
+          "psana/psana/pycalgos/UtilsDetector.cc": {
+            "physical_loc": 242
+          },
+          "psana/psana/pycalgos/UtilsDetector.hh": {
+            "physical_loc": 72
+          },
+          "psana/psana/pycalgos/utilsdetector.py": {
+            "control_sites": 1,
+            "function_definitions": 7,
+            "physical_loc": 127,
+            "source_lines": 58
+          },
+          "psana/psana/pycalgos/utilsdetector_ext.pyx": {
+            "physical_loc": 140
+          }
+        },
+        "physical_loc": 2392
+      },
+      "event_read": {
+        "files": {
+          "psana/psana/psexp/event_manager.py": {
+            "control_sites": 40,
+            "function_definitions": 12,
+            "physical_loc": 412,
+            "source_lines": 281
+          },
+          "psana/psana/psexp/events.py": {
+            "control_sites": 23,
+            "function_definitions": 5,
+            "physical_loc": 177,
+            "source_lines": 136
+          }
+        },
+        "physical_loc": 589
+      },
+      "native_parser": {
+        "files": {
+          "psana/src/container.cc": {
+            "physical_loc": 170
+          },
+          "psana/src/dgram.cc": {
+            "physical_loc": 1257
+          }
+        },
+        "physical_loc": 1427
+      },
+      "shared_detector": {
+        "files": {
+          "psana/psana/detector/calibconstants.py": {
+            "control_sites": 70,
+            "function_definitions": 33,
+            "physical_loc": 516,
+            "source_lines": 339
+          },
+          "psana/psana/detector/mask_algos.py": {
+            "control_sites": 28,
+            "function_definitions": 10,
+            "physical_loc": 272,
+            "source_lines": 127
+          },
+          "psana/psana/detector/shared_calibc_cache.py": {
+            "control_sites": 8,
+            "function_definitions": 12,
+            "physical_loc": 141,
+            "source_lines": 97
+          },
+          "psana/psana/detector/shared_geo_cache.py": {
+            "control_sites": 9,
+            "function_definitions": 12,
+            "physical_loc": 137,
+            "source_lines": 94
+          }
+        },
+        "physical_loc": 1066
+      },
+      "shared_framework": {
+        "files": {
+          "psana/psana/datasource.py": {
+            "control_sites": 43,
+            "function_definitions": 4,
+            "physical_loc": 256,
+            "source_lines": 208
+          },
+          "psana/psana/dgramlite.pyx": {
+            "physical_loc": 256
+          },
+          "psana/psana/dgrammanager.py": {
+            "control_sites": 103,
+            "function_definitions": 26,
+            "physical_loc": 716,
+            "source_lines": 519
+          },
+          "psana/psana/event.py": {
+            "control_sites": 19,
+            "function_definitions": 25,
+            "physical_loc": 227,
+            "source_lines": 138
+          },
+          "psana/psana/eventbuilder.pyx": {
+            "physical_loc": 975
+          },
+          "psana/psana/parallelreader.pyx": {
+            "physical_loc": 236
+          },
+          "psana/psana/psexp/calib_xtc.py": {
+            "control_sites": 54,
+            "function_definitions": 13,
+            "physical_loc": 319,
+            "source_lines": 229
+          },
+          "psana/psana/psexp/ds_base.py": {
+            "control_sites": 113,
+            "function_definitions": 35,
+            "physical_loc": 951,
+            "source_lines": 668
+          },
+          "psana/psana/psexp/eventbuilder_manager.py": {
+            "control_sites": 6,
+            "function_definitions": 4,
+            "physical_loc": 71,
+            "source_lines": 57
+          },
+          "psana/psana/psexp/mpi_ds.py": {
+            "control_sites": 156,
+            "function_definitions": 29,
+            "physical_loc": 995,
+            "source_lines": 769
+          },
+          "psana/psana/psexp/mpi_shmem.py": {
+            "control_sites": 11,
+            "function_definitions": 8,
+            "physical_loc": 141,
+            "source_lines": 81
+          },
+          "psana/psana/psexp/node.py": {
+            "control_sites": 192,
+            "function_definitions": 57,
+            "physical_loc": 1457,
+            "source_lines": 1146
+          },
+          "psana/psana/psexp/packet_footer.py": {
+            "control_sites": 5,
+            "function_definitions": 5,
+            "physical_loc": 60,
+            "source_lines": 38
+          },
+          "psana/psana/psexp/run.py": {
+            "control_sites": 106,
+            "function_definitions": 53,
+            "physical_loc": 925,
+            "source_lines": 677
+          },
+          "psana/psana/psexp/run_ctx.py": {
+            "control_sites": 0,
+            "function_definitions": 4,
+            "physical_loc": 39,
+            "source_lines": 21
+          },
+          "psana/psana/psexp/smdreader_manager.py": {
+            "control_sites": 47,
+            "function_definitions": 17,
+            "physical_loc": 422,
+            "source_lines": 270
+          },
+          "psana/psana/psexp/step.py": {
+            "control_sites": 13,
+            "function_definitions": 2,
+            "physical_loc": 86,
+            "source_lines": 71
+          },
+          "psana/psana/smdreader.pyx": {
+            "physical_loc": 1195
+          }
+        },
+        "physical_loc": 9327
+      }
+    },
+    "files": {
+      "__init__.py": {
+        "control_sites": 0,
+        "function_definitions": 0,
+        "physical_loc": 35,
+        "source_lines": 11
+      },
+      "context.py": {
+        "control_sites": 40,
+        "function_definitions": 22,
+        "physical_loc": 420,
+        "source_lines": 256
+      },
+      "cuda/fused_calib.cuh": {
+        "physical_loc": 55
+      },
+      "gpu_admission.py": {
+        "control_sites": 13,
+        "function_definitions": 3,
+        "physical_loc": 69,
+        "source_lines": 51
+      },
+      "gpu_allocation.py": {
+        "control_sites": 22,
+        "function_definitions": 7,
+        "physical_loc": 132,
+        "source_lines": 88
+      },
+      "gpu_batch.py": {
+        "control_sites": 39,
+        "function_definitions": 17,
+        "physical_loc": 487,
+        "source_lines": 286
+      },
+      "gpu_budget.py": {
+        "control_sites": 25,
+        "function_definitions": 26,
+        "physical_loc": 286,
+        "source_lines": 169
+      },
+      "gpu_calib.py": {
+        "control_sites": 24,
+        "function_definitions": 10,
+        "physical_loc": 233,
+        "source_lines": 186
+      },
+      "gpu_detector.py": {
+        "control_sites": 78,
+        "function_definitions": 29,
+        "physical_loc": 897,
+        "source_lines": 613
+      },
+      "gpu_events.py": {
+        "control_sites": 218,
+        "function_definitions": 54,
+        "physical_loc": 1532,
+        "source_lines": 1139
+      },
+      "gpu_file_epochs.py": {
+        "control_sites": 22,
+        "function_definitions": 3,
+        "physical_loc": 94,
+        "source_lines": 71
+      },
+      "gpu_group_schedule.py": {
+        "control_sites": 21,
+        "function_definitions": 3,
+        "physical_loc": 75,
+        "source_lines": 61
+      },
+      "gpu_input.py": {
+        "control_sites": 118,
+        "function_definitions": 67,
+        "physical_loc": 835,
+        "source_lines": 691
+      },
+      "gpu_input_group.py": {
+        "control_sites": 59,
+        "function_definitions": 14,
+        "physical_loc": 267,
+        "source_lines": 192
+      },
+      "gpu_input_window.py": {
+        "control_sites": 26,
+        "function_definitions": 16,
+        "physical_loc": 197,
+        "source_lines": 149
+      },
+      "gpu_kvikio_read.py": {
+        "control_sites": 77,
+        "function_definitions": 20,
+        "physical_loc": 500,
+        "source_lines": 347
+      },
+      "gpu_mpi.py": {
+        "control_sites": 32,
+        "function_definitions": 8,
+        "physical_loc": 547,
+        "source_lines": 203
+      },
+      "gpu_read_plan.py": {
+        "control_sites": 28,
+        "function_definitions": 7,
+        "physical_loc": 243,
+        "source_lines": 156
+      },
+      "gpu_stream.py": {
+        "control_sites": 34,
+        "function_definitions": 10,
+        "physical_loc": 287,
+        "source_lines": 175
+      },
+      "gpu_stream_read_plan.py": {
+        "control_sites": 24,
+        "function_definitions": 3,
+        "physical_loc": 125,
+        "source_lines": 87
+      },
+      "gpudgram/__init__.py": {
+        "control_sites": 0,
+        "function_definitions": 0,
+        "physical_loc": 18,
+        "source_lines": 15
+      },
+      "gpudgram/batch.py": {
+        "control_sites": 49,
+        "function_definitions": 21,
+        "physical_loc": 453,
+        "source_lines": 369
+      },
+      "gpudgram/config.py": {
+        "control_sites": 84,
+        "function_definitions": 27,
+        "physical_loc": 726,
+        "source_lines": 608
+      },
+      "gpudgram/parser.py": {
+        "control_sites": 43,
+        "function_definitions": 28,
+        "physical_loc": 942,
+        "source_lines": 809
+      }
+    },
+    "groups": {
+      "coordination_reads": {
+        "files": [
+          "gpu_events.py",
+          "gpu_stream.py",
+          "gpu_kvikio_read.py",
+          "gpu_stream_read_plan.py",
+          "gpu_read_plan.py",
+          "gpu_group_schedule.py",
+          "gpu_file_epochs.py",
+          "gpu_admission.py",
+          "gpu_input_group.py"
+        ],
+        "physical_loc": 3192
+      },
+      "descriptor_abi": {
+        "files": [
+          "gpu_batch.py"
+        ],
+        "physical_loc": 487
+      },
+      "detector_calibration": {
+        "files": [
+          "gpu_detector.py",
+          "gpu_calib.py",
+          "cuda/fused_calib.cuh"
+        ],
+        "physical_loc": 1185
+      },
+      "exports": {
+        "files": [
+          "__init__.py",
+          "gpudgram/__init__.py"
+        ],
+        "physical_loc": 53
+      },
+      "fields_lifetime": {
+        "files": [
+          "gpu_input.py",
+          "context.py",
+          "gpu_input_window.py"
+        ],
+        "physical_loc": 1452
+      },
+      "gpu_mpi": {
+        "files": [
+          "gpu_mpi.py"
+        ],
+        "physical_loc": 547
+      },
+      "parser_config": {
+        "files": [
+          "gpudgram/config.py",
+          "gpudgram/batch.py",
+          "gpudgram/parser.py"
+        ],
+        "physical_loc": 2121
+      },
+      "quota_allocation": {
+        "files": [
+          "gpu_budget.py",
+          "gpu_allocation.py"
+        ],
+        "physical_loc": 418
+      },
+      "task_publication": {
+        "files": [],
+        "physical_loc": 0
+      }
+    },
+    "revision": "31d68655a6f2fb711e2489f89d3149172b46dad3",
+    "runtime_files": 24,
+    "runtime_loc": 9455,
+    "user_examples": {}
+  }
+}
