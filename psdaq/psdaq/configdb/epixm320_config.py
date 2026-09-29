@@ -926,7 +926,7 @@ def epixm320_update(update):
 def _resetSequenceCount():
     cbase = base['cam']
     cbase.App.AsicTop.RegisterControlDualClock.ResetCounters.set(1)
-    time.sleep(1.e6)
+    time.sleep(1.e-6)
     cbase.App.AsicTop.RegisterControlDualClock.ResetCounters.set(0)
 
 def epixm320_external_trigger(base):
