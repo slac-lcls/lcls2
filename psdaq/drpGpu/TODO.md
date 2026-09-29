@@ -2561,6 +2561,68 @@ stays commented out.  Do not "fix" that by re-enabling it.
 Note the same GSP signature hit **gpu008's GPU5** four times, but there a reboot cleared it each
 time.  A GSP hang that a power cycle clears is transient; this one is not.
 
+### Pass-through records correct data, 2026-09-28; the stall is in the FEB
+
+**Stage 1 is validated.**  414 L1Accepts recorded on drp-srcf-gpu006 against the hardware
+emulator, and the file is what offline needs:
+
+| check | result |
+|---|---|
+| declared type | `Type 1 Rank 2` = `UINT16`, rank 2 -- matches `Drp::EpixUHR3x2`'s |
+| `payloadSize` | 387128 = 387072 raw + 56 descriptors |
+| `extent - payloadSize` | **12** -- the header abuts the payload, no gap |
+| damage | `0x0` on every event |
+| pixels | 193536 u16, **99.7% non-zero**, all six ASICs ~16050 of 16128 |
+| shim | `DRP_redStarts == DRP_redRcvs`, so every event completed |
+
+Read it with `xtcreader -f <file> -d`, or decode the last 387072 bytes of an L1A payload as u16.
+
+**Bit layout, from Gabriel 2026-09-28: gain is bit 0, ADC is bits 1-11, bits 12-15 are zero.**
+An earlier reading here had gain in bit 11, which was wrong.  Pass-through copies verbatim so it
+does not care, but stage 3 will.
+
+#### Two bugs fixed to get there
+
+- **The shim hung the DRPs.**  With `hasGraph()` false and `HOST_LAUNCHED_REDUCERS` undefined,
+  `Reducer` skips `configure()` and `setup()`, and `startup()` launches nothing because the
+  worker-thread branch is `#else`-compiled out.  Nothing posts a completion and the recorder
+  blocks on `receive()` for ever.  Fixed by following the graph path: `hasGraph()` true, a
+  `<<<1,1>>>` kernel that moves no data, sets the size and advances the state.
+- **The size slot collided with the raw block.**  `_reducerLoop` read `((size_t*)data)[-1]`,
+  which lies *inside* the raw block, so the size and the last four u16 pixels overwrote each
+  other.  Both now use `((size_t*)(data - rawSize))[-1]`; real reducers are unchanged since
+  `rawSize` is 0 for them.
+
+#### The remaining blocker is the FEB's backpressure, not the DRP
+
+After a few hundred events the DAQ goes to 100% deadtime and Disable will not complete.  **It is
+not the GPU DRP**, and the evidence is conclusive:
+
+| run | consumer | events |
+|---|---|---|
+| GPU, `dmaBufCount=8` | `PassthruShim` | 414 |
+| GPU, `dmaBufCount=32` | `PassthruShim` | 651 |
+| **CPU DRP** | stock `drp`, none of this code | **365** |
+
+So it is not a fixed-length acquisition (the count varies), not GPU-specific (the CPU path does
+it too), and not a DRP buffer-return failure -- `/proc/datadev_a1` showed `Buffers In User: 0`
+with `Buffers In Hw: 1020`, i.e. software held nothing and the driver was not starved, and
+`RX Frame Count` equalled the events processed, so the DRP consumed everything it was given.
+
+What the FEB shows while stalled, from both ePix devGuis:
+
+    L1AcceptCount = 794        triggers the FEB accepted
+    RX Frame Count = 653       frames that reached the datadev
+    XpmPause = True, FifoPause = True
+
+**The FEB accepted 141 more triggers than it could push out, asserted backpressure, and never
+released it.**  That the count varies run to run fits a FIFO filling on timing rather than a
+counted burst.  Ric suspects a high-water mark whose release condition never becomes true, and
+that `L0Delay` -- currently 0 for all partitions and readout groups -- is the adjustment, though
+whether 0 is the conservative end wants confirming with Matt.
+
+Useful that it reproduces with the stock CPU DRP: the GPU work need not enter that discussion.
+
 ### Pass-through reached Paused on gpu006, 2026-09-25, and what it took
 
 First run of the pass-through work (`features/gpu-raw-calib`) against the hardware emulator.
