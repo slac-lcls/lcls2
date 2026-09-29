@@ -50,6 +50,9 @@ be too:
 - **verified-live** — executed against the real service/filesystem
 - **verified-against-real-logs** — grepped from actual production log files
 - **inferred-from-code-only** — read from source, never operationally confirmed
+- **documented-in-issue** — a GitHub issue documents this as a known cause,
+  rather than this skill (or the sweep in `psana-daq`) having observed it
+  directly. Use these four; don't invent a fifth.
 
 **Confidence** labels how sure a *diagnostic conclusion* is — an inference
 over one or more pieces of evidence, not a fact you obtained directly. Use
@@ -80,13 +83,23 @@ All `file:line` citations below are relative to the lcls2 checkout root.
 ### Environment sourcing
 
 The DAQ environment must be sourced explicitly before running `daqstate` or
-`showPlatform`. Do NOT probe `command -v daqstate` — `ami-client` is launched via
-`bash -l -c` which re-sources shell profiles (e.g. `rixopr`'s `.bashrc` runs
-`pathmunge` which may clobber PATH).
+`showPlatform`. **A negative `command -v daqstate` probe does not prove
+absence** — `ami-client` is launched via `bash -l -c` which re-sources
+shell profiles (e.g. `rixopr`'s `.bashrc` runs `pathmunge` which may
+clobber PATH), so a probe run before sourcing can fail even though
+sourcing would put `daqstate` on `PATH` fine. Don't skip the env-sourcing
+step just because an early probe failed. That said, **genuine PATH-absence
+is a real, distinct failure mode** — verified directly on an analysis node
+(`sdfiana024`) where no DAQ release was on `PATH` at all and sourcing
+doesn't fix it, because there's nothing to source. See `psana-daq`'s
+"Prerequisites / preflight" section for how the router distinguishes this
+from the firewall/DNS failure mode.
 
 The `env -i` isolation is **required** because the setup scripts abort with
 `"Please do not mix ana and daq setup scripts"` when `ENV_TYPE=ana` is already set
-(which it will be in any AMI session):
+(true of any analysis/psana shell — this is not AMI-specific, though it is
+also true of any AMI session, since AMI itself runs in an analysis
+environment):
 
 ```bash
 env -i HOME=$HOME USER=$USER bash -lc \
@@ -293,22 +306,24 @@ flag across the September 2026 xpp `control.log` corpus show `-T 40000`.)*
 
 ## Section 3 — Frequency-Ranked Error Catalog
 
-**Provenance of the count column: verified-against-real-logs.**
-**Provenance of the "Likely cause" and "Suggested next step" columns:
-inferred-from-code-only.**
+**Provenance of the frequency-band column: verified at 2026-09-26, subject
+to drift — re-derive with the recipe below before relying on precise
+ranking.** **Provenance of the "Likely cause" and "Suggested next step"
+columns: inferred-from-code-only** (these don't decay the way counts do —
+see "Why bands, not counts" below).
 
-### Corpus — state this whenever you cite these numbers
+### Corpus — state this whenever you cite these bands
 
 ```
-/sdf/home/x/xppopr/daq/logs/2026/09/*control.log
+/sdf/home/x/xppopr/daq/logs/2026/09/*control.log        (uncompressed)
+/sdf/home/x/xppopr/daq/logs/2026/09/*control.log.zst    (rotated — include via zstdcat)
 ```
 
-- **One hutch only:** xpp.
-- **One month only:** September 2026 (day prefixes present: 01–04, 08–10,
-  15–18).
-- **120 uncompressed `control.log` files**, 11,048 total lines. 21 additional
-  `control.log.zst` rotations exist in the same directory and were **not**
-  included in these counts.
+- **One hutch only:** xpp. **One month only:** September 2026.
+- **291 files** as of 2026-09-26 (235 uncompressed + 56 `.zst` rotations),
+  33,259 total lines. Both uncompressed and rotated files are now included
+  — an earlier derivation of this table excluded `.zst` rotations entirely,
+  undercounting by roughly 30%.
 - Counts are line counts, anchored to end-of-line where the message is a
   complete line, so a repeated failure across sessions counts once per
   occurrence.
@@ -317,43 +332,81 @@ inferred-from-code-only.**
 population (`hsd_0..3`, `epix100_0`, `jungfrau1M_0`, `wav8_*`) is xpp-specific,
 so both the ranking and the specific aliases will differ elsewhere. Whether the
 *shape* of the distribution holds cross-hutch is an open question that has not
-been checked. Do not present these numbers to a user as a general LCLS-II
+been checked. Do not present these bands to a user as a general LCLS-II
 baseline; present them as "what xpp did in one month."
+
+**The detector-alias population also grows over time.** `epixuhr3x2_1`,
+`alvium_tt_0`, `wav8_ipm3_0`, `wav8_lodcm_0`, `zyla_0`, `groupca`, and
+`meb0` all have live logs at xpp today and are absent from the table
+below. Treat the table as a snapshot of *aliases seen so far*, not an
+exhaustive enumeration — new hardware means new aliases, and chasing
+completeness here is the same decay risk as chasing precise counts.
+
+### Why bands, not counts
+
+This table's exact counts were corrected once already (2026-09-18, +undercounted
+rows) and had silently decayed again by 2026-09-26 — every single count
+had drifted 5%–225%, and the **ranking itself inverted at the top**:
+`did not respond to rollcall` went from an undocumented mid-table entry to
+the single most frequent error in the corpus, ahead of the table's
+previous #1. A hand-counted snapshot inside a static document decays the
+moment the log corpus it was derived from keeps growing — the same
+structural defect this suite already diagnosed and fixed once for a
+different reference table (see `psana-daq-logs/SKILL.md`'s "Interpreting
+`<C>`/`<E>` messages" section, which grep-the-source instead of
+maintaining a catalog for exactly this reason).
+
+**Bands are decay-resistant in a way exact counts are not:** `common`
+(≥25 in the current 291-file corpus), `occasional` (8–20), `rare` (≤3) —
+natural gaps in the current distribution at 26→20 and 8→3 make these
+boundaries non-arbitrary. A count can grow 30% and stay in the same band;
+an exact integer cannot survive that at all.
+
+**Re-derivation recipe** (run this instead of trusting the bands
+indefinitely):
+
+```bash
+cd ~<hutch>opr/daq/logs/<YYYY>/<MM>
+tmp=$(mktemp)
+cat *control.log > "$tmp"
+for f in *control.log.zst; do zstdcat "$f" >> "$tmp"; done   # do not skip .zst
+rg -c -- "<error string>" "$tmp"
+rm -f "$tmp"
+```
 
 ### Table
 
-| Error string | Observed count | Likely cause *(inferred)* | Suggested next step *(inferred)* |
+| Error string | Frequency band | Likely cause *(inferred)* | Suggested next step *(inferred)* |
 |---|---|---|---|
-| `alloc failed to change state` | 28 | Umbrella result of any `condition_alloc` failure. Grep anchor: `"failed to change state' % key"` in `control.py`. Always accompanied by a more specific line immediately above it. | Do not diagnose this line. Read the 1–5 lines above it in the same `control.log` — those name the actual component or precondition. |
-| `1 client did not respond to alloc` | 19 | Exactly one component missing at `alloc`. The count is `len(retlist)`. | Read the line immediately *above* — it names the alias (grep: `"did not respond to alloc' % alias"` in `control.py`). Then check that process via `psana-daq-logs`. |
-| `epix100_0 did not respond to alloc` | 11 | The `epix100_0` DRP process is not running or not reachable on the platform. | `showPlatform` to see whether it registered at all; if absent, read its log's startup header. |
-| `hsd_2 did not respond to alloc` | 10 | HSD DRP process missing. | As above; but see the HSD note below — do not treat this as a single-card fault. |
-| `hsd_3 did not respond to alloc` | 9 | HSD DRP process missing. | As above. |
-| `hsd_1 did not respond to alloc` | 8 | HSD DRP process missing. | As above. |
-| `hsd_0 did not respond to alloc` | 8 | HSD DRP process missing. | As above. |
-| `4 client did not respond to alloc` | 8 | Four components missing at once — the four HSDs, in every observed instance. | Systemic, not per-detector. Check whether the whole HSD DRP process group failed to launch (one host, one job, one launcher). |
-| `drp/epix100_0 did not respond to rollcall` | 8 | Warning-level. Required by the activedet file but never answered the 30 s rollcall broadcast. Grep: `"client + ' did not respond to rollcall'"` in `control.py`. | Rollcall still advances the state machine (grep: `"Despite rollcall transition warnings"` in `control.py`), so this is a *precursor*, not the failure. Expect a matching `alloc` failure next. |
-| `did not respond to disable phase 2` (all aliases) | 8 | Phase-2 non-response during `disable`. Grep: `"did not respond to %s phase 2"` in `control.py`. Spread across 8 distinct aliases, 1 each. | Phase 1 succeeded — the process is alive. Usually seen during shutdown; check whether the run was being torn down. |
-| `configure failed to change state` | 8 | Umbrella for any `condition_configure` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above: distinguish `configure phase1 failed` (config problem) from `configure phase2 failed` (component wedged). |
-| `teb0: TEB didn't hear from:` | 9 | TEB reported, via its own `err_info`, that contributors are missing. | The **following** log line(s) name the missing contributors, one per line. Check each named component. |
-| `ami-meb0: MEB didn't hear from:` | 8 | Same, MEB side. | Same — read the following line(s) for the named contributor. |
-| `drp/jungfrau1M_0 did not respond to rollcall` | 7 | Warning-level rollcall miss for the Jungfrau DRP. | As with `epix100_0` above. |
-| `timing_0 did not respond to connect` | 6 | Timing DRP present at `alloc` but failed the `connect` handshake. Grep: `"did not respond to connect' % alias"` in `control.py`. | It answered `alloc`, so the process exists — look at its log for what happened during `connect`, not for a missing process. |
-| `1 client did not respond to connect` | 6 | Companion count line. Every observed instance pairs with `timing_0`. | Read the line above for the alias. |
-| `connect failed to change state` | 6 | Umbrella for `condition_connect` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above. |
-| `selectPlatform only permitted in unallocated state` | 6 | Someone ran `selectPlatform` (or the GUI's equivalent) while the DAQ was past `unallocated`. Grep: `"only permitted in unallocated state"` in `control.py`. | Not a DAQ fault — an operator-sequencing error. The DAQ must be deallocated first. Report as procedural, not as a failure. |
-| `condition_configure(): configure phase1 failed` | 4 | Phase-1 `configure` failure. Grep: `"condition_configure(): configure phase1 failed"` in `control.py`. Configuration could not be applied/retrieved. | Check `psana-configdb` for a recent change to the implicated device or config alias. Read the per-alias `did not respond to configure` lines above it. |
-| `control did not respond to configure phase 2` | 4 | Phase-2 `configure` non-response, attributed to `control` itself. Grep: `"did not respond to %s phase 2"` in `control.py`. | Every observed instance is immediately preceded by `teb0: TEB didn't hear from:` and/or `ami-meb0: MEB didn't hear from:`. Diagnose *those* instead. |
-| `configure phase2 failed` | 4 | Umbrella for the phase-2 stage. | See above. |
-| `disable failed to change state` | 2 | `condition_disable` failed. Grep: `"failed to change state' % key"` in `control.py`. | Usually shutdown-time; correlate with the `disable phase 2` lines. |
-| `jungfrau1M_0 did not respond to alloc` | 2 | Jungfrau DRP process missing at `alloc`. | As with the other per-detector `alloc` misses. |
-| `2 client did not respond to alloc` | 1 | Two components missing at `alloc`. | Read the two alias lines above. |
-| `dealloc failed to change state` | 1 | `condition_dealloc` failed. Grep: `"failed to change state' % key"` in `control.py`. | Read the `did not respond to dealloc` line above (grep: `"did not respond to dealloc' % alias"` in `control.py`). |
-| `wav8_ipm2_0 did not respond to alloc` | 1 | Singleton. | Per-detector `alloc` miss. |
-| `timing_0 did not respond to alloc` | 1 | Singleton. | Per-detector `alloc` miss. |
-| `teb0 did not respond to alloc` | 1 | Singleton — the TEB itself missing at `alloc`. | Without a TEB nothing downstream works (see Section 4 topology preconditions). |
-| `bld_0 did not respond to alloc` | 1 | Singleton. | Per-detector `alloc` miss. |
-| `ami-meb0 did not respond to alloc` | 1 | Singleton — the MEB missing at `alloc`. | Monitoring will be unavailable; AMI is unsupported without an MEB (grep: `"ami NOT supported in absence of MEB"` in `control.py`). |
+| `did not respond to rollcall` (all aliases) | common | Warning-level. Required by the activedet file but never answered the 30 s rollcall broadcast. Grep: `"client + ' did not respond to rollcall'"` in `control.py`. Two of the largest per-alias contributors: `drp/epix100_0` and `drp/jungfrau1M_0`. | Rollcall still advances the state machine (grep: `"Despite rollcall transition warnings"` in `control.py`), so this is a *precursor*, not the failure. Expect a matching `alloc` failure next. |
+| `alloc failed to change state` | common | Umbrella result of any `condition_alloc` failure. Grep anchor: `"failed to change state' % key"` in `control.py`. Always accompanied by a more specific line immediately above it. | Do not diagnose this line. Read the 1–5 lines above it in the same `control.log` — those name the actual component or precondition. |
+| `teb0: TEB didn't hear from:` | common | TEB reported, via its own `err_info`, that contributors are missing. | The **following** log line(s) name the missing contributors, one per line. Check each named component. |
+| `configure failed to change state` | common | Umbrella for any `condition_configure` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above: distinguish `configure phase1 failed` (config problem) from `configure phase2 failed` (component wedged). |
+| `1 client did not respond to alloc` | common | Exactly one component missing at `alloc`. The count is `len(retlist)`. | Read the line immediately *above* — it names the alias (grep: `"did not respond to alloc' % alias"` in `control.py`). Then check that process via `psana-daq-logs`. |
+| `did not respond to disable phase 2` (all aliases) | common | Phase-2 non-response during `disable`. Grep: `"did not respond to %s phase 2"` in `control.py`. Spread across many distinct aliases. | Phase 1 succeeded — the process is alive. Usually seen during shutdown; check whether the run was being torn down. |
+| `ami-meb0: MEB didn't hear from:` | occasional | Same, MEB side, as the TEB row above. | Same — read the following line(s) for the named contributor. |
+| `hsd_2 did not respond to alloc` | occasional | HSD DRP process missing. | As above; but see the HSD note below — do not treat this as a single-card fault. |
+| `hsd_3 did not respond to alloc` | occasional | HSD DRP process missing. | As above. |
+| `epix100_0 did not respond to alloc` | occasional | The `epix100_0` DRP process is not running or not reachable on the platform. | `showPlatform` to see whether it registered at all; if absent, read its log's startup header. |
+| `condition_configure(): configure phase1 failed` | occasional | Phase-1 `configure` failure. Grep: `"condition_configure(): configure phase1 failed"` in `control.py`. Configuration could not be applied/retrieved. | Check `psana-configdb` for a recent change to the implicated device or config alias. Read the per-alias `did not respond to configure` lines above it. |
+| `4 client did not respond to alloc` | occasional | Four components missing at once — the four HSDs, in every observed instance. | Systemic, not per-detector. Check whether the whole HSD DRP process group failed to launch (one host, one job, one launcher). |
+| `hsd_1 did not respond to alloc` | occasional | HSD DRP process missing. | As above. |
+| `hsd_0 did not respond to alloc` | occasional | HSD DRP process missing. | As above. |
+| `disable failed to change state` | occasional | `condition_disable` failed. Grep: `"failed to change state' % key"` in `control.py`. | Usually shutdown-time; correlate with the `disable phase 2` lines. |
+| `configure phase2 failed` | occasional | Umbrella for the phase-2 stage. | See `control did not respond to configure phase 2` below. |
+| `control did not respond to configure phase 2` | occasional | Phase-2 `configure` non-response, attributed to `control` itself. Grep: `"did not respond to %s phase 2"` in `control.py`. | Every observed instance is immediately preceded by `teb0: TEB didn't hear from:` and/or `ami-meb0: MEB didn't hear from:`. Diagnose *those* instead. |
+| `connect failed to change state` | occasional | Umbrella for `condition_connect` failure. Grep: `"failed to change state' % key"` in `control.py`. | Read the lines above. |
+| `timing_0 did not respond to connect` | occasional | Timing DRP present at `alloc` but failed the `connect` handshake. Grep: `"did not respond to connect' % alias"` in `control.py`. | It answered `alloc`, so the process exists — look at its log for what happened during `connect`, not for a missing process. |
+| `1 client did not respond to connect` | occasional | Companion count line. Every observed instance pairs with `timing_0`. | Read the line above for the alias. |
+| `selectPlatform only permitted in unallocated state` | occasional | Someone ran `selectPlatform` (or the GUI's equivalent) while the DAQ was past `unallocated`. Grep: `"only permitted in unallocated state"` in `control.py`. | Not a DAQ fault — an operator-sequencing error. The DAQ must be deallocated first. Report as procedural, not as a failure. |
+| `timing_0 did not respond to alloc` | rare | Per-detector `alloc` miss. | As with the other per-detector `alloc` misses. |
+| `2 client did not respond to alloc` | rare | Two components missing at `alloc`. | Read the two alias lines above. |
+| `jungfrau1M_0 did not respond to alloc` | rare | Jungfrau DRP process missing at `alloc`. | As with the other per-detector `alloc` misses. |
+| `ami-meb0 did not respond to alloc` | rare | Singleton — the MEB missing at `alloc`. | Monitoring will be unavailable; AMI is unsupported without an MEB (grep: `"ami NOT supported in absence of MEB"` in `control.py`). |
+| `wav8_ipm2_0 did not respond to alloc` | rare | Singleton. | Per-detector `alloc` miss. |
+| `teb0 did not respond to alloc` | rare | Singleton — the TEB itself missing at `alloc`. | Without a TEB nothing downstream works (see Section 4 topology preconditions). |
+| `dealloc failed to change state` | rare | `condition_dealloc` failed. Grep: `"failed to change state' % key"` in `control.py`. | Read the `did not respond to dealloc` line above (grep: `"did not respond to dealloc' % alias"` in `control.py`). |
+| `bld_0 did not respond to alloc` | rare | Singleton. | Per-detector `alloc` miss. |
 
 Notably **absent from this corpus entirely (count 0):**
 `duplicate alias responded to rollcall`, `at least one DRP is required`,

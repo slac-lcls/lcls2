@@ -147,9 +147,16 @@ Fire these in parallel (single message, multiple tool calls):
 
 - **Metrics present** → proceed with `{instrument="<value>"}` on all
   subsequent queries.
-- **No results** → tell the user plainly: DAQ is not running for that
-  instrument, or metrics are not flowing; check connectivity before
-  proceeding further.
+- **No results, live scope** → tell the user plainly: DAQ is not running
+  for that instrument, or metrics are not flowing; check connectivity
+  before proceeding further.
+- **No results, past scope** → do **not** conclude the DAQ was down.
+  Prometheus retention is finite; a window that predates it returns empty
+  for a session that ran fine. Distinguish the two with an instant query
+  at a recent timestamp for the same instrument: series present now but
+  empty for the requested window → **outside retention**, report it as
+  that rather than as a DAQ fault; series absent both now and then →
+  genuinely not flowing, same as the live case above.
 
 > **Parallel query rule:** Always fire independent Grafana queries in a single
 > message. The event rate, deadtime, damage, and error queries are all
