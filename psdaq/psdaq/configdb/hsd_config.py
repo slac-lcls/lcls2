@@ -341,11 +341,11 @@ def user_to_expert(cfg):
                       format(partitionDelay,raw['start_ns'],raw_start))
                 raise ValueError('raw_start is too small by {:} ns'.
                                  format(-raw_start/0.16*14./13))
-            if raw_start > 0x3fff:
+            if raw_start > 0xfffff:
                 print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.
                       format(partitionDelay,raw['start_ns'],raw_start))
                 raise ValueError('start_ns is too large by {:} ns'.
-                                 format((raw_start-0x3fff)/0.16*14./13))
+                                 format((raw_start-0xfffff)/0.16*14./13))
 
             d['expert.raw_start'] = raw_start
 
@@ -370,11 +370,11 @@ def user_to_expert(cfg):
                       format(partitionDelay,fex['start_ns'],fex_start))
                 raise ValueError('fex_start is too small by {:} ns'.
                                  format(-fex_start/0.16*14./13))
-            if fex_start > 0x3fff:
+            if fex_start > 0xfffff:
                 print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.
                       format(partitionDelay,fex['start_ns'],fex_start))
                 raise ValueError('start_ns is too large by {:} ns'.
-                                 format((fex_start-0x3fff)/0.16*14./13))
+                                 format((fex_start-0xfffff)/0.16*14./13))
 
             d['expert.fex_start'] = fex_start
 
