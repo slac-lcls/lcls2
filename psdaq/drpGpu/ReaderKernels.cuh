@@ -186,11 +186,17 @@ void _event(EventKernelArgs const args, Calib const calib)
 // the frame as pgOffset.  Handling the frame in one go means pgStride == the
 // frame's element count and pgOffset == 0.
 __device__
+// The gain-range and data fields are located explicitly rather than one being
+// inferred from the other, because their order is not the same for every detector:
+// some put the range bits above the data (e.g. range 14/2, data 0/14), others below
+// it (e.g. range 0/1, data 1/11).
 inline void pedGainCalibrate(float*   const        __restrict__ calib,
                              uint16_t const* const __restrict__ raw,
                              unsigned const                     nElements,
                              unsigned const                     rangeOffset,
                              unsigned const                     rangeBits,
+                             unsigned const                     dataOffset,
+                             unsigned const                     dataBits,
                              float    const* const __restrict__ pedArray,
                              float    const* const __restrict__ gainArray,
                              unsigned const                     pgStride,
@@ -200,12 +206,12 @@ inline void pedGainCalibrate(float*   const        __restrict__ calib,
                              unsigned const                     stride)
 {
   auto const rangeMask{(1u << rangeBits) - 1u};
-  auto const dataMask {(1u << rangeOffset) - 1u};
+  auto const dataMask {(1u << dataBits)  - 1u};
   for (auto i = tid; i < nElements; i += stride) {
     auto const              range = (raw[i] >> rangeOffset) & rangeMask;
     auto const __restrict__ peds  = &pedArray [range * pgStride + pgOffset];
     auto const __restrict__ gains = &gainArray[range * pgStride + pgOffset];
-    auto const              data  = raw[i] & dataMask;
+    auto const              data  = (raw[i] >> dataOffset) & dataMask;
     calib[i] = (float(data) - peds[i]) * gains[i];
 
     //if (ref && (calib[i] != ref[i])) {
@@ -215,9 +221,10 @@ inline void pedGainCalibrate(float*   const        __restrict__ calib,
   }
 }
 
-// The policy for detectors whose payload is one contiguous block of uint16_t
-// following the TimingHeader, calibrated on the GPU from pedestals and gains:
-// AreaDetector, EpixUHRemu and EpixUHRsim.
+// The policy for any detector whose payload is one contiguous block of uint16_t
+// following the TimingHeader, calibrated on the GPU from pedestals and gains.  A
+// detector whose payload is batched into sub-frames needs its own policy, because
+// only it knows where each sub-frame belongs in the calibrated buffer.
 struct PedGainCalib
 {
   float const* peds;
@@ -226,6 +233,8 @@ struct PedGainCalib
   unsigned     refBufCnt;
   unsigned     rangeOffset;
   unsigned     rangeBits;
+  unsigned     dataOffset;
+  unsigned     dataBits;
 
   __device__
   void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
@@ -241,6 +250,7 @@ struct PedGainCalib
     // pgStride is the pedestal/gain plane stride, i.e. the detector's frame
     // size, not this event's element count, which may be short
     pedGainCalibrate(pyld.out, raw, elementCnt, rangeOffset, rangeBits,
+                     dataOffset, dataBits,
                      peds, gains, pyld.outCnt, 0, refBuf, tid, stride);
   }
 };

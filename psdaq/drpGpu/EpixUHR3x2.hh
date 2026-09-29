@@ -20,6 +20,9 @@ public:  // ePixUHR3x2 parameters:
   static const unsigned NumCols     {   192 };  // elemRowSize in drp/EpixUHR3x2.cc
   static const unsigned AsicPixels  { NumRows*NumCols };
   static const unsigned NPixels     { NumAsics*AsicPixels };
+  // Gain ranges, i.e. 1 << rangeBits(): the single gain bit selects one of two
+  // pedestal/gain planes
+  static const unsigned NRanges     {     2 };
 
   // The payload is AxiStream Batcher formatted:
   //   tdest 0: Trigger (XPM), which is where the TimingHeader lives
@@ -29,10 +32,10 @@ public:  // ePixUHR3x2 parameters:
   static const unsigned NumSubFrames    { 9 };
   static const unsigned FirstDataTdest  { 3 };
   // Data sub-frames are concatenated in tdest order, which is the order offline
-  // expects: Gabriel confirms (2026-09-25) that Drp::EpixUHR3x2 writes its array
-  // that way and that the order is correct, so tdest 3+k is ASIC k and no
-  // remapping is needed.  An AsicForDataSubFrame table asserting otherwise used
-  // to live here; it was never referenced and its premise was wrong.
+  // expects: tdest 3+k is ASIC k and no remapping is needed (Gabriel, 2026-09-25,
+  // confirming that Drp::EpixUHR3x2 writes its array that way).  The physical
+  // arrangement invites the opposite conclusion, so resist adding a remap here
+  // without checking what offline actually reads.
 
 public:
   unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
@@ -40,14 +43,20 @@ public:
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-  // The panel's data arrives already calibrated to fp16 by the detector's
-  // firmware, so there is no pedestal or gain correction to do on the GPU and no
-  // gain range encoded in the data: the per-element work is an fp16 -> fp32
-  // conversion.  These four exist only to satisfy the base class.
-  unsigned     rangeOffset()       const override { return 0;       /* Not used */ }
-  unsigned     rangeBits()         const override { return 0;       /* Not used */ }
-  float const* pedestals_d()       const override { return nullptr; /* Not used */ }
-  float const* gains_d()           const override { return nullptr; /* Not used */ }
+  // Where the gain bit and the ADC value sit in a u16 pixel: gain in bit 0, an 11-bit
+  // value in bits 1-11, zeros in bits 12-15 (Gabriel, 2026-09-28).  The gain bit is
+  // *below* the data, unlike some other detectors, which is why Gpu::Detector locates
+  // both fields explicitly instead of deriving the data field's width from
+  // rangeOffset().
+  //
+  // Consulted only by the u16 policy: an fp16 payload is calibrated by the firmware,
+  // so its policy converts width and ignores these.
+  unsigned     rangeOffset()       const override { return 0;  }  // The gain bit
+  unsigned     rangeBits()         const override { return 1;  }
+  unsigned     dataOffset()        const override { return 1;  }  // The ADC value
+  unsigned     dataBits()          const override { return 11; }
+  float const* pedestals_d()       const override { return m_peds_d;  }
+  float const* gains_d()           const override { return m_gains_d; }
   unsigned     subframeCount()     const override { return NumSubFrames; }
   unsigned     firstDataSubframe() const override { return FirstDataTdest; }
 
@@ -73,9 +82,17 @@ public:
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
 private:
-  // Record the panel's data as it arrives, uncalibrated and unreduced.  Set from
-  // the `raw` kwarg for now; stage 2 will derive it from the CALIB config alias.
-  bool m_passthru{false};
+  // Record the panel's data as it arrives, uncalibrated and unreduced.  Selected by
+  // the transitional `raw=1`.  The CALIB config alias is meant to select it instead,
+  // at which point that spelling goes away.
+  bool     m_passthru{false};
+  // The panel's data is u16 rather than fp16, so the GPU applies pedestals and gains.
+  // Selected by `raw=u16`; `raw=fp16` is the default.
+  bool     m_u16{false};
+  // One plane of pedestals and gains per gain range, laid out [NRanges][NPixels] as
+  // pedGainCalibrate() indexes them.  Only allocated in u16 mode.
+  float*   m_peds_d{nullptr};
+  float*   m_gains_d{nullptr};
 };
 
   } // Gpu

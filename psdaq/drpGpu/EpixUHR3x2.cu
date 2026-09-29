@@ -68,18 +68,49 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   // different, so only that portion is borrowed.
   _initialize<Drp::EpixUHR3x2>(para, pool);
 
-  // Pass-through mode: record the panel's data as it arrives, uncalibrated and
-  // unreduced, instead of converting it and handing it to a Reducer.  This is
-  // what allows the GPU DRP to run against the hardware emulator, which produces
-  // u16 (1 gain bit, 11-bit ADC value, 4 zero bits) rather than the fp16 the
-  // firmware will eventually produce.
-  // @todo: Stage 2 replaces this kwarg with a test of the CALIB config alias,
-  //        which PGPDrp::configure() has in its msg.
-  if (para.kwargs.find("raw") != para.kwargs.end())
-    m_passthru = std::stoul(para.kwargs.at("raw")) != 0;
+  // What format the panel's data arrives in, which is a property of its firmware:
+  //
+  //   raw=fp16   already calibrated by the firmware; the per-element work is an
+  //              fp16 -> fp32 conversion.  The default.
+  //   raw=u16    1 gain bit in bit 0, an 11-bit ADC value in bits 1-11, zeros in
+  //              bits 12-15, so the GPU applies pedestals and gains itself.  This is
+  //              what the hardware emulator produces.
+  //
+  // Either way a Reducer runs on the calibrated result.
+  //
+  // Note these are not alternatives that go away: the prescaled raw data accompanying
+  // reduced fp16 is itself u16, so the firmware is expected to keep a u16 mode and to
+  // be configurable into it (Ric, 2026-09-29).
+  //
+  // @todo: Read the format from the firmware rather than from a kwarg.  It is
+  //        queryable -- the Build String and Firmware Version in /proc/datadev_* are
+  //        available at Configure, and BEBDetector already reads that region -- so
+  //        this could be derived instead of asserted, and a mismatch between what the
+  //        firmware sends and what the kwarg claims would stop being silent.
+  if (para.kwargs.find("raw") != para.kwargs.end()) {
+    auto const& fmt = para.kwargs.at("raw");
+    if      (fmt == "u16")   m_u16 = true;
+    else if (fmt == "fp16")  m_u16 = false;
+    // Transitional: 'raw=1' selected pass-through before there was a u16 mode, and
+    // before the CALIB alias existed to select it properly.
+    // @todo: Drop this spelling once the CALIB config alias selects pass-through;
+    //        then nothing needs a kwarg to ask for it.
+    else if (fmt == "1")     m_passthru = true;
+    else {
+      logging::critical("EpixUHR3x2: unrecognized 'raw=%s'.  Expected 'fp16' (the "
+                        "default), 'u16', or the transitional '1' for pass-through.",
+                        fmt.c_str());
+      abort();
+    }
+  }
+
   if (m_passthru)
     logging::warning("EpixUHR3x2: pass-through mode -- recording raw u16, "
                      "uncalibrated and unreduced");
+  else
+    logging::warning("EpixUHR3x2: data format %s%s", m_u16 ? "u16" : "fp16",
+                     m_u16 ? " -- gain bit 0, ADC bits 1-11, calibrated on the GPU"
+                           : " -- calibrated by the firmware");
 
   // Check there is enough space in the DMA buffers for this many pixels.  The
   // AxiStream Batcher adds a header line plus a tail line per sub-frame, and
@@ -99,11 +130,20 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
 
   // Set up buffers
   pool.createCalibBuffers(NPixels);
+
+  // Space for the calibration constants, one plane per gain range.  Only u16 mode
+  // applies them; the fp16 path arrives calibrated from firmware.
+  if (m_u16) {
+    chkError(cudaMalloc(&m_peds_d,  NRanges * NPixels * sizeof(*m_peds_d)));
+    chkError(cudaMalloc(&m_gains_d, NRanges * NPixels * sizeof(*m_gains_d)));
+  }
 }
 
 EpixUHR3x2::~EpixUHR3x2()
 {
   auto pool = m_pool->getAs<MemPoolGpu>();
+  if (m_gains_d)  chkError(cudaFree(m_gains_d));
+  if (m_peds_d)   chkError(cudaFree(m_peds_d));
   pool->destroyCalibBuffers();
 }
 
@@ -149,7 +189,26 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     return rc;
   }
 
-  // Nothing to upload: the panel's data is calibrated in the detector's firmware
+  // In u16 mode the GPU applies pedestals and gains, so they have to be uploaded.
+  // With the fp16 firmware there is nothing to upload: the panel's data arrives
+  // already calibrated.
+  if (m_u16) {
+    // @todo: Fetch calibration constants.  Fabricating them -- pedestal 0, gain 1 --
+    //        makes the calibrated values numerically equal to the raw ADC counts, so
+    //        this proves the path but not the science.  See the "Fetch calibration
+    //        constants" item in TODO.md; EpixUHRemu and Jungfrau do the same.
+    std::vector<float> peds (NPixels, 0.0);
+    std::vector<float> gains(NPixels, 1.0);
+    auto peds_d  = m_peds_d;
+    auto gains_d = m_gains_d;
+    for (unsigned range = 0; range < NRanges; ++range) {
+      chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
+      chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
+      peds_d  += NPixels;
+      gains_d += NPixels;
+    }
+  }
+
   return rc;
 }
 
@@ -202,9 +261,55 @@ struct EpixUHR3x2Beam
   }
 };
 
-// Calibration running, i.e. the CALIB config alias, and for now also the
-// pass-through mode that lets this Detector run against the u16 hardware
-// emulator.  The panel's data is copied to the raw block exactly as it arrives:
+// The u16 payload's policy: calibrate each pixel on the GPU into the calibrated
+// buffer, where a Reducer then finds it, rather than converting fp16.
+//
+// Same sub-frame walk as EpixUHR3x2Beam, so the two differ only in the per-element
+// work.  The gain bit selects which pedestal/gain plane applies, exactly as it does
+// for the detectors whose range bits sit above the data -- pedGainCalibrate() is told
+// where both fields are rather than assuming an order.
+struct EpixUHR3x2U16
+{
+  float const* peds;
+  float const* gains;
+  unsigned     rangeOffset;
+  unsigned     rangeBits;
+  unsigned     dataOffset;
+  unsigned     dataBits;
+
+  __device__
+  void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
+  {
+    if (!pyld.hasData)  return;         // A transition, or nothing intelligible
+
+    auto const strideCnt = pyld.outCnt / EpixUHR3x2::NumAsics;
+    for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {
+      auto const& sub = (*pyld.subFrames)[EpixUHR3x2::FirstDataTdest + k];
+      auto const  off = k * strideCnt;
+      auto const  cnt = sub.size / sizeof(uint16_t);
+      if (cnt == 0) {                   // Withheld ASIC: clear the hole it leaves
+        for (auto i = tid; i < strideCnt; i += stride)  pyld.out[off + i] = 0.f;
+        continue;
+      }
+      auto const __restrict__ src   = (uint16_t const*)sub.data(pyld.data);
+      auto const              nElem = cnt > strideCnt ? strideCnt : cnt;
+      // pgOffset places this ASIC's pixels within the pedestal/gain plane, whose
+      // stride is the whole frame
+      pedGainCalibrate(&pyld.out[off], src, nElem, rangeOffset, rangeBits,
+                       dataOffset, dataBits,
+                       peds, gains, pyld.outCnt, off, nullptr, tid, stride);
+      // Clear the tail a short ASIC leaves, so a partial frame does not show stale
+      // data from a previous event.  Every thread strides over the whole region and
+      // skips what was just calibrated, rather than starting at tid + nElem, which
+      // would leave holes.
+      for (auto i = tid; i < strideCnt; i += stride)
+        if (i >= nElem)  pyld.out[off + i] = 0.f;
+    }
+  }
+};
+
+// Calibration running, i.e. what the CALIB config alias selects, and also what the
+// transitional `raw=1` selects.  The panel's data is copied to the raw block exactly as it arrives:
 // no pedestal or gain applied, no width conversion, and no Reducer afterwards.
 //
 // It writes pyld.raw, not pyld.out: the calibrated buffer is bypassed entirely,
@@ -250,6 +355,12 @@ void EpixUHR3x2::recordEvent(cudaStream_t           stream,
 {
   if (m_passthru)
     _event<EpixUHR3x2Calib><<<blocks, threads, 0, stream>>>(args, EpixUHR3x2Calib{});
+  else if (m_u16) {
+    EpixUHR3x2U16 const u16{pedestals_d(), gains_d(),
+                            rangeOffset(), rangeBits(),
+                            dataOffset(),  dataBits()};
+    _event<EpixUHR3x2U16><<<blocks, threads, 0, stream>>>(args, u16);
+  }
   else
     _event<EpixUHR3x2Beam ><<<blocks, threads, 0, stream>>>(args, EpixUHR3x2Beam {});
 }

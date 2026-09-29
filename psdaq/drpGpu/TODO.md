@@ -1034,10 +1034,12 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
 ## Calibration and data handling
 
 - **Fetch calibration constants.**  Every detector currently fabricates them:
-  `EpixUHRemu`, `EpixUHRsim` and `Jungfrau` fill pedestals with 0.0 and gains with
-  1.0 (`@todo: Fetch calibration constants`), and `EpixUHR3x2` needs none because
-  its data arrives calibrated from firmware.  Needs a real source and a point in the
-  transition sequence to load from it.  Three candidate routes:
+  `EpixUHRemu`, `EpixUHRsim`, `Jungfrau` and now `EpixUHR3x2` in its u16 mode fill
+  pedestals with 0.0 and gains with 1.0 (`@todo: Fetch calibration constants`), which
+  makes the calibrated values numerically equal to the raw ADC counts -- the path is
+  proven, the science is not.  `EpixUHR3x2` needs none for an fp16 payload, which
+  arrives calibrated from firmware.  Needs a real source and a point in the transition
+  sequence to load from it.  Three candidate routes:
 
   1. reuse Mikhail's code in `lcls2/psana`, which is the source of truth;
   2. resurrect `lcls2/psalg/psalg/calib/`, also Mikhail's, whose headers are still
@@ -1049,6 +1051,22 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
   that short name, ordered by run, pointing at the bulk data, needing filtering on
   run number and validity flags; then the bulk fetch.  The appendix notes the calibdb
   schema is documented nowhere else, which is why it is kept here.
+
+  **For ePixUHR3x2 the gain bit is not enough to identify the constants.**  Gabriel,
+  2026-09-29: the single bit "always selects between only two states", so
+  `NRanges = 2` is right, but *which* two depends on the configured mode -- "your bit
+  status could mean your pixel is in high or low gain 1, or high or low gain 2 ... You
+  need the configuration ... to be able to complete the picture."  Some modes are fixed
+  rather than auto-ranging.
+
+  So the fetch has to be keyed on the gain configuration, not just on the detector.
+  The good news is that the information is already computed in the DRP:
+  `configdb/epixuhr3x2_config.py` fills **`gainMapSelection`** (per-pixel, from
+  `cfg["expert"]["pixelBitMaps"][...]` when `user.Gain.UsePixelMap` is set) and
+  **`gainValSelection`** (uniform, from `user.Gain.SetGainValue`) at Configure.  Neither
+  reaches the GPU today.  Whoever does this should ask **Mikhail**, who has done the
+  equivalent on the psana side, and check Confluence for a TID write-up -- Gabriel does
+  not recall one.
 
 - **Calibration mode.**  The DAQ operator selects the **CALIB** alias instead of the
   usual **BEAM** alias.  That selects a different, perhaps derived, set of detector

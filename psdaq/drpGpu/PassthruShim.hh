@@ -30,21 +30,17 @@ namespace Drp {
 // pass-through that is RawU16Def, a typed and shaped u16 array matching the CPU
 // DRP's.
 //
-// @todo: Stage 3 records reduced data *and* prescaled raw in the same event, at
-//        which point a real reducer runs and this shim is only for CALIB.
+// @todo: When an event carries reduced data *and* prescaled raw together, a real
+//        reducer runs and this shim is needed only where nothing is reduced.
 class PassthruShim : public ReducerAlgo
 {
 public:
   PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detector& det);
   virtual ~PassthruShim();
 
-  // True, like every other algorithm here.  It must be: with hasGraph() false and
-  // HOST_LAUNCHED_REDUCERS undefined -- which is how this is built -- Reducer skips
-  // configure(), skips setup() so no graph is recorded, and startup() launches
-  // nothing, because the branch that would start worker threads is compiled out.
-  // Nothing then posts a completion and the recorder blocks on receive() for ever.
-  // Removing hasGraph() and HOST_LAUNCHED_REDUCERS altogether is a separate TODO;
-  // until then this follows the graph path like the reducers do.
+  // True: returning false makes Reducer skip configure() and setup(), and launch
+  // nothing from startup(), so no completion is ever posted and the recorder blocks
+  // on receive() for ever.  See Reducer::startup().
   bool   hasGraph()    const override;
 
   // The reduced payload is unused in pass-through: the recorded data is the raw

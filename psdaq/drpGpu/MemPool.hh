@@ -130,6 +130,12 @@
 // TebReceiver::complete()).  The Reducer runs for as long as it takes for it to
 // process one event and then exits.  This means that the launch overhead is
 // paid in the real-time loop.
+//
+// Retiring this macro, and ReducerAlgo::hasGraph() with it, is a to-do.  Whoever
+// does it should grep for both names first: every ReducerAlgo, PassthruShim
+// included, assumes the graph path, and the #ifdef blocks in Reducer.cu are what
+// make hasGraph() == false a silent hang rather than a compile error.  Nothing in
+// those files points back here.
 //#define HOST_LAUNCHED_REDUCERS
 
 

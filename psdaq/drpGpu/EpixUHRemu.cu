@@ -205,7 +205,9 @@ void EpixUHRemu::recordEvent(cudaStream_t           stream,
                            nullptr,
                            0,
                            rangeOffset(),
-                           rangeBits()};
+                           rangeBits(),
+                           dataOffset(),
+                           dataBits()};
   _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
 }
 

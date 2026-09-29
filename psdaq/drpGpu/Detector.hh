@@ -62,8 +62,15 @@ public:
     return reinterpret_cast<Pds::TimingHeader*>(&dmaDsc[1]);
   }
 
+  // Where the gain-range and data fields sit within a raw u16 pixel.  Both are
+  // located explicitly because their order differs between detectors: some put the
+  // range bits above the data (e.g. range 14/2, data 0/14), others below it (e.g.
+  // range 0/1, data 1/11).  The defaults below reproduce the former arrangement, so
+  // a Detector need only override them for the latter.
   virtual unsigned     rangeOffset() const = 0;
   virtual unsigned     rangeBits()   const = 0;
+  virtual unsigned     dataOffset()  const { return 0; }
+  virtual unsigned     dataBits()    const { return rangeOffset(); }
   virtual float const* pedestals_d() const = 0;
   virtual float const* gains_d()     const = 0;
 
