@@ -1,7 +1,9 @@
 # Current-runtime Jungfrau staging scaling
 
+Latest accepted measurements: [current performance report](../../docs/performance/read_staging.md).
+
 Maintained MPI benchmark for `mfx101210926/r0387`, streams 005–009. The
-historical comparison is [Jungfrau single-node scaling](../../docs/performance/jungfrau_single_node_sdf.md).
+historical comparison is [Jungfrau single-node scaling](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/jungfrau_single_node_sdf.md).
 The maintained harness now measures read/parse/dense-gather staging without
 calibration or `GpuTask`. It uses the established benchmark-only
 `stage1_regression/input_adapter.py`; include that directory on `PYTHONPATH`
@@ -72,9 +74,9 @@ executes the real NUMA-interleaved warm-cache subprocess with no input files;
 its diagnostics are saved in `cache-preflight.log` inside the job directory.
 
 Current campaigns and comparisons are recorded in the
-[user-kernel scaling report](../../docs/performance/user_kernel_scaling_20260928.md).
+[user-kernel scaling report](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/user_kernel_scaling_20260928.md).
 The pre-user-kernel campaign remains documented in the
-[historical September 26 report](../../docs/performance/jungfrau_current_scaling.md).
+[historical September 26 report](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/jungfrau_current_scaling.md).
 Generated results stay on scratch.
 
 CPU checks: all three `test_*.py` files (**26 passed**).

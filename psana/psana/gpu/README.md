@@ -1,94 +1,95 @@
-# psana2 GPU Documentation
+# psana2 GPU pipeline
 
-The psana2 GPU path moves selected detector streams through a GPU-oriented
-EventBuilder batch, reads bigdata into device memory, parses XTC on the GPU,
-and exposes lease-aware parsed detector fields through normal `psana.Event` objects.
+Psana reads selected detector streams into GPU memory, parses XTC on the device,
+and runs user algorithms inside the pipeline. A host-only `GpuTask` declares
+inputs and calibration constants. Psana invokes it once per selected execution
+subbatch and delivers its named outputs through ordinary `psana.Event` objects.
+The algorithm can live in your driver script or an external module.
 
-The documents are grouped by status. Current-design documents describe this
-branch and should be kept synchronized with code. Proposal documents are for
-review and are not API commitments. Performance documents record measurements
-and the configurations that produced them.
+## Quick start: a batched user kernel
 
-## Current design
+This example reduces each Jungfrau raw frame to a uint64 pixel sum. It sums raw
+ADC words, including gain bits; it is a scheduling example, not calibration.
 
-Stages 1–4 are implemented: `GpuTask` runs once per nonempty selected execution
-subbatch, and named publications receive batched host delivery. Start with the
-[task and results guide](docs/user_task_results.md) or the
-[input-only example](examples/input_only.py). Set `batch_size` explicitly;
-the task default is one. Memory admission can split an EventBuilder batch.
-
-The runtime provides input preparation, requested original calibration constants,
-completion tracking, and bounded output staging. User code owns calibration,
-geometry algorithms, kernels, scratch, and device outputs. With no task there
-is no automatic calibration or output D2H. CPU/hybrid calibration remains available.
-The default output pinned-memory cap is 64 MiB per BD; nonzero
-`gpu_d2h_chunk_size` remains retired.
-
-[Stage 4 findings](docs/user_kernel_stage4_findings_20260928.md) record correctness
-and performance. Subsequent fixes cover
-[noncollective geometry cache misses](docs/geometry_cache_fallback_20260928.md)
-and [serial iterator cleanup](docs/serial_gpu_close_20260928.md).
-Use `with closing(run.events())` for deterministic cleanup on early exit.
-The [external batched calibration example](docs/user_kernel_stage5a_20260928.md)
-is implemented and validated in Stage 5a on CPU/A100 and serial/MPI, including
-byte-for-byte default CPU-v3 calibration matches with matching constant selectors.
-Batched radial integration is also implemented and validated in
-[Stage 5b](docs/user_kernel_stage5b_20260928.md). Combined performance (Stage 5c)
-and final consolidated acceptance (Stage 6) remain pending; see the
-[stage tracker](docs/proposals/user_kernel_implementation_stages_20260926.md).
+```python
+from contextlib import closing
+from psana import DataSource
+from psana.gpu import GpuTask
 
 
-- [Architecture overview](docs/architecture_overview.md): components,
-  boundaries, routing modes, and supported scope.
-- [Event flow and lifetimes](docs/event_flow_and_lifetimes.md): CPU/GPU MPI call
-  paths, Run/Event ownership, transitions, and result delivery.
-- [GPU XTC parser](docs/gpu_xtc_parser.md): Configure tables, device parsing,
-  field locators, detector bindings, and general field access.
-- [Memory backpressure and results](docs/memory_backpressure_and_results.md):
-  execution slots, byte budgets, asynchronous D2H, leases, and result access.
-- [Known problems and limitations](docs/known_issues.md): verified implementation
-  gaps, their impact, and the intended direction for follow-up work.
+def pixel_sum(batch, stream):
+    import cupy as cp  # CUDA is initialized only on the worker
+    result = cp.empty(batch.size, dtype=cp.uint64)
+    batch.publish("pixel_sum", result)  # retain before submitting work
+    cp.sum(batch.input("jungfrau.raw"), axis=(1, 2, 3),
+           dtype=cp.uint64, out=result)
 
-## Proposals
 
-- [User GPU kernel support](docs/proposals/user_gpu_pipeline.md): `GpuTask`
-  input/constant declarations, internal BD submission, user-owned buffers,
-  named output publication, and asynchronous host delivery.
-- [User-kernel preparation handoff](docs/proposals/user_kernel_integration_handoff_20260926.md):
-  master merge validation and provenance for the canonical proposal.
-- [AMI integration](docs/proposals/ami_integration.md): possible psana2 GPU and
-  AMI integration; retained for evaluation.
+ds = DataSource(
+    exp="mfx100848724", run=51, dir="/sdf/data/lcls/ds/prj/public01/xtc",
+    detectors=["jungfrau"], gpu_det="jungfrau",
+    gpu_fn=GpuTask(pixel_sum, inputs=["jungfrau.raw"]),
+    # GPU default is 20. Tune for your kernel work and memory needs;
+    # good scaling requires investigating batch size on your GPU/BD layout.
+    batch_size=20,
+    max_events=100,
+)
+for run in ds.runs():
+    with closing(run.events()) as events:
+        for evt in events:
+            print(evt.timestamp, evt.gpu.get("pixel_sum").on_cpu)
+```
 
-## Performance evidence
+The callback runs on the supplied CUDA stream before public event delivery.
+`batch_size` defaults to **20 with GPU routing** (`gpu_det` or `hybrid_det`),
+with or without a `GpuTask`, and **1000 for CPU-only runs**. An explicit value
+overrides the default. This setting applies to the entire DataSource, including
+CPU detectors in mixed runs; memory admission and tails can produce smaller GPU
+execution subbatches. The latest JF staging and user-kernel scaling campaigns
+used 20 explicitly. The best batch size depends on the kernel work, scratch/output
+memory and GPU/BD layout; good scaling requires investigating these together.
+Other values still need workload-specific validation; 20 is a starting point,
+not a universal optimum. `gpu_bulk_read` controls file-read grouping
+independently. Omitting `gpu_fn` stages/parses inputs without automatic
+calibration or output copies.
 
-- [User-kernel scaling and batch scheduling](docs/performance/user_kernel_scaling_20260928.md):
-  full JF / partial JF+feespec reruns and measured per-event versus batched kernels.
+The same experiment/run interface supports serial and MPI execution. MPI GPU
+initialization belongs to BD workers; keep CUDA imports/allocation out of module
+initialization. Use the site's built psana/CuPy/KvikIO environment. The measured
+single-node MPI configuration has one EB and one or more BDs; multi-EB GPU
+accounting is an [open limitation](docs/limitations.md#multi-eb-device-accounting).
 
-- [Code-size simplification handoff](docs/simplification_baseline_20260925.md):
-  committed baseline, completed JF results, mixed-detector campaign and invariants.
-- [Jungfrau single-node scaling](docs/performance/jungfrau_single_node_sdf.md):
-  the historical 10,000-event cold/warm 1/2/4-GPU, multi-BD matrix, including
-  the 1-GPU/4-BD cold and 4-GPU/8-BD warm results.
+## Read next
 
-- [Current Jungfrau scaling campaign](docs/performance/jungfrau_current_scaling.md):
-  pre-user-kernel multi-GPU/BD results and completed mixed-detector comparison.
-- [User-kernel Stage 1/1b regression check](docs/performance/user_kernel_stage1_regression_20260926.md):
-  matched JF-only comparisons on one GPU with 1–4 BDs.
-- [JF + feespec one-GPU scaling](docs/performance/jf_feespec_single_gpu_scaling.md):
-  batch-20 cold/warm, bulk off/on comparison with 1, 2 and 4 BDs.
-- [GPU pipeline baseline](docs/performance/gpu_pipeline_baseline.md): initial
-  CPU/GPU throughput comparison and bottleneck observations.
-- [D2H bandwidth](docs/performance/d2h_bandwidth.md): measured D2H sampling and
-  NIC-bandwidth behavior.
+| Document | Purpose |
+| --- | --- |
+| [Current design](docs/design.md) | Serial/MPI flow, read groups, batching, ownership, budgets and cleanup |
+| [User kernels](docs/user_kernels.md) | Inputs, constants, scratch, publication, results and external science examples |
+| [GPU XTC parser](docs/gpu_xtc_parser.md) | Configure tables, device locators and segment-preserving field access |
+| [Limits and open work](docs/limitations.md) | Supported scope, configuration restrictions and unresolved issues |
+| [Read/staging performance](docs/performance/read_staging.md) | Latest full JF and partial JF+feespec cold/warm, bulk off/on matrices |
+| [User-kernel performance](docs/performance/user_kernels.md) | Matched scheduling comparison and calibration/integration scaling |
+| [CPU/GPU complexity](docs/complexity.md) | Measured code size and responsibility comparison |
 
-## Status convention
+For calibrated images use [calibrate_jungfrau.py](examples/calibrate_jungfrau.py).
+For calibration followed by radial integration in one callback use
+[integrate_jungfrau.py](examples/integrate_jungfrau.py). Their user-owned algorithm
+modules have no psana imports. See the [example requirements](docs/user_kernels.md#science-examples)
+before choosing calibration policy or bin geometry.
 
-Each document must identify itself as one of:
+## Validation and documentation policy
 
-- **Current:** describes behavior implemented on this branch.
-- **Proposed:** describes an interface or architecture still under review.
-- **Measured:** records an observation tied to a dataset, software revision,
-  topology, and runtime configuration.
+The accepted runtime and science examples are recorded at `6ba5fa586`; acceptance
+and documentation were completed through `fa40ec52a`. The suites passed 608 main
+CPU tests, 5 longer MPI tests, 173 A100 tests, and 18 public MPI cases, including
+four expected callback-error aborts. Details and job IDs are in
+[design validation](docs/design.md#validation) and the
+[acceptance manifest](docs/performance/evidence/acceptance.json).
 
-Superseded designs are removed from the working tree rather than kept in a
-second archive. Git history remains the archive.
+Current design and API pages describe the source, not development stages. The
+performance pages identify their measured revisions and workloads; those rates
+are not universal guarantees. Completed stage plans, handoffs and older reports
+live in [Git history](https://github.com/slac-lcls/lcls2/tree/fa40ec52a/psana/psana/gpu/docs).
+New measurements replace the relevant current report while preserving compact
+provenance. [AMI integration](docs/proposals/ami_integration.md) remains a separate
+proposal, not an implemented interface.

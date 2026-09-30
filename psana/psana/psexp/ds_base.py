@@ -242,7 +242,10 @@ class DataSourceBase(abc.ABC):
     drp : str
         DRP-specific parameters (not currently used).
     batch_size : int
-        Number of events per batch sent to bigdata core (default: 1000).
+        Number of events per batch sent to bigdata core. Defaults to 1000
+        for CPU-only input, or 20 with gpu_det/hybrid_det, with or without
+        gpu_fn. Explicit values override the default. This setting applies
+        to the whole DataSource; GPU admission may split smaller subbatches.
     max_events : int
         Max number of events to read.
     detectors : list
@@ -298,7 +301,7 @@ class DataSourceBase(abc.ABC):
     gpu_fn : GpuTask, optional
         Run one callback per selected GPU execution subbatch. Declare inputs
         and exact calibration keys; publish named arrays for automatic host
-        delivery via evt.gpu.get(name).on_cpu. An omitted task batch size is one.
+        delivery via evt.gpu.get(name).on_cpu. GPU batch size defaults to 20.
     gpu_d2h_pinned_bytes : int
         Aggregate per-BD output pinned staging cap in bytes (default: 64 MiB),
         including free cached and token-held capacity. Zero, oversized outputs,
@@ -334,7 +337,8 @@ class DataSourceBase(abc.ABC):
             raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
 
         # Default values
-        self.batch_size = kwargs.get("batch_size", 1 if self.gpu_fn is not None else 1000)
+        gpu_routing = bool(kwargs.get("gpu_det") or kwargs.get("hybrid_det"))
+        self.batch_size = kwargs.get("batch_size", 20 if gpu_routing else 1000)
         self.max_events = kwargs.get("max_events", 0)
         self.detectors = kwargs.get("detectors", [])
         self.xdetectors = kwargs.get("xdetectors", [])
@@ -386,7 +390,7 @@ class DataSourceBase(abc.ABC):
 
         # Final sanity check.
         # batch_size=0 is allowed when a GPU mode is set: GpuEventManager will
-        # select a callback-independent default of one.
+        # preserve the legacy zero-to-one fallback (not the omitted default).
         if self.batch_size == 0 and not (self.gpu_det or self.hybrid_det):
             self.batch_size = 1  # default for CPU path
         assert self.batch_size >= 0, "batch_size must be >= 0"

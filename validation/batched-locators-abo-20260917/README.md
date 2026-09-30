@@ -49,4 +49,4 @@ and unchanged installed hashes. Throughput is measured, never asserted.
 
 Completed job: **38513845**, sdfampere033, exit 0:0, elapsed 1h33m47s.
 All 27 measurements and six preflights passed the final audit.
-Report: `psana/psana/gpu/docs/performance/batched_locators_abo_sdf.md`.
+Report: [batched_locators_abo_sdf.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/batched_locators_abo_sdf.md).

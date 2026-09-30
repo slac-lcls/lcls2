@@ -56,6 +56,6 @@ integration tests passed. All 36 accepted before/after cache checks were 100%.
 Medians: A **22.464388 s**, G **25.288431 s**, Z **24.824160 s**.
 Z median elapsed is **1.84% lower than G**, and **10.50% above A**. Z wins four
 of six rounds; ranges overlap, so no stable speedup is established.
-Full report: `psana/psana/gpu/docs/performance/lazy_locator_wrappers_sdf.md`. Eight harness tests passed.
+Full report: [lazy_locator_wrappers_sdf.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/lazy_locator_wrappers_sdf.md). Eight harness tests passed.
 The benchmark AST matches the prior harness except for variant choices;
 position and within-round adjacent-pair balance were checked.

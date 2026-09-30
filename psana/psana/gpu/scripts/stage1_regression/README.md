@@ -3,7 +3,7 @@
 This benchmark extends `../jf_scaling` and reuses its independent SMD, pixel,
 read-count, budget, cache-residency and completion gates. It does not modify the
 production runtime. The maintained current scaling baseline is
-[documented here](../../docs/performance/jungfrau_current_scaling.md).
+[documented here](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/jungfrau_current_scaling.md).
 
 Two matched comparisons use separate exclusive single-node allocations:
 
