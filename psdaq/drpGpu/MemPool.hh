@@ -219,6 +219,8 @@ public:
   void destroyCalibBuffers();
   void createReduceBuffers(size_t nBytes, size_t reserved, size_t rawBytes = 0);
   void destroyReduceBuffers();
+  void createTransitionBuffers(size_t nBytes, unsigned nBufs);
+  void destroyTransitionBuffers();
   using vecpu32_t = std::vector<uint32_t*>;
   const auto& hostWrtBufs()      const { return m_hostWrtBufs; }
   const auto& calibBuffers_d ()  const { return m_calibBuffers_d; }
@@ -240,6 +242,13 @@ public:
   // is added.
   size_t reduceBufsStride()      const
   { return m_reduceBufsRsvd + m_reduceBufsRaw + m_reduceBufsSize; }
+  // Transitions are written through their own buffers, so that the largest
+  // transition's size is not multiplied by nbuffers() of reduce buffer.  A
+  // transition's whole datagram is copied from the host, so unlike a reduce buffer
+  // there is no reserve to grow backwards into: the Dgram starts at the buffer.
+  const auto& transitionBuffers_d() const { return m_trBuffers_d; }
+  size_t   trBufsSize()             const { return m_trBufsSize; }
+  unsigned trBufCnt()               const { return m_trBufCnt; }
 public:
   int64_t nPgpInUser () const { return dmaGetRxBuffinUserCount  (fd()); }
   int64_t nPgpInHw   () const { return dmaGetRxBuffinHwCount    (fd()); }
@@ -260,6 +269,9 @@ private:
   size_t                    m_reduceBufsRsvd;
   size_t                    m_reduceBufsRaw;
   uint8_t*                  m_reduceBuffers_d;  // [nBuffers * nBytes]
+  size_t                    m_trBufsSize;       // Bytes per transition buffer
+  unsigned                  m_trBufCnt;         // How many there are
+  uint8_t*                  m_trBuffers_d;      // [m_trBufCnt * m_trBufsSize]
 };
 
   } // Gpu

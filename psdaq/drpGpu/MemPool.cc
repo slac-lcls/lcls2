@@ -202,7 +202,10 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   m_reduceBufsSize  (0),
   m_reduceBufsRsvd  (0),
   m_reduceBufsRaw   (0),
-  m_reduceBuffers_d (nullptr)
+  m_reduceBuffers_d (nullptr),
+  m_trBufsSize      (0),
+  m_trBufCnt        (0),
+  m_trBuffers_d     (nullptr)
 {
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
@@ -440,6 +443,7 @@ MemPoolGpu::~MemPoolGpu()
   m_panel->dmaBuffers_d = nullptr;
 
   // Free the intermediate buffers
+  destroyTransitionBuffers();
   destroyReduceBuffers();
   destroyCalibBuffers();
   destroyHostBuffers();
@@ -584,5 +588,46 @@ void MemPoolGpu::destroyReduceBuffers()
     m_reduceBufsSize = 0;
     m_reduceBufsRsvd = 0;
     m_reduceBufsRaw  = 0;
+  }
+}
+
+void MemPoolGpu::createTransitionBuffers(size_t nBytes, unsigned nBufs)
+{
+  if (m_trBufsSize) {
+    logging::error("Attempt to reallocate TransitionBuffers");
+    return;
+  }
+
+  // Round up for buffer alignment, as the other regions do
+  nBytes = sizeof(uint64_t)*((nBytes + sizeof(uint64_t)-1)/sizeof(uint64_t));
+
+  // Transitions are written through their own buffers rather than through the
+  // reduce buffers, so that the size of the largest transition -- an ePixUHR3x2
+  // Configure is ~880 kB of JSON -- does not have to be multiplied by nbuffers().
+  //
+  // Unlike a reduce buffer this needs no reserve and no raw region: the recorder
+  // copies a transition's *whole* datagram from the host, so the Dgram starts at
+  // the buffer.  Nor is the count nbuffers(): a transition occupies a slot from
+  // this pool and borrows only an index from the L1Accept space, mirroring what
+  // Drp::MemPool does with m_transitionBuffers and transitionDgrams.
+  auto size = nBufs * nBytes;
+  chkError(cudaMalloc(&m_trBuffers_d,    size));
+  chkMemory          ( m_trBuffers_d,    nBufs, nBytes, "transitionBuffers");
+  chkError(cudaMemset( m_trBuffers_d, 0, size));
+
+  m_trBufsSize = nBytes;
+  m_trBufCnt   = nBufs;
+
+  logging::info("Transition buffers: %p : %p, size %u * %zu B\n",
+                &m_trBuffers_d[0], &m_trBuffers_d[(nBufs-1) * nBytes], nBufs, nBytes);
+}
+
+void MemPoolGpu::destroyTransitionBuffers()
+{
+  if (m_trBufsSize) {
+    chkError(cudaFree(m_trBuffers_d));
+    m_trBuffers_d = nullptr;
+    m_trBufsSize  = 0;
+    m_trBufCnt    = 0;
   }
 }

@@ -452,6 +452,17 @@ the conclusions.
 - **`fuser` and `lsof` show only your own processes**, so an apparently stale refcount may be
   another user's live service.  `ps -eo user,pid,args` sees what they cannot.
 - **A GPU in `Node Reboot Required` state may hang `sudo reboot`** -- use IPMI.
+- **cuFile's setup and teardown calls need a QUIESCENT device, so they belong in Configure or
+  Unconfigure and nowhere else.**  The Reader graphs relaunch themselves
+  (`Reader.cu`, `cudaStreamGraphTailLaunch`) until `terminate` is set, so from
+  `Reader::startup()` until `PGPDrp::unconfigure()` the device is never idle.
+  `cuFileBufRegister`/`Deregister` and `cuFileDriverOpen`/`Close` are device-wide -- the
+  deregister reaches `cuMemHostUnregister()`, which has to quiesce the device's mappings -- and
+  they simply do not return while graphs keep re-queueing themselves.  The symptom is a hang
+  with no error, in library code, on a thread that looks busy.  Two instances so far: the
+  driver open, which is why `FileWriter` is constructed in `TebReceiver::setup()` and not in
+  `_recorder()`, and the buffer registration (see the findings appendix).  Per-stream
+  `cudaStreamSynchronize` does **not** help; the constraint is global, not ordering.
 
 
 ## Detector configuration
@@ -757,6 +768,27 @@ process to report anything.
 
 ### Give transitions their own buffer, so a Configure cannot dominate the L1A buffers
 
+**Done, and validated on drp-srcf-gpu001 with `epixuhremu` and `NoOpReducer` on 2026-09-29.**
+The log now reads `2048 * (80 + 0 + 774144) B` for the reduce buffers, where 774144 is exactly
+`NoOpReducer::payloadSize()` -- `NPixels * sizeof(float)` -- so the floor is gone and
+`payloadSize()` means what it says.  Transitions got `128 * 2097152 B` of their own, and the
+allocation fell from 4.00 to 1.73 GiB: **2.27 GiB back** at `nbuffers = 2048`.  `xtcreader`
+confirms the file: Configure extent 7348, L1Accept extent 774212 = 774144 + 68 of Dgram and Xtc
+descriptors, and SlowUpdates present.
+
+The count is `pebble.nTrBuffers()`, 128, taken from the CPU pool rather than invented: every
+transition except SlowUpdate is synchronous, so no new one can be emitted until the one in
+progress is acknowledged, and SlowUpdate at 1 Hz is the only one that can accumulate.  128 is
+therefore about two minutes' worth.  Caveat from Ric: the SlowUpdate rate has occasionally been
+raised to 10 Hz, which would make it twelve seconds, so there may be missing protection
+somewhere for that case.  Not chased.
+
+The slot is derived from the pointer the CPU already recorded --
+`(dgram - pebble.trBuffer()) / pebble.trBufSize()` -- so there is one allocator and no second
+lifetime to manage.
+
+What follows is the original reasoning, kept because the numbers still justify the shape.
+
 Ric's proposal, 2026-09-25, and the numbers argue for it strongly.  **The special case already
 exists; it just does not pay its way.**  What is already true:
 
@@ -797,6 +829,15 @@ transitions and L1As then index different allocations, so anything computing
 branches on `isEvent()`.  Size it for a few transitions rather than one: Configure, BeginRun,
 BeginStep and Enable can be in flight together, and the recorder holds Configure to re-write it
 at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
+
+- **The GPU `FileWriter` ignores the `directIO` kwarg.**  `TebReceiver::setup()` hardcodes
+  `constexpr auto dio{true}`, so `-k directIO=no` is accepted and silently disregarded.  The
+  CPU side honours it through `getDioFlag()` (`drp/TebReceiver.cc:18`), which is the one-line
+  pattern to copy.  Noticed on 2026-09-29, when `directIO=no` was added because recording
+  crashed the *timing* CPU DRP: the CPU DRP picked the change up on restart and the GPU DRP
+  did not care either way, which is what exposed it.  Whether cuFile needs the flag at all is
+  a separate question -- it is in compat mode on these nodes and may be handling an
+  intolerant file system itself -- but accepting a kwarg and ignoring it is wrong regardless.
 
 - **Nothing coordinates the green context split with the kernels' launch geometry.**
   There are three independent hard-coded SM tables, and they disagree:
@@ -3082,3 +3123,73 @@ used the **CPU** `drp`, `-d /dev/datadev_a1`, `-D epixuhr3x2`, `-W 16`,
 `SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_07202026`.  That
 release is the one to use: the March release the DAQ defaults to has no
 `epixuhr-3x2-readout-testing` tree at all, so `enable_epix_uhr3x2` raises on import.
+
+## Unconfigure hung in cuFile, because un-pinning needs an idle device
+
+Found on 2026-09-29 on drp-srcf-gpu001, running `epixuhremu` with `NoOpReducer`.  With
+recording **enabled**, the GPU DRP never acknowledged Unconfigure: the control level
+complained, and while `TebRcvr saw Unconfigure` appeared in the log, `Recorder saw
+Unconfigure` never did.  The process stayed alive with the recorder thread apparently busy.
+With recording off, Allocated/Running could be cycled repeatedly at 1, 10 and 100 Hz with no
+trouble.
+
+`gdb -p <pid> -batch -ex 'thread apply all bt'` is what settled it, and it named the frame
+outright:
+
+    #9  cuMemHostUnregister ()                   from libcuda.so.1
+    #14 cuFileBufDeregister ()                   from libcufile.so.0
+    #15 Drp::Gpu::FileWriter::close              FileWriter.cc
+    #16 Drp::TebReceiverBase::closeFiles         DrpBase.cc:975
+    #17 Drp::Gpu::TebReceiver::_recorder         PGPDetector.cc
+
+So the recorder was not stuck on Unconfigure at all: it was still inside **EndRun**, whose
+`closeFiles()` never returned, and Unconfigure sat unprocessed behind it in the queue.  That
+is also why recording mattered -- `closeFiles()` does nothing unless `m_writing` is true, and
+`FileWriter::close()` only reaches the deregister when `m_fd > 0`.
+
+**The cause: `cuFileBufRegister` was being undone mid-cycle, while the Reader graphs were
+still running.**  Those graphs relaunch themselves (`Reader.cu`,
+`cudaStreamGraphTailLaunch`) until `terminate` is set, so between `Reader::startup()` and
+`PGPDrp::unconfigure()` the device is never idle.  `cuFileBufDeregister` reaches
+`cuMemHostUnregister()`, which has to quiesce the device's mappings, and it cannot while work
+keeps re-queueing itself.
+
+**The fix** moves the buffer registration to the `FileWriter`'s ctor and dtor, which is what
+Ric's first implementation did before an unrelated problem pushed it into `open()`.  Both ends
+are quiet there: the ctor runs during Configure before the graphs launch, the dtor at the next
+Configure after `m_terminate` is set.  `TebReceiver::setup()` also needed an explicit
+`m_fileWriter.reset()` before its `make_unique`, or the new writer's registration would
+briefly coexist with the old one's.
+
+Validated by Ric the same evening: two cycles with recording on, reaching Allocated from
+Running cleanly.
+
+Three things worth keeping from how this went wrong:
+
+- **It was latent, not a regression.**  The register/deregister pair dates to `705a8264`
+  (2025-07-01); the self-relaunching graph loop was written *later*, and the FileWriter was
+  never retested against it.  Nothing on the `features/gpu-raw-calib` branch touched
+  `FileWriter.cc`, so this belongs on `features/gpu` too.
+- **One record-enabled cycle triggers it.**  Earlier runs looked like a race that needed
+  three cycles, but the first two had recording off and so never opened a file.  A
+  deterministic one-shot failure, not a race.
+- **Per-stream synchronization is not the answer.**  Two attempts went that way first -- the
+  reasoning being that `writeEvent()` queues `cudaMemcpyAsync` and `close()` never waited --
+  and the hang was unchanged.  The constraint is device-wide.  A `cudaStreamSynchronize` was
+  added to `FileWriter::_write()` anyway and kept, because reading the buffer while copies are
+  in flight was genuinely unsound: `cuFileWrite` could see bytes that had not landed, so
+  mid-run flushes could write stale data.  It is a real fix for a different bug.
+
+The line number in the backtrace is a reliable version check when retesting this, since the
+deregister moved: `FileWriter.cc:230` is the original, `:224` the reordered-`close()`
+intermediate, and neither once the call lives in the dtor.
+
+### `cufile.json` is not being read from the run directory
+
+Noticed while investigating the above.  `~/lclsii/daq/runs/eb/data/gpu001/cufile.json` has no
+effect: cuFile looks at `$CUFILE_ENV_PATH_JSON`, which is unset, then `/etc/cufile.json`,
+which on gpu001 symlinks through `/etc/alternatives` to
+`/usr/local/cuda-13.3/gds/cufile.json`.  Both files happen to set `allow_compat_mode: true`,
+so behaviour today is the same either way and compat mode is in force as expected -- but any
+*other* setting in the run-directory copy has never taken effect.  Point
+`CUFILE_ENV_PATH_JSON` at it if it is meant to be authoritative.

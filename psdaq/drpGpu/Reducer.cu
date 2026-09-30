@@ -71,14 +71,13 @@ Reducer::Reducer(const Parameters&                  para,
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
   auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  // Exactly what the algorithm asks for; writing more than that is its bug, which
+  // the recorder checks for
   auto payloadSize = m_algo ? m_algo->payloadSize() : 0;
-  auto totalSize   = headerSize + payloadSize;
-  if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
   // Space for a block of raw data ahead of the reduced payload, if the Detector
   // asked for one.  In pass-through mode the raw block *is* the recorded data and
-  // the reduced payload is unused, but it is still sized above so that a Reducer
-  // which does run -- the usual case -- has somewhere to write.
+  // the reduced payload is unused, which is why payloadSize() may legitimately be 0.
   auto rawSize = det.rawSize();
   if (rawSize)
     logging::warning("Reserving %zu B per buffer for raw data ahead of the reduced payload",
@@ -88,6 +87,12 @@ Reducer::Reducer(const Parameters&                  para,
   // the datagram header and, when asked for, for raw data.
   // The application sees only the pointer to the data buffer.
   m_pool.createReduceBuffers(payloadSize, headerSize, rawSize);
+
+  // Transitions get their own buffers so that the largest transition's size is not
+  // multiplied by nbuffers().  The count comes from the CPU pool: all transitions but
+  // SlowUpdate are synchronous, so only SlowUpdates -- 1 Hz, unacknowledged -- can
+  // accumulate, and that count is many minutes' worth of them.
+  m_pool.createTransitionBuffers(m_para.maxTrSize, m_pool.pebble.nTrBuffers());
 
   // Set up the worker queues to fit all buffers
   if (m_para.nworkers) {
@@ -223,6 +228,7 @@ Reducer::~Reducer()
   if (m_algo)  delete m_algo;
   m_dl.close();
 
+  m_pool.destroyTransitionBuffers();
   m_pool.destroyReduceBuffers();
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {

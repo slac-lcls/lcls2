@@ -313,6 +313,15 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
         abort();
       }
       dataSize = rt.dataSize;
+
+      // More data than the Reducer reserved through payloadSize() means it has
+      // written past its region and into the next buffer
+      auto capacity = memPool.reduceBufsRaw() ?: memPool.reduceBufsSize();
+      if (dataSize > capacity) {
+        logging::critical("Reducer wrote %zu B into a %zu B region for index %u: its "
+                          "payloadSize() is too small", dataSize, capacity, rt.index);
+        abort();
+      }
     }
     lStateMon = 5;
 
@@ -362,9 +371,23 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     }
     lStateMon = 7;
 
-    // Find the location of where the Xtc payload is on the GPU or where it will go for transitions
-    auto buffer = &memPool.reduceBuffers_d()[index * maxSize];
-    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, maxSize %zu\n", index, buffer, maxSize);
+    // Where the datagram is, or will go, on the GPU.  An L1Accept's payload is
+    // already in its reduce buffer; a transition's whole datagram is copied into a
+    // buffer of its own, from the pool the CPU allocated its host-side counterpart
+    // from.  Deriving the slot from that pointer keeps one allocator: see
+    // Drp::MemPool::allocateTr() and Pebble::trBuffer().
+    uint8_t* buffer;
+    size_t   bufBound;                  // What this kind of datagram must fit in
+    if (dgram->isEvent()) {
+      buffer   = &memPool.reduceBuffers_d()[index * maxSize];
+      bufBound = maxSize;
+    } else {
+      auto slot = (reinterpret_cast<uint8_t*>(dgram) - memPool.pebble.trBuffer())
+                / memPool.pebble.trBufSize();
+      buffer   = &memPool.transitionBuffers_d()[slot * memPool.trBufsSize()];
+      bufBound = memPool.trBufsSize();
+    }
+    //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, bound %zu\n", index, buffer, bufBound);
     size_t cpSize, dgSize;
     if (dgram->isEvent() && (result->persist() || result->monitor())) {
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
@@ -402,15 +425,15 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       dgSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
     } else {  // Transitions
       cpSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
-      buffer -= sizeof(Dgram);          // Points to the start of the Dgram
       dgSize  = cpSize;
     }
     lStateMon = 8;
 
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, tr %u, cpSz %zu, extent %u, dgSz %zu\n", index, buffer, dgram->service(), cpSize, dgram->xtc.extent, dgSize);
-    if (dgSize > maxSize) {
-      logging::critical("Datagram is too large (%zu) for reduce buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
-                        dgSize, maxSize, pulseId, dgram->time.value(), dgram->env);
+    if (dgSize > bufBound) {
+      logging::critical("Datagram is too large (%zu) for its %s buffer (%zu) [pid %014lx, ts %016lx, env %08x]",
+                        dgSize, dgram->isEvent() ? "reduce" : "transition", bufBound,
+                        pulseId, dgram->time.value(), dgram->env);
       abort();
     }
 
@@ -458,11 +481,17 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
           //printf("*** TebRcvr::recorder: BeginRun 2 cfgDg %p\n", cfgDgram);
           auto cfgSize  = sizeof(*cfgDgram) + cfgDgram->xtc.sizeofPayload();
           //printf("*** TebRcvr::recorder: BeginRun 3 cfgSz %zu\n", cfgSize);
-          auto cfgBuf   = &memPool.reduceBuffers_d()[m_configureIndex * maxSize] - sizeof(Dgram);
+          // Any transition buffer will do: this one is pure scratch, written from the
+          // host's cached copy on the line below and read straight back out to the
+          // file by _writeDgram().  It needs no prior contents and no stable identity,
+          // which is just as well -- the slot Configure itself used was returned to
+          // the pool when its transition was handled.  Slot 0 is free here because a
+          // BeginRun is synchronous: nothing else is in flight.
+          auto cfgBuf   = memPool.transitionBuffers_d();
           //printf("*** TebRcvr::recorder: BeginRun 4 cfgBuf %p\n", cfgBuf);
-          if (cfgSize > maxSize) {
-            logging::critical("Configure dgram (%zu) is too big for GPU's buffer (%zu)",
-                              cfgSize, maxSize);
+          if (cfgSize > memPool.trBufsSize()) {
+            logging::critical("Configure dgram (%zu) is too big for GPU's transition buffer (%zu)",
+                              cfgSize, memPool.trBufsSize());
             abort();
           }
           //printf("*** TebRcvr::recorder: 4a idx %u, cfgBuf %p, cfgDg %p, sz %zu\n", m_configureIndex, cfgBuf, cfgDgram, cfgSize);
