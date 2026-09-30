@@ -27,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 import numpy as np
 from math import fabs
-from psana.detector.NDArrUtils import info_ndarr, print_ndarr
+from psana.detector.NDArrUtils import info_ndarr, print_ndarr, reshape_to_3d
 
 
 def common_mode_rows(arr, mask=None, cormax=None, npix_min=10):
@@ -167,6 +167,14 @@ def common_mode_apply(arrf, mask, cmpars=(0,7,100,10), nbanks_rows_cols=(2,8)):
     hrows = int(arrf.shape[1]/nbr) # 704/2=352
 
     if mode>0:
+      sh0 = None
+      if arrf.ndim != 3:
+        sh0 = arrf.shape
+        arrf = reshape_to_3d(arrf)
+        mask = reshape_to_3d(mask)
+        #print(info_ndarr(arrf, 'XXX arrf'))
+        #print(info_ndarr(mask, 'XXX mask'))
+
       for s in range(arrf.shape[0]):
 
         if mode & 4: # in banks: (704/2,768/8)=(352,96) pixels
@@ -179,5 +187,9 @@ def common_mode_apply(arrf, mask, cmpars=(0,7,100,10), nbanks_rows_cols=(2,8)):
         if mode & 2: # in cols per bank: 704/2 = 352 pixels # ?ms
           common_mode_cols(arrf[s,:hrows,:], mask=mask[s,:hrows,:], cormax=cormax, npix_min=npixmin)
           common_mode_cols(arrf[s,hrows:,:], mask=mask[s,hrows:,:], cormax=cormax, npix_min=npixmin)
+
+      if sh0 is not None:
+        arrf.shape = sh0
+        mask.shape = sh0
 
 # EOF

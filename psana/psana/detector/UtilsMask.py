@@ -8,7 +8,7 @@ Usage::
 
   # Test: python <path>/lcls2/psana/psana/detector/testman/test_UtilsMask.py <test-number>
 
-  m = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK)
+  m = merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK, msg=None)
   m = merge_mask_for_grinds(mask, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_MASK)
   s = merge_status_for_grinds(status, gain_range_inds=(0,1,2,3,4), dtype=DTYPE_STATUS)
          # merges status.shape=(7, 16, 352, 384) to s.shape=(16, 352, 384) of dtype
@@ -43,7 +43,7 @@ DTYPE_STATUS = CC.dic_calib_type_to_dtype[CC.PIXEL_STATUS] # np.uint64
 from psana.detector.NDArrUtils import info_ndarr, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
 
 
-def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK):
+def merge_masks(mask1=None, mask2=None, dtype=DTYPE_MASK, msg=None):
     """Merging masks using np.logical_and rule: (0,1,0,1)^(0,0,1,1) = (0,0,0,1)
     """
     if mask1 is None: return mask2
@@ -116,9 +116,9 @@ def mask_neighbors(mask=None, rad=5, ptrn='r', dtype=DTYPE_MASK, **kwa):
         c1b, c1e = max(dc, 0), min(cols, cols+dc)
         c2b, c2e = max(-dc, 0), min(cols, cols-dc)
         if mask.ndim==2:
-          mmask[r1b:r1e,c1b:c1e] = merge_masks(mmask[r1b:r1e,c1b:c1e], mask[r2b:r2e,c2b:c2e])
+          mmask[r1b:r1e,c1b:c1e] = merge_masks(mmask[r1b:r1e,c1b:c1e], mask[r2b:r2e,c2b:c2e], msg='mask_neighbors-1')
         else:
-          mmask[:,r1b:r1e,c1b:c1e] = merge_masks(mmask[:,r1b:r1e,c1b:c1e], mask[:,r2b:r2e,c2b:c2e])
+          mmask[:,r1b:r1e,c1b:c1e] = merge_masks(mmask[:,r1b:r1e,c1b:c1e], mask[:,r2b:r2e,c2b:c2e], msg='mask_neighbors-2')
     return mmask
 
 
@@ -337,8 +337,8 @@ def mask_arc(shape, cx, cy, ro, ri, ao, ai, dtype=DTYPE_MASK):
     row2, col2 = row1 + ri * sin(ai_rad), col1 + ri * cos(ai_rad)
     rm, cm = row1 + ri * sin(ai_rad-delta), col1 + ri * cos(ai_rad-delta)
     mhpi = mask_halfplane(shape, row1, col1, row2, col2, rm, cm, dtype=dtype)
-    mhro = merge_masks(mask1=mring, mask2=mhpo, dtype=dtype)
-    mhri = merge_masks(mask1=mring, mask2=mhpi, dtype=dtype)
+    mhro = merge_masks(mask1=mring, mask2=mhpo, dtype=dtype, msg='mask_arc-ro')
+    mhri = merge_masks(mask1=mring, mask2=mhpi, dtype=dtype, msg='mask_arc-ri')
     return (np.bitwise_and(mhro, mhri) if ai<180 else np.bitwise_or(mhro, mhri)).T
 
 # EOF

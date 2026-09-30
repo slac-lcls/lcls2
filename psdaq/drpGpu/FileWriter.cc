@@ -73,22 +73,17 @@ FileWriter::FileWriter(size_t bufferSize, bool dio) :
 
 FileWriter::~FileWriter()
 {
-  printf("*** FileWriter::dtor 1\n");
-
   close();
 
   if (m_buffer_d) {
-    printf("*** FileWriter::dtor 2\n");
     chkError(cudaFree(m_buffer_d));
     m_buffer_d = nullptr;
   }
 
-  printf("*** FileWriter::dtor 3\n");
   if (chkError(cuFileDriverClose())) {
     logging::critical("Error closing cuFile driver");
     exit(EXIT_FAILURE);
   }
-  printf("*** FileWriter::dtor 4\n");
 }
 
 // This must be called from the thread doing the file writing

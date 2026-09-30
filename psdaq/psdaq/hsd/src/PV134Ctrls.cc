@@ -45,6 +45,13 @@ namespace Pds {
       _m.i2c_unlock();
 
       _m.optfmc().qsfp = 0x89;
+
+      //  Clear the error counts after initialization
+      for(unsigned fmc=0; fmc<2; fmc++)
+        _m.chip(fmc).fex._triggerMon.resetCounters();
+
+      for(unsigned j=0; j<8; j++)
+        _m.jesd(j).clearErrors();
     }
 
     void PV134Ctrls::configure(unsigned fmc) {
