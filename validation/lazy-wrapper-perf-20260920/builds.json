@@ -1,0 +1,27 @@
+{
+  "A": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/validation/four-way-20260918/installs/A",
+    "revision": "f52e90cc66d4c8c175b7689922c7e441e78b367f",
+    "files_verified": 25,
+    "label": "A"
+  },
+  "G": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/validation/four-way-20260918/installs/G",
+    "revision": "b0c9c3c02",
+    "files_verified": 25,
+    "label": "B+gather (eager wrappers)"
+  },
+  "Z": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/validation/lazy-wrapper-perf-20260920/installs/G",
+    "revision": "b0c9c3c02",
+    "label": "B+gather (zero eager wrappers)",
+    "changes": [
+      "lib/python3.9/site-packages/psana/gpu/gpudgram/parser.py"
+    ],
+    "changed_methods": [
+      "GpuEventBatch._locate_configured",
+      "GpuEventBatch.locate"
+    ],
+    "parser_sha256": "e3c2b143d5b30360d33c6b24ff2fb3126e18121c5256a9cff4364abc3142fddb"
+  }
+}

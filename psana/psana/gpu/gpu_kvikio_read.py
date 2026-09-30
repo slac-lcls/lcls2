@@ -5,6 +5,8 @@ from typing import List, Tuple
 
 import numpy as np
 
+from .gpu_allocation import owned_empty, allocation_requirement, backing_capacity
+
 from .gpu_read_plan import (
     LogicalDgram, ReadPlan, ReadRange, ResolvedDgram, ResolvedFile, build_read_plan,
 )
@@ -204,7 +206,7 @@ class KvikioGpuReader:
 
         Used by GpuEventManager.log_memory() for Phase-0 accounting.
         """
-        slot_sizes = [int(b.nbytes) if b is not None else 0
+        slot_sizes = [backing_capacity(b) if b is not None else 0
                       for b in self._slot_bufs]
         return {
             'raw_input_slots': sum(slot_sizes),
@@ -214,32 +216,21 @@ class KvikioGpuReader:
     def _ensure_slot_buffer(self, slot: int, total_nbytes: int):
         """Grow slot ``slot``'s input buffer to hold at least total_nbytes.
 
-        Charge both old and new buffers during replacement, then return the old
-        capacity. Reusable buffers retain their charge.
+        Charge both old and new buffers during replacement. Old capacity stays
+        charged until its last alias is released; reusable buffers stay charged.
         """
         existing = self._slot_bufs[slot]
         if existing is not None and existing.nbytes >= total_nbytes:
             return
 
-        old_size = int(existing.nbytes) if existing is not None else 0
-        if self._budget is not None:
-            self._budget.reserve(total_nbytes)
-        try:
-            new_buf = self.cp.empty(total_nbytes, dtype=self.cp.uint8)
-        except Exception:
-            # Roll back so a failed allocation cannot leave the budget
-            # permanently committed against memory that was never obtained.
-            if self._budget is not None:
-                self._budget.release(total_nbytes)
-            raise
+        new_buf = owned_empty(self.cp, total_nbytes, self.cp.uint8,
+                              self._budget, 'reader')
         self._slot_bufs[slot] = new_buf
         del existing
-        if self._budget is not None:
-            self._budget.release(old_size)
 
     def allocation_requirements(self, nbytes, slot):
         old = self._slot_bufs[slot]
-        return [(int(nbytes), int(old.nbytes) if old is not None else 0)]
+        return [allocation_requirement(self.cp, nbytes, old)]
 
     def trim_free_buffers(self):
         """Relinquish cached capacity only when neither I/O nor input owns it."""
@@ -247,11 +238,8 @@ class KvikioGpuReader:
         for slot, buf in enumerate(self._slot_bufs):
             if buf is None or slot in pending_slots or self._input_holds.get(slot, 0):
                 continue
-            nbytes = int(buf.nbytes)
             self._slot_bufs[slot] = None
             del buf
-            if self._budget is not None:
-                self._budget.release(nbytes)
 
     def issue_batch(self, gpu_view, bd_dm, slot_id=None, *, file_epochs=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.

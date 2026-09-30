@@ -1,0 +1,38 @@
+--- G/gpudgram/parser.py
++++ Z/gpudgram/parser.py
+@@ -263,6 +263,5 @@
+-        """Populate eager locators in two launches on the parser stream.
+-
+-        The slot owns the backing allocation. Each contiguous per-handle view
+-        keeps that allocation alive and uses window-local dgram rows, even when
+-        its capacity exceeds this batch's size. Lazy requests retain their
+-        separate allocator and completion events.
++        """Decode configured fields in two launches on the parser stream.
++
++        The slot owns the backing allocation; retain it and the shared ready
++        event independently of the on-demand per-handle views. Unconfigured
++        requests retain their separate allocator and completion events.
+@@ -298,4 +296,0 @@
+-        self._locators.update(
+-            (handle, DeviceFieldLocators(handle, backing[i, :self.n_dgrams], ready))
+-            for i, handle in enumerate(handles)
+-        )
+@@ -313 +308,6 @@
+-        """Launch or return the device locator table for ``handle``."""
++        """Return a cached view, decoding only unconfigured handles on demand.
++
++        Configured fields were decoded on the parser stream. Their first access
++        creates only a view, sharing the configured-ready event; consumers must
++        still wait on that event before using the rows on another stream.
++        """
+@@ -325,0 +326,10 @@
++
++        if self._configured_backing is not None:
++            index = self._configured_indices.get(handle)
++            if index is not None:
++                result = DeviceFieldLocators(
++                    handle, self._configured_backing[index, :self.n_dgrams],
++                    self._configured_ready,
++                )
++                self._locators[handle] = result
++                return result

@@ -26,7 +26,7 @@ Read slot / GPU
        enrich dgram records       timestamp, service, damage, parse status
        produce shape_refs_gpu     ShapesData -> Configure Names row
        produce shape_counts_gpu
-    -> GpuEventBatch.locate(handle)
+    -> init_locators / locate_fields (stream-grouped configured handles)
        produce locator rows       type, shape, device offset, byte count
     -> detector CUDA kernel       dereference locator and consume field bytes
 ```
@@ -131,10 +131,38 @@ reported in `dgram_records_gpu[:, DGRAM_STATUS]`.
 
 ## Field location
 
-`GpuEventBatch.locate(handle)` launches one work item per allocated ShapesData
-reference slot. References for other Configure Names rows are ignored. For a
-match, the kernel finds the Shapes and Data children and walks fields in
-Configure order until the requested field:
+The pool compiles configured handles once into a stream-range table and a
+`uint64[n_handles, 3]` request table: Configure Names index, Configure field
+index, and output index. Requests are grouped by XTC stream; output indices
+preserve the caller's unique handle order. These tables are included in the
+run's fixed memory budget.
+
+After the walker, `init_locators` fully initializes the active rows of one
+slot-owned `uint64[n_handles, capacity, 11]` allocation. It propagates invalid
+dgram statuses to every handle, preserving the single-handle parser behavior.
+A separate `locate_fields` launch assigns one block per dgram, with threads
+spanning only that stream's handles and actual ShapesData references. The
+separate launches prevent initialization/decoding races. Scheduling requires
+no GPU metadata readback. Empty inputs and empty handle sets skip both kernels.
+
+`GpuEventBatch.locate(handle)` creates a per-handle view on first access for
+configured handles and caches it for later calls. Parsing creates no per-handle
+Python wrappers: the combined backing, handle indices, and shared ready event
+are retained independently. Creating a configured view launches no kernels,
+allocates no device storage, and adds no synchronization; cross-stream consumers
+must still wait on its shared ready event. Canonical gathering uses the combined
+storage directly and needs no per-handle wrappers.
+
+For subsequent bulk-read integration, input owners must retain this shared event
+explicitly (available through `configured_locations().ready`), even when the
+wrapper cache is empty. Enumerating `_locators` alone is insufficient.
+
+An unregistered handle still uses the lazy single-handle kernel,
+with one work item per allocated ShapesData reference slot. Both paths share
+the same field-offset decoder and atomic duplicate detection. References for
+other Configure Names rows are ignored. For a match, the decoder finds the
+Shapes and Data children and walks fields in Configure order until the
+requested field:
 
 ```text
 scalar bytes = element_size
@@ -150,9 +178,20 @@ The result is `uint64[n_dgrams, 11]`:
 ```
 
 Absent fields stay `STATUS_NOT_PRESENT`; valid matches become
-`STATUS_FOUND`. The locator event records which CUDA stream produced the
-table. A kernel on another stream calls `locators.wait_on(stream)` before it
-uses the rows. No host synchronization is required.
+`STATUS_FOUND`. Configured handles share one ready event recorded after
+decoding; lazy handles retain separate events. A kernel on another stream
+calls `locators.wait_on(stream)` before it uses the rows. No host synchronization
+is required. Each per-handle view is contiguous and exposes only active dgram
+rows; kernels receive the backing capacity stride explicitly for tail reuse.
+The slot retains backing storage until its existing consumer retirement
+contract permits reuse. Growth reserves the full replacement allocation
+before releasing the old accounting, and failed allocation preserves the old
+buffer and its budget charge.
+
+The subsequent canonical-gather change consumes this combined backing once
+per detector execution subbatch; see
+[its review and call path](batched_canonical_gather_review.md).
+Bulk-read/input-window integration remains separate review work.
 
 ## xpptut15 example
 
@@ -195,8 +234,9 @@ pytest -q psana/psana/tests/gpu/integration/test_gpudgram_device.py
 
 `GpuEventManager` compiles `GpuStreamConfigTable` from `Run.configs` and
 constructs one `GpuXtcBatchPool` for the run. The pool uploads the three
-numeric Configure tables once and records a CUDA completion event for that
-upload. Each EventPool stream waits on this event before its first parse.
+numeric Configure tables and two handle scheduling tables once, recording a
+CUDA completion event for that upload. Each EventPool stream waits on this
+event before parsing.
 
 After KvikIO completes a read, its CPU descriptor table has one dense row per
 valid dgram:
@@ -215,7 +255,8 @@ Each `GpuXtcBatchPool` slot owns reusable high-water buffers for:
 ```text
 dgram records
 ShapesData counts and references
-one locator table per registered field handle
+one combined allocation for configured field locators
+separate locator tables for any additional lazy handles
 ```
 
 The Configure tables and per-slot parser buffers are charged to the same
@@ -238,10 +279,16 @@ resident storage remains held for later executions until its owner closes.
 routed detector segment. `EventPool` uses CPU descriptor metadata to construct
 one immutable `GpuEventDgrams` mapping per event. The same stream-indexed
 mapping is passed to every detector adapter, so event/stream ownership is not
-rebuilt per detector. `GPUDetector.process_batch()` reads the corresponding
-device locator row, validates type, rank, payload size, and bounds, and copies
-the field into canonical segment order. No XTC bytes or locator results make a
-GPU-to-CPU round trip.
+rebuilt per detector. Each detector uploads a fixed canonical gather plan once.
+`GPUDetector.process_batch()` makes a compact event/required-stream row map from
+those shared views, uploads it from reusable pinned storage, and submits one
+gather kernel for the existing execution subbatch. The kernel reads combined
+locator storage with its allocated capacity stride, validates type, rank,
+payload size, and bounds, and writes every canonical output pixel and presence
+byte. Missing or rejected rows are zero. Per-event calibration and subsequent
+missing-row cleanup remain unchanged. No XTC bytes or locator results make a
+GPU-to-CPU round trip in this detector path. The map and output slots remain
+protected by the existing consumer leases.
 
 Stage 4A introduces the input-to-detector ownership contracts in
 `gpu_input.py`:
