@@ -1314,6 +1314,7 @@ def issue_2026_09_09(args):
 
 def issue_2026_09_21(args):
     """ISSUE: Philip, calib for epixuhr3x2
+              datinfo -k exp=mfx101628626,run=163 -d epixuhr3x2
        PROBLEM:
        FIX:
     """
@@ -1321,9 +1322,10 @@ def issue_2026_09_21(args):
     ds,run,det = ds_run_det(exp='mfx101628626', run=163, detname='epixuhr3x2', **{'max_events':10})
     evt = next(run.events())
     raw = det.raw.raw(evt)
-    print(ndu.info_ndarr(det.raw.raw(evt), 'XXX  raw'))
+    print(ndu.info_ndarr(det.raw.raw(evt), 'TTTT raw'))
+    print('TTTT before det.raw.calib(evt)')
     cal = det.raw.calib(evt)
-    print(ndu.info_ndarr(cal, 'XXX  cal'))
+    print(ndu.info_ndarr(cal, 'TTTT cal'))
 
 #===
 
