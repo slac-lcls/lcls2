@@ -1,11 +1,11 @@
-"""Internal producer callback context; host delivery is a separate stage.
+"""One producer callback per selected execution subbatch; no host delivery.
 
-Borrowed arrays and pointers are read-only by contract. Native kernels must
-check locator status, type/rank and bounds on device before dereferencing.
-Context methods are valid only during the callback on its supplied stream.
+Borrowed inputs are read-only. All work uses the supplied stream. Register
+scratch/output owners before launching work; methods expire on callback return.
 """
 from dataclasses import dataclass
 from math import prod
+from numbers import Integral
 
 import numpy as np
 
@@ -13,133 +13,140 @@ from .gpu_task import _name
 
 
 @dataclass(frozen=True)
-class DeviceFieldDescriptor:
-    """One host-known physical segment, without inspecting device metadata.
+class PublicationBatch:
+    """One contiguous allocation/view and its event-row mapping.
 
-    ``locator_rows[row]`` uses the LOC_* layout in gpudgram.batch. Missing
-    source dgrams have no descriptor; missing/rejected fields have device status.
-    Arrays retain Python allocation owners, but their execution lease is also
-    required: neither a pointer nor an array reference prevents slot overwrite.
+    shape includes the result-row axis. event_indices address the selected
+    batch context, not original EB event indices. Stage 4 copies this group
+    under its byte cap and exposes shape[1:] for each mapped event.
     """
-    segment_id: int
-    data_gpu: object
-    locator_rows: object
-    row: int
-    xtc_type: int
-    rank: int
-    element_size: int
-
-    @property
-    def raw_ptr(self):
-        return int(self.data_gpu.data.ptr)
-
-    @property
-    def raw_nbytes(self):
-        return int(self.data_gpu.nbytes)
-
-    @property
-    def locator_ptr(self):
-        return int(self.locator_rows.data.ptr)
-
-
-@dataclass(frozen=True)
-class _Publication:
+    name: str
     array: object
     shape: tuple
     dtype: object
     nbytes: int
     lease: object
+    event_indices: tuple
+    timestamps: tuple
+
+
+@dataclass(frozen=True)
+class _PublicationRow:
+    """Host row bookkeeping; constructing it performs no CUDA operations."""
+    batch: PublicationBatch
+    row: int
+
+    @property
+    def array(self):
+        # A slice/reshape is a borrowed view, including scalar and empty rows.
+        return self.batch.array[self.row:self.row+1].reshape(self.shape)
+
+    @property
+    def shape(self):
+        return self.batch.shape[1:]
+
+    @property
+    def dtype(self):
+        return self.batch.dtype
+
+    @property
+    def nbytes(self):
+        return prod(self.shape) * self.dtype.itemsize
+
+    @property
+    def lease(self):
+        return self.batch.lease
 
 
 class ProducerContext:
-    """One selected event in an admitted execution slot.
+    """Callback-scoped access to aligned inputs and batched publication.
 
-    Register user allocations before launching work with keepalive or publish.
-    Return values are ignored. Publication records metadata/ownership only here;
-    the Stage 4 delivery path will queue copies after producer completion.
+    publish(name, array) maps array's leading axis to all selected events.
+    event_indices supplies host integer row indices for sparse/mixed-shape
+    publication groups. Multiple groups may use a name only on disjoint events.
+    Per-event scalars use shape (N,); aggregate output uses (1, ...) with an
+    explicit single event index. Return values are ignored.
     """
-    def __init__(self, event, *, task, dense, bindings, constants, owners,
-                 publications, lease, reserved, device, run, step_generation,
-                 batch_id):
-        self.timestamp = event.timestamp
-        self.batch_event_index = event.batch_event_index
-        self.batch_id = batch_id
-        self.run = run
-        self.step_generation = step_generation
-        self._event, self._task = event, task
-        self._dense, self._bindings, self._constants = dense, bindings, constants
-        self._owners, self._publications, self._lease = owners, publications, lease
-        self._reserved, self._device = reserved, device
-        self._fields = {}
+    def __init__(self, inputs, owners, publications, batches, lease, reserved, device):
+        self._inputs = inputs
+        self._owners, self._publications, self._batches = owners, publications, batches
+        self._lease, self._reserved, self._device = lease, reserved, device
         self._active = True
 
     def _require_active(self):
         if not self._active:
             raise RuntimeError('producer context is only valid during its callback')
 
-    def _dense_input(self, name):
+    @property
+    def size(self):
         self._require_active()
-        if name not in self._task.inputs or not isinstance(name, str):
-            raise KeyError(f'dense input {name!r} was not declared')
-        return self._dense[name].get((self.batch_event_index, self.timestamp))
+        return self._inputs.size
+
+    @property
+    def timestamps(self):
+        self._require_active()
+        return self._inputs.timestamps
+
+    @property
+    def batch_event_indices(self):
+        self._require_active()
+        return self._inputs.batch_event_indices
+
+    @property
+    def timestamps_gpu(self):
+        self._require_active()
+        return self._inputs.timestamps_gpu
+
+    @property
+    def batch_event_indices_gpu(self):
+        self._require_active()
+        return self._inputs.batch_event_indices_gpu
+
+    @property
+    def batch_id(self):
+        self._require_active()
+        return self._inputs.batch_id
+
+    @property
+    def run(self):
+        self._require_active()
+        return self._inputs.run
+
+    @property
+    def step_generation(self):
+        self._require_active()
+        return self._inputs.step_generation
 
     def input(self, name):
-        value = self._dense_input(name)
-        return None if value is None else value[0].data[value[1]]
+        self._require_active()
+        return self._inputs.input(name)
 
     def present(self, name):
-        value = self._dense_input(name)
-        return None if value is None else value[0].present[value[1]]
+        self._require_active()
+        return self._inputs.present(name)
 
     def field(self, detector, algorithm, field):
         self._require_active()
-        key = (detector, algorithm, field)
-        if key not in self._task.inputs:
-            raise KeyError(f'field {key!r} was not declared')
-        if key not in self._fields:
-            descriptors = []
-            binding = self._bindings[detector].field(algorithm, field)
-            for dgram, segment, handle in binding.iter_sources(self._event):
-                batch = dgram._storage_batch()
-                locations = batch.configured_locations()
-                index = locations.handle_indices[handle]
-                rows = locations.backing[index]
-                if not 0 <= dgram.dgram_index < batch.n_dgrams <= rows.shape[0]:
-                    raise ValueError('field descriptor row is outside configured storage')
-                descriptors.append(DeviceFieldDescriptor(
-                    segment, batch.data_gpu, rows, dgram.dgram_index,
-                    handle.type, handle.rank, handle.element_size))
-            self._fields[key] = tuple(descriptors)
-        return self._fields[key]
+        return self._inputs.field(detector, algorithm, field)
 
     def calibconst(self, detector, key):
         self._require_active()
-        selector = (detector, key)
-        if selector not in self._constants:
-            raise KeyError(f'calibration constant {selector!r} was not declared')
-        return self._constants[selector]
+        return self._inputs.calibconst(detector, key)
 
     def segment_ids(self, detector):
         self._require_active()
-        declared = {s.rsplit('.', 1)[0] if isinstance(s, str) else s[0]
-                    for s in self._task.inputs}
-        declared.update(det for det, _ in self._task.calibconst)
-        if detector not in declared:
-            raise KeyError(f'detector {detector!r} was not declared')
-        return self._bindings[detector].canonical_segment_ids
+        return self._inputs.segment_ids(detector)
 
     def keepalive(self, *owners):
         self._require_active()
         self._owners.extend(owners)
 
-    def publish(self, name, array):
+    def publish(self, name, array, event_indices=None):
         self._require_active()
         import cupy as cp
         _name(name)
         if name in self._reserved:
             raise ValueError(f'publication name {name!r} is reserved for inputs')
-        if name in self._publications:
-            raise ValueError(f'duplicate publication {name!r}')
         if not isinstance(array, cp.ndarray):
             raise TypeError('publish requires a CuPy device array')
         if array.device.id != self._device:
@@ -147,59 +154,56 @@ class ProducerContext:
         dtype, shape = np.dtype(array.dtype), tuple(array.shape)
         if not dtype.isnative or dtype.char not in '?bBhHiIlLqQefdFD':
             raise TypeError('publication requires a native numeric dtype')
+        if not shape:
+            raise ValueError('publication requires a leading event-row axis; use (N,) for scalars')
         if not array.flags.c_contiguous:
             raise ValueError('publication must be C-contiguous')
         nbytes = int(array.nbytes)
         if any(n < 0 for n in shape) or nbytes != prod(shape) * dtype.itemsize:
             raise ValueError('publication byte extent disagrees with shape and dtype')
+        if event_indices is None:
+            indices = tuple(range(self.size))
+        else:
+            if isinstance(event_indices, cp.ndarray):
+                raise TypeError('event_indices must be host integer indices')
+            indices = tuple(event_indices)
+            if any(isinstance(i, (bool, np.bool_)) or not isinstance(i, Integral) for i in indices):
+                raise TypeError('event_indices must be host integer indices')
+            indices = tuple(int(i) for i in indices)
+        if shape[0] != len(indices):
+            raise ValueError('publication leading axis must match event_indices or batch size')
+        if any(i < 0 or i >= self.size for i in indices):
+            raise ValueError('publication event index is outside the selected batch')
+        if len(set(indices)) != len(indices):
+            raise ValueError('duplicate publication event index')
+        timestamps = tuple(self.timestamps[i] for i in indices)
+        if any(name in self._publications.get(ts, {}) for ts in timestamps):
+            raise ValueError(f'duplicate publication {name!r} for an event')
+        batch = PublicationBatch(name, array, shape, dtype, nbytes, self._lease, indices, timestamps)
         self._owners.append(array)
-        self._publications[name] = _Publication(array, shape, dtype, nbytes, self._lease)
+        self._batches.append(batch)
+        for row, ts in enumerate(timestamps):
+            self._publications.setdefault(ts, {})[name] = _PublicationRow(batch, row)
 
     def _close(self):
         self._active = False
-        self._event = self._task = self._dense = self._bindings = None
-        self._constants = self._owners = self._publications = self._lease = None
-        self._fields.clear()
+        self._inputs = self._owners = self._publications = self._batches = None
+        self._lease = self._reserved = None
 
 
-def dispatch_task(task, events, envelopes, prepared, bindings, constants, stream,
-                  owners, publications, lease, *, batch_id, run, step_generation):
-    """Invoke once per delivered event with GPU descriptors, after one gather.
-
-    Selection precedes invocation, including when reads cover a max-events tail.
-    Dense row maps use original identity because missing detectors compact rows.
-    The caller retains owners even if this function raises after enqueueing work.
-    """
+def dispatch_task(task, inputs, bindings, stream, owners, publications, batches, lease):
+    """Invoke once for N>0; completion is recorded by EventPool after return."""
+    if not inputs.size:
+        return
     import cupy as cp
-    from psana import utils
-    selected = {int(utils.first_timestamp(e.dgrams)) for e in envelopes}
-    dense = {name: {} if value is None else {
-        (event.batch_event_index, event.timestamp): (value, row)
-        for row, event in enumerate(value.events)} for name, value in prepared.items()}
-    staged = {key: constants.get(*key) for key in task.calibconst}
-    owners.extend(staged.values())
     reserved = set(bindings)
     for name, binding in bindings.items():
         reserved.add(name + '.raw')
         reserved.update(f'{name}.{alg}.{field}' for alg, field in binding.fields)
-    device = cp.cuda.Device().id
-    seen = set()
-    for event in events:
-        if not len(event) or event.timestamp not in selected:
-            continue
-        if event.timestamp in seen:
-            raise ValueError('duplicate selected GPU event timestamp')
-        seen.add(event.timestamp)
-        outputs = {}
-        publications[event.timestamp] = outputs
-        context = ProducerContext(
-            event, task=task, dense=dense, bindings=bindings, constants=staged,
-            owners=owners, publications=outputs, lease=lease, reserved=reserved,
-            device=device, run=run, step_generation=step_generation, batch_id=batch_id)
-        try:
-            with stream:
-                task.function(context, stream)
-        finally:
-            context._close()
-        if not outputs:
-            del publications[event.timestamp]
+    context = ProducerContext(inputs, owners, publications, batches, lease,
+                              reserved, cp.cuda.Device().id)
+    try:
+        with stream:
+            task.function(context, stream)
+    finally:
+        context._close()

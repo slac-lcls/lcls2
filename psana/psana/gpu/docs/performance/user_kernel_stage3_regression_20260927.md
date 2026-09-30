@@ -1,7 +1,12 @@
 # User-kernel Stage 3 performance regression
 
 Status: initial input-only regression failed cache conditioning before timing;
-retry 39315680 running on sdfampere033. Callback characterization completed successfully.
+retry 39315680 cancelled at the user's request after 16m04s on sdfampere033.
+The allocation, batch, and extern steps all report CANCELLED. Callback
+characterization completed successfully for the original per-event design.
+Stage 3 acceptance now requires the
+[batched scheduling correction](../proposals/user_kernel_batched_scheduling_20260927.md).
+Any partial retry results are incomplete evidence, not performance acceptance.
 
 The input-only comparison is Stage 2 `f5b4cfb0e` against Stage 3 `c64fcb2ba`.
 The later Stage 2 acceptance commits change benchmark/docs only. Runtime sources
@@ -10,7 +15,7 @@ remain frozen while these jobs execute. No production code changed to run them.
 | Job | Purpose | Node | Estimate after start |
 |---|---|---|---|
 | 39311913 | Initial balanced regression | sdfampere026 | Failed, exit 1, 9m35s; eight preflights passed, zero timed samples |
-| 39315680 | Same regression, excluding failed node | sdfampere033 | Running; 90–120 minutes after allocation starts |
+| 39315680 | Same regression, excluding failed node | sdfampere033 | Cancelled at user request, 16m04s |
 | 39312035 | Internal callback submission/retirement characterization | sdfampere020 | Completed, exit 0, 32 seconds |
 
 ## Input-only comparison
@@ -53,14 +58,14 @@ fall below the gate. This is a cache-conditioning failure, not an observed
 Stage 3 throughput regression. No timed A/B or A/A result is available from r1.
 The runner removed its private node-local stage on failure.
 
-Job 39315680 retries the identical runtime snapshots, scripts, matrix and cache
+Job 39315680 retried the identical runtime snapshots, scripts, matrix and cache
 thresholds, adding sdfampere026 to the excluded nodes. Previously successful
 nodes sdfampere014/027 were occupied when the retry was prepared, so the scheduler
 may choose another eligible node. All 3,743 inherited/new manifest entries were
-verified before submission. The 90–120 minute estimate restarts with its new
-allocation; queue delay is additional. The initial attempt's 9:25–10:00 p.m.
-completion estimate no longer applies. No repeat of the successful callback
-measurement is needed.
+verified before submission. The retry was cancelled to correct per-event
+dispatch before further acceptance testing. Previous completion estimates no
+longer apply. The successful callback measurement is preserved as a historical
+reference; the corrected batch callback requires new measurements.
 
 ## Internal callback costs
 

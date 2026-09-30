@@ -173,10 +173,10 @@ class GPUResult:
         self._arr         = arr_gpu
         self._lease       = lease
         self._cpu_cache   = None
-        # Set by _D2hPipeline immediately after issuing async D→H.
+        # Set by PublicationD2H immediately after issuing async D→H.
         # Carries the CUDA done-event + pinned-slot reference so on_cpu
         # can wait lazily rather than blocking inside the generator.
-        self._pending_d2h = None   # _PendingD2H | None
+        self._pending_d2h = None   # HostResult | None
         # Automatic D2H contexts can outlive the EventPool device slot.  Keep
         # that state explicit so stale slot-backed arrays are never exposed.
         self._device_released = device_released
@@ -191,9 +191,8 @@ class GPUResult:
             self._lease.require_active()
         if self._device_released or self._arr is None:
             raise RuntimeError(
-                f"{accessor} is unavailable because automatic D2H completed "
-                "and the EventPool device slot was released before this event "
-                "was yielded. Use on_cpu to access the host result."
+                f"{accessor} is unavailable for a host-delivered or released "
+                "GPU result. Use on_cpu to access the host result."
             )
 
     @property
@@ -252,7 +251,7 @@ class GPUResult:
 
         1. _cpu_cache already set   → return immediately (free).
         2. _pending_d2h set         → wait for the async D→H that
-           _D2hPipeline issued before yielding this event, then copy
+           PublicationD2H issued before yielding this event, then copy
            from the pinned slot and cache in _cpu_cache.
         3. Fallback                 → call arr.get() (blocking D→H at the
            call site), cache the independent NumPy result, and return it.
@@ -274,8 +273,11 @@ class GPUResult:
         return self._cpu_cache
 
     def __repr__(self) -> str:
-        shape = getattr(self._arr, 'shape', '?')
-        dtype = getattr(self._arr, 'dtype', '?')
+        value = self._arr if self._arr is not None else self._cpu_cache
+        if value is None:
+            value = self._pending_d2h
+        shape = getattr(value, 'shape', '?')
+        dtype = getattr(value, 'dtype', '?')
         return f'GPUResult(shape={shape}, dtype={dtype})'
 
 
@@ -305,12 +307,12 @@ class GpuEventState:
         ----------
         gpu_results : dict  {key: cp.ndarray}
         detector_names : sequence[str] | None
-            GPU detectors configured for the run. Used to resolve an
-            unqualified result key without a separate routing object.
+            GPU detectors configured for the run. Result names are exact and
+            independent of this detector routing metadata.
         leases      : dict  {key: SlotLease} | None
             Per-key slot leases created by EventPool.submit().
             Attached to GPUResult objects in get().
-        pending_d2h : dict  {key: _PendingD2H} | None
+        pending_d2h : dict  {key: HostResult} | None
             Host-result tokens armed immediately after slot submission.
         cached_cpu_results : dict  {key: np.ndarray} | None
             Independent CPU results materialized under pinned-buffer pressure.
@@ -368,32 +370,13 @@ class GpuEventState:
     def get(self, key: str) -> GPUResult:
         """Return the GPU result for key, with its SlotLease attached.
 
-        Accepts a qualified key such as ``'jungfrau.calib'``. An unqualified
-        key such as ``'calib'`` is accepted when exactly one available result
-        has that suffix.
+        Lookup is exact, independent of configured detector names. Only names
+        explicitly published by the task are available.
         """
         resolved = key
-        if '.' not in key:
-            if len(self._detector_names) == 1:
-                resolved = f'{self._detector_names[0]}.{key}'
-            elif len(self._detector_names) > 1:
-                raise KeyError(
-                    f"'{key}' is ambiguous. Use a detector-qualified key. "
-                    f"GPU detectors: {sorted(self._detector_names)}"
-                )
-
         if resolved not in self._cache:
             if resolved not in self._gpu_results:
-                available = sorted(self._gpu_results)
-                if resolved == key:
-                    raise KeyError(
-                        f"'{key}' not available.  "
-                        f"Available GPU keys: {available}"
-                    )
-                raise KeyError(
-                    f"'{key}' resolved to '{resolved}' which is not available.  "
-                    f"Available GPU keys: {available}"
-                )
+                raise KeyError(f"{key!r} not available. Available GPU keys: {sorted(self._gpu_results)}")
             result = GPUResult(
                 self._gpu_results[resolved],
                 lease=self._leases.get(resolved),

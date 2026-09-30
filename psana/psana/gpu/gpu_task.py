@@ -39,13 +39,15 @@ def _selectors(values, *, constants=False):
 
 @dataclass(frozen=True)
 class GpuTask:
-    """Declare ``function(evt, stream)``, dense/field inputs and exact constants.
+    """Declare ``function(batch, stream)``, dense/field inputs and exact constants.
 
     ``inputs`` contains ``"detector.raw"`` or (detector, algorithm, field)
     selectors. ``calibconst`` contains (detector, key) pairs. Both default to
     empty and duplicates are removed in declaration order. CUDA state belongs
-    inside the assigned worker, not in the declaration. Public event processing
-    is rejected until Stage 4 publication delivery is available.
+    inside the assigned worker, not in the declaration. Published results are
+    delivered through evt.gpu.get(name).on_cpu. One invocation processes all
+    selected events in a memory-bounded execution
+    subbatch. Inputs and publications have a leading event-row dimension.
     """
     function: object
     inputs: tuple = ()

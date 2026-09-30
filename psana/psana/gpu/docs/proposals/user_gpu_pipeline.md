@@ -1,6 +1,15 @@
 # User GPU kernel support
 
-**Status:** Proposed; the APIs below are not implemented.
+**September 27 amendment:** The user requires true batched scheduling before
+public delivery work. The [Stage 3 correction](user_kernel_batched_scheduling_20260927.md)
+supersedes this document's per-event callback signatures, publication contract,
+and deferral of batching. The required callable is `function(batch, stream)`
+once per nonempty selected execution subbatch. The original proposal below
+remains historical context. Stages 3a–4 implemented the amendment; use the
+[current task/results guide](../user_task_results.md) for executable API examples.
+
+**Status:** Historical proposal, superseded where noted by the batched amendment.
+The batched public API is implemented; per-event examples below are historical.
 **Review baseline:** `d63f45d27`,
 `codex/psana2-gpu-bulk-batched-integration`, 2026-09-26, after merging master.
 **Scope:** Producer-side user kernel submission, input/constant preparation,

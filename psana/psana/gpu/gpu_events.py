@@ -1,7 +1,7 @@
 import logging
 import math
 import sys
-from contextlib import nullcontext
+from contextlib import closing, nullcontext
 from dataclasses import dataclass, field
 
 
@@ -183,12 +183,17 @@ class GpuEventManager:
         self._n_events = 0
         self._done = False
         self._closed = False
+        self._closing = False
 
         self.gpu_det_names = list(dsparms.gpu_detector_names)
         self.gpu_detector_bindings = {}
         self.input_preparers = {}
         self._gpu_task = getattr(dsparms, "gpu_fn", None)
         self._task_constants = None
+        self._output_d2h = None
+        if self._gpu_task is not None:
+            from .gpu_d2h import PublicationD2H, DEFAULT_PINNED_BYTES
+            self._output_d2h = PublicationD2H(getattr(dsparms, 'gpu_d2h_pinned_bytes', DEFAULT_PINNED_BYTES))
         self._step_generation = 0
         self.event_pool = None
         self.gpu_reader = None
@@ -205,6 +210,8 @@ class GpuEventManager:
         return self
 
     def __next__(self):
+        if self._closed:
+            raise StopIteration
         if self._iter is None:
             self._iter = self._events()
         return next(self._iter)
@@ -215,12 +222,17 @@ class GpuEventManager:
         for name, preparer in getattr(self, "input_preparers", {}).items():
             s.input_bytes[name] = preparer.memory_bytes()["total"]
             s.pinned += preparer.pinned_bytes()
+        if self.event_pool is not None and hasattr(self.event_pool, 'pinned_bytes'):
+            s.pinned += self.event_pool.pinned_bytes()
         if self.gpu_reader is not None and hasattr(self.gpu_reader, "memory_bytes"):
             s.raw_input = self.gpu_reader.memory_bytes()["raw_input_slots"]
         if self.gpu_xtc_parser is not None:
             parser_memory = self.gpu_xtc_parser.memory_bytes()
             s.xtc_config = parser_memory["config"]
             s.xtc_slots = parser_memory["batch_slots"]
+        output_d2h = getattr(self, '_output_d2h', None)
+        if output_d2h is not None:
+            s.pinned += output_d2h.pinned_bytes
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
@@ -386,7 +398,7 @@ class GpuEventManager:
             self.dsparms.batch_size = 1
 
         pool_depth = getattr(self.dsparms, "n_gpu_streams", 2)
-        self.event_pool = EventPool(n=pool_depth)
+        self.event_pool = EventPool(n=pool_depth, budget=self._gpu_budget)
 
         # Eagerly locate every event field exposed by configured GPU detectors.
         # This makes arbitrary field access a budgeted part of each parser slot.
@@ -489,9 +501,14 @@ class GpuEventManager:
                             for d in parent.desc_rows_for_event(i)
                             if int(d['flags']) & GPU_DESC_FLAG_VALID)
             present = {stream for stream, _ in streams}
+            task = getattr(self, '_gpu_task', None)
             prepared_bytes = sum(p.estimate_subbatch_bytes(1)
                                  for p in getattr(self, "input_preparers", {}).values()
-                                 if p.binding.has_sources(present))
+                                 if (bool(present) if task is not None
+                                     else p.binding.has_sources(present)))
+            if task is not None and present:
+                from .gpu_task_batch import metadata_bytes
+                prepared_bytes += metadata_bytes(task, self.gpu_detector_bindings, 1)
             events.append(AdmissionEvent(streams, prepared_bytes))
         return events
 
@@ -536,11 +553,27 @@ class GpuEventManager:
         requirements = self._input_allocation_requirements(
             subbatch, slot)
         events = self._event_memory(subbatch)
-        for preparer in getattr(self, "input_preparers", {}).values():
-            count = sum(preparer.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += preparer.allocation_requirements(count, slot)
+        requirements += self._task_input_requirements(events, slot)
         return self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=getattr(self, '_admission_margin', 0))
+
+    def _task_input_requirements(self, events, slot):
+        """Conservative pre-selection bound, including every aligned input row."""
+        task = getattr(self, '_gpu_task', None)
+        selected_count = sum(bool(e.streams) for e in events)
+        requirements = []
+        for preparer in getattr(self, 'input_preparers', {}).values():
+            count = (selected_count if task is not None else
+                     sum(preparer.binding.has_sources({s for s, _ in e.streams})
+                         for e in events))
+            requirements += preparer.allocation_requirements(count, slot)
+        if task is not None:
+            import cupy as cp
+            from .gpu_allocation import allocation_requirement
+            from .gpu_task_batch import metadata_bytes
+            requirements.append(allocation_requirement(
+                cp, metadata_bytes(task, self.gpu_detector_bindings, selected_count), None))
+        return requirements
 
 
     def _close_gpu_reservation(self):
@@ -654,6 +687,17 @@ class GpuEventManager:
                     record = self._submit_per_dgram_gpu(subbatch, gpu_read, event_envelopes)
         finally:
             self._close_gpu_reservation()
+        output_d2h = getattr(self, '_output_d2h', None)
+        if output_d2h is not None:
+            try:
+                output_d2h.enqueue(record)
+            except BaseException:
+                # Also protect the MPI process_batch path, which has no serial
+                # iterator close-on-error wrapper. Failed drains quarantine the
+                # occupied EventPool and every copy/producer owner for retry.
+                for _ in self.event_pool.flush():
+                    pass
+                raise
         return record
 
     def _submit_per_dgram_gpu(self, subbatch, gpu_read, event_envelopes):
@@ -714,9 +758,7 @@ class GpuEventManager:
         if n_dgrams:
             requirements += self.gpu_xtc_parser.allocation_requirements(n_dgrams, groups=True)
         events = self._event_memory(subbatch)
-        for preparer in getattr(self, "input_preparers", {}).values():
-            count = sum(preparer.binding.has_sources({s for s, _ in e.streams}) for e in events)
-            requirements += preparer.allocation_requirements(count, slot_id)
+        requirements += self._task_input_requirements(events, slot_id)
         hold = self._gpu_budget.hold(allocation_growth_bytes(requirements),
                                      margin=self._admission_margin)
         self._gpu_read_reservation = hold
@@ -828,14 +870,13 @@ class GpuEventManager:
             return self._issue_gpu_read(subbatch, self.event_pool.next_slot_id)
 
     def _flush_event_pool(self):
-        for slot_data in self.event_pool.flush():
-            yield from self._yield_ready(slot_data)
+        # Explicitly unwind the current slot on generator close; do not rely
+        # on garbage collection of the pool's suspended registration window.
+        with closing(self.event_pool.flush()) as slots:
+            for slot_data in slots:
+                yield from self._yield_ready(slot_data)
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
-        if getattr(self, '_gpu_task', None) is not None:
-            raise NotImplementedError(
-                'GpuTask callback execution is available internally, but public '
-                'publication delivery is not implemented yet (Stage 4)')
         n_events = self._n_events
         try:
             while True:
@@ -1005,7 +1046,13 @@ class GpuEventManager:
         """Drain in-flight work and close GPU reader resources once."""
         if self._closed:
             return
-        yield from self._flush_event_pool()
+        try:
+            yield from self._flush_event_pool()
+        finally:
+            self.close()
+
+    def _close_resources(self):
+        """Called after all executions have retired successfully."""
         self._drain_pending_gpu_read()
         if getattr(self, '_group_inputs', None) is not None:
             self._group_inputs.close()
@@ -1020,12 +1067,32 @@ class GpuEventManager:
         constants = getattr(self, '_task_constants', None)
         if constants is not None:
             constants.close()
+        output_d2h = getattr(self, '_output_d2h', None)
+        if output_d2h is not None:
+            output_d2h.close()
         self._closed = True
 
     def close(self):
         """Discard remaining deliveries while safely retiring their slots."""
-        for _ in self.finish():
-            pass
+        if self._closed or getattr(self, '_closing', False):
+            return
+        self._closing = True
+        self._done = True
+        try:
+            iterator = getattr(self, '_iter', None)
+            # Unwind a suspended serial producer before starting a new drain.
+            # Calls from its own finally must not close a running generator.
+            if iterator is not None and not iterator.gi_running:
+                iterator.close()
+            pool = getattr(self, 'event_pool', None)
+            if getattr(pool, '_retiring', None) is not None:
+                pool.finish_retire_next()
+            for _ in self._flush_event_pool():
+                pass
+            self._close_resources()
+        finally:
+            # A failed join leaves owners intact and allows another close.
+            self._closing = False
 
     def _events(self):
         try:
@@ -1037,8 +1104,6 @@ class GpuEventManager:
                 yield from self._process_batch(
                     batch_dict, gpu_batch_dict, step_dict
                 )
-        except BaseException:
-            self.close()
-            raise
-        else:
             yield from self.finish()
+        finally:
+            self.close()

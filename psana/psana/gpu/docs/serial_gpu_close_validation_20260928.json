@@ -1,0 +1,165 @@
+{
+  "status": "passed; no review blockers",
+  "base": "10173a2639fb68038a9c153704bf861926818872",
+  "frozen_root": "/sdf/scratch/users/m/monarin/gpu-validation/serial-gpu-close-20260928-r1",
+  "source_files": {
+    "psana/psana/gpu/__init__.py": "99ad4ec2bdbbfcd6e40730c5e26ce174c925a6cb5b3728f3722cced889f165cd",
+    "psana/psana/gpu/gpu_events.py": "f4a84058e46d510649fa4d64e472ba0e0b8259c6f1313b901ee364dda1b6dc25",
+    "psana/psana/gpu/gpu_stream.py": "e995ae190380df3aaf258d55188791940e5fa465d7769e1ad9a9f86d3f094aaa",
+    "psana/psana/gpu/gpu_task.py": "1fa2c8317019aaca31a2603112461da10336b7655860998c5d661354538fae18",
+    "psana/psana/psexp/run.py": "dbecbe358448911e0fa68485b157878ddc4882840b436a5d3abd1289069c29c1",
+    "psana/psana/tests/gpu/integration/test_gpu_d2h_device.py": "d16459e25929afd8f3233c460d9706375fecf3e41a5fe6a66cf18b1c5ece5596",
+    "psana/psana/tests/gpu/unit/test_gpu_serial_close.py": "9bb9a5a1bf29f30b05e6777aa74d8b0e7a1a6f7cd36e73ba44ea412f929ca781"
+  },
+  "source_verification": "All 907 frozen Python/CUDA source files match the checkout after validation.",
+  "jobs": {
+    "core_byhand": {
+      "id": 39359467,
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:04:39",
+      "host": "sdfmilan001"
+    },
+    "device_publication": {
+      "id": 39359466,
+      "state": "COMPLETED",
+      "exit_code": "0:0",
+      "elapsed": "00:06:05",
+      "host": "sdfampere020"
+    }
+  },
+  "tests": {
+    "local_gpu_unit": 477,
+    "main_passed": 557,
+    "main_skipped": 141,
+    "main_deselected": 7,
+    "byhand_passed": 5,
+    "a100_passed": 141
+  },
+  "gpu_publication": {
+    "exclusive": {
+      "mode": "exclusive",
+      "ranks": [
+        {
+          "role": "smd0",
+          "seen": [],
+          "calls": []
+        },
+        {
+          "role": "eb",
+          "seen": [],
+          "calls": []
+        },
+        {
+          "role": "bd",
+          "seen": [
+            4806054694770613500,
+            4806054694778871039,
+            4806054694787259650,
+            4806054694795648261,
+            4806054694803905800,
+            4806054694812294411,
+            4806054694820683022,
+            4806054694828940561
+          ],
+          "calls": [
+            [
+              5,
+              1
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        {
+          "role": "bd",
+          "seen": [
+            4806054694728932589,
+            4806054694737321200,
+            4806054694745578739,
+            4806054694753967350,
+            4806054694762224889
+          ],
+          "calls": [
+            [
+              5,
+              1
+            ]
+          ]
+        }
+      ]
+    },
+    "hybrid": {
+      "mode": "hybrid",
+      "ranks": [
+        {
+          "role": "smd0",
+          "seen": [],
+          "calls": []
+        },
+        {
+          "role": "eb",
+          "seen": [],
+          "calls": []
+        },
+        {
+          "role": "bd",
+          "seen": [
+            4806054694728932589,
+            4806054694737321200,
+            4806054694745578739,
+            4806054694753967350,
+            4806054694762224889,
+            4806054694812294411,
+            4806054694820683022,
+            4806054694828940561
+          ],
+          "calls": [
+            [
+              5,
+              1
+            ],
+            [
+              3,
+              1
+            ]
+          ]
+        },
+        {
+          "role": "bd",
+          "seen": [
+            4806054694770613500,
+            4806054694778871039,
+            4806054694787259650,
+            4806054694795648261,
+            4806054694803905800
+          ],
+          "calls": [
+            [
+              5,
+              1
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  "artifact_sha256": {
+    "manifest.json": "ddacb5cf2bb0d97fdb839286d9e21f34ce1af75df2020a7ea6324253e74c5bf0",
+    "source.patch": "ba7416d99b2fc70df0535178ec00b6a08ea991a79c22dd30ef68144d9807d57d",
+    "main-retry.log": "f9885ac8922aa4693697da3e15952b2e3fcb05564cfb5a500d8cd9382ceb2854",
+    "byhand-retry.log": "ac512fffadd9621240b0c9724f584877b2778ca59b6adeadf4029c2c023b795e",
+    "device.log": "6b11640bafd91ce457bfff99b0c21d713b10dcebc849c321d3defc8d01e0c061",
+    "cpu-retry-39359467.log": "72b1e3d5b8b7a342559a4dfc08fb5ecd074fcb16f233f61a580d84c97f0f0aee",
+    "gpu-39359466.log": "72bb137338e64df11622979e661191c045c022b51fa3404e43a3360226100597",
+    "mpi-publication-exclusive.log": "11b4a913d118404622c76fc2ca6d9cc0804e389703fc0c1ec6b4a37225ffd344",
+    "mpi-publication-hybrid.log": "82ba0ae978c115ad4e8ac14ad05f1e3e2e22d478a19934d5c01ed9f554c09f8d"
+  },
+  "limits": [
+    "No throughput benchmark was rerun.",
+    "Close protocol applies to a started generator; use contextlib.closing for early break or loop-body exceptions.",
+    "CPU-only serial iterator close behavior is unchanged."
+  ]
+}

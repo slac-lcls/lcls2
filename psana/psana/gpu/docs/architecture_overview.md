@@ -10,15 +10,14 @@ coherent CPU batch and GPU descriptor batch for the same event range. A CPU
 BigData (BD) process submits KvikIO/cuFile reads, GPU XTC parsing, detector
 and optional dense input preparation on its assigned GPU.
 
-The runtime performs no calibration, geometry preparation, or automatic output
-D2H. Calibration algorithms belong in explicit user code; the producer callback
-API is still under development. The internal `DenseInputPreparer` supports
-validated Jungfrau raw panels, independently of calibration constants.
-Stage 2 exports `GpuTask(function, inputs=(), calibconst=())` from `psana.gpu`.
-Passing it as `DataSource(gpu_fn=task)` resolves requested dense/descriptor inputs
-and uploads only declared calibration dictionary values on each BD. It does not
-execute the function yet; event processing fails explicitly. See the
-[Stage 2 findings](user_kernel_stage2_findings_20260927.md).
+The runtime performs no built-in calibration or geometry processing. Explicit
+`GpuTask(function, inputs=(), calibconst=())` declarations request inputs and
+original calibration values on each BD. Psana calls `function(batch, stream)`
+once per nonempty selected execution subbatch, retains registered owners, and
+copies each contiguous publication group to bounded host staging. The internal
+`DenseInputPreparer` supports validated Jungfrau raw panels independently of
+calibration constants. With no task there is no automatic output D2H.
+See the [current task/results guide](user_task_results.md).
 
 ## User-facing routing
 
@@ -123,10 +122,11 @@ belong to user algorithms.
 
 - Configure-derived routing and parser tables.
 - KvikIO readers and optional dense input preparers.
-- The per-BD budget for framework-owned input storage.
+- The per-BD budget for framework-owned inputs and requested constants.
+- Task invocation, registered owners, and bounded pinned output staging.
 - `EventPool`, whose reusable slots each own a non-blocking CUDA stream.
 
-Execution slots retain prepared input views and execution completion state. They hold references to `InputWindow` owners for raw bytes and parser
+Execution slots retain prepared input views, task owners and completion state. They hold references to `InputWindow` owners for raw bytes and parser
 rows. An input window can serve multiple executions and cannot be recycled
 until planned uses, event consumers, and CUDA work have finished. The current
 scheduler admits affordable complete stream inputs for one EB batch, reads and
@@ -157,9 +157,11 @@ input leases and generic result leases retain every registered consumer event.
 ## Transitions
 
 - `BeginStep` drains prior work before dispatching the host transition. No
-  built-in GPU constant recipe or refresh runs.
-- `EndRun` drains pending GPU input executions exactly once.
-- KvikIO handles and run-scoped GPU resources are closed when iteration exits.
+  built-in GPU constant recipe runs; requested original task values are refreshed
+  after prior consumers drain.
+- `EndRun` drains pending executions and output copies exactly once.
+- Exhaustion or explicit iterator close releases run-scoped GPU resources. Use
+  `with closing(run.events())` for deterministic early-exit cleanup.
 - Intermediate transitions do not introduce unnecessary full-pipeline drains.
 
 ## MPI placement
@@ -182,8 +184,8 @@ this overview does not define `PS_EB_NODES=1` as the intended solution.
 - True GDS depends on filesystem, driver, and cuFile runtime support.
 - GPU budgets are per BD process; coordinated admission across processes that
   share one device remains future work.
-- User-defined GPU stages inside the producer pipeline are proposed, not
-  implemented. See [User GPU pipeline](proposals/user_gpu_pipeline.md).
+- Task outputs provide host access only. User calibration/azimuthal integration
+  remains a pending example; see the [stage tracker](proposals/user_kernel_implementation_stages_20260926.md).
 
 The maintained issue list, including correctness risks and validation needs,
 is [Known problems and limitations](known_issues.md).
@@ -199,7 +201,8 @@ is [Known problems and limitations](known_issues.md).
 | `gpudgram/` | Configure tables, device XTC walk, and field locators |
 | `gpu_input.py` | Event input views, detector bindings, and input leases |
 | `gpu_detector.py` | Dense input preparation and batched gather |
-| `gpu_stream.py` | Reusable execution slots and retirement |
+| `gpu_stream.py` | Reusable execution slots, task invocation and retirement |
+| `gpu_task.py`, `gpu_task_batch.py` | Host declarations, batched task context and publications |
 | `context.py` | `GpuEventState`, `GPUResult`, and result access modes |
 | `gpu_budget.py` | Per-BD accounting for explicitly tracked device allocations |
 | `gpu_admission.py` | Presence-aware execution sizing and stream-residency admission |
