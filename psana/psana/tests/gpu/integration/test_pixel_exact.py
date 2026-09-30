@@ -66,21 +66,14 @@ def cpu_reference():
     """Return timestamp-keyed CPU calibration arrays for the public run."""
     from psana import DataSource
 
-    # Clear the GPU-stream env var for the CPU reference DataSource so that
-    # the standard CPU event path reads all bigdata streams normally.
-    _saved = os.environ.pop("PS_TEST_GPU_STREAM_IDS", None)
-    try:
-        ds = DataSource(
-            exp=_EXP,
-            run=_RUN,
-            dir=_DIR,
-            max_events=_N_EVENTS,
-        )
-        run = next(ds.runs())
-        det = run.Detector(_DET_NAME)
-    finally:
-        if _saved is not None:
-            os.environ["PS_TEST_GPU_STREAM_IDS"] = _saved
+    ds = DataSource(
+        exp=_EXP,
+        run=_RUN,
+        dir=_DIR,
+        max_events=_N_EVENTS,
+    )
+    run = next(ds.runs())
+    det = run.Detector(_DET_NAME)
 
     reference = {}
     gain_modes = set()
@@ -175,8 +168,8 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
     run = next(ds.runs())
 
     seen = set()
-    for ctx in run.events():
-        timestamp = int(ctx.timestamp)
+    for evt in run.events():
+        timestamp = int(evt.timestamp)
         assert timestamp not in seen, f"duplicate GPU timestamp {timestamp}"
         assert timestamp in cpu_reference, (
             f"GPU produced timestamp {timestamp} absent from CPU reference"
@@ -184,7 +177,7 @@ def test_integrated_jungfrau_pixel_exact(cpu_reference, batch_size, pool_depth):
 
         # Copy immediately, before advancing the iterator can recycle the
         # EventPool slot that owns this result.
-        gpu_calib = np.asarray(ctx.get("calib").on_cpu).copy()
+        gpu_calib = np.asarray(evt.gpu.get("calib").on_cpu).copy()
         _assert_pixel_exact(timestamp, cpu_reference[timestamp], gpu_calib)
         seen.add(timestamp)
 

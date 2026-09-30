@@ -213,11 +213,11 @@ def run_gpu(exp, run, xtc_dir, det_name, batch_size, n_gpu_streams, n_warmup, n_
         io_path = "unknown"
 
     for r in ds.runs():
-        for ctx in r.events():
+        for evt in r.events():
             if n == n_warmup:
                 wall_t_start = time.perf_counter()
             t0 = time.perf_counter()
-            res = ctx.get(det_name + ".calib")
+            res = evt.gpu.get(det_name + ".calib")
             if d2h_chunk_size > 0:
                 _ = res.on_cpu
             else:

@@ -25,7 +25,6 @@ srun -p ampere -A lcls -N1 --ntasks=1 --gres=gpu:a100:1 -t 00:30:00 \
     bash -c "
 set -e
 export OMPI_MCA_btl=^smcuda
-unset PS_TEST_GPU_STREAM_IDS
 
 cd '${REPO_ROOT}'
 source setup_env.sh 2>/dev/null

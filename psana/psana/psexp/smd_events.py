@@ -25,10 +25,10 @@ class SmdEvents:
                 if self.shared_state.terminate_flag.value:
                     raise StopIteration
                 try:
-                    dgrams = next(self._evt_man)
-                    if not any(dgrams):
+                    envelope = next(self._evt_man)
+                    if not any(envelope.dgrams):
                         continue
-                    return dgrams
+                    return envelope
                 except StopIteration:
                     try:
                         batch_dict, _ = next(self._batch_iter)
@@ -49,10 +49,10 @@ class SmdEvents:
             # RunParallel: use get_smd to fetch batches
             while True:
                 try:
-                    dgrams = next(self._evt_man)
-                    if not any(dgrams):
+                    envelope = next(self._evt_man)
+                    if not any(envelope.dgrams):
                         continue
-                    return dgrams
+                    return envelope
                 except StopIteration:
                     smd_batch = self.get_smd()
                     if smd_batch == bytearray():

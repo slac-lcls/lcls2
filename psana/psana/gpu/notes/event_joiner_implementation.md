@@ -1,6 +1,9 @@
 # EventJoiner — General CPU/GPU Result Combining at Checkpoints
 
-**Status:** Design + implementation plan, not yet implemented  
+**Status:** Historical design; superseded and not implemented. The integrated
+GPU path now routes every stream of a selected detector to GPU and does not
+support combining CPU/GPU stream subsets of one detector.
+
 **Supersedes:** `calib_joiner_implementation.md` (specific to calib scatter)
 
 ## Goal
