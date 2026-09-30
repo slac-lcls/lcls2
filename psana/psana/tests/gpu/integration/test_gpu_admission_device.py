@@ -55,6 +55,7 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
     peds, gain = _upload_fixed_arrays((np.zeros(54, np.float32), np.ones(54, np.float32)), budget)
     detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=1, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=(handle,), n_slots=1, budget=budget)
+    detector.configure_gather(parser.handle_indices)
     reader = KvikioGpuReader(n_slots=1, budget=budget)
     manager = GpuEventManager.__new__(GpuEventManager)
     manager.dm = NS(xtc_files=[path], get_chunk_id=lambda _: 0)
@@ -97,7 +98,8 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
             manager.event_pool.finish_retire_next()
         # Cached capacity is still charged after leases finish, then trimming
         # returns only variable storage; constants and Configure stay charged.
-        fixed = parser.memory_bytes()['config'] + detector.memory_bytes()['constants']
+        fixed = (parser.memory_bytes()['config'] + detector.memory_bytes()['constants']
+                 + detector.memory_bytes()['routing'])
         assert budget.committed() > fixed
         # These public read/record aliases keep reader/parser backing charged
         # even after retirement. Remove them before asserting cache-only cost.

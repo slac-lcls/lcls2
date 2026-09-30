@@ -51,6 +51,25 @@ def event_view():
                                          first_desc=0, n_desc=2),)))
 
 
+def test_configured_ready_is_required_without_locator_wrappers():
+    configured = Token()
+    configured.fail = True
+    batch = NS(n_dgrams=0, walk_done=Token(), _locators={},
+               _configured_backing=object(),
+               configured_locations=lambda: NS(ready=configured))
+    released = []
+    owner = InputWindow(0, 0, batch, np.zeros((0, DESC_NCOLS), np.uint64),
+                        release=lambda: released.append(True))
+    stream = Stream()
+    owner.wait_ready(stream)
+    assert configured in stream.waited
+    with pytest.raises(RuntimeError, match='completion failure'):
+        owner.close()
+    assert not released and not owner.released
+    configured.fail = False
+    assert owner.close() and released == [True]
+
+
 def test_fast_input_survives_repeated_execution_retirement(monkeypatch):
     monkeypatch.setitem(sys.modules, 'cupy', NS(cuda=NS(Stream=Stream, Event=Token)))
     releases = []

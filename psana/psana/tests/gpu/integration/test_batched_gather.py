@@ -12,6 +12,7 @@ from psana.gpu.gpudgram.config import GpuStreamConfigTable
 from psana.gpu.gpudgram import parser as p
 from psana.gpu.gpu_kvikio_read import (
     DESC_NCOLS, DESC_EVENT_INDEX, DESC_STREAM_ID, DESC_DEVICE_OFFSET, DESC_READ_SIZE,
+    DESC_TIMESTAMP,
 )
 
 
@@ -82,6 +83,7 @@ def _input(cp, pool, producer, selections, dtype):
             row = np.zeros(DESC_NCOLS, dtype=np.uint64)
             row[[DESC_EVENT_INDEX, DESC_STREAM_ID, DESC_DEVICE_OFFSET, DESC_READ_SIZE]] = (
                 i * 3 + 7, stream, offset, len(payload))
+            row[DESC_TIMESTAMP] = 100 + i
             descriptors.append(row)
             pieces.append(payload)
             offset += len(payload)
@@ -152,14 +154,13 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, pass
         # The new hot path must not request per-segment locator objects.
         def unexpected(*args, **kwargs):
             raise AssertionError("per-handle locate in canonical gather")
-        original_locate = batch.locate
         batch.locate = unexpected
         before = len(launches)
         actual = list(detector.process_batch(events, stream=consumer, slot_id=0))
         consumer.synchronize()
         producer.synchronize()
         assert batch._locators == {}
-        batch.locate = original_locate
+        del batch.locate  # restore class method without a self -> bound-method cycle
         old_raw, old_calib = _old_gather(cp, detector, events, consumer)
         consumer.synchronize()
         assert len(launches) - before == bool(expected)
@@ -235,7 +236,10 @@ def test_map_growth_failure_preserves_previous_buffer(monkeypatch):
     monkeypatch.setattr(cp, "empty", original)
     mapping.prepare(events * 2, (0, 1), producer, budget)
     producer.synchronize()
+    # Both generations occupy rounded pool blocks while the old alias survives.
     assert budget.committed() == committed * 2
+    del old_device
+    assert budget.committed() == committed
 
 
 def test_configured_dependency_waits_only_across_streams():
@@ -271,7 +275,8 @@ def test_execution_slot_waits_for_delayed_gather_consumer():
         batch, events, expected = _input(cp, pool, producer, selections, dtype)
         producer.synchronize()
         gv = SimpleNamespace(iter_events=lambda: (e.event for e in events))
-        read = SimpleNamespace(data_gpu=batch.data_gpu, desc_table=batch._test_descriptors)
+        read = SimpleNamespace(data_gpu=batch.data_gpu, desc_table=batch._test_descriptors,
+                               retain_input=lambda: lambda: None)
         record = executions.submit(gv, read, [], {"camera": (None, detector)}, pool)
         assert executions.begin_retire_next() is record
         lease = record.leases_by_ts[100]['camera.raw']

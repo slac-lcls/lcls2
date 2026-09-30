@@ -450,9 +450,10 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     detector_events = []
 
     class _Parser:
-        def parse(self, slot_id, data_gpu, desc_table, stream):
-            log.append(("parse", slot_id, data_gpu, desc_table, stream))
-            return xtc_batch
+        def parse_window(self, read, stream, *, batch_id):
+            from psana.gpu.gpu_input_window import InputWindow
+            log.append(("parse", 0, read.data_gpu, read.desc_table, stream))
+            return InputWindow(batch_id, 0, xtc_batch, read.desc_table)
 
     class _Detector:
         def __init__(self, name):
@@ -463,7 +464,7 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
             log.append((self.name, kwargs["slot_id"], kwargs["stream"]))
             return iter(())
 
-    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table="descriptors")
+    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table=np.array([[3, 7, 42, 0, 4, 0]], dtype=np.uint64))
     pool = EventPool(n=1)
     record = pool.submit(
         gpu_view,
@@ -903,6 +904,7 @@ class _FakeDetForEstimate:
         self._n_segs_calib   = n_segs
         self._nrows          = nrows
         self._ncols          = ncols
+        self.binding = SimpleNamespace(has_sources=lambda streams: 0 in streams)
         self._sources_by_stream = {0: (), 1: ()}
 
     def estimate_subbatch_bytes(self, n_events):
@@ -919,6 +921,7 @@ def test_memory_reporting_includes_gather_buffers_and_all_detectors(monkeypatch,
         det.gmask_gpu = np.empty(10 * scale, dtype=np.float32)
         det._scatter_ix = det._scatter_iy = None
         det._gather_plan = SimpleNamespace(table=np.empty((scale, 4), dtype=np.uint64))
+        det._is_calib_follower = False
         det._calib_slot_bufs = [np.empty(20 * scale, dtype=np.float32)]
         det._raw_slot_bufs = [np.empty(20 * scale, dtype=np.uint16)]
         det._present_slot_bufs = [np.empty(scale, dtype=np.uint8)]
@@ -1131,20 +1134,13 @@ class TestSplitSubbatches:
             (2, 4),
         ]
 
-    def test_splitter_preserves_indivisible_events_above_target_size(self):
-        """Splitting preserves event identity; it does not authorize allocation.
-
-        This checks only the proposed subbatch boundaries, not admission of
-        an oversized event or permission to exceed the device-memory quota.
-        """
+    def test_splitter_rejects_indivisible_event_above_capacity(self):
         det    = _FakeDetForEstimate(4, 512, 1024)
         events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
         gv     = GpuBatchView(_make_batch(3, bd_size=0))
-        sbs    = events._split_subbatches(gv)
-        # Each event appears in one proposed subbatch, with no partial event.
-        assert len(sbs) == 3
-        for i, sb in enumerate(sbs):
-            assert sb._start == i and sb._end == i + 1
+        from psana.gpu.gpu_budget import GpuMemoryPressureError
+        with pytest.raises(GpuMemoryPressureError, match='cannot fit alone'):
+            events._split_subbatches(gv)
 
     def test_event_order_preserved(self):
         det    = _FakeDetForEstimate(4, 512, 1024)
@@ -1318,7 +1314,7 @@ class TestKvikioSlotBufferBudget:
             calls.append(nbytes)
             if fail_at is not None and nbytes >= fail_at:
                 raise RuntimeError("simulated cudaMalloc failure")
-            return TestKvikioSlotBufferBudget._FakeArr(nbytes)
+            return np.empty(nbytes, dtype=dtype)
 
         rdr = object.__new__(KvikioGpuReader)
         rdr.cp = SimpleNamespace(empty=_empty, uint8="uint8")
@@ -1335,10 +1331,10 @@ class TestKvikioSlotBufferBudget:
         rdr._ensure_slot_buffer(0, 400)
         assert budget.committed() == 400
 
-    def test_growth_charges_only_the_delta(self):
+    def test_growth_retains_only_new_capacity_after_replacement(self):
         from psana.gpu.gpu_budget import _GpuBudget
 
-        budget = _GpuBudget(limit_bytes=1000)
+        budget = _GpuBudget(limit_bytes=1100)  # old 400 + replacement 700 at peak
         rdr, _ = self._reader(budget)
         rdr._ensure_slot_buffer(0, 400)
         rdr._ensure_slot_buffer(0, 700)

@@ -407,4 +407,6 @@ def test_batched_locator_growth_budget_and_failure():
     assert budget.committed() == first.nbytes == slot.memory_bytes
     slot.cp = np
     grown = slot.batched_locator_rows(3, 7)
+    assert budget.committed() == first.nbytes + grown.nbytes
+    del first
     assert budget.committed() == grown.nbytes == slot.memory_bytes
