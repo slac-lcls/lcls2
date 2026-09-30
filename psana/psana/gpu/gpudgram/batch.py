@@ -1,4 +1,4 @@
-"""Slot-owned device tables for GPU-resident XTC batches."""
+"""Input-owned device tables for GPU-resident XTC batches."""
 
 from dataclasses import dataclass, field
 
@@ -73,7 +73,7 @@ def build_dgram_records(desc_table):
 
 @dataclass
 class _GpuXtcSlotBuffers:
-    """Reusable parser buffers whose lifetime matches one EventPool slot."""
+    """Reusable parser buffers leased to an input window."""
 
     cp: object
     budget: object = None
@@ -89,15 +89,16 @@ class _GpuXtcSlotBuffers:
 
         old_nbytes = int(existing.nbytes) if existing is not None else 0
         required_nbytes = int(np.prod(required_shape, dtype=np.int64)) * 8
-        delta = required_nbytes - old_nbytes
         if self.budget is not None:
-            self.budget.reserve(delta)
+            self.budget.reserve(required_nbytes)
         try:
             replacement = self.cp.empty(required_shape, dtype=self.cp.uint64)
         except Exception:
             if self.budget is not None:
-                self.budget.release(delta)
+                self.budget.release(required_nbytes)
             raise
+        if self.budget is not None:
+            self.budget.release(old_nbytes)
         return replacement, replacement
 
     def prepare(self, desc_table, max_shapes_per_dgram, stream):
@@ -182,6 +183,9 @@ class GpuXtcBatchPool:
                 budget.release(self._config_bytes)
             raise
 
+        self._owners = [None] * self.n_slots
+        self._next_window_id = 0
+        self._failed_inputs = []
         self._slots = [
             _GpuXtcSlotBuffers(cp=cp, budget=budget)
             for _ in range(self.n_slots)
@@ -194,6 +198,8 @@ class GpuXtcBatchPool:
         slot_id = int(slot_id)
         if slot_id < 0 or slot_id >= self.n_slots:
             raise IndexError(slot_id)
+        if self._owners[slot_id] is not None:
+            raise RuntimeError("parser storage is owned by an input window")
         slot = self._slots[slot_id]
         stream.wait_event(self._config_ready)
         records, shape_counts, shape_refs = slot.prepare(
@@ -216,6 +222,51 @@ class GpuXtcBatchPool:
             batch.locate(handle, stream=stream)
         return batch
 
+    def parse_window(self, gpu_read, stream, *, batch_id):
+        """Lease a free input parser buffer independently of execution IDs."""
+        from psana.gpu.gpu_input_window import InputWindow
+
+        try:
+            index = self._owners.index(None)
+        except ValueError:
+            raise RuntimeError("no free GPU input parser storage") from None
+        release_raw = gpu_read.retain_input()
+        try:
+            batch = self.parse(index, gpu_read.data_gpu, gpu_read.desc_table, stream)
+            window = InputWindow(batch_id, self._next_window_id, batch,
+                                 gpu_read.desc_table, release=lambda: release(index))
+        except BaseException:
+            # Submitted parser work must finish before either raw bytes or
+            # partially populated tables can be reused. Preserve ownership if
+            # synchronization itself fails.
+            try:
+                stream.synchronize()
+            except BaseException:
+                self._owners[index] = stream
+                self._failed_inputs.append((index, stream, release_raw))
+                raise
+            release_raw()
+            raise
+
+        def release(index):
+            release_raw()
+            self._owners[index] = None
+
+        self._owners[index] = window
+        self._next_window_id += 1
+        return window
+
+    def close(self):
+        """Drain inputs after execution/event references have been released."""
+        for index, stream, release_raw in tuple(self._failed_inputs):
+            stream.synchronize()
+            release_raw()
+            self._owners[index] = None
+            self._failed_inputs.remove((index, stream, release_raw))
+        for owner in tuple(self._owners):
+            if owner is not None and not owner.close():
+                raise RuntimeError("GPU input still has planned or live uses")
+
     def estimate_batch_bytes(self, n_dgrams):
         """Return slot metadata bytes required for ``n_dgrams`` rows."""
         n_dgrams = int(n_dgrams)
@@ -226,6 +277,29 @@ class GpuXtcBatchPool:
             + len(self.field_handles) * LOC_NCOLS * 8
         )
         return n_dgrams * per_dgram
+
+    def allocation_requirements(self, n_dgrams):
+        """Growth requests for the free parser slot parse_window will choose."""
+        try:
+            index = self._owners.index(None)
+        except ValueError:
+            raise RuntimeError("no free GPU input parser storage") from None
+        slot = self._slots[index]
+        rows = [(DGRAM_NCOLS * 8, slot.dgram_records), (8, slot.shape_counts),
+                (self.max_shapes_per_dgram * REF_NCOLS * 8, slot.shape_refs)]
+        rows.extend((LOC_NCOLS * 8, slot.locators.get(h)) for h in self.field_handles)
+        return [(int(n_dgrams) * size, int(a.nbytes) if a is not None else 0)
+                for size, a in rows]
+
+    def trim_free_buffers(self):
+        for index, slot in enumerate(self._slots):
+            if self._owners[index] is not None:
+                continue
+            nbytes = slot.memory_bytes
+            self._slots[index] = _GpuXtcSlotBuffers(self.cp, self._budget)
+            del slot
+            if self._budget is not None:
+                self._budget.release(nbytes)
 
     def memory_bytes(self):
         per_slot = [slot.memory_bytes for slot in self._slots]

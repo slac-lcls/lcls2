@@ -103,16 +103,39 @@ def _compute_calib_constants_cpu(det, canonical_segment_ids=None):
     )
 
 
-def prep_calib_constants(det, canonical_segment_ids=None):
-    """Prepare canonical calibration constants and transfer them to the GPU."""
+def _upload_fixed_arrays(arrays, budget=None):
+    """Reserve fixed storage before upload; retain failed asynchronous work."""
     cp = _cupy()
+    nbytes = sum(int(a.nbytes) for a in arrays)
+    if budget is not None:
+        budget.reserve(nbytes)
+    uploaded = []
+    try:
+        for array in arrays:
+            uploaded.append(cp.asarray(array))
+    except BaseException:
+        try:
+            cp.cuda.get_current_stream().synchronize()
+        except BaseException:
+            if budget is not None:
+                budget._failed_allocations.append((tuple(uploaded), tuple(arrays)))
+            raise
+        uploaded.clear()
+        if budget is not None:
+            budget.release(nbytes)
+        raise
+    return tuple(uploaded)
+
+
+def prep_calib_constants(det, canonical_segment_ids=None, *, budget=None):
+    """Prepare canonical calibration constants and transfer them to the GPU."""
     peds_flat, gmask_flat = _compute_calib_constants_cpu(
         det, canonical_segment_ids=canonical_segment_ids
     )
-    return cp.asarray(peds_flat), cp.asarray(gmask_flat)
+    return _upload_fixed_arrays((peds_flat, gmask_flat), budget)
 
 
-def prepare_geometry(det, canonical_segment_ids):
+def prepare_geometry(det, canonical_segment_ids, *, budget=None):
     """Prepare GPU image-scatter metadata from a psana detector."""
     try:
         ix_all, iy_all = det.raw._pixel_coord_indexes(all_segs=True)
@@ -129,6 +152,7 @@ def prepare_geometry(det, canonical_segment_ids):
         iy_all,
         canonical_segment_ids,
         source="setup_geometry",
+        budget=budget,
     )
 
 
@@ -137,9 +161,9 @@ def prepare_geometry_from_arrays(
     iy_all,
     canonical_segment_ids,
     source="setup_geometry_from_arrays",
+    *, budget=None,
 ):
     """Prepare GPU image-scatter metadata from coordinate-index arrays."""
-    cp = _cupy()
     try:
         segment_ids = list(canonical_segment_ids)
         ix = ix_all[segment_ids].astype(np.int64)
@@ -155,12 +179,13 @@ def prepare_geometry_from_arrays(
 
     image_shape = (int(ix.max()) + 1, int(iy.max()) + 1)
     try:
-        return (
-            cp.asarray(np.ascontiguousarray(ix.ravel())),
-            cp.asarray(np.ascontiguousarray(iy.ravel())),
-            image_shape,
-        )
+        gx, gy = _upload_fixed_arrays((np.ascontiguousarray(ix.ravel()),
+                                      np.ascontiguousarray(iy.ravel())), budget)
+        return gx, gy, image_shape
     except Exception as exc:
+        from .gpu_budget import GpuMemoryPressureError
+        if budget is not None or isinstance(exc, GpuMemoryPressureError):
+            raise
         import warnings
 
         warnings.warn(

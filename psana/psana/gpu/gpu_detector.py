@@ -235,19 +235,26 @@ class GPUDetector:
 
     def setup_geometry(self, det):
         """Build the GPU image-scatter map from a psana detector."""
-        geometry = prepare_geometry(det, self._canonical_segment_ids)
+        old_bytes = self.memory_bytes()['geometry']
+        geometry = prepare_geometry(det, self._canonical_segment_ids, budget=self._budget)
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
+            if self._budget is not None:
+                self._budget.release(old_bytes)
 
     def setup_geometry_from_arrays(self, ix_all, iy_all):
         """Build the GPU image-scatter map from coordinate-index arrays."""
+        old_bytes = self.memory_bytes()['geometry']
         geometry = prepare_geometry_from_arrays(
             ix_all,
             iy_all,
             self._canonical_segment_ids,
+            budget=self._budget,
         )
         if geometry is not None:
             self._scatter_ix, self._scatter_iy, self._image_shape = geometry
+            if self._budget is not None:
+                self._budget.release(old_bytes)
 
     def assemble_image(self, calib_gpu, stream=None):
         """Scatter canonical calibrated segments into a 2-D GPU image."""
@@ -354,14 +361,14 @@ class GPUDetector:
     def estimate_subbatch_bytes(self, n_events: int) -> int:
         """Estimate device VRAM needed for calibration of n_events events.
 
-        Accounts for the two dominant variable allocations per batch:
+        Accounts for the variable allocations per batch:
           - Calibrated output buffer (float32): n_events × n_segs × nrows × ncols × 4
           - Raw-gather scratch buffer (uint16): n_events × n_segs × nrows × ncols × 2
+          - Presence mask (uint8): n_events × n_segs
 
         Calibration constants and geometry scatter maps are fixed allocations
-        excluded from this per-subbatch estimate. GpuEventManager subtracts
-        their measured bytes when deriving the default allowance; they are not
-        currently reserved in _GpuBudget.committed().
+        excluded from this per-subbatch estimate. Setup reserves those owned
+        bytes before upload; IPC followers do not charge shared views again.
 
         Parameters
         ----------
@@ -374,7 +381,7 @@ class GPUDetector:
         """
         if n_events <= 0:
             return 0
-        n_segs = len(self._field_handles_by_segment)
+        n_segs = self._n_segs_calib
         n_pix_per_event = n_segs * self._nrows * self._ncols
         # float32 calib output: 4 bytes/pixel in both modes.
         # Normal (uint16) mode also needs a raw-gather scratch buffer: +2 bytes/pixel.
@@ -383,7 +390,26 @@ class GPUDetector:
             bytes_per_event = n_pix_per_event * 4
         else:
             bytes_per_event = n_pix_per_event * (4 + 2)
-        return int(n_events * bytes_per_event)
+        return int(n_events * (bytes_per_event + n_segs))  # uint8 presence rows
+
+    def allocation_requirements(self, n_events, slot):
+        pixels = int(n_events) * self._n_segs_calib * self._nrows * self._ncols
+        items = [(pixels * 4, self._calib_slot_bufs[slot]),
+                 (int(n_events) * self._n_segs_calib, self._present_slot_bufs[slot])]
+        if not self._passthrough:
+            items.append((pixels * 2, self._raw_slot_bufs[slot]))
+        return [(need, int(a.nbytes) if a is not None else 0) for need, a in items]
+
+    def trim_slot_buffers(self):
+        """Caller must first retire every execution/result lease."""
+        for buffers in (self._calib_slot_bufs, self._raw_slot_bufs, self._present_slot_bufs):
+            for slot, buf in enumerate(buffers):
+                if buf is not None:
+                    nbytes = int(buf.nbytes)
+                    buffers[slot] = None
+                    del buf
+                    if self._budget is not None:
+                        self._budget.release(nbytes)
 
     def _slot_buffer(self, buffers, slot, shape, dtype, label):
         """Return a reusable slot view, growing its backing array only."""
@@ -393,17 +419,18 @@ class GPUDetector:
         buf = buffers[slot]
         old_size = int(buf.nbytes) if buf is not None else 0
         if old_size < needed:
-            delta = needed - old_size
             if self._budget is not None:
-                self._budget.reserve(delta)
+                self._budget.reserve(needed)
             try:
                 new_buf = cp.empty(nitems, dtype=dtype)
             except Exception:
                 if self._budget is not None:
-                    self._budget.release(delta)
+                    self._budget.release(needed)
                 raise
             buffers[slot] = new_buf
             buf = new_buf
+            if self._budget is not None:
+                self._budget.release(old_size)
             if __import__('os').environ.get('PSANA_GPU_MEM_DEBUG'):
                 free_b, _ = cp.cuda.Device().mem_info
                 print(

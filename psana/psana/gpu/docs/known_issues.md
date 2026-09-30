@@ -63,47 +63,49 @@ actual copy stream.
 
 Relevant code: `gpu/context.py`, `gpu/gpu_input.py`, and `gpu/gpu_stream.py`.
 
-### Fixed-allocation accounting
+### Accounting boundary outside pipeline-owned device storage
 
-**Impact:** high under tight VRAM limits or when several BD processes share a
-GPU.
+Stage 4 reserves calibration constants, geometry, Configure tables, reader
+buffers, parser tables, and detector raw/calibrated/presence buffers. IPC
+followers do not charge the leader's constants again. Admission holds include
+future allocations and replacement peaks before reads start. The old 256 MiB
+floor and unconditional admission of an oversized first event are removed.
 
-`_GpuBudget` reserves KvikIO input buffers, parser tables, and detector slot
-buffers. Calibration constants are allocated by `prep_calib_constants()` and
-geometry maps by `prepare_geometry_from_arrays()` without reserving their
-bytes. `_compute_subbatch_budget()` subtracts the measured fixed bytes while
-deriving its default per-slot estimate, but `_GpuBudget.committed()` still
-under-reports actual live allocation and cannot reject those allocations
-before CUDA does.
+The ledger covers participating owners, not every CUDA allocation in the
+process. User-owned independent GPU copies, escaped array references, custom
+kernel allocations, and CUDA/KvikIO runtime allocations are outside it; the
+10% allocator margin is headroom, not a bound on arbitrary user allocations.
+Pinned D2H buffers remain bounded by pipeline count/chunk size and reported in
+memory statistics, but do not yet have a separate host-byte admission policy.
+General user-task output and host-staging quotas remain future work.
 
-The budget needs explicit fixed-allocation ownership. Reservation must occur
-before allocation, followers using CUDA-IPC views must not reserve the
-leader-owned bytes again, and replacement/cleanup must release the correct
-amount. Tests should compare category totals, committed bytes, and mocked CUDA
-allocation behavior for leaders and followers.
+Reader/parser buffers still require their existing lifetime reservations, and
+execution storage must drain all supported consumer leases before trimming.
+Returning capacity to the ledger is separate from CuPy's cached free blocks.
 
-Relevant code: `gpu/gpu_budget.py`, `gpu/gpu_calib.py`,
-`gpu/gpu_detector.py`, and `gpu/gpu_events.py`.
-
-### Subbatch admission is an estimate, not a hard fit guarantee
-
-**Impact:** medium for unusually small budgets or a single oversized event.
-
-The default subbatch allowance has a 256 MiB floor, even if the calculated
-available per-slot memory is smaller. Splitting also always admits the first
-event of a subbatch when that event alone exceeds the estimate. Allocation-time
-`_GpuBudget.reserve()` is therefore the final guard and can still reject work
-after splitting.
-
-The implementation contains a `gpu_subbatch_budget_bytes` attribute lookup,
-but `DsParms` does not expose that as a supported `DataSource` argument. Either
-make the override a validated public/internal configuration or remove the dead
-configuration path. A future admission check should report an oversized
-single event before beginning slot allocation.
-
-Relevant code: `gpu/gpu_events.py` and `psexp/ds_base.py`.
+Relevant code: `gpu/gpu_budget.py`, `gpu/gpu_admission.py`,
+`gpu/gpu_events.py`, `gpu/gpu_calib.py`, and `gpu/gpu_detector.py`.
 
 ## Incomplete pipeline behavior
+
+### Automatic raw gathering and generic field access differ
+
+The supported Jungfrau adapter automatically gathers raw pixels from XTC into
+execution-slot storage before calibration in `GPUDetector.process_batch()`.
+Supported precalibrated dense adapters also gather their selected array.
+Generic `GpuFieldResult` access instead uses parser-located views into XTC and
+copies on an explicit `on_gpu` request. This includes non-calibration fields
+of Jungfrau itself and fields of detectors without a calibration adapter.
+
+Consequently, GPU-selected detectors do not yet share automatic materialization
+of every supported field. Reader/parser storage remains reserved by input
+leases rather than being released when gathering finishes. The
+[shared materialization proposal](proposals/detector_materialization_ownership.md)
+records the possible unification, its memory tradeoffs, and deferred stages.
+Experimental Stage 3A was reverted; this is not a blocker for the current
+bulk-read Stage 3 review.
+
+Relevant code: `gpu/gpu_detector.py`, `gpu/gpu_input.py`, and `gpu/gpu_stream.py`.
 
 ### Automatic D2H covers calibrated dense results only
 
