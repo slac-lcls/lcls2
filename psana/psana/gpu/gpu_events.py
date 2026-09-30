@@ -1,6 +1,5 @@
 import logging
 import math
-import os
 import sys
 from dataclasses import dataclass, field
 from queue import Empty, SimpleQueue
@@ -13,13 +12,9 @@ from psana import dgram, utils
 from psana.event import EventEnvelope
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_batch import GPU_DESC_FLAG_VALID, GpuBatchView, GpuSubbatchView
-from psana.gpu.gpu_calib import (
-    GPUDetector,
-    _compute_calib_constants_cpu,
-    build_stream_seg_map,
-    optimal_kernel_batch_size,
-    prep_calib_constants,
-)
+from psana.gpu.dgram_layout import build_stream_segment_map
+from psana.gpu.gpu_calib import _compute_calib_constants_cpu, prep_calib_constants
+from psana.gpu.gpu_detector import GPUDetector, optimal_kernel_batch_size
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpu_stream import EventPool
 from psana.psexp import TransitionId
@@ -417,6 +412,7 @@ class GpuEventManager:
         setup_geometry=True,
         prebuilt_geometry=None,
         calib_leader=True,
+        n_bd_per_gpu=1,
     ):
         self.configs = configs
         self.dm = dm
@@ -429,6 +425,9 @@ class GpuEventManager:
         self.smdr_man = smdr_man
         self._setup_geometry = setup_geometry
         self._prebuilt_geometry = prebuilt_geometry  # {det_name: (ix_all, iy_all)}
+        # BD workers sharing this rank's physical GPU.  Sizes the auto VRAM
+        # budget so N ranks on one device do not each claim the whole device.
+        self._n_bd_per_gpu = max(1, int(n_bd_per_gpu or 1))
 
         self._batch_iter = iter([])
         self._iter = None
@@ -540,8 +539,10 @@ class GpuEventManager:
         if budget_gb > 0:
             self._gpu_budget = _GpuBudget(limit_bytes=int(budget_gb * 1024**3))
         else:
-            n_bd = max(1, int(os.environ.get("PS_BD_NODES", 1)))
-            self._gpu_budget = _GpuBudget.auto(n_bd_ranks=n_bd)
+            # Divide the device between the BD workers that share it.  The
+            # count comes from the caller (bd_ranks_sharing_gpu on the MPI
+            # path); the serial path has a single rank and so keeps 1.
+            self._gpu_budget = _GpuBudget.auto(n_bd_ranks=self._n_bd_per_gpu)
 
         opt_batch_sizes = []
         ids_table = getattr(self.dsparms, "det_stream_ids_table", {})
@@ -601,9 +602,9 @@ class GpuEventManager:
                     "via passthrough mode regardless of detector type."
                 )
 
+            peds_gpu = None
+            gmask_gpu = None
             if is_pre_calibrated:
-                peds_gpu  = None
-                gmask_gpu = None
                 _log.info(
                     "gpu_det=%r: drp_classes=%s — using passthrough mode "
                     "(bigdata is pre-calibrated float32; fused_calib_gpu skipped)",
@@ -615,17 +616,11 @@ class GpuEventManager:
                 # called, so this rank must NOT allocate peds_gpu/gmask_gpu here.
                 # share_calib_between_gpu_peers() will populate them later via
                 # CUDA IPC handles from the leader — at zero allocation cost.
-                peds_gpu  = None
-                gmask_gpu = None
                 _log.info(
                     "gpu_det=%r: follower BD rank — skipping prep_calib_constants; "
                     "calibration constants will be shared from leader via CUDA IPC",
                     det_name,
                 )
-            else:
-                peds_gpu, gmask_gpu = prep_calib_constants(det)
-                log_gpu_mem(f"after prep_calib_constants ({det_name})", rank=_rank)
-            det_shape = det.calibconst["pedestals"][0].shape[1:]
 
             stream_segments = dict(segments_table.get(det_name, {}))
             gpu_stream_ids = streams_by_detector[det_name]
@@ -639,7 +634,7 @@ class GpuEventManager:
             if xtc_files is None:
                 xtc_files = getattr(self.dsparms, "xtc_files", [])
             stream_files = {stream_id: xtc_files[stream_id] for stream_id in gpu_stream_ids if stream_id < len(xtc_files)}
-            stream_seg_map = build_stream_seg_map(stream_files, det_name)
+            stream_seg_map = build_stream_segment_map(stream_files, det_name)
 
             for stream_id in gpu_stream_ids:
                 segment_ids = stream_seg_map.get(stream_id)
@@ -677,6 +672,23 @@ class GpuEventManager:
                     f"gpu_det={det_name!r} must route all detector segments: "
                     f"configured={canonical_segment_ids}, "
                     f"routed={sorted(routed_segment_ids)}"
+                )
+
+            # Canonical ordering is established before constants are copied.
+            # Raw, calibration constants, geometry, and every downstream
+            # operation therefore share the same detector-row contract.
+            source_shape = det.calibconst["pedestals"][0].shape
+            det_shape = (
+                len(canonical_segment_ids),
+                int(source_shape[-2]),
+                int(source_shape[-1]),
+            )
+            if not is_pre_calibrated and calib_leader:
+                peds_gpu, gmask_gpu = prep_calib_constants(
+                    det, canonical_segment_ids=canonical_segment_ids
+                )
+                log_gpu_mem(
+                    f"after prep_calib_constants ({det_name})", rank=_rank
                 )
 
             gpu_detector = GPUDetector(
@@ -770,9 +782,9 @@ class GpuEventManager:
         The budget is:
           (total_limit - fixed_bytes - 10% margin) / n_slots
 
-        where fixed_bytes = calibration constants + geometry arrays already
-        reserved in _gpu_budget._committed.  The 10% margin covers CuPy
-        allocator overhead, input buffers (KvikioGpuReader), and rounding.
+        where fixed_bytes = calibration constants + geometry arrays + routing
+        maps already reserved in _gpu_budget._committed.  The 10% margin covers
+        CuPy allocator overhead, input buffers (KvikioGpuReader), and rounding.
 
         Configurable override: set DsParms.gpu_subbatch_budget_bytes > 0.
 
@@ -794,7 +806,7 @@ class GpuEventManager:
             fixed_bytes = 0
             for _, (_, det) in self.gpu_detectors.items():
                 mb = det.memory_bytes()
-                fixed_bytes += mb['constants'] + mb['geometry']
+                fixed_bytes += mb['constants'] + mb['geometry'] + mb.get('routing', 0)
         except Exception:
             fixed_bytes = 0
 
@@ -896,7 +908,10 @@ class GpuEventManager:
                 # no calibration constants, and beginstep() is a no-op for them.
                 if getattr(gpu_detector, '_passthrough', False):
                     continue
-                peds, gmask = _compute_calib_constants_cpu(det)
+                peds, gmask = _compute_calib_constants_cpu(
+                    det,
+                    canonical_segment_ids=gpu_detector.canonical_segment_ids,
+                )
                 gpu_detector.beginstep(peds, gmask)
 
         self.run._handle_transition(dgrams)
@@ -909,6 +924,9 @@ class GpuEventManager:
         pending_transitions = []
         for step_batch, _ in step_dict.values():
             for service, dgrams in _iter_step_events(step_batch, self.configs):
+                if service == 0:
+                    # A GPU-only L1 has no dgrams in the CPU/SMD packet.
+                    continue
                 if TransitionId.isEvent(service):
                     continue
                 pending_transitions.append((service, dgrams))

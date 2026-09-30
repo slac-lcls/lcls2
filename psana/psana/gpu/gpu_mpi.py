@@ -105,6 +105,62 @@ def is_calib_leader(bd_comm, phys_gpu_id):
     return (my_bd_rank - 1) == phys_gpu_id
 
 
+def bd_ranks_sharing_gpu(bd_comm, phys_gpu_id, n_gpus=None):
+    """Return how many BD workers in ``bd_comm`` are pinned to ``phys_gpu_id``.
+
+    Used to size the per-rank VRAM budget: every BD worker that shares a
+    physical GPU must limit itself to roughly ``device_total / this count``,
+    otherwise several ranks each believe they may commit the whole device and
+    the first large allocation wins while the rest hit a CUDA OOM.
+
+    The count is derived arithmetically from the same pinning formula that
+    ``init_gpu_rank()`` applies — ``phys_gpu_id = bd_local_rank % n_gpus``
+    with ``bd_local_rank = bd_rank - 1`` — so no MPI collective is needed.
+    That matters because this runs only on BD ranks: a collective here would
+    deadlock against the EB and smd0 ranks, which never reach this code.
+
+    Every rank pinned to a given GPU computes the same value, so their budgets
+    agree without any communication.
+
+    Parameters
+    ----------
+    bd_comm     : mpi4py.MPI.Comm  (bd_rank 0 = EB, 1+ = BD workers)
+    phys_gpu_id : int  (from init_gpu_rank())
+    n_gpus      : int or None
+        GPUs on this node.  Read from ``SLURM_GPUS_ON_NODE`` when None.
+
+    Returns
+    -------
+    int — number of BD workers on ``phys_gpu_id``; always >= 1.
+
+    Notes
+    -----
+    ``bd_comm`` is split per EB group when ``PS_EB_NODES > 1``, so this counts
+    only the peers within this rank's own EB group.  With several EB groups on
+    one node the true number of ranks per GPU is higher and the resulting
+    budget is correspondingly generous; that is the same over-commit the
+    per-EB-group leader election already has, and is tracked separately.
+    """
+    if n_gpus is None:
+        try:
+            n_gpus = int(os.environ.get('SLURM_GPUS_ON_NODE', 1))
+        except ValueError:
+            n_gpus = 1
+    n_gpus = max(1, int(n_gpus))
+
+    try:
+        n_bd_total = bd_comm.Get_size() - 1   # bd_rank 0 is the EB
+    except Exception:
+        return 1
+    if n_bd_total <= 0:
+        return 1
+
+    target = int(phys_gpu_id) % n_gpus
+    # bd_local_rank k (0-indexed BD worker) is pinned to k % n_gpus.
+    count = sum(1 for k in range(n_bd_total) if k % n_gpus == target)
+    return max(1, count)
+
+
 _TAG_FOLLOWER_REG = 0x4750       # "GP" — follower announces itself to leader
 _TAG_IPC_HANDLES  = 0x4750 + 1  # "GP+1" — leader sends IPC handle to follower
 
@@ -137,7 +193,7 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     only on BeginStep transitions via GPUDetector.beginstep().  Leaders
     update the shared buffer in-place; followers see the change automatically.
     Followers are marked with ``_is_calib_follower=True`` so their
-    ``beginstep()`` skips the redundant H→D write and only clears caches.
+    ``beginstep()`` skips the redundant H→D write.
 
     Parameters
     ----------
@@ -263,8 +319,6 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
                 ),
             )
             gpu_det._is_calib_follower = True
-            gpu_det._stream_peds.clear()
-            gpu_det._stream_gmask.clear()
 
     n_followers = len(follower_bd_ranks) if is_leader else 1
     logger.debug(
@@ -423,14 +477,15 @@ class gpu_error_handler:
                     in eb_manager.batches_with_gpu():
                 ...
 
+    Every exception is fatal here.  Nothing is retried: by the time __exit__
+    runs, the generator frame that issued the failing read is gone, so a retry
+    could only skip the batch and yield silently wrong results.  Live-mode
+    retry of a partially written XTC2 file belongs at the KvikIO call site.
+
     Parameters
     ----------
     comm : mpi4py.MPI.Comm
         Communicator to abort on fatal GPU errors.
-    max_kvikio_retries : int
-        Number of KvikIO read retries before aborting.  Retries are intended
-        for live-mode reads where the XTC2 file may still be written by the
-        DAQ.  Each retry waits 100 ms × retry_count.
     """
 
     def __init__(self, comm):
