@@ -379,11 +379,7 @@ array and copy:
 calib_saved = ctx.get('calib').on_cpu     # NumPy, independent
 
 # Option 2: Copy to separate GPU array (stays on GPU, independent)
-calib_saved = ctx.get('calib').on_gpu.copy()   # CuPy, independent
-
-# Option 3: call free_calib_bufs() to release slot buffers entirely,
-#            which falls back to dynamic allocation (no recycling).
-gpu_events_obj.free_calib_bufs()
+calib_saved = ctx.get('calib').on_gpu   # CuPy, independent
 ```
 
 ---
@@ -459,10 +455,9 @@ For GPU accumulators (CuPy arrays), this is a `arr.fill(0)` call.
 The `join()` function itself does not reset accumulators — the user
 controls this.
 
-If `free_calib_bufs()` is called at the checkpoint to reclaim GPU memory,
-any CuPy arrays derived from `calib_gpu` (views into the pre-allocated
-slot buffer) would become invalid.  The user must ensure their accumulator
-arrays are independent copies, not views.
+GPU accumulators retained across checkpoints must be independent allocations,
+not views into reusable EventPool slot buffers. Use `on_gpu` for an independent
+device copy or keep zero-copy `on_gpu_view()` work within its lease scope.
 
 ### 6. Checkpoint alignment with batch boundaries
 

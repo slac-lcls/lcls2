@@ -71,7 +71,8 @@ if _WORLD_RANK == 0:
     _ap.add_argument('--batch-size', type=int, default=10,
                      help='EB batch size in L1Accept events (default 10)')
     _ap.add_argument('--pool-depth', type=int, default=4,
-                     help='EventPool depth / n_gpu_streams (default 4)')
+                     help='EventPool depth / n_gpu_streams '
+                          '(smoke-test default 4; DataSource default 2)')
     _args = _ap.parse_args()
     _cfg = (_args.max_events, _args.batch_size, _args.pool_depth)
 else:

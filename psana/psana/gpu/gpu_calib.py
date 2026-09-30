@@ -269,14 +269,9 @@ class GPUDetector:
         # One buffer per EventPool slot, grown lazily to fit the first batch.
         # Reused across batches to prevent CuPy pool fragmentation that causes
         # OOM with large batch sizes.  Each slot's buffer is written by the GPU
-        # calibration kernel and read by the user via GpuEventContext.on_gpu.
-        #
-        # Safety guarantee: the EventPool recycles slot N only after N+n_slots
-        # batches, by which point the user has consumed all GpuEventContext
-        # objects from that slot.  on_gpu arrays are views into this buffer —
-        # users who need to retain results beyond one event-loop cycle should
-        # call .on_cpu() to get an independent NumPy copy, then call
-        # free_calib_bufs() to reclaim GPU memory.
+        # calibration kernel and protected by the EventPool lease until its
+        # registered terminal consumer completes.  on_gpu returns an independent
+        # device copy; on_gpu_view keeps the slot leased through user GPU work.
         self._n_slots         = int(n_slots)
         self._budget          = budget  # _GpuBudget | None
         self._calib_slot_bufs = [None] * self._n_slots   # cp.ndarray per slot
@@ -557,24 +552,6 @@ class GPUDetector:
         # One allocation per stream per run — not per event.
         self._stream_peds[stream_id]  = cp.concatenate(peds_parts)
         self._stream_gmask[stream_id] = cp.concatenate(gmask_parts)
-
-    def free_calib_bufs(self):
-        """Release all pre-allocated per-slot calib_gpu buffers.
-
-        Call this when:
-          - You accumulate GpuEventContext objects across event-loop cycles
-            (e.g. ``results = list(run.events())``), in which case the
-            on_gpu arrays would alias into buffers that get overwritten.
-          - You want to reclaim GPU VRAM at the end of a run.
-
-        After calling this, process_batch() falls back to dynamic
-        allocation (one cp.empty() per batch), restoring normal behaviour
-        at the cost of CuPy pool growth over long runs.
-
-        Safe to call at any time — in-flight kernels have already read
-        from their slot's buffer before it is freed here.
-        """
-        self._calib_slot_bufs = [None] * self._n_slots
 
     def memory_bytes(self) -> dict:
         """Return current VRAM usage broken down by category.
