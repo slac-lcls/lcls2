@@ -444,7 +444,7 @@ class GpuDetectorFieldBinding:
 class InputSlotLease:
     """Event/execution references to independently owned parsed inputs."""
 
-    def __init__(self, result_ready, owners=()):
+    def __init__(self, result_ready, owners=(), *, planned_uses=None):
         from threading import RLock
         self.result_ready = result_ready
         self._consumer_done = []
@@ -455,7 +455,8 @@ class InputSlotLease:
         self._uses = []
         try:
             for owner in self._owners:
-                self._uses.append(owner.acquire())
+                self._uses.append(owner.acquire() if planned_uses is None
+                                  else planned_uses[owner].fork())
         except BaseException:
             for use in self._uses:
                 use.wait_until_safe_to_reuse()

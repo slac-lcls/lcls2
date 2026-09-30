@@ -8,7 +8,8 @@ import numpy as np
 import pytest
 
 from psana.gpu.gpu_batch import GpuReadDesc
-from psana.gpu.gpu_file_epochs import GpuFileEpochs
+from psana.gpu.gpu_read_plan import ResolvedDgram, ResolvedFile
+from psana.gpu.gpu_stream_read_plan import build_stream_read_plan
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader, DESC_DEVICE_OFFSET, DESC_READ_SIZE
 from psana.gpu.gpudgram.batch import GpuXtcBatchPool
 from psana.gpu.gpudgram.config import GpuStreamConfigTable
@@ -49,7 +50,11 @@ def test_coalesced_kvikio_bytes_and_parsed_fields_match_per_dgram_reads(tmp_path
     descriptors = [GpuReadDesc(i, ts, stream, off, size, 0, 1)
                    for i, (off, size, ts) in enumerate(records) for stream in range(2)]
     view = NS(iter_read_descs=lambda _: iter(descriptors))
-    epochs = GpuFileEpochs(dm).resolve(descriptors, [])
+    groups = build_stream_read_plan(
+        [ResolvedDgram(d.batch_event_index, d.timestamp, d.stream_id,
+                       ResolvedFile(str(paths[d.stream_id]), 0), d.offset, d.size, d.smd_size)
+         for d in descriptors], n_events=len(records),
+        input_capacity_bytes=sum(d.size for d in descriptors)).groups
     configs = GpuStreamConfigTable.from_configs([config, config])
     handles = [configs.resolve("xppcspad", 1, "raw", "arrayRaw", stream_id=stream)
                for stream in range(2)]
@@ -57,24 +62,31 @@ def test_coalesced_kvikio_bytes_and_parsed_fields_match_per_dgram_reads(tmp_path
     for bulk in (False, True):
         reader = KvikioGpuReader(bulk_read=bulk)
         try:
-            read = reader.wait_batch(reader.issue_batch(view, dm, file_epochs=epochs))
             pool = GpuXtcBatchPool(configs, field_handles=handles, n_slots=1)
             stream = cp.cuda.Stream(non_blocking=True)
-            batch = pool.parse(0, read.data_gpu, read.desc_table, stream)
-            stream.synchronize()
-            payloads, fields = [], []
-            for i, (desc, row) in enumerate(zip(descriptors, read.desc_table)):
-                off, size = int(row[DESC_DEVICE_OFFSET]), int(row[DESC_READ_SIZE])
-                payload = cp.asnumpy(read.data_gpu[off:off + size]).tobytes()
-                assert payload == data[desc.offset:desc.offset + desc.size]
-                payloads.append(payload)
-                from psana.gpu.gpudgram.batch import LOC_OFFSET, LOC_NBYTES, LOC_STATUS
-                from psana.gpu.gpudgram.parser import STATUS_FOUND
-                locator = cp.asnumpy(batch.locate(handles[desc.stream_id]).rows_gpu[i])
-                assert locator[LOC_STATUS] == STATUS_FOUND
-                field_off, field_size = int(locator[LOC_OFFSET]), int(locator[LOC_NBYTES])
-                fields.append(cp.asnumpy(read.data_gpu[field_off:field_off + field_size]).tobytes())
-            results.append((payloads, fields))
+            observed = {}
+            submissions = groups if bulk else (None,)
+            for group in submissions:
+                pending = (reader.issue_group(group, slot_id=0) if bulk
+                           else reader.issue_batch(view, dm))
+                read = reader.wait_batch(pending)
+                batch = pool.parse(0, read.data_gpu, read.desc_table, stream)
+                stream.synchronize()
+                for i, row in enumerate(read.desc_table):
+                    event, physical_stream, _, file_off, size, off = map(int, row)
+                    payload = cp.asnumpy(read.data_gpu[off:off + size]).tobytes()
+                    assert payload == data[file_off:file_off + size]
+                    from psana.gpu.gpudgram.batch import LOC_OFFSET, LOC_NBYTES, LOC_STATUS
+                    from psana.gpu.gpudgram.parser import STATUS_FOUND
+                    locator = cp.asnumpy(batch.locate(handles[physical_stream]).rows_gpu[i])
+                    assert locator[LOC_STATUS] == STATUS_FOUND
+                    field_off, field_size = int(locator[LOC_OFFSET]), int(locator[LOC_NBYTES])
+                    field = cp.asnumpy(read.data_gpu[field_off:field_off + field_size]).tobytes()
+                    observed[event, physical_stream] = payload, field
+                batch.retire()
+            assert len(observed) == len(descriptors)
+            results.append(observed)
+            pool.close()
             requests.append(reader.io_stats()["total_requests"])
         finally:
             reader.close()
