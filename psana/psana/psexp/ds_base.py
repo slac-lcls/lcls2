@@ -24,7 +24,6 @@ from psana.psexp.prometheus_manager import ensure_pusher, stop_pusher, get_prom_
 if mode == "mpi":
     pass
 
-
 class InvalidDataSourceArgument(Exception):
     pass
 
@@ -56,72 +55,15 @@ class DsParms:
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
-    # GPU acceleration. gpu_det gives the GPU exclusive ownership of every
-    # selected detector stream; hybrid_det mirrors selected streams through
-    # both the normal CPU path and the GPU path.
-    gpu_det: object = None  # str | list[str] | None
-    hybrid_det: object = None  # str | list[str] | None
-    n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
-    gpu_d2h_pinned_bytes: int = 64 << 20  # aggregate per-BD output staging cap
-    gpu_d2h_chunk_size: int = 0  # retired; only zero is accepted
-    gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
-    gpu_bulk_read: bool = True  # adjacent per-stream input groups
-    gpu_bulk_target_bytes: int = 1 << 20  # small-dgram classification and coalescing limit
-    # Whole bigdata stream indices selected for either GPU mode. Populated
-    # from Configure by DgramManager and forwarded to EventBuilder.
-    gpu_stream_ids: list = None  # list[int] | None
-    # Subset of gpu_stream_ids that EventBuilder also retains in the CPU batch.
-    hybrid_stream_ids: list = None  # list[int] | None
-    gpu_fn: object = None  # GpuTask | None; host-only declaration
-
-    def __post_init__(self):
-        from psana.gpu.gpu_d2h import validate_pinned_bytes
-        validate_pinned_bytes(self.gpu_d2h_pinned_bytes)
-        if self.gpu_fn is not None:
-            from psana.gpu.gpu_task import GpuTask
-            if not isinstance(self.gpu_fn, GpuTask):
-                raise TypeError("gpu_fn must be a GpuTask declaration")
-            if not self.gpu_enabled:
-                raise ValueError("gpu_fn requires gpu_det or hybrid_det")
-            self.gpu_fn.validate_detectors(self.gpu_detector_names)
-        if self.gpu_d2h_chunk_size:
-            raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
-        if type(self.gpu_bulk_target_bytes) is not int:
-            raise TypeError("gpu_bulk_target_bytes must be an int")
-        if not 0 < self.gpu_bulk_target_bytes <= (1 << 64) - 1:
-            raise ValueError("gpu_bulk_target_bytes must be a positive uint64")
-        if type(self.gpu_bulk_read) is not bool:
-            raise TypeError("gpu_bulk_read must be a bool")
-        if self.gpu_enabled and self.gpu_bulk_read and (self.intg_det or (self.timestamps is not None and len(self.timestamps))):
-            raise NotImplementedError(
-                "gpu_bulk_read requires ordinary GPUBAT1 batching; "
-                "intg_det and timestamp filtering are not supported"
-            )
-        if self.smd_callback and self.gpu_enabled:
-            raise NotImplementedError(
-                "smd_callback is not supported with gpu_det or hybrid_det "
-                "because callback batching does not produce GPUBAT1 descriptors"
-            )
-
-    @staticmethod
-    def _detector_names(value):
-        if value is None:
-            return []
-        if isinstance(value, str):
-            return [value]
-        return list(value)
-
-    @property
-    def gpu_detector_names(self):
-        """Detector names handled by either GPU routing mode, in user order."""
-        return list(dict.fromkeys(
-            self._detector_names(self.gpu_det)
-            + self._detector_names(self.hybrid_det)
-        ))
-
-    @property
-    def gpu_enabled(self):
-        return bool(self.gpu_detector_names)
+    # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau') or
+    # DataSource(gpu_det=['jungfrau', 'epix']).  When set, Run.events()
+    # yields GpuEventContext objects instead of Event objects.
+    gpu_det: object = None          # str | list[str] | None
+    n_gpu_streams: int = 4          # EventPool depth; 4 concurrent streams optimal for NVMe io_depth
+    # GPU-routed bigdata stream indices.  Populated from the Configure dgrams
+    # already parsed by DgramManager.  Forwarded to EventBuilder so it can
+    # split those streams into GPUBAT1 without relying on PS_TEST_GPU_STREAM_IDS.
+    gpu_stream_ids: list = None     # list[int] | None
 
     def set_det_class_table(
         self,
@@ -141,73 +83,6 @@ class DsParms:
         self.smd_files = smd_files
         self.use_smds = use_smds
 
-    def resolve_gpu_stream_ids(self):
-        """Resolve exclusive and mirrored whole-stream GPU routing."""
-        exclusive_names = self._detector_names(self.gpu_det)
-        hybrid_names = self._detector_names(self.hybrid_det)
-        duplicate_names = set(exclusive_names) & set(hybrid_names)
-        if duplicate_names:
-            raise RuntimeError(
-                "Detectors cannot be selected by both gpu_det and hybrid_det: "
-                f"{sorted(duplicate_names)}"
-            )
-
-        if not exclusive_names and not hybrid_names:
-            self.gpu_stream_ids = None
-            self.hybrid_stream_ids = None
-            return
-
-        ids_table = getattr(self, "det_stream_ids_table", {})
-        segments_table = getattr(self, "det_stream_segments_table", {})
-        stream_owners = getattr(self, "stream_id_to_detnames", {})
-        streams_by_name = {}
-
-        for argument, det_names in (
-            ("gpu_det", exclusive_names),
-            ("hybrid_det", hybrid_names),
-        ):
-            for det_name in det_names:
-                stream_ids = ids_table.get(det_name) or list(
-                    segments_table.get(det_name, {}).keys()
-                )
-                if not stream_ids:
-                    raise RuntimeError(
-                        f"{argument}={det_name!r} did not resolve to any stream ids"
-                    )
-                streams_by_name[det_name] = {int(x) for x in stream_ids}
-
-        exclusive_stream_ids = {
-            stream_id
-            for det_name in exclusive_names
-            for stream_id in streams_by_name[det_name]
-        }
-        hybrid_stream_ids = {
-            stream_id
-            for det_name in hybrid_names
-            for stream_id in streams_by_name[det_name]
-        }
-        conflicting_stream_ids = exclusive_stream_ids & hybrid_stream_ids
-        if conflicting_stream_ids:
-            raise RuntimeError(
-                "gpu_det and hybrid_det cannot select the same physical streams: "
-                f"{sorted(conflicting_stream_ids)}"
-            )
-
-        # Preserve gpu_det's existing contract: removing a stream from the CPU
-        # batch is safe only when the selected detector is its sole owner.
-        for det_name in exclusive_names:
-            for stream_id in streams_by_name[det_name]:
-                owners = set(stream_owners.get(stream_id, ()))
-                if owners != {det_name}:
-                    raise RuntimeError(
-                        f"gpu_det={det_name!r} uses stream {stream_id}, which "
-                        f"contains normal detectors {sorted(owners)}. GPUBAT1 "
-                        "requires exactly one normal detector per GPU stream."
-                    )
-
-        self.hybrid_stream_ids = sorted(hybrid_stream_ids)
-        self.gpu_stream_ids = sorted(exclusive_stream_ids | hybrid_stream_ids)
-
     @property
     def intg_stream_id(self):
         # We only set detector related fields later (setup run files) so there
@@ -219,9 +94,11 @@ class DsParms:
         if len(stream_ids) == 0:
             return -1
         if len(stream_ids) != 1:
-            raise ValueError(f"intg_det={self.intg_det!r} must map to exactly one stream, got {stream_ids}")
+            raise ValueError(
+                f"intg_det={self.intg_det!r} must map to exactly one stream, "
+                f"got {stream_ids}"
+            )
         return stream_ids[0]
-
 
 class DataSourceBase(abc.ABC):
     """
@@ -242,10 +119,7 @@ class DataSourceBase(abc.ABC):
     drp : str
         DRP-specific parameters (not currently used).
     batch_size : int
-        Number of events per batch sent to bigdata core. Defaults to 1000
-        for CPU-only input, or 20 with gpu_det/hybrid_det, with or without
-        gpu_fn. Explicit values override the default. This setting applies
-        to the whole DataSource; GPU admission may split smaller subbatches.
+        Number of events per batch sent to bigdata core (default: 1000).
     max_events : int
         Max number of events to read.
     detectors : list
@@ -271,8 +145,7 @@ class DataSourceBase(abc.ABC):
     intg_delta_t : float
         Integration delay in seconds.
     smd_callback : callable or int
-        Callback for SMD event handling. Not supported with ``gpu_det`` or
-        ``hybrid_det``.
+        Callback for SMD event handling.
     psmon_publish : psmon.publish
         Enable publishing to psmon (default: None).
     prom_jobid : str
@@ -294,27 +167,6 @@ class DataSourceBase(abc.ABC):
         Log file path. If None, logs to stdout (default: None).
     auto_tune : bool
         Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
-    gpu_det : str or list[str]
-        Detectors whose complete streams are read only by the GPU path.
-    hybrid_det : str or list[str]
-        Detectors whose complete streams are read by both CPU and GPU paths.
-    gpu_fn : GpuTask, optional
-        Run one callback per selected GPU execution subbatch. Declare inputs
-        and exact calibration keys; publish named arrays for automatic host
-        delivery via evt.gpu.get(name).on_cpu. GPU batch size defaults to 20.
-    gpu_d2h_pinned_bytes : int
-        Aggregate per-BD output pinned staging cap in bytes (default: 64 MiB),
-        including free cached and token-held capacity. Zero, oversized outputs,
-        or unavailable capacity use synchronous ordinary-host copies.
-    gpu_bulk_read : bool
-        Coalesce adjacent per-stream input datagrams (default:
-        True). Set False for per-dgram comparison/debugging. Applies only to
-        gpu_det/hybrid_det; requires ordinary GPUBAT1 batching.
-    gpu_bulk_target_bytes : int
-        Positive byte limit for coalescing small datagrams (default: 1 MiB).
-        Datagrams at or above this size remain whole, individual reads. Groups
-        cannot cross an EventBuilder batch, file, transition, or offset gap.
-        Independent of KVIKIO_TASK_SIZE, which splits physical I/O requests.
     """
 
     def __init__(self, **kwargs):
@@ -323,22 +175,13 @@ class DataSourceBase(abc.ABC):
         log_file = kwargs.get("log_file", None)
         if isinstance(log_level, str):
             log_level = getattr(logging, log_level.upper(), logging.INFO)
-        utils.configure_logging(level=log_level, logfile=log_file, timestamp=False)
+        utils.configure_logging(level=log_level,
+                        logfile=log_file,
+                        timestamp=False)
         self.logger = utils.get_logger(name=utils.get_class_name(self))
 
-        self.gpu_fn = kwargs.get("gpu_fn")
-        if self.gpu_fn is not None:
-            from psana.gpu.gpu_task import GpuTask
-            if not isinstance(self.gpu_fn, GpuTask):
-                raise TypeError("gpu_fn must be a GpuTask declaration")
-            if not kwargs.get("exp") or any(kwargs.get(key) for key in ("files", "shmem", "drp")):
-                raise NotImplementedError("gpu_fn requires the experiment/run GPU event path")
-        if kwargs.get("gpu_d2h_chunk_size", 0):
-            raise ValueError("gpu_d2h_chunk_size is retired: automatic calibrated-image D2H was removed")
-
         # Default values
-        gpu_routing = bool(kwargs.get("gpu_det") or kwargs.get("hybrid_det"))
-        self.batch_size = kwargs.get("batch_size", 20 if gpu_routing else 1000)
+        self.batch_size = kwargs.get("batch_size", 1000)
         self.max_events = kwargs.get("max_events", 0)
         self.detectors = kwargs.get("detectors", [])
         self.xdetectors = kwargs.get("xdetectors", [])
@@ -362,20 +205,9 @@ class DataSourceBase(abc.ABC):
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
         self.fetch_calib_cache_max_retries = kwargs.get("fetch_calib_cache_max_retries", 60)
         self.cached_detectors = kwargs.get("cached_detectors", [])
-        # GPU acceleration: exclusive and explicitly mirrored stream modes.
-        self.gpu_det = kwargs.get("gpu_det", None)
-        self.hybrid_det = kwargs.get("hybrid_det", None)
-        if self.hybrid_det:
-            self.logger.warning(
-                "hybrid_det mirrors complete bigdata streams through both CPU "
-                "and GPU paths and therefore duplicates their bigdata I/O"
-            )
-        self.n_gpu_streams = kwargs.get("n_gpu_streams", 2)
-        self.gpu_d2h_chunk_size = kwargs.get("gpu_d2h_chunk_size", 0)
-        self.gpu_d2h_pinned_bytes = kwargs.get("gpu_d2h_pinned_bytes", 64 << 20)
-        self.gpu_memory_budget_gb = kwargs.get("gpu_memory_budget_gb", 0)
-        self.gpu_bulk_read = kwargs.get("gpu_bulk_read", True)
-        self.gpu_bulk_target_bytes = kwargs.get("gpu_bulk_target_bytes", 1 << 20)
+        # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau', ...)
+        self.gpu_det       = kwargs.get("gpu_det",        None)
+        self.n_gpu_streams = kwargs.get("n_gpu_streams",  4)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
@@ -389,10 +221,10 @@ class DataSourceBase(abc.ABC):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
         # Final sanity check.
-        # batch_size=0 is allowed when a GPU mode is set: GpuEventManager will
-        # preserve the legacy zero-to-one fallback (not the omitted default).
-        if self.batch_size == 0 and not (self.gpu_det or self.hybrid_det):
-            self.batch_size = 1  # default for CPU path
+        # batch_size=0 is allowed when gpu_det is set: GpuEvents will
+        # auto-compute the optimal value from GPU detector properties.
+        if self.batch_size == 0 and not kwargs.get('gpu_det'):
+            self.batch_size = 1   # default for CPU path
         assert self.batch_size >= 0, "batch_size must be >= 0"
 
         # Package up DataSource parameters
@@ -411,61 +243,24 @@ class DataSourceBase(abc.ABC):
             self.dbsuffix,
             smd_callback=self.smd_callback,
             gpu_det=self.gpu_det,
-            hybrid_det=self.hybrid_det,
-            gpu_fn=self.gpu_fn,
-            gpu_d2h_pinned_bytes=self.gpu_d2h_pinned_bytes,
             n_gpu_streams=self.n_gpu_streams,
-            gpu_d2h_chunk_size=self.gpu_d2h_chunk_size,
-            gpu_memory_budget_gb=self.gpu_memory_budget_gb,
-            gpu_bulk_read=self.gpu_bulk_read,
-            gpu_bulk_target_bytes=self.gpu_bulk_target_bytes,
         )
 
         # Warn about unrecognized kwargs
         known_keys = {
-            "exp",
-            "run",
-            "dir",
-            "files",
-            "shmem",
-            "drp",
-            "batch_size",
-            "max_events",
-            "detectors",
-            "xdetectors",
-            "det_name",
-            "live",
-            "smalldata_kwargs",
-            "monitor",
-            "small_xtc",
-            "timestamps",
-            "dbsuffix",
-            "intg_det",
-            "intg_delta_t",
-            "smd_callback",
-            "psmon_publish",
-            "prom_jobid",
-            "skip_calib_load",
-            "use_calib_cache",
-            "fetch_calib_cache_max_retries",
-            "cached_detectors",
-            "mpi_ts",
-            "log_level",
-            "log_file",
-            "auto_tune",
-            "gpu_det",
-            "hybrid_det",
-            "gpu_fn",
-            "n_gpu_streams",
-            "gpu_d2h_chunk_size",
-            "gpu_d2h_pinned_bytes",
-            "gpu_memory_budget_gb",
-            "gpu_bulk_read",
-            "gpu_bulk_target_bytes",
+            "exp", "run", "dir", "files", "shmem", "drp", "batch_size",
+            "max_events", "detectors", "xdetectors", "det_name",
+            "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
+            "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",
+            "psmon_publish", "prom_jobid", "skip_calib_load", "use_calib_cache",
+            "fetch_calib_cache_max_retries", "cached_detectors", "mpi_ts",
+            "log_level", "log_file", 'auto_tune',
+            "gpu_det", "n_gpu_streams",
         }
         for k in kwargs:
             if k not in known_keys:
                 self.logger.warning(f"Unrecognized kwarg={k}")
+
 
     def get_filter_timestamps(self, timestamps):
         # Returns a sorted numpy array
@@ -479,7 +274,10 @@ class DataSourceBase(abc.ABC):
         elif isinstance(timestamps, np.ndarray):
             formatted_timestamps = timestamps
         else:
-            self.logger.info(f"Warning: No timestamp filtering. Unrecognized input type ({type(timestamps)}). Allowed formats are .npy or numpy.ndarray.")
+            self.logger.info(
+                "Warning: No timestamp filtering. Unrecognized input type "
+                f"({type(timestamps)}). Allowed formats are .npy or numpy.ndarray."
+            )
         return np.asarray(np.sort(formatted_timestamps), dtype=np.uint64)
 
     def setup_psplot_live(self):
@@ -501,11 +299,15 @@ class DataSourceBase(abc.ABC):
             }
             if PSPLOT_LIVE_ZMQ_SERVER == "":
                 KAFKA_TOPIC = os.environ.get("KAFKA_TOPIC", "psplot_live")
-                KAFKA_BOOTSTRAP_SERVER = os.environ.get("KAFKA_BOOTSTRAP_SERVER", "172.24.5.240:9094")
+                KAFKA_BOOTSTRAP_SERVER = os.environ.get(
+                    "KAFKA_BOOTSTRAP_SERVER", "172.24.5.240:9094"
+                )
                 # Connect to kafka server
                 producer = KafkaProducer(
                     bootstrap_servers=KAFKA_BOOTSTRAP_SERVER,
-                    value_serializer=lambda m: json.JSONEncoder().encode(m).encode("utf-8"),
+                    value_serializer=lambda m: json.JSONEncoder()
+                    .encode(m)
+                    .encode("utf-8"),
                 )
                 producer.send(KAFKA_TOPIC, info)
             else:
@@ -594,10 +396,13 @@ class DataSourceBase(abc.ABC):
             timeout = self.dsparms.max_retries
             return FileNotFoundError(
                 "Timed out waiting for XTC files for exp=%s run=%s in dir=%s (timeout=%ss). "
-                "Checked for both final and .inprogress filenames." % (self.exp, self.runnum, self.xtc_path, timeout)
+                "Checked for both final and .inprogress filenames."
+                % (self.exp, self.runnum, self.xtc_path, timeout)
             )
         return FileNotFoundError(
-            "No XTC files found for exp=%s run=%s in dir=%s. Checked for both final and .inprogress filenames." % (self.exp, self.runnum, self.xtc_path)
+            "No XTC files found for exp=%s run=%s in dir=%s. "
+            "Checked for both final and .inprogress filenames."
+            % (self.exp, self.runnum, self.xtc_path)
         )
 
     def _file_info_url(self, runnum):
@@ -634,7 +439,11 @@ class DataSourceBase(abc.ABC):
         file_info = {}
         if all_xtc_files:
             # Only take chunk 0 xtc files (matched with *-c*0.)
-            xtc_files = sorted(os.path.basename(xtc_file) for xtc_file in all_xtc_files if re.search(r"-c000\.", xtc_file))
+            xtc_files = sorted(
+                os.path.basename(xtc_file)
+                for xtc_file in all_xtc_files
+                if re.search(r"-c000\.", xtc_file)
+            )
             if xtc_files:
                 file_info["xtc_files"] = xtc_files
                 file_info["dirname"] = os.path.dirname(all_xtc_files[0])
@@ -680,7 +489,8 @@ class DataSourceBase(abc.ABC):
             retry_no += 1
             xtc_files = file_info.get("xtc_files", []) if file_info else []
             self.logger.info(
-                "Waiting for file list from %s to settle ...(#retry:%s stable:%s/%s nfiles:%s)",
+                "Waiting for file list from %s to settle "
+                "...(#retry:%s stable:%s/%s nfiles:%s)",
                 self._file_info_url(runnum),
                 retry_no,
                 stable_polls,
@@ -707,14 +517,21 @@ class DataSourceBase(abc.ABC):
             )
         return FileNotFoundError(
             "No stable logbook file list found for live mode exp=%s run=%s from %s. "
-            "live=True does not scan the directory for stream discovery." % (self.exp, runnum, self._file_info_url(runnum))
+            "live=True does not scan the directory for stream discovery."
+            % (self.exp, runnum, self._file_info_url(runnum))
         )
 
     def _scan_run_files_on_disk(self, runnum):
         smd_dir = os.path.join(self.xtc_path, "smalldata")
         return sorted(
-            glob.glob(os.path.join(smd_dir, "*r%s-s*.smd.xtc2" % (str(runnum).zfill(4))))
-            + glob.glob(os.path.join(smd_dir, "*r%s-s*.smd.xtc2.inprogress" % (str(runnum).zfill(4))))
+            glob.glob(
+                os.path.join(smd_dir, "*r%s-s*.smd.xtc2" % (str(runnum).zfill(4)))
+            )
+            + glob.glob(
+                os.path.join(
+                    smd_dir, "*r%s-s*.smd.xtc2.inprogress" % (str(runnum).zfill(4))
+                )
+            )
         )
 
     def _setup_run_files(self, runnum):
@@ -750,7 +567,8 @@ class DataSourceBase(abc.ABC):
                 if not flag_found:
                     if self.dir and not self.live:
                         self.logger.info(
-                            "Expected DB stream file %s not found under explicit dir=%s; falling back to on-disk stream discovery for this directory.",
+                            "Expected DB stream file %s not found under explicit dir=%s; "
+                            "falling back to on-disk stream discovery for this directory.",
                             true_xtc_file,
                             self.xtc_path,
                         )
@@ -765,12 +583,19 @@ class DataSourceBase(abc.ABC):
             smd_files = self._scan_run_files_on_disk(runnum)
 
         self.n_files = len(smd_files)
-        assert self.n_files > 0, f"No smalldata files found from this path: {os.path.join(self.xtc_path, 'smalldata')}"
+        assert (
+            self.n_files > 0
+        ), f"No smalldata files found from this path: {os.path.join(self.xtc_path, 'smalldata')}"
 
         # Look for matching bigdata files - MUST match all.
         # We start by looking for smd basename with .inprogress extension.
         # If this name is not found, try .xtc2.
-        xtc_files = [os.path.join(self.xtc_path, os.path.basename(smd_file).split(".smd")[0] + ".xtc2") for smd_file in smd_files]
+        xtc_files = [
+            os.path.join(
+                self.xtc_path, os.path.basename(smd_file).split(".smd")[0] + ".xtc2"
+            )
+            for smd_file in smd_files
+        ]
         for i_xtc, xtc_file in enumerate(xtc_files):
             flag_found, true_xtc_file = self._check_file_exist_with_retry(xtc_file)
             if not flag_found:
@@ -805,7 +630,11 @@ class DataSourceBase(abc.ABC):
 
         if self.runnum is None:
             run_list = [
-                int(os.path.splitext(os.path.basename(_dummy))[0].split("-r")[1].split("-")[0])
+                int(
+                    os.path.splitext(os.path.basename(_dummy))[0]
+                    .split("-r")[1]
+                    .split("-")[0]
+                )
                 for _dummy in glob.glob(os.path.join(self.xtc_path, "*-r*.xtc2"))
             ]
             assert run_list
@@ -817,7 +646,9 @@ class DataSourceBase(abc.ABC):
         elif isinstance(self.runnum, int):
             self.runnum_list = [self.runnum]
         else:
-            raise InvalidDataSourceArgument("run accepts only int or list. Leave out run arugment to process all available runs.")
+            raise InvalidDataSourceArgument(
+                "run accepts only int or list. Leave out run arugment to process all available runs."
+            )
 
     def smalldata(self, **kwargs):
         if MODE == "PARALLEL":
@@ -837,13 +668,17 @@ class DataSourceBase(abc.ABC):
             return
 
         if prom_cfg_dir is None:  # Push-gateway mode
-            pm = ensure_pusher(rank=mpi_rank)  # starts pusher once per process
+            pm = ensure_pusher(rank=mpi_rank)   # starts pusher once per process
             if mpi_rank == 0:
-                self.logger.debug(f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})")
+                self.logger.debug(
+                    f"START PROMETHEUS CLIENT (JOB:{pm.job} RANK:{pm.rank})"
+                )
         else:  # HTTP exposer mode (DAQ-style scrape)
             pm = get_prom_manager()
-            self.logger.debug(f"START PROMETHEUS HTTP EXPOSER (PROM_CFG_DIR:{prom_cfg_dir})")
-            pm.create_exposer(prom_cfg_dir)  # safe: only starts once per process
+            self.logger.debug(
+                f"START PROMETHEUS HTTP EXPOSER (PROM_CFG_DIR:{prom_cfg_dir})"
+            )
+            pm.create_exposer(prom_cfg_dir)      # safe: only starts once per process
 
     def _end_prometheus_client(self):
         """Stop the push-gateway pusher if running. Exposer stays up (matches previous behavior)."""
@@ -922,12 +757,15 @@ class DataSourceBase(abc.ABC):
                         matched_set = exclude_set.intersection(exist_set)
                         if matched_set:
                             flag_keep = False
-                            self.logger.debug("  |-- Discarded, matched with excluded detectors")
+                            self.logger.debug(
+                                "  |-- Discarded, matched with excluded detectors"
+                            )
                             # We only warn users in the case where we exclude a detector
                             # and there're more than one detectors in the file.
                             if len(exist_set) > len(matched_set):
                                 self.logger.info(
-                                    "Warning: Stream-%s has detectors in the excluded set; excluding entire stream.",
+                                    "Warning: Stream-%s has detectors in the excluded set; "
+                                    "excluding entire stream.",
                                     i,
                                 )
 

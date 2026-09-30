@@ -96,6 +96,12 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   *m_metrics.rcvWtCtr = 0;
   chkError(cudaHostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr), cudaHostAllocDefault));
   *m_metrics.fwdWtCtr = 0;
+
+  // Prepare the TrgInpGen graph
+  if (_setupGraph()) {
+    logging::critical("Failed to set up TrgInpGen graph");
+    abort();
+  }
 }
 
 TrgInpGen::~TrgInpGen()
@@ -190,9 +196,8 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 
 int TrgInpGen::_setupGraph()
 {
-  logging::debug("Recording TrgInpGen graph");
-
   // Build the graph
+  logging::debug("Recording TrgInpGen graph");
   cudaGraph_t graph = _recordGraph(m_stream);
   if (graph == 0) {
     return -1;
@@ -213,7 +218,6 @@ int TrgInpGen::_setupGraph()
     return -1;
   }
 
-  logging::debug("Done recording TrgInpGen graph");
   return 0;
 }
 
@@ -352,27 +356,15 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
   return graph;
 }
 
-bool TrgInpGen::setup()                 // Called during phase 1 of Configure
+void TrgInpGen::start()
 {
-  // Prepare the TrgInpGen graph
-  if (_setupGraph()) {
-    logging::error("Failed to set up TrgInpGen graph");
-    return true;
-  }
-  return false;
-}
-
-bool TrgInpGen::startup()               // Called during phase 1 of Configure
-{
-  logging::info("Starting TrgInpGen");
+  logging::info("TrgInpGen starting");
 
   resetEventCounter();
 
   // Launch the TrgInpGen graph
-  logging::debug("Launching TrgInpGen graph");
+  printf("*** TrgInpGen: Launching graph\n");
   chkFatal(cudaGraphLaunch(m_graphExec, m_stream));
-
-  return false;
 }
 
 void TrgInpGen::start(SPSCQueue<unsigned>& collectorQueue)
@@ -397,10 +389,6 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
   if (prctl(PR_SET_NAME, "drp_gpu/TigRcvr", 0, 0, 0) == -1) {
     perror("prctl");
   }
-
-  // If triggers had been left running, they will have been stopped during Allocate
-  // Flush anything that accumulated
-  m_reader->flush();
 
   const auto     hostWrtBufs    = m_pool.hostWrtBufs(); // When no error, hdrs in all are the same
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);

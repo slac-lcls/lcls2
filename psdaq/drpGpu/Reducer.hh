@@ -17,16 +17,11 @@
 #include "ReducerAlgo.hh"
 #include "drp/spscqueue.hh"
 #include "psdaq/service/Dl.hh"
-#include <nlohmann/json.hpp>
 #include "psdaq/service/fast_monotonic_clock.hh"
 
 
 namespace Pds {
   class MetricExporter;
-}
-
-namespace XtcData {
-  class Xtc;
 }
 
 namespace Drp {
@@ -51,11 +46,7 @@ public:
   ~Reducer();
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels);
-  int configure(const nlohmann::json& configureMsg,
-                const nlohmann::json& connectMsg,
-                size_t                collectionId);
-  bool setup(XtcData::Xtc& xtc, const void* be);
-  bool startup();
+  void startup();
   void shutdown();
   void dump() const;
   bool start(unsigned worker, unsigned index) {
@@ -75,6 +66,8 @@ public:
                                   : m_outputQueues[worker].pop(*items);
 #endif
   }
+  void configure(XtcData::Xtc& xtc, const void* bufEnd)
+    { if (m_algos.size())  m_algos[0]->configure(xtc, bufEnd); }
   void event(XtcData::Xtc& xtc, const void* bufEnd, size_t dataSize)
     { if (m_algos.size())  m_algos[0]->event(xtc, bufEnd, dataSize); }
 private:

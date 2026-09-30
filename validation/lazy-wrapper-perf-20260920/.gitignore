@@ -1,8 +1,0 @@
-installs/
-__pycache__/
-cupy-cache/
-job-*/
-*.log
-*.csv
-*.sqlite
-*.nsys-rep

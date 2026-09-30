@@ -1,7 +1,6 @@
 from psdaq.trigger import tebTrigger
 from psdaq.configdb.typed_json import cdict
-#from psdaq import BldTebData, GasDetTebData, GmdTebData, XGmdTebData, PhaseCavityTebData, EBeamTebData
-from psdaq import BldTebData
+from psdaq import BldTebData, GasDetTebData, GmdTebData, XGmdTebData, PhaseCavityTebData, EBeamTebData
 from psdaq import HrEncoderTebData
 from psdaq import TimingTebData
 from psdaq import TmoTebData
