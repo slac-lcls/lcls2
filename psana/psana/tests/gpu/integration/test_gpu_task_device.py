@@ -64,7 +64,7 @@ def test_serial_datasource_stages_dense_inputs_and_exact_constants(monkeypatch):
     run = next(ds.runs())
     manager = run._evt_iter
     try:
-        assert manager._gpu_task is task and ds.dsparms.batch_size == 1
+        assert manager._gpu_task is task and ds.dsparms.batch_size == 20
         assert set(manager.input_preparers) == {'jungfrau.raw'}
         np.testing.assert_array_equal(cp.asnumpy(manager._task_constants.get('jungfrau', 'pixel_gain')), gain)
     finally:

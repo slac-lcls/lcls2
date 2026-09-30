@@ -44,5 +44,5 @@ All 16 samples and four preflights passed audit; all 32 cache checks were 100%.
 Medians (seconds): A 28.338250, B 39.063461, B+ 32.387702, B+gather 29.806849.
 Gathering reduces B+ median elapsed by 8.0%; its median is 5.2% above A.
 Ranges overlap and round 2 does not favor gathering; see all repetitions in
-`psana/psana/gpu/docs/performance/four_way_sdf.md`. No timing samples from earlier
+[four_way_sdf.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/four_way_sdf.md). No timing samples from earlier
 allocations are combined here. No production changes, commits or pushes.

@@ -214,7 +214,7 @@ Drop `field`, `segments`, and `values` after the field-view context and before
 advancing the event iterator. A Python `with` block leaves those variables
 bound; the feespec slice can otherwise retain the entire mixed input buffer
 through a later buffer replacement. The maintained consumer explicitly clears
-them. See `docs/performance/jf_feespec_admission_failure.md` under `psana/gpu`
+them. See [jf_feespec_admission_failure.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/jf_feespec_admission_failure.md) under `psana/gpu`
 for the reproduced failure and allocation accounting.
 
 Validation runs check every feespec array and three JF raw/calibrated arrays
