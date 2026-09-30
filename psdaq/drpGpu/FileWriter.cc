@@ -182,6 +182,7 @@ int FileWriter::open(const std::string& fileName)
   // Open the file
   auto oFlags = O_CREAT | O_WRONLY | O_TRUNC;
   if (m_dio)  oFlags |= O_DIRECT;
+  logging::debug("Opening %s with direct I/O %s", fileName.c_str(), m_dio ? "on" : "off");
   rc = ::open(fileName.c_str(), oFlags, S_IRUSR | S_IWUSR | S_IRGRP); // W is required
   if (rc == -1) {
     // %m will be replaced by the string strerror(errno)

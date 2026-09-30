@@ -830,14 +830,30 @@ branches on `isEvent()`.  Size it for a few transitions rather than one: Configu
 BeginStep and Enable can be in flight together, and the recorder holds Configure to re-write it
 at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
 
-- **The GPU `FileWriter` ignores the `directIO` kwarg.**  `TebReceiver::setup()` hardcodes
-  `constexpr auto dio{true}`, so `-k directIO=no` is accepted and silently disregarded.  The
-  CPU side honours it through `getDioFlag()` (`drp/TebReceiver.cc:18`), which is the one-line
-  pattern to copy.  Noticed on 2026-09-29, when `directIO=no` was added because recording
-  crashed the *timing* CPU DRP: the CPU DRP picked the change up on restart and the GPU DRP
-  did not care either way, which is what exposed it.  Whether cuFile needs the flag at all is
-  a separate question -- it is in compat mode on these nodes and may be handling an
-  intolerant file system itself -- but accepting a kwarg and ignoring it is wrong regardless.
+- ~~**The GPU `FileWriter` ignores the `directIO` kwarg.**~~  **Done 2026-09-30.**
+  `TebReceiver::setup()` hardcoded `constexpr auto dio{true}`, so `-k directIO=no` was accepted
+  and silently disregarded.  Noticed on 2026-09-29, when `directIO=no` was added because
+  recording crashed the *timing* CPU DRP: the CPU DRP picked the change up on restart and the
+  GPU DRP did not care either way, which is what exposed it.  Now reads the kwarg through a
+  `getDioFlag()` mirroring `drp/TebReceiver.cc:18`, same `"yes"` default, and `open()` logs the
+  state at debug level -- its absence from the log is part of why this went unnoticed.
+
+  **cuFile supports both states**, so the kwarg is worth having rather than removing.
+  `O_DIRECT` was mandatory until CUDA 12.2 / GDS 1.7.x, and the note in `cufile.h` still says
+  so -- *"the file needs to be opened in O_DIRECT mode to support GPUDirect Storage"* -- but
+  that text is stale against the 13.3 runtime on these nodes.  Per NVIDIA's troubleshooting
+  guide, *"Starting with CUDA toolkit 12.2 (GDS version 1.7.x) files can also be opened with
+  non-O_DIRECT mode. Even in such a case, whenever the library software deems fit, it will
+  follow the GDS enabled O_DIRECT path"*, and the API guide adds that this holds *"in compat
+  mode and also with nvidia-fs.ko installed"* -- so it is not only a compat-mode concession.
+  In compatibility mode, which is what these nodes run, `cuFileWrite` is `pwrite` underneath
+  and the flag buys nothing either way.
+
+  Keeping it selectable matters because the CPU and GPU DRPs need not write to the same file
+  system, and a file system that cannot do aligned direct I/O needs it off.  **Untested at
+  `directIO=no` on the GPU side**, though: the writer's buffer and offset arithmetic were
+  written under the direct-I/O assumption, and while non-`O_DIRECT` is strictly more
+  permissive, the first run with it off is a test rather than a formality.
 
 - **Nothing coordinates the green context split with the kernels' launch geometry.**
   There are three independent hard-coded SM tables, and they disagree:

@@ -30,6 +30,19 @@ struct tr_domain{ static constexpr char const* name{"TebReceiver"}; };
 using tr_scoped_range = nvtx3::scoped_range_in<tr_domain>;
 
 
+// Whether to open the output file with O_DIRECT, mirroring the CPU DRP's copy of this
+// in drp/TebReceiver.cc.  cuFile takes either: the flag has been optional since CUDA
+// 12.2, whatever the stale note in cufile.h says, and in compatibility mode cuFileWrite
+// is pwrite underneath.  Selectable because a file system that cannot do aligned direct
+// I/O needs it off, and the CPU and GPU DRPs need not be writing to the same one.
+static bool getDioFlag(const Parameters& para)
+{
+  return para.kwargs.find("directIO") != para.kwargs.end()
+       ? para.kwargs.at("directIO") != "no" // Default to "yes"
+       : true;
+}
+
+
 TebReceiver::TebReceiver(const Parameters&        para,
                          DrpBase&                 drp,
                          const std::atomic<bool>& terminate) :
@@ -94,7 +107,7 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   // NB: this fails when done in _recorder() due to cuFileDriverOpen() hanging
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
-  constexpr auto dio{true};
+  auto dio{getDioFlag(m_para)};
   // Retire the previous cycle's writer before building this one, so that only one
   // cuFile buffer registration exists at a time.  Assigning over the unique_ptr
   // would construct the new one first and briefly hold two.
