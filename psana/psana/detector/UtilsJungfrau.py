@@ -538,12 +538,9 @@ class DetCache():
 
     def add_gain_mask(self):
         """adds product of gain factor and mask: self.gmask = gfac*mask"""
-        #print(ndau.info_ndarr(self.mask, 'XXXXX self.mask'))
-        #print(ndau.info_ndarr(self.gfac, 'XXXXX self.gfac'))
-        if self.mask is None: self.mask = np.ones_like(self.gfac[0,:])
         self.gmask = np.empty_like(self.gfac)
         for i in range(3):
-            self.gmask[i,:] = self.gfac[i,:] * self.mask # shape=(3,<n-panels>,512,1024)
+            self.gmask[i,:] = self.gfac[i,:] * self.mask
 
 
     def add_ccons(self):

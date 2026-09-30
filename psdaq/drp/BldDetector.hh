@@ -152,7 +152,7 @@ private:
     Parameters&                                m_para;
     DrpBase&                                   m_drp;
     Detector*                                  m_det;
-    static const unsigned MAX_RET_CNT_C = 100;
+    static const int MAX_RET_CNT_C = 100;
     std::vector<std::shared_ptr<BldFactory> >  m_config;
     std::atomic<bool>                          m_terminate;
     bool                                       m_running;
@@ -176,7 +176,6 @@ public:
     virtual ~BldDrp() {}
     std::string configure(const nlohmann::json& msg);
     unsigned unconfigure();
-    std::string startup(XtcData::Xtc& xtc, const void* be);
 private:
     Pgp                                  m_pgp;
     std::thread                          m_workerThread;
@@ -196,7 +195,6 @@ private:
     void handleConnect(const nlohmann::json& msg) override;
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
-    std::string _endrun(const nlohmann::json& phase1Info);
     void _unconfigure();
     void _disconnect();
     void _error(const std::string& which, const nlohmann::json& msg, const std::string& errorMsg);
@@ -206,7 +204,6 @@ private:
     std::unique_ptr<Detector> m_det;
     std::unique_ptr<BldDrp>   m_drp;
     bool                      m_unconfigure;
-    std::string               m_lastKey;
 };
 
 }

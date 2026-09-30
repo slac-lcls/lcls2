@@ -1,8 +1,10 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.xpmmini import *
-from psdaq.configdb.barrier import *
+from psdaq.configdb.barrier import Barrier
 from psdaq.cas.xpm_utils import timTxId
+import os
+import socket
 import rogue
 from psdaq.utils import enable_cameralink_gateway
 import cameralink_gateway
@@ -17,17 +19,17 @@ import pyrogue as pr
 import surf.protocols.clink as clink
 import rogue.interfaces.stream
 
+cl = None
 pv = None
 xpmpv_global = None
 barrier_global = Barrier()
-args = {}
+lm = 1
 
 #FEB parameters
+lane = 0
+chan = 0
 ocfg = None
-
-# user set holding the flat-field (FPN/PRNU) coefficients to load at configure,
-# as written by psdaq/configdb/piranha4_flatfield_cal.py
-coeff_user_set = 1
+group = None
 
 #timebase
 clkRate      = 1300/7.  # MHz
@@ -78,6 +80,24 @@ class MyUartPiranha4Rx(clink.ClinkSerialRx):
             elif c != '':
                 self._cur.append(c)
 
+def supervisor_info(json_msg):
+    nworker = 0
+    supervisor=None
+    mypid = os.getpid()
+    myhostname = socket.gethostname()
+    for drp in json_msg['body']['drp'].values():
+        proc_info = drp['proc_info']
+        host = proc_info['host']
+        pid = proc_info['pid']
+        if host==myhostname and drp['active']:
+            if supervisor is None:
+                # we are supervisor if our pid is the first entry
+                supervisor = pid==mypid
+            else:
+                # only count workers for second and subsequent entries on this host
+                nworker+=1
+    return supervisor,nworker
+
 def dict_compare(new,curr,result):
     for k in new.keys():
         if dict is type(curr[k]):
@@ -91,37 +111,12 @@ def dict_compare(new,curr,result):
             else:
                 result[k] = new[k]
 
-def setup_timing(cl):
-    timebase = args['timebase']
-    # modifing for ued only 2026/04/30 RM
-    if timebase=="119M":
-        logging.info('Using timebase 119M')
-        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(False)
-        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.setDisp('UseModeSel')
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ModeSel.set(1)
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxPllReset.set(1)
-        time.sleep(1.0)
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxPllReset.set(0)
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.C_RxReset()
-        time.sleep(1.0)
-        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0) # Reset the latching register
-    else:
-        logging.info('Using timebase 186M')
-        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
-        time.sleep(1.0)
-
-    cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxUserRst()
-    time.sleep(0.1)
-
-    txId = timTxId('piranha4')
-    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
-    
 def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
 
     global pv
-    global args
+    global cl
+    global lm
+    global lane
     global xpmpv_global
 
     global clkRate
@@ -135,14 +130,7 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
 
     lm=lanemask
     lane = (lm&-lm).bit_length()-1
-    chan = 0
     assert(lm==(1<<lane)) # check that lanemask only has 1 bit for piranha4
-
-    args['dev']      = dev
-    args['timebase'] = timebase
-    args['lane']     = lane
-    args['chan']     = chan
-
     xpmpv_global = xpmpv
     myargs = { 'dev'         : dev,
                'pollEn'      : False,
@@ -169,29 +157,79 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
     weakref.finalize(cl, cl.stop)
     cl.start()
 
-#    setup_timing(cl)
+# modifing for ued only 2026/04/30 RM
+    if timebase=="119M":
+        logging.info('Using timebase 119M')
+        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.UseMiniTpg.set(False)
+        cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.setDisp('UseModeSel')
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ModeSel.set(1)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxPllReset.set(1)
+        time.sleep(1.0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxPllReset.set(0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.ClkSel.set(0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.C_RxReset()
+        time.sleep(1.0)
+        cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.RxDown.set(0) # Reset the latching register
+    else:
+        logging.info('Using timebase 186M')
+        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    # there appear to be no options to tell ClinkDevRoot to use
+    # LCLS2 timing (without reading yaml files, which we don't
+    # want to do) so set it by hand here.
+    #cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    time.sleep(3.5)
 
-    args['cl'] = cl
-    
+    # TODO: To be removed, now commented out xpm glitch workaround
+    ## Open a new thread here
+    #if xpmpv is not None:
+    #    cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+    #    pv = PVCtrls(xpmpv,cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper)
+    #    pv.start()
+    #else:
+    #    #  Empirically found that we need to cycle to LCLS1 timing
+    #    #  to get the timing feedback link to lock
+    #    #  cpo: switch this to XpmMini which recovers from more issues?
+    #    # check to see if timing is stuck
+    #    nbad = 0
+    #    while 1:
+    #        # check to see if timing is stuck
+    #        sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+    #        time.sleep(0.1)
+    #        sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+    #        if sof1!=sof2: break
+    #        nbad+=1
+    #        print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
+    #        #  Empirically found that we need to cycle to LCLS1 timing
+    #        #  to get the timing feedback link to lock
+    #        #  cpo: switch this to XpmMini which recovers from more issues?
+    #        cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+    #        time.sleep(3.5)
+    #        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+    #        time.sleep(3.5)
+
+    # camlink timing seems to intermittently lose lock back to the XPM
+    # and empirically this fixes it.  not sure if we need the sleep - cpo
+    #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+    #time.sleep(0.1)
+
     return cl
 
 def piranha4_init_feb(slane=None,schan=None):
     # cpo: ignore "slane" because lanemask is given to piranha4_init() above
-    global args
+    global chan
     if schan is not None:
-        args['chan'] = int(schan)
+        chan = int(schan)
 
 # called on alloc
 def piranha4_connectionInfo(cl, alloc_json_str):
-    global args
+    global lane
+    global chan
 
     print('piranha4_connectionInfo')
 
-    lane = args['lane']
-    chan = args['chan']
-    
     alloc_json = json.loads(alloc_json_str)
-    supervisor,nworker = supervisor_info(alloc_json,args['dev'])
+    supervisor,nworker = supervisor_info(alloc_json)
     print('camlink supervisor:',supervisor,'nworkers:',nworker)
     barrier_global.init(supervisor,nworker)
 
@@ -202,8 +240,33 @@ def piranha4_connectionInfo(cl, alloc_json_str):
         pv.start()
     else:
         if barrier_global.supervisor:
-            setup_timing(cl)
+            nbad = 0
+            '''
+            while 1:
+                # check to see if timing is stuck
+                sof1 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+                time.sleep(0.1)
+                sof2 = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx.sofCount.get()
+                if sof1!=sof2: break
+                nbad+=1
+                print('*** Timing link stuck:',sof1,sof2,'resetting. Iteration:', nbad)
+                #  Empirically found that we need to cycle to LCLS1 timing
+                #  to get the timing feedback link to lock
+                #  cpo: switch this to XpmMini which recovers from more issues?
+                cl.ClinkPcie.Hsio.TimingRx.ConfigureXpmMini()
+                time.sleep(3.5)
+                cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+                time.sleep(3.5)
+            '''
 
+            # camlink timing seems to intermittently lose lock back to the XPM
+            # and empirically this fixes it.  not sure if we need the sleep - cpo
+            #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
+            #time.sleep(0.1)
+
+            txId = timTxId('piranha4')
+
+            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
         barrier_global.wait()
         rxId = cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.RxId.get()
         print('rxId {:x}'.format(rxId))
@@ -284,12 +347,9 @@ def piranha4_connectionInfo(cl, alloc_json_str):
 def piranha4_connectionShutdown():
     barrier_global.shutdown()
 
-def user_to_expert(cfg, full=False):
-    global args
+def user_to_expert(cl, cfg, full=False):
+    global group
 
-    cl    = args['cl']
-    group = args['group']
-        
     d = {}
     hasUser = 'user' in cfg
     if (hasUser and 'start_ns' in cfg['user']):
@@ -327,13 +387,10 @@ def user_to_expert(cfg, full=False):
 
     update_config_entry(cfg,ocfg,d)
 
-def config_expert(cfg):
-    global args
+def config_expert(cl, cfg):
+    global lane
+    global chan
 
-    cl   = args['cl']
-    lane = args['lane']
-    chan = args['chan']
-    
     # translate legal Python names to Rogue names
     rogue_translate = {'ClinkFeb'          :'ClinkFeb[%d]'%lane,
                        'ClinkCh'           :'Ch[%d]'%chan,
@@ -375,14 +432,14 @@ def config_expert(cfg):
 #  Apply the full configuration
 def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     global ocfg
-    global args
+    global group
+    global lane
+    global chan
 
     print('piranha4_config')
 
-    args['group'] = grp
-    lane = args['lane']
-    chan = args['chan']
-    
+    group = grp
+
     appLane  = 'AppLane[%d]'%lane
     clinkFeb = 'ClinkFeb[%d]'%lane
     clinkCh  = 'Ch[%d]'%chan
@@ -409,9 +466,9 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     cfg['expert']['ClinkFeb']['TrigCtrl']['InvCC'] = False
     cfg['expert']['ClinkFeb']['ClinkTop']['ClinkCh']['DataEn'] = True
 
-    user_to_expert(cfg,full=True)
+    user_to_expert(cl,cfg,full=True)
 
-    config_expert(cfg['expert'])
+    config_expert(cl,cfg['expert'])
 
     uart = getattr(getattr(cl,clinkFeb).ClinkTop,clinkCh).UartPiranha4
 
@@ -424,16 +481,6 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     uart.VV()
     uart._rx._await()
     #print('Voltage: ', uart._rx._resp[-1])
-
-    #  Load the dark/flat-field pixel coefficients from a user set.  'lpc'
-    #  loads only the FPN/PRNU coefficients, so no other camera setting is
-    #  disturbed (unlike 'usl', which reloads everything 'gcp' reports).
-    #  Whether the coefficients are applied is set by the configdb FFM value.
-    #  Reading from flash is slower than a normal command, so allow more time.
-    logging.info('loading pixel coefficients from user set %d'%coeff_user_set)
-    uart._rx._clear()
-    uart.LPC.set('%d'%coeff_user_set)
-    uart._rx._await(20.0)
 
     # should be done by supervisor only, but XpmMini so doesn't really matter
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(False)
@@ -459,8 +506,6 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
         # must be done after StartRun because that routine sets MasterEnable
         # to True for all lanes. That causes 100% deadtime from unused lanes.
         for i in range(4):
-            # select the XPM trigger source, not EVR
-            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].TriggerSource.set(0)
             cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.TriggerEventBuffer[i].MasterEnable.set(0)
     barrier_global.wait()
 
@@ -488,12 +533,12 @@ def piranha4_config(cl,connect_str,cfgtype,detname,detsegm,grp):
 
 def piranha4_scan_keys(update):
     global ocfg
-
+    global cl
     #  extract updates
     cfg = {}
     copy_reconfig_keys(cfg,ocfg, json.loads(update))
     #  Apply group
-    user_to_expert(cfg,full=False)
+    user_to_expert(cl,cfg,full=False)
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
         copy_config_entry(cfg,ocfg,key)
@@ -502,14 +547,14 @@ def piranha4_scan_keys(update):
 
 def piranha4_update(update):
     global ocfg
-
+    global cl
     #  extract updates
     cfg = {}
     update_config_entry(cfg,ocfg, json.loads(update))
     #  Apply group
-    user_to_expert(cfg,full=False)
+    user_to_expert(cl,cfg,full=False)
     #  Apply config
-    config_expert(cfg['expert'])
+    config_expert(cl, cfg['expert'])
     #  Retain mandatory fields for XTC translation
     for key in ('detType:RO','detName:RO','detId:RO','doc:RO','alg:RO'):
         copy_config_entry(cfg,ocfg,key)

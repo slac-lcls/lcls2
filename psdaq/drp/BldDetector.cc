@@ -231,7 +231,7 @@ BldFactory::BldFactory(const char* name,
         throw std::string("BLD name ")+name+" not recognized";
     }
     unsigned payloadSize = _varLenArr ? 0 : getVarDefSize(_varDef,_arraySizes);
-
+    
     _handler = std::make_shared<Bld>(mcaddr, mcport, interface,
                                      Bld::DgramTimestampPos, Bld::DgramPulseIdPos,
                                      Bld::DgramHeaderSize, payloadSize,
@@ -690,7 +690,7 @@ private:
 
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
-    PgpReader(para, drp.pool, std::min(MAX_RET_CNT_C, drp.pool.dmaCount()), 32),
+    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
     m_available(0), m_current(0), m_nDmaRet(0)
@@ -1103,16 +1103,6 @@ std::string BldDrp::configure(const json& msg)
         return errorMsg;
     }
 
-    return std::string();
-}
-
-std::string BldDrp::startup(Xtc& xtc, const void* bufEnd)
-{
-    std::string errorMsg = DrpBase::startup(xtc, bufEnd);
-    if (!errorMsg.empty()) {
-        return errorMsg;
-    }
-
     m_workerThread = std::thread{&Pgp::worker, &m_pgp, m_exporter, exposer()};
 
     return std::string();
@@ -1135,7 +1125,7 @@ unsigned BldDrp::unconfigure()
 
 
 BldApp::BldApp(Parameters& para) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
     m_para       (para),
     m_pool       (para),
     m_unconfigure(false)
@@ -1159,28 +1149,15 @@ BldApp::~BldApp()
 
 void BldApp::_disconnect()
 {
-    if (m_drp)
-        m_drp->disconnect();
-    if (m_det)
-        m_det->shutdown();
+    m_drp->disconnect();
+    m_det->shutdown();
 }
 
 void BldApp::_unconfigure()
 {
-    if (m_drp) {
-        m_drp->pool.shutdown();  // Release Tr buffer pool
-        m_drp->unconfigure();
-    }
+    m_drp->pool.shutdown();  // Release Tr buffer pool
+    m_drp->unconfigure();
     m_unconfigure = false;
-}
-
-std::string BldApp::_endrun(const json& phase1Info)
-{
-    std::string errorMsg = m_drp->endrun(phase1Info);
-    if (!errorMsg.empty()) {
-        logging::error("%s", errorMsg.c_str());
-    }
-    return errorMsg;
 }
 
 json BldApp::connectionInfo(const json& msg)
@@ -1205,7 +1182,7 @@ void BldApp::connectionShutdown()
 
 void BldApp::_error(const std::string& which, const json& msg, const std::string& errorMsg)
 {
-    json body({});
+    json body = json({});
     body["err_info"] = errorMsg;
     json answer = createMsg(which, msg["header"]["msg_id"], getId(), body);
     reply(answer);
@@ -1213,8 +1190,6 @@ void BldApp::_error(const std::string& which, const json& msg, const std::string
 
 void BldApp::handleConnect(const json& msg)
 {
-    m_lastKey = msg["header"]["key"];
-
     std::string errorMsg = m_drp->connect(msg, getId());
     if (!errorMsg.empty()) {
         logging::error("Error in BldApp::handleConnect");
@@ -1243,7 +1218,7 @@ void BldApp::handleConnect(const json& msg)
     m_det->nodeId = m_drp->nodeId();
     m_det->connect(msg, std::to_string(getId()));
 
-    json body({});
+    json body = json({});
     json answer = createMsg("connect", msg["header"]["msg_id"], getId(), body);
     reply(answer);
 }
@@ -1257,7 +1232,7 @@ void BldApp::handleDisconnect(const json& msg)
 
     _disconnect();
 
-    json body({});
+    json body = json({});
     reply(createMsg("disconnect", msg["header"]["msg_id"], getId(), body));
 }
 
@@ -1277,69 +1252,56 @@ void BldApp::handlePhase1(const json& msg)
         }
     }
 
-    json body({});
+    json body = json({});
 
     if (key == "configure") {
-        // Unconfigure if previous transition was Unconfigure and when Configure is being retried
-        if (m_unconfigure || (m_lastKey == key)) {
+        if (m_unconfigure) {
             _unconfigure();
         }
 
-        // Configure the DRP first
+        // Configure the detector first
+        std::string config_alias = msg["body"]["config_alias"];
+        unsigned error = m_det->configure(config_alias, xtc, bufEnd);
+        if (error) {
+            std::string errorMsg = "Phase 1 error in Detector::configure";
+            logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
+        }
+
+        // Next, configure the DRP
         std::string errorMsg = m_drp->configure(msg);
         if (!errorMsg.empty()) {
             errorMsg = "Phase 1 error: " + errorMsg;
-            body["err_info"] = errorMsg;
             logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
         }
-        else {
-            // Next, configure the detector
-            std::string config_alias = msg["body"]["config_alias"];
-            unsigned error = m_det->configure(config_alias, xtc, bufEnd);
-            if (error) {
-                std::string errorMsg = "Phase 1 error in Detector::configure";
-                body["err_info"] = errorMsg;
-                logging::error("%s", errorMsg.c_str());
-            }
-            else {
-                // Finally, do any remaining configuration and start up the DRP processes
-                std::string errorMsg = m_drp->startup(xtc, bufEnd);
-                if (!errorMsg.empty()) {
-                    errorMsg = "Phase 1 error: " + errorMsg;
-                    body["err_info"] = errorMsg;
-                    logging::error("%s", errorMsg.c_str());
-                }
-                else {
-                    m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                    m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
-                }
-            }
-        }
+
+        m_drp->runInfoSupport(xtc, bufEnd, m_det->namesLookup());
+        m_drp->chunkInfoSupport(xtc, bufEnd, m_det->namesLookup());
     }
     else if (key == "unconfigure") {
         // "Queue" unconfiguration until after phase 2 has completed
         m_unconfigure = true;
     }
     else if (key == "beginrun") {
-        // Do EndRun when BeginRun is being retried
-        if (m_lastKey == key) {
-            _endrun(phase1Info);        // Ignore possible error
-        }
-
         RunInfo runInfo;
         std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
         if (!errorMsg.empty()) {
-            body["err_info"] = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
         }
-        else {
-            m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
-        }
+
+        m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
     }
     else if (key == "endrun") {
-        std::string errorMsg = _endrun(phase1Info);
+        std::string errorMsg = m_drp->endrun(phase1Info);
         if (!errorMsg.empty()) {
-            body["err_info"] = "Phase 1 error: " + errorMsg;
+            logging::error("%s", errorMsg.c_str());
+            _error(key, msg, errorMsg);
+            return;
         }
     }
     else if (key == "enable") {
@@ -1361,7 +1323,6 @@ void BldApp::handlePhase1(const json& msg)
         }
         logging::info("handlePhase1 enable complete");
     }
-    m_lastKey = key;
 
     json answer = createMsg(key, msg["header"]["msg_id"], getId(), body);
     reply(answer);

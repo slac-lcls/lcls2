@@ -1,26 +1,24 @@
 #ifndef Pds_Eb_CubeConfigDgram_hh
 #define Pds_Eb_CubeConfigDgram_hh
 
-#include "ResultDgram.hh"
-#include <stdio.h>
+#include "CubeResultDgram.hh"
 
 namespace Pds {
     namespace Eb {
 
-        class CubeConfigDgram : public ResultDgram
+        class CubeConfigDgram : public CubeResultDgram
         {
         public:
             CubeConfigDgram(const Pds::EbDgram& dgram, unsigned id) :
-                ResultDgram(dgram, id) {}
+                CubeResultDgram(dgram, id) {}
         public:
-            void     resultType   (char*    rtype);
             void     bins         (unsigned nbins) {
-                auxdata(nbins);
+                binIndex(nbins-1);
             }
-            void     appendJson   (char*    json);
-            ResultType resultType() const { return (ResultType)monBufNo(); }
-            unsigned   bins      () const { return auxdata(); }
-            char*      json      () const { return xtc.payload()+sizeof(*this)-sizeof(EbDgram); }
+            void     appendJson   (char*    json) {
+                unsigned len = strlen(json)+1;
+                memcpy( xtc.alloc(len, 0), json, len);
+            }
         };
     };
 };

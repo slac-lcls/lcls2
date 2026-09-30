@@ -146,12 +146,12 @@ def run_mpi_gpu(exp, run, xtc_dir, det_name,
     n             = 0
 
     for r in ds.runs():
-        for evt in r.events():
+        for ctx in r.events():
             if n == n_warmup:
                 wall_t_start = time.perf_counter()
 
             t0 = time.perf_counter()
-            _  = evt.gpu.get(det_name + '.calib').on_gpu
+            _  = ctx.get(det_name + '.calib').on_gpu
             dt = (time.perf_counter() - t0) * 1000.0
 
             n += 1
@@ -281,8 +281,7 @@ def main():
     p.add_argument('--batch-size', type=int, default=10,
                    help='GPU batch size (default 10)')
     p.add_argument('--pool-depth', type=int, default=4,
-                   help='EventPool depth / n_gpu_streams '
-                        '(benchmark default 4; DataSource default 2)')
+                   help='EventPool depth / n_gpu_streams (default 4)')
     p.add_argument('--single-gpu-baseline-ms', type=float, default=0.0,
                    metavar='MS',
                    help='Single-GPU amortised ms/evt from gpu_performance_benchmark.py '

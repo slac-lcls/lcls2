@@ -190,14 +190,9 @@ unsigned AreaDetector::subIndices    ()
 #endif
 }
 
-unsigned AreaDetector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
-                                 double_t* dst, unsigned bin, DescData& rawData)
+void AreaDetector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                             double_t* dst, DescData& rawData)
 {
-    NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
-    Name& name = m_namesLookup[namesId].names().get(valueIndex);
-    unsigned arraySize = name.rank() ? sizeof(double_t)*Shape(rawData.shape(name)).num_elements(name.rank()) : sizeof(double_t);
-    dst += bin*arraySize;
-
     switch(valueIndex) {
     case RawDef::value:
         if (subIndex==0)
@@ -232,6 +227,5 @@ unsigned AreaDetector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsi
         printf("*** %s:%d: unknown RawDef array %u\n",__FILE__,__LINE__,valueIndex);
         abort();
     }
-    return arraySize;
 }
 }

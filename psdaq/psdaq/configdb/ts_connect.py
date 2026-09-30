@@ -134,7 +134,6 @@ class ts_connector:
 
         # make sure the XPM links from the detectors are OK
         cnt = 0
-        unready_pvs = None
         while cnt < 15:
             cnt += 1
             rxready_values = self.ctxt.get(pvnames_rxready)
@@ -153,8 +152,8 @@ class ts_connector:
             values = [0]*len(rxreset_pvs)
             self.ctxt.put(rxreset_pvs,values)
             time.sleep(1)
-        if len(unready_pvs):
-            raise ValueError('RxLink not locked! %s' % unready_pvs)
+        if 0 in rxready_values:
+            raise ValueError('RxLink not locked! %s' % pvname)
         else:
             print('RxLink locked after %u tries' % cnt)
 

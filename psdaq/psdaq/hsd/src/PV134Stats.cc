@@ -270,7 +270,7 @@ namespace Pds {
         v.fmcpwr   = mon.fmcPower;
         unsigned i;
         i = 0; PVPUT(monEnv);
-        i = 1; PVPUT(monEnv); }  // this overwrites the same structure (with the same value)
+        i = 1; PVPUT(monEnv); }
 
       /*
       HdrFifo* hdrf = _m.hdrFifo();

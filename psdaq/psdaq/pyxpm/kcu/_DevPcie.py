@@ -313,8 +313,7 @@ class DevPcie(pr.Device):
             #  Reprogram the reference clock
             self.AxiPcieCore.I2cMux.set(1<<2)
             self.AxiPcieCore.Si570._program(0 if self.isUED else 1)
-            time.sleep(0.1)
-            self.UsTiming.C_RxReset()
+            time.sleep(0.01)
 
         if self.boardType == 'C1100':
             #  Reprogram the reference clock
@@ -334,12 +333,9 @@ class DevPcie(pr.Device):
             time.sleep(0.01)
             self.XpmApp.txPllReset.set(0)
             time.sleep(0.01)
-            # self.XpmApp.rxPllReset.set(1)
-            # time.sleep(0.01)
-            # self.XpmApp.rxPllReset.set(0)
-            self.XpmApp.rxReset.set(1)
+            self.XpmApp.rxPllReset.set(1)
             time.sleep(0.01)
-            self.XpmApp.rxReset.set(0)            
+            self.XpmApp.rxPllReset.set(0)
         self.XpmApp.link.set(0)
         self.DevReset.clearTimingPhyReset.set(1)
 

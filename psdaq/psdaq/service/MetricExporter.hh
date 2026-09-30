@@ -37,8 +37,6 @@ public:
     void observe(double value);
     void collect(prometheus::MetricFamily& family);
     void clear();
-    uint64_t counts(unsigned idx) const { return m_counts[idx]; }
-    void dump() const;
 
 private:
     BucketBoundaries      m_boundaries;

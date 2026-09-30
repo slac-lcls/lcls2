@@ -6,7 +6,7 @@
 # Get a PCDS JWT using your Kerberos token
 # WORKS ON INTERACTIVE NODES ONLY!!!!
 
-#source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
+source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
@@ -18,7 +18,8 @@ echo $CALIB_JWT
 
 if [[ -z "${CALIB_JWT}" ]]
 then
-   echo "The JWT environment variable is not set, try kinit first"
+   echo "The JWT environment variable is not set"
+   exit 1
 fi
 
 echo "Successfully obtained a JWT"

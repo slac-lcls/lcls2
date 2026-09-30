@@ -16,7 +16,10 @@
 // making traces in the Nsight Systems profiler more easily identifiable.  It
 // nominally adds very little overhead but the documentation warns against
 // instrumenting code that takes less than 1 us to run.  The NVTX_DISABLE macro
-// is used by NVTX header files to disable NVTX calls in the codebase.
+// can be defined to remove the NVTX calls from the codebase.
+// - Apparently the meaning of this has evolved to enable and disable profile
+//   data collection in the Enable and Disable transitions, resp. and is
+//   unrelated to the use of NVTX.
 #define NVTX_DISABLE
 
 // If the HOST_REARMS_DMA macro is defined, the GPU DRP can be run without

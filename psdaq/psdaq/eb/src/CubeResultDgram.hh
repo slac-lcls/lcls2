@@ -4,6 +4,9 @@
 #include "ResultDgram.hh"
 #include <stdio.h>
 
+#define ADDBITS(FLD,VAL) auxdata((auxdata()&~s_##FLD) | ((VAL&m_##FLD)<<v_##FLD))
+#define GETBITS(FLD)     (auxdata()&s_##FLD)>>v_##FLD
+
 namespace Pds {
     namespace Eb {
 
@@ -44,5 +47,8 @@ namespace Pds {
         };
     };
 };
+
+#undef ADDBITS
+#undef GETBITS
 
 #endif
