@@ -21,4 +21,4 @@ Result: **168 passed**, logged in `unit.log`. Parser files and gather-map,
 gather-plan and kernel ASTs were checked against the frozen measured G prefix.
 No new GPU-performance claim, commit, push, or bulk merge.
 
-Full review: `psana/psana/gpu/docs/batched_pre_bulk_review.md`.
+Full review: [batched_pre_bulk_review.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/batched_pre_bulk_review.md).

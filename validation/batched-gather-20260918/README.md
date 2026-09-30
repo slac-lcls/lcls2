@@ -37,4 +37,4 @@ Clean medians: O 37.274593 s, G 28.578059 s (23.3% lower elapsed time).
 Nsight verifies 320,000 → 500 gather kernels and 341,500 → 22,000 total kernels.
 Both captures have collection-completeness warnings retained in the report.
 Run `audit.py` and `summarize.py` against `job-38561649-warm-ab` to reproduce.
-The full report is `psana/psana/gpu/docs/performance/batched_canonical_gather_sdf.md`.
+The full report is [batched_canonical_gather_sdf.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/batched_canonical_gather_sdf.md).

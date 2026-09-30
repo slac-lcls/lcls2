@@ -1,5 +1,7 @@
 # Stage 5c matched calibration/integration performance campaign
 
+Latest accepted measurements: [current performance report](../../docs/performance/user_kernels.md).
+
 Benchmark harness only; no production runtime changes. Runtime baseline is
 `6ba5fa586` (Stage 5b). The user callable is the same validated
 `JungfrauAzimuthalIntegration` in both variants.
