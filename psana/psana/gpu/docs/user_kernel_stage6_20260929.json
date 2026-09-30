@@ -1,0 +1,66 @@
+{
+  "status": "accepted",
+  "runtime_commit": "6ba5fa586",
+  "checkout_commit": "5e9e134aa",
+  "production_changes": false,
+  "roots": {
+    "user-kernel-stage6-20260929-r1": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1",
+      "files_verified": 1257,
+      "manifest_sha256": "4c44817111ceec991400a3fea0f12834541e86a25ae2566cada4850cea207c37"
+    },
+    "user-kernel-stage6-20260929-r4": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4",
+      "files_verified": 1257,
+      "manifest_sha256": "2faca7ab5ad0d38be819fd8332c5e577dddc2014a99c4eac0011a6fc2cf8395a"
+    }
+  },
+  "tests": {
+    "cpu_passed": 608,
+    "cpu_skipped": 173,
+    "cpu_deselected": 7,
+    "byhand_passed": 5,
+    "gpu_passed": 173,
+    "mpi_publication": 2,
+    "mpi_lifecycle_success": 12,
+    "mpi_expected_callback_abort": 4
+  },
+  "jobs": {
+    "39479128": "completed device and real-calibration MPI phases; deliberately canceled remaining lifecycle matrix",
+    "39479129": "COMPLETED exit 0",
+    "39479814": "fixture setup failure; no accepted result",
+    "39479871": "observer retained MPI windows; canceled; no accepted matrix",
+    "39479943": "COMPLETED exit 0"
+  },
+  "source_sha256": {
+    "psana/psana/tests/gpu/integration/test_batched_locators.py": "ae074bde6dd8bd765748a42de182d18c3362a809d2e6bbf40f1de749861bd2a2",
+    "psana/psana/tests/gpu/integration/test_gpu_task_lifecycle_device.py": "1f3c89c1aced8d1a4bd68ebf757143e0f657604e7358c757c1cf0db20ce40943",
+    "psana/psana/tests/gpu/integration/mpi_gpu_lifecycle.py": "1d140828f12b1e3d43e75208ed4df187ef2575469c207cd4c5b567c53ca1f1d8"
+  },
+  "log_sha256": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/mpi-publication-exclusive.log": "7a99f0aa91078a38b8ef26e031e767a0260c48a1a2e52c0ba618974c2741c65d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-0-explicit.log": "198c85472cb653a0ff61a837a189459f09175ecac7b444c9b1fbfff5f226897f",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-0-break.log": "a1685703ae1f74fe83e458c4f5c338c45d51eca364ceaed3c896014fc4d0fe92",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-0-error.log": "7951761f7373d7bc4184af28aa0d0a9f4d5d41acd1fba8450ee5eca7a52b528a",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-0-callback.log": "fa6701513652d6027edc32f44730779bcac36afe585de088418d2bda77156db0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-1-explicit.log": "bdd82909d8dcf11841d48d1cc213af1e4510b7f17b753fc3c84d385bfbacb815",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-1-break.log": "777a8e91a2846be0673c510be836ca8eb9067a087d21939394dbf74fa75a2ce2",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-1-error.log": "cbd3da48dcb8fd04f9ee67007885011c15712baaf8481ff09fa556c3d7d450d4",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-exclusive-1-callback.log": "c795b8adebaa79a1c5b456047e64ac081bf7dbba8a7e3dd52c2d37f507570efa",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/mpi-publication-hybrid.log": "0ca5594e34788a5a647cd3bce71517b02c203e9b4e2e6546806e2112e12d902e",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-0-explicit.log": "50d341caa1242245bf007be530f75e23e847ad0416c475eac53f9821284bac9c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-0-break.log": "df757a83c0ecb33e0b6f1ab3a97ac099ecbb4d62fa9458b87a599fc7b62393a5",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-0-error.log": "03ec0ca5a985abe7ca4d6d03127a31d087f83d949c4ae30dac26d9b954424d75",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-0-callback.log": "b63bde079338b82e6c4780e216095d82ac737debf8efd4c237381ca6e1df3b6e",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-1-explicit.log": "69e5aad85b44290717c380e0df97329e380518527a1c40255b49de61a1a2c241",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-1-break.log": "c187db597eae73c16b5634210e29f9b1ce1399cac03ffac5314b0865784ebd37",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-1-error.log": "19850d32a30da14f026aa816199ecfb3405fcc953d0b79514cea11073b459322",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/mpi-lifecycle-hybrid-1-callback.log": "ba9cf89cdeb7839343d526b37eee98575d06359c6403c23e49e1ce4a056c4b2d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/main-retry.log": "c630ea655ebccf1adf8cb9deef06f0a895f3426e6bc002e3ceedcb1282f8eb5b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/byhand-retry.log": "17251e81753dbf2ff1de0781e4f36d0a8557fcd2bf47307cd83fb04032677762",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/device.log": "0b7afece68e0ea4238ef7ae1c9c324192f8b4c8cbeb023378069e857de8c2589",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/gpu-39479128.log": "cb0b035de6974845a8aaff65977e84dbb4bf1e81eeb812e422880c78505c0d64",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r1/cpu-retry-39479129.log": "18395da478891dfa8b33b337b3adeb4c2d09cecdfc30a117fb31a59f948b1e0d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/user-kernel-stage6-20260929-r4/gpu-39479943.log": "923f46926485542991a663ff66f1ac63b7c5cc685c6db524a6b97cac418e8e6d"
+  }
+}

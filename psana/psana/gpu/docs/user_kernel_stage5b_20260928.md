@@ -3,7 +3,8 @@
 **Status:** Implemented and validated. The host suite passed **510 tests**,
 the focused A100 suite passed **24 tests**, and all real-data serial/MPI checks passed. Stage 5a is committed as
 `d9189bfd9`. No production runtime code changed for Stage 5b.
-Stage 5c performance and Stage 6 final lifecycle acceptance remain pending.
+[Stage 5c performance](user_kernel_stage5c_20260928.md) is complete and accepted.
+[Stage 6 lifecycle acceptance](user_kernel_stage6_20260929.md) records the final closeout checks.
 
 ## External user example
 

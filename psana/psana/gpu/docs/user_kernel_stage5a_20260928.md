@@ -7,7 +7,7 @@ Runtime baseline is `21a6628bb` (production runtime unchanged from `10df4c6e3`).
 CPU-v3 parity follow-up also passed: **496 host tests, 19 focused A100 tests**,
 plus byte-for-byte default CPU calibration matches in serial and both MPI modes.
 [Stage 5b radial integration](user_kernel_stage5b_20260928.md) is now validated.
-Stage 5c combined performance remains pending.
+[Stage 5c combined performance](user_kernel_stage5c_20260928.md) is complete and accepted.
 
 ## External user contract
 

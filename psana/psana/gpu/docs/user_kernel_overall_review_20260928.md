@@ -6,7 +6,8 @@ finding 2 is fixed by `10df4c6e3`
 ([serial cleanup validation](serial_gpu_close_20260928.md)). Current API docs
 have been refreshed. The dated review below records the original findings and
 review scope; it does not describe those fixes as still open. Stage 5's scientific
-example and Stage 6's consolidated acceptance remain pending.
+example and performance campaigns are now complete. See the
+[Stage 6 consolidated acceptance](user_kernel_stage6_20260929.md) for final lifecycle checks.
 
 
 Review basis: pre-user-kernel baseline `480f7074c` through `6291d21ed`, plus the
