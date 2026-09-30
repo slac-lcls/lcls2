@@ -1,4 +1,4 @@
-"""Transitions must drain active multi-owner work before changing constants."""
+"""Transitions must drain active multi-owner work before dispatching transitions."""
 from types import SimpleNamespace as NS
 
 import numpy as np
@@ -23,11 +23,11 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
     m = gpu_events.GpuEventManager.__new__(gpu_events.GpuEventManager)
     m.event_pool = EventPool(n=1)
     m._first_batch_logged = True
-    m.gpu_detectors, m.configs = {'camera': (None, detector)}, []
+    m.input_preparers, m.configs = {'camera': detector}, []
     record = m.event_pool.submit(NS(iter_events=lambda: iter(specs)), None, [],
-                                 m.gpu_detectors, input_windows=windows, batch_id=7)
-    output = record.gpu_results_by_ts[specs[0].timestamp]['camera.calib']
-    lease = record.leases_by_ts[specs[0].timestamp]['camera.calib']
+                                 m.input_preparers, input_windows=windows, batch_id=7)
+    output = record.prepared_inputs['camera'].data[0]
+    lease = record.leases[0]
     consumer = cp.cuda.Stream(non_blocking=True)
     delay = cp.RawKernel('''extern "C" __global__ void delay(unsigned long long ticks) {
         unsigned long long start = clock64();
@@ -52,13 +52,6 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
     assert m.event_pool.active_count == 1
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
 
-    def constants(*args, **kwargs):
-        assert done.done and order == ['consumer']
-        assert not m.event_pool.active_count and all(w.released for w in windows)
-        order.append('constants')
-        return np.full(2700, 11, np.float32), np.full(2700, 3, np.float32)
-    monkeypatch.setattr(gpu_events, '_compute_calib_constants_cpu', constants)
-
     def dispatch(dgrams):
         assert done.done and not m.event_pool.active_count
         assert all(w.released for w in windows)
@@ -67,11 +60,8 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
     dg = NS(service=lambda: service)
     try:
         assert list(m._handle_steps({0: ([(service, [dg])], [])})) == []
-        assert order == (['consumer', 'constants', 'dispatch'] if service == TransitionId.BeginStep
-                         else ['consumer', 'dispatch'])
-        np.testing.assert_array_equal(copied.get(), (expected[0].astype(np.float32) - 7) * 2)
-        if service == TransitionId.BeginStep:
-            np.testing.assert_array_equal(detector.peds_gpu.get(), np.full(2700, 11, np.float32))
+        assert order == ['consumer'] * len(windows) + ['dispatch']
+        np.testing.assert_array_equal(copied.get(), expected[0])
     finally:
         for _ in m.event_pool.flush():
             pass

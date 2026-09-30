@@ -21,7 +21,7 @@ def manager(io, capacity=6004, *, max_events=0):
     m.gpu_reader = KvikioGpuReader(n_slots=3, budget=m._gpu_budget)
     m.gpu_xtc_parser = None
     m.event_pool = EventPool(n=2)
-    m.gpu_detectors, m.gpu_det_names, m._d2h_pipelines = {}, [], {}
+    m.input_preparers, m.gpu_det_names = {}, []
     m.configs = [None, None]
     m._gpu_file_epochs = GpuFileEpochs(m.dm)
     m._first_batch_logged, m._done, m._closed = True, False, False

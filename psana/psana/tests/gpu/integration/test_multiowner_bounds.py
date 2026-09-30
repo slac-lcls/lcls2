@@ -57,7 +57,7 @@ def test_two_delayed_input_consumers_keep_both_gather_owners():
     windows = tuple(owner((i,), range(4), producer) for i in range(2))
     pool = EventPool(n=1)
     record = pool.submit(NS(iter_events=lambda: iter(specs)), None, [],
-                         {'camera': (None, detector)}, input_windows=windows, batch_id=7)
+                         {'camera': detector}, input_windows=windows, batch_id=7)
     assert pool.begin_retire_next() is record
     delay = cp.RawKernel('''extern "C" __global__ void delay(unsigned long long ticks) {
         unsigned long long start = clock64();

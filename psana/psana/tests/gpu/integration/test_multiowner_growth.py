@@ -38,26 +38,20 @@ def test_multiowner_growth_keeps_old_map_and_output_charged(passthrough):
             try:
                 with hold:
                     record = pool.submit(NS(iter_events=lambda: iter(specs[:count])),
-                                         None, [], {'camera': (None, detector)},
+                                         None, [], {'camera': detector},
                                          input_windows=windows, batch_id=7)
             finally:
                 hold.close()
             assert budget._held == 0 and budget.committed() <= budget.limit()
             assert pool.begin_retire_next() is record
             for i in range(count):
-                actual = record.gpu_results_by_ts[specs[i].timestamp]['camera.calib']
-                reference = expected[i].astype(np.float32)
-                if not passthrough:
-                    present = np.any(expected[i], axis=(1, 2))
-                    reference[present] = (reference[present] - 7) * 2
-                np.testing.assert_array_equal(actual.get(), reference)
-            del actual
+                np.testing.assert_array_equal(record.prepared_inputs["camera"].data[i].get(), expected[i])
             if count == 1:
-                aliases = [detector._gather_maps[0].device[:], detector._calib_slot_bufs[0][:]]
+                aliases = [detector._gather_maps[0].device[:], detector._raw_slot_bufs[0][:]]
                 old_pixels = aliases[1].get()
             else:
                 assert detector._gather_maps[0].device.data.ptr != aliases[0].data.ptr
-                assert detector._calib_slot_bufs[0].data.ptr != aliases[1].data.ptr
+                assert detector._raw_slot_bufs[0].data.ptr != aliases[1].data.ptr
                 np.testing.assert_array_equal(aliases[1].get(), old_pixels)
             pool.finish_retire_next()
         for window, use in zip(windows, planned):

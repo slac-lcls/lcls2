@@ -6,23 +6,20 @@ import pytest
 
 from gpu_group_fixture import available, group_case
 from psana.gpu import gpu_events
-from psana.gpu.gpu_detector import _CanonicalGatherPlan
+from psana.gpu.gpu_input import GpuEventDgrams
 from psana.psexp import TransitionId
 
 pytestmark = [pytest.mark.gpu, pytest.mark.skipif(
     not available(), reason='no CUDA device')]
 
 
-@pytest.mark.parametrize('stop', ['max_events', 'generator_close', 'read_failure', 'gather_failure'])
-@pytest.mark.parametrize('d2h', [0, 7])
-def test_group_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, monkeypatch, stop, d2h):
+@pytest.mark.parametrize('stop', ['max_events', 'generator_close', 'read_failure', 'input_failure'])
+def test_group_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, monkeypatch, stop):
     case = group_case(tmp_path, mixed_packet)
     m = case.manager
     # Force several executions so early close and a later read failure occur
     # while earlier parsed inputs and deliveries are live.
     m._admission_capacity = 4 * 1024**2
-    if d2h:
-        m._d2h_pipelines = {'slow.calib': gpu_events._D2hPipeline('slow.calib', d2h)}
     windows = []
     parse = m.gpu_xtc_parser.parse_groups
 
@@ -54,13 +51,12 @@ def test_group_cleanup_with_real_parser_and_gather(tmp_path, mixed_packet, monke
                 pending.futures[0] = (r, size, FailedFuture(future))
             return pending
         monkeypatch.setattr(m.gpu_reader, '_submit_read', fail_second_read)
-    elif stop == 'gather_failure':
-        gather = _CanonicalGatherPlan.gather
-
-        def fail_after_gather(self, *args, **kwargs):
-            gather(self, *args, **kwargs)
-            raise RuntimeError('injected queued gather failure')
-        monkeypatch.setattr(_CanonicalGatherPlan, 'gather', fail_after_gather)
+    elif stop == 'input_failure':
+        original = GpuEventDgrams.from_windows
+        def fail_after_inputs(*args, **kwargs):
+            original(*args, **kwargs)
+            raise RuntimeError('injected input binding failure')
+        monkeypatch.setattr(GpuEventDgrams, 'from_windows', fail_after_inputs)
 
     iterator = m._process_batch({}, {0: (case.packet, [])}, {})
     saved = []
@@ -97,7 +93,7 @@ def test_beginstep_updates_after_drain_and_endrun_finishes_once(
         tmp_path, mixed_packet, monkeypatch):
     import cupy as cp
     case = group_case(tmp_path, mixed_packet)
-    m, detector = case.manager, case.manager.gpu_detectors['slow'][1]
+    m = case.manager
     saved, windows, transitions = [], [], []
     parse = m.gpu_xtc_parser.parse_groups
 
@@ -107,14 +103,6 @@ def test_beginstep_updates_after_drain_and_endrun_finishes_once(
         return window
     monkeypatch.setattr(m.gpu_xtc_parser, 'parse_groups', track)
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
-    peds, gains = np.full(54, 7, np.float32), np.full(54, 2, np.float32)
-
-    def constants(*args, **kwargs):
-        assert all(w.released for w in windows)
-        assert not m.event_pool.active_count
-        return peds, gains
-    monkeypatch.setattr(gpu_events, '_compute_calib_constants_cpu', constants)
-
     def dispatch(dgrams):
         assert all(w.released for w in windows)
         assert not m.event_pool.active_count
@@ -126,14 +114,12 @@ def test_beginstep_updates_after_drain_and_endrun_finishes_once(
         from itertools import chain
         for envelope in chain(m._process_batch({}, {0: (packet, [])}, {}), m._flush_event_pool()):
             state = envelope.gpu_state
-            if state._gpu_results:
-                i = state._event_dgrams.batch_event_index
+            assert not state._gpu_results
+            i = state._event_dgrams.batch_event_index
+            if i % 100 == 99:
                 raw = case.expected.copy()
                 raw.flat[0] = 1000 + i
-                expected = raw.astype(np.float32)
-                if transitions:
-                    expected = (expected - 7) * 2
-                np.testing.assert_array_equal(cp.asnumpy(state._gpu_results['slow.calib'])[0], expected)
+                np.testing.assert_array_equal(state.detector('slow').field('raw', 'arrayRaw').on_cpu[1], raw)
                 samples.append(i)
             saved.append(state)
         return samples
@@ -145,7 +131,7 @@ def test_beginstep_updates_after_drain_and_endrun_finishes_once(
     try:
         assert process(case.packet) == list(range(99, 1000, 100))
         assert transition(TransitionId.BeginStep) == []
-        # A smaller EB tail uses updated constants with the same configured plan.
+        # A smaller EB tail keeps the raw input unchanged with the same configured plan.
         tail = mixed_packet(n_events=203, fast_size=case.fast_size,
                             slow_size=case.slow_size,
                             timestamp_base=case.timestamp_base)

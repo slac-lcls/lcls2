@@ -50,10 +50,8 @@ def _setup(cp, passthrough=False, budget=None, parser_slots=1):
     # Handle order deliberately differs from both stream and canonical order.
     pool = GpuXtcBatchPool(configs, field_handles=tuple(reversed(configs.field_handles())),
                            n_slots=parser_slots, budget=budget)
-    peds = None if passthrough else cp.full(3 * 3 * 300, 7, dtype=cp.float32)
-    gains = None if passthrough else cp.full(3 * 3 * 300, 2, dtype=cp.float32)
-    detector = gd.GPUDetector((3, 3, 100), peds, gains, binding, n_slots=1,
-                              budget=budget, passthrough=passthrough)
+    detector = gd.DenseInputPreparer((3, 3, 100), binding, dtype=dtype,
+                                     n_slots=1, budget=budget)
     detector.configure_gather(pool.handle_indices)
     cp.cuda.get_current_stream().synchronize()
     return pool, detector, dtype
@@ -101,30 +99,6 @@ def _input(cp, pool, producer, selections, dtype):
     return batch, tuple(GpuEventDgrams(e, batch) for e in events), expected
 
 
-def _old_gather(cp, detector, events, stream):
-    raw, calib = [], []
-    with stream:
-        for event in events:
-            if not detector.binding.has_sources(event):
-                continue
-            target = cp.zeros(detector.det_shape, dtype=(cp.float32 if detector._passthrough
-                                                       else cp.uint16))
-            present = cp.zeros(3, dtype=cp.uint8)
-            for dgram, row, _, handle in detector.binding.iter_sources(event):
-                locators = dgram.locate(handle).wait_on(stream)
-                gd._gather_locator_field_gpu(dgram.data_gpu, locators, dgram.dgram_index,
-                                             handle, row, 300, target, present)
-            if detector._passthrough:
-                out = target
-            else:
-                out = cp.empty(detector.det_shape, dtype=cp.float32)
-                gd.fused_calib_gpu(target, detector.peds_gpu, detector.gmask_gpu, out=out)
-                gd._zero_missing_rows_gpu(out, present)
-            raw.append(target)
-            calib.append(out)
-    return raw, calib
-
-
 @pytest.mark.parametrize("passthrough", [False, True])
 @pytest.mark.parametrize("cross_stream", [False, True])
 def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, passthrough, cross_stream):
@@ -156,22 +130,20 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, pass
             raise AssertionError("per-handle locate in canonical gather")
         batch.locate = unexpected
         before = len(launches)
-        actual = list(detector.process_batch(events, stream=consumer, slot_id=0))
+        prepared = detector.prepare_batch(events, stream=consumer, slot_id=0)
+        actual = [] if prepared is None else prepared.data
         consumer.synchronize()
         producer.synchronize()
         assert batch._locators == {}
         del batch.locate  # restore class method without a self -> bound-method cycle
-        old_raw, old_calib = _old_gather(cp, detector, events, consumer)
         consumer.synchronize()
         assert len(launches) - before == bool(expected)
-        assert [a.timestamp for a in actual] == [e.timestamp for e in events
+        assert ([] if prepared is None else [a.timestamp for a in prepared.events]) == [e.timestamp for e in events
                                                if detector.binding.has_sources(e)]
         for i, result in enumerate(actual):
-            target = result.calib_gpu if passthrough else result.raw_gpu
+            target = result
             np.testing.assert_array_equal(target.get(), expected[i])
-            np.testing.assert_array_equal(target.get(), old_raw[i].get())
-            np.testing.assert_array_equal(result.calib_gpu.get(), old_calib[i].get())
-        if actual:
+        if len(actual):
             pointer = detector._gather_maps[0].device.data.ptr
             if original_map_ptr is None:
                 original_map_ptr = pointer
@@ -179,8 +151,7 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, pass
                 assert pointer == original_map_ptr
                 assert batch.configured_locations().capacity > batch.n_dgrams
         memory = detector.memory_bytes()
-        # Constants are an existing separate accounting category at this base.
-        assert budget.committed() == pool.memory_bytes()['total'] + memory['total'] - memory['constants']
+        assert budget.committed() == pool.memory_bytes()['total'] + memory['total']
 
 
 @pytest.mark.parametrize("column,value", [
@@ -189,27 +160,25 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, pass
     (p.LOC_TYPE, 8), (p.LOC_RANK, 1), (p.LOC_NBYTES, 0),
     (p.LOC_NBYTES, 602), (p.LOC_OFFSET, 2**64 - 1), (p.LOC_OFFSET, 1000000),
 ])
-def test_rejected_locator_zeroes_pixels_and_calibration(column, value):
+def test_rejected_locator_zeroes_pixels_and_presence(column, value):
     import cupy as cp
     pool, detector, dtype = _setup(cp)
     producer = cp.cuda.Stream(non_blocking=True)
     consumer = cp.cuda.Stream(non_blocking=True)
     # First fill reusable output/presence buffers with valid nonzero values.
     batch, events, _ = _input(cp, pool, producer, [(0, 1)], dtype)
-    list(detector.process_batch(events, stream=consumer, slot_id=0))
+    detector.prepare_batch(events, stream=consumer, slot_id=0)
     consumer.synchronize()
     batch, events, expected = _input(cp, pool, producer, [(0, 1)], dtype)
     handle = detector.binding.field_handles_by_segment[4]
     with producer:
         batch.locate(handle).rows_gpu[0, column] = value
         batch._configured_ready.record(producer)
-    old_raw, old_calib = _old_gather(cp, detector, events, consumer)
-    result, = list(detector.process_batch(events, stream=consumer, slot_id=0))
+    result = detector.prepare_batch(events, stream=consumer, slot_id=0).data[0]
     consumer.synchronize()
-    np.testing.assert_array_equal(result.raw_gpu.get(), old_raw[0].get())
-    np.testing.assert_array_equal(result.calib_gpu.get(), old_calib[0].get())
-    assert not result.raw_gpu[1].get().any()
-    assert not result.calib_gpu[1].get().any()
+    expected[0][1] = 0
+    np.testing.assert_array_equal(result.get(), expected[0])
+    assert not result[1].get().any()
     assert detector._present_slot_bufs[0].get().tolist() == [1, 0, 1]
 
 
@@ -277,19 +246,19 @@ def test_execution_slot_waits_for_delayed_gather_consumer():
         gv = SimpleNamespace(iter_events=lambda: (e.event for e in events))
         read = SimpleNamespace(data_gpu=batch.data_gpu, desc_table=batch._test_descriptors,
                                retain_input=lambda: lambda: None)
-        record = executions.submit(gv, read, [], {"camera": (None, detector)}, pool)
+        record = executions.submit(gv, read, [], {"camera": detector}, pool)
         assert executions.begin_retire_next() is record
-        lease = record.leases_by_ts[100]['camera.raw']
+        lease = record.leases[0]
         with consumer:
             consumer.wait_event(lease.result_ready)
             delay((1,), (1,), ())
-            copied.append(record.gpu_results_by_ts[100]['camera.raw'].copy())
+            copied.append(record.prepared_inputs['camera'].data[0].copy())
             done = cp.cuda.Event(disable_timing=True)
             done.record(consumer)
         lease.register_consumer_done(done)
         # Both output and pinned gather-map storage are still occupied.
         with pytest.raises(RuntimeError, match="before retirement"):
-            executions.submit(gv, read, [], {"camera": (None, detector)}, pool)
+            executions.submit(gv, read, [], {"camera": detector}, pool)
         executions.finish_retire_next()
         assert done.done
         references.append(expected[0])

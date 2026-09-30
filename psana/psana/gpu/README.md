@@ -2,7 +2,7 @@
 
 The psana2 GPU path moves selected detector streams through a GPU-oriented
 EventBuilder batch, reads bigdata into device memory, parses XTC on the GPU,
-and exposes lease-aware detector results through normal `psana.Event` objects.
+and exposes lease-aware parsed detector fields through normal `psana.Event` objects.
 
 The documents are grouped by status. Current-design documents describe this
 branch and should be kept synchronized with code. Proposal documents are for
@@ -10,6 +10,15 @@ review and are not API commitments. Performance documents record measurements
 and the configurations that produced them.
 
 ## Current design
+
+Stage 1b removes built-in GPU calibration, geometry, calibrated output buffers,
+and image-specific automatic D2H. GPU routing currently exposes parsed inputs;
+`GpuTask` and publication are not implemented yet. Start with the
+[input-only example](examples/input_only.py) and
+[Stage 1b findings](docs/user_kernel_stage1b_findings_20260926.md).
+Nonzero `gpu_d2h_chunk_size` and unfinished `gpu_fn` configurations fail explicitly.
+CPU/hybrid detector calibration remains available through normal CPU APIs.
+
 
 - [Architecture overview](docs/architecture_overview.md): components,
   boundaries, routing modes, and supported scope.
@@ -24,13 +33,26 @@ and the configurations that produced them.
 
 ## Proposals
 
-- [User GPU pipeline](docs/proposals/user_gpu_pipeline.md): user CUDA or CuPy
-  work scheduled inside psana's BD batch pipeline.
+- [User GPU kernel support](docs/proposals/user_gpu_pipeline.md): `GpuTask`
+  input/constant declarations, internal BD submission, user-owned buffers,
+  named output publication, and asynchronous host delivery.
+- [User-kernel preparation handoff](docs/proposals/user_kernel_integration_handoff_20260926.md):
+  master merge validation and provenance for the canonical proposal.
 - [AMI integration](docs/proposals/ami_integration.md): possible psana2 GPU and
   AMI integration; retained for evaluation.
 
 ## Performance evidence
 
+- [Code-size simplification handoff](docs/simplification_baseline_20260925.md):
+  committed baseline, completed JF results, mixed-detector campaign and invariants.
+- [Jungfrau single-node scaling](docs/performance/jungfrau_single_node_sdf.md):
+  the historical 10,000-event cold/warm 1/2/4-GPU, multi-BD matrix, including
+  the 1-GPU/4-BD cold and 4-GPU/8-BD warm results.
+
+- [Current Jungfrau scaling campaign](docs/performance/jungfrau_current_scaling.md):
+  current-code multi-GPU/BD rerun, validation gates and job status.
+- [JF + feespec one-GPU scaling](docs/performance/jf_feespec_single_gpu_scaling.md):
+  batch-20 cold/warm, bulk off/on comparison with 1, 2 and 4 BDs.
 - [GPU pipeline baseline](docs/performance/gpu_pipeline_baseline.md): initial
   CPU/GPU throughput comparison and bottleneck observations.
 - [D2H bandwidth](docs/performance/d2h_bandwidth.md): measured D2H sampling and
