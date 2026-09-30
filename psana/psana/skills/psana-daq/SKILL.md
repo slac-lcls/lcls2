@@ -360,9 +360,13 @@ and past:**
   bounds, not from "now":
   - `start` = the timestamp parsed from the session's log-file prefix
     (format `DD_HH:MM:SS`).
-  - `end` = the mtime of the session's last-written log file.
-  - Pass this derived `{start, end}` as the Grafana `timeRange` on every
-    metrics query in this leg.
+  - `end` = the mtime of the session's last-written log file — an
+    approximate file-activity bound, not proof of DAQ run coverage. Treat a
+    negative interval as inconsistent evidence rather than silently
+    wrapping the date.
+  - Apply this derived `{start, end}` using `psana-daq-monitor`'s own
+    "If `psana-daq` also handed off a scope" paragraph — cite it rather
+    than re-deriving which parameter name each Grafana tool takes here.
 
 ### ConfigDB leg — gated by the implicated-detector rule
 
@@ -824,17 +828,10 @@ and tell the user upfront if an angle is unavailable.
   attempting a narrower version of it here — or derive state from `control.log`
   if escalation is declined or unavailable.
 - **Logs (`psana-daq-logs`)**: requires a readable DAQ log directory for the
-  relevant hutch. The path convention and the list of hutches confirmed
-  present/absent are documented in `psana-daq-logs/SKILL.md`:
-
-  | Status | Hutches |
-  |---|---|
-  | Present with data (readable) | xpp, tmo, rix, mfx, ued |
-  | Directory exists but empty (no year subdirs) | txi, det |
-  | No directory | xcs, cxi, asc, tst |
-
-  Check with `ls`/`test -d` before assuming it exists; if absent, say so rather
-  than guessing an alternate path.
+  relevant hutch. The path convention is documented in
+  `psana-daq-logs/SKILL.md`'s "Path convention" section — cite it rather than
+  restating it here. Check with `ls`/`test -d` before assuming it exists; if
+  absent, say so rather than guessing an alternate path.
 - **ConfigDB (`psana-configdb`)**: requires reachability to
   `pswww.slac.stanford.edu`. A simple check:
 

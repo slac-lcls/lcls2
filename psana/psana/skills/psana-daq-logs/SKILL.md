@@ -29,18 +29,12 @@ Example, verified for real:
 
     /sdf/home/x/xppopr/daq/logs/2026/09/
 
-**This path does NOT exist for every hutch.** Verified by directly testing
-every hutch account:
-
-| Status | Hutches |
-|---|---|
-| Present with data (readable) | xpp, tmo, rix, mfx, ued |
-| Directory exists but empty (no year subdirs) | txi, det |
-| No directory | xcs, cxi, asc, tst |
-
-Always check with `ls`/`test -d` before assuming the path exists for a given
-hutch — do not guess an alternate path if it's absent. Tell the user plainly
-if there is no log directory for the hutch they asked about.
+This is the current log root for all five LCLS-II hutches this suite covers
+(xpp, tmo, rix, mfx, ued). The root comes from `SbatchManager.__init__` in
+`psdaq/psdaq/slurm/utils.py`, which picks `get_default_output_root()` unless
+`daqmgr --output` overrides it — always check with `ls`/`test -d` on the
+`<YYYY>/<MM>` subdir before assuming a given month exists, rather than
+guessing an alternate path if it's absent.
 
 ---
 
@@ -89,8 +83,14 @@ the full mechanism below, defaulting to today.
    the 17th). For each candidate prefix, compute and display:
    - **prefix** (the session ID, format `DD_HH:MM:SS`)
    - **lifetime** = (mtime of newest file) − (timestamp parsed from prefix)
-   - **non-RTPRIO error count** = `grep -c '<[EC]>' | grep -v 'Inadequate RTPRIO'`
-   - **first error excerpt** (first non-RTPRIO `<C>` or `<E>` line, truncated ~60 chars)
+   - **error count** — filter matching lines before counting, not after:
+     `grep '<[EC]>' <file> | grep -vc '<pattern>'` (see "Interpreting `<C>`/`<E>`
+     messages" below for what `<pattern>` should exclude). Counting first and
+     filtering second (`grep -c '<[EC]>' | grep -v '<pattern>'`) is a no-op —
+     `grep -c` emits a single number, which the second `grep` then filters
+     against, never matching.
+   - **first error excerpt** (first filtered `<C>` or `<E>` line, same filter
+     as the error count above, truncated ~60 chars)
    - **file count**
 3. Sort **reverse-lexically** (latest first). This is safe without date parsing:
    the prefix format is fixed-width `DD_HH:MM:SS` (exactly 11 chars, zero-padded;
@@ -112,23 +112,36 @@ Which session? (or say 'yesterday' / give a prefix directly)
 ```
 
 Tell the user they can also request a different day or specify a prefix directly.
-Month directories are self-contained (no writes bleed past month end), so only
-the day boundary needs handling.
+A launch's output directory is fixed once at startup and is never
+recomputed, so a long-lived session keeps writing into its **birth month**
+for as long as it runs — writes do bleed past month end (verified: xpp
+`daq/logs/2026/06` has 34 files with a July mtime, from a `30_23:14:59`
+launch still writing into July 1st). When a requested window is near a
+month boundary, also check the preceding month directory rather than
+assuming the day boundary is the only edge case. The reverse-lexical sort
+in step 3 is only valid **within** a single month directory; if you merge
+sessions from two month directories, sort by the full `YYYY/MM` + prefix,
+not by prefix text alone.
 
 Once you have the session prefix, scope all further greps to
 `<dir><prefix>_*` rather than scanning the whole month directory — a single
-month directory can hold on the order of 2000+ files (verified: 2778 files in
-xpp September 2026 — 2292 `.log` and 486 `.log.zst`).
+month directory can hold on the order of several thousand files (verified:
+6387 files in xpp September 2026 — 2767 `.log` and 3620 `.log.zst`;
+`.log.zst` files now outnumber plain `.log` files).
 
 ### Compressed/rotated logs
 
-Rotated logs are **zstd-compressed** (`.log.zst`). You must use `zstdcat`
-(not `cat`/`grep` directly) to read them:
+Rotated logs are **zstd-compressed** (`.log.zst`). Use `zstd -dc`, not
+`zstdcat` or `cat`/`grep` directly, to read them:
 
-    zstdcat foo.log.zst | grep '<E>'
+    zstd -dc foo.log.zst | grep '<E>'
 
-In the verified sample directory, of 2778 total files, 2292 were `.log` and
-486 were `.log.zst`.
+`zstdcat` is `zstd -dcf`, and the `-f` flag makes it pass non-zstd input
+through unchanged at exit code 0 — a corrupt or mislabeled `.log.zst` looks
+like a successful, empty read. `zstd -dc` fails loudly instead (verified:
+non-zstd bytes through `zstdcat` print the raw bytes and return 0; through
+`zstd -dc` they print "unsupported format" and return 1). A read or
+decompression failure is unavailable evidence, never a trustworthy zero.
 
 ---
 
@@ -255,8 +268,9 @@ a log belongs to:
 
 - Narrow further by component or host substring when the user names one,
   e.g. `*teb*.log` or `*drp-srcf-mon008*`.
-- Remember rotated `.log.zst` files need `zstdcat`, not `grep` directly —
-  `zgrep`-style tooling is not guaranteed to be `zstd`-aware, so pipe through
-  `zstdcat` explicitly.
+- Remember rotated `.log.zst` files need decompression, not `grep` directly
+  — `zgrep`-style tooling is not guaranteed to be `zstd`-aware, so pipe
+  through `zstd -dc` explicitly (see "Compressed/rotated logs" above for
+  why `zstdcat` is the wrong choice).
 - If a component's current log is empty or missing, check whether it only
   exists as a `.log.zst` from an earlier rotation in the same session.

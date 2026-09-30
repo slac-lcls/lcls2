@@ -117,6 +117,13 @@ window rather than a `now`-relative default. Derive the window the same way
 session's log-prefix timestamp, end from the last-written log file's mtime
 — rather than re-deriving it independently here.
 
+`startTime`/`endTime` are the only time parameters `query_prometheus`
+accepts, on both instant and range queries — `endTime` is required even for
+`queryType="instant"`. `timeRange={"from":…,"to":…}` is a different
+parameter used only by `get_panel_image` and `generate_deeplink` for
+rendering; passing it to `query_prometheus` instead of `startTime`/`endTime`
+is rejected with a parse error (verified 2026-09-29), not silently ignored.
+
 If you need to see which instruments currently have *any* active DAQ metrics
 (e.g. the user isn't sure and there's no router context to fall back on),
 use this as a discovery aid — but treat its result as informational, not a
@@ -236,7 +243,11 @@ The most basic health check: are events flowing through the system?
 - `L0InpRate` ≈ `L0AccRate` = minimal deadtime, triggers accepted efficiently
 - `L0InpRate` >> `L0AccRate` = significant deadtime (see section B)
 - TEB rate ≈ L0AccRate = event builder keeping up
-- Zero event rate = DAQ not running or detector not connected
+- A **measured** zero event rate = DAQ not running or detector not
+  connected. An **empty** result (no series at all) is not the same thing
+  — see the "No results" handling in Step 1 above: it can mean the query
+  window is outside Prometheus retention, or the label doesn't match,
+  rather than the DAQ being down.
 - Mismatched rates across detectors = possible per-detector issues
 
 Note: `L0InpRate` and `L0AccRate` are EPICS PVs from the XPM, bridged to
@@ -298,7 +309,7 @@ EPICS PV — it is NOT computed by the DRP itself.
 Damaged events have missing or corrupted data from one or more detectors.
 The damage field is a **bitmask** — multiple types can be set simultaneously.
 
-**Damage types** (from `xtcdata/xtc/Damage.hh`):
+**Damage types** (from `xtcdata/xtcdata/xtc/Damage.hh`):
 
 | Bit | Name | Meaning |
 |---|---|---|
@@ -657,8 +668,12 @@ the offending source ID.
 - `RxDataNAlign` ≠ 0 = JESD deserialization issue on HSD
 - Growing `fexoor` rate = HSD feature extraction seeing out-of-range values
 
-**Action:** Link down → check cables, power cycle HSD, re-initialize timing.
-JESD issues → HSD firmware/hardware problem. FEXOOR → adjust HSD thresholds.
+**Next checks (read-only; this skill does not perform hardware operations):**
+link down → visually check cable seating and report it; a power cycle or
+timing re-initialization is an operator-run intervention, not a step this
+diagnosis performs. JESD issues → report as an HSD firmware/hardware lead.
+FEXOOR → report the out-of-range rate; threshold changes are an operator
+decision.
 
 ---
 
@@ -938,7 +953,7 @@ matter, `TEB_nMonCt` incrementing is benign.
 
 | Finding | Recommendation |
 |---------|---------------|
-| Zero event rate | DAQ not running — check run control, detector power, timing links |
+| Measured zero event rate (not an empty/no-series result) | DAQ not running — check run control, detector power, timing links |
 | High deadtime (>5%) | Trace backpressure: check buffers (E), file writing (F), then event builder (G) |
 | Sustained damage rate | Check hardware links (H), correlate with specific detectors via `detname` label |
 | DMA errors | Hardware issue — check PGP cables, HSD card, firmware version |

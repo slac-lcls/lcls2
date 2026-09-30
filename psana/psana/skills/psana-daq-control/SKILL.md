@@ -316,7 +316,7 @@ see "Why bands, not counts" below).
 
 ```
 /sdf/home/x/xppopr/daq/logs/2026/09/*control.log        (uncompressed)
-/sdf/home/x/xppopr/daq/logs/2026/09/*control.log.zst    (rotated — include via zstdcat)
+/sdf/home/x/xppopr/daq/logs/2026/09/*control.log.zst    (rotated — include via zstd -dc)
 ```
 
 - **One hutch only:** xpp. **One month only:** September 2026.
@@ -369,7 +369,7 @@ indefinitely):
 cd ~<hutch>opr/daq/logs/<YYYY>/<MM>
 tmp=$(mktemp)
 cat *control.log > "$tmp"
-for f in *control.log.zst; do zstdcat "$f" >> "$tmp"; done   # do not skip .zst
+for f in *control.log.zst; do zstd -dc -- "$f" >> "$tmp"; done   # do not skip .zst; zstdcat silently passes non-zstd input through
 rg -c -- "<error string>" "$tmp"
 rm -f "$tmp"
 ```
@@ -879,7 +879,7 @@ or ConfigDB URLs from this skill's summary.
 | Vague report with no state information yet | `psana-daq` (the router) | Let it pick the angle; come back here if the answer is "it won't start" |
 
 **Do not duplicate sibling content.** Log path conventions, filename grammar,
-the `zstdcat` requirement for `.log.zst`, and the header-block format are owned
+the decompression requirement for `.log.zst`, and the header-block format are owned
 by `psana-daq-logs`. Metric names and thresholds are owned by
 `psana-daq-monitor`. ConfigDB endpoints are owned by `psana-configdb`.
 
