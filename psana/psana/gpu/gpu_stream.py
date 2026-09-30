@@ -15,6 +15,11 @@ import os
 from dataclasses import dataclass, field
 
 
+# Unknown completion must retain user owners even if an exception causes the
+# caller to drop its manager. Successful close/retirement removes this root.
+_failed_execution_pools = set()
+
+
 @dataclass
 class _EventSlot:
     """One occupied execution slot and its eventual host-result handles."""
@@ -33,6 +38,21 @@ class _EventSlot:
     pending_d2h_by_ts: dict = field(default_factory=dict)
     cached_cpu_results_by_ts: dict = field(default_factory=dict)
     prepared_inputs: dict = field(default_factory=dict)
+    producer_owners: list = field(default_factory=list)
+    publications_by_ts: dict = field(default_factory=dict)
+
+    def release_storage(self):
+        """Detach device references only after all terminal leases finish."""
+        self.gpu_results_by_ts = {ts: dict.fromkeys(results)
+                                 for ts, results in self.gpu_results_by_ts.items()}
+        self.input_dgrams_by_ts = {}
+        self.input_leases_by_ts = {}
+        self.gpu_event_dgrams = ()
+        self.prepared_inputs = {}
+        self.producer_owners.clear()
+        self.publications_by_ts.clear()
+        self.xtc_batch = None
+        self.input_windows = ()
 
 
 class EventPool:
@@ -95,7 +115,11 @@ class EventPool:
         if old is None:
             return None
 
-        old.stream.synchronize()
+        try:
+            old.stream.synchronize()
+        except BaseException:
+            _failed_execution_pools.add(self)
+            raise
         self._retiring = old
         return old
 
@@ -111,32 +135,32 @@ class EventPool:
         try:
             for lease in old.leases:
                 lease.wait_until_safe_to_reuse()
-        except Exception:
+        except BaseException:
             # Leave the slot occupied because consumer completion was not
             # confirmed, but release the in-progress latch so retirement can
             # be retried instead of permanently locking the pool.
             self._retiring = None
+            _failed_execution_pools.add(self)
             raise
 
         self._slots[old.slot_id] = None
-        old.gpu_results_by_ts = {ts: dict.fromkeys(results) for ts, results in old.gpu_results_by_ts.items()}
-        old.input_dgrams_by_ts = {}
-        old.input_leases_by_ts = {}
-        old.gpu_event_dgrams = ()
-        old.prepared_inputs = {}
-        old.xtc_batch = None
-        old.input_windows = ()
+        old.release_storage()
         self._retiring = None
+        self._release_quarantine_if_drained()
 
     def submit(
         self, gv, gpu_read, event_envelopes: list, input_preparers=None,
         xtc_parser=None, *, input_windows=None, input_uses=None, batch_id=0,
+        task=None, detector_bindings=None, task_constants=None, run=None,
+        step_generation=0,
     ):
         """Queue execution using owned inputs, independently of its slot ID.
 
         The default creates one input window for the existing subbatch. An
         internal caller may instead supply resident and transient windows;
         that caller controls when those windows close to new planned uses.
+        Internal task dispatch records publications but does not deliver them;
+        public task processing remains gated until Stage 4 host delivery.
         """
         import cupy as cp
         from psana.gpu.gpu_input import GpuEventDgrams, InputSlotLease
@@ -158,7 +182,16 @@ class EventPool:
             input_windows = () if owned_window is None else (owned_window,)
         windows = tuple(input_windows)
         all_leases = []
+        prepared, publications, owners = {}, {}, []
+        producer_lease = None
         try:
+            if task is not None:
+                from .context import SlotLease
+                # Result consumers must finish before any backing input lease
+                # can retire: a publication may be a borrowed input view.
+                producer_lease = SlotLease(None)
+                all_leases.append(producer_lease)
+                owners.extend((input_preparers or {}).values())
             execution_inputs = InputSlotLease(None, windows, planned_uses=input_uses)
             if windows:
                 all_leases.append(execution_inputs)
@@ -170,12 +203,18 @@ class EventPool:
             )
 
             gpu_results_by_ts = {}
-            prepared = {
-                name: preparer.prepare_batch(gpu_event_dgrams, stream=stream, slot_id=slot)
-                for name, preparer in (input_preparers or {}).items()
-            }
+            for name, preparer in (input_preparers or {}).items():
+                prepared[name] = preparer.prepare_batch(gpu_event_dgrams, stream=stream, slot_id=slot)
+            if task is not None:
+                from .gpu_producer import dispatch_task
+                dispatch_task(task, gpu_event_dgrams, event_envelopes, prepared,
+                              detector_bindings or {}, task_constants, stream,
+                              owners, publications, producer_lease, batch_id=batch_id,
+                              run=run, step_generation=step_generation)
             result_ready = cp.cuda.Event(disable_timing=True)
             result_ready.record(stream)
+            if producer_lease is not None:
+                producer_lease.result_ready = result_ready
             execution_inputs.result_ready = result_ready
             leases_by_ts = {}
             input_dgrams_by_ts, input_leases_by_ts = {}, {}
@@ -201,11 +240,14 @@ class EventPool:
                 input_dgrams_by_ts=input_dgrams_by_ts,
                 input_leases_by_ts=input_leases_by_ts,
                 prepared_inputs=prepared,
+                producer_owners=owners, publications_by_ts=publications,
             )
         except BaseException:
             # Preserve every owner if CUDA completion cannot be established.
             # A subsequent close/flush can retry the same synchronization.
-            failed = _EventSlot(slot, {}, [], stream, all_leases, {}, input_windows=windows)
+            failed = _EventSlot(slot, {}, [], stream, all_leases, {},
+                                input_windows=windows, prepared_inputs=prepared,
+                                producer_owners=owners, publications_by_ts=publications)
             try:
                 stream.synchronize()
                 for lease in all_leases:
@@ -213,6 +255,7 @@ class EventPool:
             except BaseException:
                 self._slots[slot] = failed
                 self._write_idx += 1
+                _failed_execution_pools.add(self)
                 raise
             finally:
                 if owned_window is not None:
@@ -234,22 +277,29 @@ class EventPool:
             if self._slots[slot] is None:
                 continue
             record = self._slots[slot]
-            record.stream.synchronize()
+            try:
+                record.stream.synchronize()
+            except BaseException:
+                _failed_execution_pools.add(self)
+                raise
             try:
                 yield record
             finally:
                 # The yield above is the registration window.  This finally
                 # also protects generator close/early loop termination.
-                for lease in record.leases:
-                    lease.wait_until_safe_to_reuse()
+                try:
+                    for lease in record.leases:
+                        lease.wait_until_safe_to_reuse()
+                except BaseException:
+                    _failed_execution_pools.add(self)
+                    raise
                 self._slots[slot] = None
-                record.gpu_results_by_ts = {ts: dict.fromkeys(results) for ts, results in record.gpu_results_by_ts.items()}
-                record.input_dgrams_by_ts = {}
-                record.input_leases_by_ts = {}
-                record.gpu_event_dgrams = ()
-                record.prepared_inputs = {}
-                record.xtc_batch = None
-                record.input_windows = ()
+                record.release_storage()
+                self._release_quarantine_if_drained()
+
+    def _release_quarantine_if_drained(self):
+        if self in _failed_execution_pools and not self.active_count:
+            _failed_execution_pools.discard(self)
 
     # ------------------------------------------------------------------
     # Inspection

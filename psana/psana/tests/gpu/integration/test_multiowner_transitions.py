@@ -34,13 +34,24 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
         while (clock64() - start < ticks) {}
     }''', 'delay')
     delay.compile()
+    order = []
+    from psana.gpu.gpu_task import RequestedConstants
+    from psana.gpu.gpu_budget import _GpuBudget
+    constants = RequestedConstants([('camera', 'gain')], _GpuBudget(4096))
+    m.dsparms = NS(calibconst={'camera': {'gain': np.array(1., np.float64)}})
+    constants.refresh(m.dsparms.calibconst)
+    old_gain = constants.get('camera', 'gain')
+    m._task_constants = constants
+    m._trim_gpu_caches = lambda: None
+    m._compute_subbatch_budget = lambda: 4096
+
     with consumer:
         consumer.wait_event(lease.result_ready)
         delay((1,), (1,), (np.uint64(60000000),))
         copied = output.copy()
+        copied_gain = old_gain.copy()
         done = cp.cuda.Event(disable_timing=True)
         done.record(consumer)
-    order = []
 
     class Completion:
         def synchronize(self):
@@ -55,6 +66,8 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
     def dispatch(dgrams):
         assert done.done and not m.event_pool.active_count
         assert all(w.released for w in windows)
+        assert constants.get('camera', 'gain') is old_gain
+        m.dsparms.calibconst['camera']['gain'][...] = 2
         order.append('dispatch')
     m.run = NS(_handle_transition=dispatch)
     dg = NS(service=lambda: service)
@@ -62,7 +75,10 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
         assert list(m._handle_steps({0: ([(service, [dg])], [])})) == []
         assert order == ['consumer'] * len(windows) + ['dispatch']
         np.testing.assert_array_equal(copied.get(), expected[0])
+        assert cp.asnumpy(copied_gain) == cp.asnumpy(old_gain) == 1
+        assert cp.asnumpy(constants.get('camera', 'gain')) == (2 if service == TransitionId.BeginStep else 1)
     finally:
+        constants.close()
         for _ in m.event_pool.flush():
             pass
         for window in windows:

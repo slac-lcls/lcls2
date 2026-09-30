@@ -12,11 +12,15 @@ and the configurations that produced them.
 ## Current design
 
 Stage 1b removes built-in GPU calibration, geometry, calibrated output buffers,
-and image-specific automatic D2H. GPU routing currently exposes parsed inputs;
-`GpuTask` and publication are not implemented yet. Start with the
+and image-specific automatic D2H. GPU routing currently exposes parsed inputs.
+Stage 2 adds host-only `GpuTask` declarations and requested input/constant setup;
+callback execution and publication remain unfinished. Start with the
 [input-only example](examples/input_only.py) and
 [Stage 1b findings](docs/user_kernel_stage1b_findings_20260926.md).
-Nonzero `gpu_d2h_chunk_size` and unfinished `gpu_fn` configurations fail explicitly.
+See [Stage 2 findings](docs/user_kernel_stage2_findings_20260927.md) for the
+declaration and upload contract. Nonzero `gpu_d2h_chunk_size` fails explicitly;
+`gpu_fn=GpuTask(...)` stages dependencies but rejects event processing until
+callback execution and publication are implemented.
 CPU/hybrid detector calibration remains available through normal CPU APIs.
 
 
@@ -51,6 +55,8 @@ CPU/hybrid detector calibration remains available through normal CPU APIs.
 
 - [Current Jungfrau scaling campaign](docs/performance/jungfrau_current_scaling.md):
   current-code multi-GPU/BD rerun, validation gates and job status.
+- [User-kernel Stage 1/1b regression check](docs/performance/user_kernel_stage1_regression_20260926.md):
+  matched JF-only comparisons on one GPU with 1–4 BDs.
 - [JF + feespec one-GPU scaling](docs/performance/jf_feespec_single_gpu_scaling.md):
   batch-20 cold/warm, bulk off/on comparison with 1, 2 and 4 BDs.
 - [GPU pipeline baseline](docs/performance/gpu_pipeline_baseline.md): initial
