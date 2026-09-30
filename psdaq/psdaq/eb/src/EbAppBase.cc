@@ -35,16 +35,15 @@ using logging          = psalg::SysLog;
 using MetricExporter_t = std::shared_ptr<MetricExporter>;
 using ms_t             = std::chrono::milliseconds;
 
-static unsigned _ebTimeout(const EbParams& prms)
+static unsigned _ebTimeout(EbParams& prms)
 {
-  if (prms.kwargs.find("eb_timeout") != prms.kwargs.end())
-    return std::stoul(const_cast<EbParams&>(prms).kwargs["eb_timeout"]);
+  if (prms.kwargs.find("eb_timeout") == prms.kwargs.end())
+    prms.kwargs["eb_timeout"] = std::to_string(EB_TMO_MS);
 
-  const_cast<EbParams&>(prms).kwargs["eb_timeout"] = std::to_string(EB_TMO_MS);
-  return EB_TMO_MS;
+  return std::stoul(prms.kwargs.at("eb_timeout"));
 }
 
-EbAppBase::EbAppBase(const EbParams&    prms,
+EbAppBase::EbAppBase(EbParams&          prms,
                      const std::string& pfx) :
   EventBuilder (_ebTimeout(prms), prms.verbose),
   _transport   (prms.verbose, prms.kwargs),

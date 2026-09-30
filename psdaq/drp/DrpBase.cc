@@ -153,10 +153,10 @@ void MemPool::_initialize(const Parameters& para)
     // be RDMAed from to the MEB
     size_t maxL1ASize = para.kwargs.find("pebbleBufSize") == para.kwargs.end() // Allow overriding the Pebble size
                       ? __builtin_popcount(para.laneMask) * m_dmaSize
-                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufSize"]);
+                      : std::stoul(para.kwargs.at("pebbleBufSize"));
     m_nbuffers        = para.kwargs.find("pebbleBufCount") == para.kwargs.end() // Allow overriding the Pebble count
                       ? m_nDmaBuffers
-                      : std::stoul(const_cast<Parameters&>(para).kwargs["pebbleBufCount"]);
+                      : std::stoul(para.kwargs.at("pebbleBufCount"));
     if (m_nbuffers < m_nDmaBuffers) {
         logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
                           m_nbuffers, m_nDmaBuffers);
@@ -464,8 +464,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
     m_lastTid     (TransitionId::Unconfigure),
-    m_dmaIndices  (maxRetCnt),
-    m_dmaRetCnt   (dmaFreeCnt),
+    m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
@@ -763,7 +762,7 @@ void PgpReader::freeDma(PGPEvent* event)
             auto idx = event->buffers[i].index;
             if (idx < m_pool.dmaCount()) [[likely]] {
                 m_dmaIndices[m_count++] = idx;
-                if (m_count >= m_dmaRetCnt) {
+                if (m_count == m_dmaIndices.size()) {
                     // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
                     if (!m_pool.freeDma(m_count, m_dmaIndices.data())) {
                         m_count = 0;    // Reset only on success
@@ -1181,7 +1180,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
-    m_tebContributor = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
+    m_tebContributor   = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
 
     m_mPrms.instrument = para.instrument;
     m_mPrms.partition  = para.partition;
@@ -1192,7 +1191,7 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_mPrms.maxTrSize  = pool.pebble.trBufSize();
     m_mPrms.verbose    = para.verbose;
     m_mPrms.kwargs     = para.kwargs;
-    m_mebContributor = std::make_unique<MebContributor>(m_mPrms);
+    m_mebContributor   = std::make_unique<MebContributor>(m_mPrms);
 
     m_inprocSend.connect("inproc://drp");
 
@@ -1232,9 +1231,12 @@ void DrpBase::shutdown()
     // there won't be a Disconnect transition, so disconnect() here
     disconnect();                       // Does no harm if already done
 
-    m_tebContributor->shutdown();
-    m_mebContributor->shutdown();
-    m_tebReceiver->shutdown();
+    if (m_tebContributor)
+        m_tebContributor->shutdown();
+    if (m_mebContributor)
+        m_mebContributor->shutdown();
+    if (m_tebReceiver)
+        m_tebReceiver->shutdown();
 }
 
 json DrpBase::connectionInfo(const std::string& ip)
@@ -1338,28 +1340,49 @@ std::string DrpBase::connect(const json& msg, size_t id)
 
 std::string DrpBase::configure(const json& msg)
 {
+    // Setting up of the trigger, TEB and MEB contributors must be done early in
+    // the Configure transition in concert with similar activity on the TEB(s)
+    // and MEB(s) to avoid synchronization timeouts on one side or the other
+
+    // Load and initialize a trigger primitive library
     if (setupTriggerPrimitives(msg["body"])) {
         return std::string("Failed to set up TriggerPrimitive(s)");
     }
 
-    int rc = m_tebContributor->configure();
-    if (rc) {
+    // Establish and configure a connection with the TEB(s)
+    if (m_tebContributor->configure()) {
         return std::string{"TebContributor configure failed"};
     }
 
+    // Establish and configure a connection with the MEB(s) (if any)
     if (m_mPrms.addrs.size() != 0) {
-        rc = m_mebContributor->configure();
-        if (rc) {
+        if (m_mebContributor->configure()) {
             return std::string{"MebContributor configure failed"};
         }
     }
 
-    rc = m_tebReceiver->EbCtrbInBase::configure(m_numTebBuffers);
-    if (rc) {
-        return std::string{"TebReceiver configure failed"};
+    // Configure the trigger primitive (if any)
+    if (m_triggerPrimitive) { // else this DRP doesn't provide input to the TEB
+        if (m_triggerPrimitive->configure(msg["body"], m_connectMsg, m_collectionId)) {
+            return std::string{"TriggerPrimitive configure failed"};
+        }
     }
 
+    // Configure the TEB trigger result receiver
+    if (m_tebReceiver->EbCtrbInBase::configure(m_numTebBuffers)) {
+        return std::string{"TebReceiver configure failed"};
+    }
+    return std::string{};
+}
+
+std::string DrpBase::startup(Xtc& xtc, const void* bufEnd)
+{
     printParams();
+
+    //  Allow trigger primitive to add to Configure/Names data
+    if (m_triggerPrimitive) { // else this DRP doesn't provide input to the TEB
+        m_triggerPrimitive->configure(xtc, bufEnd);
+    }
 
     // start eb receiver thread
     m_tebContributor->startup(*m_tebReceiver);
@@ -1368,6 +1391,7 @@ std::string DrpBase::configure(const json& msg)
     m_tebContributor->resetCounters();
     m_mebContributor->resetCounters();
     m_tebReceiver->resetCounters(true);
+
     return std::string{};
 }
 
@@ -1498,11 +1522,14 @@ std::string DrpBase::enable(const json& phase1Info, bool& chunkRequest, ChunkInf
 
 void DrpBase::unconfigure()
 {
-    m_tebContributor->unconfigure();
+    if (m_tebContributor)
+        m_tebContributor->unconfigure();
     if (m_mPrms.addrs.size() != 0) {
-        m_mebContributor->unconfigure();
+        if (m_mebContributor)
+            m_mebContributor->unconfigure();
     }
-    m_tebReceiver->unconfigure();
+    if (m_tebReceiver)
+        m_tebReceiver->unconfigure();
 }
 
 void DrpBase::disconnect()
@@ -1511,11 +1538,14 @@ void DrpBase::disconnect()
     // there won't be an Unconfigure transition, so unconfigure() here
     unconfigure();                      // Does no harm if already done
 
-    m_tebContributor->disconnect();
+    if (m_tebContributor)
+        m_tebContributor->disconnect();
     if (m_mPrms.addrs.size() != 0) {
-        m_mebContributor->disconnect();
+        if (m_mebContributor)
+            m_mebContributor->disconnect();
     }
-    m_tebReceiver->disconnect();
+    if (m_tebReceiver)
+        m_tebReceiver->disconnect();
 
     if (m_exporter) {
         m_exporter.reset();
@@ -1580,14 +1610,9 @@ int DrpBase::setupTriggerPrimitives(const json& body)
     }
     m_tPrms.maxInputSize = sizeof(Pds::EbDgram) + m_triggerPrimitive->size();
 
-    if (m_triggerPrimitive->configure(body, m_connectMsg, m_collectionId)) {
-        logging::error("TriggerPrimitive::configure() failed");
-        return -1;
-    }
-
-    logging::info("Trigger configured from configDb %s/%s/%s_0 using %s",
-                  m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str(),
-                  soname.c_str());
+    logging::info("Trigger loaded from %s using configDb %s/%s/%s_0",
+                  soname.c_str(), m_para.instrument.c_str(),
+                  configAlias.c_str(), triggerConfig.c_str());
 
     return 0;
 }
@@ -1816,31 +1841,44 @@ static json createChunkRequestMsg()
     return msg;
 }
 
-std::vector<XtcData::VarDef>& Drp::Detector::rawDef() { 
+std::vector<XtcData::VarDef>& Drp::Detector::rawDef() {
     logging::error("Attempt to cube Detector without rawDef overriden");
     abort();
+}
+
+XtcData::Shape Drp::Detector::shapeCube(unsigned rawDefIndex, unsigned valueIndex, XtcData::DescData& rawData)
+{
+    return rawData.shape(rawDef()[rawDefIndex].NameVec[valueIndex]);
 }
 
 //
 //  This is generic but without calibration
 //
-void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
-                              double* dst, DescData& rawData)
+unsigned Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                                  double* dst, unsigned bin, DescData& rawData)
 {
     NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
     Name& name = m_namesLookup[namesId].names().get(valueIndex);
+    unsigned arraySize = name.rank() ? Shape(rawData.shape(name)).num_elements(name.rank()) : 1;
+    double* dsto = dst+bin*arraySize;
+
+#if 0    
+    printf("addToCube  rawDef %u  idx %u  dst %p  dsto %p  bin %u  arraySz %u\n",
+	   rawDefIndex, valueIndex, dst, dsto, bin, arraySize);
+#endif
+    
     if (name.rank()==0) {
 
         /*
 #define ADD_VALUE(T) {                                           \
             double v = double(rawData.get_value<T>(valueIndex)); \
             *dst += v;                                           \
-            printf("[%s][%p] %f %f \n",name.name(),dst,*dst,v); \ 
+            printf("[%s][%p] %f %f \n",name.name(),dst,*dst,v); \
         break; }
         */
 #define ADD_VALUE(T) {                                           \
             double v = double(rawData.get_value<T>(valueIndex)); \
-            *dst += v;                                           \
+            *dsto += v;                                           \
         break; }
 
         switch(name.type()) {
@@ -1859,7 +1897,7 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
     }
     else {
         uint32_t* shape = rawData.shape(name);
-        Array<double_t> calArrT((char*)dst, shape, name.rank());
+        Array<double_t> calArrT((char*)dsto, shape, name.rank());
 
 #define ADD_ARRAY(T) {                                           \
             Array<T> rawArrT = rawData.get_array<T>(valueIndex); \
@@ -1881,5 +1919,6 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
         }
 #undef ADD_ARRAY
     }
+    return arraySize*sizeof(double_t);
 }
 

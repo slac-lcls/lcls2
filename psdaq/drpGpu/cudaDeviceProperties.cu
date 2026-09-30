@@ -40,6 +40,10 @@ int main() {
     printf("  Shared memory per block (KiB): %.1f\n",(float)(prop.sharedMemPerBlock)/1024.0);
     printf("  Warp size: %d\n", prop.warpSize);
     printf("  Unified addressing: %s\n", prop.unifiedAddressing ? "yes" : "no");
+    cudaDeviceGetAttribute(&value, cudaDevAttrPageableMemoryAccess, 0);
+    printf("  HMM: GPUs may access system allocated memory: %d\n", value);
+    cudaDeviceGetAttribute(&value, cudaDevAttrPageableMemoryAccessUsesHostPageTables, 0);
+    printf("  ATS: Pageable memory access uses host page tables: %d\n", value);
     printf("  Concurrent kernels: %s\n", prop.concurrentKernels ? "yes" : "no");
 #if CUDA_VERSION >= 13000
     printf("  Concurrent computation/communication: %s\n", prop.asyncEngineCount ? "yes" : "no");

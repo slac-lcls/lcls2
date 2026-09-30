@@ -55,14 +55,14 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   // Determine DMA buffer size and round up to units of 64 kB for alignment
   // The DMA buffer size must include space for the TimingHeader
   if (para.kwargs.find("dmaBufSize") != para.kwargs.end())
-    m_dmaSize = std::stoul(const_cast<Parameters&>(para).kwargs["dmaBufSize"]);
+    m_dmaSize = std::stoul(para.kwargs.at("dmaBufSize"));
   else
     m_dmaSize = DMA_BUFFER_SIZE;
   m_dmaSize = ((m_dmaSize >> 16) + (m_dmaSize & 0xffff ? 1 : 0)) << 16;
 
   // Determine DMA buffer count
   if (para.kwargs.find("dmaBufCount") != para.kwargs.end())
-    m_dmaCount = std::stoul(const_cast<Parameters&>(para).kwargs["dmaBufCount"]);
+    m_dmaCount = std::stoul(para.kwargs.at("dmaBufCount"));
   else
     m_dmaCount = DMA_BUFFER_COUNT;
   if (m_dmaCount & (m_dmaCount-1)) { // GPU divides by non-powers-of-2 are expensive
@@ -74,7 +74,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   // Set up GPU
   unsigned gpuId = 0;
   if (para.kwargs.find("gpuId") != para.kwargs.end())
-    gpuId = std::stoul(const_cast<Parameters&>(para).kwargs["gpuId"]);
+    gpuId = std::stoul(para.kwargs.at("gpuId"));
 
   // Initialize the device context
   if (!m_context.init(gpuId, para.verbose == 0)) {

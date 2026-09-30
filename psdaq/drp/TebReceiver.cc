@@ -15,11 +15,17 @@ using logging = psalg::SysLog;
 using us_t    = std::chrono::microseconds;
 
 
+static bool getDioFlag(const Parameters& para)
+{
+    return para.kwargs.find("directIO") != para.kwargs.end()
+         ? para.kwargs.at("directIO") != "no" // Default to "yes"
+         : true;
+}
+
 TebReceiver::TebReceiver(const Parameters& para, DrpBase& drp) :
     TebReceiverBase(para, drp),
     m_mon       (drp.mebContributor()),
-    m_fileWriter(std::max(m_pool.pebble.bufferSize(), para.maxTrSize),
-                 const_cast<Parameters&>(para).kwargs["directIO"] != "no"), // Default to "yes"
+    m_fileWriter(std::max(m_pool.pebble.bufferSize(), para.maxTrSize), getDioFlag(para)),
     m_smdWriter (std::max(m_pool.pebble.bufferSize(), para.maxTrSize), para.maxTrSize),
     m_para      (para)
 {

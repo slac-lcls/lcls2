@@ -52,8 +52,9 @@ public:
         env = (th.control()<<24) | (th.env & envRogMask); // filter out other partition ROGs
     }
 public:
-    void setEOL() const { _pulseIdAndControl |= 1ULL << (6 + 56); }
-    bool isEOL()  const { return (_pulseIdAndControl & (1ULL << (6 + 56))) != 0; }
+    void setEOL()  const { _pulseIdAndControl |= 1ULL << (6 + 56); }
+    bool isEOL()   const { return (_pulseIdAndControl & (1ULL << (6 + 56))) != 0; }
+    bool keepRaw() const { return (env>>22)&1; }
 };
 
 #pragma pack(pop)

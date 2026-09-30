@@ -46,7 +46,7 @@ namespace Pds {
 
         class DumpIterator : public XtcData::XtcIterator {
         public:
-            DumpIterator(char* root, unsigned indent=0) : 
+            DumpIterator(char* root, unsigned indent=0) :
                 m_root(root), m_indent(indent) {}
         public:
             int process(XtcData::Xtc* xtc, const void* bufEnd);
@@ -75,12 +75,12 @@ int DumpIterator::process(Xtc* xtc, const void* bufEnd)
         break;
     }
     default:
-        break; 
+        break;
     }
     return 1;
 }
 
-MyIterator::MyIterator(Xtc&                  xtc, 
+MyIterator::MyIterator(Xtc&                  xtc,
                        const void*           bufEnd,
                        unsigned              source) :
     XtcIterator (&xtc, bufEnd),
@@ -106,7 +106,7 @@ int MyIterator::process(Xtc* xtc, const void* bufEnd)
         break;
     }
     default:
-        break; 
+        break;
     }
     return 1;
 }
@@ -121,7 +121,7 @@ int Pds::Trg::Piranha4TebPrimitive::configure(const json& configureMsg,
 
 void Pds::Trg::Piranha4TebPrimitive::configure(const Xtc& xtc, const void* bufEnd)
 {
-    logging::info("BldTebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p", 
+    logging::info("Piranha4TebPrimitive::configure xtc %p  contains %x  size %u  bufEnd %p",
                      &xtc, xtc.contains.value(), xtc.sizeofPayload(), bufEnd);
 
     DumpIterator dump((char*)&xtc);
