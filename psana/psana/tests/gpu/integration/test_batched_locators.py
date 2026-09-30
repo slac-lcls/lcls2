@@ -52,7 +52,7 @@ def _event(case='ok'):
     elif case == 'missing_data':
         data = b''
     node = _xtc(1, shape + data, src=99 if case == 'unknown' else 10,
-                damage=8 if case == 'corrupted' else 0)
+                damage=8 if case == 'corrupted' else (1 if case == 'damaged' else 0))
     if case == 'duplicate':
         node += node
     elif case == 'bad_xtc':
@@ -140,7 +140,8 @@ def test_stream_grouping_tail_growth_empty_and_lazy():
 
 
 @pytest.mark.parametrize('case,status', [
-    ('ok', p.STATUS_FOUND), ('absent', p.STATUS_NOT_PRESENT),
+    ('ok', p.STATUS_FOUND), ('damaged', p.STATUS_FOUND),
+    ('absent', p.STATUS_NOT_PRESENT),
     ('missing_shapes', p.STATUS_MISSING_SHAPES), ('missing_data', p.STATUS_MISSING_DATA),
     ('bad_shape', p.STATUS_BAD_SHAPE), ('overflow', p.STATUS_DATA_OVERFLOW),
     ('duplicate', p.STATUS_DUPLICATE), ('corrupted', p.STATUS_CORRUPTED),

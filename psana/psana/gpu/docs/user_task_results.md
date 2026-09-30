@@ -31,7 +31,7 @@ for run in ds.runs():
 Only explicitly published names are delivered. Lookup is exact: `event_count`
 does not acquire a detector prefix. No task means no automatic calibration or
 output copies. A task which publishes nothing causes no output allocation or
-copy. Device accessors on task outputs are unavailable in this prototype;
+copy. Device accessors on task outputs are unavailable in v1;
 `.on_cpu` waits if necessary, then caches an independent NumPy result. Reading it
 does not invoke the callback or initiate the normal device-to-host transfer.
 Parsed input fields remain available during event delivery through
@@ -43,6 +43,47 @@ callback, `batch.input("jungfrau.raw")` has leading event dimension N and
 inputs. Generic field selectors and requested calibration constants follow the
 [task contract](proposals/user_gpu_pipeline.md) and its accepted
 [batched-scheduling amendment](proposals/user_kernel_batched_scheduling_20260927.md).
+
+The supported dense adapter is Jungfrau `raw` uint16, with per-segment shape
+`(512, 1024)` or `(1, 512, 1024)`. It delivers `(N, S, 512, 1024)` in
+`batch.segment_ids("jungfrau")` order. Missing/invalid segments are zero-filled
+and marked absent. A non-`Corrupted` damage bit does not alone make a valid field
+absent; presence is not a damage-free guarantee.
+
+Generic fields use declarations such as `inputs=[("jungfrau", "raw", "raw")]`
+and `batch.field("jungfrau", "raw", "raw")` device descriptors. Configure fields
+are not supported event-input selectors. Every declared detector must be selected
+by `gpu_det` or `hybrid_det`.
+
+Declare constants with `calibconst=[("jungfrau", "pedestals"),
+("jungfrau", "pixel_gain")]`, then access them with
+`batch.calibconst("jungfrau", "pixel_gain")`. Only declared native numeric NumPy
+arrays from the run's calibration dictionary are uploaded, retaining their
+original shape, dtype and values. Metadata tuples are unwrapped; gain is not
+inverted and offsets/masks are not implicitly prepared. Original calibration
+arrays retain physical segment indices, so user kernels must map dense segment
+rows using `batch.segment_ids`. Empty declarations perform no constant upload.
+Each BD owns its snapshot. BeginStep drains dependent work, applies the host
+transition and refreshes changed requested values; it does not fetch the database.
+Undeclared access, missing constants and unsupported types fail explicitly.
+
+To modify input data, allocate an owned destination and register it before work:
+
+```python
+raw = batch.input("jungfrau.raw")
+scratch = cp.empty_like(raw)
+batch.keepalive(scratch)
+cp.copyto(scratch, raw)
+# Launch operations that modify scratch on the supplied stream.
+```
+
+Borrowed inputs/constants are read-only by contract; psana cannot intercept
+arbitrary writes from a native kernel. User kernels may live in a driver script
+or external module; they need not import psana internally. See the external
+[Jungfrau calibration/integration example](user_kernel_stage5b_20260928.md).
+`gpu_bulk_read` independently controls file-read grouping; batching is requested
+with `batch_size`, whose default remains one.
+
 Device identity/field metadata
 is prepared once on first use during the callback; dense-only callbacks incur
 no task metadata upload. Context methods expire when the callback returns.
@@ -98,3 +139,8 @@ Loop-body exceptions require the `closing` scope for this guarantee. CPU-only
 serial iteration keeps its previous behavior. MPI already connects generator
 closure to GPU cleanup; closing one rank's iterator is not a collective request
 to stop the entire MPI job. This protocol does not add a public `run.close()` API.
+
+The [Stage 6 acceptance matrix](user_kernel_stage6_20260929.md) records lifecycle
+coverage; [Stage 5c](user_kernel_stage5c_20260928.md) records matched scheduling
+and scaling measurements. GPU step transitions are supported through
+`run.events()`; GPU `run.steps()` iteration is outside v1.
