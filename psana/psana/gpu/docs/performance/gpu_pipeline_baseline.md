@@ -1,22 +1,30 @@
-# psana2 GPU BD Prototype — Performance Report
+# psana2 GPU Pipeline Performance Baseline
 
-**Branch:** `features/psana2-gpu`  
-**Hardware:** NVIDIA A100 40 GB (sdfampere nodes), S3DF  
-**Dataset:** `mfx100852324-r0077` — MFX Jungfrau 4M, 32 segments, uncompressed  
-**Topology:** 4 MPI ranks — smd0(0) + EB(1) + BD-GPU0(2) + BD-GPU1(3)  
+**Status:** Measured on 2026-07-01. This is a historical baseline tied to the
+configuration below, not a current tuning recommendation.
+
+- **Branch:** `features/psana2-gpu`
+- **Hardware:** NVIDIA A100 40 GB (sdfampere nodes), S3DF
+- **Dataset:** `mfx100852324-r0077` — MFX Jungfrau 4M, 32 segments,
+  uncompressed
+- **Topology:** 4 MPI ranks — smd0(0) + EB(1) + BD-GPU0(2) + BD-GPU1(3)
 
 > **I/O path:** All runs use the **kvikio CPU-fallback path**
 > (NVMe → CPU DRAM → GPU VRAM via `cudaMemcpy`).  True GDS is unavailable on
-> S3DF Lustre.  True GDS would bypass CPU DRAM entirely and is expected to
-> roughly double throughput.
+> S3DF Lustre. True GDS would bypass the CPU payload bounce, but this report did
+> not measure its throughput.
 
 ---
 
 ## Latest results — batch_size × pool_depth sweep
 
-**Job:** 30351528  **Node:** sdfampere027  **Date:** 2026-07-01  
-**Config:** `--n-events 2000 --n-warmup 100`  **Timed events:** 1900/BD rank  
-**Script:** two `srun` steps (one per pool_depth) to reset MPI universe between sweeps
+- **Job:** 30351528
+- **Node:** sdfampere027
+- **Date:** 2026-07-01
+- **Config:** `--n-events 2000 --n-warmup 100`
+- **Timed events:** 1900/BD rank
+- **Script:** two `srun` steps (one per pool depth) to reset the MPI universe
+  between sweeps
 
 ### CPU baseline
 
@@ -56,6 +64,11 @@ only with `bs≤20`.
 
 ## VRAM budget per BD rank (mfx100852324-r0077)
 
+This is the measurement-time model. It predates the current GPU XTC parser,
+field-locator buffers, field-presence buffers, and byte-bounded subbatch
+admission, and it does not describe `_GpuBudget.committed()`. Preserve it only
+to explain the observed OOM; do not use it to size current jobs.
+
 ```
 data_gpu per slot     ≈ bs × 33 MB
 calib_slot_buf/slot   ≈ bs × 39.8 MB   (19 segs × 512 × 1024 × 4B × bs events)
@@ -75,7 +88,9 @@ Maximum safe batch size with pd=4 on a 40 GB A100:
 ```
 bs_max = (40 000 MB − 400 MB) / (4 × 72.8 MB)  ≈  135
 ```
-Recommended maximum for a sustained single run: **bs=80, pd=4**.
+At this measured revision, the estimate suggested **bs=80, pd=4** as a
+conservative single-run setting. Current byte-budget admission supersedes this
+static recommendation.
 
 ---
 
@@ -96,8 +111,10 @@ why bs=50 outperforms bs=1 even though both have the same per-event I/O cost.
 EB look-ahead (request for batch N+1 sent immediately after receiving batch N)
 hides the 220 ms EB build time inside the 165 ms GDS read window.
 
-**To improve further:** multiple EB ranks (`PS_EB_NODES=2`), or BD ranks
-reading SMD directly (bypasses EB entirely, approaches single-process speed).
+Further EventBuilder scaling requires a node-wide GPU ownership, rank mapping,
+and memory-budget design across EB groups. Merely increasing `PS_EB_NODES` is
+not a validated GPU configuration. Direct BD-side SMD reading was another
+possible architecture considered by the original investigation.
 
 ---
 
@@ -111,12 +128,8 @@ source setup_env.sh
 # Standard CPU vs GPU benchmark (bs=10,20,50 pd=4):
 sbatch psana/psana/gpu/scripts/submit_mpi_perf_compare.sh
 
-# Full batch_size × pool_depth sweep:
-# run separate srun per pool_depth to avoid MPI state accumulation
-# see /tmp/perf_sweep_final.sh for the template used for job 30351528
-
-# Multi-GPU correctness + throughput sweep:
-sbatch psana/psana/gpu/scripts/submit_multi_rank_sweep.sh
+# The original full sweep used a temporary script that is not retained.
+# Use the maintained scripts under psana/psana/gpu/scripts for new runs.
 ```
 
 Always use `--n-warmup 100` for MPI benchmarks — smaller values give

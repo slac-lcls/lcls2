@@ -1,11 +1,13 @@
 """Pixel-exact validation of the integrated psana2 GPU event path.
 
-The existing kernel tests start from ``det.raw.raw(evt)`` and therefore do
-not exercise EventBuilder GPU splitting, GPUBAT1 descriptors, KvikIO reads,
-raw-payload extraction, segment ordering, EventPool slot reuse, or timestamp
-joining. This test compares the final result from
-``DataSource(gpu_det="jungfrau")`` with the normal psana CPU calibration for
-the same event timestamps.
+The two fast device tests exercise locator-based raw gathering/calibration
+and float32 passthrough independently of DataSource. The slow acceptance
+cases exercise EventBuilder GPU splitting, GPUBAT1 descriptors, KvikIO reads,
+parser-based field access, segment ordering, and EventPool slot reuse. They
+compare raw and calibrated results from ``DataSource(gpu_det="jungfrau")``
+or ``DataSource(hybrid_det="jungfrau")`` with normal psana CPU results for
+the same event timestamps. Parser-table assertions live in
+``test_gpudgram_device.py`` rather than inspecting retiring slots here.
 
 The default dataset is public MFX Lysozyme Jungfrau ``mfx100848724`` run 51.
 Override it with ``PSANA_GPU_TEST_EXP``, ``PSANA_GPU_TEST_RUN``, and
@@ -181,27 +183,43 @@ def _result_still_on_device(result):
 
 @pytest.mark.gpu
 @requires_gpu
-def test_canonical_raw_gather_precedes_ordinary_calibration():
-    """Logical buffer gaps and stream order end at canonical raw assembly."""
+def test_locator_raw_gather_precedes_ordinary_calibration():
+    """A parser locator, rather than an inferred stride, addresses raw data."""
     import cupy as cp
 
     from psana.gpu.gpu_calib import fused_calib_gpu
-    from psana.gpu.gpu_detector import _gather_strided_rows_gpu
+    from psana.gpu.gpu_detector import _gather_locator_field_gpu
+    from psana.gpu.gpudgram.batch import (
+        LOC_NBYTES,
+        LOC_NCOLS,
+        LOC_OFFSET,
+        LOC_RANK,
+        LOC_STATUS,
+        LOC_TYPE,
+    )
+    from psana.gpu.gpudgram.config import GpuFieldHandle
+    from psana.gpu.gpudgram.parser import STATUS_FOUND
 
-    # Two logical panels start at elements 2 and 7. Prefix and inter-panel
-    # bytes model a future coalesced physical read without implementing one.
-    src = cp.asarray([90, 91, 1, 2, 3, 80, 81, 7, 8, 9], dtype=cp.uint16)
-    output_rows = cp.asarray([2, 0], dtype=cp.uint32)
+    src = cp.asarray([90, 91, 1, 2, 3], dtype=cp.uint16).view(cp.uint8)
+    handle = GpuFieldHandle(0, 10, 0, 0, 0, 1, 2, 1, 0)
+    locators = cp.zeros((1, LOC_NCOLS), dtype=cp.uint64)
+    locators[0, LOC_TYPE] = handle.type
+    locators[0, LOC_RANK] = handle.rank
+    locators[0, LOC_OFFSET] = 2 * 2
+    locators[0, LOC_NBYTES] = 3 * 2
+    locators[0, LOC_STATUS] = STATUS_FOUND
     raw = cp.full((3, 1, 3), 0, dtype=cp.uint16)
+    present = cp.zeros(3, dtype=cp.uint8)
 
-    result = _gather_strided_rows_gpu(
+    result = _gather_locator_field_gpu(
         src,
-        pix_start=2,
-        stride_pixels=5,
-        n_segments=2,
+        locators,
+        dgram_index=0,
+        handle=handle,
+        output_row=2,
         pixels_per_segment=3,
-        output_rows=output_rows,
         out=raw,
+        present=present,
     )
     peds = cp.zeros(3 * raw.size, dtype=cp.float32)
     gmask = cp.ones(3 * raw.size, dtype=cp.float32)
@@ -211,37 +229,56 @@ def test_canonical_raw_gather_precedes_ordinary_calibration():
     assert result is raw
     np.testing.assert_array_equal(
         cp.asnumpy(raw[:, 0]),
-        [[7, 8, 9], [0, 0, 0], [1, 2, 3]],
+        [[0, 0, 0], [0, 0, 0], [1, 2, 3]],
     )
+    np.testing.assert_array_equal(cp.asnumpy(present), [0, 0, 1])
     np.testing.assert_array_equal(cp.asnumpy(calib), cp.asnumpy(raw))
 
 
 @pytest.mark.gpu
 @requires_gpu
-def test_mapped_passthrough_copy_writes_canonical_rows():
-    """Strided pre-calibrated panels use the same canonical destination."""
+def test_locator_passthrough_copy_writes_canonical_row():
+    """A float32 field locator feeds the passthrough destination directly."""
     import cupy as cp
 
-    from psana.gpu.gpu_detector import _gather_strided_rows_gpu
+    from psana.gpu.gpu_detector import _gather_locator_field_gpu
+    from psana.gpu.gpudgram.batch import (
+        LOC_NBYTES,
+        LOC_NCOLS,
+        LOC_OFFSET,
+        LOC_RANK,
+        LOC_STATUS,
+        LOC_TYPE,
+    )
+    from psana.gpu.gpudgram.config import GpuFieldHandle
+    from psana.gpu.gpudgram.parser import STATUS_FOUND
 
-    src = cp.asarray([99, 1, 2, 3, 88, 7, 8, 9], dtype=cp.float32)
-    output_rows = cp.asarray([2, 0], dtype=cp.uint32)
+    src = cp.asarray([99, 1, 2, 3], dtype=cp.float32).view(cp.uint8)
+    handle = GpuFieldHandle(0, 10, 0, 0, 0, 2, 4, 1, 0)
+    locators = cp.zeros((1, LOC_NCOLS), dtype=cp.uint64)
+    locators[0, LOC_TYPE] = handle.type
+    locators[0, LOC_RANK] = handle.rank
+    locators[0, LOC_OFFSET] = 4
+    locators[0, LOC_NBYTES] = 3 * 4
+    locators[0, LOC_STATUS] = STATUS_FOUND
     out = cp.full((3, 3), -1, dtype=cp.float32)
+    present = cp.zeros(3, dtype=cp.uint8)
 
-    result = _gather_strided_rows_gpu(
+    result = _gather_locator_field_gpu(
         src,
-        pix_start=1,
-        stride_pixels=4,
-        n_segments=2,
+        locators,
+        dgram_index=0,
+        handle=handle,
+        output_row=2,
         pixels_per_segment=3,
-        output_rows=output_rows,
         out=out,
+        present=present,
     )
     cp.cuda.Stream.null.synchronize()
 
     assert result is out
     np.testing.assert_array_equal(cp.asnumpy(out[2]), [1, 2, 3])
-    np.testing.assert_array_equal(cp.asnumpy(out[0]), [7, 8, 9])
+    np.testing.assert_array_equal(cp.asnumpy(out[0]), [-1, -1, -1])
     np.testing.assert_array_equal(cp.asnumpy(out[1]), [-1, -1, -1])
 
 
@@ -251,24 +288,28 @@ def test_mapped_passthrough_copy_writes_canonical_rows():
 @requires_gpu
 @requires_data
 @pytest.mark.parametrize(
-    "batch_size,pool_depth,d2h_chunk_size",
+    "detector_kw,batch_size,pool_depth,d2h_chunk_size",
     [
-        pytest.param(1, 1, 0, id="single-event"),
-        pytest.param(5, 2, 0, id="batched-slot-reuse-partial-tail"),
+        pytest.param("gpu_det", 1, 1, 0, id="single-event"),
+        pytest.param("gpu_det", 5, 2, 0, id="batched-slot-reuse-partial-tail"),
         # gpu_d2h_chunk_size > 0 activates _D2hPipeline: results are copied to
-        # pinned host memory on a separate stream and the device slot may be
-        # freed before the event is yielded.  Exercising it here is the only
+        # pinned host memory on a separate stream. Parsed field access now
+        # keeps the input slot through the event yield window. Exercising the
+        # D2H here is the only
         # check of that path against a real CUDA stream — the unit tests fake
         # cupy with a synchronous memmove, which cannot detect a missing
         # synchronization because the data has already landed.
-        pytest.param(5, 2, 1, id="d2h-chunk-per-event"),
-        pytest.param(5, 2, 3, id="d2h-chunk-spans-events"),
+        pytest.param("gpu_det", 5, 2, 1, id="d2h-chunk-per-event"),
+        pytest.param("gpu_det", 5, 2, 3, id="d2h-chunk-spans-events"),
         # Chunk larger than the batch: exercises the partial-chunk path.
-        pytest.param(5, 2, 8, id="d2h-chunk-exceeds-batch"),
+        pytest.param("gpu_det", 5, 2, 8, id="d2h-chunk-exceeds-batch"),
+        # The same parser/calibration path with the SMD proxy retained for the
+        # normal CPU BigData reader as well as represented in GPUBAT1.
+        pytest.param("hybrid_det", 5, 2, 0, id="hybrid-stream-mirror"),
     ],
 )
 def test_integrated_jungfrau_pixel_exact(
-    cpu_reference, batch_size, pool_depth, d2h_chunk_size
+    cpu_reference, detector_kw, batch_size, pool_depth, d2h_chunk_size
 ):
     """Integrated GPU calibration exactly matches normal psana by timestamp."""
     from psana import DataSource
@@ -277,15 +318,16 @@ def test_integrated_jungfrau_pixel_exact(
         exp=_EXP,
         run=_RUN,
         dir=_DIR,
-        gpu_det=_DET_NAME,
         batch_size=batch_size,
         n_gpu_streams=pool_depth,
         gpu_d2h_chunk_size=d2h_chunk_size,
         max_events=_N_EVENTS,
+        **{detector_kw: _DET_NAME},
     )
     run = next(ds.runs())
 
     seen = set()
+    validated_general_field_access = False
     for evt in run.events():
         timestamp = int(evt.timestamp)
         assert timestamp not in seen, f"duplicate GPU timestamp {timestamp}"
@@ -297,6 +339,7 @@ def test_integrated_jungfrau_pixel_exact(
         # copy before advancing the iterator can recycle that slot.
         calib_result = evt.gpu.get("calib")
         raw_result = evt.gpu.get("raw")
+        manager = getattr(run._evt_iter, "gpu_manager", run._evt_iter)
         if _result_still_on_device(calib_result):
             _assert_result_is_slot_backed(run, calib_result._arr)
         else:
@@ -312,6 +355,43 @@ def test_integrated_jungfrau_pixel_exact(
             _assert_result_is_slot_backed(run, raw_result._arr, result_type="raw")
         gpu_raw = np.asarray(raw_result.on_cpu).copy()
         gpu_calib = np.asarray(calib_result.on_cpu).copy()
+        if not validated_general_field_access:
+            import cupy as cp
+
+            detector = evt.gpu.detector(_DET_NAME)
+            parsed_raw_result = detector.field("raw", "raw")
+            parsed_raw = parsed_raw_result.on_cpu
+            binding = manager.gpu_detector_bindings[_DET_NAME]
+            assert parsed_raw.segment_ids == binding.canonical_segment_ids
+            for row, segment in enumerate(binding.canonical_segment_ids):
+                np.testing.assert_array_equal(
+                    np.asarray(parsed_raw[segment]).reshape(gpu_raw[row].shape),
+                    gpu_raw[row],
+                )
+            frame_count = detector.field(
+                "raw", "frame_cnt", segment=binding.canonical_segment_ids[0]
+            ).on_cpu.only()
+            assert frame_count.shape == ()
+            assert frame_count.dtype == np.uint64
+
+            first_segment = binding.canonical_segment_ids[0]
+            one_segment = detector.field(
+                "raw", "raw", segment=first_segment
+            )
+            gpu_copy = one_segment.on_gpu.only()
+            np.testing.assert_array_equal(
+                cp.asnumpy(gpu_copy).reshape(gpu_raw[0].shape),
+                gpu_raw[0],
+            )
+            user_stream = cp.cuda.Stream(non_blocking=True)
+            with one_segment.on_gpu_view(user_stream) as views:
+                with user_stream:
+                    view_copy = views.only().copy()
+            np.testing.assert_array_equal(
+                cp.asnumpy(view_copy).reshape(gpu_raw[0].shape),
+                gpu_raw[0],
+            )
+            validated_general_field_access = True
         np.testing.assert_array_equal(
             gpu_raw,
             cpu_reference[timestamp]["raw"],

@@ -9,7 +9,7 @@ All tests run on CPU only — CuPy is replaced with a lightweight fake that:
   - runtime.memcpyAsync → ctypes.memmove so actual data is copied
 
 Tests cover the design requirements from
-gpu_memory_backpressure_and_async_join.md §Validation:
+gpu/docs/memory_backpressure_and_results.md §Validation:
 
   - A slot cannot be recycled while D→H is in flight.
   - A downstream CUDA completion token controls release.
@@ -725,6 +725,17 @@ class TestIsFullyHostBacked:
             pending={7: {"jungfrau.calib": object()}},
         )
         assert GpuEventManager._is_fully_host_backed(ready) is True
+
+    def test_parsed_input_blocks_release_before_event_yield(self):
+        from psana.gpu.gpu_events import GpuEventManager
+
+        ready = self._ready(
+            {7: {"jungfrau.calib": object()}},
+            pending={7: {"jungfrau.calib": object()}},
+        )
+        ready.input_dgrams_by_ts = {7: object()}
+
+        assert GpuEventManager._is_fully_host_backed(ready) is False
 
     def test_cached_cpu_fallback_also_counts(self):
         from psana.gpu.gpu_events import GpuEventManager

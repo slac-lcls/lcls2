@@ -1,7 +1,7 @@
 """Device-only GPU XTC parser correctness on the xpptut test stream."""
 
-import os
 import struct
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -13,6 +13,7 @@ from psana.gpu.gpudgram.batch import (
     DGRAM_SIZE,
     DGRAM_STATUS,
     DGRAM_STREAM_ID,
+    GpuXtcBatchPool,
 )
 from psana.gpu.gpudgram.parser import (
     LOC_DIM0,
@@ -27,12 +28,22 @@ from psana.gpu.gpudgram.parser import (
     GpuEventBatch,
 )
 from psana.gpu.gpudgram.config import GpuStreamConfigTable
+from psana.gpu.gpu_kvikio_read import (
+    DESC_DEVICE_OFFSET,
+    DESC_EVENT_INDEX,
+    DESC_NCOLS,
+    DESC_READ_SIZE,
+    DESC_STREAM_ID,
+)
 
 
-_XTC = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    ".tmp",
-    "xpptut15-r0014-s000-c000.xtc2",
+# Tracked fixture: post-Configure record 3 is the first L1Accept and contains
+# xppcspad[1].raw.arrayRaw (NamesId 0x10c, uint16, shape (3, 6)).
+_XTC = (
+    Path(__file__).resolve().parents[2]
+    / "test_data"
+    / "chunking"
+    / "xpptut15-r0014-s000-c000.xtc2"
 )
 
 
@@ -48,12 +59,14 @@ def _gpu_available():
 requires_gpu = pytest.mark.skipif(
     not _gpu_available(), reason="no CUDA device available"
 )
-requires_data = pytest.mark.skipif(
-    not os.path.isfile(_XTC), reason=f"test data not found: {_XTC}"
-)
 
 
 def _index_post_config(data, config_nbytes):
+    """Supply dgram read metadata, as the integrated CPU read planner does.
+
+    This test harness frames whole dgrams only; XTC walking and field-offset
+    decoding are performed by the GPU parser under test.
+    """
     records = []
     offset = int(config_nbytes)
     event_index = 0
@@ -120,13 +133,12 @@ def _consume_uint16(cp, data_gpu, locators, dgram_index, n_values):
 
 @pytest.mark.gpu
 @requires_gpu
-@requires_data
 def test_xpptut_field_is_located_and_consumed_without_metadata_round_trip():
     import cupy as cp
 
     from psana import dgram
 
-    file_bytes = open(_XTC, "rb").read()
+    file_bytes = _XTC.read_bytes()
     config = dgram.Dgram(view=memoryview(file_bytes), offset=0)
     config_nbytes = int(config._size)
     post_config = file_bytes[config_nbytes:]
@@ -169,13 +181,12 @@ def test_xpptut_field_is_located_and_consumed_without_metadata_round_trip():
 
 @pytest.mark.gpu
 @requires_gpu
-@requires_data
 def test_same_names_id_is_resolved_in_its_own_stream_config_table():
     import cupy as cp
 
     from psana import dgram
 
-    file_bytes = open(_XTC, "rb").read()
+    file_bytes = _XTC.read_bytes()
     config = dgram.Dgram(view=memoryview(file_bytes), offset=0)
     config_nbytes = int(config._size)
     records = _index_post_config(file_bytes, config_nbytes)
@@ -208,3 +219,61 @@ def test_same_names_id_is_resolved_in_its_own_stream_config_table():
     rows1 = cp.asnumpy(batch.locate(handle1).rows_gpu[:, LOC_STATUS])
     assert rows0.tolist() == [STATUS_FOUND, STATUS_NOT_PRESENT]
     assert rows1.tolist() == [STATUS_NOT_PRESENT, STATUS_FOUND]
+
+
+@pytest.mark.gpu
+@requires_gpu
+def test_slot_pool_reuses_device_parser_tables_without_metadata_round_trip():
+    import cupy as cp
+
+    from psana import dgram
+    from psana.gpu.gpu_budget import _GpuBudget
+
+    file_bytes = _XTC.read_bytes()
+    config = dgram.Dgram(view=memoryview(file_bytes), offset=0)
+    config_nbytes = int(config._size)
+    post_config = file_bytes[config_nbytes:]
+    records = _index_post_config(file_bytes, config_nbytes)
+    desc = np.zeros((len(records), DESC_NCOLS), dtype=np.uint64)
+    desc[:, DESC_EVENT_INDEX] = records[:, DGRAM_EVENT_INDEX]
+    desc[:, DESC_STREAM_ID] = records[:, DGRAM_STREAM_ID]
+    desc[:, DESC_READ_SIZE] = records[:, DGRAM_SIZE]
+    desc[:, DESC_DEVICE_OFFSET] = records[:, DGRAM_OFFSET]
+
+    configs = GpuStreamConfigTable.from_config(config)
+    handle = configs.resolve("xppcspad", 1, "raw", "arrayRaw")
+    budget = _GpuBudget(limit_bytes=1024**3)
+    pool = GpuXtcBatchPool(
+        configs,
+        field_handles=[handle],
+        n_slots=1,
+        budget=budget,
+    )
+    data_gpu = cp.asarray(np.frombuffer(post_config, dtype=np.uint8))
+    stream = cp.cuda.Stream(non_blocking=True)
+
+    first = pool.parse(0, data_gpu, desc, stream)
+    stream.synchronize()
+    first_ptrs = (
+        first.dgram_records_gpu.data.ptr,
+        first.shape_counts_gpu.data.ptr,
+        first.shape_refs_gpu.data.ptr,
+        first.locate(handle).rows_gpu.data.ptr,
+    )
+    memory_after_first = pool.memory_bytes()
+
+    second = pool.parse(0, data_gpu, desc, stream)
+    stream.synchronize()
+    second_ptrs = (
+        second.dgram_records_gpu.data.ptr,
+        second.shape_counts_gpu.data.ptr,
+        second.shape_refs_gpu.data.ptr,
+        second.locate(handle).rows_gpu.data.ptr,
+    )
+
+    assert second_ptrs == first_ptrs
+    assert pool.memory_bytes() == memory_after_first
+    assert budget.committed() == memory_after_first["total"]
+    assert cp.asnumpy(second.dgram_records_gpu[:, DGRAM_STATUS]).tolist() == [
+        STATUS_OK
+    ] * len(records)
