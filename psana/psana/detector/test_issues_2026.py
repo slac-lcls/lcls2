@@ -1320,12 +1320,13 @@ def issue_2026_09_21(args):
     """
     import psana.detector.NDArrUtils as ndu
     ds,run,det = ds_run_det(exp='mfx101628626', run=163, detname='epixuhr3x2', **{'max_events':10})
-    evt = next(run.events())
-    raw = det.raw.raw(evt)
-    print(ndu.info_ndarr(det.raw.raw(evt), 'TTTT raw'))
-    print('TTTT before det.raw.calib(evt)')
-    cal = det.raw.calib(evt)
-    print(ndu.info_ndarr(cal, 'TTTT cal'))
+    #evt = next(run.events())
+    for i,evt in enumerate(run.events()):
+      print(f'Event# {"%03d"%i}')
+      raw = det.raw.raw(evt)
+      print(ndu.info_ndarr(det.raw.raw(evt), '  raw'))
+      cal = det.raw.calib(evt)
+      print(ndu.info_ndarr(cal, '  cal'))
 
 #===
 
