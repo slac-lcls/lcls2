@@ -95,6 +95,10 @@ void TebReceiver::setup(cudaExecutionContext_t green_ctx)
   auto bufSize = memPool.reduceBufsSize() + memPool.reduceBufsReserved();
   size_t maxBufSize = 32 * 1024 * 1024UL; // Max pinned memory size
   constexpr auto dio{true};
+  // Retire the previous cycle's writer before building this one, so that only one
+  // cuFile buffer registration exists at a time.  Assigning over the unique_ptr
+  // would construct the new one first and briefly hold two.
+  m_fileWriter.reset();
   m_fileWriter = std::make_unique<FileWriter>(maxBufSize, dio);
   //m_fileWriter = std::make_unique<FileWriterAsync>(maxBufSize/2, dio); // For 2 ping pong buffers
   m_smdWriter  = std::make_unique<SmdWriter>(bufSize, m_para.maxTrSize);

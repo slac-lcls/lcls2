@@ -69,6 +69,20 @@ FileWriter::FileWriter(size_t bufferSize, bool dio) :
     m_buffer_d = nullptr;
   }
   logging::debug("FileWriter: cuFile buffer: %p, size %zu\n", m_buffer_d, m_bufferSize);
+
+  // Pin the buffer once, here, rather than per file.  Registration and its undo
+  // are device-wide: cuFileBufDeregister() reaches cuMemHostUnregister(), which
+  // has to quiesce the device's mappings.  The Reader graphs relaunch themselves
+  // until terminate is set (see Reader.cu), so between startup() and unconfigure
+  // the device is never idle and that call does not return.  A FileWriter is
+  // constructed during Configure, before the graphs launch, and destroyed after
+  // they are gone, so both ends are quiet here.
+  if (m_buffer_d && m_bufferSize) {
+    if (chkError(cuFileBufRegister(m_buffer_d, m_bufferSize, 0))) {
+      logging::error("Failed to register GPU buffer %p, size %zu with cuFile",
+                     m_buffer_d, m_bufferSize);
+    }
+  }
 }
 
 FileWriter::~FileWriter()
@@ -76,6 +90,12 @@ FileWriter::~FileWriter()
   close();
 
   if (m_buffer_d) {
+    if (m_bufferSize) {
+      if (chkError(cuFileBufDeregister(m_buffer_d))) {
+        logging::error("Failed to deregister GPU buffer at %p with cuFile", m_buffer_d);
+      }
+    }
+
     chkError(cudaFree(m_buffer_d));
     m_buffer_d = nullptr;
   }
@@ -199,14 +219,7 @@ int FileWriter::open(const std::string& fileName)
     return rc;
   }
 
-  if (m_bufferSize) {
-    if ( (rc = chkError(cuFileBufRegister(m_buffer_d, m_bufferSize, 0))) ) {
-      logging::error("Failed to register GPU buffer %p, size %zu with cuFile",
-                     m_buffer_d, m_bufferSize);
-      close();
-      return rc;
-    }
-  }
+  // The buffer itself is registered for the FileWriter's lifetime, in the ctor
 
   _reset();
 
@@ -218,7 +231,10 @@ int FileWriter::close()
   int rc = 0;
   if (m_fd > 0) {
     _flush();
+
+    // Undo the handle registration before closing the file it was made against
     cuFileHandleDeregister(m_handle);
+
     logging::debug("Closing fd %d", m_fd);
     rc = ::close(m_fd);
     if (rc == -1) {
@@ -226,10 +242,6 @@ int FileWriter::close()
       logging::error("Error closing fd %d: %m", m_fd);
     }
     m_fd = 0;
-
-    if (chkError(cuFileBufDeregister(m_buffer_d))) {
-      logging::error("Failed to deregister GPU buffer at %p with cuFile", m_buffer_d);
-    }
   }
 
   return rc;
@@ -256,6 +268,11 @@ ssize_t FileWriter::_write()
 {
   ssize_t rc = 0;
   if (m_count) {
+    // writeEvent() fills the buffer with async copies, so wait for them to land
+    // before handing it to cuFile, which would otherwise write bytes that have
+    // not arrived yet
+    chkError(cudaStreamSynchronize(m_stream));
+
     rc = cuFileWrite(m_handle, m_buffer_d, m_count, m_fileOffset, 0);
     if (rc < 0) {
       if (IS_CUFILE_ERR(rc))
