@@ -173,7 +173,12 @@ class AreaDetector(DetectorImpl):
         return self._geo
 
 
-    def _pixel_coord_indexes(self, **kwa):
+    def _pixel_coord_indexes(self, *, _initialize_shared=False, **kwa):
+        """Return shared indexes or locally cached indexes on a cache miss.
+
+        Only coordinated startup may set _initialize_shared=True; all ranks
+        in the cache's communicator must participate in that initialization.
+        """
         geo = self._det_geo()
         if geo is None: return None
         cache = getattr(self, "_shared_geo_cache", None)
@@ -208,6 +213,16 @@ class AreaDetector(DetectorImpl):
             cached_iy = cache.get_if_present(key, "pix_cols")
             if cached_ix is not None and cached_iy is not None:
                 return cached_ix, cached_iy
+
+            if not _initialize_shared:
+                def compute():
+                    arrays = geo.get_pixel_coord_indexes(
+                        pix_scale_size_um=kwa.get('pix_scale_size_um', None),
+                        xy0_off_pix=kwa.get('xy0_off_pix', None),
+                        do_tilt=kwa.get('do_tilt', True),
+                        cframe=kwa.get('cframe', 0))
+                    return tuple(self._arr_for_daq_segments(a, **kwa) for a in arrays)
+                return cache.get_or_compute_local(key, 'indexes', compute)
 
             shm_comm = getattr(cache.shared_mem, "shm_comm", None)
             is_leader = getattr(cache.shared_mem, "is_leader", False)
@@ -257,7 +272,11 @@ class AreaDetector(DetectorImpl):
                self._arr_for_daq_segments(iy, **kwa)
 
 
-    def _pixel_coords(self, **kwa):
+    def _pixel_coords(self, *, _initialize_shared=False, **kwa):
+        """Return shared coordinates, falling back locally outside startup.
+
+        _initialize_shared=True requires participation by every cache rank.
+        """
         geo = self._det_geo()
         if geo is None: return None
         cache = getattr(self, "_shared_geo_cache", None)
@@ -291,6 +310,13 @@ class AreaDetector(DetectorImpl):
             cached_z = cache.get_if_present(key, "pix_z")
             if cached_x is not None and cached_y is not None and cached_z is not None:
                 return cached_x, cached_y, cached_z
+
+            if not _initialize_shared:
+                def compute():
+                    arrays = geo.get_pixel_coords(
+                        do_tilt=kwa.get('do_tilt', True), cframe=kwa.get('cframe', 0))
+                    return tuple(self._arr_for_daq_segments(a, **kwa) for a in arrays)
+                return cache.get_or_compute_local(key, 'coords', compute)
 
             shm_comm = getattr(cache.shared_mem, "shm_comm", None)
             is_leader = getattr(cache.shared_mem, "is_leader", False)
@@ -369,11 +395,6 @@ class AreaDetector(DetectorImpl):
         #return self._det_calibconst('shape_as_daq')
 
 
-#    def _segment_ids(self):
-#        """Returns list of detector segment ids"""
-#        return self._uniqueid.split('_')[1:]
-
-
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
         nsegs_tot = self._number_of_segments_total()
         nsegs_daq = self._number_of_segments_daq()
@@ -393,7 +414,7 @@ class AreaDetector(DetectorImpl):
         """
         value = value_for_missing_segments
 
-        _nda = self.calib(evt) if nda is None else nda
+        _nda = self.calib(evt, **kwa) if nda is None else nda
 
         segnums = self._segment_numbers
 
@@ -491,13 +512,7 @@ class AreaDetector(DetectorImpl):
     def _mask(self, **kwa):
         """Returns cached mask. **kwargs passed from Detector(..., **kwargs)"""
         logger.debug('in AreaDetector._mask(**kwa - not used, set them in Detector(..., **kwa))')
-        return self._mask_method_wrapper('mask')
-
-#    def _mask(self, status=True, neighbors=False, edges=False, center=False,\
-#              calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
-#        """Returns cached mask. Dict of kwargs is the same as in _mask_comb."""
-#        return self._mask_method_wrapper('mask', status=status, neighbors=neighbors, edges=edges, center=center,\
-#                                         calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
+        return self._mask_method_wrapper('mask', **kwa)
 
 
 class AreaDetectorRaw(AreaDetector):

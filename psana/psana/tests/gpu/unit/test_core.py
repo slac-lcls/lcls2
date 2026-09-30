@@ -2,73 +2,341 @@
 
 import os
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import pytest
 
 import psana.gpu.gpu_events as gpu_events_module
-from psana.gpu.detector_router import DetectorRouter
-from psana.gpu.gpu_calib import _segment_ids_in_l1_order
-from psana.gpu.gpu_events import GpuEvents
+from psana.tests.gpu.calibration_reference import _compute_calib_constants_cpu
+from psana.gpu.context import GpuEventState
+from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
+from psana.event import Event, EventEnvelope
 from psana.psexp import TransitionId
+from psana.psexp.ds_base import DsParms
 from psana.psexp.packet_footer import PacketFooter
 
 
-def test_public_gpu_api_is_minimal():
+def test_public_gpu_api_exports_result_types_and_rank_helpers():
     import psana.gpu as gpu
 
-    assert gpu.__all__ == ["GPUResult", "GpuEventContext", "init_gpu_rank"]
-    internal_names = {
-        "DetectorRouter",
-        "EventPool",
-        "GPUKernelRegistry",
-        "create_gpu_communicators",
-        "gpu_error_handler",
-        "log_gpu_mem",
-        "optimal_kernel_batch_size",
-        "share_calib_between_gpu_peers",
-        "verify_gpu_pinning",
+    # Check supported imports without freezing the API against future additions.
+    required_exports = {
+        "GPUResult",
+        "GpuEventState",
+        "GpuFieldData",
+        "GpuFieldResult",
+        "init_gpu_rank",
     }
-    assert internal_names.isdisjoint(vars(gpu))
+    assert required_exports.issubset(gpu.__all__)
+    for name in required_exports:
+        assert callable(getattr(gpu, name))
 
 
-def test_segment_ids_preserve_l1_child_order():
-    dgram = SimpleNamespace(
-        jungfrau={
-            17: object(),
-            13: object(),
-            9: object(),
-            5: object(),
-            29: object(),
-            25: object(),
-            21: object(),
-        }
+@pytest.mark.parametrize("argument", ["gpu_det", "hybrid_det"])
+def test_single_file_datasource_rejects_gpu_mode(argument):
+    from psana.psexp.singlefile_ds import SingleFileDataSource
+
+    with pytest.raises(
+        NotImplementedError,
+        match="supported only by RunSerial and RunParallel",
+    ):
+        SingleFileDataSource(files=[], **{argument: "jungfrau"})
+
+
+def _routing_dsparms(
+    gpu_det,
+    ids_table,
+    stream_owners,
+    hybrid_det=None,
+    smd_callback=0,
+):
+    dsparms = DsParms(
+        batch_size=1,
+        max_events=0,
+        max_retries=0,
+        live=False,
+        timestamps=None,
+        intg_det="",
+        intg_delta_t=0,
+        use_calib_cache=False,
+        cached_detectors=[],
+        fetch_calib_cache_max_retries=0,
+        skip_calib_load=[],
+        dbsuffix="",
+        smd_callback=smd_callback,
+        gpu_det=gpu_det,
+        hybrid_det=hybrid_det,
+    )
+    dsparms.det_stream_ids_table = ids_table
+    dsparms.det_stream_segments_table = {}
+    dsparms.stream_id_to_detnames = stream_owners
+    return dsparms
+
+
+@pytest.mark.parametrize(
+    ("gpu_det", "hybrid_det"),
+    [("jungfrau", None), (None, "qadc_ch0")],
+)
+def test_gpu_routing_rejects_smd_callback(gpu_det, hybrid_det):
+    with pytest.raises(
+        NotImplementedError,
+        match="callback batching does not produce GPUBAT1 descriptors",
+    ):
+        _routing_dsparms(
+            gpu_det,
+            {},
+            {},
+            hybrid_det=hybrid_det,
+            smd_callback=lambda run: None,
+        )
+
+
+def test_gpu_routing_allows_one_detector_across_multiple_streams():
+    dsparms = _routing_dsparms(
+        "jungfrau",
+        {"jungfrau": [3, 5, 7, 8, 9]},
+        {stream_id: ["jungfrau"] for stream_id in [3, 5, 7, 8, 9]},
     )
 
-    assert _segment_ids_in_l1_order(dgram, "jungfrau") == [
-        17,
-        13,
-        9,
-        5,
-        29,
-        25,
-        21,
-    ]
-    assert _segment_ids_in_l1_order(object(), "jungfrau") == []
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_stream_ids == [3, 5, 7, 8, 9]
+    assert dsparms.hybrid_stream_ids == []
+
+
+def test_gpu_routing_allows_detectors_on_disjoint_streams():
+    dsparms = _routing_dsparms(
+        ["jungfrau", "other"],
+        {"jungfrau": [3, 5], "other": [6]},
+        {3: ["jungfrau"], 5: ["jungfrau"], 6: ["other"]},
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_stream_ids == [3, 5, 6]
+    assert dsparms.hybrid_stream_ids == []
+
+
+@pytest.mark.parametrize("gpu_det", ["jungfrau", ["jungfrau", "other"]])
+def test_gpu_routing_rejects_shared_detector_stream(gpu_det):
+    dsparms = _routing_dsparms(
+        gpu_det,
+        {"jungfrau": [3], "other": [3]},
+        {3: ["jungfrau", "other"]},
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="GPUBAT1 requires exactly one normal detector per GPU stream",
+    ):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def test_hybrid_routing_allows_detectors_to_share_a_stream():
+    dsparms = _routing_dsparms(
+        None,
+        {"qadc_ch0": [2], "qadc_ch1": [2]},
+        {2: ["qadc_ch0", "qadc_ch1"]},
+        hybrid_det="qadc_ch0",
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_enabled
+    assert dsparms.gpu_detector_names == ["qadc_ch0"]
+    assert dsparms.gpu_stream_ids == [2]
+    assert dsparms.hybrid_stream_ids == [2]
+
+
+def test_hybrid_routing_deduplicates_shared_stream_descriptors():
+    dsparms = _routing_dsparms(
+        None,
+        {"qadc_ch0": [2], "qadc_ch1": [2], "timing": [4]},
+        {2: ["qadc_ch0", "qadc_ch1"], 4: ["timing"]},
+        hybrid_det=["qadc_ch0", "qadc_ch1", "timing"],
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_detector_names == ["qadc_ch0", "qadc_ch1", "timing"]
+    assert dsparms.gpu_stream_ids == [2, 4]
+    assert dsparms.hybrid_stream_ids == [2, 4]
+
+
+def test_exclusive_and_hybrid_routing_can_use_disjoint_streams():
+    dsparms = _routing_dsparms(
+        "large",
+        {"large": [1], "small": [2], "other": [2]},
+        {1: ["large"], 2: ["small", "other"]},
+        hybrid_det="small",
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_detector_names == ["large", "small"]
+    assert dsparms.gpu_stream_ids == [1, 2]
+    assert dsparms.hybrid_stream_ids == [2]
+
+
+def test_routing_rejects_detector_in_both_gpu_modes():
+    dsparms = _routing_dsparms(
+        "qadc_ch0",
+        {"qadc_ch0": [2]},
+        {2: ["qadc_ch0"]},
+        hybrid_det="qadc_ch0",
+    )
+
+    with pytest.raises(RuntimeError, match="both gpu_det and hybrid_det"):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def test_routing_rejects_exclusive_hybrid_physical_stream_overlap():
+    dsparms = _routing_dsparms(
+        "large",
+        {"large": [2], "small": [2]},
+        {2: ["large", "small"]},
+        hybrid_det="small",
+    )
+
+    with pytest.raises(RuntimeError, match="same physical streams: \\[2\\]"):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def _split_one_stream_batch(hybrid):
+    from psana.psexp.smdreader_manager import SmdReaderManager
+
+    smd_path = (
+        Path(__file__).resolve().parents[2]
+        / "test_data/intg_det/smalldata/xpptut15-r0014-s000-c000.smd.xtc2"
+    )
+    dsparms = _routing_dsparms(None, {}, {})
+    dsparms.batch_size = 2
+    dsparms.timestamps = np.empty(0, dtype=np.uint64)
+    dsparms.gpu_stream_ids = [0]
+    dsparms.hybrid_stream_ids = [0] if hybrid else []
+
+    fd = os.open(smd_path, os.O_RDONLY)
+    try:
+        manager = SmdReaderManager(np.array([fd], dtype=np.int32), dsparms)
+        assert manager.get_next_dgrams()[0].service() == TransitionId.Configure
+        assert manager.get_next_dgrams()[0].service() == TransitionId.BeginRun
+        batch_iter = next(manager)
+        batch_iter.next_with_gpu()  # BeginStep-only batch
+        cpu_batches, gpu_batches, _ = batch_iter.next_with_gpu()
+        cpu_bytes, cpu_event_sizes = cpu_batches[0]
+        gpu_bytes, _ = gpu_batches[0]
+        return bytes(cpu_bytes), cpu_event_sizes, bytes(gpu_bytes)
+    finally:
+        os.close(fd)
+
+
+def test_eventbuilder_hybrid_stream_is_present_in_cpu_and_gpu_batches():
+    exclusive_cpu, exclusive_sizes, exclusive_gpu = _split_one_stream_batch(False)
+    hybrid_cpu, hybrid_sizes, hybrid_gpu = _split_one_stream_batch(True)
+
+    # Both modes generate identical GPUBAT1 descriptors for the GPU reader.
+    assert hybrid_gpu == exclusive_gpu
+    # The transition remains identical. Each exclusive L1 contains only its
+    # one-stream PacketFooter (8 bytes); hybrid L1s retain the SMD proxy bytes.
+    assert len(exclusive_sizes) == len(hybrid_sizes)
+    assert len(exclusive_sizes) >= 2
+    assert hybrid_sizes[0] == exclusive_sizes[0]
+    assert all(size == 8 for size in exclusive_sizes[1:])
+    assert all(size > 8 for size in hybrid_sizes[1:])
+    assert len(hybrid_cpu) > len(exclusive_cpu)
+
+
+def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():
+    """A GPU-only event must not require a CPU BigData dgram."""
+    timestamp = (1_234_567 << 32) | 890
+    dgram = gpu_events_module._GpuOnlyDgram(timestamp)
+    evt = Event([dgram, None])
+
+    assert evt.timestamp == timestamp
+    assert evt.service() == TransitionId.L1Accept
+    assert evt.env == TransitionId.L1Accept << 24
+    assert evt._det_segments == {}
+
+
+def test_calib_constants_follow_canonical_segment_order():
+    peds = np.arange(3 * 4, dtype=np.float32).reshape(3, 4, 1, 1)
+    gain = np.ones_like(peds)
+    det = SimpleNamespace(
+        calibconst={"pedestals": [peds], "pixel_gain": [gain]},
+        raw=SimpleNamespace(
+            _mask=lambda all_segs: np.ones((4, 1, 1), dtype=np.float32)
+        ),
+    )
+
+    peds_flat, gmask_flat = _compute_calib_constants_cpu(
+        det, canonical_segment_ids=[3, 1]
+    )
+
+    np.testing.assert_array_equal(peds_flat, [3, 1, 7, 5, 11, 9])
+    np.testing.assert_array_equal(gmask_flat, np.ones(6, dtype=np.float32))
+
+
+def test_event_owns_optional_gpu_state_once():
+    evt = Event([gpu_events_module._GpuOnlyDgram(42)])
+    state = object()
+
+    assert evt.gpu is None
+    assert evt._attach_gpu(state) is evt
+    assert evt.gpu is state
+    with pytest.raises(RuntimeError, match="already attached"):
+        evt._attach_gpu(object())
+
+
+def test_run_events_materializes_event_envelope():
+    from psana.psexp.run import Run
+
+    gpu_state = object()
+    envelope = EventEnvelope(
+        [gpu_events_module._GpuOnlyDgram(43)],
+        gpu_state=gpu_state,
+    )
+    run = Run.__new__(Run)
+    run._evt_iter = iter([envelope])
+    run._run_ctx = object()
+
+    events = list(run.events())
+
+    assert len(events) == 1
+    assert isinstance(events[0], Event)
+    assert events[0].timestamp == 43
+    assert events[0].gpu is gpu_state
+    assert events[0].run() is run._run_ctx
+
+
+class _FakeEvent:
+    def __init__(self, disable_timing=False):
+        self.done = True
+
+    def record(self, stream=None):
+        pass
+
+    def synchronize(self):
+        pass
 
 
 class _FakeStream:
     def __init__(self, non_blocking=True):
         self.non_blocking = non_blocking
         self.synchronize_calls = 0
+        self.ptr = 0
 
     def synchronize(self):
         self.synchronize_calls += 1
 
+    def wait_event(self, event):
+        pass
+
 
 class _FakeDetector:
-    def process_batch(self, *args, **kwargs):
+    def prepare_batch(self, *args, **kwargs):
         return iter(())
 
 
@@ -85,7 +353,18 @@ class _FakeFlushPool:
         pending, self.pending = self.pending, []
         for item in pending:
             self.yield_count += 1
-            yield item
+            if hasattr(item, "gpu_results_by_ts"):
+                yield item
+                continue
+            results, evts = item[:2]
+            leases = item[2] if len(item) > 2 else {}
+            yield SimpleNamespace(
+                gpu_results_by_ts=results,
+                event_envelopes=evts,
+                leases_by_ts=leases,
+                pending_d2h_by_ts={},
+                cached_cpu_results_by_ts={},
+            )
 
 
 @pytest.fixture
@@ -103,15 +382,21 @@ def _transition_batch(*services):
 
 
 def _new_gpu_events(log, pending=()):
-    events = GpuEvents.__new__(GpuEvents)
+    events = GpuEventManager.__new__(GpuEventManager)
     events.configs = []
     events.event_pool = _FakeFlushPool(log, pending=pending)
-    events.gpu_detectors = {}
-    events.router = None
-    events.cpu_dets = {}
-    events.run = SimpleNamespace(
-        _handle_transition=lambda dgrams: log.append(("transition", dgrams[0]))
-    )
+    events.input_preparers = {}
+    events.gpu_det_names = []
+    events._high_water = {}
+    events._first_batch_logged = True  # suppress first-batch log in tests
+    events._n_events = 0
+    events._done = False
+    events._closed = False
+    events._pending_gpu_read = None
+    from psana.gpu.gpu_budget import _GpuBudget
+
+    events._gpu_budget = _GpuBudget(limit_bytes=1024**4)  # 1 TiB sentinel
+    events.run = SimpleNamespace(_handle_transition=lambda dgrams: log.append(("transition", dgrams[0])))
     return events
 
 
@@ -119,46 +404,102 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
     monkeypatch.setitem(
         sys.modules,
         "cupy",
-        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream)),
+        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream, Event=_FakeEvent)),
     )
 
     pool = EventPool(n=1)
-    detectors = {"jungfrau": (None, _FakeDetector())}
+    detectors = {"jungfrau": _FakeDetector()}
 
     pool.submit(None, None, ["event-0"], detectors)
-    with pytest.raises(RuntimeError, match="without retire_next"):
+    with pytest.raises(RuntimeError, match="before retirement finished"):
         pool.submit(None, None, ["event-1"], detectors)
 
-    results, events = pool.retire_next()
-    assert results == {}
-    assert events == ["event-0"]
+    record = pool.begin_retire_next()
+    assert record.gpu_results_by_ts == {}
+    assert record.event_envelopes == ["event-0"]
+    assert record.leases_by_ts == {}
     assert pool._streams[0].synchronize_calls == 1
+    with pytest.raises(RuntimeError, match="before retirement finished"):
+        pool.submit(None, None, ["event-1"], detectors)
 
+    pool.finish_retire_next()
     pool.submit(None, None, ["event-1"], detectors)
 
 
-def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_decode):
+def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
+    monkeypatch.setitem(
+        sys.modules,
+        "cupy",
+        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream, Event=_FakeEvent)),
+    )
     log = []
-    events = _new_gpu_events(log)
-    events.gpu_detectors = {
-        "jungfrau": (
-            object(),
-            SimpleNamespace(
-                beginstep=lambda peds, gmask: log.append(
-                    ("beginstep", peds, gmask)
-                )
-            ),
-        )
-    }
+    xtc_batch = SimpleNamespace(
+        data_gpu=object(),
+        stream_ids_by_dgram=np.asarray([7], dtype=np.uint64),
+        n_dgrams=1,
+    )
+    gpu_event = SimpleNamespace(
+        timestamp=42,
+        first_desc=0,
+        n_desc=1,
+        batch_event_index=3,
+    )
+    gpu_view = SimpleNamespace(iter_events=lambda: iter((gpu_event,)))
+    detector_events = []
 
-    def fake_constants(det):
-        log.append("constants")
-        return "peds", "gmask"
+    class _Parser:
+        def parse_window(self, read, stream, *, batch_id):
+            from psana.gpu.gpu_input_window import InputWindow
+            log.append(("parse", 0, read.data_gpu, read.desc_table, stream))
+            return InputWindow(batch_id, 0, xtc_batch, read.desc_table)
 
-    monkeypatch.setattr(
-        gpu_events_module, "_compute_calib_constants_cpu", fake_constants
+    class _Detector:
+        def __init__(self, name):
+            self.name = name
+
+        def prepare_batch(self, gpu_events, **kwargs):
+            detector_events.append(gpu_events)
+            log.append((self.name, kwargs["slot_id"], kwargs["stream"]))
+            return iter(())
+
+    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table=np.array([[3, 7, 42, 0, 4, 0]], dtype=np.uint64))
+    pool = EventPool(n=1)
+    record = pool.submit(
+        gpu_view,
+        gpu_read,
+        ["event"],
+        {
+            "det-a": _Detector("detector-a"),
+            "det-b": _Detector("detector-b"),
+        },
+        xtc_parser=_Parser(),
     )
 
+    assert record.xtc_batch is xtc_batch
+    assert record.gpu_event_dgrams is detector_events[0]
+    assert record.gpu_event_dgrams is detector_events[1]
+    assert record.gpu_event_dgrams[0].dgrams[7].dgram_index == 0
+    assert record.input_dgrams_by_ts[42] is record.gpu_event_dgrams[0]
+    assert record.input_leases_by_ts[42] in record.leases
+    assert [entry[0] for entry in log] == [
+        "parse",
+        "detector-a",
+        "detector-b",
+    ]
+    assert log[0][4] is log[1][2] is log[2][2] is pool._streams[0]
+
+    pool.begin_retire_next()
+    assert record.xtc_batch is xtc_batch
+    pool.finish_retire_next()
+    assert record.xtc_batch is None
+    assert record.gpu_event_dgrams == ()
+    assert record.input_dgrams_by_ts == {}
+    assert record.input_leases_by_ts == {}
+
+
+def test_beginstep_flushes_before_dispatch(monkeypatch, fake_transition_decode):
+    log = []
+    events = _new_gpu_events(log)
     step_dict = _transition_batch(
         TransitionId.Enable,
         TransitionId.BeginStep,
@@ -168,8 +509,6 @@ def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_deco
     assert log == [
         "flush",
         ("transition", TransitionId.Enable),
-        "constants",
-        ("beginstep", "peds", "gmask"),
         ("transition", TransitionId.BeginStep),
         ("transition", TransitionId.Disable),
     ]
@@ -193,14 +532,27 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
     assert events.event_pool.flush_calls == 0
 
 
+def test_empty_gpu_only_smd_event_is_not_dispatched(fake_transition_decode):
+    log = []
+    events = _new_gpu_events(log)
+    step_dict = _transition_batch(0, TransitionId.Enable)
+
+    assert list(events._handle_steps(step_dict)) == []
+    assert log == [("transition", TransitionId.Enable)]
+
+
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     log = []
     timestamp = 123
-    gpu_result = object()
-    cpu_evt = SimpleNamespace(timestamp=timestamp)
+    import numpy as np
+
+    # Use a real ndarray so on_gpu (which now returns a copy) works correctly.
+    gpu_result = np.ones((4, 8, 8), dtype=np.float32) * 42.0
+    from psana.gpu.gpu_events import _GpuOnlyDgram
+    envelope = EventEnvelope([_GpuOnlyDgram(timestamp)])
     events = _new_gpu_events(
         log,
-        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [cpu_evt])],
+        pending=[({timestamp: {"jungfrau.calib": gpu_result}}, [envelope])],
     )
     events.gpu_reader = SimpleNamespace(close=lambda: log.append("close"))
 
@@ -210,7 +562,7 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
         nonlocal request_count
         request_count += 1
         if request_count > 1:
-            raise AssertionError("GpuEvents requested a batch after EndRun")
+            raise AssertionError("GpuEventManager requested a batch after EndRun")
         return {}, {}, _transition_batch(TransitionId.EndRun)
 
     events._next_batch = next_batch
@@ -219,8 +571,10 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
 
     assert request_count == 1
     assert len(results) == 1
-    assert results[0].timestamp == timestamp
-    assert results[0].get("jungfrau.calib").on_gpu is gpu_result
+    assert results[0].dgrams[0].timestamp() == timestamp
+    # on_gpu returns a copy — verify the value not identity
+    copy = results[0].gpu_state.get("jungfrau.calib").on_gpu
+    np.testing.assert_array_equal(copy, gpu_result)
     assert events.event_pool.yield_count == 1
     assert ("transition", TransitionId.EndRun) in log
     assert log[-1] == "close"
@@ -246,6 +600,9 @@ def test_mpi_transport_unpacking():
         (bytearray(), b"", b""),
         (_pack_transport(b"smd", b"GPUBAT1\0gpu"), b"smd", b"GPUBAT1\0gpu"),
         (_pack_transport(b"cpu-only", b""), b"cpu-only", b""),
+        # A legacy two-packet step batch is not a GPU transport envelope.
+        (_pack_transport(b"step-one", b"step-two"),
+         bytes(_pack_transport(b"step-one", b"step-two")), b""),
         (bytearray(b"legacy-without-footer"), b"legacy-without-footer", b""),
     ]
 
@@ -253,6 +610,152 @@ def test_mpi_transport_unpacking():
         smd, gpu = _unpack_transport(packed)
         assert bytes(smd) == expected_smd
         assert bytes(gpu) == expected_gpu
+
+
+def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
+    from psana.psexp import node as node_module
+    from psana.psexp.node import BigDataNode
+
+    responses = [_pack_transport(b"smd", b""), bytearray()]
+    calls = []
+
+    class _Request:
+        def Wait(self):
+            calls.append("wait")
+
+    class _Status:
+        def Get_elements(self, _datatype):
+            return len(responses[0])
+
+    class _Comm:
+        def Isend(self, _payload, dest):
+            calls.append(("send", dest))
+            return _Request()
+
+        def Probe(self, source, tag, status):
+            calls.append(("probe", source, tag))
+
+        def Irecv(self, target, source):
+            calls.append(("recv", source))
+            target[:] = responses.pop(0)
+            return _Request()
+
+    monkeypatch.setattr(
+        node_module,
+        "MPI",
+        SimpleNamespace(Status=_Status, ANY_TAG=-1, BYTE=object()),
+    )
+
+    bd = BigDataNode.__new__(BigDataNode)
+    bd.comms = SimpleNamespace(
+        bd_comm=_Comm(), bd_rank=1, world_rank=2
+    )
+    bd.wait_gauge = SimpleNamespace(set=lambda _value: None)
+    bd._last_bd_read_bytes = 0
+    bd._last_bd_read_time_ns = 0
+    bd._last_bd_wait_time_ns = 0
+    bd._last_bd_proc_events = 0
+    bd._last_bd_proc_time_ns = 0
+
+    batches = bd._batch_envelopes()
+    envelope = next(batches)
+
+    assert bytes(envelope.smd) == b"smd"
+    assert [call for call in calls if call == ("send", 0)] == [
+        ("send", 0),
+        ("send", 0),
+    ]
+    with pytest.raises(StopIteration):
+        next(batches)
+
+
+def test_mpi_events_yield_envelope_for_cpu_and_gpu(monkeypatch):
+    from psana.psexp import events as events_module
+    from psana.psexp.events import BatchEnvelope, Events
+
+    class _FakeEventManager:
+        def __init__(self, view, *_args):
+            self._items = iter(view)
+
+        def __iter__(self):
+            return self
+
+        def __next__(self):
+            return EventEnvelope(next(self._items))
+
+        def get_bd_read_stats(self):
+            return 0, 0.0
+
+    monkeypatch.setattr(events_module, "EventManager", _FakeEventManager)
+    dgrams = [[gpu_events_module._GpuOnlyDgram(11)]]
+    envelopes = iter([BatchEnvelope(smd=dgrams)])
+    common = dict(
+        configs=[],
+        dm=SimpleNamespace(),
+        max_retries=0,
+        use_smds=[],
+        shared_state=SimpleNamespace(),
+        batch_source=envelopes,
+    )
+
+    cpu_events = Events(**common)
+    cpu_envelope = next(cpu_events)
+    assert isinstance(cpu_envelope, EventEnvelope)
+    assert cpu_envelope.dgrams[0].timestamp() == 11
+    assert cpu_envelope.gpu_state is None
+    with pytest.raises(StopIteration):
+        next(cpu_events)
+
+    gpu_state = object()
+
+    class _FakeGpuManager:
+        def __init__(self):
+            self.finished = False
+
+        def process_batch(self, _smd, _gpu):
+            yield EventEnvelope(
+                [gpu_events_module._GpuOnlyDgram(12)],
+                gpu_state=gpu_state,
+            )
+
+        def finish(self):
+            self.finished = True
+            return iter(())
+
+    gpu_envelopes = iter([BatchEnvelope(smd=[], gpu=b"gpu")])
+    common["batch_source"] = gpu_envelopes
+    gpu_manager = _FakeGpuManager()
+    common["gpu_manager"] = gpu_manager
+    gpu_events = Events(**common)
+    gpu_envelope = next(gpu_events)
+    assert isinstance(gpu_envelope, EventEnvelope)
+    assert gpu_envelope.dgrams[0].timestamp() == 12
+    assert gpu_envelope.gpu_state is gpu_state
+    with pytest.raises(StopIteration):
+        next(gpu_events)
+    assert gpu_manager.finished
+
+
+def test_mpi_events_stop_before_requesting_another_batch():
+    from psana.psexp.events import Events
+
+    def fail_if_consumed():
+        pytest.fail("requested a batch after terminate")
+        yield
+
+    events = Events(
+        configs=[],
+        dm=SimpleNamespace(),
+        max_retries=0,
+        use_smds=[],
+        shared_state=SimpleNamespace(
+            terminate_flag=SimpleNamespace(value=True)
+        ),
+        batch_source=fail_if_consumed(),
+    )
+
+    with pytest.raises(StopIteration):
+        next(events)
 
 
 @pytest.mark.parametrize(
@@ -285,8 +788,629 @@ def test_gpu_io_error_aborts_mpi_job():
     assert abort_calls == [1]
 
 
-def test_default_result_routing():
-    router = DetectorRouter()
-    router.register_gpu("jungfrau")
-    assert router.resolve_key("calib") == "jungfrau.calib"
-    assert router.resolve_key("jungfrau.calib") == "jungfrau.calib"
+def test_exact_result_key_for_one_gpu_detector():
+    arr = object()
+    state = GpuEventState(
+        {"jungfrau.calib": arr},
+        detector_names=["jungfrau"],
+    )
+
+    with pytest.raises(KeyError):
+        state.get("calib")
+    assert state.get("jungfrau.calib")._arr is arr
+
+
+def test_exact_result_key_for_multiple_gpu_detectors():
+    state = GpuEventState(
+        {"jungfrau.calib": object(), "epix.calib": object()},
+        detector_names=["jungfrau", "epix"],
+    )
+
+    with pytest.raises(KeyError, match="not available"):
+        state.get("calib")
+
+
+# ---------------------------------------------------------------------------
+# Phase 3: GpuSubbatchView, estimate_subbatch_bytes, _split_subbatches
+# ---------------------------------------------------------------------------
+
+import struct
+
+from psana.gpu.gpu_batch import (
+    GPU_BATCH_MAGIC,
+    GPU_BATCH_VERSION,
+    GPU_DESC_FLAG_VALID,
+    GPU_DESC_NBYTES,
+    GPU_EVENT_NBYTES,
+    GPU_HEADER_NBYTES,
+    GpuBatchFormatError,
+    GpuBatchView,
+    GpuSubbatchView,
+)
+from psana.gpu.gpu_detector import DenseInputPreparer
+
+
+def _make_batch(n_events, descs_per_event=2, bd_size=1024, stream_ids=None,
+                timestamps=None):
+    """Build a minimal valid GPUBAT1 binary for unit testing.
+
+    All events share the same layout: ``descs_per_event`` descriptors each,
+    with bd_size bytes of bigdata per descriptor.  Stream IDs default to
+    [0, 1, ..., descs_per_event-1].
+
+    ``timestamps`` overrides the default ``1000 + i`` values.  Pass realistic
+    64-bit values when the behaviour under test depends on timestamp ordering:
+    small consecutive ints iterate in sorted order inside a set, so they hide
+    hash-order bugs.
+    """
+    if stream_ids is None:
+        stream_ids = list(range(descs_per_event))
+    if timestamps is None:
+        timestamps = [1000 + i for i in range(n_events)]
+    elif len(timestamps) != n_events:
+        raise ValueError("timestamps must have exactly n_events entries")
+    n_desc     = n_events * descs_per_event
+    evt_offset = GPU_HEADER_NBYTES
+    dsc_offset = evt_offset + n_events * GPU_EVENT_NBYTES
+    total      = dsc_offset + n_desc * GPU_DESC_NBYTES
+    mask       = sum(1 << s for s in stream_ids)
+
+    buf = bytearray(total)
+    struct.pack_into('<11Q', buf, 0,
+        GPU_BATCH_MAGIC, GPU_BATCH_VERSION, GPU_HEADER_NBYTES,
+        GPU_EVENT_NBYTES, GPU_DESC_NBYTES, n_events, n_desc,
+        mask, evt_offset, dsc_offset, total,
+    )
+    for i in range(n_events):
+        struct.pack_into('<5Q', buf, evt_offset + i * GPU_EVENT_NBYTES,
+            i, timestamps[i], i * descs_per_event, descs_per_event, 0)
+    for i in range(n_desc):
+        stream_i = stream_ids[i % descs_per_event]
+        struct.pack_into('<7Q', buf, dsc_offset + i * GPU_DESC_NBYTES,
+            i // descs_per_event, stream_i, 0, bd_size, 0, GPU_DESC_FLAG_VALID, 0)
+    return bytes(buf)
+
+
+class _FakeDetForEstimate:
+    """Minimal stand-in for DenseInputPreparer used in estimate_subbatch_bytes tests."""
+    _pixel_bytes = 2
+
+    def __init__(self, n_segs, nrows, ncols, n_routed_segs=None):
+        if n_routed_segs is None:
+            n_routed_segs = n_segs
+        self._field_handles_by_segment = {
+            segment: object() for segment in range(n_routed_segs)
+        }
+        self.det_shape = (n_segs, nrows, ncols)
+        self._n_segments   = n_segs
+        self._nrows          = nrows
+        self._ncols          = ncols
+        self.binding = SimpleNamespace(has_sources=lambda streams: 0 in streams)
+        self._sources_by_stream = {0: (), 1: ()}
+
+    def estimate_subbatch_bytes(self, n_events):
+        return DenseInputPreparer.estimate_subbatch_bytes(self, n_events)
+
+
+def _new_splitting_gpu_events(det, budget_bytes):
+    """Create a minimal manager with enough state for _split_subbatches."""
+    events = GpuEventManager.__new__(GpuEventManager)
+    events.input_preparers = {'jungfrau': det}
+    events._subbatch_budget_bytes = budget_bytes
+    return events
+
+
+# -- GpuSubbatchView tests ---------------------------------------------------
+
+class TestGpuSubbatchView:
+
+    def test_n_events(self):
+        gv = GpuBatchView(_make_batch(5))
+        sb = GpuSubbatchView(gv, 1, 4)
+        assert sb.n_events == 3
+
+    def test_has_work(self):
+        gv = GpuBatchView(_make_batch(5))
+        assert GpuSubbatchView(gv, 0, 3).has_work is True
+
+    def test_empty_subbatch_raises(self):
+        gv = GpuBatchView(_make_batch(5))
+        with pytest.raises(ValueError, match="empty range"):
+            GpuSubbatchView(gv, 2, 2)
+
+    def test_out_of_range_raises(self):
+        gv = GpuBatchView(_make_batch(3))
+        with pytest.raises(ValueError):
+            GpuSubbatchView(gv, 0, 4)   # event_end > n_events
+
+    def test_timestamps(self):
+        gv = GpuBatchView(_make_batch(5))
+        sb = GpuSubbatchView(gv, 2, 5)
+        assert sb.timestamps == (1002, 1003, 1004)
+
+    def test_timestamps_keep_event_order_for_real_timestamps(self):
+        """Delivery order must follow GPUBAT1 event order, not hash order.
+
+        Regression guard: timestamps was a frozenset.  Small consecutive test
+        values iterate sorted by luck, so only realistic (seconds << 32 |
+        nanoseconds) values expose the scrambling.
+        """
+        sec = 1788471481
+        real_ts = [(sec << 32) | (n * 8_333_333) for n in range(12)]
+        assert list(frozenset(real_ts)) != real_ts, (
+            "precondition: these timestamps must iterate out of order in a set, "
+            "otherwise this test cannot detect the regression"
+        )
+
+        gv = GpuBatchView(_make_batch(12, timestamps=real_ts))
+        sb = GpuSubbatchView(gv, 0, 12)
+        assert sb.timestamps == tuple(real_ts)
+        # iter_events() is the independently-ordered path; the two must agree.
+        assert [e.timestamp for e in sb.iter_events()] == list(sb.timestamps)
+
+    def test_timestamps_dedupe_without_losing_order(self):
+        gv = GpuBatchView(_make_batch(4, timestamps=[7, 9, 7, 8]))
+        sb = GpuSubbatchView(gv, 0, 4)
+        assert sb.timestamps == (7, 9, 8)
+
+    def test_iter_events_first_desc_reindexed(self):
+        """first_desc must be relative to the subbatch's own desc_table."""
+        # 4 events, 3 descs each.  Subbatch [1, 3) covers events 1 and 2.
+        gv   = GpuBatchView(_make_batch(4, descs_per_event=3, stream_ids=[0, 1, 2]))
+        sb   = GpuSubbatchView(gv, 1, 3)
+        evts = list(sb.iter_events())
+
+        # Event 1 → first_desc=0,  n_desc=3
+        # Event 2 → first_desc=3,  n_desc=3
+        assert [e.first_desc for e in evts] == [0, 3]
+        assert [e.n_desc     for e in evts] == [3, 3]
+
+    def test_iter_events_preserves_timestamps_and_batch_event_index(self):
+        gv   = GpuBatchView(_make_batch(5))
+        sb   = GpuSubbatchView(gv, 2, 5)
+        evts = list(sb.iter_events())
+        assert [e.timestamp         for e in evts] == [1002, 1003, 1004]
+        assert [e.batch_event_index for e in evts] == [2,    3,    4]
+
+    def test_total_read_bytes(self):
+        # 3 events, 2 descs each, 2048 bytes per desc
+        # subbatch [0, 2): 2 events × 2 descs × 2048 = 8192
+        gv = GpuBatchView(_make_batch(3, descs_per_event=2, bd_size=2048))
+        sb = GpuSubbatchView(gv, 0, 2)
+        assert sb.total_read_bytes == 2 * 2 * 2048
+
+    def test_whole_batch_subbatch(self):
+        """A subbatch covering the entire batch is identical to the parent."""
+        gv   = GpuBatchView(_make_batch(4))
+        sb   = GpuSubbatchView(gv, 0, 4)
+        full = list(gv.iter_events())
+        sub  = list(sb.iter_events())
+        assert [e.timestamp for e in sub] == [e.timestamp for e in full]
+        # first_desc for subbatch-0 must equal the parent's first_desc
+        # (both start from 0 for the first event)
+        assert sub[0].first_desc == full[0].first_desc == 0
+
+
+# -- DenseInputPreparer.estimate_subbatch_bytes tests --------------------------------
+
+class TestEstimateSubbatchBytes:
+
+    def test_returns_zero_for_n_events_zero(self):
+        det = _FakeDetForEstimate(4, 512, 1024)
+        assert det.estimate_subbatch_bytes(0) == 0
+
+    def test_linear_in_n_events(self):
+        det = _FakeDetForEstimate(4, 512, 1024)
+        e1  = det.estimate_subbatch_bytes(1)
+        e10 = det.estimate_subbatch_bytes(10)
+        assert e10 == 10 * e1
+
+    def test_formula_accounts_for_dense_output_and_gather_map(self):
+        det = _FakeDetForEstimate(
+            n_segs=32, nrows=512, ncols=1024,
+            n_routed_segs=12,
+        )
+        expected = 32 * 512 * 1024 * 2 + 32 + 2 * 7 * 8
+        assert det.estimate_subbatch_bytes(1) == expected
+
+    def test_formula_defaults_to_all_input_segments(self):
+        det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
+        expected = 1 * 8 * 256 * 512 * 2 + 8 + 2 * 7 * 8
+        assert det.estimate_subbatch_bytes(1) == expected
+
+
+# -- _split_subbatches tests --------------------------------------------------
+
+class TestSplitSubbatches:
+
+    def _events_and_det(self, n_segs, nrows, ncols, budget_bytes):
+        det    = _FakeDetForEstimate(n_segs, nrows, ncols)
+        events = _new_splitting_gpu_events(det, budget_bytes)
+        return events, det
+
+    def test_no_split_when_budget_large(self):
+        events, det = self._events_and_det(4, 512, 1024, budget_bytes=10 * 1024**3)
+        gv = GpuBatchView(_make_batch(6))
+        sbs = events._split_subbatches(gv)
+        assert len(sbs) == 1
+        assert sbs[0]._start == 0 and sbs[0]._end == 6
+
+    def test_splits_into_equal_halves(self):
+        # 4 events, bd_size=0 (no raw input cost).
+        # Budget = exactly 2 events of input preparation cost.
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        per_ev = det.estimate_subbatch_bytes(1)
+        events = _new_splitting_gpu_events(det, per_ev * 2)
+
+        # bd_size=0 → raw cost = 0, only input preparation cost counts
+        gv  = GpuBatchView(_make_batch(4, descs_per_event=2, bd_size=0))
+        sbs = events._split_subbatches(gv)
+        assert len(sbs) == 2
+        assert sbs[0]._start == 0 and sbs[0]._end == 2
+        assert sbs[1]._start == 2 and sbs[1]._end == 4
+
+    def test_parser_slot_metadata_counts_toward_subbatch_budget(self):
+        det = _FakeDetForEstimate(1, 1, 1)
+        per_dgram = 100
+        per_event = det.estimate_subbatch_bytes(1) + 2 * per_dgram
+        events = _new_splitting_gpu_events(det, per_event * 2)
+        events.gpu_xtc_parser = SimpleNamespace(
+            estimate_batch_bytes=lambda n_dgrams: n_dgrams * per_dgram
+        )
+
+        gv = GpuBatchView(
+            _make_batch(4, descs_per_event=2, bd_size=0)
+        )
+        subbatches = events._split_subbatches(gv)
+
+        assert [(batch._start, batch._end) for batch in subbatches] == [
+            (0, 2),
+            (2, 4),
+        ]
+
+    def test_splitter_rejects_indivisible_event_above_capacity(self):
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
+        gv     = GpuBatchView(_make_batch(3, bd_size=0))
+        from psana.gpu.gpu_budget import GpuMemoryPressureError
+        with pytest.raises(GpuMemoryPressureError, match='cannot fit alone'):
+            events._split_subbatches(gv)
+
+    def test_event_order_preserved(self):
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        per_ev = det.estimate_subbatch_bytes(1)
+        events = _new_splitting_gpu_events(det, per_ev * 2)
+        gv     = GpuBatchView(_make_batch(6, bd_size=0))
+        sbs    = events._split_subbatches(gv)
+        all_ts = []
+        for sb in sbs:
+            all_ts.extend(e.timestamp for e in sb.iter_events())
+        assert all_ts == [1000, 1001, 1002, 1003, 1004, 1005]
+
+    def test_empty_batch_returns_empty_list(self):
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        events = _new_splitting_gpu_events(det, 10 * 1024**3)
+        # build a batch with 0 events
+        hdr_bytes = GPU_HEADER_NBYTES
+        buf = bytearray(hdr_bytes)
+        struct.pack_into('<11Q', buf, 0,
+            GPU_BATCH_MAGIC, GPU_BATCH_VERSION, GPU_HEADER_NBYTES,
+            GPU_EVENT_NBYTES, GPU_DESC_NBYTES, 0, 0, 0,
+            hdr_bytes, hdr_bytes, hdr_bytes,
+        )
+        gv  = GpuBatchView(bytes(buf), validate=True)
+        sbs = events._split_subbatches(gv)
+        assert sbs == []
+
+    def test_subbatch_estimates_stay_within_budget(self):
+        """For each subbatch, estimated bytes <= budget (except single-event overflows)."""
+        det    = _FakeDetForEstimate(4, 512, 1024)
+        per_ev = det.estimate_subbatch_bytes(1)
+        budget = per_ev * 3   # 3 events per subbatch max
+        events = _new_splitting_gpu_events(det, budget)
+        gv     = GpuBatchView(_make_batch(10, bd_size=0))
+        sbs    = events._split_subbatches(gv)
+        for sb in sbs:
+            sb_est = det.estimate_subbatch_bytes(sb.n_events)
+            assert sb_est <= budget or sb.n_events == 1, (
+                f"subbatch has {sb.n_events} events, "
+                f"estimated {sb_est} bytes > budget {budget}"
+            )
+
+
+class TestBdRanksSharingGpu:
+    """Per-GPU BD-worker count that sizes the auto VRAM budget.
+
+    Regression guard: the auto budget previously divided by an env var
+    (``PS_BD_NODES``) that psana never sets, so every BD worker sharing a GPU
+    was allowed to commit the entire device.
+    """
+
+    @staticmethod
+    def _bd_comm(n_bd_workers):
+        # bd_rank 0 is the EB, so size = workers + 1.
+        return SimpleNamespace(Get_size=lambda: n_bd_workers + 1)
+
+    def test_single_worker_single_gpu(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        assert bd_ranks_sharing_gpu(self._bd_comm(1), 0, n_gpus=1) == 1
+
+    def test_all_workers_share_one_gpu(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # 4 BD workers, 1 GPU — every worker lands on GPU 0.
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0, n_gpus=1) == 4
+
+    def test_round_robin_across_gpus(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # 4 workers over 2 GPUs: bd_local 0,2 -> gpu0 and 1,3 -> gpu1.
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0, n_gpus=2) == 2
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 1, n_gpus=2) == 2
+
+    def test_uneven_split_counts_per_gpu(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # 5 workers over 2 GPUs: bd_local 0,2,4 -> gpu0; 1,3 -> gpu1.
+        assert bd_ranks_sharing_gpu(self._bd_comm(5), 0, n_gpus=2) == 3
+        assert bd_ranks_sharing_gpu(self._bd_comm(5), 1, n_gpus=2) == 2
+
+    def test_peers_on_a_gpu_agree_on_the_count(self):
+        """Ranks sharing a GPU must derive the same budget without talking."""
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        comm = self._bd_comm(6)
+        # bd_local 0, 3 both map to gpu 0 when n_gpus=3.
+        assert (bd_ranks_sharing_gpu(comm, 0, n_gpus=3)
+                == bd_ranks_sharing_gpu(comm, 3, n_gpus=3))
+
+    def test_gpu_count_from_slurm_env(self, monkeypatch):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        monkeypatch.setenv("SLURM_GPUS_ON_NODE", "2")
+        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0) == 2
+
+    def test_malformed_gpu_count_falls_back_to_one_gpu(self, monkeypatch):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        monkeypatch.setenv("SLURM_GPUS_ON_NODE", "not-a-number")
+        assert bd_ranks_sharing_gpu(self._bd_comm(3), 0) == 3
+
+    def test_eb_only_comm_never_returns_zero(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        # size 1 => EB only, no BD workers.  Must not divide a budget by 0.
+        assert bd_ranks_sharing_gpu(self._bd_comm(0), 0, n_gpus=1) == 1
+
+    def test_unusable_comm_falls_back_to_one(self):
+        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+
+        broken = SimpleNamespace(Get_size=lambda: (_ for _ in ()).throw(RuntimeError))
+        assert bd_ranks_sharing_gpu(broken, 0, n_gpus=1) == 1
+
+
+class TestAutoGpuBudgetDivides:
+    """_GpuBudget.auto() must split the device between co-resident ranks."""
+
+    def test_auto_divides_device_total(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        total = 40 * 1024**3
+        monkeypatch.setitem(
+            sys.modules,
+            "cupy",
+            SimpleNamespace(
+                cuda=SimpleNamespace(
+                    Device=lambda: SimpleNamespace(mem_info=(total, total))
+                )
+            ),
+        )
+        assert _GpuBudget.auto(n_bd_ranks=1).limit() == total
+        assert _GpuBudget.auto(n_bd_ranks=4).limit() == total // 4
+
+    def test_auto_falls_back_when_cuda_missing(self, monkeypatch):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        monkeypatch.setitem(sys.modules, "cupy", None)
+        # Sentinel limit keeps reserve() usable on CPU-only nodes.
+        assert _GpuBudget.auto(n_bd_ranks=4).limit() == 1024**4
+
+
+def test_gpu_event_manager_defaults_to_one_bd_per_gpu():
+    """The serial path has a single rank, so it keeps the whole device."""
+    import inspect
+
+    sig = inspect.signature(GpuEventManager.__init__)
+    assert sig.parameters["n_bd_per_gpu"].default == 1
+
+
+class TestKvikioSlotBufferBudget:
+    """Input-slot growth must charge the budget exactly what it holds.
+
+    Regression guard: the reader used to release the whole old size and then
+    reserve the whole new size.  The old buffer was still allocated at that
+    point, so the committed total under-reported it, and a failed allocation
+    left the budget permanently wrong.
+    """
+
+    class _FakeArr:
+        def __init__(self, nbytes):
+            self.nbytes = nbytes
+
+    def _reader(self, budget, n_slots=2, fail_at=None):
+        """Build a reader without importing cupy/kvikio."""
+        from psana.gpu.gpu_kvikio_read import KvikioGpuReader
+
+        calls = []
+
+        def _empty(nbytes, dtype=None):
+            calls.append(nbytes)
+            if fail_at is not None and nbytes >= fail_at:
+                raise RuntimeError("simulated cudaMalloc failure")
+            return np.empty(nbytes, dtype=dtype)
+
+        rdr = object.__new__(KvikioGpuReader)
+        rdr.cp = SimpleNamespace(empty=_empty, uint8="uint8")
+        rdr._slot_bufs = [None] * n_slots
+        rdr._n_slots = n_slots
+        rdr._budget = budget
+        return rdr, calls
+
+    def test_first_allocation_charges_full_size(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, _ = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 400)
+        assert budget.committed() == 400
+
+    def test_growth_retains_only_new_capacity_after_replacement(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=1100)  # old 400 + replacement 700 at peak
+        rdr, _ = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 400)
+        rdr._ensure_slot_buffer(0, 700)
+        # Holds one 700-byte buffer, not 400 + 700 and not 700 - 400.
+        assert budget.committed() == 700
+        assert rdr._slot_bufs[0].nbytes == 700
+
+    def test_repeated_growth_tracks_bytes_held(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        rdr, _ = self._reader(budget, n_slots=2)
+        for size in (100, 250, 900, 1300):
+            rdr._ensure_slot_buffer(0, size)
+        rdr._ensure_slot_buffer(1, 500)
+        held = sum(b.nbytes for b in rdr._slot_bufs if b is not None)
+        assert budget.committed() == held == 1800
+
+    def test_shrink_is_a_noop_and_keeps_the_buffer(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, calls = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 800)
+        rdr._ensure_slot_buffer(0, 200)   # smaller — must reuse, not realloc
+        assert calls == [800]
+        assert budget.committed() == 800
+
+    def test_failed_allocation_rolls_back_the_reservation(self):
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        budget = _GpuBudget(limit_bytes=10_000)
+        rdr, _ = self._reader(budget, fail_at=5_000)
+        rdr._ensure_slot_buffer(0, 400)
+        with pytest.raises(RuntimeError, match="simulated"):
+            rdr._ensure_slot_buffer(0, 6_000)
+        # Still holding only the original 400 bytes.
+        assert budget.committed() == 400
+        assert rdr._slot_bufs[0].nbytes == 400
+
+    def test_budget_pressure_error_leaves_committed_intact(self):
+        from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
+
+        budget = _GpuBudget(limit_bytes=1000)
+        rdr, calls = self._reader(budget)
+        rdr._ensure_slot_buffer(0, 900)
+        with pytest.raises(GpuMemoryPressureError):
+            rdr._ensure_slot_buffer(1, 900)
+        # Rejected before allocating; the held 900 is still counted once.
+        assert calls == [900]
+        assert budget.committed() == 900
+
+    def test_works_without_a_budget(self):
+        rdr, calls = self._reader(budget=None)
+        rdr._ensure_slot_buffer(0, 128)
+        assert calls == [128]
+        assert rdr._slot_bufs[0].nbytes == 128
+
+
+class TestDescTableDensity:
+    """GPUBAT1 desc rows must be dense: contiguous, fully owned, all VALID.
+
+    GpuEventDgrams indexes the reader's desc table positionally as
+    desc_table[event.first_desc + i], and GpuSubbatchView re-indexes by
+    subtraction. iter_read_descs() drops non-VALID rows. If the table is sparse
+    in either sense the two views disagree and detector consumers could read
+    another event's payload, so the parser must reject it.
+    """
+
+    @staticmethod
+    def _batch(event_ranges, desc_owners, flags=None, n_desc=None,
+               stream_mask=0b11):
+        """Build a GPUBAT1 with explicit (first_desc, n_desc) per event."""
+        n_events = len(event_ranges)
+        if n_desc is None:
+            n_desc = len(desc_owners)
+        if flags is None:
+            flags = [GPU_DESC_FLAG_VALID] * len(desc_owners)
+        evt_off = GPU_HEADER_NBYTES
+        dsc_off = evt_off + n_events * GPU_EVENT_NBYTES
+        total = dsc_off + n_desc * GPU_DESC_NBYTES
+        buf = bytearray(total)
+        struct.pack_into('<11Q', buf, 0,
+            GPU_BATCH_MAGIC, GPU_BATCH_VERSION, GPU_HEADER_NBYTES,
+            GPU_EVENT_NBYTES, GPU_DESC_NBYTES, n_events, n_desc,
+            stream_mask, evt_off, dsc_off, total)
+        for i, (first_desc, cnt) in enumerate(event_ranges):
+            struct.pack_into('<5Q', buf, evt_off + i * GPU_EVENT_NBYTES,
+                             i, 1000 + i, first_desc, cnt, 0)
+        for i, owner in enumerate(desc_owners):
+            struct.pack_into('<7Q', buf, dsc_off + i * GPU_DESC_NBYTES,
+                             owner, owner, 0, 1024, 0, flags[i], 0)
+        return bytes(buf)
+
+    def test_dense_table_is_accepted(self):
+        gv = GpuBatchView(
+            self._batch([(0, 2), (2, 2)], [0, 0, 1, 1]), validate=True
+        )
+        assert gv.header.n_events == 2
+
+    def test_gap_between_events_is_rejected(self):
+        # event 0 -> descs 0,1 ; event 1 -> descs 3,4 ; desc 2 orphaned.
+        with pytest.raises(GpuBatchFormatError, match="not contiguous"):
+            GpuBatchView(
+                self._batch([(0, 2), (3, 2)], [0, 0, 0, 1, 1]), validate=True
+            )
+
+    def test_trailing_unowned_rows_are_rejected(self):
+        # Events cover 4 rows but the header declares 5.
+        with pytest.raises(GpuBatchFormatError, match="events account for"):
+            GpuBatchView(
+                self._batch([(0, 2), (2, 2)], [0, 0, 1, 1, 1], n_desc=5),
+                validate=True,
+            )
+
+    def test_overlapping_event_ranges_are_rejected(self):
+        # event 1 restarts at 1, so row 1 would be read by both events.
+        with pytest.raises(GpuBatchFormatError, match="not contiguous"):
+            GpuBatchView(
+                self._batch([(0, 2), (1, 2)], [0, 0, 1]), validate=True
+            )
+
+    def test_non_valid_desc_is_rejected(self):
+        """A skipped row would shift every later event's descriptors."""
+        with pytest.raises(GpuBatchFormatError, match="not marked VALID"):
+            GpuBatchView(
+                self._batch(
+                    [(0, 2), (2, 2)], [0, 0, 1, 1],
+                    flags=[GPU_DESC_FLAG_VALID, 0,
+                           GPU_DESC_FLAG_VALID, GPU_DESC_FLAG_VALID],
+                ),
+                validate=True,
+            )
+
+    def test_stream_absent_from_mask_still_rejected(self):
+        # Regression: the mask/stream checks used to sit under an
+        # `if flags & VALID` branch; they must still run unconditionally.
+        with pytest.raises(GpuBatchFormatError, match="not present in gpu_stream_mask"):
+            GpuBatchView(
+                self._batch([(0, 1)], [0], stream_mask=0b10), validate=True
+            )
+
+    def test_empty_batch_passes_density_check(self):
+        gv = GpuBatchView(self._batch([], [], n_desc=0), validate=True)
+        assert gv.has_work is False

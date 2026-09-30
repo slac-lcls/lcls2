@@ -1,0 +1,9 @@
+# Keep generated evidence locally; scripts and the source report describe it.
+__pycache__/
+cupy-cache/
+job-*/
+*.log
+*.csv
+*.sqlite
+*.nsys-rep
+review-current.patch

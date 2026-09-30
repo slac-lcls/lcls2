@@ -4,6 +4,7 @@ import time
 import numpy as np
 
 from psana import dgram, utils
+from psana.event import EventEnvelope
 from psana.psexp import TransitionId
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
@@ -18,7 +19,7 @@ class ExitId:
 
 
 class EventManager(object):
-    """Return an event from the received smalldata memoryview (view)
+    """Return an EventEnvelope from the received smalldata memoryview (view)
 
     1) If dm is empty (no bigdata), yield this smd event
     2) If dm is not empty,
@@ -84,7 +85,7 @@ class EventManager(object):
         if dgrams is None:
             raise StopIteration
 
-        return dgrams
+        return EventEnvelope(dgrams=dgrams)
 
     def isEvent(self, service):
         """EventManager event is considered as:

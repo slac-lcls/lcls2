@@ -23,8 +23,11 @@ private:
     void handleDisconnect(const nlohmann::json& msg) override;
     void handlePhase1(const nlohmann::json& msg) override;
     int setupDrpPython();
-    void unconfigure();
-    void disconnect();
+    std::string _disable(XtcData::Xtc& xtc, const void* const bufEnd,
+                         const nlohmann::json& phase1Info);
+    std::string _endrun(const nlohmann::json& phase1Info);
+    void _unconfigure();
+    void _disconnect();
     void drainDrpMessageQueues();
     int resetDrpPython();
     Parameters& m_para;
@@ -32,6 +35,7 @@ private:
     Detector* m_det;
     std::unique_ptr<PGPDrp> m_drp;
     bool m_unconfigure;
+    std::string m_lastKey;
     PyThreadState* m_pysave;
     int* m_inpMqId;
     int* m_resMqId;

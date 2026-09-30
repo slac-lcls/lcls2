@@ -247,252 +247,118 @@ static int setDictUnsigned(PyObject* dict, const char* key, unsigned long value)
     return setDictObject(dict, key, PyLong_FromUnsignedLong(value));
 }
 
-static unsigned fieldOffset(ShapesData& shapesdata, Names& names, unsigned fieldIndex)
+static int setDictSigned(PyObject* dict, const char* key, long value)
 {
-    unsigned offset = 0;
-    unsigned shapeIndex = 0;
-    for (unsigned i = 0; i < fieldIndex; i++) {
-        Name& name = names.get(i);
-        if (name.rank() == 0) {
-            offset += Name::get_element_size(name.type());
-        } else {
-            offset += shapesdata.shapes().get(shapeIndex).size(name);
-            shapeIndex++;
-        }
-    }
-    return offset;
+    return setDictObject(dict, key, PyLong_FromLong(value));
 }
 
-static PyObject* buildShapeTuple(DescData& descdata, Name& name)
+static PyObject* buildConfigNamesEntry(NameIndex& nameIndex)
 {
-    PyObject* shape = PyTuple_New(name.rank());
-    if (!shape) return NULL;
+    Names& names = nameIndex.names();
+    NamesId namesId = names.namesId();
+    Alg& detAlg = names.alg();
+    const uint32_t algVersion = detAlg.version();
 
-    if (name.rank() == 0) return shape;
+    PyObject* pyFields = PyList_New(0);
+    if (!pyFields) return NULL;
 
-    uint32_t* dims = descdata.shape(name);
-    for (unsigned i = 0; i < name.rank(); i++) {
-        PyObject* value = PyLong_FromUnsignedLong(dims[i]);
-        if (!value) {
-            Py_DECREF(shape);
+    IndexMap& shapeMap = nameIndex.shapeMap();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        long shapeIndex = -1;
+        if (name.rank() > 0) {
+            auto it = shapeMap.find(name.name());
+            if (it != shapeMap.end()) shapeIndex = it->second;
+        }
+
+        PyObject* pyField = PyDict_New();
+        if (!pyField) {
+            Py_DECREF(pyFields);
             return NULL;
         }
-        PyTuple_SET_ITEM(shape, i, value);
+
+        int fail = 0;
+        fail |= setDictString(pyField, "name", name.name());
+        fail |= setDictUnsigned(pyField, "type", name.type());
+        fail |= setDictUnsigned(
+            pyField,
+            "element_size",
+            Name::get_element_size(name.type())
+        );
+        fail |= setDictUnsigned(pyField, "rank", name.rank());
+        fail |= setDictUnsigned(pyField, "field_index", i);
+        fail |= setDictSigned(pyField, "shape_index", shapeIndex);
+        if (fail || PyList_Append(pyFields, pyField)) {
+            Py_DECREF(pyField);
+            Py_DECREF(pyFields);
+            return NULL;
+        }
+        Py_DECREF(pyField);
     }
 
-    return shape;
-}
-
-static uint64_t fieldNbytes(DescData& descdata, Name& name)
-{
-    uint64_t nbytes = Name::get_element_size(name.type());
-    if (name.rank() == 0) return nbytes;
-
-    uint32_t* shape = descdata.shape(name);
-    for (unsigned i = 0; i < name.rank(); i++) {
-        nbytes *= shape[i];
-    }
-    return nbytes;
-}
-
-static PyObject* buildRawDescriptor(PyDgramObject* pyDgram,
-                                    ShapesData& shapesdata,
-                                    DescData& descdata,
-                                    NamesId& namesId,
-                                    Name& name,
-                                    unsigned fieldIndex)
-{
-    Names& names = descdata.nameindex().names();
-    Data& data = shapesdata.data();
-    unsigned offset = fieldOffset(shapesdata, names, fieldIndex);
-    uint64_t relOffset =
-        (uint64_t)((char*)data.payload() + offset - (char*)pyDgram->dgram);
-    uint64_t nbytes = fieldNbytes(descdata, name);
-
-    PyObject* pyDesc = PyDict_New();
-    if (!pyDesc) return NULL;
-
-    PyObject* shape = buildShapeTuple(descdata, name);
-    if (!shape) {
-        Py_DECREF(pyDesc);
+    PyObject* pyNames = PyDict_New();
+    if (!pyNames) {
+        Py_DECREF(pyFields);
         return NULL;
     }
 
     int fail = 0;
-    fail |= setDictString(pyDesc, "det_name", names.detName());
-    fail |= setDictString(pyDesc, "alg_name", names.alg().name());
-    fail |= setDictString(pyDesc, "field_name", name.name());
-    fail |= setDictUnsigned(pyDesc, "segment", names.segment());
-    fail |= setDictUnsigned(pyDesc, "names_id_value", (unsigned)namesId);
-    fail |= setDictUnsigned(pyDesc, "names_id_src", (unsigned)namesId);
-    fail |= setDictUnsigned(pyDesc, "node_id", namesId.nodeId());
-    fail |= setDictUnsigned(pyDesc, "names_id", namesId.namesId());
-    fail |= setDictUnsigned(pyDesc, "field_index", fieldIndex);
-    fail |= setDictUnsigned(pyDesc, "type", name.type());
-    fail |= setDictUnsigned(pyDesc, "rank", name.rank());
-    fail |= setDictObject(pyDesc, "shape", shape);
+    fail |= setDictString(pyNames, "det_name", names.detName());
+    fail |= setDictString(pyNames, "det_type", names.detType());
+    fail |= setDictString(pyNames, "det_id", names.detId());
+    fail |= setDictString(pyNames, "alg_name", detAlg.name());
     fail |= setDictObject(
-        pyDesc,
-        "field_rel_offset",
-        PyLong_FromUnsignedLongLong(relOffset)
+        pyNames,
+        "alg_version",
+        Py_BuildValue(
+            "(III)",
+            (algVersion >> 16) & 0xff,
+            (algVersion >> 8) & 0xff,
+            algVersion & 0xff
+        )
     );
-    fail |= setDictObject(
-        pyDesc,
-        "field_nbytes",
-        PyLong_FromUnsignedLongLong(nbytes)
-    );
-    fail |= setDictObject(
-        pyDesc,
-        "data_payload_rel_offset",
-        PyLong_FromUnsignedLongLong((uint64_t)((char*)data.payload() -
-                                              (char*)pyDgram->dgram))
-    );
-
+    fail |= setDictUnsigned(pyNames, "segment", names.segment());
+    fail |= setDictUnsigned(pyNames, "names_id_value", (unsigned)namesId);
+    fail |= setDictUnsigned(pyNames, "node_id", namesId.nodeId());
+    fail |= setDictUnsigned(pyNames, "names_id", namesId.namesId());
+    fail |= setDictUnsigned(pyNames, "n_fields", names.num());
+    fail |= setDictObject(pyNames, "fields", pyFields);
     if (fail) {
-        Py_DECREF(pyDesc);
+        Py_DECREF(pyNames);
         return NULL;
     }
 
-    return pyDesc;
+    return pyNames;
 }
 
-class RawDescriptorIter : public XtcIterator
+static PyObject* config_names(PyDgramObject* self)
 {
-public:
-    enum { Stop, Continue };
-    RawDescriptorIter(Xtc* xtc,
-                      const void* bufEnd,
-                      PyDgramObject* pyDgram,
-                      NamesLookup& namesLookup,
-                      const char* detName,
-                      const char* algName,
-                      const char* fieldName,
-                      PyObject* descriptors) :
-        XtcIterator(xtc, bufEnd),
-        _pyDgram(pyDgram),
-        _namesLookup(namesLookup),
-        _detName(detName),
-        _algName(algName),
-        _fieldName(fieldName),
-        _descriptors(descriptors)
-    {
+    if (!self->namesIter) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "config_names is only available on Configure dgrams"
+        );
+        return NULL;
     }
 
-    int process(Xtc* xtc, const void* bufEnd)
-    {
-        _unused(bufEnd);
-        switch (xtc->contains.id()) {
-        case (TypeId::Parent):
-            iterate(xtc, bufEnd);
-            break;
-        case (TypeId::ShapesData): {
-            ShapesData& shapesdata = *(ShapesData*)xtc;
-            NamesId namesId = shapesdata.namesId();
-            if (_namesLookup.count(namesId) <= 0) {
-                printf("*** Corrupt xtc: namesid 0x%x not found in NamesLookup\n", (int)namesId);
-                throw "invalid namesid";
-            }
+    PyObject* pyConfigNames = PyList_New(0);
+    if (!pyConfigNames) return NULL;
 
-            DescData descdata(shapesdata, _namesLookup[namesId]);
-            Names& names = descdata.nameindex().names();
-            if (_detName && strcmp(names.detName(), _detName) != 0) break;
-            if (_algName && strcmp(names.alg().name(), _algName) != 0) break;
+    NamesLookup& namesLookup = self->namesIter->namesLookup();
+    for (auto& namesPair : namesLookup) {
+        NameIndex& nameIndex = namesPair.second;
+        if (!nameIndex.exists()) continue;
 
-            for (unsigned i = 0; i < names.num(); i++) {
-                Name& name = names.get(i);
-                if (_fieldName && strcmp(name.name(), _fieldName) != 0) continue;
-
-                PyObject* pyDesc = buildRawDescriptor(
-                    _pyDgram,
-                    shapesdata,
-                    descdata,
-                    namesId,
-                    name,
-                    i
-                );
-                if (!pyDesc) throw "raw_descriptors: failed to build descriptor";
-                if (PyList_Append(_descriptors, pyDesc)) {
-                    Py_DECREF(pyDesc);
-                    throw "raw_descriptors: failed to append descriptor";
-                }
-                Py_DECREF(pyDesc);
-            }
-            break;
+        PyObject* pyNames = buildConfigNamesEntry(nameIndex);
+        if (!pyNames || PyList_Append(pyConfigNames, pyNames)) {
+            Py_XDECREF(pyNames);
+            Py_DECREF(pyConfigNames);
+            return NULL;
         }
-        default:
-            break;
-        }
-        return Continue;
+        Py_DECREF(pyNames);
     }
 
-private:
-    PyDgramObject* _pyDgram;
-    NamesLookup&  _namesLookup;
-    const char*   _detName;
-    const char*   _algName;
-    const char*   _fieldName;
-    PyObject*     _descriptors;
-};
-
-static PyObject* raw_descriptors(PyDgramObject* self, PyObject* args, PyObject* kwds)
-{
-    static char* kwlist[] = {
-        (char*)"config",
-        (char*)"det_name",
-        (char*)"alg_name",
-        (char*)"field_name",
-        NULL
-    };
-    PyObject* configObj = NULL;
-    const char* detName = NULL;
-    const char* algName = NULL;
-    const char* fieldName = NULL;
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwds, "O|zzz", kwlist,
-                                     &configObj,
-                                     &detName,
-                                     &algName,
-                                     &fieldName)) {
-        return NULL;
-    }
-
-    if (!PyObject_TypeCheck(configObj, Py_TYPE((PyObject*)self))) {
-        PyErr_SetString(PyExc_TypeError, "config must be a psana.dgram.Dgram");
-        return NULL;
-    }
-
-    PyDgramObject* configDgram = (PyDgramObject*)configObj;
-    if (!configDgram->namesIter) {
-        PyErr_SetString(PyExc_RuntimeError, "config must be a Configure dgram");
-        return NULL;
-    }
-
-    PyObject* descriptors = PyList_New(0);
-    if (!descriptors) return NULL;
-
-    auto size = sizeof(Dgram) + self->dgram->xtc.sizeofPayload();
-    const void* bufEnd = (char*)(self->dgram) + size;
-    try {
-        RawDescriptorIter iter(&self->dgram->xtc,
-                               bufEnd,
-                               self,
-                               configDgram->namesIter->namesLookup(),
-                               detName,
-                               algName,
-                               fieldName,
-                               descriptors);
-        iter.iterate();
-    } catch (const char* msg) {
-        Py_DECREF(descriptors);
-        PyErr_SetString(PyExc_RuntimeError, msg);
-        return NULL;
-    } catch (const std::exception& e) {
-        Py_DECREF(descriptors);
-        PyErr_SetString(PyExc_RuntimeError, e.what());
-        return NULL;
-    }
-
-    return descriptors;
+    return pyConfigNames;
 }
 
 static void dictAssignConfig(PyDgramObject* pyDgram, NamesLookup& namesLookup)
@@ -1284,7 +1150,7 @@ static PyMethodDef dgram_methods[] = {
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
     {"get_dgram_ptr", (PyCFunction)get_dgram_ptr, METH_NOARGS, "dgram pointer"},
-    {"raw_descriptors", (PyCFunction)raw_descriptors, METH_VARARGS | METH_KEYWORDS, "L1Accept raw payload descriptors"},
+    {"config_names", (PyCFunction)config_names, METH_NOARGS, "Configure Names metadata"},
     {NULL}  /* Sentinel */
 };
 

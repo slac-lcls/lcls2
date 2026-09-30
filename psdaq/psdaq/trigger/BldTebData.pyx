@@ -7,7 +7,7 @@ cimport psdaq.trigger.EBeamTebData       as _EBeamTebData
 cimport psdaq.trigger.GasDetTebData      as _GasDetTebData
 cimport psdaq.trigger.BldTebDataw        as _BldTebData
 
-cdef class GmdTebData:
+cdef class GmdTebData():
 
      cdef _GmdTebData.GmdTebData* cptr
 
@@ -20,7 +20,7 @@ cdef class GmdTebData:
      def milliJoulesPerPulse_sevr(self):
          return (self.cptr.severity >> 0) & 0x3
 
-cdef class XGmdTebData:
+cdef class XGmdTebData():
 
      cdef _XGmdTebData.XGmdTebData* cptr
 
@@ -39,7 +39,7 @@ cdef class XGmdTebData:
      def POSY_sevr(self):
          return (self.cptr.severity >> 2) & 0x3
 
-cdef class PhaseCavityTebData:
+cdef class PhaseCavityTebData():
 
      cdef _PhaseCavityTebData.PhaseCavityTebData* cptr
 
@@ -71,7 +71,7 @@ cdef class PhaseCavityTebData:
          return (self.cptr.severity >> 6) & 0x3
 
 
-cdef class EBeamTebData:
+cdef class EBeamTebData():
 
      cdef _EBeamTebData.EBeamTebData* cptr
 
@@ -81,7 +81,7 @@ cdef class EBeamTebData:
      def l3Energy(self):
          return self.cptr.l3Energy
 
-cdef class GasDetTebData:
+cdef class GasDetTebData():
 
      cdef _GasDetTebData.GasDetTebData* cptr
 
@@ -106,7 +106,7 @@ cdef class GasDetTebData:
      def f64ENRC(self):
          return self.cptr.f64ENRC
 
-cdef class BldTebData:
+cdef class BldTebData():
     cdef Py_buffer buf
     cdef _BldTebData.BldTebData* cptr
     cdef int _bufOwner

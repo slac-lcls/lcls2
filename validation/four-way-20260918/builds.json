@@ -1,0 +1,26 @@
+{
+  "A": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/a/install_acceptance",
+    "revision": "f52e90cc66d4c8c175b7689922c7e441e78b367f",
+    "working_tree_gather": false,
+    "files_verified": 25
+  },
+  "B": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana",
+    "revision": "803a70011d18168200927e279cbeaca90568e13f",
+    "working_tree_gather": false,
+    "files_verified": 25
+  },
+  "O": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/validation/batched-gather-20260918/install_baseline",
+    "revision": "b0c9c3c02",
+    "working_tree_gather": false,
+    "files_verified": 25
+  },
+  "G": {
+    "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/install_psana",
+    "revision": "b0c9c3c02",
+    "working_tree_gather": true,
+    "files_verified": 25
+  }
+}

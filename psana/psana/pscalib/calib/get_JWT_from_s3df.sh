@@ -3,7 +3,7 @@
 # https://confluence.slac.stanford.edu/spaces/~mshankar/pages/695783226/JWT+s+for+the+LCLS2+calib+service
 
 # Source the psana environment so that we can pick up krtc
-source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
+#source /sdf/group/lcls/ds/ana/sw/conda2/manage/bin/psconda.sh
 
 /sdf/sw/s3df-cli/bin/s3df login
 

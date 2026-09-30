@@ -1,0 +1,534 @@
+"""
+Unit tests for SlotLease, EventPool lease tracking, and the internal
+generic result accessors.
+
+All tests run on CPU only — CuPy is replaced with a lightweight fake that:
+  - alloc_pinned_memory → bytearray (supports np.frombuffer)
+  - cuda.Event         → immediately-done fake event (synchronous semantics)
+  - cuda.Stream        → records wait_event / synchronize calls
+  - runtime.memcpyAsync → ctypes.memmove so actual data is copied
+
+Tests cover the design requirements from
+gpu/docs/design.md (memory ownership and validation):
+
+  - A slot cannot be recycled while D→H is in flight.
+  - A downstream CUDA completion token controls release.
+  - Generator advancement alone does not release a lease.
+  - Multiple D→H chunks produce one correctly ordered logical join.
+  - BeginStep / EndRun flush partial joins correctly.
+"""
+
+import ctypes
+import sys
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+
+from psana.event import EventEnvelope
+from psana.gpu.gpu_events import _GpuOnlyDgram
+
+
+# ---------------------------------------------------------------------------
+# Fake CuPy infrastructure
+# ---------------------------------------------------------------------------
+
+
+class _FakeEvent:
+    """Fake cp.cuda.Event.  Immediately-done (synchronous fake)."""
+
+    def __init__(self, disable_timing=False):
+        self.done = False  # tests can set this to True to signal
+        self._synced = False
+        self._sync_calls = 0
+
+    def record(self, stream=None):
+        """Mark as done when recorded."""
+        self.done = True
+
+    def synchronize(self):
+        self._sync_calls += 1
+        self._synced = True
+        self.done = True
+
+    def signal(self):
+        """Test helper: mark as done without recording."""
+        self.done = True
+
+
+class _PendingEvent(_FakeEvent):
+    """A fake event that is NOT done until explicitly signalled."""
+
+    def __init__(self):
+        super().__init__()
+        self.done = False  # override: starts not done
+
+    def record(self, stream=None):
+        pass  # recording does NOT auto-mark done
+
+
+class _FailOnceLease:
+    """Lease-like test double whose first consumer synchronization fails."""
+
+    def __init__(self):
+        self.wait_calls = 0
+
+    def wait_until_safe_to_reuse(self):
+        self.wait_calls += 1
+        if self.wait_calls == 1:
+            raise RuntimeError("consumer synchronization failed")
+
+
+class _FakeStream:
+    """Fake cp.cuda.Stream."""
+
+    def __init__(self, non_blocking=True):
+        self.ptr = 0
+        self.synchronize_calls = 0
+        self.wait_events: list = []
+        self.recorded_events: list = []
+
+    def synchronize(self):
+        self.synchronize_calls += 1
+
+    def wait_event(self, event):
+        self.wait_events.append(event)
+
+    def record(self, event):
+        self.recorded_events.append(event)
+
+
+def _fake_memcpy(dst_ptr, src_ptr, nbytes, kind, stream_ptr):
+    """Synchronous CPU memcpy — makes test data actually land in pinned buf."""
+    ctypes.memmove(dst_ptr, src_ptr, nbytes)
+
+
+FAKE_CUPY = SimpleNamespace(
+    cuda=SimpleNamespace(
+        Stream=_FakeStream,
+        Event=_FakeEvent,
+        alloc_pinned_memory=bytearray,  # bytearray(nbytes) is buffer-protocol compatible
+        runtime=SimpleNamespace(
+            memcpyDeviceToHost=2,
+            memcpyAsync=_fake_memcpy,
+        ),
+    )
+)
+
+
+@pytest.fixture(autouse=True)
+def patch_cupy(monkeypatch):
+    """Replace 'cupy' for every test in this file."""
+    monkeypatch.setitem(sys.modules, "cupy", FAKE_CUPY)
+
+
+# ---------------------------------------------------------------------------
+# Fake GPU array  (stands in for a cp.ndarray)
+# ---------------------------------------------------------------------------
+
+
+class _FakeGPUArr:
+    """Fake CuPy ndarray — backed by a numpy array, exposes .data.ptr."""
+
+    def __init__(self, data: np.ndarray):
+        self._np = np.ascontiguousarray(data, dtype=np.float32)
+        self.get_calls = 0
+        self.shape = self._np.shape
+        self.dtype = self._np.dtype
+        self.nbytes = self._np.nbytes
+        self.data = SimpleNamespace(ptr=self._np.ctypes.data)
+
+    def copy(self) -> "_FakeGPUArr":
+        return _FakeGPUArr(self._np.copy())
+
+    def get(self) -> np.ndarray:
+        self.get_calls += 1
+        return self._np.copy()
+
+
+def _make_arr(n_segs=4, nrows=8, ncols=8, fill=None) -> _FakeGPUArr:
+    if fill is not None:
+        data = np.full((n_segs, nrows, ncols), fill, dtype=np.float32)
+    else:
+        data = np.random.randn(n_segs, nrows, ncols).astype(np.float32)
+    return _FakeGPUArr(data)
+
+
+# ---------------------------------------------------------------------------
+# Fake GPUResult  (wraps _FakeGPUArr + optional SlotLease)
+# ---------------------------------------------------------------------------
+
+
+# ===========================================================================
+# SlotLease tests
+# ===========================================================================
+
+
+class TestSlotLease:
+    def test_no_d2h_registered_passes_immediately(self):
+        """wait_until_safe_to_reuse() with no D→H registered should return
+        without blocking."""
+        from psana.gpu.context import SlotLease
+
+        event = _FakeEvent()
+        lease = SlotLease(result_ready=event)
+        # No register_consumer_done — should be a no-op
+        lease.wait_until_safe_to_reuse()  # must not raise or hang
+
+    def test_d2h_registered_calls_synchronize(self):
+        """wait_until_safe_to_reuse() must call synchronize() on the D→H event."""
+        from psana.gpu.context import SlotLease
+
+        calib = _FakeEvent()
+        d2h = _FakeEvent()
+        lease = SlotLease(result_ready=calib)
+        lease.register_consumer_done(d2h)
+        lease.wait_until_safe_to_reuse()
+        assert d2h._sync_calls == 1
+
+    def test_generator_advancement_alone_does_not_release(self):
+        """A lease with a pending (not-done) D→H event must block until
+        synchronize() is explicitly called."""
+        from psana.gpu.context import SlotLease
+
+        calib = _FakeEvent()
+        pending = _PendingEvent()  # starts not done
+        lease = SlotLease(result_ready=calib)
+        lease.register_consumer_done(pending)
+
+        assert not pending.done  # not done yet
+        # Calling wait_until_safe_to_reuse() must call synchronize()
+        lease.wait_until_safe_to_reuse()
+        assert pending._sync_calls == 1  # synchronize was called
+
+
+# ===========================================================================
+# EventPool lease-tracking tests
+# ===========================================================================
+
+
+class TestEventPoolLeases:
+    def test_finish_retire_observes_consumer_registered_after_begin(self, monkeypatch):
+        """A consumer registered while the result is exposed must be joined."""
+        from psana.gpu.context import SlotLease
+        from psana.gpu.gpu_stream import EventPool, _EventSlot
+
+        pool = EventPool(n=1)
+        detectors = {}  # no detectors → no events, but leases_by_ts={}
+
+        # Manually inject a slot that has a lease with a pending D→H.
+        pending_d2h = _PendingEvent()
+        result_ready = _FakeEvent()
+        lease = SlotLease(result_ready)
+        stream = pool._streams[0]
+        pool._slots[0] = _EventSlot(
+            slot_id=0,
+            gpu_results_by_ts={},
+            event_envelopes=[],
+            stream=stream,
+            leases=[lease],
+            leases_by_ts={},
+        )
+        pool._write_idx = 1  # pretend one batch was submitted
+
+        assert not pending_d2h._synced
+        pool.begin_retire_next()
+        assert pool._slots[0] is not None, "begin must retain slot ownership"
+
+        # Models on_gpu_view().__exit__ running after the context was yielded.
+        lease.register_consumer_done(pending_d2h)
+        pool.finish_retire_next()
+        assert pending_d2h._synced, "finish must join the late-registered consumer"
+        assert pool._slots[0] is None
+
+    def test_finish_retire_can_retry_after_consumer_sync_error(self):
+        """A failed join keeps the slot protected but does not lock retirement."""
+        from psana.gpu.gpu_stream import EventPool, _EventSlot
+
+        pool = EventPool(n=1)
+        lease = _FailOnceLease()
+        record = _EventSlot(
+            slot_id=0,
+            gpu_results_by_ts={},
+            event_envelopes=[],
+            stream=pool._streams[0],
+            leases=[lease],
+            leases_by_ts={},
+        )
+        pool._slots[0] = record
+        pool._write_idx = 1
+
+        pool.begin_retire_next()
+        with pytest.raises(RuntimeError, match="consumer synchronization failed"):
+            pool.finish_retire_next()
+
+        assert pool._retiring is None
+        assert pool._slots[0] is record, "failed consumer must keep slot protected"
+
+        assert pool.begin_retire_next() is record
+        pool.finish_retire_next()
+        assert lease.wait_calls == 2
+        assert pool._slots[0] is None
+
+
+# ===========================================================================
+# GPUResult._cpu_cache / GpuEventState._cached_cpu_results tests
+# ===========================================================================
+
+
+class TestOnGpuAndView:
+    """Tests for on_gpu (D→D copy) and on_gpu_view (context-manager zero-copy)."""
+
+    def test_on_gpu_returns_independent_copy(self):
+        """on_gpu must return a D→D copy — not a view — so the slot can be
+        recycled immediately without data corruption."""
+        from psana.gpu.context import GPUResult
+
+        arr = _make_arr(fill=5.0)
+        result = GPUResult(arr_gpu=arr)
+        copy = result.on_gpu
+        assert copy is not arr, "on_gpu must return a copy, not the original array"
+
+    def test_on_gpu_copy_value(self):
+        """Data in the copy must match the source array."""
+        from psana.gpu.context import GPUResult
+
+        arr = _make_arr(fill=3.0)
+        result = GPUResult(arr_gpu=arr)
+        np.testing.assert_allclose(result.on_gpu._np, arr._np)
+
+    def test_on_gpu_view_yields_original_array(self):
+        """__enter__ must return the original array (no copy)."""
+        from psana.gpu.context import GPUResult, SlotLease
+
+        arr = _make_arr()
+        lease = SlotLease(result_ready=_FakeEvent())
+        result = GPUResult(arr_gpu=arr, lease=lease)
+        with result.on_gpu_view(_FakeStream()) as view:
+            assert view is arr, "on_gpu_view must yield the original array, not a copy"
+
+    def test_on_gpu_view_records_done_event_on_exit(self):
+        """__exit__ must record a done-event on the provided stream so
+        EventPool.finish_retire_next() knows when the slot is safe to recycle."""
+        from psana.gpu.context import GPUResult, SlotLease
+
+        arr = _make_arr()
+        lease = SlotLease(result_ready=_FakeEvent())
+        result = GPUResult(arr_gpu=arr, lease=lease)
+        stream = _FakeStream()
+        with result.on_gpu_view(stream):
+            pass
+        assert lease._consumer_done is not None, "__exit__ must register a done event on the lease"
+        assert all(event in stream.recorded_events for event in lease._consumer_done), \
+            "done event must be recorded on the provided stream"
+
+    def test_on_gpu_view_retire_safe_after_context_exit(self):
+        """After the with block exits, wait_until_safe_to_reuse() must
+        synchronize the done event without raising."""
+        from psana.gpu.context import GPUResult, SlotLease
+
+        arr = _make_arr()
+        lease = SlotLease(result_ready=_FakeEvent())
+        result = GPUResult(arr_gpu=arr, lease=lease)
+        with result.on_gpu_view(_FakeStream()):
+            pass
+        consumers = tuple(lease._consumer_done)
+        lease.wait_until_safe_to_reuse()   # must not raise
+        assert all(event._synced for event in consumers), "final retirement must synchronize the done event"
+
+    def test_on_gpu_view_raises_without_lease(self):
+        """on_gpu_view must raise RuntimeError when the GPUResult has no lease."""
+        from psana.gpu.context import GPUResult
+
+        arr = _make_arr()
+        result = GPUResult(arr_gpu=arr)   # no lease
+        with pytest.raises(RuntimeError):
+            result.on_gpu_view()
+
+
+class TestGpuBudget:
+    """Tests for _GpuBudget committed-bytes counter."""
+
+    def test_reserve_within_budget(self):
+        """reserve() within budget increments committed bytes."""
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        b = _GpuBudget(limit_bytes=1000)
+        b.reserve(400)
+        assert b.committed() == 400
+        assert b.available() == 600
+
+    def test_reserve_exceeds_budget_raises(self):
+        """reserve() over budget raises GpuMemoryPressureError."""
+        from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError
+
+        b = _GpuBudget(limit_bytes=1000)
+        b.reserve(800)
+        with pytest.raises(GpuMemoryPressureError):
+            b.reserve(300)  # 800 + 300 > 1000
+
+    def test_release_decrements_committed(self):
+        """release() returns bytes to the available pool."""
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        b = _GpuBudget(limit_bytes=1000)
+        b.reserve(600)
+        b.release(600)
+        assert b.committed() == 0
+        assert b.available() == 1000
+
+    def test_reserve_after_release(self):
+        """After release, previously over-budget reservation succeeds."""
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        b = _GpuBudget(limit_bytes=1000)
+        b.reserve(800)
+        b.release(800)
+        b.reserve(900)  # should now succeed
+        assert b.committed() == 900
+
+    def test_release_does_not_go_negative(self):
+        """release() clamps at zero — no negative committed bytes."""
+        from psana.gpu.gpu_budget import _GpuBudget
+
+        b = _GpuBudget(limit_bytes=1000)
+        b.reserve(100)
+        b.release(500)  # releasing more than committed
+        assert b.committed() == 0
+
+
+class TestCpuCache:
+    """Tests for the manager's internal D→H path where _cpu_cache is set
+    on GPUResult and _cached_cpu_results is set on GpuEventState before the
+    context is yielded to the user."""
+
+    def test_on_cpu_returns_cached_result_immediately(self):
+        """When _cpu_cache is set, on_cpu must return it without touching _arr."""
+        from psana.gpu.context import GPUResult
+
+        cached = np.ones((4, 8, 8), dtype=np.float32) * 7.0
+        result = GPUResult(arr_gpu=None)
+        result._cpu_cache = cached
+        out = result.on_cpu
+        np.testing.assert_array_equal(out, cached)
+
+    def test_on_gpu_unaffected_by_cpu_cache(self):
+        """on_gpu returns a copy of _arr even when the CPU cache is set.
+        The copy must have the same values as _arr, not the cached result."""
+        from psana.gpu.context import GPUResult
+
+        arr = _make_arr(fill=3.0)
+        cached = np.zeros((4, 8, 8), dtype=np.float32)
+        result = GPUResult(arr_gpu=arr)
+        result._cpu_cache = cached
+        copy = result.on_gpu
+        assert copy is not arr, "on_gpu must return a copy, not the original"
+        np.testing.assert_allclose(copy._np, arr._np)
+
+    def test_sync_fallback_caches_first_d2h_result(self):
+        """Repeated on_cpu access must not read a reused GPU slot again."""
+        from psana.gpu.context import GPUResult
+
+        arr = _make_arr(fill=3.0)
+        result = GPUResult(arr_gpu=arr)
+
+        first = result.on_cpu
+        arr._np.fill(9.0)  # model the execution slot being overwritten
+        second = result.on_cpu
+
+        assert first is second
+        assert arr.get_calls == 1
+        np.testing.assert_allclose(second, 3.0)
+
+    def test_gpu_event_state_get_returns_gpu_result(self):
+        """GpuEventState.get() must return the matching GPUResult."""
+        from psana.gpu.context import GpuEventState, GPUResult
+
+        arr = _make_arr(fill=5.0)
+        state = GpuEventState(
+            gpu_results={"jungfrau.calib": arr},
+        )
+        result = state.get("jungfrau.calib")
+        assert isinstance(result, GPUResult)
+        assert result._arr is arr
+        # on_cpu falls back to arr.get() when no _pending_d2h is set
+        np.testing.assert_allclose(result.on_cpu, arr._np)
+
+
+# ===========================================================================
+class TestDeviceReleasedResults:
+    """A released slot must never surface as a usable device array."""
+
+    def test_on_gpu_raises_with_actionable_message(self):
+        from psana.gpu.context import GPUResult
+
+        r = GPUResult(None, lease=None, device_released=True)
+        with pytest.raises(RuntimeError, match="Use on_cpu"):
+            r.on_gpu
+
+    def test_on_gpu_view_raises_when_device_released(self):
+        from psana.gpu.context import GPUResult, SlotLease
+
+        r = GPUResult(None, lease=SlotLease(None), device_released=True)
+        with pytest.raises(RuntimeError, match="host-delivered or released"):
+            r.on_gpu_view()
+
+    def test_on_cpu_still_works_through_pending_token(self):
+        """The whole point: host data remains available after slot release."""
+        from psana.gpu.context import GPUResult
+
+        expected = np.arange(4, dtype=np.float32)
+
+        class _Token:
+            def get(self):
+                return expected
+
+        r = GPUResult(None, lease=None, device_released=True)
+        r._pending_d2h = _Token()
+        np.testing.assert_array_equal(r.on_cpu, expected)
+        # Token is consumed once and the result cached.
+        assert r._pending_d2h is None
+        np.testing.assert_array_equal(r.on_cpu, expected)
+
+    def test_on_cpu_reports_incomplete_handoff_rather_than_stale_data(self):
+        from psana.gpu.context import GPUResult
+
+        r = GPUResult(None, lease=None, device_released=True)
+        with pytest.raises(RuntimeError, match="incomplete automatic-D2H handoff"):
+            r.on_cpu
+
+    def test_on_gpu_view_rejected_once_automatic_d2h_is_scheduled(self):
+        """Zero-copy view and automatic D2H are mutually exclusive."""
+        from psana.gpu.context import GPUResult, SlotLease
+
+        r = GPUResult(_FakeGPUArr(np.zeros(2, dtype=np.float32)),
+                      lease=SlotLease(None))
+        r._pending_d2h = object()
+        with pytest.raises(RuntimeError, match="unavailable after automatic D2H"):
+            r.on_gpu_view()
+
+    def test_state_propagates_device_released_to_each_result(self):
+        from psana.gpu.context import GpuEventState
+
+        state = GpuEventState(
+            gpu_results={"jungfrau.calib": None},
+            detector_names=["jungfrau"],
+            device_released=True,
+        )
+        result = state.get("jungfrau.calib")  # exact published key
+        assert result._device_released is True
+        with pytest.raises(RuntimeError, match="host-delivered or released"):
+            result.on_gpu
+
+    def test_state_without_release_keeps_device_access(self):
+        from psana.gpu.context import GpuEventState
+
+        arr = _FakeGPUArr(np.arange(3, dtype=np.float32))
+        state = GpuEventState(
+            gpu_results={"jungfrau.calib": arr},
+            detector_names=["jungfrau"],
+        )
+        # on_gpu hands back an independent D→D copy, not the slot-backed array.
+        copy = state.get("jungfrau.calib").on_gpu
+        assert copy is not arr
+        np.testing.assert_array_equal(copy.get(), arr.get())

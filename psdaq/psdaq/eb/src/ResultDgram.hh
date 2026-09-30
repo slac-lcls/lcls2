@@ -7,9 +7,14 @@
 
 #include <cstdint>
 
+#define ADDBITS(FLD,VAL) auxdata((auxdata()&~s_##FLD) | ((VAL&m_##FLD)<<v_##FLD))
+#define GETBITS(FLD)     (auxdata()&s_##FLD)>>v_##FLD
 
 namespace Pds {
   namespace Eb {
+
+    // ConfigDgram specializations
+    enum ResultType { Base=0, Cube=1, Window=2 };
 
     class ResultDgram : public Pds::EbDgram
     {
@@ -33,7 +38,7 @@ namespace Pds {
       ResultDgram(const Pds::EbDgram& dgram, unsigned id) :
         Pds::EbDgram(dgram, XtcData::Dgram(dgram, XtcData::Xtc(XtcData::TypeId(XtcData::TypeId::Data, 0),
                                                                XtcData::Src(id, XtcData::Level::Event)))),
-        _data(0),
+        _data    (0),
         _monBufNo(0)
       {
         xtc.extent += sizeof(ResultDgram) - sizeof(Pds::EbDgram);

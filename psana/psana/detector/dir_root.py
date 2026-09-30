@@ -17,6 +17,7 @@ if HOSTNAME is None:
 DIR_ROOT = os.getenv('DIR_PSDM', '/sdf/group/lcls/ds/ana/')  # /sdf/group/lcls/ds/ana/ on s3df OR /cds/group/psdm on pcds
 DIR_LOG_AT_START    = os.path.join(DIR_ROOT, 'detector/logs/atstart/')          # /cds/group/psdm/detector/logs/atstart
 DIR_REPO            = os.path.join(DIR_ROOT, 'detector/calib2/constants')       # common repository
+DIR_REPO_EPIX       = DIR_REPO
 DIR_REPO_EPIX10KA   = DIR_REPO
 DIR_REPO_EPIXM320   = DIR_REPO
 DIR_REPO_JUNGFRAU   = DIR_REPO

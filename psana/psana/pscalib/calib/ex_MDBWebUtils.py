@@ -6,6 +6,7 @@ import inspect
 import logging
 logger = logging.getLogger(__name__)
 from psana.pscalib.calib.MDBWebUtils import *
+import psana.detector.Utils as ut
 
 if __name__ == "__main__":
 
@@ -17,10 +18,13 @@ if __name__ == "__main__":
   def get_test_nda():
     """Returns random standard nupmpy array for test purpose."""
     import psana.pyalgos.generic.NDArrGenerators as ag
-    return ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=float)
+    a = ag.random_standard(shape=(32,185,388), mu=20, sigma=5, dtype=float)
+    print(info_ndarr(a, 'random nda'))
+    return a
 
   def test_database_names():
-    print('test_database_names:', database_names())
+    dbnames = database_names()
+    print('test_database_names:', dbnames, '\nnumber of DBs:', len(dbnames))
 
   def test_collection_names():
     dbname = sys.argv[2] if len(sys.argv) > 2 else 'cdb_cspad_0001'
@@ -72,13 +76,16 @@ if __name__ == "__main__":
     print_ndarr(o, 'test_get_data_for_docid o:', first=0, last=10)
 
   def test_dbnames_collection_query():
-    det='cspad_0001'
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp=None, ctype='pedestals', run=50, time_sec=None, vers=None)
+    detname='cspad_0001'
+    kwargs = {'exp':None, 'ctype':'pedestals', 'run':50, 'time_sec':None, 'vers':None}
+    db_det, db_exp, colname, query = dbnames_collection_query(detname, **kwargs)
     print('test_dbnames_collection_query:', db_det, db_exp, colname, query)
 
   def test_calib_constants():
-    det = 'cspad_0001'
-    data, doc = calib_constants('cspad_0001', exp='cxic0415', ctype='pedestals', run=50, time_sec=None, vers=None) #, url=cc.URL)
+    detname = 'cspad_0001'
+    kwargs = {'exp':'cxic0415', 'ctype':'pedestals', 'run':50, 'time_sec':None, 'vers':None}
+    resp = calib_constants(detname, **kwargs) #, url=cc.URL)
+    data, doc = (None, None) if ut.is_true(resp is None, f'calib_constants({detname}, {str(kwargs)}) is None', logger_method=logger.info) else\
     print_ndarr(data, '==== test_calib_constants', first=0, last=5)
     print('==== doc: %s' % str(doc))
 
@@ -261,7 +268,7 @@ if __name__ == "__main__":
     import os
     from psana.pyalgos.generic.NDArrUtils import print_ndarr, info_ndarr
     global print_ndarr, info_ndarr
-    logging.basicConfig(format='[%(levelname).1s] L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
+    logging.basicConfig(format='[%(levelname).1s] %(name)s L%(lineno)04d : %(message)s', level=logging.DEBUG) # logging.INFO
 
     tname = sys.argv[1] if len(sys.argv) > 1 else '0'
     logger.info('%s Test %s %s' % (25*'_',tname, 25*'_'))
