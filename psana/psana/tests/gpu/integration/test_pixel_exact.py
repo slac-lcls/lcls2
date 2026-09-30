@@ -66,14 +66,21 @@ def cpu_reference():
     """Return timestamp-keyed CPU calibration arrays for the public run."""
     from psana import DataSource
 
-    ds = DataSource(
-        exp=_EXP,
-        run=_RUN,
-        dir=_DIR,
-        max_events=_N_EVENTS,
-    )
-    run = next(ds.runs())
-    det = run.Detector(_DET_NAME)
+    # Clear the GPU-stream env var for the CPU reference DataSource so that
+    # the standard CPU event path reads all bigdata streams normally.
+    _saved = os.environ.pop("PS_TEST_GPU_STREAM_IDS", None)
+    try:
+        ds = DataSource(
+            exp=_EXP,
+            run=_RUN,
+            dir=_DIR,
+            max_events=_N_EVENTS,
+        )
+        run = next(ds.runs())
+        det = run.Detector(_DET_NAME)
+    finally:
+        if _saved is not None:
+            os.environ["PS_TEST_GPU_STREAM_IDS"] = _saved
 
     reference = {}
     gain_modes = set()
