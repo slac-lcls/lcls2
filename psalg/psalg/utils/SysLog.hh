@@ -5,6 +5,7 @@
 #include <stdarg.h>
 #include <syslog.h>     // defines LOG_WARNING, etc
 #include <time.h>       // clock_gettime, localtime_r, strftime
+#include <unistd.h>     // getpid
 
 #undef GET_PROGRAM_NAME
 #ifdef __GLIBC__
@@ -22,6 +23,14 @@
 namespace psalg {
     class SysLog {
         public:
+
+        //  Identifier passed to openlog() by init(); also prefixes the stderr
+        //  echo so each line names its process, as LOG_PERROR's did.
+        static char *ident()
+        {
+            static char buf[SYSLOG_IDENT_MAX];
+            return buf;
+        }
 
         //  Format the current local time as "%Y-%m-%d %H:%M:%S.%<microseconds>",
         //  matching the format string used by psalg/utils/src/Logger.cc:16
@@ -67,22 +76,22 @@ namespace psalg {
             if (setlogmask(0) & LOG_MASK(priority)) {
                 char tstamp[SYSLOG_TSTAMP_MAX];
                 timestamp(tstamp, sizeof(tstamp));
-                fprintf(stderr, "%s %s\n", tstamp, msg);
+                fprintf(stderr, "%s %s[%d]: %s\n", tstamp, ident(), int(getpid()), msg);
             }
             syslog(priority, "%s", msg);
         }
 
         static void init(const char *instrument, int level)
         {
-            static char ident[SYSLOG_IDENT_MAX];
+            char *id = ident();
             if (instrument) {
-                snprintf(ident, sizeof(ident)-1, "%s-%s", instrument, GET_PROGRAM_NAME());
+                snprintf(id, SYSLOG_IDENT_MAX-1, "%s-%s", instrument, GET_PROGRAM_NAME());
             } else {
-                snprintf(ident, sizeof(ident)-1, "%s", GET_PROGRAM_NAME());
+                snprintf(id, SYSLOG_IDENT_MAX-1, "%s", GET_PROGRAM_NAME());
             }
             //  LOG_PERROR is deliberately NOT used: its stderr echo carries no
             //  timestamp.  Each level method below echoes to stderr itself.
-            openlog(ident, LOG_PID, LOG_USER);
+            openlog(id, LOG_PID, LOG_USER);
             setlogmask(LOG_UPTO(level));
         }
 

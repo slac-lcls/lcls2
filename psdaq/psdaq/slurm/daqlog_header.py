@@ -46,7 +46,7 @@ def get_output_header(job_name, platform, nodelist, daq_cmd):
             # validates ownership of <root> — which fails (owned by psrel:xs, not the
             # running operator). Using explicit --git-dir/<root> skips repo discovery
             # entirely, so the ownership check is never triggered.
-            root = os.path.dirname(os.environ["TESTRELDIR"])
+            root = os.path.dirname(os.path.normpath(os.environ["TESTRELDIR"]))
             git_output = subprocess.check_output(
                 ["git", "--git-dir", os.path.join(root, ".git"),
                  "--work-tree", root,
