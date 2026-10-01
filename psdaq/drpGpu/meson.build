@@ -92,6 +92,10 @@ cuda_inc_dir = include_directories([
       'Reader.cu',
       'TrgInpGen.cu',
       'Reducer.cu',
+      # Not a reducer, and deliberately not a shared library: the CALIB config alias
+      # selects it, so it must be resident rather than named by a kwarg.  See
+      # PassthruShim.hh and Reducer::_setupAlgo().
+      'PassthruShim.cu',
       'FileWriter.cc',
     ],
     include_directories: [
@@ -258,22 +262,6 @@ cuda_inc_dir = include_directories([
     cuda_args: cuda_args,
     dependencies: [
       #python_dep,
-      xtcdata_dep,
-      psalg_utils_dep,
-      nlohmann_json_dep,
-    ],
-  )
-
-  # Not a reducer: the shim that lets the recorder handle unreduced pass-through
-  # data.  See PassthruShim.hh.
-  PassthruShim_lib = shared_library('PassthruShim',
-    'PassthruShim.cu',
-    include_directories: [drpgpu_inc_dir],
-    install: true,
-    install_rpath: libdir_install_rpath,
-    link_with: [],
-    cuda_args: cuda_args,
-    dependencies: [
       xtcdata_dep,
       psalg_utils_dep,
       nlohmann_json_dep,

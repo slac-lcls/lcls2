@@ -30,8 +30,13 @@ namespace Drp {
 // pass-through that is RawU16Def, a typed and shaped u16 array matching the CPU
 // DRP's.
 //
-// @todo: When an event carries reduced data *and* prescaled raw together, a real
-//        reducer runs and this shim is needed only where nothing is reduced.
+// Unlike the reducers, this is linked into drp_gpu rather than loaded from a .so, so
+// that the CALIB config alias can select it between runs without the .cnf.py naming
+// it.  Reducer::_setupAlgo() constructs it directly; there is no createReducer().
+//
+// It plays no part in prescaling, where a real reducer moves the calibrated f32 into
+// the reduced region while the Detector fills the raw block alongside it.  That
+// reducer writes the size below the raw block, exactly as this does.
 class PassthruShim : public ReducerAlgo
 {
 public:

@@ -91,6 +91,24 @@ public:
   // reordering of them is the Detector's business.
   virtual unsigned     firstDataSubframe() const { return 0; }
 
+  // Whether to record this detector's data raw, uncalibrated and unreduced, which
+  // is what the CALIB config alias asks for.  A Detector with no raw mode -- one
+  // that does not override rawSize() below -- never sets it.
+  //
+  // Call this from Configure and from nowhere else.  Everything downstream is
+  // decided once per Configure/Unconfigure cycle: the reduce buffers are sized from
+  // rawSize(), the reducer is chosen, the Reader's graph is recorded with one
+  // per-element policy or the other, and the Names entry describing the payload is
+  // written.  Changing it part-way through a cycle would leave those disagreeing
+  // with each other and the recorded data misdescribed.  Switching between BEAM and
+  // CALIB therefore requires the state machine to pass through Configure, which is
+  // the intended operator procedure rather than a limitation.
+  //
+  // It is cleared as readily as it is set because the Detector outlives the cycle:
+  // a CALIB run must not leave the next BEAM run in pass-through.
+  virtual void         setPassthru(bool v)       { m_passthru = v; }
+  bool                 passthru()          const { return m_passthru; }
+
   // Bytes to reserve in each reduce buffer, between the space kept for the
   // datagram header and the reduced payload, for a block of raw data that is
   // recorded alongside -- or instead of -- the reduced data.  Zero when the
@@ -134,6 +152,7 @@ protected:
   }
 protected:
   Drp::Detector* m_det;
+  bool           m_passthru{false};     // See setPassthru()
 };
 
   } // Gpu

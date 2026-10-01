@@ -82,10 +82,9 @@ public:
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
 private:
-  // Record the panel's data as it arrives, uncalibrated and unreduced.  Selected by
-  // the transitional `raw=1`.  The CALIB config alias is meant to select it instead,
-  // at which point that spelling goes away.
-  bool     m_passthru{false};
+  // Nb: m_passthru, which gates rawSize() and rawShape() above, is the base class's:
+  // the CALIB config alias sets it per Configure.  See Gpu::Detector::setPassthru().
+  //
   // The panel's data is u16 rather than fp16, so the GPU applies pedestals and gains.
   // Selected by `raw=u16`; `raw=fp16` is the default.
   bool     m_u16{false};

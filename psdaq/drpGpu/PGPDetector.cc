@@ -709,6 +709,15 @@ std::string PGPDrp::configure(const json& msg)
   m_terminate.store(false, std::memory_order_release);
   chkError(cudaMemset(m_terminate_d, 0, sizeof(*m_terminate_d)));
 
+  // The CALIB config alias asks for raw, uncalibrated and unreduced recording.  This
+  // has to be known before the Reducer below, which sizes its buffers from rawSize()
+  // and picks its algorithm, both of which depend on it.  Detector::configure() runs
+  // later than that and must stay later, so that DrpBase::configure() above reaches
+  // the libfabric rendezvous without waiting on a slow detector.
+  const auto& body = msg["body"];
+  m_det.setPassthru(body.contains("config_alias") &&
+                    body["config_alias"] == "CALIB");
+
   // Set up the communication queues between the various stages
   auto& memPool = *pool.getAs<MemPoolGpu>();
   auto trgPrimitive = triggerPrimitive();

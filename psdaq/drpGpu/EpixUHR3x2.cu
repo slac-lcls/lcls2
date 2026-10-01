@@ -91,26 +91,18 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
     auto const& fmt = para.kwargs.at("raw");
     if      (fmt == "u16")   m_u16 = true;
     else if (fmt == "fp16")  m_u16 = false;
-    // Transitional: 'raw=1' selected pass-through before there was a u16 mode, and
-    // before the CALIB alias existed to select it properly.
-    // @todo: Drop this spelling once the CALIB config alias selects pass-through;
-    //        then nothing needs a kwarg to ask for it.
-    else if (fmt == "1")     m_passthru = true;
     else {
       logging::critical("EpixUHR3x2: unrecognized 'raw=%s'.  Expected 'fp16' (the "
-                        "default), 'u16', or the transitional '1' for pass-through.",
-                        fmt.c_str());
+                        "default) or 'u16'.", fmt.c_str());
       abort();
     }
   }
 
-  if (m_passthru)
-    logging::warning("EpixUHR3x2: pass-through mode -- recording raw u16, "
-                     "uncalibrated and unreduced");
-  else
-    logging::warning("EpixUHR3x2: data format %s%s", m_u16 ? "u16" : "fp16",
-                     m_u16 ? " -- gain bit 0, ADC bits 1-11, calibrated on the GPU"
-                           : " -- calibrated by the firmware");
+  // Nb: whether to record raw rather than reduced is not a kwarg: the CALIB config
+  // alias decides it, per Configure.  See configure() and Gpu::Detector::setPassthru().
+  logging::warning("EpixUHR3x2: data format %s%s", m_u16 ? "u16" : "fp16",
+                   m_u16 ? " -- gain bit 0, ADC bits 1-11, calibrated on the GPU"
+                         : " -- calibrated by the firmware");
 
   // Check there is enough space in the DMA buffers for this many pixels.  The
   // AxiStream Batcher adds a header line plus a tail line per sub-frame, and
@@ -149,7 +141,8 @@ EpixUHR3x2::~EpixUHR3x2()
 
 unsigned EpixUHR3x2::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-  logging::info("Gpu::EpixUHR3x2 configure");
+  logging::info("Gpu::EpixUHR3x2 configure: alias '%s'%s", config_alias.c_str(),
+                m_passthru ? ", recording raw u16 uncalibrated and unreduced" : "");
 
   // Configure the CPU-side detector for the panel
   unsigned rc = m_det->configure(config_alias, xtc, bufEnd);

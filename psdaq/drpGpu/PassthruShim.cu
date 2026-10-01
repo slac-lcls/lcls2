@@ -61,13 +61,14 @@ PassthruShim::PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detec
   m_retCode_d(nullptr)
 {
   // Without a raw block there is nothing for this shim to report the size of, and
-  // the recorder would write a zero-length payload for every event.  That is a
-  // configuration error -- some reducer was wanted -- not something to limp along
-  // with, since the run would silently record nothing.
+  // the recorder would write a zero-length payload for every event.  Reaching here
+  // means the CALIB alias asked this detector for raw recording and it has no raw
+  // mode to offer -- it does not override rawSize() -- so the run would silently
+  // record nothing.  Not something to limp along with.
   if (m_rawSize == 0) {
     logging::critical("PassthruShim: detector %s reserved no raw space "
                       "(Gpu::Detector::rawSize() == 0), so there is nothing to record.  "
-                      "Either enable the detector's pass-through mode or choose a reducer.",
+                      "It has no raw mode, so it cannot serve a CALIB configuration.",
                       para.detName.c_str());
     abort();
   }
@@ -165,11 +166,5 @@ void PassthruShim::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
   data.set_array_shape(0, dataShape);   // Index 0: the Detector's sole raw array
 }
 
-// The class factory
-
-extern "C" Drp::Gpu::ReducerAlgo* createReducer(const Drp::Parameters&      para,
-                                                const Drp::Gpu::MemPoolGpu& pool,
-                                                Drp::Gpu::Detector&         det)
-{
-  return new Drp::Gpu::PassthruShim(para, pool, det);
-}
+// No createReducer() factory here: unlike the reducers, this shim is linked into
+// drp_gpu and constructed directly by Reducer::_setupAlgo().

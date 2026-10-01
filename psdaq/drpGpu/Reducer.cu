@@ -1,6 +1,7 @@
 #include "Reducer.hh"
 
 #include "Detector.hh"
+#include "PassthruShim.hh"              // Linked in, not loaded: see _setupAlgo()
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -274,6 +275,18 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 
 bool Reducer::_setupAlgo(Detector& det)
 {
+  if (m_algo)  delete m_algo;           // If the object exists, delete it
+  m_dl.close();                         // If a lib is open, close it first
+
+  // Pass-through needs no reduction algorithm, just the shim that reports the raw
+  // block's size and completes each event.  It is linked in rather than loaded so
+  // that the operator can switch between BEAM and CALIB from run to run without the
+  // .cnf.py changing: the kwarg below names the reducer for BEAM either way.
+  if (det.passthru()) {
+    m_algo = new PassthruShim(m_para, m_pool, det);
+    return true;
+  }
+
   // @todo: In the future, find out which Reducer to load from the Detector's configDb entry
   //        For now, load it according to a command line kwarg parameter
   std::string reducer;
@@ -282,9 +295,6 @@ bool Reducer::_setupAlgo(Detector& det)
     return false;
   }
   reducer = m_para.kwargs.at("reducer");
-
-  if (m_algo)  delete m_algo;           // If the object exists, delete it
-  m_dl.close();                         // If a lib is open, close it first
 
   const std::string soName("lib"+reducer+".so");
   logging::debug("Loading library '%s'", soName.c_str());
