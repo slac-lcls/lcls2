@@ -1036,7 +1036,7 @@ void TebApp::_buildContract(const json& top)
     size_t      found   = alias.rfind('_');
     std::string detName = alias.substr(0, found);
 
-    if (buildAll || buildDets.find(detName))
+    if (buildAll || buildDets.find(detName) != std::string::npos)
     {
       unsigned group(it.value()["det_info"]["readout"]);
       _prms.contractors[group] |= 1ull << drpId;

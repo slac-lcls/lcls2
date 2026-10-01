@@ -1565,7 +1565,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         buildDets = top["buildDets"];
 
     // In the following, _0 is added in prints to show the required segment number
-    if (!(buildAll || buildDets.find(m_para.detName))) {
+    if (!(buildAll || buildDets.find(m_para.detName) != std::string::npos)) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb %s/%s/%s_0",
                       m_para.detName.c_str(), m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
