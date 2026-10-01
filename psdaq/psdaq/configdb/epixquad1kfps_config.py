@@ -1027,6 +1027,10 @@ def config_expert(base, cfg, writePixelMap=True):
         apply_dict('cbase',cbase,epixQuad)
 
     if writePixelMap:
+        # Expert settings include the acquisition value IsEn=0. Reassert
+        # the programming state before writing the pixel map.
+        for i in asics:
+            retry(cbase.Epix10kaSaci[i].IsEn.set, True)
         if debug_override is not None and debug_override.get('override_kind') == 'direct_write':
             _apply_direct_write_program(cbase, debug_override, asics)
         elif 'user' in cfg and 'pixel_map_raw' in cfg['user']:
