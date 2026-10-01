@@ -204,7 +204,11 @@ void TebReceiver::complete(unsigned index, const ResultDgram& result)
 
   // Start up a reducer only when there is a need for its result
   // Running the reducer on transitions is a no-op, so avoid its overhead
-  if (result.isEvent() && (result.persist() || result.monitor())) {
+  // prescale() must be included: it records an event the trigger rejected, so the
+  // reduced data is still wanted.  This condition, the one awaiting the result and the
+  // one building the Xtc must stay identical, and must cover everything the write and
+  // monitor paths in _recorder() consume.
+  if (result.isEvent() && (result.persist() || result.monitor() || result.prescale())) {
     nvtx3::mark("Reducer start", nvtx3::payload{m_worker});
     //printf("*** TebRcvr::complete: wkr %u, idx %u\n", m_worker, index);
     while (!static_cast<PGPDrp&>(m_drp).reducerStart(m_worker, index)) {
@@ -293,9 +297,12 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     //tb.pid = result->pulseId();
     //tb.wkr = -1;
 
-    // If needed, wait for the next GPU Reducer in sequence to complete
+    // If needed, wait for the next GPU Reducer in sequence to complete.  This must
+    // match the condition that started one, or the results go out of step with the
+    // events: a reducer started and not received leaves its result in the queue for
+    // whichever event waits next.
     size_t dataSize{0};
-    if (result->isEvent() && (result->persist() || result->monitor())) {
+    if (result->isEvent() && (result->persist() || result->monitor() || result->prescale())) {
       nvtx3::mark("Recorder reducerReceive", nvtx3::payload{worker});
       lStateMon = 3;
       ReducerTuple rt;
@@ -402,7 +409,10 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     }
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, bound %zu\n", index, buffer, bufBound);
     size_t cpSize, dgSize;
-    if (dgram->isEvent() && (result->persist() || result->monitor())) {
+    // Must match the condition that writes the datagram below, or an event is written
+    // with an Xtc that was never built and a buffer pointer never stepped back over
+    // the header
+    if (dgram->isEvent() && (result->persist() || result->monitor() || result->prescale())) {
       // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
       void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
       //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
@@ -477,6 +487,10 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     if (writing()) {                  // Won't ever be true for Configure
       //printf("*** TebRcvr::recorder: writing %zu bytes\n", dgSize);
       // write event to file if it passes event builder or if it's a transition
+      // monitor() is deliberately absent: an event the TEB sent to an MEB but did not
+      // select for recording does not belong in the file.  The sites above that start
+      // the reducer, await its result and build the Xtc therefore test a *superset* of
+      // this -- they must cover monitoring, which needs the payload too.
       if (result->isEvent() && (result->persist() || result->prescale())) {
         //printf("*** TebRcvr::recorder: persist or prescale\n");
         //uint32_t* p = (uint32_t*)dgram;
