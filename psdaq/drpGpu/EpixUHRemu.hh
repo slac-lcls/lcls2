@@ -33,6 +33,22 @@ public:
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
 
+  // Bytes of raw data to reserve ahead of each reduce buffer's payload.  Non-zero
+  // only when the CALIB alias asked for pass-through, where the recorded data *is*
+  // the raw frame.  Fixed size, with zeros for a short payload, so offline sees one
+  // shape whatever arrives.
+  size_t       rawSize()     const override
+  { return m_passthru ? NPixels * sizeof(uint16_t) : 0; }
+
+  // A flat NPixels, because the emulator's payload is one contiguous block rather
+  // than the per-ASIC sub-frames the real ePixUHR3x2 sends
+  unsigned     rawShape(unsigned* shape) const override
+  {
+    if (!m_passthru)  return 0;
+    shape[0] = NPixels;
+    return 1;
+  }
+
   // Launches the _event kernel template instantiated with PedGainCalib, from
   // this .so, so that the calibration is inlined into the kernel
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,

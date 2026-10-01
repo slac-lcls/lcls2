@@ -4,6 +4,34 @@ Working notes for the `features/gpu` branch.  Each item records enough context t
 be picked up cold, because the reasoning behind these decisions is otherwise only
 in people's heads.
 
+**This file is where the history goes, not the source.**  If a comment in the code
+explains what something used to be, when it was found, or why it changed, it belongs
+here instead.  See the comment-volume item below.
+
+## Comment volume needs a cleanup pass
+
+The GPU DRP's comments have grown past what a reader can take in, and the pattern is
+consistent: commit-message content written into source files.  What a line used to be,
+when a problem was found and by whom, where development is heading, numbers restated
+in prose that will go stale.  None of that helps someone reading the code now, and it
+buries the code that does.
+
+Measured 2026-09-30: `features/gpu..features/gpu-raw-calib` adds **387 comment lines
+out of 1079**, 36%.  The worst offenders by comment-block length are `MemPool.hh`
+(an 89-line block at the `HOST_REARMS_DMA` macro, and a 19-line one at
+`HOST_LAUNCHED_REDUCERS`), `PassthruShim.hh` (31 lines before the class),
+`Detector.hh` (a 15-line block on `setPassthru`/`rawSize`), and `PGPDetector.cc`
+(a dozen blocks of 5-15 lines through the recorder).
+
+The standing request is **one or two lines per inline comment**.  Worth keeping: a
+hardware constraint, a non-obvious ordering requirement, a trap that looks like a bug.
+Worth cutting: anything historical, anything a careful reader infers from the next
+line, and any number that duplicates a constant.
+
+Not urgent, but it compounds -- each addition is written in the style of what surrounds
+it.  Best done as one deliberate pass rather than opportunistically, so the result is
+consistent.
+
 ## WEKA reserves CPUs on some nodes, and Slurm must be told in abstract IDs
 
 Cost an evening on drp-srcf-gpu007 on 2026-09-21, after its conversion to hex device names.
@@ -463,9 +491,126 @@ the conclusions.
   driver open, which is why `FileWriter` is constructed in `TebReceiver::setup()` and not in
   `_recorder()`, and the buffer registration (see the findings appendix).  Per-stream
   `cudaStreamSynchronize` does **not** help; the constraint is global, not ordering.
+- **`Gpu::Detector::setPassthru()` must be called from Configure and nowhere else.**  Everything
+  it governs is decided once per Configure/Unconfigure cycle: the reduce buffers are sized from
+  `rawSize()`, the reducer is chosen, the Reader's graph is recorded with one per-element policy
+  or the other, and the Names entry describing the payload is written.  Setting it at any other
+  time leaves those disagreeing and the recorded data misdescribed.  As a consequence, an
+  operator switching BEAM to CALIB in control_gui while Running sees no effect until the state
+  machine passes through Configure -- which is the intended procedure, not a limitation.  There
+  is one call site, `PGPDetector.cc`'s `PGPDrp::configure()`; keep it that way.
+- **A GPU `TriggerPrimitive::event()` MUST advance `*state` to 2, even when it produces no TEB
+  input.**  `TrgInpGen`'s graph is a three-stage state machine -- `_trgInpGenRcv` takes 0 to 1,
+  the primitive's kernel 1 to 2, `_trgInpGenLoop` 2 back to 0 -- and the primitive's kernel is
+  the *only* writer of 2 in the tree.  The base class declares the GPU overload non-pure with an
+  empty body, so a primitive that does not override it compiles, links, loads, and then stalls
+  the graph on the first event: no event is ever posted and the DRP hangs with the GPU at 100%,
+  which looks like FEB backpressure rather than a software fault.  `size()` returning 0 is not a
+  licence to skip the kernel; `CalibPrimitive` needs it precisely because it writes nothing else.
+- **A DRP's log is in `~/daq/logs/<year>/<month>/<DD>_<HH:MM:SS>_<node>:<alias>.log`**, and it
+  contains the full configdb JSON the process was given as well as its own output.  For anything
+  about *setup* -- which alias, which trigger library, what the buffers were sized at -- it
+  answers in one file what otherwise takes a reconstruction from the xtc.  Note `DrpBase` probes
+  `create_producer_<detName>` before the generic `create_producer`, so one "undefined symbol"
+  line per Configure is expected rather than a fault.
 
 
 ## Detector configuration
+
+- **`AreaDetector` (A.K.A. `fakecam`) does not handle L1Accepts, and would fault if it did.**
+  Raised by Matt, 2026-09-30.  Three things are inert or wrong in `AreaDetector.cu`:
+
+  - `configure()`'s Names block is inside `#if 0`, so `m_namesLookup` is never populated for
+    `EventNamesIndex` and nothing describes the event payload;
+  - `event()` is an empty stub that only logs;
+  - `pedestals_d()` and `gains_d()` both return `nullptr`, yet `recordEvent()` launches
+    `PedGainCalib`, whose `pedGainCalibrate()` indexes `pedArray`/`gainArray` unconditionally
+    (`ReaderKernels.cuh`).  That is a null dereference on the device, latent only because no
+    L1Accept reaches it today.
+
+  Both `#if 0` blocks carry the same "@todo: Deal with prescaled raw or calibrated data for each
+  panel here?" comment, which dates from before the raw block existed, so the answer is now
+  known: it does what `EpixUHRemu` does.
+
+  It should also get **CALIB mode** once it works.  See the item below for what that takes.
+
+### CALIB mode records raw data end to end, validated 2026-10-01
+
+Run 269 on drp-srcf-gpu001 with `EpixUHRemu` at 10 Hz, the first execution of the CALIB path and
+of `libcalibTrigger_gpu.so`.  36 L1Accepts of 48 events total, in
+`/home/claus/data/tst/tstx00817/xtc/tstx00817-r0269-s001-c000.xtc2` (the detector is `s001`;
+`s000` is the timing DRP), read back with `xtcreader -f <file> -d`:
+
+| check | result |
+|---|---|
+| declared type | `Type 1 Rank 1` = `UINT16`, rank 1 -- the `RawU16Def` and flat `rawShape()`, not a byte array |
+| element count | 193536 = 387072 / 2, so the Names entry matches the raw block as u16 |
+| `payloadSize` / `extent` | 387128 / **387140** = 387072 raw + 68 of descriptors, uniform on all 36 |
+| damage | `0x0` on every event |
+| data | emulator frame counter ramps **0 to 35 with no gaps**; last element constant |
+| shutdown | Disable, EndStep, EndRun all clean |
+
+The gapless ramp is the load-bearing check: it says the trigger primitive's kernel completed the
+`0 -> 1 -> 2 -> 0` state cycle on every event.  A missing state advance stalls on the first one,
+so extent and damage alone would not have distinguished a working kernel from a stalled graph
+that happened to record one buffer.
+
+Compare BEAM on the same detector: `2048 * (80 + 0 + 774144)` and extent 774212.  CALIB gives
+`2048 * (80 + 387072 + 0)` and 387140.  Both descriptor overheads are 68, which is the figure to
+use for `EpixUHRemu`; ePixUHR3x2's stage-1 result was 56 for a rank-2 shape, so the overhead
+follows the Names shape and is not a constant to carry between detectors.
+
+### CALIB mode is still missing from most detectors
+
+`ePixUHR3x2` and `EpixUHRemu` have it as of 2026-09-30.  **`Jungfrau`, `EpixUHRsim` and
+`AreaDetector` do not**: none of them overrides `rawSize()`, so a CALIB alias against any of them
+aborts in `PassthruShim` -- correctly and loudly, with "it has no raw mode, so it cannot serve a
+CALIB configuration," but it does mean the alias is not yet universal.
+
+Four things each, all modelled on `EpixUHR3x2` or the simpler `EpixUHRemu`:
+
+1. `rawSize()` returning the frame's u16 byte count when `passthru()`, else 0;
+2. `rawShape()`, whatever shape offline expects of that detector;
+3. a pass-through per-element policy, like `EpixUHR3x2Calib` or `EpixUHRemuCalib`;
+4. a `RawU16Def` for `configure()` -- all three currently declare `{"raw", Name::UINT8, 1}`, a
+   flat byte array that would misdescribe u16 pixels.
+
+**Do these after prescaling, not before, and in this order.**  Prescaling changes the relationship
+between a pass-through policy and the raw block: it has the Detector copying raw into the raw
+region *while* the selected Reducer writes reduced data, where CALIB writes raw instead of
+reduced.  Three policies written against today's shape risk being written twice, and the
+duplication would land in the per-element device code that is hardest to verify.
+
+1. **`EpixUHRsim`** -- start here.  It overrides neither `subframeCount()` nor
+   `firstDataSubframe()`, so its payload is one contiguous block and it is close to a
+   transcription of `EpixUHRemu`.  Its reference buffers, which exist to verify the calibration,
+   have nothing to check in pass-through: no calibration runs, so a raw policy ignores them.
+   Cheap, and it exercises the CALIB path on a second detector.
+2. **`Jungfrau`** -- the substantial one; see below.  The reassembly refactor is the real work.
+3. **`AreaDetector`** -- blocked until it handles L1Accepts at all.  See the item above: its Names
+   block is `#if 0`'d, `event()` is a stub, and its `nullptr` pedestals would be dereferenced on
+   the device.  CALIB mode means nothing there until that is fixed.
+
+**`Jungfrau` is the substantial one**, and not a copy of either existing policy.  Its payload is
+a batch whose data sub-frames are *themselves* batches: each module's sub-frame holds
+`PacketNum` = 128 UDP packets, each a `JungfrauData::Header` plus `PixelPerPacket` = 4096 u16
+pixels, and the header's `packetnum` -- not the packet's position in the batch -- says where
+those pixels belong.  `JungfrauCalib` (`Jungfrau.cu:188`) already does that reassembly, building
+an inverse slot-to-packet map in shared memory per module, zeroing slots no packet claimed,
+zeroing an absent module's whole frame, and dropping a `packetnum` outside the frame.  A
+pass-through policy has to reproduce all of it, writing u16 to `pyld.raw` instead of float to
+`pyld.out`.  Worth factoring the reassembly out so the two policies share it rather than
+duplicating that logic, since getting it subtly different between calibrated and raw output
+would be a hard bug to see.
+
+Its tdest mapping is also not a contiguous run -- module 0 is at tdest 2, later modules at
+`module + 3`, skipping 3 -- but `tdestOfModule()` already encapsulates that.
+
+`EpixUHRsim` should be close to `EpixUHRemu` -- it overrides neither `subframeCount()` nor
+`firstDataSubframe()`, so its payload is one contiguous block too.  Note that its reference
+buffers, which exist to verify the calibration, have nothing to check in pass-through: no
+calibration runs, so a raw policy there ignores them.  `AreaDetector` needs the item above fixed
+first.
 
 - ~~**`epixuhremu_config.py`.**~~  **Done, and working on drp-srcf-gpu001 on
   2026-09-12.**  From a link-down start, Allocate now logs `epixuhremu: timing link is

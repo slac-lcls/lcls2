@@ -97,6 +97,23 @@ public:
     NameVec.push_back({"raw", Name::UINT8, 1});
   }
 };
+
+// What pass-through records: the panel's u16 pixels, as they arrived.  A flat array
+// because the emulator's payload is one contiguous block, unlike the ePixUHR3x2's
+// per-ASIC sub-frames.
+class RawU16Def : public VarDef
+{
+public:
+  enum index
+    {
+      raw
+    };
+
+  RawU16Def()
+  {
+    NameVec.push_back({"raw", Name::UINT16, 1});
+  }
+};
   } // Gpu
 } // Drp
 
@@ -133,7 +150,8 @@ EpixUHRemu::~EpixUHRemu()
 
 unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-  logging::info("Gpu::EpixUHRemu configure");
+  logging::info("Gpu::EpixUHRemu configure: alias '%s'%s", config_alias.c_str(),
+                m_passthru ? ", recording raw u16 uncalibrated and unreduced" : "");
 
   // Configure the XpmDetector for the panel
   unsigned rc = m_det->configure(config_alias, xtc, bufEnd);
@@ -146,8 +164,16 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para->detName.c_str(), alg,
                                          m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
-  RawDef dataDef;
-  names.add(xtc, bufEnd, dataDef);
+  // In pass-through mode this description is what offline reads, because no Reducer
+  // runs to supply one, so it must describe the real u16 pixels.  Otherwise the
+  // recorded payload is the Reducer's and this describes only the untyped blob.
+  if (m_passthru) {
+    RawU16Def dataDef;
+    names.add(xtc, bufEnd, dataDef);
+  } else {
+    RawDef dataDef;
+    names.add(xtc, bufEnd, dataDef);
+  }
   m_namesLookup[namesId] = NameIndex(names);
 
   logging::info("Gpu::EpixUHRemu configure: xtc size %u", xtc.sizeofPayload());
@@ -191,13 +217,42 @@ void EpixUHRemu::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
   // @todo: Deal with prescaled raw for the panel here?
 }
 
-// Instantiating the kernel template here puts the calibration in the same CUDA
+// Copies the panel's u16 pixels into the raw block, uncalibrated, for CALIB mode.
+// The payload is one contiguous block after the TimingHeader -- the emulator sends
+// no sub-frames -- so this reads it exactly as PedGainCalib does, and writes u16
+// rather than converting to float.
+struct EpixUHRemuCalib
+{
+  __device__
+  void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
+  {
+    if (!pyld.hasData)  return;         // A transition, or nothing intelligible
+    if (!pyld.raw)      return;         // No raw block: misconfigured, not our call
+
+    auto const __restrict__ src = (uint16_t const*)(pyld.data + sizeof(Pds::TimingHeader));
+    auto const __restrict__ dst = (uint16_t*)pyld.raw;
+    auto const payloadCnt = (pyld.size - sizeof(Pds::TimingHeader))/sizeof(uint16_t);
+    auto const rawCnt     = pyld.rawCnt / sizeof(uint16_t);
+    // The array offline sees is a fixed NPixels, so a short payload leaves zeros
+    // rather than shrinking it.  Damage::MissingData in event() carries the fact.
+    auto const nElem = payloadCnt > rawCnt ? rawCnt : payloadCnt;
+    for (auto i = tid; i < rawCnt; i += stride)
+      dst[i] = i < nElem ? src[i] : 0;
+  }
+};
+
+// Instantiating the kernel templates here puts the per-element work in the same CUDA
 // module as the kernel, so it inlines.  See ReaderKernels.cuh.
 void EpixUHRemu::recordEvent(cudaStream_t           stream,
                              unsigned               blocks,
                              unsigned               threads,
                              const EventKernelArgs& args)
 {
+  if (m_passthru) {
+    _event<EpixUHRemuCalib><<<blocks, threads, 0, stream>>>(args, EpixUHRemuCalib{});
+    return;
+  }
+
   // No reference buffers: only the simulator controls the raw data it generates,
   // so only it can supply something to verify the calibration against
   PedGainCalib const calib{pedestals_d(),
