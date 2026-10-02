@@ -52,8 +52,10 @@ namespace Pds {
            _monPgp,
            _monRawBuf,
            _monFexBuf,
+           _monInsBuf,
            _monRawDet,
            _monFexDet,
+           _monInsDet,
            _monFlow,
            _monJesd,
            _monEnv,
@@ -83,8 +85,10 @@ namespace Pds {
       PV_ADD (monPgp);
       PV_ADD (monRawBuf);
       PV_ADD (monFexBuf);
+      PV_ADD (monInsBuf);
       PV_ADD (monRawDet);
       PV_ADD (monFexDet);
+      PV_ADD (monInsDet);
       PV_ADD (monFlow);
       PV_ADD (monJesd);
       PV_ADD (monEnv);
@@ -187,6 +191,9 @@ namespace Pds {
           { MonBuf v;
             fex._base[1].getFree(v.freesz,v.freeevt,v.fifoof);
             PVPUT(monFexBuf); }
+          { MonBuf v;
+            fex._base[2].getFree(v.freesz,v.freeevt,v.fifoof);
+            PVPUT(monInsBuf); }
         }
 
         { MonTrig v;
@@ -202,6 +209,9 @@ namespace Pds {
 
         { MonBufDetail v(reg,1);
           PVPUT(monFexDet); }
+
+        { MonBufDetail v(reg,2);
+          PVPUT(monInsDet); }
 
         { MonFlow v;
           v.pkoflow = fex._oflow&0xff;            // cntOflow

@@ -138,8 +138,10 @@ namespace Pds {
     static const unsigned _sz_monPgp   [] = {4,4,4,4,4,4,4,4,4,4,4,4,4,};
     static const unsigned _sz_monRawBuf[] = {0};
     static const unsigned _sz_monFexBuf[] = {0};
+    static const unsigned _sz_monInsBuf[] = {0};
     static const unsigned _sz_monRawDet[] = {16,16,16,16,};
     static const unsigned _sz_monFexDet[] = {16,16,16,16,};
+    static const unsigned _sz_monInsDet[] = {16,16,16,16,};
     static const unsigned _sz_monFlow  [] = {0};
     static const unsigned _sz_monJesd  [] = {112,5,};
     static const unsigned _sz_monEnv   [] = {0};

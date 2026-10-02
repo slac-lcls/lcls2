@@ -18,6 +18,23 @@ ACIntvsDict = {}
 FixedFidRate  = 0   # seqplot
 FixedToACFids = 0   # needed for seqplot simulation
 
+destnDict = {'LASER':0, 'DIAG0':1, 'BSYD':2, 'HXR':3, 'SXR':4, 'S30XL':5}
+
+def destnValue(destNames):
+    def lookup(d):
+        if d in destnDict.keys():
+            return 1<<destnDict[d]
+        else:
+            raise ValueError('f{d} not a destination.  Expected {destnDict.keys()}')
+        
+    destn=0
+    if isinstance(destNames,list):
+        for d in destNames:
+            destn += lookup(d)
+    else:
+        destn += lookup(d)
+    return destn
+
 def setUED():
     global fixedRates
     global fixedRateHzToMarker

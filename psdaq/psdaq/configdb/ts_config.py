@@ -1,6 +1,7 @@
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from psdaq.configdb.ts_connect import ts_connector
+from psdaq.configdb.tsdef import destnDict
 from psdaq.seq.globals import *
 from p4p.client.thread import Context
 import json
@@ -13,9 +14,9 @@ connector = None
 
 DEST_INCLUDE  = 0
 DEST_DONTCARE = 1
-DEST_BSY = 2
-DEST_HXR = 3
-DEST_SXR = 4
+DEST_BSY = destnDict['BSYD']
+DEST_HXR = destnDict['HXR']
+DEST_SXR = destnDict['SXR']
 
 def ts_connect(json_connect_info):
     global connector

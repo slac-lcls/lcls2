@@ -31,8 +31,10 @@ namespace Pds {
       MonPgp        _v_monPgp   [2];
       MonBuf        _v_monRawBuf[2];
       MonBuf        _v_monFexBuf[2];
+      MonBuf        _v_monInsBuf[2];
       MonBufDetail  _v_monRawDet[2];
       MonBufDetail  _v_monFexDet[2];
+      MonBufDetail  _v_monInsDet[2];
       MonFlow       _v_monFlow  [2];
       MonEnv        _v_monEnv   [2];
       MonAdc        _v_monAdc   [2];

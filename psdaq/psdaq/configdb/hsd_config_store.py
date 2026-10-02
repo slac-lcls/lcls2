@@ -15,7 +15,7 @@ mycdb = cdb.configdb(url, args.inst, create,
 
 top = cdict()
 
-top.setAlg('config', [3,3,0])
+top.setAlg('config', [4,0,0])
 
 top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
 top.set("firmwareVersion:RO",   0, 'UINT32' )
@@ -34,6 +34,9 @@ help_str += "\nuser.fex.dymin    : min ADC value to sparsify relative to fex.cor
 help_str += "\nuser.fex.dymax    : max ADC value to sparsify relative to fex.corr.baseline"
 help_str += "\nuser.fex.xpre     : keep N samples leading excursion"
 help_str += "\nuser.fex.xpost    : keep N samples trailing excursion"
+help_str += "\nuser.inspect.start_ns : nanoseconds from fiducial to sampling start"
+help_str += "\nuser.inspect.gate_ns  : nanoseconds from sampling start to end"
+help_str += "\nuser.inspect.prescale : event downsampling; record 1-out-of-N"
 
 top.set("help:RO", help_str, 'CHARSTR')
 
@@ -49,6 +52,10 @@ top.set('user.fex.dymin' ,      -20, 'INT32')
 top.set('user.fex.dymax' ,       20, 'INT32')
 top.set('user.fex.xpre' ,         8, 'UINT32')
 top.set('user.fex.xpost',         8, 'UINT32')
+
+top.set('user.inspect.start_ns',  93000, 'UINT32')
+top.set('user.inspect.gate_ns' ,    200, 'UINT32')
+top.set('user.inspect.prescale',      1, 'UINT32')
 
 top.define_enum('accumEnum', {'11ns_64Sa'   :  4, 
                               '22ns_128Sa'  :  5, 
@@ -78,6 +85,9 @@ top.set('expert.fex_xpost'    , 1    , 'UINT32')
 top.set('expert.fex_ymin'     , 2020 , 'UINT32')
 top.set('expert.fex_ymax'     , 2060 , 'UINT32')
 top.set('expert.fex_prescale' , 0    , 'UINT32')
+top.set('expert.inspect_start'    , 40   , 'UINT32')
+top.set('expert.inspect_gate'     , 40   , 'UINT32')
+top.set('expert.inspect_prescale' , 0    , 'UINT32')
 top.set('expert.test_pattern' , -1   , 'dataModeEnum')
 top.set('expert.full_rtt'     , 300  , 'UINT32')  # DT round trip time @186MHz
 top.set('expert.full_event'   , 6    , 'UINT32')

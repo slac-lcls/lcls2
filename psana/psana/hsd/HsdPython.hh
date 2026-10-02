@@ -17,7 +17,7 @@ namespace Pds {
     public:
         ChannelPython() {}
         ChannelPython(uint32_t *evtheader, uint8_t* data) :
-            _evtheader(evtheader), _data(data), _sh_raw(0), _sh_fex(0)
+ 	    _evtheader(evtheader), _data(data), _sh_raw(0), _sh_fex(0), _sh_ins(0)
         {
             _reset_peakiter();
             unsigned streams((evtheader[0]>>20)&0x3);
@@ -30,6 +30,9 @@ namespace Pds {
                 if (sh->stream_id() == 1) {
                     _sh_fex = sh;
                 }
+                if (sh->stream_id() == 2) {
+                    _sh_ins = sh;
+                }
                 p += sizeof(StreamHeader)+sh->num_samples()*2;
                 streams &= ~(1<<sh->stream_id());
             }
@@ -41,6 +44,13 @@ namespace Pds {
             if (!_sh_raw) return 0;
             numsamples = _sh_raw->num_samples();
             uint16_t* wf = (uint16_t*)(_sh_raw+1);
+            return wf;
+        }
+
+        uint16_t* inspect(unsigned& numsamples) {
+            if (!_sh_ins) return 0;
+            numsamples = _sh_ins->num_samples();
+            uint16_t* wf = (uint16_t*)(_sh_ins+1);
             return wf;
         }
 
@@ -99,6 +109,7 @@ namespace Pds {
         uint8_t*  _data;
         const StreamHeader* _sh_raw;
         const StreamHeader* _sh_fex;
+        const StreamHeader* _sh_ins;
 
         void _reset_peakiter() {
             _ns=0;

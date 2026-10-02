@@ -7,6 +7,7 @@ import time
 import json
 import logging
 
+#barrier_global = NoBarrier()
 barrier_global = Barrier()
 args = {}
 #logging.basicConfig(level=logging.INFO)
@@ -77,8 +78,8 @@ def xpmdet_connectionInfo(alloc_json_str):
    # time.sleep(1)
 
     alloc_json = json.loads(alloc_json_str)
-    supervisor,nworker = supervisor_info(alloc_json,args['dev'])
-    logging.info(f'xpmdet supervisor: {supervisor}, nworkers: {nworker}')
+    supervisor,nworker = supervisor_info(alloc_json)
+    logging.warning(f'xpmdet supervisor: {supervisor}, nworkers: {nworker}')
     barrier_global.init(supervisor,nworker)
 
     if barrier_global.supervisor:
@@ -102,6 +103,7 @@ def xpmdet_connectionInfo(alloc_json_str):
                 rate = root.TDetTiming.refClockRate()
 
                 if (rate < clockrange[0] or rate > clockrange[1]):
+                    logging.warning(f'Measured clock rate {rate} MHz.  Reprogramming.')
                     root.I2CBus.programSi570(119. if args["timebase"]=="119M" else 1300/7.)
                     tim.RxPllReset.set(1)
                     tim.RxPllReset.set(0)
@@ -132,14 +134,16 @@ def xpmdet_connectionInfo(alloc_json_str):
 
         if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):
             logging.warning(f"XPM Remote link id register illegal value: 0x{rxId:08x}. Trying RxPllReset.");
-            tim = root.TDetTiming.TimingFrameRx
-            tim.RxPllReset.set(1)
-            tim.RxPllReset.set(0)
-            time.sleep(0.0001)
-            dumpTiming(tim)
-            tim.C_RxReset()
-            time.sleep(1.0)
-            tim.ClearRxCounters()
+#            tim = root.TDetTiming.TimingFrameRx
+#            tim.RxPllReset.set(1)
+#            tim.RxPllReset.set(0)
+#            time.sleep(0.0001)
+#            dumpTiming(tim)
+#            tim.C_RxReset()
+#            time.sleep(1.0)
+#            tim.ClearRxCounters()
+            tim = root.TDetTiming
+            tim.ConfigLclsTimingV2()
 
             rxId = xma.RxId.get()
             if (rxId==0 or rxId==0xffffffff or (rxId&0xff)>15):

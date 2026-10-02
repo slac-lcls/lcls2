@@ -16,7 +16,7 @@ rawBuffSize = None
 fexBuffSize = None
 group = None
 
-configVersion = [3,3,0]
+configVersion = [4,0,0]
 
 barrier_global = Barrier()
 args = {}
@@ -220,7 +220,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     # fetch the freesz
     rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
     fexBuffSize = ctxt.get(epics_prefix+':MONFEXBUF').freesz
-    print(f'rawBuffSize {rawBuffSize}  fexBuffSize {fexBuffSize}')
+    insBuffSize = ctxt.get(epics_prefix+':MONINSBUF').freesz
+    print(f'rawBuffSize {rawBuffSize}  fexBuffSize {fexBuffSize}  insBuffSize {insBuffSize}')
     
     ocfg = cfg
     user_to_expert(cfg)
@@ -228,6 +229,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     # overwrite expert fields from user input
     raw = cfg['user']['raw']
     fex = cfg['user']['fex']
+    ins = cfg['user']['inspect']
     expert = cfg['expert']
     expert['readoutGroup'] = group
     expert['enable'   ] = 1
@@ -261,6 +263,8 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
         expert['fex_ymax' ] = fex['ymax']
     expert['fex_prescale'] = fex['prescale']
 
+    expert['inspect_prescale'] = ins['prescale']
+    
     # program the values
     apply_config(ctxt,cfg)
 
@@ -330,92 +334,64 @@ def user_to_expert(cfg):
         raw_gate  = None
         fex_start = None
         fex_gate  = None
+        ins_start = None
+        ins_gate  = None
 
-        hasRaw = 'raw' in cfg['user']
-        raw = cfg['user']['raw']
-        if (hasRaw and 'start_ns' in raw):
-            raw_start      = int((raw['start_ns']*1300/7000 - partitionDelay*200)*160/200)
-
-            if raw_start < 0:
-                print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.
-                      format(partitionDelay,raw['start_ns'],raw_start))
-                raise ValueError('raw_start is too small by {:} ns'.
-                                 format(-raw_start/0.16*14./13))
-            if raw_start > 0xfffff:
-                print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.
-                      format(partitionDelay,raw['start_ns'],raw_start))
-                raise ValueError('start_ns is too large by {:} ns'.
-                                 format((raw_start-0xfffff)/0.16*14./13))
-
-            d['expert.raw_start'] = raw_start
-
-        if (hasRaw and 'gate_ns' in raw):
-            raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
-            raw_nsamples = raw_gate*40
-            # raw_gate register is 20 bits
-            if raw_gate < 0:
-                raise ValueError('raw_gate computes to < 0')
-            if raw_gate > rawBuffSize:
-                raise ValueError(f'raw_gate ({raw_nsamples}sam) computes to > rawBuffSize ({rawBuffSize})')
-
-            d['expert.raw_gate'] = raw_gate
-
-        hasFex = 'fex' in cfg['user'] and cfg['user']['fex']['prescale']>0
-        fex = cfg['user']['fex']
-        if (hasFex and 'start_ns' in fex):
-            fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200)
-
-            if fex_start < 0:
-                print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.
-                      format(partitionDelay,fex['start_ns'],fex_start))
-                raise ValueError('fex_start is too small by {:} ns'.
-                                 format(-fex_start/0.16*14./13))
-            if fex_start > 0xfffff:
-                print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.
-                      format(partitionDelay,fex['start_ns'],fex_start))
-                raise ValueError('start_ns is too large by {:} ns'.
-                                 format((fex_start-0xfffff)/0.16*14./13))
-
-            d['expert.fex_start'] = fex_start
-
-        if (hasFex and 'gate_ns' in fex):
-            fex_gate     = int(fex['gate_ns']*0.160*13/14) # in "160" MHz clks
-            fex_nsamples = fex_gate*40
-            # fex_gate register is 20 bits
-            if fex_gate < 0:
-                raise ValueError('fex_gate computes to < 0')
-            if fex_gate > 0xfffff:
-                raise ValueError(f'fex_gate ({fex_nsamples}sam) computes to > 0xfffff ({0xfffff})')
-            if fex_gate > fexBuffSize:
-                logging.warning(f'fex_gate ({fex_nsamples}sam) computes to > fexBuffSize ({fexBuffSize})')
-
-            d['expert.fex_gate'] = fex_gate
-
-        #  Check the deadtime watermarks
         full_rtt = cfg['expert']['full_rtt']
         full_evt = cfg['expert']['full_event']
-        if raw_start and raw_gate:
-            full_size = (160*full_rtt)//200 + raw_start + raw_gate
-            if full_size > rawBuffSize:
-                low_rate_size = (160*full_rtt)//200 + raw_gate
-                logging.warning(f'Raw full threshold ({full_size}) computes to > raw full size ({rawBuffSize}).  Lowering to {low_rate_size}.')
-                full_size = low_rate_size
-            d['expert.full_size_raw'] = full_size
-            evt = int(raw_start/160 + full_rtt/200)
-            if evt > full_evt:
-                logging.warning(f'full_event threshold protects raw buffers up to {full_evt/evt} MHz.  Set full_event > {evt} for MHz running or increase group {group} L0Delay by {evt-full_evt}.')
+        
+        def _check_start_and_gate(stream, buffSize, sparse):
+            hasStream = stream in cfg['user']
+            cfg_s = cfg['user'][stream]
+            start = None
+            gate  = None
+            #  Check the start
+            if (hasStream and 'start_ns' in cfg_s):
+                start      = int((cfg_s['start_ns']*1300/7000 - partitionDelay*200)*160/200)
+                # start register is 20 bits
+                if start < 0:
+                    print(f'partitionDelay {partitionDelay}  {stream}_start_ns {cfg_s["start_ns"]}  {stream}_start {start}')
+                    raise ValueError(f'{stream}_start is too small by {-start/0.16*14./13} ns')
+                if start > 0xfffff:
+                    print(f'partitionDelay {partitionDelay}  {stream}_start_ns {cfg_s["start_ns"]}  {stream}_start {start}')
+                    raise ValueError(f'{stream}_start_ns is too large by {start-0xfffff)/0.16*14./13} ns')
 
-        if fex_start and fex_gate:
-            full_size = (160*full_rtt)//200 + fex_start + fex_gate
-            if full_size > fexBuffSize:
-                low_rate_size = (160*full_rtt)//200 + fex_gate
-                logging.warning(f'Fex full threshold ({full_size}) computes to > fex full size ({fexBuffSize}).  Lowering to {low_rate_size}.')
-                full_size = low_rate_size
-            d['expert.full_size_fex'] = full_size
-            evt = int(fex_start/160 + full_rtt/200)
-            if evt > full_evt:
-                logging.warning(f'full_event threshold protects fex buffers up to {full_evt/evt} MHz.  Set full_event > {evt} for MHz running or increase group {group} L0Delay by {evt-full_evt}.')
+            d[f'expert.{stream}_start'] = start
 
+            #  Check the gate
+            if (hasStream and 'gate_ns' in cfg_s):
+                gate     = int(cfg_s['gate_ns']*0.160*13/14) # in "160" MHz clks
+                nsamples = gate*40
+                # gate register is 20 bits
+                if gate < 0:
+                    raise ValueError(f'{stream}_gate computes to < 0')
+                if gate > buffSize:
+                    if sparse:
+                        logging.warning(f'{stream}_gate ({gate}/{40*gate}sam) computes to > {stream}BuffSize ({buffSize})')
+                    else:
+                        raise ValueError(f'{stream}_gate ({gate}/{40*gate}sam) computes to > {stream}BuffSize ({buffSize})')
+                if gate > 0xfffff:
+                    raise ValueError(f'{stream}_gate ({gate}/{40*gate}sam) computes to > 20 bits')
+                    
+            d[f'expert.{stream}_gate'] = gate
+
+            #  Check the deadtime watermarks
+            if start and gate:
+                full_size = (160*full_rtt)//200 + start + gate
+                if full_size > buffSize:
+                    low_rate_size = (160*full_rtt)//200 + gate
+                    logging.warning(f'{stream} full threshold ({full_size}) computes to > {stream} full size ({buffSize}).  Lowering to {low_rate_size}.')
+                    full_size = low_rate_size
+                d['expert.full_size_{stream}'] = full_size
+                evt = int(start/160 + full_rtt/200)
+                if evt > full_evt:
+                    logging.warning(f'full_event threshold protects {stream} buffers up to {full_evt/evt} MHz.  Set full_event > {evt} for MHz running or increase group {group} L0Delay by {evt-full_evt}.')
+
+            
+        _check_start_and_gate ('raw'    ,rawBuffSize, False)
+        _check_start_and_gate ('fex'    ,fexBuffSize, True)
+        _check_start_and_gate ('inspect',insBuffSize, False)
+        
     update_config_entry(cfg,ocfg,d)
 
 def apply_config(ctxt,cfg):

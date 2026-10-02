@@ -35,6 +35,7 @@ cdef extern from "psana/hsd/HsdPython.hh" namespace "Pds::HSD":
         ChannelPython()
         ChannelPython(const evthdr_t *evtheader, const si.uint8_t *data)
         si.uint16_t* waveform(unsigned &numsamples)
+        si.uint16_t* inspect(unsigned &numsamples)
         #si.uint16_t* sparse(unsigned &numsamples)
         unsigned next_peak(unsigned &sPos, si.uint16_t** peakPtr)
         unsigned char fex_out_of_range()
@@ -93,6 +94,16 @@ cdef class PyChannelPython:
 
         self.fexOor = chanpy.fex_out_of_range()
 
+        wf_ptr = chanpy.inspect(numsamples)
+        shape[0] = numsamples
+        if numsamples:
+            self.inspect = cnp.PyArray_SimpleNewFromData(1, shape, cnp.NPY_UINT16, wf_ptr)
+            cnp.PyArray_SetBaseObject(self.inspect, dgram)
+            Py_INCREF(dgram)
+        else:
+            self.inspect = None
+
+
 class hsd_hsd_1_2_3(cyhsd_base_1_2_3, DetectorImpl):
 
     def __init__(self, *args):
@@ -143,6 +154,7 @@ cdef class cyhsd_base_1_2_3:
         self._fexPeaks = []
         self._peaksDict = {}
         self._peakTimesDict = {}
+        self._insDict = {}
         self._evt = None
         self._hsdsegments = None
 
@@ -197,6 +209,7 @@ cdef class cyhsd_base_1_2_3:
         self._padDict = {}
         self._fexStatus = {}
         self._fexPeaks = []
+        self._insDict = {}
         self._pychansegs = None
         self._hsdsegments = self._segments(evt)
         self._evt = evt
@@ -242,6 +255,14 @@ cdef class cyhsd_base_1_2_3:
                 if iseg not in self._fexStatus.keys():
                     self._fexStatus[iseg]={}
                 self._fexStatus[iseg][chanNum] = ([pychan.fexOor],[])
+
+                if pychan.inspect is not None:
+                    if iseg not in self._insDict.keys():
+                        self._insDict[iseg] = {}
+                        # FIXME: this needs to be put in units of seconds
+                        # perhaps both for 5GHz and 6GHz models
+                        self._insDict[iseg]["times"] = np.arange(len(pychan.inspect)) * 1/(6.4*1e9*13/14)
+                    self._insDict[iseg][chanNum] = pychan.inspect
 
         # maybe check that we have all segments in the event?
         # FIXME: also check that we have all the channels we expect?
@@ -352,6 +373,23 @@ cdef class cyhsd_base_1_2_3:
         else:
             return self._padDict
 
+    @cython.binding(True)
+    def inspect(self, evt) -> HSDWaveforms:
+        """Return a dictionary of available waveforms in the event.
+        0:    raw waveform intensity from channel 0
+        1:    raw waveform intensity from channel 1
+        ...
+        16:   raw waveform intensity from channel 16
+        times:  time axis (s)
+        """
+        cdef cnp.ndarray wv # TODO: make readonly
+        if self._isNewEvt(evt):
+            self._parseEvt(evt)
+        if not self._insDict:
+            return None
+        else:
+            return self._insDict
+
 
 class hsd_raw_2_0_0(hsd_hsd_1_2_3):
 
@@ -412,3 +450,12 @@ class hsd_raw_3_0_0(hsd_raw_2_0_0):
             return None
         else:
             return self._fexStatus
+
+#
+#  3.0.0 -> 4.0.0
+#    Added a third stream ("inspect") which is a small window of raw data never prescaled
+#
+class hsd_raw_4_0_0(hsd_raw_3_0_0):
+
+    def __init__(self, *args):
+        hsd_raw_3_0_0.__init__(self, *args)

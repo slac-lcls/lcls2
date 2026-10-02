@@ -15,9 +15,13 @@ daqConfig = {'readoutGroup'     :('i', 0, 'ROG'),
              'fex_xpost'        :('i', 1),
              'fex_corr_baseline':('i',16384),
              'fex_corr_accum'   :('i',12),
+             'inspect_start'    :('i', 4),
+             'inspect_gate'     :('i', 10),
+             'inspect_prescale' :('i', 1),
              'full_event'       :('i', 8, 'Min buffers thr'),
              'full_size_raw'    :('i', 2048, 'Min rows thr (40sa)'),
              'full_size_fex'    :('i', 2048, 'Min rows thr (40sa)'),
+             'full_size_insp'   :('i', 2048, 'Min rows thr (40sa)'),
              'trig_phaselock'   :('i', 0),}
 
 pgpConfig  = {'diffctrl'    :('ai', [15]*4),

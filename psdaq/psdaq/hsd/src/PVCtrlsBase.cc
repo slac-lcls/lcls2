@@ -139,6 +139,7 @@ namespace Pds {
       unsigned fullEvt  = PVGET(full_event);
       unsigned fullRaw  = PVGET(full_size_raw);
       unsigned fullFex  = PVGET(full_size_fex);
+      unsigned fullInsp = PVGET(full_size_insp);
       unsigned rawPre   = PVGET(raw_prescale);
       unsigned rawKeep  = PVGET(raw_keep);
       if (rawPre) {
@@ -167,6 +168,13 @@ namespace Pds {
         fex._stream[1].parms[12]=PVGET(fex_corr_baseline);
         fex._stream[1].parms[13]=PVGET(fex_corr_accum);
         // fex._stream[1].parms[14]=PVGET(fex_corr_wrap);
+      }
+      if (PVGET(inspect_prescale)) {
+	streamMask |= (1<<2);
+        fex._base[2].setGate(PVGET(inspect_start),
+                             PVGET(inspect_gate));
+        fex._base[2].setFull(fullInsp,fullEvt);
+        fex._base[2].setPrescale(PVGET(inspect_prescale)-1);
       }
       fex._streams= streamMask | (fullEvt<<8) | (rawStreams<<16);
     

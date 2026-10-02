@@ -118,6 +118,23 @@ class Barrier:
         else:
             self.subscriber.recv()
 
+# easy bypass
+class NoBarrier:
+    def __init__(self):
+        self.supervisor = None
+        self.nworker = 0
+
+    def init(self, supervisor, nworker):
+        self.supervisor = supervisor
+        self.nworker = nworker
+
+    def wait(self):
+        pass
+
+    def shutdown(self):
+        pass
+    
+            
 if __name__ == "__main__":
 
     import sys
