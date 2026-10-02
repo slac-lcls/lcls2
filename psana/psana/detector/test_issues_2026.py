@@ -1311,6 +1311,23 @@ def issue_2026_09_09(args):
     print('run.timestamp LCLS2 int: %d > epoch unix sec: %.6f > %s' % (run.timestamp, seconds(run.timestamp), timestamp_run(run)))
     print('ds.timestamps:', str(ds.timestamps))
 
+
+def issue_2026_09_21(args):
+    """ISSUE: Philip, calib for epixuhr3x2
+              datinfo -k exp=mfx101628626,run=163 -d epixuhr3x2
+       PROBLEM:
+       FIX:
+    """
+    import psana.detector.NDArrUtils as ndu
+    ds,run,det = ds_run_det(exp='mfx101628626', run=163, detname='epixuhr3x2', **{'max_events':10})
+    #evt = next(run.events())
+    for i,evt in enumerate(run.events()):
+      print(f'Event# {"%03d"%i}')
+      raw = det.raw.raw(evt)
+      print(ndu.info_ndarr(det.raw.raw(evt), '  raw'))
+      cal = det.raw.calib(evt)
+      print(ndu.info_ndarr(cal, '  cal'))
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1377,6 +1394,7 @@ def selector():
     elif TNAME in ('18',):issue_2026_08_31(args) # delete documents
     elif TNAME in ('19',):issue_2026_09_08(args) # kerberos access to DB with query (for Murali), see --subtest
     elif TNAME in ('20',):issue_2026_09_09(args) # Philip timestamp is 1990...
+    elif TNAME in ('21',):issue_2026_09_21(args) # Philip, calib for epixuhr3x2
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())

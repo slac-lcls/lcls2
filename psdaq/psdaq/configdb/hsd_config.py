@@ -341,26 +341,26 @@ def user_to_expert(cfg):
                       format(partitionDelay,raw['start_ns'],raw_start))
                 raise ValueError('raw_start is too small by {:} ns'.
                                  format(-raw_start/0.16*14./13))
-            if raw_start > 0x3fff:
+            if raw_start > 0xfffff:
                 print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.
                       format(partitionDelay,raw['start_ns'],raw_start))
                 raise ValueError('start_ns is too large by {:} ns'.
-                                 format((raw_start-0x3fff)/0.16*14./13))
+                                 format((raw_start-0xfffff)/0.16*14./13))
 
             d['expert.raw_start'] = raw_start
 
         if (hasRaw and 'gate_ns' in raw):
             raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
             raw_nsamples = raw_gate*40
-            # raw_gate register is 14 bits
+            # raw_gate register is 20 bits
             if raw_gate < 0:
                 raise ValueError('raw_gate computes to < 0')
             if raw_gate > rawBuffSize:
-                raise ValueError(f'raw_gate ({raw_gate}/{40*raw_gate}sam) computes to > rawBuffSize ({rawBuffSize})')
+                raise ValueError(f'raw_gate ({raw_nsamples}sam) computes to > rawBuffSize ({rawBuffSize})')
 
             d['expert.raw_gate'] = raw_gate
 
-        hasFex = 'fex' in cfg['user']
+        hasFex = 'fex' in cfg['user'] and cfg['user']['fex']['prescale']>0
         fex = cfg['user']['fex']
         if (hasFex and 'start_ns' in fex):
             fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200)
@@ -370,22 +370,24 @@ def user_to_expert(cfg):
                       format(partitionDelay,fex['start_ns'],fex_start))
                 raise ValueError('fex_start is too small by {:} ns'.
                                  format(-fex_start/0.16*14./13))
-            if fex_start > 0x3fff:
+            if fex_start > 0xfffff:
                 print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.
                       format(partitionDelay,fex['start_ns'],fex_start))
                 raise ValueError('start_ns is too large by {:} ns'.
-                                 format((fex_start-0x3fff)/0.16*14./13))
+                                 format((fex_start-0xfffff)/0.16*14./13))
 
             d['expert.fex_start'] = fex_start
 
         if (hasFex and 'gate_ns' in fex):
             fex_gate     = int(fex['gate_ns']*0.160*13/14) # in "160" MHz clks
             fex_nsamples = fex_gate*40
-            # fex_gate register is 14 bits
+            # fex_gate register is 20 bits
             if fex_gate < 0:
                 raise ValueError('fex_gate computes to < 0')
-            if fex_gate > 4000:
-                raise ValueError('fex_gate computes to > 4000; fex_nsamples > 160000')
+            if fex_gate > 0xfffff:
+                raise ValueError(f'fex_gate ({fex_nsamples}sam) computes to > 0xfffff ({0xfffff})')
+            if fex_gate > fexBuffSize:
+                logging.warning(f'fex_gate ({fex_nsamples}sam) computes to > fexBuffSize ({fexBuffSize})')
 
             d['expert.fex_gate'] = fex_gate
 
