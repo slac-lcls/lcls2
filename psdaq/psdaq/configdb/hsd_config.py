@@ -352,15 +352,15 @@ def user_to_expert(cfg):
         if (hasRaw and 'gate_ns' in raw):
             raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
             raw_nsamples = raw_gate*40
-            # raw_gate register is 14 bits
+            # raw_gate register is 20 bits
             if raw_gate < 0:
                 raise ValueError('raw_gate computes to < 0')
             if raw_gate > rawBuffSize:
-                raise ValueError(f'raw_gate ({raw_gate}/{40*raw_gate}sam) computes to > rawBuffSize ({rawBuffSize})')
+                raise ValueError(f'raw_gate ({raw_nsamples}sam) computes to > rawBuffSize ({rawBuffSize})')
 
             d['expert.raw_gate'] = raw_gate
 
-        hasFex = 'fex' in cfg['user']
+        hasFex = 'fex' in cfg['user'] and cfg['user']['fex']['prescale']>0
         fex = cfg['user']['fex']
         if (hasFex and 'start_ns' in fex):
             fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200)
@@ -381,11 +381,13 @@ def user_to_expert(cfg):
         if (hasFex and 'gate_ns' in fex):
             fex_gate     = int(fex['gate_ns']*0.160*13/14) # in "160" MHz clks
             fex_nsamples = fex_gate*40
-            # fex_gate register is 14 bits
+            # fex_gate register is 20 bits
             if fex_gate < 0:
                 raise ValueError('fex_gate computes to < 0')
-            if fex_gate > 4000:
-                raise ValueError('fex_gate computes to > 4000; fex_nsamples > 160000')
+            if fex_gate > 0xfffff:
+                raise ValueError(f'fex_gate ({fex_nsamples}sam) computes to > 0xfffff ({0xfffff})')
+            if fex_gate > fexBuffSize:
+                logging.warning(f'fex_gate ({fex_nsamples}sam) computes to > fexBuffSize ({fexBuffSize})')
 
             d['expert.fex_gate'] = fex_gate
 
