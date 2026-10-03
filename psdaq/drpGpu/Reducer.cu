@@ -23,6 +23,13 @@ using us_t    = std::chrono::microseconds;
 struct red_domain{ static constexpr char const* name{"Reducer"}; };
 using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
 
+// Prescale buffers for prescaled events.  The pebble pool bounds how many can be in
+// flight -- the Reader cannot outrun the recorder by more than nbuffers() events,
+// because pool.allocate() blocks -- which at a 1 Hz keepRaw rate and 33 kHz is a small
+// fraction of one event.  32 is therefore enormous headroom, and cheap: each costs the
+// same as one reduce buffer plus the raw block.
+static constexpr unsigned NPrescaleBuffers{32};
+
 static inline unsigned nxtPwrOf2(unsigned n)
 {
   return n > 1 ? 1 << (32 - __builtin_clz(n - 1)) : 0;
@@ -71,29 +78,44 @@ Reducer::Reducer(const Parameters&                  para,
 
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
-  auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  auto shapesDataSize = 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  auto headerSize     = sizeof(Dgram) + shapesDataSize;
   // Exactly what the algorithm asks for; writing more than that is its bug, which
   // the recorder checks for
   auto payloadSize = m_algo ? m_algo->payloadSize() : 0;
 
-  // Space for a block of raw data ahead of the reduced payload, if the Detector
-  // asked for one.  In pass-through mode the raw block *is* the recorded data and
-  // the reduced payload is unused, which is why payloadSize() may legitimately be 0.
+  // In pass-through the raw block *is* the recorded data and the reduced payload is
+  // unused, which is why payloadSize() may legitimately be 0 there.  Only that mode
+  // puts raw in the reduce buffers: a prescaled BEAM event assembles its datagram in
+  // a prescale buffer instead, so the reduce buffers stay [hdr][reduced] and the raw
+  // block is not multiplied by nbuffers().
   auto rawSize = det.rawSize();
-  if (rawSize)
+  auto redRaw  = det.passthru() ? rawSize : 0;
+  if (redRaw)
     logging::warning("Reserving %zu B per buffer for raw data ahead of the reduced payload",
-                     rawSize);
+                     redRaw);
 
   // Prepare buffers to receive the reduced data, prepended with reserved space for
-  // the datagram header and, when asked for, for raw data.
+  // the datagram header and, in pass-through, for raw data.
   // The application sees only the pointer to the data buffer.
-  m_pool.createReduceBuffers(payloadSize, headerSize, rawSize);
+  m_pool.createReduceBuffers(payloadSize, headerSize, redRaw);
 
   // Transitions get their own buffers so that the largest transition's size is not
   // multiplied by nbuffers().  The count comes from the CPU pool: all transitions but
   // SlowUpdate are synchronous, so only SlowUpdates -- 1 Hz, unacknowledged -- can
   // accumulate, and that count is many minutes' worth of them.
   m_pool.createTransitionBuffers(m_para.maxTrSize, m_pool.pebble.nTrBuffers());
+
+  // Prescaled events need somewhere to assemble [hdr][raw][reduced] contiguously.
+  // Only in BEAM: pass-through records raw for every event, through the reduce
+  // buffers, so it needs none of these.  The count is generous because they are
+  // nearly free -- 32 costs ~0.03 GiB where reserving raw in every reduce buffer
+  // costs 0.74 GiB at nbuffers = 2048 -- and because running dry aborts the DAQ.
+  // A prescaled event describes two arrays, so its datagram carries a second block of
+  // descriptors; it goes between the payloads, not in the header reserve, because
+  // CreateData writes each array's descriptors immediately before its bytes.
+  if (rawSize && !det.passthru())
+    m_pool.createPrescaleBuffers(rawSize, NPrescaleBuffers, headerSize, shapesDataSize);
 
   // Set up the worker queues to fit all buffers
   if (m_para.nworkers) {
@@ -229,6 +251,7 @@ Reducer::~Reducer()
   if (m_algo)  delete m_algo;
   m_dl.close();
 
+  m_pool.destroyPrescaleBuffers();
   m_pool.destroyTransitionBuffers();
   m_pool.destroyReduceBuffers();
 

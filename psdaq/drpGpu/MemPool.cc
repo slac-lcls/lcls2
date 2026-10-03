@@ -8,6 +8,7 @@
 
 #include <cstdio>                       // For fopen, fgets, sscanf
 #include <cstring>                      // For strncmp
+#include <new>                          // For placement new, over pinned memory
 #include <cerrno>                       // For errno
 #include <unistd.h>                     // For getuid, geteuid, syscall
 #include <linux/capability.h>           // For CAP_SYS_ADMIN (no libcap needed)
@@ -205,7 +206,16 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   m_reduceBuffers_d (nullptr),
   m_trBufsSize      (0),
   m_trBufCnt        (0),
-  m_trBuffers_d     (nullptr)
+  m_trBuffers_d     (nullptr),
+  m_prescaleBufsRsvd     (0),
+  m_prescaleBufsRaw      (0),
+  m_prescaleBufsDscr     (0),
+  m_prescaleBufsSize     (0),
+  m_prescaleBufCnt       (0),
+  m_prescaleBuffers_d    (nullptr),
+  m_rawTicket_d     (nullptr),
+  m_rawOverflow     (nullptr),
+  m_rawReleased     (nullptr)
 {
   dmaBuffers = nullptr;                 // Unused: cause a crash if accessed
 
@@ -629,5 +639,79 @@ void MemPoolGpu::destroyTransitionBuffers()
     m_trBuffers_d = nullptr;
     m_trBufsSize  = 0;
     m_trBufCnt    = 0;
+  }
+}
+
+void MemPoolGpu::createPrescaleBuffers(size_t nBytes, unsigned nBufs,
+                                  size_t hdrBytes, size_t dscrBytes)
+{
+  if (m_prescaleBufsRaw) {
+    logging::error("Attempt to reallocate prescale buffers");
+    return;
+  }
+
+  // A prescaled event assembles its whole datagram here rather than in its reduce
+  // buffer, so that the reduce buffers stay [hdr][reduced] and the raw block is not
+  // multiplied by nbuffers().  At 387 kB of raw per buffer that is the difference
+  // between ~1.5 and ~35 GiB at nbuffers = 32768.
+  //
+  //   [ Dgram ][ raw descr ][ raw ][ reduced descr ][ reduced copy ]
+  //
+  // The reduced payload is copied in from the reduce buffer, device to device, which
+  // costs well under a microsecond and happens only on the ~1 Hz of marked events.
+  //
+  // hdrBytes is the Dgram plus the raw array's descriptors; dscrBytes is the reduced
+  // array's.  The latter sits BETWEEN the payloads because CreateData writes each
+  // array's descriptors immediately before its bytes, so neither payload can be
+  // placed without it.  Rounding each piece to 8 keeps every payload aligned.
+  auto reserved = hdrBytes;
+  auto redSize  = reduceBufsSize();
+  nBytes    = sizeof(uint64_t)*((nBytes    + sizeof(uint64_t)-1)/sizeof(uint64_t));
+  reserved  = sizeof(uint64_t)*((reserved  + sizeof(uint64_t)-1)/sizeof(uint64_t));
+  dscrBytes = sizeof(uint64_t)*((dscrBytes + sizeof(uint64_t)-1)/sizeof(uint64_t));
+  redSize   = sizeof(uint64_t)*((redSize   + sizeof(uint64_t)-1)/sizeof(uint64_t));
+
+  auto stride = reserved + nBytes + dscrBytes + redSize;
+  chkError(cudaMalloc(&m_prescaleBuffers_d,    nBufs * stride));
+  chkMemory          ( m_prescaleBuffers_d,    nBufs,  stride, "rawBuffers");
+  chkError(cudaMemset( m_prescaleBuffers_d, 0, nBufs * stride));
+
+  m_prescaleBufsRsvd = reserved;
+  m_prescaleBufsRaw  = nBytes;
+  m_prescaleBufsDscr = dscrBytes;
+  m_prescaleBufsSize = redSize;
+  m_prescaleBufCnt   = nBufs;
+
+  // The ticket is advanced by the _event kernel; released by the recorder.  Released
+  // and overflow are pinned so that each side sees the other's stores without a copy;
+  // being atomic is what makes that visibility guaranteed rather than hoped for.
+  chkError(cudaMalloc    (&m_rawTicket_d,    sizeof(*m_rawTicket_d)));
+  chkError(cudaMemset    ( m_rawTicket_d, 0, sizeof(*m_rawTicket_d)));
+  chkError(cudaHostAlloc (&m_rawOverflow,    sizeof(*m_rawOverflow), cudaHostAllocDefault));
+  chkError(cudaHostAlloc (&m_rawReleased,    sizeof(*m_rawReleased), cudaHostAllocDefault));
+  new (m_rawOverflow) cuda::std::atomic<unsigned>{0};
+  new (m_rawReleased) cuda::std::atomic<unsigned>{0};
+
+  logging::info("Prescale buffers: %p : %p, size %u * (%zu + %zu + %zu + %zu) B\n",
+                &m_prescaleBuffers_d[0], &m_prescaleBuffers_d[(nBufs-1) * stride],
+                nBufs, reserved, nBytes, dscrBytes, redSize);
+}
+
+void MemPoolGpu::destroyPrescaleBuffers()
+{
+  if (m_prescaleBufsRaw) {
+    chkError(cudaFree(m_prescaleBuffers_d));
+    if (m_rawTicket_d)  chkError(cudaFree(m_rawTicket_d));
+    if (m_rawOverflow)  chkError(cudaFreeHost(m_rawOverflow));
+    if (m_rawReleased)  chkError(cudaFreeHost(m_rawReleased));
+    m_prescaleBuffers_d = nullptr;
+    m_rawTicket_d  = nullptr;
+    m_rawOverflow  = nullptr;
+    m_rawReleased  = nullptr;
+    m_prescaleBufsRsvd  = 0;
+    m_prescaleBufsRaw   = 0;
+    m_prescaleBufsDscr  = 0;
+    m_prescaleBufsSize  = 0;
+    m_prescaleBufCnt    = 0;
   }
 }

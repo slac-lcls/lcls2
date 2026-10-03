@@ -8,6 +8,7 @@
 #include <atomic>
 
 #include <cuda_runtime.h>
+#include <cuda/std/atomic>
 #include <nvtx3/nvtx3.hpp>
 
 #include "drp/drp.hh"
@@ -142,6 +143,14 @@
 namespace Drp {
   namespace Gpu {
 
+// Where the prescale slot a prescaled event claimed sits in that event's
+// host-visible header buffer: written by the device, read by the recorder.  Here
+// rather than in ReaderKernels.cuh because host code needs it too, and it describes
+// the buffer layout this file owns.  NoRawSlot means the event claimed none.
+hostFunc deviceFunc
+inline size_t      rawSlotIndex(size_t hdrBufsCnt) { return hdrBufsCnt - 2; }
+constexpr unsigned NoRawSlot{0xffffffff};
+
 // @todo: Move to a common header file or use std::pair/std::tuple
 template <class T>
 struct Ptr
@@ -221,6 +230,8 @@ public:
   void destroyReduceBuffers();
   void createTransitionBuffers(size_t nBytes, unsigned nBufs);
   void destroyTransitionBuffers();
+  void createPrescaleBuffers(size_t nBytes, unsigned nBufs, size_t hdrBytes, size_t dscrBytes);
+  void destroyPrescaleBuffers();
   using vecpu32_t = std::vector<uint32_t*>;
   const auto& hostWrtBufs()      const { return m_hostWrtBufs; }
   const auto& calibBuffers_d ()  const { return m_calibBuffers_d; }
@@ -241,14 +252,49 @@ public:
   // preference to adding the parts up, which silently goes wrong when a region
   // is added.
   size_t reduceBufsStride()      const
-  { return m_reduceBufsRsvd + m_reduceBufsRaw + m_reduceBufsSize; }
+    { return m_reduceBufsRsvd + m_reduceBufsRaw + m_reduceBufsSize; }
   // Transitions are written through their own buffers, so that the largest
   // transition's size is not multiplied by nbuffers() of reduce buffer.  A
   // transition's whole datagram is copied from the host, so unlike a reduce buffer
   // there is no reserve to grow backwards into: the Dgram starts at the buffer.
   const auto& transitionBuffers_d() const { return m_trBuffers_d; }
-  size_t   trBufsSize()             const { return m_trBufsSize; }
-  unsigned trBufCnt()               const { return m_trBufCnt; }
+  size_t      trBufsSize()          const { return m_trBufsSize; }
+  unsigned    trBufCnt()            const { return m_trBufCnt; }
+  // Prescaled events assemble their whole datagram -- header, raw and a copy of the
+  // reduced payload -- into one of these, so that it is contiguous for a single
+  // write.  Far fewer than nbuffers(), since only the ~1 Hz the timing system marks
+  // needs one; see createPrescaleBuffers().  Each is laid out as
+  //
+  //   [ Dgram ][ raw descr ][ raw ][ reduced descr ][ reduced copy ]
+  //                          ^ rawOffset()           ^ redOffset()
+  //
+  // The descriptors are INTERLEAVED with the payloads, not gathered ahead of them:
+  // CreateData writes each array's Shapes and Data Xtcs immediately before that
+  // array's bytes.  So a payload's offset here must equal the offset its own
+  // descriptors give it, and the two offsets below are the single statement of that.
+  // Treating the reserve as one block ahead of both payloads leaves a hole the width
+  // of the second descriptor block, which reads back as corrupt data.
+  const auto& prescaleBuffers_d()    const { return m_prescaleBuffers_d; }
+  size_t      prescaleBufsReserved() const { return m_prescaleBufsRsvd; }
+  size_t      prescaleBufsRaw()      const { return m_prescaleBufsRaw; }
+  size_t      prescaleBufsDscr()     const { return m_prescaleBufsDscr; }
+  size_t      prescaleBufsSize()     const { return m_prescaleBufsSize; }
+  unsigned    prescaleBufCnt()       const { return m_prescaleBufCnt; }
+  // Where each payload sits within a prescale buffer.  m_prescaleBufsRsvd is the Dgram
+  // plus ONE ShapesData's descriptors; m_prescaleBufsDscr is a second block of them.
+  size_t      prescaleRawOffset()    const { return m_prescaleBufsRsvd; }
+  size_t      prescaleRedOffset()    const
+    { return m_prescaleBufsRsvd + m_prescaleBufsRaw + m_prescaleBufsDscr; }
+  size_t      prescaleBufsStride()   const
+    { return prescaleRedOffset() + m_prescaleBufsSize; }
+  // The device claims a slot with an atomicAdd on the ticket, the recorder advances
+  // released once it has written one, and the kernel compares the two to tell whether
+  // it has outrun the pool; a kernel cannot abort, so it only raises overflow.  The
+  // latter two cross the host/device boundary, hence atomics in pinned memory as
+  // RingIndexHtoD's head and tail are.  The ticket stays plain, being device-only.
+  unsigned*                    rawTicket_d() const { return m_rawTicket_d; }
+  cuda::std::atomic<unsigned>* rawOverflow() const { return m_rawOverflow; }
+  cuda::std::atomic<unsigned>* rawReleased() const { return m_rawReleased; }
 public:
   int64_t nPgpInUser () const { return dmaGetRxBuffinUserCount  (fd()); }
   int64_t nPgpInHw   () const { return dmaGetRxBuffinHwCount    (fd()); }
@@ -258,20 +304,29 @@ private:
   int  _gpuMapFpgaMem(int fd, CUdeviceptr& buffer, uint64_t offset, size_t size, int write);
   void _gpuUnmapFpgaMem(CUdeviceptr& buffer);
 private:
-  CudaContext               m_context;
-  std::shared_ptr<DetPanel> m_panel;
-  bool                      m_setMaskBytesDone;
-  size_t                    m_hostWrtBufsSize;
-  uint32_t*                 m_hostWrtBufs;      // [nBuffers * nElements]
-  size_t                    m_calibBufsSize;
-  float*                    m_calibBuffers_d;   // [nBuffers * nElements]
-  size_t                    m_reduceBufsSize;
-  size_t                    m_reduceBufsRsvd;
-  size_t                    m_reduceBufsRaw;
-  uint8_t*                  m_reduceBuffers_d;  // [nBuffers * nBytes]
-  size_t                    m_trBufsSize;       // Bytes per transition buffer
-  unsigned                  m_trBufCnt;         // How many there are
-  uint8_t*                  m_trBuffers_d;      // [m_trBufCnt * m_trBufsSize]
+  CudaContext                  m_context;
+  std::shared_ptr<DetPanel>    m_panel;
+  bool                         m_setMaskBytesDone;
+  size_t                       m_hostWrtBufsSize;
+  uint32_t*                    m_hostWrtBufs;        // [nBuffers * nElements]
+  size_t                       m_calibBufsSize;
+  float*                       m_calibBuffers_d;     // [nBuffers * nElements]
+  size_t                       m_reduceBufsSize;
+  size_t                       m_reduceBufsRsvd;
+  size_t                       m_reduceBufsRaw;
+  uint8_t*                     m_reduceBuffers_d;    // [nBuffers * nBytes]
+  size_t                       m_trBufsSize;         // Bytes per transition buffer
+  unsigned                     m_trBufCnt;           // How many there are
+  uint8_t*                     m_trBuffers_d;        // [m_trBufCnt * m_trBufsSize]
+  size_t                       m_prescaleBufsRsvd;   // Dgram + the raw array's descriptors
+  size_t                       m_prescaleBufsRaw;    // The raw block
+  size_t                       m_prescaleBufsDscr;   // The reduced array's descriptors
+  size_t                       m_prescaleBufsSize;   // Room for the reduced payload copy
+  unsigned                     m_prescaleBufCnt;     // How many there are
+  uint8_t*                     m_prescaleBuffers_d;  // [m_prescaleBufCnt * prescaleBufsStride()]
+  unsigned*                    m_rawTicket_d;        // Monotonic claim counter, device
+  cuda::std::atomic<unsigned>* m_rawOverflow;        // Raised when a claim outran the pool
+  cuda::std::atomic<unsigned>* m_rawReleased;        // Slots the recorder has finished with
 };
 
   } // Gpu
