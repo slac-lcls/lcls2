@@ -507,6 +507,52 @@ the conclusions.
   the graph on the first event: no event is ever posted and the DRP hangs with the GPU at 100%,
   which looks like FEB backpressure rather than a software fault.  `size()` returning 0 is not a
   licence to skip the kernel; `CalibPrimitive` needs it precisely because it writes nothing else.
+- **The three Result conditions that precede recording must stay in step, and be a superset
+  of the two that consume.**  `PGPDetector.cc` starts the Reducer, awaits its result and
+  builds the Xtc on `persist() || monitor() || prescale()`; it writes on
+  `persist() || prescale()` and monitors on `monitor()`.  The reducer queues are per-worker
+  FIFOs, so starting one without awaiting its result hands that result to whichever event
+  waits next and every later event reports the previous one's size.  `DRP_redStarts` against
+  `DRP_redRcvs` is the check.  Do not "simplify" the write condition to match the others:
+  `monitor()` must not put an event in the file.
+- **Two modes put a raw block in two different places, so ONE variable cannot gate both.**
+  Found by runs 274-276, and it is the sharpest example so far of a check passing while the
+  data is wrong.  `rawBytes` in `TebReceiver::recorder()` is the *prescale* block and is 0 in
+  pass-through, so `buffer -= headerSize` skipped the reduce buffer's own raw reserve and
+  CALIB wrote every datagram **80 B before its raw block**.  Every structural check still
+  passed -- `xtcreader -d` rc=0, extent 387140 exactly, damage `0x0`, rank 2 shape `6 32256`,
+  66.1% of pixels nonzero -- because the *sizes* were all correct and only the *placement* was
+  not.  What exposed it was reading the array's leading values: pixel 0 was 0 where the
+  emulator's frame counter should ramp, and the ramp turned up 40 u16 further in.  The reduce
+  buffer's reserve is `reduceBufsRaw()`; the prescale block is `prescaleBufsRaw()`; **they are
+  never both non-zero**, and code reached in both modes must name the one it means.  Note the
+  extents were right because `headerSize` is measured from the Xtc, which `PassthruShim`
+  described correctly -- so extent agreement says nothing about where the bytes went.
+- **Divide by `sizeof(*ptr)`, not by `sizeof(<fundamental type>)`, when computing a count.**
+  `cnt = bytes/sizeof(*src)` says what the count measures and follows `src` if its element
+  type ever changes; `bytes/sizeof(uint16_t)` silently becomes wrong at that point, and the
+  resulting loop bound is the kind of error that reads as correct.  Where either end could
+  supply the denominator -- a copy's source or its destination -- semantics decide, and when
+  they do not speak, either is fine: `payloadCnt` off `sizeof(*src)` and `rawCnt` off
+  `sizeof(*dst)` each name the buffer being measured.  This does **not** apply where the
+  divisor is an alignment quantum rather than an element type: `MemPool.cc`'s rounding to
+  `sizeof(uint64_t)` is about 8-byte alignment and belongs spelled that way.
+- **A policy must decide from `pyld.raw`, never from `pyld.keepRaw`.**  `keepRaw` is no longer
+  in `EventPayload` for exactly this reason.  The Reader sets `raw` per event -- for every
+  event bearing data in pass-through, for marked events only when prescaling -- so a null
+  pointer is the one signal a policy needs, and the two modes stop having to be distinguished
+  in per-element code.  Testing the bit instead looks right and is wrong in CALIB, where the
+  timing system still marks ~1 Hz of events whose payload is *entirely* raw: honouring it
+  there would have left every unmarked frame zeroed, with nothing in the log to say so.
+- **An emulator's declared array must match the real detector's, shape and type.**
+  `Gpu::EpixUHRemu` declared its raw block as a flat rank-1 `NPixels` where
+  `Drp::EpixUHR3x2` writes `[NumAsics][AsicPixels]`, so an emulator file and a real one
+  presented different arrays to offline -- which defeats the point of an emulator.  Worse,
+  `EpixUHRemu` and `EpixUHRsim` had `NumRows` and `NumCols` transposed relative to the 3x2
+  (192x168 against 168x192).  `NPixels` is 193536 either way, so **a flat array concealed it
+  completely**; it would have surfaced as transposed frames the first time anything read the
+  geometry.  Both are now `168 x 192`, commented against the CPU DRP's `elemRows`/
+  `elemRowSize`, with the shape declared rank 2 as the 3x2 declares it.
 - **A DRP's log is in `~/daq/logs/<year>/<month>/<DD>_<HH:MM:SS>_<node>:<alias>.log`**, and it
   contains the full configdb JSON the process was given as well as its own output.  For anything
   about *setup* -- which alias, which trigger library, what the buffers were sized at -- it
@@ -543,7 +589,7 @@ of `libcalibTrigger_gpu.so`.  36 L1Accepts of 48 events total, in
 
 | check | result |
 |---|---|
-| declared type | `Type 1 Rank 1` = `UINT16`, rank 1 -- the `RawU16Def` and flat `rawShape()`, not a byte array |
+| declared type | `Type 1 Rank 1` = `UINT16`, rank 1 -- the `RawU16Def` and flat `rawShape()`, not a byte array.  **Rank 1 was the shape at the time; it is rank 2 `[NumAsics][AsicPixels]` now -- see the emulator-shape rule above.  A re-run reads `Rank 2`, with the same element count and extent** |
 | element count | 193536 = 387072 / 2, so the Names entry matches the raw block as u16 |
 | `payloadSize` / `extent` | 387128 / **387140** = 387072 raw + 68 of descriptors, uniform on all 36 |
 | damage | `0x0` on every event |
@@ -569,8 +615,11 @@ CALIB configuration," but it does mean the alias is not yet universal.
 
 Four things each, all modelled on `EpixUHR3x2` or the simpler `EpixUHRemu`:
 
-1. `rawSize()` returning the frame's u16 byte count when `passthru()`, else 0;
-2. `rawShape()`, whatever shape offline expects of that detector;
+1. `rawSize()` returning the frame's u16 byte count **unconditionally** -- it is capacity, and
+   prescaling needs it in BEAM too, so it must not test `passthru()`.  See the contract on
+   `Gpu::Detector::rawSize()`;
+2. `rawShape()`, whatever shape offline expects of that detector -- which means **the shape the
+   CPU DRP already writes**, not whatever is convenient on the device;
 3. a pass-through per-element policy, like `EpixUHR3x2Calib` or `EpixUHRemuCalib`;
 4. a `RawU16Def` for `configure()` -- all three currently declare `{"raw", Name::UINT8, 1}`, a
    flat byte array that would misdescribe u16 pixels.
@@ -672,9 +721,43 @@ first.
   `ConfigLclsTimingV2()`.
 
 - **EpixUHR3x2 gain encoding.**  `RangeOffset`/`RangeBits` in `EpixUHR3x2.hh` are
-  moot as written: the panel delivers data already calibrated to fp16 by firmware,
-  so there is no gain range in it.  The accessors return 0 to satisfy the base
-  class.  Confirm nothing else wants them.
+  moot for an fp16 payload, which arrives already calibrated, but **not** for the u16
+  payload the firmware presents today and which `raw=u16` now selects by default: the
+  gain bit is bit 0 and the ADC value bits 1-11.  Confirm nothing else wants them.
+
+- **`raw=fp16` is refused, pending the combined-payload firmware.**  Ric, 2026-10-02:
+  the planned ePixUHR3x2 firmware sends **both u16 and fp16 when `keepRaw` is
+  asserted**, roughly doubling the DMA on marked events, and it is not yet settled
+  whether they arrive as *separate sub-frames* or as the *same sub-frames with
+  interleaved `struct {u16, __half}` elements*.  Either way the prescale block holds
+  uncalibrated u16, so `RawU16Def` and `rawShape()` are already right and no schema
+  question arises.  What is not decidable yet is the per-element work, so
+  `EpixUHR3x2::EpixUHR3x2()` aborts on `raw=fp16` with a message naming the reason, and
+  `m_u16` defaults to true.  `EpixUHR3x2Beam` is **kept and still instantiated** by
+  `recordEvent()`'s unreachable `else`, so it keeps compiling as the surrounding code
+  moves and the revisit starts from working code rather than from rot.
+
+  Three things that will matter at the revisit, found while preparing for it:
+
+  - **The sub-frame scan cache will thrash, and that is layout-independent.**
+    `EvtBatcherSubFrames::Scan` latches exactly *two* sizes -- `bytes` for the data
+    layout and `noDataBytes` for transitions -- and `Reader.cu:389` rescans whenever a
+    payload matches neither.  A doubled DMA on marked events is a **third** recurring
+    size, so at 1 Hz keepRaw every marked event evicts the ordinary scan and the next
+    ordinary event evicts it back: two serial walks per second in the single-threaded
+    `_waitForDMA`, for ever.  Not fatal, but it defeats the caching that
+    `EventBatcher.hh:201-206` is built around.  A third latched scan, keyed on
+    marked-ness, is the obvious fix and is worth doing as part of whichever layout
+    lands.
+  - **Separate sub-frames would make `firstDataSubframe()` mode-dependent.**  The tdest
+    set itself would differ between marked and unmarked events, so `count` and the
+    per-tdest offsets change, not merely the total size -- and `NumSubFrames` and
+    `FirstDataTdest` stop being single constants.
+  - **Interleaved elements would break the sub-frame element counts.**  `cnt =
+    sub.size / sizeof(*src)` stops meaning a pixel count once each element is a
+    `{u16, __half}` pair; the divisor rule still holds but the numerator no longer
+    measures one array.  The u16 and fp16 payloads also stop being contiguous, so
+    `_copyRaw`'s single strided copy per ASIC becomes a gather.
 
 - **Jungfrau pedestals and gains** are placeholders (0.0/1.0).  The CPU-side
   Jungfrau writes raw data and leaves calibration to analysis, so there is no
@@ -1278,18 +1361,137 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
   rather than calibrated or reduced data, with the reducer bypassed or turned into a
   no-op.  Low rate running is acceptable in this mode.
 
-- **Prescale implementation.**  Record raw data *in addition to* the normal reduced
-  data, at low rate, while the normal stream continues at full rate (33 kHz or
-  whatever).  The signal is **`keepRaw`**, bit 22 of the datagram's env word —
-  `Pds::EbDgram`'s accessor already exists, `psdaq/service/EbDgram.hh:57`,
-  `return (env>>22)&1` — asserted at typically 1 Hz.  Each detector's `event()`
-  carries the matching `@todo: Deal with prescaled raw for the panel here?`.
+- ~~**Prescale implementation.**~~  **VALIDATED on hardware 2026-10-02, run 273 on gpu001
+  with `EpixUHRemu` and `NoOpReducer`.**  Raw data recorded *in addition to* the reduced data
+  on the events the timing system marks with **`keepRaw`**, bit 22 of the env word
+  (`psdaq/service/EbDgram.hh:57`), so offline can reproduce the reduction and verify it.
 
-  Two things to work out.  The XTC headers have to describe the extra contribution.
-  And the buffering: either extend the reducer buffers to hold raw alongside reduced,
-  or keep many fewer look-aside buffers and do multiple file writes, scatter-gather
-  or similar.  The second trades memory for write complexity, and interacts with the
-  recorder item above.
+  What run 273 establishes, after runs 270-272 each failed one layer deeper:
+
+  | check | result |
+  |---|---|
+  | `xtcreader` and `xtcreader -d` | **both rc=0**, walking all 181 records to EndRun |
+  | prescaled events | 16 of 158 L1Accepts, extent **1161340**, two ShapesData |
+  | ordinary events | 142, extent **774212**, one ShapesData |
+  | `keepRaw` bit vs extent | **0 mismatches in 158 events** |
+  | child walk | two children, `remaining: 0` -- no gap, no overrun |
+  | damage | `0x0` on all 181 records |
+  | raw payload | 193536 u16, 66.1% nonzero, **byte-identical to the validated CALIB run 269** |
+  | reduced payload | present on **every** event, prescaled included |
+  | guards | neither the split check nor the pebble-reach check fired |
+
+  The raw comparison against run 269 is the strongest single check: both go through the same
+  `_copyRaw()`, so identical first-12 values, nonzero count and maximum say the prescale path
+  delivers exactly what the already-validated CALIB path does.
+
+  Both questions this item used to pose are settled.  **The buffering** is a small pool of
+  prescale buffers (`NPrescaleBuffers = 32`), each `[hdr][raw][reduced]`, into which a marked
+  event's whole datagram is assembled; the reduce buffers stay `[hdr][reduced]` and the
+  reduced payload is copied across device to device.  Reserving raw in all `nbuffers()`
+  reduce buffers was implemented first and **rejected**: it costs 0.74 GiB at
+  `nbuffers=2048` and 11.81 GiB at 32768, where the pool costs 0.03 GiB.  The copy is
+  ~0.02 us against a 26.67 us event budget at 37.5 kHz.  **The XTC description** is two
+  containers: the Detector's raw array under `EventNamesIndex` and the Reducer's under
+  `ReducerNamesIndex`, the raw one appended only on marked events.  That follows the HSD,
+  whose `psalg/psalg/digitizer/Hsd.hh:43` says outright that *"if raw or fex data is
+  missing, then the associated header is also missing"*, so a per-event extent is
+  established practice.
+
+  **One Names block with two arrays would give contiguous payloads and a single memcpy --
+  considered and REJECTED, with the measurements, because this keeps being rediscovered.**
+  `Shapes` is one Xtc holding an *array* of `Shape`, so a block declaring N arrays costs
+  `sizeof(Dgram) + 3*sizeof(Xtc) + N*sizeof(Shape)` rather than N times the whole descriptor
+  set: a second array adds only `sizeof(Shape)` = 20 B, and all the descriptors stay ahead of
+  all the payloads.  Measured at `EpixUHRemu` sizes, one block puts raw at [100, 387172) and
+  reduced at [387172, 1161316) -- contiguous, header 100 B, and the extent is 36 B *smaller*
+  than the two-block form.  (An accident worth knowing: `MaxRank*sizeof(uint32_t)` = 20 =
+  `sizeof(Shape)`, which is why the reserve formula above happens to be right for one array.)
+
+  Rejected because the cost lands on the wrong events.  One block means the raw array is
+  always declared, so every event must fill it -- `CreateData`'s destructor *aborts*, not
+  warns, on an unfilled entry -- so ordinary events carry a zero-length raw array plus its
+  `Shape`: **+20 B on every event**, ~57 GB/day at 33 kHz, to avoid two memcpys costing ~1 us
+  once per 37500 events.  It would also couple a dlopened Reducer to the Detector's Names
+  declaration at Configure, and change the on-disk schema psana reads.  Two blocks also match
+  the HSD precedent above: a missing array means a missing header, rather than a present
+  header faking absence with a zero shape.
+
+  Nine things worth not relearning:
+
+  - **`rawSize()` is capacity, not presence.**  It is read once per Configure to size every
+    buffer, so it cannot consult `keepRaw()` -- there is no event yet -- and must not consult
+    `passthru()` either, since prescaled raw arrives in BEAM.
+  - **A prescale buffer's header reserve is not a reduce buffer's.**  `headerSize` in
+    `Reducer.cu` is `sizeof(Dgram) + 3*sizeof(Xtc) + MaxRank*4` = **80 B**, which is one
+    Dgram plus *one* ShapesData.  A prescaled datagram describes two arrays, and each extra
+    one costs `3*sizeof(Xtc) + MaxRank*4` = **56 B**.  Deriving the pool's reserve from
+    `reduceBufsReserved()` therefore made every prescale buffer 56 B too short, and run
+    270 aborted in `Xtc::alloc` on the first prescaled event.  `createRawBuffers()` now
+    takes the reserve from the caller.  The 56 B is confirmed twice over: it predicts
+    run 269's CALIB extent of 387140 and run 270's abort extent of 387196 exactly.
+  - **Descriptors are INTERLEAVED with payloads, not gathered ahead of them.**  The costly
+    one, and it survived the size fix above: `CreateData` writes each array's Shapes and
+    Data Xtcs immediately before that array's bytes, so a two-array datagram is
+    `[Dgram][raw descr][raw][reduced descr][reduced]`.  Treating the reserve as one block
+    ahead of both payloads put the raw bytes 56 B past where their own descriptors pointed;
+    run 271 then recorded 150 events with correct extents, zero damage and a perfect
+    `keepRaw` correlation, and **`xtcreader -d` still aborted** on the first prescaled event
+    with `corrupt xtc with too small extent`.  Every size check passed because every size
+    was right.  `MemPool` now publishes `prescaleRawOffset()` and `prescaleRedOffset()` as
+    the single statement of the layout, the host header is copied in two pieces around the
+    raw block, and a guard compares the described offset against the buffer offset --
+    because nothing else did.
+  - **The host's header is ALREADY laid out the way the device wants it, so the two memcpys
+    are not a contortion.**  `set_array_shape()` advances the Xtc over the raw payload, so
+    the pebble buffer holds `[Dgram][raw descr][raw-sized hole][reduced descr]` -- the two
+    descriptor blocks are separated on the host exactly as they are on the device, at the
+    same offsets.  Both copies therefore use *identical* source and destination offsets and
+    simply skip the hole; it is two copies rather than one only because a single copy would
+    overwrite the device's raw block with the pebble's garbage.  Copying `dgram + hdrSplit`
+    instead of `dgram + hdrSplit + rawBytes` reads the hole, which is uninitialised: run 272
+    recorded 68 B of zeros where the reduced descriptors belong, with the extent still
+    correct at 1161340 and every size guard silent.
+  - **What must fit in the pebble is the header's REACH, not its size.**  Those descriptors
+    straddle a raw-payload-sized hole, so a prescaled event reaches
+    `hdrSplit + rawBytes + dscr` = 387208 B into a 393216 B pebble -- 6008 B of slack, by
+    luck rather than design.  The old guard compared the 136 B *sum* against the buffer and
+    passed vacuously.  It now checks the reach, because at twice this raw size the pebble
+    silently overflows; `pebbleBufSize` is the kwarg that fixes it.
+  - **"It didn't crash" is not "it worked".**  Two runs in a row looked healthy in the log
+    and were wrong in the file.  Read the data back with `xtcreader -d`, which walks the
+    Xtc tree and so finds what a size check cannot.  Note `-d`'s output is lost on abort
+    unless you line-buffer it: `stdbuf -oL`.
+  - **A host/device counter pair needs atomics, not just pinned memory.**  The claim kernel
+    compares a monotonic device ticket against a release count the recorder advances.  Read
+    plainly, that is not merely stale-prone but unbounded: a release count the device never
+    sees advance trips the overflow test after `NPrescaleBuffers` prescaled events whatever the
+    true occupancy, so the belt-and-braces abort becomes a guaranteed one about 32 s into a
+    run at 1 Hz.  `cuda::std::atomic` in pinned memory with release/acquire, as
+    `RingIndex_HtoD.hh` does it.  Pinned sysmem is visible to both sides, but nothing
+    invalidates a cached load without the ordering.
+  - **Container order is forced.**  `CreateData::set_array_shape()` grows the Xtc extent in
+    call order via `_shapesdata.data().alloc()`, while the bytes sit in buffer order with raw
+    first.  So the raw container must be appended *before* the Reducer's.  Reversing them
+    would present as corrupt data, not as a layout error.
+  - **The Reducer capacity check had to change.**  It read
+    `reduceBufsRaw() ?: reduceBufsSize()`, conflating "has a raw block" with "is in
+    pass-through".  Once raw is reserved in BEAM, that picks the raw size as the limit and a
+    reducer writing its full payload aborts falsely.  It now tests `passthru()`.
+
+  Still to do: the other detectors -- see the CALIB-mode detector gaps above, which share the
+  per-detector work.  Two things run 273 did **not** exercise, so neither is proven:
+
+  - **The overflow abort never fired**, and cannot at these rates: the pebble pool bounds
+    in-flight prescaled events far below 32.  So `_claimRawSlot`'s occupancy test and the
+    atomics behind it are exercised only in the non-overflow direction.
+  - **`EpixUHR3x2` will not fit the default pebble.**  A prescaled header reaches
+    `80 + rawBytes + 56` into the pebble, which is 387208 of 393216 B for `EpixUHRemu` --
+    6008 B of slack, by luck.  At 774144 B of raw the new guard aborts and `pebbleBufSize`
+    has to be raised.  Worth doing deliberately rather than discovering it on the day.
+
+  Also open, and deliberately deferred: the slot claim would be cleaner on the host, but that
+  needs the graph to stop being recorded once per Configure.  **Revisit with letting the GPU
+  idle at low trigger rates**, which has to change the launch model anyway.
 
 ## Runtime behaviour
 
