@@ -125,12 +125,14 @@ Reader::Reader(const Parameters&                  para,
   }
 
   // Prepare buffers visible to the host for receiving headers
-  // Room for the DmaDsc, the TimingHeader and the trigger primitive, plus one
-  // word at the end in which the Reader hands TrgInpGen::_receiver() a per-event
-  // EventStatus.  Rounded up so that the status word lands on a word boundary.
+  // Room for the DmaDsc, the TimingHeader and the trigger primitive, plus two
+  // words at the end: the per-event EventStatus the Reader hands
+  // TrgInpGen::_receiver(), and the prescale slot a prescaled event claimed, which
+  // the recorder needs.  See eventStatusIndex() and rawSlotIndex().  Rounded up so
+  // that both land on word boundaries.
   size_t bufSz = sizeof(DmaDsc) + sizeof(TimingHeader) + trgPrimitiveSize;
   bufSz  = ((bufSz + sizeof(uint32_t) - 1) / sizeof(uint32_t)) * sizeof(uint32_t);
-  bufSz += sizeof(uint32_t);
+  bufSz += 2 * sizeof(uint32_t);
   m_pool.createHostBuffers(bufSz);
 
   // Per-Reader per-event status, written by _waitForDMA and copied out by _event
@@ -517,12 +519,19 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
   auto const hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   auto const calibBuffers_d = m_pool.calibBuffers_d();
   auto const calibBufsCnt   = m_pool.calibBufsSize() / sizeof(*calibBuffers_d);
-  // The raw block, when the Detector asked for one, is the region just below each
-  // reduce buffer's payload.  Hand the kernel the first event's block and the
-  // buffer-to-buffer stride; the payload base itself is the Reducer's business.
-  auto const rawBufsCnt     = m_pool.reduceBufsRaw();
-  auto const rawStride      = m_pool.reduceBufsStride();
-  auto const rawBuffers_d   = rawBufsCnt ? m_pool.reduceBuffers_d() - rawBufsCnt : nullptr;
+  // Where a raw block goes, which differs by mode.  In pass-through every event has
+  // one, just below its own reduce buffer's payload, so the kernel gets the first
+  // event's block and the reduce stride.  When prescaling, only marked events have one
+  // and it lives in a prescale slot, so the kernel gets that pool instead and claims
+  // a slot per marked event.  rawBufCnt distinguishes the two: 0 means pass-through.
+  auto const passthru       = m_pool.reduceBufsRaw() != 0;
+  auto const rawBufsCnt     = passthru ? m_pool.reduceBufsRaw() : m_pool.prescaleBufsRaw();
+  auto const rawStride      = passthru ? m_pool.reduceBufsStride() : m_pool.prescaleBufsStride();
+  auto const rawBufCnt      = passthru ? 0u : m_pool.prescaleBufCnt();
+  auto const rawBufsRsvd    = passthru ? 0ul : m_pool.prescaleRawOffset();
+  auto const prescaleBuffers_d   = passthru
+                            ? m_pool.reduceBuffers_d() - m_pool.reduceBufsRaw()
+                            : m_pool.prescaleBuffers_d();
   auto const nRdrShft       = ffs(m_nReaders) - 1; // log2(nReaders)
 
   // Determine how many processing resources to reserve for the Reader kernel
@@ -584,12 +593,23 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                              hostWrtBufsCnt,
                              calibBuffers_d,
                              calibBufsCnt,
-                             rawBuffers_d,
+                             prescaleBuffers_d,
                              rawStride,
                              rawBufsCnt,
+                             rawBufCnt,
+                             rawBufsRsvd,
+                             m_pool.rawTicket_d(),
+                             m_pool.rawOverflow(),
+                             m_pool.rawReleased(),
                              m_subFrames[reader].d,
                              m_evtStatus_d[reader],
                              m_metrics.states[reader]};
+  // Claim a prescale slot before _event, so that all of its blocks agree on one.
+  // Only needed when prescaling; pass-through indexes by pebble and claims nothing.
+  if (rawBufCnt) {
+    _claimRawSlot<<<1, 1, 0, stream>>>(args);
+    chkError(cudaGetLastError(), "Launch of _claimRawSlot kernel failed");
+  }
   m_det.recordEvent(stream, nBlocks, nThreads, args);
   chkError(cudaGetLastError(), "Launch of _event kernel failed");
 

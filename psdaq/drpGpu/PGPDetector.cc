@@ -252,11 +252,11 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   chkFatal(cudaExecutionCtxStreamCreate(&m_stream, green_ctx, cudaStreamNonBlocking, prio));
   if (m_fileWriter)  m_fileWriter->registerStream(m_stream);
 
-  // The buffer-to-buffer stride, which is every region a buffer comprises: the
-  // header reserve, the raw reserve (usually zero) and the reduced payload
-  auto rawSize = memPool.reduceBufsRaw();
+  // The reduce buffer-to-buffer stride: every region one comprises.  In pass-through
+  // that includes a raw block; when prescaling, raw lives in the prescale pool
+  // instead and a reduce buffer is just [hdr][reduced].
   auto maxSize = memPool.reduceBufsStride();
-  //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu + rawSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), rawSize, maxSize);
+  //printf("*** TebRcvr::recorder: redBufsSz %zu + rsvdSz %zu = maxSize %zu\n", memPool.reduceBufsSize(), memPool.reduceBufsReserved(), maxSize);
 
   auto& drp = static_cast<PGPDrp&>(m_drp);
 
@@ -335,8 +335,13 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       dataSize = rt.dataSize;
 
       // More data than the Reducer reserved through payloadSize() means it has
-      // written past its region and into the next buffer
-      auto capacity = memPool.reduceBufsRaw() ?: memPool.reduceBufsSize();
+      // written past its region and into the next buffer.  In pass-through the
+      // reported size is the raw block's, since that is what PassthruShim measures
+      // and payloadSize() is legitimately 0; otherwise it is the reduced payload's.
+      // Keying on the mode, not on whether a raw block exists: with prescaling, a
+      // raw block is reserved in BEAM too, where the reduced region is the limit.
+      auto capacity = drp.detPassthru() ? memPool.reduceBufsRaw()
+                                        : memPool.reduceBufsSize();
       if (dataSize > capacity) {
         logging::critical("Reducer wrote %zu B into a %zu B region for index %u: its "
                           "payloadSize() is too small", dataSize, capacity, rt.index);
@@ -400,7 +405,9 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     size_t   bufBound;                  // What this kind of datagram must fit in
     if (dgram->isEvent()) {
       buffer   = &memPool.reduceBuffers_d()[index * maxSize];
-      bufBound = maxSize;
+      // A prescaled event is reassembled in a prescale buffer below, which is the
+      // larger of the two, so bound by that when one is in use
+      bufBound = memPool.prescaleBufCnt() ? memPool.prescaleBufsStride() : maxSize;
     } else {
       auto slot = (reinterpret_cast<uint8_t*>(dgram) - memPool.pebble.trBuffer())
                 / memPool.pebble.trBufSize();
@@ -409,42 +416,107 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     }
     //printf("*** TebRcvr::recorder: 3 idx %u, buf %p, bound %zu\n", index, buffer, bufBound);
     size_t cpSize, dgSize;
+    size_t hdrSplit{0};                 // Nonzero when the header straddles the raw block
+    // Prescaling: the timing system marks ~1 Hz of events for raw retention, so that
+    // offline can reproduce the reduction from the raw data and verify it.  The device
+    // filled a prescale slot's raw region for exactly these events and left the slot
+    // number where this can find it.  Declared out here because the slot has to be
+    // released further below, after the write and the MEB post have read it.
+    auto rawSlot  = dgram->isEvent() ? drp.rawSlot(index) : NoRawSlot;
+    auto rawBytes = rawSlot != NoRawSlot ? memPool.prescaleBufsRaw() : 0;
     // Must match the condition that writes the datagram below, or an event is written
     // with an Xtc that was never built and a buffer pointer never stepped back over
     // the header
     if (dgram->isEvent() && (result->persist() || result->monitor() || result->prescale())) {
-      // dgram must fit in the GPU's reduce buffer, so _not_ pebble bufferSize() here
-      void* bufEnd = (char*)((Dgram*)dgram) + maxSize;
-      //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, maxSize, bufEnd);
+      // dgram must fit in the GPU buffer it will occupy, so _not_ pebble bufferSize()
+      // here.  A prescaled event goes to a prescale buffer, which is the larger.
+      void* bufEnd = (char*)((Dgram*)dgram) + bufBound;
+      //printf("*** TebRcvr::recorder: 3 dg %p + %zu = bufEnd %p\n", (Dgram*)dgram, bufBound, bufEnd);
+
+      // Describe the raw block BEFORE the reduced payload.  Both descriptions grow
+      // the Xtc in call order while the bytes they describe sit in buffer order,
+      // which is raw first: see MemPoolGpu::createPrescaleBuffers().
+      if (rawBytes)  drp.detRawEvent(dgram->xtc, bufEnd);
+
       drp.reducerEvent(dgram->xtc, bufEnd, dataSize);
 
-      // Measure the size of the header block
-      auto headerSize = (uint8_t*)dgram->xtc.next() - (uint8_t*)((Dgram*)dgram) - dataSize;
+      // Measure the size of the header block.  Both payloads are on the GPU, so
+      // subtract everything the two descriptions above accounted for to find where
+      // the descriptors end and the data begins.
+      auto headerSize = (uint8_t*)dgram->xtc.next() - (uint8_t*)((Dgram*)dgram)
+                      - dataSize - rawBytes;
       //printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %zu = %zd\n",
       //       dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
 
-      // Make sure the header will fit in the space reserved for it on the GPU
-      if (size_t(headerSize) > memPool.reduceBufsReserved()) {
+      // Make sure the header will fit in the space reserved for it on the GPU.  A
+      // prescaled event's header is split around the raw block, so each part is
+      // bounded by the space it actually occupies rather than the total by either.
+      auto hdrBound = rawBytes
+                    ? memPool.prescaleBufsReserved() + memPool.prescaleBufsDscr()
+                    : memPool.reduceBufsReserved();
+      if (size_t(headerSize) > hdrBound) {
         printf("*** TebRcvr::recorder: 3 payloadSz %u, length %p - %p - %zu = %zd\n",
                dgram->xtc.sizeofPayload(), dgram->xtc.next(), (Dgram*)dgram, dataSize, headerSize);
-        logging::critical("Header is too large (%zu) for reduce buffer's reserved space (%zu)",
-                          headerSize, memPool.reduceBufsReserved());
+        logging::critical("Header is too large (%zu) for %s buffer's reserved space (%zu)",
+                          headerSize, rawBytes ? "prescale" : "reduce", hdrBound);
         abort();
       }
-      // Make sure the header has fit into the pebble buffer on the CPU
-      if (size_t(headerSize) > memPool.pebble.bufferSize()) {
-        logging::critical("Header is too large (%zu) for pebble buffer (%zu)",
-                          headerSize, memPool.pebble.bufferSize());
+      // Make sure the header has fit into the pebble buffer on the CPU.  A prescaled
+      // event's descriptors straddle a raw-payload-sized hole there, so what has to
+      // fit is their reach, not their summed size -- which is why this cannot just
+      // test headerSize.  The raw block itself is never written on the host.
+      if (rawBytes)  hdrSplit = memPool.prescaleBufsReserved();
+      auto pblReach = hdrSplit ? hdrSplit + rawBytes + memPool.prescaleBufsDscr()
+                               : size_t(headerSize);
+      if (pblReach > memPool.pebble.bufferSize()) {
+        logging::critical("Header reaches %zu B into the pebble buffer, which is only "
+                          "%zu B: raise pebbleBufSize to at least the raw block plus "
+                          "its descriptors", pblReach, memPool.pebble.bufferSize());
         abort();
       }
 
       cpSize  = headerSize;
-      // Step back over the raw block, if this Detector has one, so that the Dgram
-      // header abuts it and the whole thing -- header, raw, reduced payload -- is
-      // one contiguous region for a single write.  With no raw block this is the
-      // original arithmetic and the header abuts the reduced payload directly, so
-      // no gap appears in the file either way.
-      buffer -= rawSize + headerSize;   // Points to the start of the Dgram
+      if (rawBytes) {
+        // hdrSplit, set above for the pebble check, divides the header around the raw
+        // block: the Dgram and the raw array's descriptors precede it, the reduced
+        // array's follow it.  The prescale buffer's reserve is exactly the first part.
+        //
+        // The Xtc's offsets and the buffer's must agree, or the file reads back as
+        // corrupt rather than as the wrong size: every size check above can pass while
+        // a payload sits where its own descriptors do not point.  Both are derived
+        // here, so compare them instead of trusting that they were derived alike.
+        if (size_t(headerSize) - hdrSplit != memPool.prescaleBufsDscr()) {
+          logging::critical("Prescaled header splits as %zu + %zu around the raw block, "
+                            "but its second descriptor block is %zu B: the reduced "
+                            "payload would be described at the wrong offset",
+                            hdrSplit, size_t(headerSize) - hdrSplit,
+                            memPool.prescaleBufsDscr());
+          abort();
+        }
+        // A prescaled event is assembled in its prescale slot rather than in its
+        // reduce buffer, which holds only [hdr][reduced].  The raw block is already
+        // there; bring the reduced payload across so that header, raw and reduced are
+        // contiguous for one write.  Device to device, well under a microsecond, and
+        // only on marked events -- see NPrescaleBuffers in Reducer.cu for the budget.
+        auto slot = &memPool.prescaleBuffers_d()[rawSlot * memPool.prescaleBufsStride()];
+        // The reduced payload goes after the raw block AND the descriptors that
+        // describe it, which CreateData placed between the two arrays' bytes
+        chkError(cudaMemcpyAsync(slot + memPool.prescaleRedOffset(),
+                                 &memPool.reduceBuffers_d()[index * maxSize],
+                                 dataSize, cudaMemcpyDeviceToDevice, m_stream));
+        // Grow backwards from the raw block, as the reduce-buffer path does from the
+        // payload, so that the header abuts it and no reserve reaches the file.  Only
+        // the part of the header that precedes the raw block counts here; the rest of
+        // it sits beyond that block, which is what hdrSplit divides.
+        buffer  = slot + memPool.prescaleRawOffset() - hdrSplit;
+      } else {
+        // Step back over the reduce buffer's own raw reserve as well as the header, so
+        // that the Dgram abuts the raw block and the whole datagram is contiguous.
+        // Non-zero only in pass-through, where every event's raw block lives there;
+        // when prescaling, the reserve is 0 and this is the plain header step-back.
+        // Nb: NOT rawBytes, which is the *prescale* block and is 0 in pass-through.
+        buffer -= memPool.reduceBufsRaw() + headerSize;  // Start of the Dgram
+      }
       dgSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
     } else {  // Transitions
       cpSize  = sizeof(Dgram) + dgram->xtc.sizeofPayload(); // Not *dgram, or get sizeof(EbDgram)!
@@ -467,7 +539,22 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 
     if (writing() || transitionId == TransitionId::Configure) {
       // Copy the dgram header to the GPU if it's an L1Accept or the whole datagram when it's a transition
-      chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
+      if (hdrSplit) {
+        // The two arrays' descriptors straddle the raw block, on the host as well as
+        // on the device: set_array_shape() advances the Xtc over the raw payload, so
+        // the pebble buffer holds [Dgram][raw descr][raw-sized hole][reduced descr]
+        // at the very offsets the prescale buffer wants.  Hence two copies at
+        // identical source and destination offsets, skipping the hole -- the raw
+        // bytes are already on the device and the pebble's copy of them is garbage.
+        chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), hdrSplit,
+                                 cudaMemcpyHostToDevice, m_stream));
+        chkError(cudaMemcpyAsync(buffer + hdrSplit + rawBytes,
+                                 (uint8_t*)((Dgram*)dgram) + hdrSplit + rawBytes,
+                                 cpSize - hdrSplit,
+                                 cudaMemcpyHostToDevice, m_stream));
+      } else {
+        chkError(cudaMemcpyAsync(buffer, (void*)((Dgram*)dgram), cpSize, cudaMemcpyHostToDevice, m_stream));
+      }
       //if (dgram->isEvent()) {
       //  const Xtc& parent = dgram->xtc;
       //  const Xtc& shapesData = (Xtc&)*parent.payload();
@@ -559,10 +646,16 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     if (m_mon.enabled()) {
       if (result->isEvent()) {          // L1Accept
         if (result->monitor()) {
-          // Fetch the reduced data from the GPU and construct the dgram to send to the MEB
+          // Fetch the data from the GPU and construct the dgram to send to the MEB.
+          // The payload is whatever the Xtc describes, which for a prescaled event is
+          // raw followed by reduced in its prescale slot, and for an ordinary one is
+          // the reduced payload in its reduce buffer.  Taking the source from `buffer`,
+          // which the recording path already resolved to the right one, keeps the two
+          // in step: reading reduceBuffers_d() unconditionally would overrun into the
+          // next buffer whenever raw was part of the payload.
           auto payload       = dgram->xtc.payload();
           auto sizeofPayload = dgram->xtc.sizeofPayload();
-          const auto data    = &memPool.reduceBuffers_d()[index * maxSize];
+          const auto data    = buffer + cpSize;
           chkError(cudaMemcpyAsync((void*)payload, data, sizeofPayload, cudaMemcpyDeviceToHost, m_stream));
           chkError(cudaStreamSynchronize(m_stream)); // Ensure payload is on CPU before posting
 
@@ -574,6 +667,28 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
     }
     //printf("*** TebRcvr::recorder: 7, mon %d\n", m_mon.enabled());
     lStateMon = 10;
+
+    // Release the prescale slot, now that both the file write and the MEB post have
+    // read it.  Deliberately not with freeBuffers() above, which runs before the write.
+    if (dgram->isEvent() && rawSlot != NoRawSlot) {
+      // The claiming kernel compares its ticket against this to tell whether it has
+      // outrun the pool, so it must advance only once the slot is genuinely free, and
+      // with release ordering so the kernel's acquire load cannot miss it
+      memPool.rawReleased()->fetch_add(1, cuda::std::memory_order_release);
+
+      // A kernel cannot abort, so it raised a flag instead.  Reaching here means a
+      // prescaled event's raw block may have been overwritten before it was recorded,
+      // which would silently corrupt the one thing prescaling exists to provide --
+      // better to stop than to leave a run whose raw data nobody can trust.
+      if (memPool.rawOverflow()->load(cuda::std::memory_order_acquire)) {
+        logging::critical("Prescale buffers were outrun: %u slots could not keep up "
+                          "with the keepRaw rate, so prescaled raw data may be "
+                          "corrupt.  Raise NPrescaleBuffers in Reducer.cu, or look for "
+                          "a leaked slot: the pebble pool should bound this far below %u.",
+                          memPool.prescaleBufCnt(), memPool.prescaleBufCnt());
+        abort();
+      }
+    }
 
     // Synchronize before releasing buffers
     //chkError(cudaStreamSynchronize(m_stream)); // @todo: Needed???
@@ -881,6 +996,18 @@ void PGPDrp::freeBuffers(unsigned index)
   auto event = &pool.pgpEvents[pgpIndex];
   //printf("*** PGPDrp::freeBuffers: bufIndex, %u, pgpIndex %u, event %p\n", index, pgpIndex, event);
   m_reader->freeDma(event);
+}
+
+unsigned PGPDrp::rawSlot(unsigned index) const
+{
+  auto& memPool = *pool.getAs<MemPoolGpu>();
+  if (!memPool.prescaleBufCnt())  return NoRawSlot; // Not prescaling in this mode
+
+  // _claimRawSlot wrote it into this event's host-visible header buffer, where
+  // rawSlotIndex() says it goes
+  const auto bufs = memPool.hostWrtBufs();
+  const auto cnt  = memPool.hostWrtBufsSize() / sizeof(*bufs);
+  return bufs[index * cnt + rawSlotIndex(cnt)];
 }
 
 void PGPDrp::_collector()

@@ -89,6 +89,13 @@ public:
     { return m_reducer->receive(wkr, items); }
   void reducerEvent(XtcData::Xtc& xtc, const void* be, size_t sz)
     { m_reducer->event(xtc, be, sz); }
+  // For the recorder, which has no Detector of its own
+  bool detPassthru() const
+    { return m_det.passthru(); }
+  void detRawEvent(XtcData::Xtc& xtc, const void* be)
+    { m_det.rawEvent(xtc, be); }
+  // The prescale slot the device claimed for this event, or NoRawSlot
+  unsigned rawSlot(unsigned index) const;
   void freeBuffers(unsigned idx);
   void reducerDump() const
     { m_reducer->dump(); }
