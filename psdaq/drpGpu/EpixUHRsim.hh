@@ -17,9 +17,10 @@ public:
 
 public:  // ePixUHR parameters:
   static const unsigned NumAsics   {   6 };
-  static const unsigned NumRows    { 192 };
-  static const unsigned NumCols    { 168 };
-  static const unsigned NPixels    { NumAsics*NumRows*NumCols };
+  static const unsigned NumRows    { 168 };  // elemRows    in drp/EpixUHR3x2.cc
+  static const unsigned NumCols    { 192 };  // elemRowSize in drp/EpixUHR3x2.cc
+  static const unsigned AsicPixels { NumRows*NumCols };
+  static const unsigned NPixels    { NumAsics*AsicPixels };
   static const unsigned RangeOffset{  14 };
   static const unsigned RangeBits  {   2 };
   static const unsigned NRanges    {   4 };
