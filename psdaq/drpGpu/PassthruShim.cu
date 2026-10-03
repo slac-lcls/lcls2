@@ -144,26 +144,10 @@ unsigned PassthruShim::configure(Xtc& xtc, const void* bufEnd)
 
 void PassthruShim::event(Xtc& xtc, const void* bufEnd, unsigned dataSize)
 {
-  // Attach the payload to the *Detector's* event Names, not to a Reducer's: in
-  // pass-through the recorded bytes are the detector's raw array.
-  //
-  // The Xtc header is built in the CPU's pebble buffer while the payload itself is
-  // on the GPU, so bufEnd is set up by the caller to make the allocate below
-  // succeed even though the pebble buffer is smaller than header plus data.  See
-  // the same comment in the real reducers.
-  NamesId namesId(m_det.nodeId, EventNamesIndex);
-
-  CreateData data(xtc, bufEnd, m_det.namesLookup(), namesId);
-
-  // The shape is the detector's, so ask it rather than deriving one here: only the
-  // Detector knows how its raw block is laid out.  dataSize is m_rawSize, which is
-  // that layout's total extent.
-  unsigned dataShape[MaxRank] = { 0 };
-  auto rank = m_det.rawShape(dataShape);
-  if (rank == 0) {                      // Detector offered none: fall back to flat
-    dataShape[0] = dataSize;
-  }
-  data.set_array_shape(0, dataShape);   // Index 0: the Detector's sole raw array
+  // In pass-through the recorded bytes *are* the detector's raw array, so this is
+  // the same description a prescaled event's raw block gets, and the Detector owns
+  // it.  The difference is only that here it is the whole payload.
+  m_det.rawEvent(xtc, bufEnd);
 }
 
 // No createReducer() factory here: unlike the reducers, this shim is linked into

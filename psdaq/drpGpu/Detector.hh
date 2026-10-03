@@ -112,7 +112,14 @@ public:
   // Bytes to reserve in each reduce buffer, between the space kept for the
   // datagram header and the reduced payload, for a block of raw data that is
   // recorded alongside -- or instead of -- the reduced data.  Zero when the
-  // Detector wants none, which is the usual case.
+  // Detector has no raw mode at all, which is the usual case.
+  //
+  // This is CAPACITY, not per-event presence, and it must not depend on passthru():
+  // it is read once per Configure to size every buffer, whereas whether an event
+  // actually carries raw data is the per-event keepRaw bit, which no one knows yet.
+  // A detector with a raw mode therefore reserves in BEAM as well as CALIB, because
+  // the timing system's prescale rate is its own business and raw can arrive in any
+  // run.  Unused capacity costs GPU memory but no bytes on disk.
   //
   // The recorder writes one contiguous block starting at the datagram header, so
   // this space is skipped rather than written when the event carries no raw data.
@@ -127,6 +134,16 @@ public:
   // laid the block out, so it is asked rather than the shape being inferred from
   // rawSize().
   virtual unsigned     rawShape(unsigned* shape) const { return 0; }
+
+  // Describe this event's raw block in the Xtc, for a detector that has one.
+  // Called only on events that carry raw data, and BEFORE the Reducer's own
+  // description, because the raw block physically precedes the reduced payload in
+  // the buffer and the recorder writes the two as one contiguous region.
+  //
+  // Virtual because Detector.cc is compiled into each detector plugin rather than
+  // into drp_gpu: the executable can only reach this through the vtable of an object
+  // the plugin constructed.
+  virtual void         rawEvent(XtcData::Xtc& xtc, const void* bufEnd);
 
   // Record this detector's per-event kernel into the given stream.
   //
