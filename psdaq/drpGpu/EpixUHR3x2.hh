@@ -60,18 +60,19 @@ public:
   unsigned     subframeCount()     const override { return NumSubFrames; }
   unsigned     firstDataSubframe() const override { return FirstDataTdest; }
 
-  // Bytes of raw data to reserve ahead of each reduce buffer's payload.  Non-zero
-  // only in pass-through mode, where the recorded data *is* the raw frame.  Fixed
-  // size, with zeros for any ASIC that is withheld or delivers short, so offline
-  // sees one shape whatever the ASIC configuration -- as the CPU DRP does.
+  // Bytes of raw data the detector produces, which sizes whichever buffer holds it:
+  // every reduce buffer in CALIB, where raw is the whole payload, or a prescale slot
+  // when prescaling in BEAM.  Unconditional, because this is capacity -- whether a
+  // given event uses it is the keepRaw bit, unknown at Configure.  Fixed size, with
+  // zeros for any ASIC that is withheld or delivers short, so offline sees one shape
+  // whatever the ASIC configuration -- as the CPU DRP does.
   size_t       rawSize()           const override
-  { return m_passthru ? NPixels * sizeof(uint16_t) : 0; }
+  { return NPixels * sizeof(uint16_t); }
 
   // [NumAsics][AsicPixels], the same shape Drp::EpixUHR3x2 writes, so that offline
   // sees one array whichever DRP produced the file
   unsigned     rawShape(unsigned* shape) const override
   {
-    if (!m_passthru)  return 0;
     shape[0] = NumAsics;
     shape[1] = AsicPixels;
     return 2;
@@ -82,12 +83,10 @@ public:
   void recordEvent(cudaStream_t, unsigned blocks, unsigned threads,
                    const EventKernelArgs&) override;
 private:
-  // Nb: m_passthru, which gates rawSize() and rawShape() above, is the base class's:
-  // the CALIB config alias sets it per Configure.  See Gpu::Detector::setPassthru().
-  //
   // The panel's data is u16 rather than fp16, so the GPU applies pedestals and gains.
-  // Selected by `raw=u16`; `raw=fp16` is the default.
-  bool     m_u16{false};
+  // Default, and currently the only accepted value of the `raw` kwarg: `raw=fp16` is
+  // refused until the firmware's combined u16+fp16 layout is settled.  See the ctor.
+  bool     m_u16{true};
   // One plane of pedestals and gains per gain range, laid out [NRanges][NPixels] as
   // pedGainCalibrate() indexes them.  Only allocated in u16 mode.
   float*   m_peds_d{nullptr};
