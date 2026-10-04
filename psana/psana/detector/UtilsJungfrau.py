@@ -37,11 +37,6 @@ import psana.detector.utils_psana as up
 import psana.detector.UtilsCommonMode as ucm
 import psana.pycalgos.utilsdetector as ud
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-
 info_ndarr = ndau.info_ndarr
 
 BW1 =  0o40000 # 16384 or 1<<14 (15-th bit starting from 1)
