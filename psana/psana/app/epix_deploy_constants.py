@@ -42,7 +42,7 @@ def argument_parser():
     d_det     = None # 'epixquad'
     d_dirrepo = DIR_REPO_EPIX
     d_logmode = 'INFO'
-    d_version = 'V2026-07-15'
+    d_version = 'V2026-10-01'
     d_plotim  = 0
     d_deploy  = False
     d_ctdepl  = 'prs'   # for constants from dark, 'prsnxg'
@@ -63,7 +63,8 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
-    h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, "g" - gain, default = %s' % d_ctdepl
+    h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min,'\
+                ' "g" - gain, "o" - offset, default = %s' % d_ctdepl
     h_tstamp  = 'DEPLOY: non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
     h_run_beg = 'DEPLOY: first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
     h_run_end = 'DEPLOY: last run for validity range, default = %s' % str(d_run_end)
