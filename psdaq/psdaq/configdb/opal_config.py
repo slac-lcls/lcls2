@@ -195,6 +195,9 @@ def user_to_expert(cfg, full=False):
     update_config_entry(cfg,ocfg,d)
 
 def config_expert(cfg):
+    global args
+
+    cl   = args['cl']
     lane = args['lane']
     chan = args['chan']
 
@@ -309,9 +312,9 @@ def opal_config(cl,connect_str,cfgtype,detname,detsegm,grp):
     getattr(uart,'CCE[0]').set(0)  # trigger on CC1
     uart.MO.set(1)  # set to triggered mode
 
-    user_to_expert(cl,cfg,full=True)
+    user_to_expert(cfg,full=True)
 
-    config_expert(cl,cfg['expert'])
+    config_expert(cfg['expert'])
 
     # should be done by supervisor only, but XpmMini so doesn't really matter
     cl.ClinkPcie.Hsio.TimingRx.XpmMiniWrapper.XpmMini.HwEnable.set(False)
