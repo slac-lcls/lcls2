@@ -61,14 +61,12 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   //
   // Either way a Reducer runs on the calibrated result.
   //
-  // fp16 is deliberately unselectable rather than deleted.  The planned firmware
-  // sends u16 *and* fp16 together on an asserted keepRaw, roughly doubling the DMA,
-  // and it is not yet settled whether the two arrive as separate sub-frames or as one
-  // set of interleaved {u16, __half} elements.  Those need different per-element work
-  // and different sub-frame handling, so EpixUHR3x2Beam's conversion cannot be
-  // completed against either.  It stays compiled -- recordEvent() still instantiates
-  // it -- so it keeps building as the surrounding code changes, and the revisit starts
-  // from working code rather than from rot.  See TODO.md.
+  // fp16 is deliberately unselectable rather than deleted.  The planned firmware picks
+  // u16 or fp16 by register, so the raw block is one or the other and the non-raw block
+  // becomes signal-extracted "fex" data.  The per-element work for fp16 and the fex
+  // format are both unsettled, so EpixUHR3x2Beam's conversion cannot be completed.  It
+  // stays compiled -- recordEvent() still instantiates it -- so it keeps building as
+  // the surrounding code changes.  See TODO.md.
   //
   // @todo: Read the format from the firmware rather than from a kwarg.  It is
   //        queryable -- the Build String and Firmware Version in /proc/datadev_* are
@@ -79,9 +77,9 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
     auto const& fmt = para.kwargs.at("raw");
     if      (fmt == "u16")   m_u16 = true;
     else if (fmt == "fp16") {
-      logging::critical("EpixUHR3x2: 'raw=fp16' is not supported yet.  The planned "
-                        "firmware sends u16 alongside fp16 on a keepRaw event and its "
-                        "layout is unsettled, so the fp16 path cannot be completed; "
+      logging::critical("EpixUHR3x2: 'raw=fp16' is not supported yet.  It awaits the "
+                        "firmware's mode registers and the fex format, and the Xtc type "
+                        "system has no fp16 to describe it with; "
                         "use 'raw=u16', which is what the firmware presents today.");
       abort();
     }
