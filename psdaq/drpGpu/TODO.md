@@ -502,6 +502,13 @@ findable in a 3800-line file.
   A page gives a TOC and Expand macros, which suit a standing-at-the-node checklist and are
   what a markdown file cannot offer.
 
+  **Placement, Ric's call 2026-10-05: a child of GPU DRP, _beside_ the datadev driver and
+  `gen_gres_conf` pages, not under either.**  The rules span both topics -- some driver,
+  some Slurm -- so filing them under one would misplace about half, and a checklist is a
+  sibling of a procedure rather than a subsection of it.  A cross-link for the parent page
+  is fragment 5 of `confluence-gpudrp-additions.storage.xml`; the parent is page id
+  685820459.  **The page itself does not exist yet** -- only the source does.
+
 The reasoning behind each rule stays in this file's findings appendix; the rules themselves
 are the conclusions.  **Edit the `.storage.xml` source, not the live page**, or the two
 diverge silently -- that has happened once already.
