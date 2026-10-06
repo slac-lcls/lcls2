@@ -1328,6 +1328,33 @@ def issue_2026_09_21(args):
       cal = det.raw.calib(evt)
       print(ndu.info_ndarr(cal, '  cal'))
 
+def issue_2026_10_05(args):
+    """ISSUE: Mona issue: https://github.com/slac-lcls/lcls2/issues/161?
+              datinfo -k exp=mfx101555026,run=13 -d jungfrau
+              jungfrau                | jungfrau  | config    | 0_3_0
+              jungfrau                | jungfrau  | raw       | 0_2_0
+       PROBLEM:
+       FIX:
+    """
+    #import logging
+    from psana import DataSource
+
+    #logging.basicConfig(level=logging.WARNING)
+    CM = (7, 3, 200, 10)
+
+    ds = DataSource(exp="mfx101555026", run=13, max_events=20)
+    run = next(ds.runs())
+    det = run.Detector("jungfrau")
+    raw = det.raw
+    evt = next(evt for evt in run.events() if raw.raw(evt) is not None)
+
+    # Fresh calibration cache: no A/B or changed-kwargs condition is involved.
+    assert raw._odc is None
+    image = raw.calib(evt, cversion=3, cmpars=CM)
+    assert image is not None
+    print("effective cversion:", raw._odc.cversion)  # 3
+    print("cached cmpars:", raw._odc.cmps)          # (7, 3, 200, 10)
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1395,6 +1422,7 @@ def selector():
     elif TNAME in ('19',):issue_2026_09_08(args) # kerberos access to DB with query (for Murali), see --subtest
     elif TNAME in ('20',):issue_2026_09_09(args) # Philip timestamp is 1990...
     elif TNAME in ('21',):issue_2026_09_21(args) # Philip, calib for epixuhr3x2
+    elif TNAME in ('22',):issue_2026_10_05(args) # Mona, jungfrau common mode does not work in raw.calib(evt, cversion=3, cmpars=CM)
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())
