@@ -8,6 +8,42 @@ in people's heads.
 explains what something used to be, when it was found, or why it changed, it belongs
 here instead.  See the comment-volume item below.
 
+## This file needs splitting: it is too long to read
+
+Ric, 2026-10-05: too much to consume.  He is right, and the measurement says why --
+3776 lines, of which **about 2200 are not about the GPU DRP at all**: grub (368 lines
+in one section), the node table (314), `slurmd` (190), WEKA, dkms, BIOS, Slurm, RTPRIO.
+Two unrelated projects accreted into one file, so the half needed when reading code is
+buried in the half needed when converting a node.  The `# Appendix: findings` split at
+line ~2200 does not help, because it is a second pile of the same mixture rather than
+open-items-versus-history.
+
+The proposed split, **agreed in outline but not yet done**:
+
+| destination | holds | target |
+|---|---|---|
+| `TODO.md` | open `drpGpu` work only, each item 2-3 lines and a pointer | **under 400 lines** |
+| **Confluence** | the node/fleet material: grub, WEKA, dkms, BIOS, node table, Slurm, RTPRIO | verbatim move |
+| **Confluence** | resolved-and-explained findings worth not rediscovering | verbatim move |
+
+**Confluence rather than more markdown files**, Ric's suggestion and a better fit: a page
+gives a table of contents and collapsible (Expand) macros, so 2000 lines of node notes
+become navigable instead of scrolled past.  Markdown in a repo has neither.  There is
+precedent and tooling already -- three `*.storage.xml` sources in the session directory for
+the driver and `gen_gres_conf` pages, with the traps recorded: the `</>` editor takes
+**storage format**, not wiki markup, and named entities like `&mdash;` must be spelled
+`&#8212;`.  Keep editing the `.storage.xml` sources rather than the pages, or they diverge
+silently.
+
+Do the moves **without rewording**, so the before/after can be checked mechanically;
+condensing the surviving items is the part that needs judgement and a review.  The node
+material is also the part others want to read -- Matt and Gabriel included -- which a wiki
+page serves better than a file on a branch.
+
+A habit worth changing alongside it: record the day's investigation in HANDOFF and promote
+to this file only what is still *open*.  Roughly 290 lines landed here on 10-05 alone, much
+of it findings closed the same day.
+
 ## Comment volume needs a cleanup pass
 
 The GPU DRP's comments have grown past what a reader can take in, and the pattern is
@@ -66,12 +102,24 @@ use:
     Resource spec: Reserved abstract CPU IDs: 2-5,64-65
     Resource spec: Reserved machine CPU IDs: 1-2,32,65-66,96      <- must match WEKA's set
 
+**To read WEKA's set, on the node:**
+
+    cat /sys/fs/cgroup/weka-drpsrcf/cpuset.cpus.effective   # WEKA's cores, machine IDs
+    cat /sys/fs/cgroup/cpuset.cpus.effective                # what is left for everything else
+    grep -i weka /etc/fstab                                 # pinned, or WEKA's choice?
+    scontrol show node <node> | grep -i CoreSpec            # what Slurm reserves, abstract IDs
+
+The container name is the `container_name=` from the fstab line, so the cgroup path follows it.
+A node with no such directory has no live WEKA cgroup and needs no reservation on WEKA's
+account -- only core 0 for the OS.
+
 Result: `CoreSpecCount=3` (three whole cores, `{1,65}`, `{2,66}`, `{32,96}`), `CPUEfctv=122`,
 and the node went from offering 60 CPUs that morning to 122.  `pykcuxpm` runs and XPM:13 is
 back.
 
 **This is very probably the open IT ticket about Slurm scheduling onto WEKA-saturated cores** --
-not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".
+not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".  The fstab fix for it
+is [ECS-8386](https://jira.slac.stanford.edu/browse/ECS-8386), Chris's to push on.
 
 ### The real fix: name WEKA's cores in fstab
 
@@ -87,7 +135,14 @@ So the scattered set was never arbitrary, it was WEKA spreading three cores acro
 topology.  Naming them explicitly makes the assignment deterministic, reviewable in `fstab`,
 and **stable until someone asks IT to change it** -- which is what makes a static
 `slurm.conf` `CpuSpecList` safe to depend on.  Verified working on gpu008; IT need to
-propagate it through their ansible.
+propagate it through their ansible, under
+[ECS-8386](https://jira.slac.stanford.edu/browse/ECS-8386).  Chris is the one to push on it.
+
+**It does not survive ansible.**  gpu008 read `core=1,core=2,core=3` with its cgroup on `1-3`
+when the fix was applied; on 2026-10-05 its fstab is back to `num_cores=3` and the cgroup has
+re-rolled to machine CPUs `1-2,32`, which `CpuSpecList=0-3` does not cover -- so machine CPU 32
+is allocatable while WEKA holds it, the gpu007 failure mode.  Check the cgroup against
+`CpuSpecList` before trusting either, and expect to re-check after any ansible run.
 
 Deliberately **not** building a tool to derive `CpuSpecList` from `fstab`.  It is a one-line
 lookup per node, it changes only when we ask IT to change it, and the parser would be more
@@ -725,39 +780,79 @@ first.
   payload the firmware presents today and which `raw=u16` now selects by default: the
   gain bit is bit 0 and the ADC value bits 1-11.  Confirm nothing else wants them.
 
-- **`raw=fp16` is refused, pending the combined-payload firmware.**  Ric, 2026-10-02:
-  the planned ePixUHR3x2 firmware sends **both u16 and fp16 when `keepRaw` is
-  asserted**, roughly doubling the DMA on marked events, and it is not yet settled
-  whether they arrive as *separate sub-frames* or as the *same sub-frames with
-  interleaved `struct {u16, __half}` elements*.  Either way the prescale block holds
-  uncalibrated u16, so `RawU16Def` and `rawShape()` are already right and no schema
-  question arises.  What is not decidable yet is the per-element work, so
+- **`raw=fp16` is refused, pending the firmware's mode registers.**
+
+  **The plan, corrected by Chris on 2026-10-05.**  An earlier reading of it here was
+  wrong and is worth stating plainly, because several notes below were written against
+  it.  What the updated firmware will actually do:
+
+  - new **registers select u16 or fp16 mode** for the panel;
+  - the **"raw"** block -- "raw" being the label for the *prescaled* data -- is then u16
+    **or** fp16 according to that register, **not both**;
+  - the **non-raw** block becomes **"fex"** data: fp16 calibrated, or an ROI, or some
+    other signal extraction.
+
+  **So the DMA buffer does not need to be twice the full raw size.**  u16 and fp16 are
+  both 2 B/pixel, so the raw block is 387072 B in either mode and `dmaBufSize` is
+  unchanged by the mode register.  What the marked-event DMA has to accommodate is
+  `32 + raw + fex`, where fex is *at most* a full fp16 frame and may be much smaller --
+  against the 774176 B that "u16 alongside fp16" would have required.
+
+  The wrong premise was "u16 *and* fp16 together on an asserted keepRaw, roughly
+  doubling the DMA".  Nothing is doubled, and the "separate sub-frames vs interleaved
+  `{u16, __half}` elements" question is **moot**: a mode register means one format at a
+  time, so there is no pairing to lay out.
+
+  **Consequences for this code:**
+
+  - `rawSize()` stays `NPixels * 2` and needs no mode awareness -- it is already right
+    for both.
+  - `rawShape()` stays as it is, but **`RawU16Def` does not generalise**: the Xtc type
+    system has **no fp16** (`ShapesData.hh:56`: `UINT8, UINT16, ..., FLOAT, DOUBLE`), so
+    an fp16 raw block cannot be described as fp16.  It must be declared `UINT16` and
+    reinterpreted offline, or widened to `FLOAT` on the device at 2x the bytes on disk.
+    **That is a schema question for Chris and psana, and it is new** -- the old note said
+    "no schema question arises", which was true only while raw was always u16.
+  - the per-element work is still undecided, so the `raw=fp16` abort stays.  But what it
+    is waiting for has changed: not a layout, just the mode register and the fex format.
+
   `EpixUHR3x2::EpixUHR3x2()` aborts on `raw=fp16` with a message naming the reason, and
   `m_u16` defaults to true.  `EpixUHR3x2Beam` is **kept and still instantiated** by
   `recordEvent()`'s unreachable `else`, so it keeps compiling as the surrounding code
   moves and the revisit starts from working code rather than from rot.
 
-  Three things that will matter at the revisit, found while preparing for it:
+  Things that will matter at the revisit, found while preparing for it:
 
-  - **The sub-frame scan cache will thrash, and that is layout-independent.**
+  - **The sub-frame scan cache will still thrash, for a different reason.**
     `EvtBatcherSubFrames::Scan` latches exactly *two* sizes -- `bytes` for the data
     layout and `noDataBytes` for transitions -- and `Reader.cu:389` rescans whenever a
-    payload matches neither.  A doubled DMA on marked events is a **third** recurring
-    size, so at 1 Hz keepRaw every marked event evicts the ordinary scan and the next
-    ordinary event evicts it back: two serial walks per second in the single-threaded
-    `_waitForDMA`, for ever.  Not fatal, but it defeats the caching that
-    `EventBatcher.hh:201-206` is built around.  A third latched scan, keyed on
-    marked-ness, is the obvious fix and is worth doing as part of whichever layout
-    lands.
-  - **Separate sub-frames would make `firstDataSubframe()` mode-dependent.**  The tdest
-    set itself would differ between marked and unmarked events, so `count` and the
-    per-tdest offsets change, not merely the total size -- and `NumSubFrames` and
-    `FirstDataTdest` stop being single constants.
-  - **Interleaved elements would break the sub-frame element counts.**  `cnt =
-    sub.size / sizeof(*src)` stops meaning a pixel count once each element is a
-    `{u16, __half}` pair; the divisor rule still holds but the numerator no longer
-    measures one array.  The u16 and fp16 payloads also stop being contiguous, so
-    `_copyRaw`'s single strided copy per ASIC becomes a gather.
+    payload matches neither.  Under Chris's plan a marked event carries `raw + fex` and
+    an unmarked one carries `fex` alone, so there are **still two distinct L1Accept
+    sizes** competing for the single `bytes` slot: every marked event evicts the
+    ordinary scan and the next ordinary event evicts it back.  The *magnitude* of the
+    difference changed -- it is the raw block, not a doubling -- but the thrash does not
+    depend on the magnitude, only on there being two sizes.
+
+    The one case that would avoid it is a fex block sized so that `raw + fex` equals
+    some other recurring size, which is not worth engineering.
+
+    **This is a prediction about the planned firmware, not a defect in prescaling as
+    implemented.**  Nothing thrashes today: one L1Accept size and one transition size fit
+    the two slots exactly.  It was misread once as a known problem with the committed
+    code.  Note also that the fix is not a third `size_t` -- `m_sub[]` is a single flat
+    tdest-indexed array that pass two overwrites wholesale, so a third slot needs a second
+    layout array beside it.  The cost is small either way: two short walks per second
+    against ~33 kHz of events, so it is latency on two events, not throughput.
+  - **`firstDataSubframe()` may still become mode-dependent**, if raw and fex arrive on
+    different tdests.  Then the tdest set differs between marked and unmarked events, so
+    `count` and the per-tdest offsets change rather than just the total size, and
+    `NumSubFrames` and `FirstDataTdest` stop being single constants.  **Ask Chris**
+    whether fex replaces raw on the same tdests or occupies its own -- that is now the
+    open layout question, and it decides whether this item is real.
+  - ~~**Interleaved elements would break the sub-frame element counts.**~~  **Moot**: a
+    mode register means one format at a time, so there are no `{u16, __half}` pairs and
+    `cnt = sub.size / sizeof(*src)` keeps meaning a pixel count.  `_copyRaw`'s strided
+    copy per ASIC stays a copy rather than becoming a gather.
 
 - **Jungfrau pedestals and gains** are placeholders (0.0/1.0).  The CPU-side
   Jungfrau writes raw data and leaves calibration to analysis, so there is no
@@ -1318,10 +1413,46 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
 
 ## Calibration and data handling
 
+### The UHR emulator's payload is constant, so it cannot prove per-event freshness
+
+Gabriel, 2026-10-05: the data the UHR emulator currently emits **is the same from event to
+event**.  He believes a register exists that would make it emit sequence numbers instead but
+is not sure of it or how to set it.
+
+That matters for what a run can demonstrate.  On `EpixUHRemu` the frame counter ramping
+0,1,2,... with all deltas 1 was the proof that each raw block is freshly copied -- it is
+what validated runs 269 and 277.  On the real ePixUHR3x2 the payload is event-invariant, so
+`xtc-rawdump.py` reports `element[0]` constant and identical `first12` and nonzero counts on
+every event (runs 65 and 66).  **That is expected, not a fault** -- but it means a real-panel
+run has **no per-event liveness signal in the data**: one stale frame repeated would look
+identical.  Liveness has to come from elsewhere -- the pulse ids and timestamps, which do
+advance, and the `keepRaw`/extent agreement.
+
+Worth chasing that register if a per-event check on real hardware is ever wanted.
+
+### The reduced payload is half the raw one, and that is correct
+
+Noticed on run 60, 2026-10-05, and it reads as corruption until the bit layout is recalled.
+A prescaled event's two arrays do **not** hold the same numbers:
+
+    'raw'  (shape: 6 32256):  0 48 96 100 52 4 512 560 ...   u16
+    'noOp' (shape: 774144):   0.0 24.0 48.0 50.0 ...         f32
+
+Exactly a factor of two, because `pedGainCalibrate()` calibrates the *extracted ADC field*,
+not the raw word.  For `EpixUHR3x2` the gain bit is **bit 0** and the ADC value **bits 1-11**,
+so `data = (raw >> 1) & 0x7ff` and the gain bit is shifted out.  With fabricated pedestal 0
+and gain 1, `calib == raw >> 1`.
+
+So raw and reduced are only comparable after extracting the same field.  They would be equal
+only if the ADC value started at bit 0.  The halving is also independent confirmation of
+Gabriel's layout: an earlier note had gain in bit 11, which would have made the two arrays
+roughly equal instead.
+
 - **Fetch calibration constants.**  Every detector currently fabricates them:
   `EpixUHRemu`, `EpixUHRsim`, `Jungfrau` and now `EpixUHR3x2` in its u16 mode fill
   pedestals with 0.0 and gains with 1.0 (`@todo: Fetch calibration constants`), which
-  makes the calibrated values numerically equal to the raw ADC counts -- the path is
+  makes the calibrated values numerically equal to the raw **ADC field** -- not to the raw
+  word, where a gain bit below the data shifts the value (see above).  The path is
   proven, the science is not.  `EpixUHR3x2` needs none for an fp16 payload, which
   arrives calibrated from firmware.  Needs a real source and a point in the transition
   sequence to load from it.  Three candidate routes:
@@ -1456,7 +1587,8 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
     `hdrSplit + rawBytes + dscr` = 387208 B into a 393216 B pebble -- 6008 B of slack, by
     luck rather than design.  The old guard compared the 136 B *sum* against the buffer and
     passed vacuously.  It now checks the reach, because at twice this raw size the pebble
-    silently overflows; `pebbleBufSize` is the kwarg that fixes it.
+    silently overflows; `pebbleBufSize` is the kwarg that fixes it.  `EpixUHR3x2` has the
+    same 387208 B reach, not twice it -- see the corrected item below.
   - **"It didn't crash" is not "it worked".**  Two runs in a row looked healthy in the log
     and were wrong in the file.  Read the data back with `xtcreader -d`, which walks the
     Xtc tree and so finds what a size check cannot.  Note `-d`'s output is lost on abort
@@ -1484,14 +1616,134 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
   - **The overflow abort never fired**, and cannot at these rates: the pebble pool bounds
     in-flight prescaled events far below 32.  So `_claimRawSlot`'s occupancy test and the
     atomics behind it are exercised only in the non-overflow direction.
-  - **`EpixUHR3x2` will not fit the default pebble.**  A prescaled header reaches
-    `80 + rawBytes + 56` into the pebble, which is 387208 of 393216 B for `EpixUHRemu` --
-    6008 B of slack, by luck.  At 774144 B of raw the new guard aborts and `pebbleBufSize`
-    has to be raised.  Worth doing deliberately rather than discovering it on the day.
+    **Superseded 2026-10-05**: runs 59-65 ran at 100% keepRaw, 1850 consecutive prescaled
+    events at 120 Hz, and it still never fired and no slot leaked.  The pebble bound holds at
+    ~120x the design rate, so the non-overflow direction is now very well exercised.
+  - ~~**`EpixUHR3x2` will not fit the default pebble.**~~  **Wrong, and it was my arithmetic.**
+    `rawSize()` is `NPixels * sizeof(uint16_t)` = 193536 * 2 = **387072 B**, not 774144 --
+    that figure is `NoOpReducer`'s **f32 output** size.  So the reach is
+    `80 + 387072 + 56` = **387208 B** into 393216, the same 6008 B of slack as `EpixUHRemu`,
+    and for the same reason: the emulator emulates this detector, so both have 193536 u16
+    pixels.  Confirmed on gpu006 run 59 -- the guard stayed silent and `pebbleBufSize` was
+    never set.  **No action needed; this was never a blocker.**
 
   Also open, and deliberately deferred: the slot claim would be cleaner on the host, but that
   needs the graph to stop being recorded once per Configure.  **Revisit with letting the GPU
   idle at low trigger rates**, which has to change the launch model anyway.
+
+## keepRawRate is not programmed in Cu mode, so every event is marked
+
+Found 2026-10-05 on drp-srcf-gpu006, runs 59-65.  Every L1Accept came back prescaled --
+1850 of 1850 on run 59, 1614 of 1614 on run 60, 964 of 964 on run 65 -- against a configDB
+`keepRawRate` of **1.0 Hz** for every readout group.
+
+**The DRP is not at fault, and that was settled by a control rather than by reading the
+code**: the timing DRP on cmp040 is the stock CPU `drp`, no GPU code in it, and its own file
+shows `keepRaw=1` on **3228 of 3228** events at 240 Hz.  Both detectors see L0Raw asserted on
+100% of events at their own trigger rates.  Worth keeping as the technique: when a bit looks
+wrong, find a consumer of the same bit that shares none of your code.
+
+**`keepRaw` was being decoded correctly**, which is the other thing a 100% reading could mean.
+`(env>>22)&1` is `TransitionBase::keepRaw()` (`xtcdata/xtc/Dgram.hh:26`) and bit 22 of `env` is
+b6 `L0Raw` of `L1Dgram::reserved()`.  Decoding the whole reserved byte across the timing run
+gives 32 distinct values: `L0Tag` cycling 0-31 with ~101 events each, `L0Accept` set,
+`L0Reject` clear.  The field is live and b6 is pinned high inside it -- so not a stuck decode.
+
+### Two units, and only one path converts between them
+
+- configDB `user.{Cu,SC}.groupN.keepRawRate` is a **rate in Hz**.
+- the PV `DAQ:FEH:XPM:<master>:PART:<group>:L0RawUpdate` is a **divisor in 929 kHz timing
+  frames** (Matt, 2026-10-05): the number of frames between raw updates, 1 meaning every frame.
+
+So 1 Hz is a divisor of ~928571, not 1.0.  The conversion is `int(TPGSEC/keepRawRate)` at
+`psdaq/psdaq/configdb/ts_config.py:82` -- **in the SC branch only**.  The Cu branch
+(`:66-72`) programs `L0Select`, `L0Select_EventCode` and `DstSelect` and never puts
+`L0RawUpdate` into `pvdict` at all, so with `user.LINAC == 0` the field is read into the
+recorded config and never reaches the XPM.  The SC branch additionally `raise`s when the key
+is missing; Cu has no equivalent.
+
+That is the bug.  Whether the fix is to move the conversion above the branch or to duplicate
+it is for Matt -- it is his file, and `L0RawUpdate`'s Cu semantics are his to confirm.
+
+### Why intermediate values looked like no change at all
+
+A divisor only thins when the update rate falls below the trigger rate:
+
+| `L0RawUpdate` | update rate | effect at 120-240 Hz triggers |
+|---|---|---|
+| 1 | 928571 Hz | marks every event |
+| 1000 | 929 Hz | **still marks every event** |
+| ~3900 / ~7700 | 240 / 120 Hz | threshold where thinning first shows |
+| 928571 | 1.0 Hz | ~1 marked event per second |
+
+So 1000 and 1 are indistinguishable in the data, which is what made a correct hand-written PV
+look like it had been ignored.  Compute the resulting rate before concluding a write failed.
+
+### Finding the master XPM, which is where the PVs live
+
+Run 65 failed to thin because the PVs were written on **XPM 5, which is not the master**.
+Three ways to tell, cheapest first:
+
+1. **The `.cnf.py`**: `control`'s `-x` flag names it -- `-x 4` in `gpu6.py`.
+   `control.py:715` reads it into `xpm_master`, `:486` builds `pv_base + ':XPM:%d'`.
+2. **The control log**, every Configure: `<I> master XPM is 4` (`control.py:1604`).
+3. **`DAQ:FEH:XPM:<n>:PART:<group>:Master`** -- the hardware's own view, 1 on the master
+   and 0 elsewhere.  **Check the timestamp**: XPMs 0 and 2 still read 1 from an earlier
+   session, so a bare 1 is not sufficient.
+
+`ts_connect.py:99-113` actively demotes the downstream XPMs for the master's groups at
+Configure, so XPM 5's `PART:{2,4}:Master` went to 0 in the same instant XPM 4's stayed 1.
+Writing a downstream XPM's `L0RawUpdate` therefore cannot do anything.
+
+### Run 66 confirms the PV path works, so the bug is only ts_config.py
+
+With **928571 on `DAQ:FEH:XPM:4:PART:4:L0RawUpdate`**, run 66 is the first fully correct
+prescaled run on real hardware:
+
+| check | result |
+|---|---|
+| `xtcreader` | rc=0, 1401 records to EndRun |
+| L1Accepts | 1382 at 120.01 Hz |
+| unmarked | **1370 at extent 774212** -- reduce only |
+| marked | **12 at extent 1161340** -- raw + reduced |
+| `keepRaw`/extent mismatches | **0 of 1382** |
+| damage | `0x0` on all 1401 |
+| marked rate | **0.992 Hz**, gaps of exactly 122 events / 1.008 s, no jitter |
+| raw payload | 193536 u16, 99.9% nonzero, at the right offset |
+
+The extent splitting into two values is what no earlier run could show, so **the unmarked
+reduce-only path and the per-event mode switch are both exercised for the first time**.
+Eleven identical gaps is a periodic divisor, not statistical thinning.
+
+So the PV and everything downstream of it are sound, and the defect is only the missing
+`L0RawUpdate` in the Cu branch.  **For Matt:** hoist the conversion above the Cu/SC
+branch, or duplicate it into Cu?  His file, and the Cu semantics are his to confirm.
+
+## FileWriter spun on an unrecoverable write error.  Fixed at 7b045c66
+
+Run 64, 2026-10-05: `/tmp` on gpu006 filled (20G, 100%), and every `cuFileWrite` then
+returned `EIO`.  The log carries dozens of identical lines, same buffer and same count:
+
+    <E> Write error: buffer 0x7fae2e000000, count 32517856: Input/output error
+    <E> File writing failed: rc -1
+
+`FileWriter::writeEvent()` logged and **returned without clearing `m_count` or restoring
+`m_writing`**, so the same buffer was retried on the next event, for ever.  The CPU
+`drp/FileWriter.cc` uses `logging::critical` at the equivalent point, which aborts; the GPU
+copy had downgraded it to `error` and so could not make progress.
+
+Now aborts once, as `FileWriterAsync` in the same file already did.  Two things went with it:
+`_flush()` ignored `_write()`'s return and then cleared `m_count`, silently truncating the
+file's tail, and `%m` was unreliable -- `cufile.h` says data path errors come back as standard
+error codes, so `rc` is `-errno` and cuFile need not set `errno` itself.  `strerror(-rc)` now
+names the condition, so a full disk reads `No space left on device (-28)`.
+
+**The abort branch itself is untested**: reaching it means filling a filesystem, which was
+not worth doing deliberately on a shared node.
+
+Sizing, for whoever runs this next: at 100% keepRaw an `EpixUHR3x2` event costs ~1.16 MB
+(387072 B raw + 774144 B reduced + descriptors), so 20 GB of `/tmp` is about 17000 events --
+under three minutes at 120 Hz.  Six runs exhausted it.
 
 ## Runtime behaviour
 
@@ -3162,7 +3414,13 @@ the plan is SMT off everywhere, that case is deliberately not supported -- but g
 
 Deciding to reserve machine cores 0-3 unconditionally, rather than tracking WEKA's choice, is what
 makes this robust: core 0 for the OS and IB, cores 1-3 for WEKA, and Slurm needs no edit when
-WEKA moves or arrives.  There is an IT ticket to put WEKA on all these nodes.
+WEKA moves or arrives.  There is an IT ticket to put WEKA on all these nodes -- a separate one
+from [ECS-8386](https://jira.slac.stanford.edu/browse/ECS-8386), which names the cores.
+
+**That robustness holds only while the fstab pin does.**  It assumes WEKA's choice stays inside
+`0-3`, which is true of `core=1,core=2,core=3` and false of `num_cores=3`: gpu008 re-rolled to
+machine `1-2,32` once ansible reverted the pin.  So `CpuSpecList=0-3` is robust against WEKA
+*moving within* its named cores, not against the naming being lost.
 
 ### gpu006's InfiniBand is down, and it is not the host
 
@@ -3185,7 +3443,9 @@ link-up in the previous boot either, so it predates the BIOS work; and gpu008, w
 cable layout, reaches `ACTIVE / LinkUp / 200 Gb/sec (4X HDR)` with `sm_lid 0x1`.
 
 **This blocks WEKA on gpu006**, whose fstab names `net=ibp113s0f0` -- so the "WEKA everywhere"
-ticket is blocked on the fabric here, not on WEKA.  Gabriel has an IT ticket open; left with them.
+ticket is blocked on the fabric here, not on WEKA.  Gabriel has an IT ticket open; left with
+them.  **Its number is not recorded here** -- ask Gabriel rather than assuming it is ECS-8386,
+which is the fstab core-naming ticket and a different thing.
 
 ### IOMMU must be off, and it was held by luck on two nodes
 
@@ -3341,8 +3601,8 @@ Every GPU DRP log since at least 2026-09-13 opens with
 so the DRP threads run at normal priority.  Not a correctness problem, and not the cause
 of any failure seen so far, but it will bound achievable rate.  Ric raised an IT ticket
 for this a few days before 2026-09-14 --
-[ECS-11217](https://jira.slac.stanford.edu/browse/ECS-11217) -- since the `RLIMIT_RTPRIO`
-ceiling has to be raised in IT's ansible and cannot be set from our side.  Recorded so
+[ECS-11217](https://jira.slac.stanford.edu/browse/ECS-11217), Chris's to push on -- since the
+`RLIMIT_RTPRIO` ceiling has to be raised in IT's ansible and cannot be set from our side.  Recorded so
 that a future rate shortfall is not misattributed.
 
 ### IT's half is done; the message persists because Slurm does not read limits.d
