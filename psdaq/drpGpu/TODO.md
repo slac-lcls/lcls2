@@ -508,8 +508,15 @@ findable in a 3800-line file.
   sibling of a procedure rather than a subsection of it.  The page is titled
   **"GPU node rules"**, which is the title the parent page's cross-link resolves by --
   fragment 5 of `confluence-gpudrp-additions.storage.xml`.  Parent is page id 685820459.
-  **The page itself does not exist yet** -- only the source does.  Renaming it means fixing
-  that `ri:content-title`, or the link dangles.
+  **Pasted by Ric 2026-10-05.**  Renaming the page means fixing that `ri:content-title`, or
+  the link dangles.
+
+  **Owed: hyperlink `RULES.md` from that page once this branch is on `master`.**  It is
+  deliberately a plain path today, because the file exists only on `features/gpu-raw-calib`:
+  a `master` link would 404 until the merge, a branch link would die when the branch is
+  deleted, and a commit permalink would pin the 2026-10-05 text for ever -- stale rules being
+  the failure mode that matters.  The page links the repo root instead and says why.  The
+  `blob/master/psdaq/drpGpu/RULES.md` form is correct and safe to add after the merge.
 
 The reasoning behind each rule stays in this file's findings appendix; the rules themselves
 are the conclusions.  **Edit the `.storage.xml` source, not the live page**, or the two
