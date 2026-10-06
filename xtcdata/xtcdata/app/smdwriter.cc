@@ -180,6 +180,18 @@ public:
             }
             break;
         }
+
+        case(Name::FLOAT16):{
+            //  printf cannot take _Float16, which does not promote in varargs
+            if(data_rank > 0){
+                Array<_Float16> arrT = descdata.get_array<_Float16>(i);
+                printf("%s: %f, %f, %f\n",name.name(),float(arrT.data()[0]),float(arrT.data()[1]),float(arrT.data()[2]));
+            }
+            else{
+                printf("%s: %f\n",name.name(),float(descdata.get_value<_Float16>(i)));
+            }
+            break;
+        }
         }
     }
 
