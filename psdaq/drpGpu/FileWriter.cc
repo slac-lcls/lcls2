@@ -5,6 +5,7 @@
 
 #include <fcntl.h>
 #include <assert.h>
+#include <string.h>
 #include <unistd.h>
 
 using logging = psalg::SysLog;
@@ -259,8 +260,13 @@ void FileWriter::_flush()
 {
   logging::debug("FileWriter flushing %zu bytes to fd %d", m_count, m_fd);
   m_writing += 2;
-  _write();
+  auto rc = _write();
   m_writing -= 2;
+  // A short or failed flush loses the tail of the file, so say so rather than
+  // discarding it silently along with m_count below
+  if (rc != ssize_t(m_count))
+    logging::error("Flush wrote %zd of %zu bytes; the file's tail is incomplete",
+                   rc, m_count);
   m_count = 0;
   m_batch_starttime = TimeStamp(0,0);
 }
@@ -279,7 +285,10 @@ ssize_t FileWriter::_write()
       if (IS_CUFILE_ERR(rc))
         logging::error("Write error: buffer %p, count %zu: %s (%zd)", m_buffer_d, m_count, CUFILE_ERRSTR(rc), rc);
       else
-        logging::error("Write error: buffer %p, count %zu: %m", m_buffer_d, m_count);
+        // cufile.h: "Data path errors are captured via standard error codes", so rc
+        // is -errno.  Name it from rc rather than from errno, which cuFile need not set
+        logging::error("Write error: buffer %p, count %zu: %s (%zd)",
+                       m_buffer_d, m_count, strerror(-rc), rc);
     } else {
       m_fileOffset += rc;
     }
@@ -302,8 +311,10 @@ void FileWriter::writeEvent(const void* devPtr, size_t size, const TimeStamp tim
     m_writing += 1;
     auto rc = _write();
     if (rc != ssize_t(m_count)) {
-      logging::error("File writing failed: rc %d", rc);
-      return;
+      // Nothing here can retire the buffer, so returning would re-present the same
+      // bytes on the next event and spin.  _write() has logged the cause.
+      logging::critical("File writing failed: rc %zd of %zu bytes", rc, m_count);
+      exit(EXIT_FAILURE);
     }
     m_writing -= 1;
     // reset these to prepare for the new batch
