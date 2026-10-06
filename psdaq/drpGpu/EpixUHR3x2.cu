@@ -22,24 +22,6 @@ using uhr3x2_scoped_range = nvtx3::scoped_range_in<uhr3x2_domain>;
 namespace Drp {
   class PGPEvent;
   namespace Gpu {
-
-// Describes the panel's raw u16 pixels: the whole recorded payload in pass-through,
-// and the prescaled companion to the Reducer's array in BEAM.  Typed and shaped to
-// match Drp::EpixUHR3x2RawDef in the CPU DRP (drp/EpixUHR3x2.cc), because offline has
-// to see the same array whichever DRP wrote it.
-class RawU16Def : public VarDef
-{
-public:
-  enum index
-    {
-      raw
-    };
-
-  RawU16Def()
-  {
-    NameVec.push_back({"raw", Name::UINT16, 2});
-  }
-};
   } // Gpu
 } // Drp
 
@@ -143,20 +125,21 @@ unsigned EpixUHR3x2::configure(const std::string& config_alias, Xtc& xtc, const 
     return rc;
   }
 
-  Alg alg("raw", 0, 0, 0);
+  // Drp::EpixUHR3x2 has already declared the panel's event Names under this same
+  // NamesId, as the typed and shaped u16 array this code needs: the raw block is u16
+  // in both modes, the whole payload in pass-through and the Reducer's companion in
+  // BEAM.  Declaring a second Names here is what psana's NamesIter rejects as a
+  // duplicate namesId, so adopt the base class's NameIndex instead -- rawEvent()
+  // needs the entry in this Detector's lookup for CreateData, not another block in
+  // the Xtc.  NameIndex assignment deep-copies, so it outlives m_det either way.
   NamesId namesId(nodeId, EventNamesIndex);
-  Names& names = *new(xtc, bufEnd) Names(bufEnd,
-                                         m_para->detName.c_str(), alg,
-                                         m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
-  // Always the typed u16 description, because the raw block is u16 in both modes:
-  // the whole recorded payload in pass-through, and the prescaled companion to the
-  // Reducer's array in BEAM.  RawDef's untyped blob would misdescribe it.
-  //
-  // Nb: the Reducer declares its own Names for the reduced payload, so this entry
-  // describes only the raw array.  See Gpu::Detector::rawEvent().
-  RawU16Def dataDef;
-  names.add(xtc, bufEnd, dataDef);
-  m_namesLookup[namesId] = NameIndex(names);
+  auto& baseLookup = m_det->namesLookup();
+  if (baseLookup.find(namesId) == baseLookup.end()) {
+    logging::error("Gpu::EpixUHR3x2::configure: Drp::EpixUHR3x2 declared no Names "
+                   "for namesId 0x%x", unsigned(namesId));
+    return 1;
+  }
+  m_namesLookup[namesId] = baseLookup[namesId];
 
   logging::info("Gpu::EpixUHR3x2 configure: xtc size %u", xtc.sizeofPayload());
 
