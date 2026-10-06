@@ -680,6 +680,9 @@ class PVCtrls(object):
         else:
             self._usLinkUp = None
 
+        if stats:
+            stats.registerLinkUpCallback(self.resetSequences)
+        
         if notify:
             self._thread = threading.Thread(target=self.notify)
             self._thread.start()
@@ -709,6 +712,9 @@ class PVCtrls(object):
                     s._eng.resetDone()
                     pvUpdate(s._pv_Running,1)
 
+    def resetSequences(self):
+        self.seqReset(self._pv_seqReset,(1<<int(NCODES//4))-1)
+        
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly
         if cycle < 10:

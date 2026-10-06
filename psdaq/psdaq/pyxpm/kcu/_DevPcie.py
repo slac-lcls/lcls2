@@ -326,6 +326,9 @@ class DevPcie(pr.Device):
             print(f'MMCM lock : {self.XpmApp.mmcmLock.get()}')
             self.XpmApp.mmcmRst.set(0)
             print(f'MMCM reset : {self.XpmApp.mmcmRst.get()}')
+            self.XpmApp.monStreamPeriod.set(156250000)
+            logging.info('monStreamPeriod {}'.format(self.XpmApp..monStreamPeriod.get()))
+
 
         #  Reset the Tx and Rx PLLs
         for i in range(8):
