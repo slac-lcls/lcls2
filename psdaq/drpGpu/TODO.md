@@ -505,9 +505,11 @@ findable in a 3800-line file.
   **Placement, Ric's call 2026-10-05: a child of GPU DRP, _beside_ the datadev driver and
   `gen_gres_conf` pages, not under either.**  The rules span both topics -- some driver,
   some Slurm -- so filing them under one would misplace about half, and a checklist is a
-  sibling of a procedure rather than a subsection of it.  A cross-link for the parent page
-  is fragment 5 of `confluence-gpudrp-additions.storage.xml`; the parent is page id
-  685820459.  **The page itself does not exist yet** -- only the source does.
+  sibling of a procedure rather than a subsection of it.  The page is titled
+  **"GPU node rules"**, which is the title the parent page's cross-link resolves by --
+  fragment 5 of `confluence-gpudrp-additions.storage.xml`.  Parent is page id 685820459.
+  **The page itself does not exist yet** -- only the source does.  Renaming it means fixing
+  that `ri:content-title`, or the link dangles.
 
 The reasoning behind each rule stays in this file's findings appendix; the rules themselves
 are the conclusions.  **Edit the `.storage.xml` source, not the live page**, or the two
