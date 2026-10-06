@@ -4,6 +4,7 @@ from psdaq.configdb.ts_connect import ts_connector
 from psdaq.seq.globals import *
 from p4p.client.thread import Context
 import json
+import logging
 import time
 
 ocfg = None
@@ -16,6 +17,30 @@ DEST_DONTCARE = 1
 DEST_BSY = 2
 DEST_HXR = 3
 DEST_SXR = 4
+
+#  XpmApp's l0RawUpdate register is 20 bits (pyxpm/xpm/_XpmApp.py)
+L0RAWUPDATE_MAX = (1 << 20) - 1
+
+def _rawUpdateDivisor(rawRate, where):
+    """Convert keepRawRate in Hz to the XPM's fiducial divisor, or fail loudly.
+
+    The config field is a RATE; the PV is a DIVISOR, and they differ by ~10^6.
+    Entering a divisor here used to truncate to 0 silently, which the XPM takes
+    as 'never', so a run would record no raw data at all and look configured.
+    """
+    if rawRate <= 0:
+        raise RuntimeError(f'keepRawRate in {where} must be positive, not {rawRate}')
+    divisor = int(TPGSEC/rawRate)
+    if divisor < 1:
+        raise RuntimeError(f'keepRawRate in {where} is {rawRate} Hz, which needs a '
+                           f'divisor below 1 and would be programmed as 0 (never).  '
+                           f'This field is a RATE IN HZ, not the divisor the '
+                           f'L0RawUpdate PV takes: the maximum is {TPGSEC} Hz.')
+    if divisor > L0RAWUPDATE_MAX:
+        raise RuntimeError(f'keepRawRate in {where} is {rawRate} Hz, needing divisor '
+                           f'{divisor}, which does not fit L0RawUpdate\'s 20 bits.  '
+                           f'The minimum rate is {TPGSEC/L0RAWUPDATE_MAX:.4f} Hz.')
+    return divisor
 
 def ts_connect(json_connect_info):
     global connector
@@ -63,6 +88,7 @@ def apply_config(cfg):
 
     pvdict  = {}  # dictionary of epics pv name : value
     for group in readout_groups:
+        #  Cu stores this flat as groupN_keepRawRate, SC nested under groupN
         if linacMode == 0:   # Cu
             grp_prefix = 'group'+str(group)+'_eventcode'
             eventcode  = cfg['user']['Cu'][grp_prefix]
@@ -70,6 +96,12 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select'          ] = 2  # eventCode
             pvdict[str(group)+':L0Select_EventCode'] = eventcode
             pvdict[str(group)+':DstSelect'         ] = 1  # DontCare
+
+            rawKey  = 'group'+str(group)+'_keepRawRate'
+            rawRate = cfg['user']['Cu'].get(rawKey)
+            rawWhere = f'user.Cu.{rawKey}'
+            if rawRate is not None:
+                rcfg['user']['Cu'][rawKey] = rawRate
         else:                # SC
             grp_prefix = 'group'+str(group)
             grp = cfg['user']['SC'][grp_prefix]
@@ -77,11 +109,9 @@ def apply_config(cfg):
             pvdict[str(group)+':L0Select'          ] = grp['trigMode']
             pvdict[str(group)+':L0Select_FixedRate'] = grp['fixed']['rate']
             pvdict[str(group)+':L0Select_EventCode'] = grp['eventcode']
-            #  until we update all timing configurations
-            if 'keepRawRate' in grp:
-                pvdict[str(group)+':L0RawUpdate'       ] = int(TPGSEC/grp['keepRawRate'])
-            else:
-                raise RuntimeError(f'No keepRawRate entry in user.SC.{grp_prefix}.  Run ts_config_update.py')
+
+            rawRate  = grp.get('keepRawRate')
+            rawWhere = f'user.SC.{grp_prefix}.keepRawRate'
 
             if 'ac' in grp:
                 pvdict[str(group)+':L0Select_ACRate'   ] = grp['ac']['rate']
@@ -107,6 +137,19 @@ def apply_config(cfg):
                 dstmask |= (1<<DEST_SXR) if grp['destination']['SoftXRay'] else 0
                 pvdict[str(group)+':DstSelect_Mask'] = dstmask
                 pvdict[str(group)+':DstSelect'     ] = DEST_INCLUDE if dstmask else DEST_DONTCARE
+
+        #  Both LINAC modes program the raw-data insert period: the XPM counts
+        #  fiducials, so a rate in Hz becomes a divisor.  Cu never did this, so
+        #  keepRawRate was ignored there and every event came back marked.
+        if rawRate is not None:
+            pvdict[str(group)+':L0RawUpdate'   ] = _rawUpdateDivisor(rawRate, rawWhere)
+        elif linacMode == 0:
+            #  Cu has never programmed this, so a config predating the entry is
+            #  no worse off than before: warn rather than refuse to configure
+            logging.warning(f'No keepRawRate entry in {rawWhere}; every event will be marked.  Run ts_config_update.py')
+        else:
+            #  until we update all timing configurations
+            raise RuntimeError(f'No keepRawRate entry in {rawWhere}.  Run ts_config_update.py')
 
         grp_prefix = 'group'+str(group)
         grp = cfg['expert'][grp_prefix]
