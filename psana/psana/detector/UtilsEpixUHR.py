@@ -36,8 +36,11 @@ SEGMENT_SHAPE = (336, 576)
 
 # order of gain modes as in dark: datinfo -k exp=mfx101628626,run=163 -d epixuhr3x2
 GAIN_MODES = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2') #  8 total in dark
-GAIN_STATES = GAIN_MODES + ('AHLG1_L', 'AHLG2_L', 'AMLG1_L', 'AMLG2_L')         # 12 total
+GAIN_STATES_LOW = ('AHLG1_L', 'AHLG2_L', 'AMLG1_L', 'AMLG2_L')                  #  4
+GAIN_STATES = GAIN_MODES + GAIN_STATES_LOW                                      # 12 total
 GAINS = (1.51, 0.54, 0.0172, 0.0086) # mV/keV gains for FHG, FMG, FLG1, FLG2
+GAIN_FACTORS = list([GAINS[i] for i in (0,1,2,3,0,0,1,1,2,3,2,3)]) # for 12 states
+dic_gain_state_to_factor = dict(zip(GAIN_STATES, GAIN_FACTORS))
 
 # epix10ka data gainbit and mask
 B14 = 0o40000 # 16384 or 1<<14 (15-th bit starting from 1)
@@ -266,13 +269,13 @@ def image_v01(det_raw,  evt, **kwargs):
     return raw[0,:]
 
 
-def gain_default(nsegs=2, fgains=GAINS, shape_seg=SEGMENT_SHAPE):
-    """returns array of default gain constants of shape (8, nsegs, <shape_seg>)"""
+def gain_default(nsegs=2, gfactors=GAIN_FACTORS, shape_seg=SEGMENT_SHAPE):
+    """returns array of default gain constants of shape (12, nsegs, <shape_seg>)"""
     import psana.pscalib.calib.CalibConstants as CC
     dtype_gain = CC.dic_calib_type_to_dtype[CC.PIXEL_GAIN] # np.float32
     a = np.empty((12, nsegs) + shape_seg, dtype=dtype_gain)
-    for igm, ifg in zip((0,1,2,3,4,5,6,7,8,9,10,11), (0,1,2,3,0,0,1,1,2,3,2,3)):
-        a[igm,:] = fgains[ifg]
+    for igm, gf in enumerate(gfactors):
+        a[igm,:] = gf
     return a
 
 
