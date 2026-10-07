@@ -247,36 +247,16 @@ first.
 
 ## Performance and structure
 
-- **`maxTrSize` does two unrelated jobs and wants to be two numbers.**  It bounds a
-  transition's Xtc -- `Drp::Detector`'s `m_xtcbuf(para->maxTrSize)`, reached through
-  `trXtcBufEnd()` -- *and* it floors the reduce buffers' payload, at `Reducer.cu`:
+- **`maxTrSize` bounds a Configure and the buffer it is built in, so it cannot be sized
+  from either.**  `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON into a
+  *temporary* buffer sized `maxTrSize`, then copies it into a transition Xtc bounded by the
+  same number.  A value that is too small therefore fails at whatever it is raised to
+  rather than by a fixed shortfall, which is what made 2026-09-25's two failures read as
+  near misses; see `FINDINGS.md`.  It is in the CPU `drp`, shared with every CPU DRP.
 
-      if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
-
-  So a value chosen to fit the largest Configure is multiplied by `nbuffers()` of GPU
-  memory, and a value chosen to bound the payload may be too small for a Configure.  The
-  two pull in opposite directions.
-
-  Worse, `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON config into a
-  *temporary* buffer **also** sized `maxTrSize` and then copies its payload into the
-  transition Xtc.  So one number bounds both the config and the thing it must fit inside,
-  and a value that is too small fails at whatever it is raised to rather than by a fixed
-  shortfall.
-
-  Found on 2026-09-25: ePixUHR3x2's Configure on drp-srcf-gpu006 aborted with
-
-      Xtc.hh:111: Insufficient space for 524 bytes (... extent 262012)    # 256 kiB
-      Xtc.hh:111: Insufficient space for 760 bytes (... extent 524036)    # 512 kiB
-
-  The extent grew to fill whatever it was given, which is the tell.  **`epixuhr3x2_0`'s
-  configuration is 902026 bytes of JSON**, so neither limit was close; the "overflowed by
-  392 bytes" reading of the first failure was where it stopped, not what it needed.  Raised
-  to 2 MiB, which costs ~4 GiB of GPU memory at `nbuffers = 2048`, all of it unused in
-  pass-through mode since `PassthruShim::payloadSize()` is 0.  The CPU DRP's 8 MiB would
-  cost ~16 GiB.
-
-  Making either a kwarg would help, but the coupling is the real problem -- raising one for a
-  detector's sake silently enlarges every reduce buffer.
+  Cheap now that transitions have their own buffers: 2 MiB costs 2 MiB per transition
+  buffer, not per reduce buffer.  Worth a `static_assert` or a Configure-time check that
+  names the real requirement rather than a kwarg.
 
 - **Nothing coordinates the green context split with the kernels' launch geometry.**
   There are three independent hard-coded SM tables, and they disagree:

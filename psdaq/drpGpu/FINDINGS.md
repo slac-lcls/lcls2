@@ -1046,7 +1046,15 @@ things gate that: the trigger setup below, an output path (WEKA is not mounted o
    with `Unrecognized kwarg 'raw=1'`.  The allowlist working as intended.
 2. `maxTrSize` was 256 kiB, too small for an ePixUHR3x2 Configure.
 3. Raising it to 512 kiB failed identically, because the extent **grows to fill whatever it is
-   given** -- see the `maxTrSize` item in `TODO.md`.  `epixuhr3x2_0`'s config is 902026 bytes of JSON.
+   given**:
+
+       Xtc.hh:111: Insufficient space for 524 bytes (... extent 262012)    # 256 kiB
+       Xtc.hh:111: Insufficient space for 760 bytes (... extent 524036)    # 512 kiB
+
+   Both read as near misses -- "overflowed by 392 bytes" -- and neither was: `epixuhr3x2_0`'s
+   config is **902026 bytes of JSON**, so each number is where it stopped, not what it needed.
+   `BEBDetector::_addJson` builds the JSON into a temporary buffer *also* sized `maxTrSize`,
+   which is why the shortfall is never fixed.
 4. Settled at 2 MiB.
 
 The lesson for the plan's verification section: it checked that the code compiled and installed,
