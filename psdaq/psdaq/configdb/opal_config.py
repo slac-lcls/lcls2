@@ -41,8 +41,16 @@ def setup_timing(cl):
     cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxUserRst()
     time.sleep(0.1)
 
-    txId = timTxId('opal')
-    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+#    move txidset after clock rate checking
+#    txId = timTxId('opal')
+#    cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
+
+def dumpTiming(tim):
+    logging.warning(f'FidCount  : {tim.FidCount.get()}')
+    logging.warning(f'RxRstCount: {tim.RxRstCount.get()}')
+    logging.warning(f'RxDecErrs : {tim.RxDecErrCount.get()}')
+    logging.warning(f'RxDspErrs : {tim.RxDspErrCount.get()}')
+
 
 def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
 
@@ -50,9 +58,10 @@ def opal_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",ver
     global pv
     global xpmpv_global
 
-    print('opal_init')
+    print(f"opal_init (i2c setup:{timebase}))")
 
     args['dev'] = dev
+    args["timebase"] = timebase
     lm=lanemask
     lane = (lm&-lm).bit_length()-1
     assert(lm==(1<<lane)) # check that lanemask only has 1 bit for opal
@@ -107,7 +116,50 @@ def opal_connectionInfo(cl, alloc_json_str):
         pv.start()
     else:
         if barrier_global.supervisor:
+
             setup_timing(cl)
+
+            tim = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx
+            dumpTiming(tim)
+            time.sleep(0.1)
+            tim.ClearRxCounters()
+
+            if args["timebase"]=="186M":
+                clockrange = (180.,190.)
+            elif args["timebase"]=="119M":
+                clockrange = (115.,125.)
+            else:
+                clockrange = None
+
+            if clockrange is not None:
+                if True:
+                    # check timing reference clock, program if necessary
+                    if args["timebase"] == "119M":
+                        rate = cl.ClinkPcie.Hsio.TimingRx.GthRxAlignCheck[0].TxClkFreq.get()
+                    else:
+                        rate = cl.ClinkPcie.Hsio.TimingRx.GthRxAlignCheck[1].TxClkFreq.get()
+
+                    print(f"check clock rate: {rate}")
+                    if (rate < clockrange[0] or rate > clockrange[1]):
+                        print(f"programming clock: {rate}")
+                        if args["timebase"] == "119M":
+                            cl.ClinkPcie.I2CBus.programSi570(119.)
+                            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
+                        else:
+                            cl.ClinkPcie.I2CBus.programSi570(1300/7.)
+                            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+                           
+                        time.sleep(1)
+                        dumpTiming(tim)
+                        #tim.C_RxReset()
+                        time.sleep(0.1)
+                        tim.ClearRxCounters()
+                else:
+                    logging.warning('Supervisor is not I2cBus manager')
+
+
+            txId = timTxId('opal')
+            cl.ClinkPcie.Hsio.TimingRx.TriggerEventManager.XpmMessageAligner.TxId.set(txId)
 
         barrier_global.wait()
 
