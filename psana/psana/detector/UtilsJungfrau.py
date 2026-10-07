@@ -864,7 +864,7 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
         #kwa.setdefault('cversion', 3)
         det_raw._odc = odc = DetCache(det_raw, evt, **kwa) # cache.add_detcache(det_raw, evt, **kwa)
         logger.info('calib_jungfrau **kwa: %s' % str(kwa))
-        if odc.cversion != CALIB_PYT_V0:
+        if odc.cversion != CALIB_PYT_V0 and odc.cmps is not None:
             logger.warning('calib_jungfrau_versions:'\
                           f'\n    calib jungfrau with cversion={odc.cversion} is intended to run fast C++ version'\
                            ' and currently DOES NOT APPLY COMMON-MODE CORRECTION'\
