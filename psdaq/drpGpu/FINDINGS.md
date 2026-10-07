@@ -238,6 +238,21 @@ at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
   are separate and not of interest.  Note `TimingFrameRx.countReset()` is merely an alias
   for `ClearRxCounters()` (`TimingFrameRx.py:264`), so there is no third thing to call.
 
+## The UHR emulator's payload is constant, so it cannot prove per-event freshness
+
+Gabriel, 2026-10-05: the data the UHR emulator emits **is the same from event to event**.
+He believes a register exists that would make it emit sequence numbers instead but is not
+sure of it or how to set it.
+
+That decides what a run can demonstrate.  On `EpixUHRemu` the frame counter ramping
+0,1,2,... with all deltas 1 was the proof that each raw block is freshly copied -- it is
+what validated runs 269 and 277.  On the real ePixUHR3x2 the payload is event-invariant, so
+`xtc-rawdump.py` reports `element[0]` constant and identical `first12` and nonzero counts on
+every event (runs 65 and 66).  **That is expected, not a fault** -- but it means a real-panel
+run has **no per-event liveness signal in the data**: one stale frame repeated would look
+identical.  Liveness has to come from the pulse ids and timestamps, which do advance, and
+from the `keepRaw`/extent agreement.
+
 ## The reduced payload is half the raw one, and that is correct
 
 Noticed on run 60, 2026-10-05, and it reads as corruption until the bit layout is recalled.
@@ -604,6 +619,34 @@ divisor".
 910000 divisor as "1.02Hz", so this is deliberate and long-standing in Matt's design.
 **Left alone on Ric's instruction, 2026-10-06**: the 91 factors into a great deal else.
 
+## The fp16 plan: one format at a time, so nothing is doubled
+
+Chris, 2026-10-05, correcting an earlier reading here that several notes had been written
+against.  What the updated firmware will do:
+
+- new **registers select u16 or fp16 mode** for the panel;
+- the **"raw"** block -- "raw" being the label for the *prescaled* data -- is then u16
+  **or** fp16 according to that register, **not both**;
+- the **non-raw** block becomes **"fex"**: fp16 calibrated, an ROI, or another extraction.
+
+**The wrong premise was "u16 *and* fp16 together on an asserted keepRaw, roughly doubling
+the DMA".**  Nothing is doubled.  Both formats are 2 B/pixel, so the raw block is 387072 B
+either way and `dmaBufSize` is unchanged by the mode register; a marked event carries
+`32 + raw + fex`, where fex is at most a full fp16 frame, against the 774176 B that "u16
+alongside fp16" would have needed.  The "separate sub-frames vs interleaved `{u16, __half}`
+elements" question is **moot** -- one format at a time means no pairing to lay out, so
+`cnt = sub.size / sizeof(*src)` keeps meaning a pixel count and `_copyRaw`'s strided copy
+per ASIC stays a copy rather than becoming a gather.
+
+So `rawSize()` stays `NPixels * 2` and `rawShape()` stays as it is, both already right for
+either mode.  `RawU16Def` is the part that does not generalise, which is what prompted the
+`FLOAT16` proposal below.
+
+`EpixUHR3x2::EpixUHR3x2()` aborts on `raw=fp16` naming the reason, and `m_u16` defaults to
+true.  `EpixUHR3x2Beam` is **kept and still instantiated** by `recordEvent()`'s unreachable
+`else`, so it keeps compiling as the surrounding code moves and the revisit starts from
+working code rather than from rot.
+
 ## Proposal for Chris: add FLOAT16 to the Xtc type system
 
 Needs Chris's buy-in before anything is written -- `xtcdata` is shared with psana and
@@ -937,6 +980,43 @@ pair.  They have diverged a long way -- `checkError` changed signature, `DataDev
 `DataGPU`, `GpuAsyncOffsets` is gone from `include/`, 340 header lines differ -- so porting
 pgpread is a real refactor.  It is also unnecessary: nothing else uses those files, they
 still build, and they are not in the way.  Leave them until someone needs pgpread itself.
+
+## The green context split, measured: 6/40/18 on an A5000 and 8/40/84 on an H200
+
+Both on 2026-09-15, and they are the constraints any derived scheme has to respect.
+`m_green_ctx[0]` goes to the Reader *and* TrgInpGen, `[1]` to the Reducer, `[2]` -- the
+remainder -- to `TebReceiver::_recorder`.
+
+    drp-srcf-gpu001, RTX A5000        drp-srcf-gpu008, H200 NVL
+      Initial SM resources: 64          Number of multiprocessors: 132
+      Min. SM partition size: 2         Min. SM partition size: 8
+      context 0:  6 SMs                 context 0:  8 SMs
+      context 1: 40 SMs                 context 1: 40 SMs
+      context 2: 18 SMs                 context 2: 84 SMs
+
+The A5000 is 6 + 40 + 18 = 64 exactly, so a derived scheme must land on multiples of 2.
+**The H200 is 8/40/84, not the 6/40/86 that arithmetic on the hard-coded values predicts**,
+because its device-level `minSmPartitionSize` is 8 where the A5000's is 2 and the clamp at
+`PGPDetector.cc:617` raised group 0's requested 6 to 8.  The one guard that exists did the
+useful thing.  Note the *per-context* `minSmPartitionSize` reads 2 after the split, so it
+is the device-level value that constrains the request.
+
+That softens the `_event` complaint: it asks for 8 SMs' worth at `tpSM` 2048 and context 0
+has exactly 8; on the A5000 it asked 6 and had 6.  **It fits on both by coincidence of two
+independently chosen tables, and nothing would warn if a future device broke it.**  The
+real imbalance is `_reduce` using 10 of context 1's 40 on an H200, and the recorder holding
+84 of 132 SMs -- 64% of the GPU.
+
+**And why that imbalance is invisible: the DRPs are DMA-bound, not GPU-bound.**
+Re-confirmed on gpu008 with the merged pre-release driver, 33 kHz on all five DRPs, no
+drops or overflows.  At `dmaBufSize=387104`:
+
+    387104 B x 33035 Hz = 12.788 GB/s per DRP,  63.9 GB/s across five
+
+against 15.75 GB/s raw for one PCIe 4.0 x8 uplink -- 81% of raw, essentially payload line
+rate once TLP and DLLP overhead is out.  Each card is pinned at its own uplink, so the GPU
+has spare capacity no matter how the SMs are divided.  Rebalancing therefore cannot improve
+a rate the uplink sets, which is why the open item is gated on x16 gen5.
 
 ## Every DRP log now names its XPM link
 
