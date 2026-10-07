@@ -80,6 +80,9 @@ public:
   CoreRegisters() : _swRegs(nullptr), _fwRegs(nullptr) {}
   void initialize(bool sim, void* regs);
 
+  volatile uint8_t* registers() const
+  { return _fwRegs ? _fwRegs->registers() : _swRegs; }
+
   uint32_t dmaDataBytes() const
   { return _fwRegs ? _fwRegs->dmaDataBytes()
                    : _readSwReg(_swRegs, GpuAsyncReg_DmaDataBytes); }
@@ -91,9 +94,6 @@ public:
   void     setWriteEnable(uint32_t val)
   { if    (_fwRegs)  _fwRegs->setWriteEnable(val);
     else             _writeSwReg(_swRegs, GpuAsyncReg_WriteEnableV1, val); }
-  void     setWriteCount(uint32_t val)
-  { if    (_fwRegs)  _fwRegs->setWriteCount(val);
-    else             _writeSwReg(_swRegs, GpuAsyncReg_WriteCountV1, val); }
   uint32_t axisDeMuxSelect() const
   { return _fwRegs ? _fwRegs->axisDeMuxSelect()
                    : _readSwReg(_swRegs, GpuAsyncReg_AxisDeMuxSelect); }
@@ -125,7 +125,7 @@ private:
     *(uint32_t*)((uint8_t*)baseptr + offset) = value;
   }
 private:
-  uint32_t*                         _swRegs;
+  uint8_t*                          _swRegs;
   std::unique_ptr<GpuAsyncCoreRegs> _fwRegs;
 };
 

@@ -1,7 +1,8 @@
 from psdaq.utils import enable_l2si_drp
 import l2si_drp
 from psdaq.configdb.barrier import *
-from psdaq.cas.xpm_utils import timTxId
+from psdaq.cas.xpm_utils import timTxId, xpmLinkId
+import os
 import rogue
 import time
 import json
@@ -11,24 +12,54 @@ barrier_global = Barrier()
 args = {}
 #logging.basicConfig(level=logging.INFO)
 
-def detect_C1100():
-    ''' Detect if the board is a C1100 by reading /proc/datadev_0 '''
-    file_datadev='/proc/datadev_0'
-    isC1100 = False
+def detect_C1100(dev):
+    ''' Detect if the board is a C1100 by reading the /proc entry for dev
+
+    The name is derived from dev rather than hardwired to /proc/datadev_0, since
+    the driver's cfgDevName=1 option names devices by PCI bus number instead:
+    /dev/datadev_02 with /proc/datadev_02.  With the name hardwired, the open
+    failed on such a node and the board was reported as not a C1100, which is a
+    guess and on this hardware the wrong one.  That put xpmdet_init on the
+    KCU1500 branch, whose rogue tree reads refClockRate() as 0.0, which is outside
+    every timebase range, so connectionInfo() went on to program a Si570 the C1100
+    does not have and divided by its zero crystal frequency.
+
+    Hence no falling back to False: failing to identify the board is not the same
+    as identifying it as a KCU1500, and four steps later the difference is a
+    ZeroDivisionError with nothing to connect it back to here.
+    '''
+    file_datadev = os.path.join('/proc', os.path.basename(dev))
     try:
         with open(file_datadev, 'r', encoding='utf-8') as file:
             for line in file:
                 if 'Build String' in line:
-                    isC1100 = 'C1100' in line
-                    break
-        return isC1100
+                    return 'C1100' in line
+    except OSError as e:
+        raise RuntimeError(f"Cannot determine the board type: {e}.  Is the datadev "
+                           f"driver loaded, and is {dev} the right device?") from e
+    raise RuntimeError(f"Cannot determine the board type: no 'Build String' in "
+                       f"{file_datadev}")
 
-    except FileNotFoundError:
-        logging.error(f"Error: File '{file_datadev}' not found.")
-        return False
-    except Exception as e:
-        logging.error(f"Error reading file: {e}")
-        return False
+def rxIdStr(rxId):
+    """XPM, link and QSFP port for a legal remote link id, else why it is not.
+
+    The low byte is the XPM's link number and bits 23:16 are the XPM number, so this
+    register says exactly which XPM port a DRP is cabled to.  Worth spelling out rather
+    than printing hex alone: when a link misbehaves, xpmpva names it, and nothing else in
+    a DRP log connects that name back to a device or a process.
+
+    Both forms of the link are given because xpmpva uses the QSFP one -- 'QSFP%d-%d' of
+    port//4 and port%4, at xpmpva.py:71 and :701 -- while the register itself, the
+    deadtime tables and the illegal-value checks below all use the absolute number.
+    Printing one and not the other just moves the arithmetic to whoever is reading the
+    log at the time, which is exactly when nobody wants to do arithmetic.
+    """
+    if rxId == 0 or rxId == 0xffffffff or (rxId & 0xff) > 15:
+        return 'illegal'
+    name, ip = xpmLinkId(rxId)
+    link = rxId & 0xff
+    return f'{name} link {link} = QSFP{link // 4}-{link % 4} ({ip})'
+
 
 def dumpTiming(tim):
     logging.warning(f'FidCount  : {tim.FidCount.get()}')
@@ -44,7 +75,7 @@ def xpmdet_init(dev='/dev/datadev_0',lanemask=1,timebase="186M",verbosity=0):
     args["timebase"]=timebase
     args["lanemask"]=lanemask
 
-    if (detect_C1100()):
+    if (detect_C1100(dev)):
        # print("Board Detected C1100")
         root = l2si_drp.DrpTDetRoot(pollEn=False,devname=dev,boardType='VariumC1100',qsa=False, xvcPort=None)
         root.__enter__()
@@ -78,7 +109,18 @@ def xpmdet_connectionInfo(alloc_json_str):
 
     alloc_json = json.loads(alloc_json_str)
     supervisor,nworker = supervisor_info(alloc_json,args['dev'])
-    logging.info(f'xpmdet supervisor: {supervisor}, nworkers: {nworker}')
+    # warning, not info: a DRP filters info out (see rxIdStr's comment), and much of what
+    # follows -- the dumpTiming() counter dump, the reference clock check, the Si570
+    # programming -- happens only in the supervisor.  Without this line a log that is
+    # simply missing that output is indistinguishable from one where something failed.
+    # Diagnosing exactly that cost a detour on 2026-09-16: on a GPU node two processes can
+    # share one card, supervisor_info() groups by host *and* board, and the process that
+    # correctly deferred to its peer looked broken.
+    # nworker counts the entries after the first, i.e. the workers the barrier expects
+    # besides the supervisor -- a property of the board, not of this process.  Saying
+    # "other" would be wrong from a non-supervisor's point of view, since it is one of them.
+    logging.warning(f'xpmdet {"IS" if supervisor else "is NOT"} the barrier supervisor for '
+                    f'{args["dev"]}, {nworker} worker(s) besides the supervisor')
     barrier_global.init(supervisor,nworker)
 
     if barrier_global.supervisor:
@@ -96,6 +138,29 @@ def xpmdet_connectionInfo(alloc_json_str):
             clockrange = None
 
         if clockrange is not None:
+            #  Is the commented-out guard below what was intended here?  Leaving the
+            #  question for whoever owns this.  Two observations, from debugging a
+            #  C1100 on drp-srcf-gpu001, 2026-09-12:
+            #
+            #  args['core'] is DRIVER_TYPE_ID_G==0, a bare AxiVersion generic whose
+            #  only other use in this file is 'il = i if args['core'] else i+4' in
+            #  xpmdet_connect, i.e. which block of TriggerEventBuffer indices the
+            #  firmware puts the lanes at.  That says nothing about whether the board
+            #  has a reference clock to program, so it looks like the wrong test
+            #  either way round -- which may be why it was replaced by 'if True'.
+            #
+            #  But 'if True' is not right either: only _DevKcu1500 adds an I2CBus,
+            #  _DevC1100 has none, so on a C1100 whose refClockRate() reads outside
+            #  clockrange this raises AttributeError on root.I2CBus.  It has not bitten
+            #  yet only because the rate normally reads in range.  Testing for the bus
+            #  rather than for a firmware variant would cover both boards:
+            #
+            #  if hasattr(root, 'I2CBus'):
+            #      rate = root.TDetTiming.refClockRate()
+            #      if (rate < clockrange[0] or rate > clockrange[1]):
+            #          ...
+            #  else:
+            #      logging.info('No I2CBus on this board; not programming a reference clock')
             if True:
 #            if args['core']:
                 # check timing reference clock, program if necessary
@@ -147,7 +212,7 @@ def xpmdet_connectionInfo(alloc_json_str):
                 raise RuntimeError(f"Illegal XPM Remote link id. Try TxPllReset.")
     barrier_global.wait()
     rxId = xma.RxId.get()
-    logging.info('rxId {:x}'.format(rxId))
+    logging.warning('XPM remote link id 0x{:08x}: {}'.format(rxId, rxIdStr(rxId)))
 
     connect_info = {}
     connect_info['paddr'] = rxId

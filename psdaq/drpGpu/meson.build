@@ -92,6 +92,10 @@ cuda_inc_dir = include_directories([
       'Reader.cu',
       'TrgInpGen.cu',
       'Reducer.cu',
+      # Not a reducer, and deliberately not a shared library: the CALIB config alias
+      # selects it, so it must be resident rather than named by a kwarg.  See
+      # PassthruShim.hh and Reducer::_setupAlgo().
+      'PassthruShim.cu',
       'FileWriter.cc',
     ],
     include_directories: [
@@ -148,6 +152,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       python_dep,
       cuda_dep,
@@ -167,12 +172,63 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       psalg_utils_dep,
       cuda_dep,
       python_dep,
       nlohmann_json_dep,
+    ],
+  )
+
+  EpixUHR3x2_gpu_lib = shared_library('EpixUHR3x2_gpu',
+    [
+      'Detector.cc',
+      'EpixUHR3x2.cu',
+      '../drp/EpixUHR3x2.cc',
+    ],
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    # detector_shlib for detector::configNames(), reached through BEBDetector by the
+    # ../drp detector class compiled in above.  A dlopen'd plugin has to carry its own
+    # dependencies: drp_gpu does not link libdetector, so without this the dlopen
+    # fails at run time on an unresolved symbol rather than at build time.
+    link_with: [detector_shlib],
+    cuda_args: cuda_args,
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      cuda_dep,
+      python_dep,
+      nlohmann_json_dep,
+    ],
+  )
+
+  Jungfrau_gpu_lib = shared_library('Jungfrau_gpu',
+    [
+      'Detector.cc',
+      'Jungfrau.cu',
+      '../drp/Jungfrau.cc',
+      '../drp/JungfrauDetectorId.cc',
+    ],
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    # detector_shlib for detector::configNames(), reached through BEBDetector by the
+    # ../drp detector class compiled in above.  A dlopen'd plugin has to carry its own
+    # dependencies: drp_gpu does not link libdetector, so without this the dlopen
+    # fails at run time on an unresolved symbol rather than at build time.
+    link_with: [detector_shlib],
+    cuda_args: cuda_args,
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      cuda_dep,
+      python_dep,
+      nlohmann_json_dep,
+      sls_dep,
     ],
   )
 
@@ -187,6 +243,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       psalg_utils_dep,
@@ -202,6 +259,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       #python_dep,
       xtcdata_dep,
@@ -218,6 +276,8 @@ cuda_inc_dir = include_directories([
     ],
     install: true,
     install_rpath: libdir_install_rpath,
+    link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       cuda_dep,
@@ -233,6 +293,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       pfpl_dep,
@@ -247,6 +308,7 @@ cuda_inc_dir = include_directories([
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [],
+    cuda_args: cuda_args,
     dependencies: [
       xtcdata_dep,
       sleek_dep,
@@ -262,6 +324,7 @@ cuda_inc_dir = include_directories([
   #  install: true,
   #  install_rpath: libdir_install_rpath,
   #  link_with: [],
+  #  cuda_args: cuda_args,
   #  dependencies: [
   #    xtcdata_dep,
   #    cusz_dep,
@@ -277,6 +340,7 @@ cuda_inc_dir = include_directories([
   #  install: true,
   #  install_rpath: libdir_install_rpath,
   #  link_with: [],
+  #  cuda_args: cuda_args,
   #  dependencies: [
   #    xtcdata_dep,
   #    cuszp_dep,
@@ -292,6 +356,7 @@ cuda_inc_dir = include_directories([
 #    install: true,
 #    install_rpath: libdir_install_rpath,
 #    link_with: [],
+#    cuda_args: cuda_args,
 #    dependencies: [
 #      xtcdata_dep,
 #      eip_dep,

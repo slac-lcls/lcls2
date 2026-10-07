@@ -569,6 +569,21 @@ static void dictAssign(PyDgramObject* pyDgram, DescData& descdata, Xtc* myXtc)
                 );
                 break;
             }
+            case Name::FLOAT16: {
+                auto arr = descdata.get_array<_Float16>(i);
+                arrObj = (PyArrayObject*)PyArray_New(
+                    &PyArray_Type,
+                    name.rank(),
+                    dims,
+                    NPY_HALF,
+                    NULL, // Strides: Use default
+                    arr.data(),
+                    0,    // Size: Use DTYPE
+                    NPY_ARRAY_CARRAY,
+                    NULL  // Additional data?
+                );
+                break;
+            }
             default: {
                 throw std::runtime_error("dgram.cc: Unsupported array type");
                 break;

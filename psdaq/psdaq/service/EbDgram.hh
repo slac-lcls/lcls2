@@ -54,7 +54,7 @@ public:
 public:
     void setEOL()  const { _pulseIdAndControl |= 1ULL << (6 + 56); }
     bool isEOL()   const { return (_pulseIdAndControl & (1ULL << (6 + 56))) != 0; }
-    bool keepRaw() const { return (env>>22)&1; }
+    // keepRaw() comes from XtcData::TransitionBase, so TimingHeader has it too
 };
 
 #pragma pack(pop)

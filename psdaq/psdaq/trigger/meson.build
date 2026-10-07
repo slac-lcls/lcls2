@@ -113,6 +113,23 @@ if cuda_compiler.found()
     install_rpath: libdir_install_rpath,
     cuda_args: cuda_args,
   )
+
+  calibTrigger_gpu_lib = shared_library('calibTrigger_gpu',
+    [
+      'src/calibTriggerDrp.cc',
+      'src/calibTriggerPrimitive_gpu.cu',
+      'src/calibTriggerTeb.cc',
+    ],
+    include_directories: [trigger_inc_dir],
+    dependencies: [
+      xtcdata_dep,
+      psalg_utils_dep,
+      nlohmann_json_dep,
+    ],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    cuda_args: cuda_args,
+  )
 endif
 
 tstTebPy_lib = shared_library('tstTebPy',
@@ -141,6 +158,7 @@ tstTebPy_lib = shared_library('tstTebPy',
 calibTrigger_lib = shared_library('calibTrigger',
   [
     'src/calibTriggerDrp.cc',
+    'src/calibTriggerPrimitive_cpu.cc',
     'src/calibTriggerTeb.cc',
   ],
   include_directories: [trigger_inc_dir],
