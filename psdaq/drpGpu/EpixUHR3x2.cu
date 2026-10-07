@@ -36,19 +36,14 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   // What format the panel's data arrives in, which is a property of its firmware:
   //
   //   raw=u16    1 gain bit in bit 0, an 11-bit ADC value in bits 1-11, zeros in
-  //              bits 12-15, so the GPU applies pedestals and gains itself.  What
-  //              the firmware presents today, and so the default.
+  //              bits 12-15, so the GPU applies pedestals and gains itself.  The
+  //              default.
   //   raw=fp16   already calibrated by the firmware; the per-element work is an
-  //              fp16 -> fp32 conversion.  REFUSED -- see below.
+  //              fp16 -> fp32 conversion.  Refused: EpixUHR3x2Beam's conversion is
+  //              incomplete.  It stays instantiated by recordEvent() so that it
+  //              keeps compiling as the surrounding code changes.
   //
   // Either way a Reducer runs on the calibrated result.
-  //
-  // fp16 is deliberately unselectable rather than deleted.  The planned firmware picks
-  // u16 or fp16 by register, so the raw block is one or the other and the non-raw block
-  // becomes signal-extracted "fex" data.  The per-element work for fp16 and the fex
-  // format are both unsettled, so EpixUHR3x2Beam's conversion cannot be completed.  It
-  // stays compiled -- recordEvent() still instantiates it -- so it keeps building as
-  // the surrounding code changes.  See TODO.md.
   //
   // @todo: Read the format from the firmware rather than from a kwarg.  It is
   //        queryable -- the Build String and Firmware Version in /proc/datadev_* are
@@ -59,10 +54,7 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
     auto const& fmt = para.kwargs.at("raw");
     if      (fmt == "u16")   m_u16 = true;
     else if (fmt == "fp16") {
-      logging::critical("EpixUHR3x2: 'raw=fp16' is not supported yet.  It awaits the "
-                        "firmware's mode registers and the fex format, and the Xtc type "
-                        "system has no fp16 to describe it with; "
-                        "use 'raw=u16', which is what the firmware presents today.");
+      logging::critical("EpixUHR3x2: 'raw=fp16' is not supported; use 'raw=u16'.");
       abort();
     }
     else {
