@@ -719,6 +719,8 @@ first.
     reinterpreted offline, or widened to `FLOAT` on the device at 2x the bytes on disk.
     **That is a schema question for Chris and psana, and it is new** -- the old note said
     "no schema question arises", which was true only while raw was always u16.
+    A concrete proposal, needing Chris's buy-in, is under "Proposal for Chris: add
+    FLOAT16 to the Xtc type system" below.
   - the per-element work is still undecided, so the `raw=fp16` abort stays.  But what it
     is waiting for has changed: not a layout, just the mode register and the fex format.
 
@@ -1624,6 +1626,167 @@ Eleven identical gaps is a periodic divisor, not statistical thinning.
 So the PV and everything downstream of it are sound, and the defect is only the missing
 `L0RawUpdate` in the Cu branch.  **For Matt:** hoist the conversion above the Cu/SC
 branch, or duplicate it into Cu?  His file, and the Cu semantics are his to confirm.
+
+## psana could not open our files: EventNamesIndex was declared twice.  Fixed
+
+**Found and fixed 2026-10-06.  It predated that day's work** -- the pre-FLOAT16 build
+failed identically, so nothing about the type addition was involved.  `xtcreader` is
+perfectly happy with these files; **psana aborted before the first event**:
+
+    NamesIter.cc: Found duplicate namesId 0xa
+    terminate called after throwing an instance of 'char const*'
+
+`NamesIter::process()` throws on a repeated `NamesId`, where `xtcreader` just prints both.
+So **every file the GPU DRP has ever recorded is unreadable by psana**, including run 66.
+This is worth knowing before anyone promises end-to-end operation.
+
+**Cause.**  `Gpu::EpixUHR3x2::configure()` calls `m_det->configure()` first -- the CPU
+`Drp::EpixUHR3x2`, which at `EpixUHR3x2.cc:216` already declares `Names` at
+`NamesId(nodeId, EventNamesIndex)` with `Alg("raw", 0, 1, 0)`.  The GPU detector then
+declares **its own** `Names` at **the same** `namesId`, with `Alg("raw", 0, 0, 0)`.  Hence
+`0xa` twice, which `xtcreader -d` shows as the same detName and alg at two versions:
+
+    namesid: 0xa  Alg: raw, Version: 0x000100     <- the CPU base class
+    namesid: 0xa  Alg: raw, Version: 0x000000     <- Gpu::EpixUHR3x2
+
+The two descriptions genuinely differ: the base class adds `epixUHR3x2RawDef`, ours adds
+`RawU16Def`.  So this is not a duplicate declaration of the same thing, it is **two
+different schemas claiming one id**, and the reader that wins is whichever lands first.
+
+**Only `EpixUHR3x2` is affected, and the reason is structural.**  `EpixUHRemu` and
+`EpixUHRsim` also call `m_det->configure()`, so the shape looks identical -- but their
+`m_det` is an `XpmDetector`, which declares no `Names` at all, while the 3x2's is a
+`BEBDetector` that declares the panel's event `Names` from the config.  So the collision
+needs a CPU base class that describes events, and only the 3x2 has one.  Runs 269 and 273
+were recorded by `EpixUHRemu` and so should open; **unverified** -- those files expired
+from gpu001's `/tmp`.
+
+**The fix: adopt the base class's `NameIndex` instead of declaring a second `Names`.**
+The two declarations were *identical* in everything offline can see -- same detName,
+detType, detId, segment, and both a single `{"raw", UINT16, 2}` at index 0, since
+`RawU16Def` and `Drp::EpixUHR3x2RawDef` agree.  Only the Alg version differed, 0.0.0
+against the base's 0.1.0.  So the second block carried no information and
+`Gpu::EpixUHR3x2::configure()` now does
+
+    m_namesLookup[namesId] = m_det->namesLookup()[namesId];
+
+`rawEvent()` needs the entry in *this* Detector's lookup for `CreateData`, not another
+block in the Xtc.  `NameIndex`'s assignment operator deep-copies (`malloc` + `memcpy` of
+the whole `Names` extent, `NameIndex.hh:40`), so the copy outlives `m_det` regardless.
+`RawU16Def` is now unused here and is gone; `EpixUHRemu` keeps its own, which it needs.
+Recorded Alg version becomes 0.1.0, matching what the CPU DRP writes.
+
+**Only `EpixUHR3x2` was affected, and the reason is structural.**  `EpixUHRemu` and
+`EpixUHRsim` also call `m_det->configure()`, so the shape looks identical -- but their
+`m_det` is an `XpmDetector`, which declares no `Names` at all, while the 3x2's is a
+`BEBDetector` that declares the panel's event `Names` from the config
+(`BEBDetector::configure()` always calls `_configure()`, in both modes).  So the
+collision needs a CPU base class that describes events, and only the 3x2 has one.
+
+**Validated by run 74 on gpu006**, `drp_gpu` md5 `c6270e78584ea`.  `xtcreader -d` shows
+**one** `namesid: 0xa` block where run 66 showed two, at the base class's
+`Version: 0x000100`, and **psana opens the file and reads the arrays** -- the first time
+any GPU DRP output has been readable by psana:
+
+| check | run 74 |
+|---|---|
+| `xtcreader` | rc=0, 1315 L1Accepts |
+| unmarked / marked | 1303 @ 774212, 12 @ 1161340 |
+| `keepRaw`/extent mismatches | **0 of 1315** |
+| damage | `0x0` on all 1334 records |
+| psana `detnames` | `epixuhr3x2`, `epixuhr3x2hw` |
+| psana events walked | **1315, all of them** |
+| psana arrays | 12 (the marked events), `uint16`, 99.9% nonzero |
+| marked spacing | events 6, 125, 244, ... 1314: gaps of **119** (one 118) |
+| marked rate | **1.009 Hz** at 120 Hz triggers |
+
+psana's `raw()` returns shape **`(1, 336, 576)`** = 193536 pixels, not the `6 32256` the
+file declares: `raw_v01` reshapes and descrambles per `epixuhr3x2.py`, which is its job.
+The leading values differ from `xtcreader`'s for the same reason -- same payload,
+different presentation.  **"Problem reading dgram header." at the end is normal**: it is
+how `dgram.cc:865` raises `StopIteration` at end of file, not an error -- and it says
+nothing about whether the file has an EndRun.  Run 74 does; check the file, not that
+message.
+
+**Run 74 is also the first correctly prescaled run driven entirely by configDB**, with no
+manual PV write: `keepRawRate` of 1.0 Hz for groups 2 and 4 programmed
+`L0RawUpdate = 910000`, read back on both before RUNNING, giving 1.009 Hz measured against
+the 1.0204 Hz nominal -- the TPGSEC 2% and nothing else.  Run 66 needed the PV written by
+hand; this one did not.
+
+## keepRawRate is programmed in Cu mode now.  Fixed, and the units bite
+
+Matt was ambivalent about who should fix it (meeting, 2026-10-06), so we did.  The
+conversion is **hoisted out of the SC branch** in `ts_config.py` and now runs for both
+LINAC modes, reading Cu's flat `groupN_keepRawRate` or SC's nested `groupN.keepRawRate`.
+A Cu config predating the entry **warns** rather than raising -- Cu never programmed this,
+so such a config is no worse off than before, and `logging` had to be imported for that
+warning to work at all (Matt's 2024 `46fcce78` used it without the import, which is
+plausibly why someone later replaced the warning with a `raise`).
+
+**The trap, found live on run 73: the config field is a RATE, the PV is a DIVISOR, and
+they differ by ~10^6.**  `user.Cu.group{2,4}_keepRawRate` had been set to **928571.0** --
+the divisor written by hand for run 66 -- so `int(910000/928571.0)` truncated to **0** and
+the XPM was programmed to never insert raw data.  Every structural check passed; the PV
+simply read 0.
+
+So `_rawUpdateDivisor()` now **refuses** a rate it cannot represent instead of writing 0:
+
+- `rawRate <= 0`, or a rate so high the divisor truncates below 1, names the units
+  mistake explicitly and gives the maximum, `TPGSEC` Hz;
+- a rate so low the divisor exceeds **20 bits** (`l0RawUpdate`'s width in
+  `pyxpm/xpm/_XpmApp.py`) reports the minimum, 0.8678 Hz.
+
+Exercised over 1.0 / 0.992 / 10.0 / 910000 Hz valid and 928571 / 0 / -1 / 0.8 / 2e6
+rejected.  `ts_config_store.py`'s help string now says "(Hz), NOT the L0RawUpdate
+divisor".
+
+**Note `TPGSEC` is 910000 but the fiducial rate is 1.3 GHz/1400 = 928571.4 Hz**, so every
+`keepRawRate` lands ~2% high -- 1.0 Hz asks for 1.0204 Hz.  `tsdef.py:81` already labels a
+910000 divisor as "1.02Hz", so this is deliberate and long-standing in Matt's design.
+**Left alone on Ric's instruction, 2026-10-06**: the 91 factors into a great deal else.
+
+## Proposal for Chris: add FLOAT16 to the Xtc type system
+
+Needs Chris's buy-in before anything is written -- `xtcdata` is shared with psana and
+every CPU DRP, so it is not ours to change unilaterally.  Recorded here as a worked
+proposal rather than a decision.
+
+**The question that prompted it was whether x86 gcc even has fp16, and if not, whether to
+leave the block opaque and reinterpret it in psana.**  It does, so the opaque route is not
+forced.  Checked with the conda-forge gcc 13.3.0 this tree builds with:
+
+| check | result |
+|---|---|
+| `_Float16` accepted under `-std=c++17` and `c++20` | yes |
+| `sizeof` / `alignof` | 2 / 2 |
+| arithmetic | `1.5 * 2.25 = 3.375` |
+| bit layout vs CUDA `__half` | **identical**: 1.5 -> `0x3e00`, pi -> `0x4248` |
+| `np.float16` in the daq env | itemsize 2, `NPY_HALF` = 23, numpy 1.26.4 |
+
+Two caveats to state when proposing it.  Without `-mavx512fp16` gcc emits libgcc calls
+(`__extendhfsf2`, `__truncsfhf2`) for fp16 *arithmetic*; with it, native `vmulsh`.  That
+does not matter here, because the DRP only stores and copies fp16 and never computes on
+it -- psana computes, and numpy handles that.  And **`__fp16` is not available on x86
+gcc**, only `_Float16`; the storage-only spelling is an ARM thing.
+
+**The change is three mechanical sites:**
+
+1. `ShapesData.hh` -- **append** `FLOAT16` to `Name::DataType`.  Appending is not a style
+   preference: the enum value is written into the file, so inserting it would reinterpret
+   every existing dataset.
+2. `ShapesData.cc` -- `sizeof(_Float16)` into `element_sizes[]` and `"FLOAT16"` into
+   `str_type()`.  The comment there already requires the two to track the header.
+3. `psana/src/dgram.cc` -- one more `case` yielding `NPY_HALF`.
+
+**Why this is better than declaring the block `UINT16` and reinterpreting offline.**
+`dgram.cc`'s array switch ends in `default: throw std::runtime_error("dgram.cc:
+Unsupported array type")`.  So "opaque u16" does not give psana something to reinterpret
+-- it gives every psana user a `uint16` array of nonsense, silently, with nothing in the
+file recording that the bytes are floats.  A new enum value instead fails **loudly** on an
+old psana, which is the right behaviour for a file it genuinely cannot read.  It also
+beats widening to `FLOAT`, which doubles the bytes on disk for data the firmware already
+produced as fp16.
 
 ## FileWriter spun on an unrecoverable write error.  Fixed at 7b045c66
 
