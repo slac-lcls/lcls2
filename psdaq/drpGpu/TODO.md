@@ -4,6 +4,70 @@ Working notes for the `features/gpu` branch.  Each item records enough context t
 be picked up cold, because the reasoning behind these decisions is otherwise only
 in people's heads.
 
+**This file is where the history goes, not the source.**  If a comment in the code
+explains what something used to be, when it was found, or why it changed, it belongs
+here instead.  See the comment-volume item below.
+
+## This file needs splitting: it is too long to read
+
+Ric, 2026-10-05: too much to consume.  He is right, and the measurement says why --
+3776 lines, of which **about 2200 are not about the GPU DRP at all**: grub (368 lines
+in one section), the node table (314), `slurmd` (190), WEKA, dkms, BIOS, Slurm, RTPRIO.
+Two unrelated projects accreted into one file, so the half needed when reading code is
+buried in the half needed when converting a node.  The `# Appendix: findings` split at
+line ~2200 does not help, because it is a second pile of the same mixture rather than
+open-items-versus-history.
+
+The proposed split, **agreed in outline but not yet done**:
+
+| destination | holds | target |
+|---|---|---|
+| `TODO.md` | open `drpGpu` work only, each item 2-3 lines and a pointer | **under 400 lines** |
+| **Confluence** | the node/fleet material: grub, WEKA, dkms, BIOS, node table, Slurm, RTPRIO | verbatim move |
+| **Confluence** | resolved-and-explained findings worth not rediscovering | verbatim move |
+
+**Confluence rather than more markdown files**, Ric's suggestion and a better fit: a page
+gives a table of contents and collapsible (Expand) macros, so 2000 lines of node notes
+become navigable instead of scrolled past.  Markdown in a repo has neither.  There is
+precedent and tooling already -- three `*.storage.xml` sources in the session directory for
+the driver and `gen_gres_conf` pages, with the traps recorded: the `</>` editor takes
+**storage format**, not wiki markup, and named entities like `&mdash;` must be spelled
+`&#8212;`.  Keep editing the `.storage.xml` sources rather than the pages, or they diverge
+silently.
+
+Do the moves **without rewording**, so the before/after can be checked mechanically;
+condensing the surviving items is the part that needs judgement and a review.  The node
+material is also the part others want to read -- Matt and Gabriel included -- which a wiki
+page serves better than a file on a branch.
+
+A habit worth changing alongside it: record the day's investigation in HANDOFF and promote
+to this file only what is still *open*.  Roughly 290 lines landed here on 10-05 alone, much
+of it findings closed the same day.
+
+## Comment volume needs a cleanup pass
+
+The GPU DRP's comments have grown past what a reader can take in, and the pattern is
+consistent: commit-message content written into source files.  What a line used to be,
+when a problem was found and by whom, where development is heading, numbers restated
+in prose that will go stale.  None of that helps someone reading the code now, and it
+buries the code that does.
+
+Measured 2026-09-30: `features/gpu..features/gpu-raw-calib` adds **387 comment lines
+out of 1079**, 36%.  The worst offenders by comment-block length are `MemPool.hh`
+(an 89-line block at the `HOST_REARMS_DMA` macro, and a 19-line one at
+`HOST_LAUNCHED_REDUCERS`), `PassthruShim.hh` (31 lines before the class),
+`Detector.hh` (a 15-line block on `setPassthru`/`rawSize`), and `PGPDetector.cc`
+(a dozen blocks of 5-15 lines through the recorder).
+
+The standing request is **one or two lines per inline comment**.  Worth keeping: a
+hardware constraint, a non-obvious ordering requirement, a trap that looks like a bug.
+Worth cutting: anything historical, anything a careful reader infers from the next
+line, and any number that duplicates a constant.
+
+Not urgent, but it compounds -- each addition is written in the style of what surrounds
+it.  Best done as one deliberate pass rather than opportunistically, so the result is
+consistent.
+
 ## WEKA reserves CPUs on some nodes, and Slurm must be told in abstract IDs
 
 Cost an evening on drp-srcf-gpu007 on 2026-09-21, after its conversion to hex device names.
@@ -38,12 +102,24 @@ use:
     Resource spec: Reserved abstract CPU IDs: 2-5,64-65
     Resource spec: Reserved machine CPU IDs: 1-2,32,65-66,96      <- must match WEKA's set
 
+**To read WEKA's set, on the node:**
+
+    cat /sys/fs/cgroup/weka-drpsrcf/cpuset.cpus.effective   # WEKA's cores, machine IDs
+    cat /sys/fs/cgroup/cpuset.cpus.effective                # what is left for everything else
+    grep -i weka /etc/fstab                                 # pinned, or WEKA's choice?
+    scontrol show node <node> | grep -i CoreSpec            # what Slurm reserves, abstract IDs
+
+The container name is the `container_name=` from the fstab line, so the cgroup path follows it.
+A node with no such directory has no live WEKA cgroup and needs no reservation on WEKA's
+account -- only core 0 for the OS.
+
 Result: `CoreSpecCount=3` (three whole cores, `{1,65}`, `{2,66}`, `{32,96}`), `CPUEfctv=122`,
 and the node went from offering 60 CPUs that morning to 122.  `pykcuxpm` runs and XPM:13 is
 back.
 
 **This is very probably the open IT ticket about Slurm scheduling onto WEKA-saturated cores** --
-not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".
+not "Slurm picks busy cores" but "Slurm picks cores the kernel forbids it".  The fstab fix for it
+is [ECS-8386](https://jira.slac.stanford.edu/browse/ECS-8386), Chris's to push on.
 
 ### The real fix: name WEKA's cores in fstab
 
@@ -59,7 +135,14 @@ So the scattered set was never arbitrary, it was WEKA spreading three cores acro
 topology.  Naming them explicitly makes the assignment deterministic, reviewable in `fstab`,
 and **stable until someone asks IT to change it** -- which is what makes a static
 `slurm.conf` `CpuSpecList` safe to depend on.  Verified working on gpu008; IT need to
-propagate it through their ansible.
+propagate it through their ansible, under
+[ECS-8386](https://jira.slac.stanford.edu/browse/ECS-8386).  Chris is the one to push on it.
+
+**It does not survive ansible.**  gpu008 read `core=1,core=2,core=3` with its cgroup on `1-3`
+when the fix was applied; on 2026-10-05 its fstab is back to `num_cores=3` and the cgroup has
+re-rolled to machine CPUs `1-2,32`, which `CpuSpecList=0-3` does not cover -- so machine CPU 32
+is allocatable while WEKA holds it, the gpu007 failure mode.  Check the cgroup against
+`CpuSpecList` before trusting either, and expect to re-check after any ansible run.
 
 Deliberately **not** building a tool to derive `CpuSpecList` from `fstab`.  It is a one-line
 lookup per node, it changes only when we ask IT to change it, and the parser would be more
@@ -401,60 +484,143 @@ with `ThreadsPerCore=2`, which only gpu005 has, and NUMA-versus-socket boundarie
 with NPS=4, which only the EPYC nodes have.  So if `gen_gres_conf` is ever run here it tests
 the fix the EPYC nodes cannot.
 
-## Rules that will bite you, learned the hard way
+## Rules that will bite you: moved out of this file
 
-Each of these has already cost time.  The reasoning is in the findings appendix; these are
-the conclusions.
+Split 2026-10-05, because the two halves have different audiences and neither was
+findable in a 3800-line file.
 
-- **Leave `nvidia-powerd` ENABLED** despite `ERROR! UnSupported System`.  It opens the GPUs at
-  boot, which is what creates `/dev/nvidia*`, and **slurmd fatals** if a `gres.conf` `File=`
-  names a device that does not exist.  The message describes the platform, not a fault.
-- **Leave `nvidia-persistenced` DISABLED.**  It holds the GPUs open and blocks the driver's
-  automatic recovery from a GPU fault.  Use `disable --now`; a plain `stop` is undone in 100 ms.
-- **`nvidia-smi -L` is the only authoritative check that a GPU is usable.**
-  `/proc/driver/nvidia/gpus/` and `lspci` list a dead GPU indefinitely once its removal has
-  been refused.
-- **`/proc/datadev_*` is the only authoritative source about the resident driver** -- its
-  `Git Version` and its `Buffer Mode`.  `dkms status` describes the package, `srcversion` the
-  sources, `modinfo` the file on disk, and `/sys/module/datadev/parameters/` does not exist.
-- **Re-install and re-`setcap` `/usr/local/bin/drp_gpu` after every C++ build**, per node.
-  `install` drops file capabilities, and the image check refuses to start rather than running
-  stale code.
-- **`CpuSpecList` is in Slurm's ABSTRACT CPU IDs, not machine IDs.**  On a two-socket SMT node
-  they differ completely: abstract counts socket-major with both threads adjacent, machine
-  counts all first threads then all second threads.  Slurm prints both on every slurmd start --
-  `Resource spec: Reserved abstract CPU IDs:` and `Reserved machine CPU IDs:` -- so **check the
-  machine line against what you meant to reserve**.  Writing machine numbers into
-  `CpuSpecList` reserves the wrong CPUs silently, and the symptom is remote: jobs fail with
-  `task_g_set_affinity: Invalid argument` and `Slurmd could not execve job`, because Slurm
-  allocates a CPU that something else has taken out of the cgroup.
-- **Reserve whole cores, or `CoreSpecCount` will disagree with `CpuSpecList`.**  With SMT on,
-  machine CPU *n* pairs with *n+64*: reserving one without the other gives a partial core and
-  inconsistent bookkeeping.
-- **Clear the drain after any reconfigure or node disturbance.**  Slurm never clears one
-  itself: `sudo scontrol update NodeName=<node> State=RESUME`.  Read the `Reason` rather than
-  skimming the state -- `count too low` is the harmless transient, anything else is real.
-- **Read any existing `/etc/modprobe.d/datadev.conf` before converting a node to dkms.**  An
-  `insmod`-based node keeps its parameters in a script, so a file may exist that has never been
-  in effect and that `modprobe` would silently activate.
-- **Converting a node to dkms also drops the NVIDIA module parameters.**  As of 2026-09-18
-  `/etc/modprobe.d/nvidia-daq.conf` is in place on gpu001, gpu003, gpu005, gpu006, gpu007 and
-  gpu008, so the parameters survive a reboot everywhere; a copy lives in the session directory.
-  Nodes whose nvidia module predates the file still read `EnableStreamMemOPs: 0` until their
-  next load.
-  `comp_and_load_drivers.sh` passes `NVreg_OpenRmEnableUnsupportedGpus=1
-  NVreg_EnableStreamMemOPs=1` on its `insmod` line and nothing in the dkms path supplies them,
-  so a `modprobe`-loaded node has `EnableStreamMemOPs: 0`.  `drp_gpu` does not care -- its
-  kernels write the GpuAsyncCore registers directly -- so the DAQ runs perfectly while
-  `rdmaTest` aborts with "Selected GPU lacks stream memory ops".  That asymmetry is what makes
-  it easy to miss.  Fix with `/etc/modprobe.d/nvidia-daq.conf`; check with
-  `grep EnableStreamMemOPs /proc/driver/nvidia/params`.
-- **`fuser` and `lsof` show only your own processes**, so an apparently stale refcount may be
-  another user's live service.  `ps -eo user,pid,args` sees what they cannot.
-- **A GPU in `Node Reboot Required` state may hang `sudo reboot`** -- use IPMI.
+- **Code rules -> `psdaq/drpGpu/RULES.md`**, beside the source.  The ten that bite while
+  editing this code: cuFile needing a quiescent device, `setPassthru()` only from
+  Configure, a GPU `TriggerPrimitive::event()` having to advance `*state` to 2, deciding
+  from `pyld.raw` rather than `keepRaw`, `sizeof(*ptr)` as the divisor, and the rest.
+  In the repo deliberately: a stale rule about code is worse than an inconvenient one, and
+  a clone plus a `grep` finds it.
+- **Node and driver rules -> Confluence**, source kept here as
+  `confluence-node-rules.storage.xml` in the session directory.  The eleven that bite while
+  working on a node: `nvidia-powerd` enabled, `nvidia-persistenced` disabled, `CpuSpecList`
+  in abstract IDs, clearing a Slurm drain, reading `modprobe.d` before converting to dkms.
+  A page gives a TOC and Expand macros, which suit a standing-at-the-node checklist and are
+  what a markdown file cannot offer.
 
+  **Placement, Ric's call 2026-10-05: a child of GPU DRP, _beside_ the datadev driver and
+  `gen_gres_conf` pages, not under either.**  The rules span both topics -- some driver,
+  some Slurm -- so filing them under one would misplace about half, and a checklist is a
+  sibling of a procedure rather than a subsection of it.  The page is titled
+  **"GPU node rules"**, which is the title the parent page's cross-link resolves by --
+  fragment 5 of `confluence-gpudrp-additions.storage.xml`.  Parent is page id 685820459.
+  **Pasted by Ric 2026-10-05.**  Renaming the page means fixing that `ri:content-title`, or
+  the link dangles.
+
+  **Owed: hyperlink `RULES.md` from that page once this branch is on `master`.**  It is
+  deliberately a plain path today, because the file exists only on `features/gpu-raw-calib`:
+  a `master` link would 404 until the merge, a branch link would die when the branch is
+  deleted, and a commit permalink would pin the 2026-10-05 text for ever -- stale rules being
+  the failure mode that matters.  The page links the repo root instead and says why.  The
+  `blob/master/psdaq/drpGpu/RULES.md` form is correct and safe to add after the merge.
+
+The reasoning behind each rule stays in this file's findings appendix; the rules themselves
+are the conclusions.  **Edit the `.storage.xml` source, not the live page**, or the two
+diverge silently -- that has happened once already.
 
 ## Detector configuration
+
+- **`AreaDetector` (A.K.A. `fakecam`) does not handle L1Accepts, and would fault if it did.**
+  Raised by Matt, 2026-09-30.  Three things are inert or wrong in `AreaDetector.cu`:
+
+  - `configure()`'s Names block is inside `#if 0`, so `m_namesLookup` is never populated for
+    `EventNamesIndex` and nothing describes the event payload;
+  - `event()` is an empty stub that only logs;
+  - `pedestals_d()` and `gains_d()` both return `nullptr`, yet `recordEvent()` launches
+    `PedGainCalib`, whose `pedGainCalibrate()` indexes `pedArray`/`gainArray` unconditionally
+    (`ReaderKernels.cuh`).  That is a null dereference on the device, latent only because no
+    L1Accept reaches it today.
+
+  Both `#if 0` blocks carry the same "@todo: Deal with prescaled raw or calibrated data for each
+  panel here?" comment, which dates from before the raw block existed, so the answer is now
+  known: it does what `EpixUHRemu` does.
+
+  It should also get **CALIB mode** once it works.  See the item below for what that takes.
+
+### CALIB mode records raw data end to end, validated 2026-10-01
+
+Run 269 on drp-srcf-gpu001 with `EpixUHRemu` at 10 Hz, the first execution of the CALIB path and
+of `libcalibTrigger_gpu.so`.  36 L1Accepts of 48 events total, in
+`/home/claus/data/tst/tstx00817/xtc/tstx00817-r0269-s001-c000.xtc2` (the detector is `s001`;
+`s000` is the timing DRP), read back with `xtcreader -f <file> -d`:
+
+| check | result |
+|---|---|
+| declared type | `Type 1 Rank 1` = `UINT16`, rank 1 -- the `RawU16Def` and flat `rawShape()`, not a byte array.  **Rank 1 was the shape at the time; it is rank 2 `[NumAsics][AsicPixels]` now -- see the emulator-shape rule above.  A re-run reads `Rank 2`, with the same element count and extent** |
+| element count | 193536 = 387072 / 2, so the Names entry matches the raw block as u16 |
+| `payloadSize` / `extent` | 387128 / **387140** = 387072 raw + 68 of descriptors, uniform on all 36 |
+| damage | `0x0` on every event |
+| data | emulator frame counter ramps **0 to 35 with no gaps**; last element constant |
+| shutdown | Disable, EndStep, EndRun all clean |
+
+The gapless ramp is the load-bearing check: it says the trigger primitive's kernel completed the
+`0 -> 1 -> 2 -> 0` state cycle on every event.  A missing state advance stalls on the first one,
+so extent and damage alone would not have distinguished a working kernel from a stalled graph
+that happened to record one buffer.
+
+Compare BEAM on the same detector: `2048 * (80 + 0 + 774144)` and extent 774212.  CALIB gives
+`2048 * (80 + 387072 + 0)` and 387140.  Both descriptor overheads are 68, which is the figure to
+use for `EpixUHRemu`; ePixUHR3x2's stage-1 result was 56 for a rank-2 shape, so the overhead
+follows the Names shape and is not a constant to carry between detectors.
+
+### CALIB mode is still missing from most detectors
+
+`ePixUHR3x2` and `EpixUHRemu` have it as of 2026-09-30.  **`Jungfrau`, `EpixUHRsim` and
+`AreaDetector` do not**: none of them overrides `rawSize()`, so a CALIB alias against any of them
+aborts in `PassthruShim` -- correctly and loudly, with "it has no raw mode, so it cannot serve a
+CALIB configuration," but it does mean the alias is not yet universal.
+
+Four things each, all modelled on `EpixUHR3x2` or the simpler `EpixUHRemu`:
+
+1. `rawSize()` returning the frame's u16 byte count **unconditionally** -- it is capacity, and
+   prescaling needs it in BEAM too, so it must not test `passthru()`.  See the contract on
+   `Gpu::Detector::rawSize()`;
+2. `rawShape()`, whatever shape offline expects of that detector -- which means **the shape the
+   CPU DRP already writes**, not whatever is convenient on the device;
+3. a pass-through per-element policy, like `EpixUHR3x2Calib` or `EpixUHRemuCalib`;
+4. a `RawU16Def` for `configure()` -- all three currently declare `{"raw", Name::UINT8, 1}`, a
+   flat byte array that would misdescribe u16 pixels.
+
+**Do these after prescaling, not before, and in this order.**  Prescaling changes the relationship
+between a pass-through policy and the raw block: it has the Detector copying raw into the raw
+region *while* the selected Reducer writes reduced data, where CALIB writes raw instead of
+reduced.  Three policies written against today's shape risk being written twice, and the
+duplication would land in the per-element device code that is hardest to verify.
+
+1. **`EpixUHRsim`** -- start here.  It overrides neither `subframeCount()` nor
+   `firstDataSubframe()`, so its payload is one contiguous block and it is close to a
+   transcription of `EpixUHRemu`.  Its reference buffers, which exist to verify the calibration,
+   have nothing to check in pass-through: no calibration runs, so a raw policy ignores them.
+   Cheap, and it exercises the CALIB path on a second detector.
+2. **`Jungfrau`** -- the substantial one; see below.  The reassembly refactor is the real work.
+3. **`AreaDetector`** -- blocked until it handles L1Accepts at all.  See the item above: its Names
+   block is `#if 0`'d, `event()` is a stub, and its `nullptr` pedestals would be dereferenced on
+   the device.  CALIB mode means nothing there until that is fixed.
+
+**`Jungfrau` is the substantial one**, and not a copy of either existing policy.  Its payload is
+a batch whose data sub-frames are *themselves* batches: each module's sub-frame holds
+`PacketNum` = 128 UDP packets, each a `JungfrauData::Header` plus `PixelPerPacket` = 4096 u16
+pixels, and the header's `packetnum` -- not the packet's position in the batch -- says where
+those pixels belong.  `JungfrauCalib` (`Jungfrau.cu:188`) already does that reassembly, building
+an inverse slot-to-packet map in shared memory per module, zeroing slots no packet claimed,
+zeroing an absent module's whole frame, and dropping a `packetnum` outside the frame.  A
+pass-through policy has to reproduce all of it, writing u16 to `pyld.raw` instead of float to
+`pyld.out`.  Worth factoring the reassembly out so the two policies share it rather than
+duplicating that logic, since getting it subtly different between calibrated and raw output
+would be a hard bug to see.
+
+Its tdest mapping is also not a contiguous run -- module 0 is at tdest 2, later modules at
+`module + 3`, skipping 3 -- but `tdestOfModule()` already encapsulates that.
+
+`EpixUHRsim` should be close to `EpixUHRemu` -- it overrides neither `subframeCount()` nor
+`firstDataSubframe()`, so its payload is one contiguous block too.  Note that its reference
+buffers, which exist to verify the calibration, have nothing to check in pass-through: no
+calibration runs, so a raw policy there ignores them.  `AreaDetector` needs the item above fixed
+first.
 
 - ~~**`epixuhremu_config.py`.**~~  **Done, and working on drp-srcf-gpu001 on
   2026-09-12.**  From a link-down start, Allocate now logs `epixuhremu: timing link is
@@ -516,9 +682,85 @@ the conclusions.
   `ConfigLclsTimingV2()`.
 
 - **EpixUHR3x2 gain encoding.**  `RangeOffset`/`RangeBits` in `EpixUHR3x2.hh` are
-  moot as written: the panel delivers data already calibrated to fp16 by firmware,
-  so there is no gain range in it.  The accessors return 0 to satisfy the base
-  class.  Confirm nothing else wants them.
+  moot for an fp16 payload, which arrives already calibrated, but **not** for the u16
+  payload the firmware presents today and which `raw=u16` now selects by default: the
+  gain bit is bit 0 and the ADC value bits 1-11.  Confirm nothing else wants them.
+
+- **`raw=fp16` is refused, pending the firmware's mode registers.**
+
+  **The plan, corrected by Chris on 2026-10-05.**  An earlier reading of it here was
+  wrong and is worth stating plainly, because several notes below were written against
+  it.  What the updated firmware will actually do:
+
+  - new **registers select u16 or fp16 mode** for the panel;
+  - the **"raw"** block -- "raw" being the label for the *prescaled* data -- is then u16
+    **or** fp16 according to that register, **not both**;
+  - the **non-raw** block becomes **"fex"** data: fp16 calibrated, or an ROI, or some
+    other signal extraction.
+
+  **So the DMA buffer does not need to be twice the full raw size.**  u16 and fp16 are
+  both 2 B/pixel, so the raw block is 387072 B in either mode and `dmaBufSize` is
+  unchanged by the mode register.  What the marked-event DMA has to accommodate is
+  `32 + raw + fex`, where fex is *at most* a full fp16 frame and may be much smaller --
+  against the 774176 B that "u16 alongside fp16" would have required.
+
+  The wrong premise was "u16 *and* fp16 together on an asserted keepRaw, roughly
+  doubling the DMA".  Nothing is doubled, and the "separate sub-frames vs interleaved
+  `{u16, __half}` elements" question is **moot**: a mode register means one format at a
+  time, so there is no pairing to lay out.
+
+  **Consequences for this code:**
+
+  - `rawSize()` stays `NPixels * 2` and needs no mode awareness -- it is already right
+    for both.
+  - `rawShape()` stays as it is, but **`RawU16Def` does not generalise**: the Xtc type
+    system has **no fp16** (`ShapesData.hh:56`: `UINT8, UINT16, ..., FLOAT, DOUBLE`), so
+    an fp16 raw block cannot be described as fp16.  It must be declared `UINT16` and
+    reinterpreted offline, or widened to `FLOAT` on the device at 2x the bytes on disk.
+    **That is a schema question for Chris and psana, and it is new** -- the old note said
+    "no schema question arises", which was true only while raw was always u16.
+    A concrete proposal, needing Chris's buy-in, is under "Proposal for Chris: add
+    FLOAT16 to the Xtc type system" below.
+  - the per-element work is still undecided, so the `raw=fp16` abort stays.  But what it
+    is waiting for has changed: not a layout, just the mode register and the fex format.
+
+  `EpixUHR3x2::EpixUHR3x2()` aborts on `raw=fp16` with a message naming the reason, and
+  `m_u16` defaults to true.  `EpixUHR3x2Beam` is **kept and still instantiated** by
+  `recordEvent()`'s unreachable `else`, so it keeps compiling as the surrounding code
+  moves and the revisit starts from working code rather than from rot.
+
+  Things that will matter at the revisit, found while preparing for it:
+
+  - **The sub-frame scan cache will still thrash, for a different reason.**
+    `EvtBatcherSubFrames::Scan` latches exactly *two* sizes -- `bytes` for the data
+    layout and `noDataBytes` for transitions -- and `Reader.cu:389` rescans whenever a
+    payload matches neither.  Under Chris's plan a marked event carries `raw + fex` and
+    an unmarked one carries `fex` alone, so there are **still two distinct L1Accept
+    sizes** competing for the single `bytes` slot: every marked event evicts the
+    ordinary scan and the next ordinary event evicts it back.  The *magnitude* of the
+    difference changed -- it is the raw block, not a doubling -- but the thrash does not
+    depend on the magnitude, only on there being two sizes.
+
+    The one case that would avoid it is a fex block sized so that `raw + fex` equals
+    some other recurring size, which is not worth engineering.
+
+    **This is a prediction about the planned firmware, not a defect in prescaling as
+    implemented.**  Nothing thrashes today: one L1Accept size and one transition size fit
+    the two slots exactly.  It was misread once as a known problem with the committed
+    code.  Note also that the fix is not a third `size_t` -- `m_sub[]` is a single flat
+    tdest-indexed array that pass two overwrites wholesale, so a third slot needs a second
+    layout array beside it.  The cost is small either way: two short walks per second
+    against ~33 kHz of events, so it is latency on two events, not throughput.
+  - **`firstDataSubframe()` may still become mode-dependent**, if raw and fex arrive on
+    different tdests.  Then the tdest set differs between marked and unmarked events, so
+    `count` and the per-tdest offsets change rather than just the total size, and
+    `NumSubFrames` and `FirstDataTdest` stop being single constants.  **Ask Chris**
+    whether fex replaces raw on the same tdests or occupies its own -- that is now the
+    open layout question, and it decides whether this item is real.
+  - ~~**Interleaved elements would break the sub-frame element counts.**~~  **Moot**: a
+    mode register means one format at a time, so there are no `{u16, __half}` pairs and
+    `cnt = sub.size / sizeof(*src)` keeps meaning a pixel count.  `_copyRaw`'s strided
+    copy per ASIC stays a copy rather than becoming a gather.
 
 - **Jungfrau pedestals and gains** are placeholders (0.0/1.0).  The CPU-side
   Jungfrau writes raw data and leaves calibration to analysis, so there is no
@@ -723,6 +965,126 @@ either given it a GPU or left the job pending for ever, and in the pending case 
 process to report anything.
 
 ## Performance and structure
+
+- **`maxTrSize` does two unrelated jobs and wants to be two numbers.**  It bounds a
+  transition's Xtc -- `Drp::Detector`'s `m_xtcbuf(para->maxTrSize)`, reached through
+  `trXtcBufEnd()` -- *and* it floors the reduce buffers' payload, at `Reducer.cu`:
+
+      if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
+
+  So a value chosen to fit the largest Configure is multiplied by `nbuffers()` of GPU
+  memory, and a value chosen to bound the payload may be too small for a Configure.  The
+  two pull in opposite directions.
+
+  Worse, `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON config into a
+  *temporary* buffer **also** sized `maxTrSize` and then copies its payload into the
+  transition Xtc.  So one number bounds both the config and the thing it must fit inside,
+  and a value that is too small fails at whatever it is raised to rather than by a fixed
+  shortfall.
+
+  Found on 2026-09-25: ePixUHR3x2's Configure on drp-srcf-gpu006 aborted with
+
+      Xtc.hh:111: Insufficient space for 524 bytes (... extent 262012)    # 256 kiB
+      Xtc.hh:111: Insufficient space for 760 bytes (... extent 524036)    # 512 kiB
+
+  The extent grew to fill whatever it was given, which is the tell.  **`epixuhr3x2_0`'s
+  configuration is 902026 bytes of JSON**, so neither limit was close; the "overflowed by
+  392 bytes" reading of the first failure was where it stopped, not what it needed.  Raised
+  to 2 MiB, which costs ~4 GiB of GPU memory at `nbuffers = 2048`, all of it unused in
+  pass-through mode since `PassthruShim::payloadSize()` is 0.  The CPU DRP's 8 MiB would
+  cost ~16 GiB.
+
+  Making either a kwarg would help, but the coupling is the real problem -- raising one for a
+  detector's sake silently enlarges every reduce buffer.
+
+### Give transitions their own buffer, so a Configure cannot dominate the L1A buffers
+
+**Done, and validated on drp-srcf-gpu001 with `epixuhremu` and `NoOpReducer` on 2026-09-29.**
+The log now reads `2048 * (80 + 0 + 774144) B` for the reduce buffers, where 774144 is exactly
+`NoOpReducer::payloadSize()` -- `NPixels * sizeof(float)` -- so the floor is gone and
+`payloadSize()` means what it says.  Transitions got `128 * 2097152 B` of their own, and the
+allocation fell from 4.00 to 1.73 GiB: **2.27 GiB back** at `nbuffers = 2048`.  `xtcreader`
+confirms the file: Configure extent 7348, L1Accept extent 774212 = 774144 + 68 of Dgram and Xtc
+descriptors, and SlowUpdates present.
+
+The count is `pebble.nTrBuffers()`, 128, taken from the CPU pool rather than invented: every
+transition except SlowUpdate is synchronous, so no new one can be emitted until the one in
+progress is acknowledged, and SlowUpdate at 1 Hz is the only one that can accumulate.  128 is
+therefore about two minutes' worth.  Caveat from Ric: the SlowUpdate rate has occasionally been
+raised to 10 Hz, which would make it twelve seconds, so there may be missing protection
+somewhere for that case.  Not chased.
+
+The slot is derived from the pointer the CPU already recorded --
+`(dgram - pebble.trBuffer()) / pebble.trBufSize()` -- so there is one allocator and no second
+lifetime to manage.
+
+What follows is the original reasoning, kept because the numbers still justify the shape.
+
+Ric's proposal, 2026-09-25, and the numbers argue for it strongly.  **The special case already
+exists; it just does not pay its way.**  What is already true:
+
+- transitions already take a **separate branch** in the recorder,
+  `buffer -= sizeof(Dgram)` rather than the L1A path's arithmetic
+  (`PGPDetector.cc`, the `else { // Transitions` arm);
+- Configure already has a **dedicated buffer index**, `m_configureIndex`, and is re-copied to
+  the GPU at BeginRun from a separate *host*-side `m_configureBuffer`;
+- `ReducerAlgo::payloadSize()` is already **silently overridden** by the `maxTrSize` floor in
+  `Reducer.cu`, whose only purpose is to make every L1A buffer big enough for a transition.
+
+So the present design carves a Configure-shaped hole out of **all `nbuffers()`** to serve
+something that happens once per run.  The shape of the change:
+
+    createReduceBuffers(payloadSize, headerSize, rawBytes);  // payload = the algo's ask
+    createTransitionBuffers(maxTrSize, nTrBuffers);          // a handful, not nbuffers()
+
+then delete the `if (totalSize < m_para.maxTrSize)` floor and point the existing transition
+branch at the new allocation.
+
+**What it saves**, with `raw` = 387072 B for ePixUHR3x2 and a real reducer asking for an fp32
+frame:
+
+| | `nbuffers` = 2048 | `nbuffers` = 32768 (1 s of latency at 33 kHz) |
+|---|---|---|
+| today, payload floored at 2 MiB | 4.74 GiB | **75.81 GiB** |
+| transitions separated | 2.22 GiB | **35.44 GiB** |
+
+At the buffer count 1 s of latency actually wants, it **halves** GPU memory -- 40 GiB back on a
+140 GiB card -- and it decouples the two, so a detector with a larger Configure costs one buffer
+instead of 32768.  It is also paying now, not just later: the 2 MiB set on 2026-09-25 costs
+~4 GiB that pass-through never touches, `PassthruShim::payloadSize()` being 0.
+
+Arguably this is *less* complex than what is there: it **removes** a coupling rather than adding
+a mechanism, and `payloadSize()` starts meaning what it says.  The care needed is that
+transitions and L1As then index different allocations, so anything computing
+`&reduceBuffers_d()[index * stride]` must know which kind it holds -- but that code already
+branches on `isEvent()`.  Size it for a few transitions rather than one: Configure, BeginRun,
+BeginStep and Enable can be in flight together, and the recorder holds Configure to re-write it
+at BeginRun.  Four would be ~8 MiB against 40 GiB saved.
+
+- ~~**The GPU `FileWriter` ignores the `directIO` kwarg.**~~  **Done 2026-09-30.**
+  `TebReceiver::setup()` hardcoded `constexpr auto dio{true}`, so `-k directIO=no` was accepted
+  and silently disregarded.  Noticed on 2026-09-29, when `directIO=no` was added because
+  recording crashed the *timing* CPU DRP: the CPU DRP picked the change up on restart and the
+  GPU DRP did not care either way, which is what exposed it.  Now reads the kwarg through a
+  `getDioFlag()` mirroring `drp/TebReceiver.cc:18`, same `"yes"` default, and `open()` logs the
+  state at debug level -- its absence from the log is part of why this went unnoticed.
+
+  **cuFile supports both states**, so the kwarg is worth having rather than removing.
+  `O_DIRECT` was mandatory until CUDA 12.2 / GDS 1.7.x, and the note in `cufile.h` still says
+  so -- *"the file needs to be opened in O_DIRECT mode to support GPUDirect Storage"* -- but
+  that text is stale against the 13.3 runtime on these nodes.  Per NVIDIA's troubleshooting
+  guide, *"Starting with CUDA toolkit 12.2 (GDS version 1.7.x) files can also be opened with
+  non-O_DIRECT mode. Even in such a case, whenever the library software deems fit, it will
+  follow the GDS enabled O_DIRECT path"*, and the API guide adds that this holds *"in compat
+  mode and also with nvidia-fs.ko installed"* -- so it is not only a compat-mode concession.
+  In compatibility mode, which is what these nodes run, `cuFileWrite` is `pwrite` underneath
+  and the flag buys nothing either way.
+
+  Keeping it selectable matters because the CPU and GPU DRPs need not write to the same file
+  system, and a file system that cannot do aligned direct I/O needs it off.  **Untested at
+  `directIO=no` on the GPU side**, though: the writer's buffer and offset arithmetic were
+  written under the direct-I/O assumption, and while non-`O_DIRECT` is strictly more
+  permissive, the first run with it off is a test rather than a formality.
 
 - **Nothing coordinates the green context split with the kernels' launch geometry.**
   There are three independent hard-coded SM tables, and they disagree:
@@ -959,11 +1321,49 @@ process to report anything.
 
 ## Calibration and data handling
 
+### The UHR emulator's payload is constant, so it cannot prove per-event freshness
+
+Gabriel, 2026-10-05: the data the UHR emulator currently emits **is the same from event to
+event**.  He believes a register exists that would make it emit sequence numbers instead but
+is not sure of it or how to set it.
+
+That matters for what a run can demonstrate.  On `EpixUHRemu` the frame counter ramping
+0,1,2,... with all deltas 1 was the proof that each raw block is freshly copied -- it is
+what validated runs 269 and 277.  On the real ePixUHR3x2 the payload is event-invariant, so
+`xtc-rawdump.py` reports `element[0]` constant and identical `first12` and nonzero counts on
+every event (runs 65 and 66).  **That is expected, not a fault** -- but it means a real-panel
+run has **no per-event liveness signal in the data**: one stale frame repeated would look
+identical.  Liveness has to come from elsewhere -- the pulse ids and timestamps, which do
+advance, and the `keepRaw`/extent agreement.
+
+Worth chasing that register if a per-event check on real hardware is ever wanted.
+
+### The reduced payload is half the raw one, and that is correct
+
+Noticed on run 60, 2026-10-05, and it reads as corruption until the bit layout is recalled.
+A prescaled event's two arrays do **not** hold the same numbers:
+
+    'raw'  (shape: 6 32256):  0 48 96 100 52 4 512 560 ...   u16
+    'noOp' (shape: 774144):   0.0 24.0 48.0 50.0 ...         f32
+
+Exactly a factor of two, because `pedGainCalibrate()` calibrates the *extracted ADC field*,
+not the raw word.  For `EpixUHR3x2` the gain bit is **bit 0** and the ADC value **bits 1-11**,
+so `data = (raw >> 1) & 0x7ff` and the gain bit is shifted out.  With fabricated pedestal 0
+and gain 1, `calib == raw >> 1`.
+
+So raw and reduced are only comparable after extracting the same field.  They would be equal
+only if the ADC value started at bit 0.  The halving is also independent confirmation of
+Gabriel's layout: an earlier note had gain in bit 11, which would have made the two arrays
+roughly equal instead.
+
 - **Fetch calibration constants.**  Every detector currently fabricates them:
-  `EpixUHRemu`, `EpixUHRsim` and `Jungfrau` fill pedestals with 0.0 and gains with
-  1.0 (`@todo: Fetch calibration constants`), and `EpixUHR3x2` needs none because
-  its data arrives calibrated from firmware.  Needs a real source and a point in the
-  transition sequence to load from it.  Three candidate routes:
+  `EpixUHRemu`, `EpixUHRsim`, `Jungfrau` and now `EpixUHR3x2` in its u16 mode fill
+  pedestals with 0.0 and gains with 1.0 (`@todo: Fetch calibration constants`), which
+  makes the calibrated values numerically equal to the raw **ADC field** -- not to the raw
+  word, where a gain bit below the data shifts the value (see above).  The path is
+  proven, the science is not.  `EpixUHR3x2` needs none for an fp16 payload, which
+  arrives calibrated from firmware.  Needs a real source and a point in the transition
+  sequence to load from it.  Three candidate routes:
 
   1. reuse Mikhail's code in `lcls2/psana`, which is the source of truth;
   2. resurrect `lcls2/psalg/psalg/calib/`, also Mikhail's, whose headers are still
@@ -976,6 +1376,22 @@ process to report anything.
   run number and validity flags; then the bulk fetch.  The appendix notes the calibdb
   schema is documented nowhere else, which is why it is kept here.
 
+  **For ePixUHR3x2 the gain bit is not enough to identify the constants.**  Gabriel,
+  2026-09-29: the single bit "always selects between only two states", so
+  `NRanges = 2` is right, but *which* two depends on the configured mode -- "your bit
+  status could mean your pixel is in high or low gain 1, or high or low gain 2 ... You
+  need the configuration ... to be able to complete the picture."  Some modes are fixed
+  rather than auto-ranging.
+
+  So the fetch has to be keyed on the gain configuration, not just on the detector.
+  The good news is that the information is already computed in the DRP:
+  `configdb/epixuhr3x2_config.py` fills **`gainMapSelection`** (per-pixel, from
+  `cfg["expert"]["pixelBitMaps"][...]` when `user.Gain.UsePixelMap` is set) and
+  **`gainValSelection`** (uniform, from `user.Gain.SetGainValue`) at Configure.  Neither
+  reaches the GPU today.  Whoever does this should ask **Mikhail**, who has done the
+  equivalent on the psana side, and check Confluence for a TID write-up -- Gabriel does
+  not recall one.
+
 - **Calibration mode.**  The DAQ operator selects the **CALIB** alias instead of the
   usual **BEAM** alias.  That selects a different, perhaps derived, set of detector
   register settings, written to the detector through
@@ -984,18 +1400,419 @@ process to report anything.
   rather than calibrated or reduced data, with the reducer bypassed or turned into a
   no-op.  Low rate running is acceptable in this mode.
 
-- **Prescale implementation.**  Record raw data *in addition to* the normal reduced
-  data, at low rate, while the normal stream continues at full rate (33 kHz or
-  whatever).  The signal is **`keepRaw`**, bit 22 of the datagram's env word —
-  `Pds::EbDgram`'s accessor already exists, `psdaq/service/EbDgram.hh:57`,
-  `return (env>>22)&1` — asserted at typically 1 Hz.  Each detector's `event()`
-  carries the matching `@todo: Deal with prescaled raw for the panel here?`.
+- ~~**Prescale implementation.**~~  **VALIDATED on hardware 2026-10-02, run 273 on gpu001
+  with `EpixUHRemu` and `NoOpReducer`.**  Raw data recorded *in addition to* the reduced data
+  on the events the timing system marks with **`keepRaw`**, bit 22 of the env word
+  (`psdaq/service/EbDgram.hh:57`), so offline can reproduce the reduction and verify it.
 
-  Two things to work out.  The XTC headers have to describe the extra contribution.
-  And the buffering: either extend the reducer buffers to hold raw alongside reduced,
-  or keep many fewer look-aside buffers and do multiple file writes, scatter-gather
-  or similar.  The second trades memory for write complexity, and interacts with the
-  recorder item above.
+  What run 273 establishes, after runs 270-272 each failed one layer deeper:
+
+  | check | result |
+  |---|---|
+  | `xtcreader` and `xtcreader -d` | **both rc=0**, walking all 181 records to EndRun |
+  | prescaled events | 16 of 158 L1Accepts, extent **1161340**, two ShapesData |
+  | ordinary events | 142, extent **774212**, one ShapesData |
+  | `keepRaw` bit vs extent | **0 mismatches in 158 events** |
+  | child walk | two children, `remaining: 0` -- no gap, no overrun |
+  | damage | `0x0` on all 181 records |
+  | raw payload | 193536 u16, 66.1% nonzero, **byte-identical to the validated CALIB run 269** |
+  | reduced payload | present on **every** event, prescaled included |
+  | guards | neither the split check nor the pebble-reach check fired |
+
+  The raw comparison against run 269 is the strongest single check: both go through the same
+  `_copyRaw()`, so identical first-12 values, nonzero count and maximum say the prescale path
+  delivers exactly what the already-validated CALIB path does.
+
+  Both questions this item used to pose are settled.  **The buffering** is a small pool of
+  prescale buffers (`NPrescaleBuffers = 32`), each `[hdr][raw][reduced]`, into which a marked
+  event's whole datagram is assembled; the reduce buffers stay `[hdr][reduced]` and the
+  reduced payload is copied across device to device.  Reserving raw in all `nbuffers()`
+  reduce buffers was implemented first and **rejected**: it costs 0.74 GiB at
+  `nbuffers=2048` and 11.81 GiB at 32768, where the pool costs 0.03 GiB.  The copy is
+  ~0.02 us against a 26.67 us event budget at 37.5 kHz.  **The XTC description** is two
+  containers: the Detector's raw array under `EventNamesIndex` and the Reducer's under
+  `ReducerNamesIndex`, the raw one appended only on marked events.  That follows the HSD,
+  whose `psalg/psalg/digitizer/Hsd.hh:43` says outright that *"if raw or fex data is
+  missing, then the associated header is also missing"*, so a per-event extent is
+  established practice.
+
+  **One Names block with two arrays would give contiguous payloads and a single memcpy --
+  considered and REJECTED, with the measurements, because this keeps being rediscovered.**
+  `Shapes` is one Xtc holding an *array* of `Shape`, so a block declaring N arrays costs
+  `sizeof(Dgram) + 3*sizeof(Xtc) + N*sizeof(Shape)` rather than N times the whole descriptor
+  set: a second array adds only `sizeof(Shape)` = 20 B, and all the descriptors stay ahead of
+  all the payloads.  Measured at `EpixUHRemu` sizes, one block puts raw at [100, 387172) and
+  reduced at [387172, 1161316) -- contiguous, header 100 B, and the extent is 36 B *smaller*
+  than the two-block form.  (An accident worth knowing: `MaxRank*sizeof(uint32_t)` = 20 =
+  `sizeof(Shape)`, which is why the reserve formula above happens to be right for one array.)
+
+  Rejected because the cost lands on the wrong events.  One block means the raw array is
+  always declared, so every event must fill it -- `CreateData`'s destructor *aborts*, not
+  warns, on an unfilled entry -- so ordinary events carry a zero-length raw array plus its
+  `Shape`: **+20 B on every event**, ~57 GB/day at 33 kHz, to avoid two memcpys costing ~1 us
+  once per 37500 events.  It would also couple a dlopened Reducer to the Detector's Names
+  declaration at Configure, and change the on-disk schema psana reads.  Two blocks also match
+  the HSD precedent above: a missing array means a missing header, rather than a present
+  header faking absence with a zero shape.
+
+  Nine things worth not relearning:
+
+  - **`rawSize()` is capacity, not presence.**  It is read once per Configure to size every
+    buffer, so it cannot consult `keepRaw()` -- there is no event yet -- and must not consult
+    `passthru()` either, since prescaled raw arrives in BEAM.
+  - **A prescale buffer's header reserve is not a reduce buffer's.**  `headerSize` in
+    `Reducer.cu` is `sizeof(Dgram) + 3*sizeof(Xtc) + MaxRank*4` = **80 B**, which is one
+    Dgram plus *one* ShapesData.  A prescaled datagram describes two arrays, and each extra
+    one costs `3*sizeof(Xtc) + MaxRank*4` = **56 B**.  Deriving the pool's reserve from
+    `reduceBufsReserved()` therefore made every prescale buffer 56 B too short, and run
+    270 aborted in `Xtc::alloc` on the first prescaled event.  `createRawBuffers()` now
+    takes the reserve from the caller.  The 56 B is confirmed twice over: it predicts
+    run 269's CALIB extent of 387140 and run 270's abort extent of 387196 exactly.
+  - **Descriptors are INTERLEAVED with payloads, not gathered ahead of them.**  The costly
+    one, and it survived the size fix above: `CreateData` writes each array's Shapes and
+    Data Xtcs immediately before that array's bytes, so a two-array datagram is
+    `[Dgram][raw descr][raw][reduced descr][reduced]`.  Treating the reserve as one block
+    ahead of both payloads put the raw bytes 56 B past where their own descriptors pointed;
+    run 271 then recorded 150 events with correct extents, zero damage and a perfect
+    `keepRaw` correlation, and **`xtcreader -d` still aborted** on the first prescaled event
+    with `corrupt xtc with too small extent`.  Every size check passed because every size
+    was right.  `MemPool` now publishes `prescaleRawOffset()` and `prescaleRedOffset()` as
+    the single statement of the layout, the host header is copied in two pieces around the
+    raw block, and a guard compares the described offset against the buffer offset --
+    because nothing else did.
+  - **The host's header is ALREADY laid out the way the device wants it, so the two memcpys
+    are not a contortion.**  `set_array_shape()` advances the Xtc over the raw payload, so
+    the pebble buffer holds `[Dgram][raw descr][raw-sized hole][reduced descr]` -- the two
+    descriptor blocks are separated on the host exactly as they are on the device, at the
+    same offsets.  Both copies therefore use *identical* source and destination offsets and
+    simply skip the hole; it is two copies rather than one only because a single copy would
+    overwrite the device's raw block with the pebble's garbage.  Copying `dgram + hdrSplit`
+    instead of `dgram + hdrSplit + rawBytes` reads the hole, which is uninitialised: run 272
+    recorded 68 B of zeros where the reduced descriptors belong, with the extent still
+    correct at 1161340 and every size guard silent.
+  - **What must fit in the pebble is the header's REACH, not its size.**  Those descriptors
+    straddle a raw-payload-sized hole, so a prescaled event reaches
+    `hdrSplit + rawBytes + dscr` = 387208 B into a 393216 B pebble -- 6008 B of slack, by
+    luck rather than design.  The old guard compared the 136 B *sum* against the buffer and
+    passed vacuously.  It now checks the reach, because at twice this raw size the pebble
+    silently overflows; `pebbleBufSize` is the kwarg that fixes it.  `EpixUHR3x2` has the
+    same 387208 B reach, not twice it -- see the corrected item below.
+  - **"It didn't crash" is not "it worked".**  Two runs in a row looked healthy in the log
+    and were wrong in the file.  Read the data back with `xtcreader -d`, which walks the
+    Xtc tree and so finds what a size check cannot.  Note `-d`'s output is lost on abort
+    unless you line-buffer it: `stdbuf -oL`.
+  - **A host/device counter pair needs atomics, not just pinned memory.**  The claim kernel
+    compares a monotonic device ticket against a release count the recorder advances.  Read
+    plainly, that is not merely stale-prone but unbounded: a release count the device never
+    sees advance trips the overflow test after `NPrescaleBuffers` prescaled events whatever the
+    true occupancy, so the belt-and-braces abort becomes a guaranteed one about 32 s into a
+    run at 1 Hz.  `cuda::std::atomic` in pinned memory with release/acquire, as
+    `RingIndex_HtoD.hh` does it.  Pinned sysmem is visible to both sides, but nothing
+    invalidates a cached load without the ordering.
+  - **Container order is forced.**  `CreateData::set_array_shape()` grows the Xtc extent in
+    call order via `_shapesdata.data().alloc()`, while the bytes sit in buffer order with raw
+    first.  So the raw container must be appended *before* the Reducer's.  Reversing them
+    would present as corrupt data, not as a layout error.
+  - **The Reducer capacity check had to change.**  It read
+    `reduceBufsRaw() ?: reduceBufsSize()`, conflating "has a raw block" with "is in
+    pass-through".  Once raw is reserved in BEAM, that picks the raw size as the limit and a
+    reducer writing its full payload aborts falsely.  It now tests `passthru()`.
+
+  Still to do: the other detectors -- see the CALIB-mode detector gaps above, which share the
+  per-detector work.  Two things run 273 did **not** exercise, so neither is proven:
+
+  - **The overflow abort never fired**, and cannot at these rates: the pebble pool bounds
+    in-flight prescaled events far below 32.  So `_claimRawSlot`'s occupancy test and the
+    atomics behind it are exercised only in the non-overflow direction.
+    **Superseded 2026-10-05**: runs 59-65 ran at 100% keepRaw, 1850 consecutive prescaled
+    events at 120 Hz, and it still never fired and no slot leaked.  The pebble bound holds at
+    ~120x the design rate, so the non-overflow direction is now very well exercised.
+  - ~~**`EpixUHR3x2` will not fit the default pebble.**~~  **Wrong, and it was my arithmetic.**
+    `rawSize()` is `NPixels * sizeof(uint16_t)` = 193536 * 2 = **387072 B**, not 774144 --
+    that figure is `NoOpReducer`'s **f32 output** size.  So the reach is
+    `80 + 387072 + 56` = **387208 B** into 393216, the same 6008 B of slack as `EpixUHRemu`,
+    and for the same reason: the emulator emulates this detector, so both have 193536 u16
+    pixels.  Confirmed on gpu006 run 59 -- the guard stayed silent and `pebbleBufSize` was
+    never set.  **No action needed; this was never a blocker.**
+
+  Also open, and deliberately deferred: the slot claim would be cleaner on the host, but that
+  needs the graph to stop being recorded once per Configure.  **Revisit with letting the GPU
+  idle at low trigger rates**, which has to change the launch model anyway.
+
+## keepRawRate is not programmed in Cu mode, so every event is marked
+
+Found 2026-10-05 on drp-srcf-gpu006, runs 59-65.  Every L1Accept came back prescaled --
+1850 of 1850 on run 59, 1614 of 1614 on run 60, 964 of 964 on run 65 -- against a configDB
+`keepRawRate` of **1.0 Hz** for every readout group.
+
+**The DRP is not at fault, and that was settled by a control rather than by reading the
+code**: the timing DRP on cmp040 is the stock CPU `drp`, no GPU code in it, and its own file
+shows `keepRaw=1` on **3228 of 3228** events at 240 Hz.  Both detectors see L0Raw asserted on
+100% of events at their own trigger rates.  Worth keeping as the technique: when a bit looks
+wrong, find a consumer of the same bit that shares none of your code.
+
+**`keepRaw` was being decoded correctly**, which is the other thing a 100% reading could mean.
+`(env>>22)&1` is `TransitionBase::keepRaw()` (`xtcdata/xtc/Dgram.hh:26`) and bit 22 of `env` is
+b6 `L0Raw` of `L1Dgram::reserved()`.  Decoding the whole reserved byte across the timing run
+gives 32 distinct values: `L0Tag` cycling 0-31 with ~101 events each, `L0Accept` set,
+`L0Reject` clear.  The field is live and b6 is pinned high inside it -- so not a stuck decode.
+
+### Two units, and only one path converts between them
+
+- configDB `user.{Cu,SC}.groupN.keepRawRate` is a **rate in Hz**.
+- the PV `DAQ:FEH:XPM:<master>:PART:<group>:L0RawUpdate` is a **divisor in 929 kHz timing
+  frames** (Matt, 2026-10-05): the number of frames between raw updates, 1 meaning every frame.
+
+So 1 Hz is a divisor of ~928571, not 1.0.  The conversion is `int(TPGSEC/keepRawRate)` at
+`psdaq/psdaq/configdb/ts_config.py:82` -- **in the SC branch only**.  The Cu branch
+(`:66-72`) programs `L0Select`, `L0Select_EventCode` and `DstSelect` and never puts
+`L0RawUpdate` into `pvdict` at all, so with `user.LINAC == 0` the field is read into the
+recorded config and never reaches the XPM.  The SC branch additionally `raise`s when the key
+is missing; Cu has no equivalent.
+
+That is the bug.  Whether the fix is to move the conversion above the branch or to duplicate
+it is for Matt -- it is his file, and `L0RawUpdate`'s Cu semantics are his to confirm.
+
+### Why intermediate values looked like no change at all
+
+A divisor only thins when the update rate falls below the trigger rate:
+
+| `L0RawUpdate` | update rate | effect at 120-240 Hz triggers |
+|---|---|---|
+| 1 | 928571 Hz | marks every event |
+| 1000 | 929 Hz | **still marks every event** |
+| ~3900 / ~7700 | 240 / 120 Hz | threshold where thinning first shows |
+| 928571 | 1.0 Hz | ~1 marked event per second |
+
+So 1000 and 1 are indistinguishable in the data, which is what made a correct hand-written PV
+look like it had been ignored.  Compute the resulting rate before concluding a write failed.
+
+### Finding the master XPM, which is where the PVs live
+
+Run 65 failed to thin because the PVs were written on **XPM 5, which is not the master**.
+Three ways to tell, cheapest first:
+
+1. **The `.cnf.py`**: `control`'s `-x` flag names it -- `-x 4` in `gpu6.py`.
+   `control.py:715` reads it into `xpm_master`, `:486` builds `pv_base + ':XPM:%d'`.
+2. **The control log**, every Configure: `<I> master XPM is 4` (`control.py:1604`).
+3. **`DAQ:FEH:XPM:<n>:PART:<group>:Master`** -- the hardware's own view, 1 on the master
+   and 0 elsewhere.  **Check the timestamp**: XPMs 0 and 2 still read 1 from an earlier
+   session, so a bare 1 is not sufficient.
+
+`ts_connect.py:99-113` actively demotes the downstream XPMs for the master's groups at
+Configure, so XPM 5's `PART:{2,4}:Master` went to 0 in the same instant XPM 4's stayed 1.
+Writing a downstream XPM's `L0RawUpdate` therefore cannot do anything.
+
+### Run 66 confirms the PV path works, so the bug is only ts_config.py
+
+With **928571 on `DAQ:FEH:XPM:4:PART:4:L0RawUpdate`**, run 66 is the first fully correct
+prescaled run on real hardware:
+
+| check | result |
+|---|---|
+| `xtcreader` | rc=0, 1401 records to EndRun |
+| L1Accepts | 1382 at 120.01 Hz |
+| unmarked | **1370 at extent 774212** -- reduce only |
+| marked | **12 at extent 1161340** -- raw + reduced |
+| `keepRaw`/extent mismatches | **0 of 1382** |
+| damage | `0x0` on all 1401 |
+| marked rate | **0.992 Hz**, gaps of exactly 122 events / 1.008 s, no jitter |
+| raw payload | 193536 u16, 99.9% nonzero, at the right offset |
+
+The extent splitting into two values is what no earlier run could show, so **the unmarked
+reduce-only path and the per-event mode switch are both exercised for the first time**.
+Eleven identical gaps is a periodic divisor, not statistical thinning.
+
+So the PV and everything downstream of it are sound, and the defect is only the missing
+`L0RawUpdate` in the Cu branch.  **For Matt:** hoist the conversion above the Cu/SC
+branch, or duplicate it into Cu?  His file, and the Cu semantics are his to confirm.
+
+## psana could not open our files: EventNamesIndex was declared twice.  Fixed
+
+**Found and fixed 2026-10-06.  It predated that day's work** -- the pre-FLOAT16 build
+failed identically, so nothing about the type addition was involved.  `xtcreader` is
+perfectly happy with these files; **psana aborted before the first event**:
+
+    NamesIter.cc: Found duplicate namesId 0xa
+    terminate called after throwing an instance of 'char const*'
+
+`NamesIter::process()` throws on a repeated `NamesId`, where `xtcreader` just prints both.
+So **every file the GPU DRP has ever recorded is unreadable by psana**, including run 66.
+This is worth knowing before anyone promises end-to-end operation.
+
+**Cause.**  `Gpu::EpixUHR3x2::configure()` calls `m_det->configure()` first -- the CPU
+`Drp::EpixUHR3x2`, which at `EpixUHR3x2.cc:216` already declares `Names` at
+`NamesId(nodeId, EventNamesIndex)` with `Alg("raw", 0, 1, 0)`.  The GPU detector then
+declares **its own** `Names` at **the same** `namesId`, with `Alg("raw", 0, 0, 0)`.  Hence
+`0xa` twice, which `xtcreader -d` shows as the same detName and alg at two versions:
+
+    namesid: 0xa  Alg: raw, Version: 0x000100     <- the CPU base class
+    namesid: 0xa  Alg: raw, Version: 0x000000     <- Gpu::EpixUHR3x2
+
+The two descriptions genuinely differ: the base class adds `epixUHR3x2RawDef`, ours adds
+`RawU16Def`.  So this is not a duplicate declaration of the same thing, it is **two
+different schemas claiming one id**, and the reader that wins is whichever lands first.
+
+**Only `EpixUHR3x2` is affected, and the reason is structural.**  `EpixUHRemu` and
+`EpixUHRsim` also call `m_det->configure()`, so the shape looks identical -- but their
+`m_det` is an `XpmDetector`, which declares no `Names` at all, while the 3x2's is a
+`BEBDetector` that declares the panel's event `Names` from the config.  So the collision
+needs a CPU base class that describes events, and only the 3x2 has one.  Runs 269 and 273
+were recorded by `EpixUHRemu` and so should open; **unverified** -- those files expired
+from gpu001's `/tmp`.
+
+**The fix: adopt the base class's `NameIndex` instead of declaring a second `Names`.**
+The two declarations were *identical* in everything offline can see -- same detName,
+detType, detId, segment, and both a single `{"raw", UINT16, 2}` at index 0, since
+`RawU16Def` and `Drp::EpixUHR3x2RawDef` agree.  Only the Alg version differed, 0.0.0
+against the base's 0.1.0.  So the second block carried no information and
+`Gpu::EpixUHR3x2::configure()` now does
+
+    m_namesLookup[namesId] = m_det->namesLookup()[namesId];
+
+`rawEvent()` needs the entry in *this* Detector's lookup for `CreateData`, not another
+block in the Xtc.  `NameIndex`'s assignment operator deep-copies (`malloc` + `memcpy` of
+the whole `Names` extent, `NameIndex.hh:40`), so the copy outlives `m_det` regardless.
+`RawU16Def` is now unused here and is gone; `EpixUHRemu` keeps its own, which it needs.
+Recorded Alg version becomes 0.1.0, matching what the CPU DRP writes.
+
+**Only `EpixUHR3x2` was affected, and the reason is structural.**  `EpixUHRemu` and
+`EpixUHRsim` also call `m_det->configure()`, so the shape looks identical -- but their
+`m_det` is an `XpmDetector`, which declares no `Names` at all, while the 3x2's is a
+`BEBDetector` that declares the panel's event `Names` from the config
+(`BEBDetector::configure()` always calls `_configure()`, in both modes).  So the
+collision needs a CPU base class that describes events, and only the 3x2 has one.
+
+**Validated by run 74 on gpu006**, `drp_gpu` md5 `c6270e78584ea`.  `xtcreader -d` shows
+**one** `namesid: 0xa` block where run 66 showed two, at the base class's
+`Version: 0x000100`, and **psana opens the file and reads the arrays** -- the first time
+any GPU DRP output has been readable by psana:
+
+| check | run 74 |
+|---|---|
+| `xtcreader` | rc=0, 1315 L1Accepts |
+| unmarked / marked | 1303 @ 774212, 12 @ 1161340 |
+| `keepRaw`/extent mismatches | **0 of 1315** |
+| damage | `0x0` on all 1334 records |
+| psana `detnames` | `epixuhr3x2`, `epixuhr3x2hw` |
+| psana events walked | **1315, all of them** |
+| psana arrays | 12 (the marked events), `uint16`, 99.9% nonzero |
+| marked spacing | events 6, 125, 244, ... 1314: gaps of **119** (one 118) |
+| marked rate | **1.009 Hz** at 120 Hz triggers |
+
+psana's `raw()` returns shape **`(1, 336, 576)`** = 193536 pixels, not the `6 32256` the
+file declares: `raw_v01` reshapes and descrambles per `epixuhr3x2.py`, which is its job.
+The leading values differ from `xtcreader`'s for the same reason -- same payload,
+different presentation.  **"Problem reading dgram header." at the end is normal**: it is
+how `dgram.cc:865` raises `StopIteration` at end of file, not an error -- and it says
+nothing about whether the file has an EndRun.  Run 74 does; check the file, not that
+message.
+
+**Run 74 is also the first correctly prescaled run driven entirely by configDB**, with no
+manual PV write: `keepRawRate` of 1.0 Hz for groups 2 and 4 programmed
+`L0RawUpdate = 910000`, read back on both before RUNNING, giving 1.009 Hz measured against
+the 1.0204 Hz nominal -- the TPGSEC 2% and nothing else.  Run 66 needed the PV written by
+hand; this one did not.
+
+## keepRawRate is programmed in Cu mode now.  Fixed, and the units bite
+
+Matt was ambivalent about who should fix it (meeting, 2026-10-06), so we did.  The
+conversion is **hoisted out of the SC branch** in `ts_config.py` and now runs for both
+LINAC modes, reading Cu's flat `groupN_keepRawRate` or SC's nested `groupN.keepRawRate`.
+A Cu config predating the entry **warns** rather than raising -- Cu never programmed this,
+so such a config is no worse off than before, and `logging` had to be imported for that
+warning to work at all (Matt's 2024 `46fcce78` used it without the import, which is
+plausibly why someone later replaced the warning with a `raise`).
+
+**The trap, found live on run 73: the config field is a RATE, the PV is a DIVISOR, and
+they differ by ~10^6.**  `user.Cu.group{2,4}_keepRawRate` had been set to **928571.0** --
+the divisor written by hand for run 66 -- so `int(910000/928571.0)` truncated to **0** and
+the XPM was programmed to never insert raw data.  Every structural check passed; the PV
+simply read 0.
+
+So `_rawUpdateDivisor()` now **refuses** a rate it cannot represent instead of writing 0:
+
+- `rawRate <= 0`, or a rate so high the divisor truncates below 1, names the units
+  mistake explicitly and gives the maximum, `TPGSEC` Hz;
+- a rate so low the divisor exceeds **20 bits** (`l0RawUpdate`'s width in
+  `pyxpm/xpm/_XpmApp.py`) reports the minimum, 0.8678 Hz.
+
+Exercised over 1.0 / 0.992 / 10.0 / 910000 Hz valid and 928571 / 0 / -1 / 0.8 / 2e6
+rejected.  `ts_config_store.py`'s help string now says "(Hz), NOT the L0RawUpdate
+divisor".
+
+**Note `TPGSEC` is 910000 but the fiducial rate is 1.3 GHz/1400 = 928571.4 Hz**, so every
+`keepRawRate` lands ~2% high -- 1.0 Hz asks for 1.0204 Hz.  `tsdef.py:81` already labels a
+910000 divisor as "1.02Hz", so this is deliberate and long-standing in Matt's design.
+**Left alone on Ric's instruction, 2026-10-06**: the 91 factors into a great deal else.
+
+## Proposal for Chris: add FLOAT16 to the Xtc type system
+
+Needs Chris's buy-in before anything is written -- `xtcdata` is shared with psana and
+every CPU DRP, so it is not ours to change unilaterally.  Recorded here as a worked
+proposal rather than a decision.
+
+**The question that prompted it was whether x86 gcc even has fp16, and if not, whether to
+leave the block opaque and reinterpret it in psana.**  It does, so the opaque route is not
+forced.  Checked with the conda-forge gcc 13.3.0 this tree builds with:
+
+| check | result |
+|---|---|
+| `_Float16` accepted under `-std=c++17` and `c++20` | yes |
+| `sizeof` / `alignof` | 2 / 2 |
+| arithmetic | `1.5 * 2.25 = 3.375` |
+| bit layout vs CUDA `__half` | **identical**: 1.5 -> `0x3e00`, pi -> `0x4248` |
+| `np.float16` in the daq env | itemsize 2, `NPY_HALF` = 23, numpy 1.26.4 |
+
+Two caveats to state when proposing it.  Without `-mavx512fp16` gcc emits libgcc calls
+(`__extendhfsf2`, `__truncsfhf2`) for fp16 *arithmetic*; with it, native `vmulsh`.  That
+does not matter here, because the DRP only stores and copies fp16 and never computes on
+it -- psana computes, and numpy handles that.  And **`__fp16` is not available on x86
+gcc**, only `_Float16`; the storage-only spelling is an ARM thing.
+
+**The change is three mechanical sites:**
+
+1. `ShapesData.hh` -- **append** `FLOAT16` to `Name::DataType`.  Appending is not a style
+   preference: the enum value is written into the file, so inserting it would reinterpret
+   every existing dataset.
+2. `ShapesData.cc` -- `sizeof(_Float16)` into `element_sizes[]` and `"FLOAT16"` into
+   `str_type()`.  The comment there already requires the two to track the header.
+3. `psana/src/dgram.cc` -- one more `case` yielding `NPY_HALF`.
+
+**Why this is better than declaring the block `UINT16` and reinterpreting offline.**
+`dgram.cc`'s array switch ends in `default: throw std::runtime_error("dgram.cc:
+Unsupported array type")`.  So "opaque u16" does not give psana something to reinterpret
+-- it gives every psana user a `uint16` array of nonsense, silently, with nothing in the
+file recording that the bytes are floats.  A new enum value instead fails **loudly** on an
+old psana, which is the right behaviour for a file it genuinely cannot read.  It also
+beats widening to `FLOAT`, which doubles the bytes on disk for data the firmware already
+produced as fp16.
+
+## FileWriter spun on an unrecoverable write error.  Fixed at 7b045c66
+
+Run 64, 2026-10-05: `/tmp` on gpu006 filled (20G, 100%), and every `cuFileWrite` then
+returned `EIO`.  The log carries dozens of identical lines, same buffer and same count:
+
+    <E> Write error: buffer 0x7fae2e000000, count 32517856: Input/output error
+    <E> File writing failed: rc -1
+
+`FileWriter::writeEvent()` logged and **returned without clearing `m_count` or restoring
+`m_writing`**, so the same buffer was retried on the next event, for ever.  The CPU
+`drp/FileWriter.cc` uses `logging::critical` at the equivalent point, which aborts; the GPU
+copy had downgraded it to `error` and so could not make progress.
+
+Now aborts once, as `FileWriterAsync` in the same file already did.  Two things went with it:
+`_flush()` ignored `_write()`'s return and then cleared `m_count`, silently truncating the
+file's tail, and `%m` was unreliable -- `cufile.h` says data path errors come back as standard
+error codes, so `rc` is `-errno` and cuFile need not set `errno` itself.  `strerror(-rc)` now
+names the condition, so a full disk reads `No space left on device (-28)`.
+
+**The abort branch itself is untested**: reaching it means filling a filesystem, which was
+not worth doing deliberately on a shared node.
+
+Sizing, for whoever runs this next: at 100% keepRaw an `EpixUHR3x2` event costs ~1.16 MB
+(387072 B raw + 774144 B reduced + descriptors), so 20 GB of `/tmp` is about 17000 events --
+under three minutes at 120 Hz.  Six runs exhausted it.
 
 ## Runtime behaviour
 
@@ -2487,6 +3304,121 @@ stays commented out.  Do not "fix" that by re-enabling it.
 Note the same GSP signature hit **gpu008's GPU5** four times, but there a reboot cleared it each
 time.  A GSP hang that a power cycle clears is transient; this one is not.
 
+### Pass-through records correct data, 2026-09-28; the stall is in the FEB
+
+**Stage 1 is validated.**  414 L1Accepts recorded on drp-srcf-gpu006 against the hardware
+emulator, and the file is what offline needs:
+
+| check | result |
+|---|---|
+| declared type | `Type 1 Rank 2` = `UINT16`, rank 2 -- matches `Drp::EpixUHR3x2`'s |
+| `payloadSize` | 387128 = 387072 raw + 56 descriptors |
+| `extent - payloadSize` | **12** -- the header abuts the payload, no gap |
+| damage | `0x0` on every event |
+| pixels | 193536 u16, **99.7% non-zero**, all six ASICs ~16050 of 16128 |
+| shim | `DRP_redStarts == DRP_redRcvs`, so every event completed |
+
+Read it with `xtcreader -f <file> -d`, or decode the last 387072 bytes of an L1A payload as u16.
+
+**Bit layout, from Gabriel 2026-09-28: gain is bit 0, ADC is bits 1-11, bits 12-15 are zero.**
+An earlier reading here had gain in bit 11, which was wrong.  Pass-through copies verbatim so it
+does not care, but stage 3 will.
+
+#### Two bugs fixed to get there
+
+- **The shim hung the DRPs.**  With `hasGraph()` false and `HOST_LAUNCHED_REDUCERS` undefined,
+  `Reducer` skips `configure()` and `setup()`, and `startup()` launches nothing because the
+  worker-thread branch is `#else`-compiled out.  Nothing posts a completion and the recorder
+  blocks on `receive()` for ever.  Fixed by following the graph path: `hasGraph()` true, a
+  `<<<1,1>>>` kernel that moves no data, sets the size and advances the state.
+- **The size slot collided with the raw block.**  `_reducerLoop` read `((size_t*)data)[-1]`,
+  which lies *inside* the raw block, so the size and the last four u16 pixels overwrote each
+  other.  Both now use `((size_t*)(data - rawSize))[-1]`; real reducers are unchanged since
+  `rawSize` is 0 for them.
+
+#### The remaining blocker is the FEB's backpressure, not the DRP
+
+After a few hundred events the DAQ goes to 100% deadtime and Disable will not complete.  **It is
+not the GPU DRP**, and the evidence is conclusive:
+
+| run | consumer | events |
+|---|---|---|
+| GPU, `dmaBufCount=8` | `PassthruShim` | 414 |
+| GPU, `dmaBufCount=32` | `PassthruShim` | 651 |
+| **CPU DRP** | stock `drp`, none of this code | **365** |
+
+So it is not a fixed-length acquisition (the count varies), not GPU-specific (the CPU path does
+it too), and not a DRP buffer-return failure -- `/proc/datadev_a1` showed `Buffers In User: 0`
+with `Buffers In Hw: 1020`, i.e. software held nothing and the driver was not starved, and
+`RX Frame Count` equalled the events processed, so the DRP consumed everything it was given.
+
+What the FEB shows while stalled, from both ePix devGuis:
+
+    L1AcceptCount = 794        triggers the FEB accepted
+    RX Frame Count = 653       frames that reached the datadev
+    XpmPause = True, FifoPause = True
+
+**The FEB accepted 141 more triggers than it could push out, asserted backpressure, and never
+released it.**  That the count varies run to run fits a FIFO filling on timing rather than a
+counted burst.  Ric suspects a high-water mark whose release condition never becomes true, and
+that `L0Delay` -- currently 0 for all partitions and readout groups -- is the adjustment, though
+whether 0 is the conservative end wants confirming with Matt.
+
+Useful that it reproduces with the stock CPU DRP: the GPU work need not enter that discussion.
+
+### Pass-through reached Paused on gpu006, 2026-09-25, and what it took
+
+First run of the pass-through work (`features/gpu-raw-calib`) against the hardware emulator.
+It reached **Paused**, which validates the whole transition path with the raw region in it:
+
+    EpixUHR3x2: pass-through mode -- recording raw u16, uncalibrated and unreduced
+    PassthruShim: recording 387072 B of raw data per event, unreduced
+    Reduce buffers: ... size 2048 * (80 + 387072 + 2097072) B
+    PGPReader / Collector / TebRcvr / Recorder  all saw Configure
+
+**Still unproven: no L1Accept has passed through the pass-through kernel.**  So the per-element
+copy, the recorder's contiguous-region arithmetic and the file layout are all untested.  Three
+things gate that: the trigger setup below, an output path (WEKA is not mounted on gpu006 --
+`/cds/data/drpsrcf` is a bare empty mountpoint there, Gabriel has an IT ticket for the IB link;
+`-o /home/claus/data` is the workaround), and then the XTC comparison against the CPU DRP.
+
+**Four of my bugs, none of which compiling would have caught:**
+
+1. `raw` was missing from the kwarg allowlist in `PGPDetectorApp.cc`, so the DRP died at startup
+   with `Unrecognized kwarg 'raw=1'`.  The allowlist working as intended.
+2. `maxTrSize` was 256 kiB, too small for an ePixUHR3x2 Configure.
+3. Raising it to 512 kiB failed identically, because the extent **grows to fill whatever it is
+   given** -- see the `maxTrSize` item above.  `epixuhr3x2_0`'s config is 902026 bytes of JSON.
+4. Settled at 2 MiB.
+
+The lesson for the plan's verification section: it checked that the code compiled and installed,
+so a runtime-only failure like a kwarg allowlist was invisible until the thing actually ran.
+
+**The ASIC-ordering question is answered, and the stale table is gone.**  Gabriel confirms the
+CPU DRP's output order is correct, so tdest 3+k is ASIC k and no remapping is needed.  The
+`AsicForDataSubFrame = {1,3,5,0,2,4}` table and its comment -- *"Anything writing XTC must
+descramble with this"* -- were **wrong**, and were also never referenced by any code: I wrote
+them in `e210c54e` when the GPU EpixUHR3x2 was first added, on an assumption that did not hold.
+Removed 2026-09-25.
+
+Keeping identity in the pass-through kernel was what made the CPU comparison meaningful; had the
+code been "corrected" to match that comment, the comparison would have failed for the wrong
+reason and the table would have looked vindicated.  A confident comment with no code depending
+on it is worth distrusting.
+
+**The trigger setup is what blocks L1Accepts.**  `xpmpva` shows the sequence is not currently
+loaded.  Gabriel's notes in the appendix below specify it, and happily for the same XPM
+`gpu6.py` already uses (`groupca DAQ:FEH 4`):
+
+- Timing's readout group: event code **278**
+- The ePixUHR readout group: event code **277**
+- The run trigger: **276**, already in configdb, so possibly nothing to change there
+- He programmed `DAQ:FEH:XPM:4` on **Seq Engine 5**
+
+So what is missing is the sequencer programming, not the XPM choice.  Without it the DAQ goes
+into deadtime immediately.  There is an `xpm-seq` skill for LCLS-II sequence programming if
+reprogramming from those three codes is preferable to waiting.
+
 ### gpu005 converted, 2026-09-23 -- the least similar node, done last on purpose
 
 Deliberately sequenced after the others: gpu005 is the Intel outlier and needed *more* changes than
@@ -2551,7 +3483,13 @@ the plan is SMT off everywhere, that case is deliberately not supported -- but g
 
 Deciding to reserve machine cores 0-3 unconditionally, rather than tracking WEKA's choice, is what
 makes this robust: core 0 for the OS and IB, cores 1-3 for WEKA, and Slurm needs no edit when
-WEKA moves or arrives.  There is an IT ticket to put WEKA on all these nodes.
+WEKA moves or arrives.  There is an IT ticket to put WEKA on all these nodes -- a separate one
+from [ECS-8386](https://jira.slac.stanford.edu/browse/ECS-8386), which names the cores.
+
+**That robustness holds only while the fstab pin does.**  It assumes WEKA's choice stays inside
+`0-3`, which is true of `core=1,core=2,core=3` and false of `num_cores=3`: gpu008 re-rolled to
+machine `1-2,32` once ansible reverted the pin.  So `CpuSpecList=0-3` is robust against WEKA
+*moving within* its named cores, not against the naming being lost.
 
 ### gpu006's InfiniBand is down, and it is not the host
 
@@ -2574,7 +3512,9 @@ link-up in the previous boot either, so it predates the BIOS work; and gpu008, w
 cable layout, reaches `ACTIVE / LinkUp / 200 Gb/sec (4X HDR)` with `sm_lid 0x1`.
 
 **This blocks WEKA on gpu006**, whose fstab names `net=ibp113s0f0` -- so the "WEKA everywhere"
-ticket is blocked on the fabric here, not on WEKA.  Gabriel has an IT ticket open; left with them.
+ticket is blocked on the fabric here, not on WEKA.  Gabriel has an IT ticket open; left with
+them.  **Its number is not recorded here** -- ask Gabriel rather than assuming it is ECS-8386,
+which is the fstab core-naming ticket and a different thing.
 
 ### IOMMU must be off, and it was held by luck on two nodes
 
@@ -2730,8 +3670,8 @@ Every GPU DRP log since at least 2026-09-13 opens with
 so the DRP threads run at normal priority.  Not a correctness problem, and not the cause
 of any failure seen so far, but it will bound achievable rate.  Ric raised an IT ticket
 for this a few days before 2026-09-14 --
-[ECS-11217](https://jira.slac.stanford.edu/browse/ECS-11217) -- since the `RLIMIT_RTPRIO`
-ceiling has to be raised in IT's ansible and cannot be set from our side.  Recorded so
+[ECS-11217](https://jira.slac.stanford.edu/browse/ECS-11217), Chris's to push on -- since the
+`RLIMIT_RTPRIO` ceiling has to be raised in IT's ansible and cannot be set from our side.  Recorded so
 that a future rate shortfall is not misattributed.
 
 ### IT's half is done; the message persists because Slurm does not read limits.d
@@ -2875,3 +3815,73 @@ used the **CPU** `drp`, `-d /dev/datadev_a1`, `-D epixuhr3x2`, `-W 16`,
 `SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_07202026`.  That
 release is the one to use: the March release the DAQ defaults to has no
 `epixuhr-3x2-readout-testing` tree at all, so `enable_epix_uhr3x2` raises on import.
+
+## Unconfigure hung in cuFile, because un-pinning needs an idle device
+
+Found on 2026-09-29 on drp-srcf-gpu001, running `epixuhremu` with `NoOpReducer`.  With
+recording **enabled**, the GPU DRP never acknowledged Unconfigure: the control level
+complained, and while `TebRcvr saw Unconfigure` appeared in the log, `Recorder saw
+Unconfigure` never did.  The process stayed alive with the recorder thread apparently busy.
+With recording off, Allocated/Running could be cycled repeatedly at 1, 10 and 100 Hz with no
+trouble.
+
+`gdb -p <pid> -batch -ex 'thread apply all bt'` is what settled it, and it named the frame
+outright:
+
+    #9  cuMemHostUnregister ()                   from libcuda.so.1
+    #14 cuFileBufDeregister ()                   from libcufile.so.0
+    #15 Drp::Gpu::FileWriter::close              FileWriter.cc
+    #16 Drp::TebReceiverBase::closeFiles         DrpBase.cc:975
+    #17 Drp::Gpu::TebReceiver::_recorder         PGPDetector.cc
+
+So the recorder was not stuck on Unconfigure at all: it was still inside **EndRun**, whose
+`closeFiles()` never returned, and Unconfigure sat unprocessed behind it in the queue.  That
+is also why recording mattered -- `closeFiles()` does nothing unless `m_writing` is true, and
+`FileWriter::close()` only reaches the deregister when `m_fd > 0`.
+
+**The cause: `cuFileBufRegister` was being undone mid-cycle, while the Reader graphs were
+still running.**  Those graphs relaunch themselves (`Reader.cu`,
+`cudaStreamGraphTailLaunch`) until `terminate` is set, so between `Reader::startup()` and
+`PGPDrp::unconfigure()` the device is never idle.  `cuFileBufDeregister` reaches
+`cuMemHostUnregister()`, which has to quiesce the device's mappings, and it cannot while work
+keeps re-queueing itself.
+
+**The fix** moves the buffer registration to the `FileWriter`'s ctor and dtor, which is what
+Ric's first implementation did before an unrelated problem pushed it into `open()`.  Both ends
+are quiet there: the ctor runs during Configure before the graphs launch, the dtor at the next
+Configure after `m_terminate` is set.  `TebReceiver::setup()` also needed an explicit
+`m_fileWriter.reset()` before its `make_unique`, or the new writer's registration would
+briefly coexist with the old one's.
+
+Validated by Ric the same evening: two cycles with recording on, reaching Allocated from
+Running cleanly.
+
+Three things worth keeping from how this went wrong:
+
+- **It was latent, not a regression.**  The register/deregister pair dates to `705a8264`
+  (2025-07-01); the self-relaunching graph loop was written *later*, and the FileWriter was
+  never retested against it.  Nothing on the `features/gpu-raw-calib` branch touched
+  `FileWriter.cc`, so this belongs on `features/gpu` too.
+- **One record-enabled cycle triggers it.**  Earlier runs looked like a race that needed
+  three cycles, but the first two had recording off and so never opened a file.  A
+  deterministic one-shot failure, not a race.
+- **Per-stream synchronization is not the answer.**  Two attempts went that way first -- the
+  reasoning being that `writeEvent()` queues `cudaMemcpyAsync` and `close()` never waited --
+  and the hang was unchanged.  The constraint is device-wide.  A `cudaStreamSynchronize` was
+  added to `FileWriter::_write()` anyway and kept, because reading the buffer while copies are
+  in flight was genuinely unsound: `cuFileWrite` could see bytes that had not landed, so
+  mid-run flushes could write stale data.  It is a real fix for a different bug.
+
+The line number in the backtrace is a reliable version check when retesting this, since the
+deregister moved: `FileWriter.cc:230` is the original, `:224` the reordered-`close()`
+intermediate, and neither once the call lives in the dtor.
+
+### `cufile.json` is not being read from the run directory
+
+Noticed while investigating the above.  `~/lclsii/daq/runs/eb/data/gpu001/cufile.json` has no
+effect: cuFile looks at `$CUFILE_ENV_PATH_JSON`, which is unset, then `/etc/cufile.json`,
+which on gpu001 symlinks through `/etc/alternatives` to
+`/usr/local/cuda-13.3/gds/cufile.json`.  Both files happen to set `allow_compat_mode: true`,
+so behaviour today is the same either way and compat mode is in force as expected -- but any
+*other* setting in the run-directory copy has never taken effect.  Point
+`CUFILE_ENV_PATH_JSON` at it if it is meant to be authoritative.

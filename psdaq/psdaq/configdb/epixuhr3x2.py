@@ -650,7 +650,9 @@ class EpixUHR3x2_Manager:
         self.initialize_timing(timebase=timebase)
 
         # Force use of CPU data path. Seems to not determine that sometimes.
-        self._kick_data_path(use_cpu=True)
+        # Per Gabriel: set use_cpu=False for GPU use
+        # self._kick_data_path(use_cpu=True)
+        self._kick_data_path(use_cpu=False)
 
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()

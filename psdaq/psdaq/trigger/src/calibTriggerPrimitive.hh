@@ -1,14 +1,12 @@
-#ifndef Pds_Trg_TmoTebPrimitive_hh
-#define Pds_Trg_TmoTebPrimitive_hh
+#ifndef Pds_Trg_CalibTriggerPrimitive_hh
+#define Pds_Trg_CalibTriggerPrimitive_hh
 
 #include "TriggerPrimitive.hh"
-
-#include "TmoTebData.hh"
 
 namespace Pds {
   namespace Trg {
 
-    class TmoTebPrimitive : public TriggerPrimitive
+    class CalibPrimitive : public TriggerPrimitive
     {
     public:
       using TriggerPrimitive::configure; // Unhide the Xtc overload, which is not overridden
@@ -28,7 +26,7 @@ namespace Pds {
                    size_t    const        outBufsCnt,
                    unsigned  const* const index,
                    unsigned* const        retCode_d) override;
-      size_t size() const override  { return sizeof(TmoTebData); }
+      size_t size() const override { return 0; }
     };
   }
 }

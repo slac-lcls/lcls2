@@ -83,7 +83,10 @@ private:
   PyObject* m_pyModule;
 };
 
-class RawDef : public VarDef
+// What the raw block holds: the panel's u16 pixels, as they arrived.  Rank 2, as
+// Drp::EpixUHR3x2 declares it, so that an emulator file and a real one present the
+// same array to offline -- which is the point of an emulator.  See rawShape().
+class RawU16Def : public VarDef
 {
 public:
   enum index
@@ -91,10 +94,9 @@ public:
       raw
     };
 
-  RawDef()
+  RawU16Def()
   {
-    Alg raw("raw", 0, 0, 0);
-    NameVec.push_back({"raw", Name::UINT8, 1});
+    NameVec.push_back({"raw", Name::UINT16, 2});
   }
 };
   } // Gpu
@@ -133,7 +135,8 @@ EpixUHRemu::~EpixUHRemu()
 
 unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const void* bufEnd)
 {
-  logging::info("Gpu::EpixUHRemu configure");
+  logging::info("Gpu::EpixUHRemu configure: alias '%s'%s", config_alias.c_str(),
+                m_passthru ? ", recording raw u16 uncalibrated and unreduced" : "");
 
   // Configure the XpmDetector for the panel
   unsigned rc = m_det->configure(config_alias, xtc, bufEnd);
@@ -146,7 +149,10 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para->detName.c_str(), alg,
                                          m_para->detType.c_str(), m_para->serNo.c_str(), namesId, m_para->detSegment);
-  RawDef dataDef;
+  // Describes the raw block in both modes: the whole payload in pass-through, and the
+  // prescaled companion to the Reducer's array in BEAM.  The pixels are u16 either
+  // way, so this must be typed as such -- a flat byte array would misdescribe them.
+  RawU16Def dataDef;
   names.add(xtc, bufEnd, dataDef);
   m_namesLookup[namesId] = NameIndex(names);
 
@@ -191,13 +197,73 @@ void EpixUHRemu::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
   // @todo: Deal with prescaled raw for the panel here?
 }
 
-// Instantiating the kernel template here puts the calibration in the same CUDA
+// Copies the panel's u16 pixels into the raw block, uncalibrated.  The payload is one
+// contiguous block after the TimingHeader -- the emulator sends no sub-frames -- so
+// this reads it exactly as PedGainCalib does, and writes u16 rather than converting to
+// float.  Shared by CALIB mode, where the raw block is the whole payload, and by
+// prescaling, where it accompanies the calibrated data.
+//
+// pyld.raw being set is what says this event has a raw block to fill, in either mode:
+// the Reader sets it per event, for all of them in pass-through and for marked ones
+// when prescaling.  A policy must not test keepRaw itself -- in pass-through that bit
+// is set on ~1 Hz of events whose payload is *entirely* raw, so honouring it would
+// leave the rest of the frames zeroed.
+static __device__
+void _copyRaw(const EventPayload& pyld, unsigned tid, unsigned stride)
+{
+  if (!pyld.raw)  return;               // No raw block this event: nothing to fill
+
+  auto const __restrict__ src = (uint16_t const*)(pyld.data + sizeof(Pds::TimingHeader));
+  auto const __restrict__ dst = (uint16_t*)pyld.raw;
+  auto const payloadCnt = (pyld.size - sizeof(Pds::TimingHeader))/sizeof(*src);
+  auto const rawCnt     = pyld.rawCnt / sizeof(*dst);
+  // The array offline sees is a fixed NPixels, so a short payload leaves zeros
+  // rather than shrinking it.  Damage::MissingData in event() carries the fact.
+  auto const nElem = payloadCnt > rawCnt ? rawCnt : payloadCnt;
+  for (auto i = tid; i < rawCnt; i += stride)
+    dst[i] = i < nElem ? src[i] : 0;
+}
+
+// CALIB mode: raw instead of calibrated, so nothing writes the calibrated buffer.
+struct EpixUHRemuCalib
+{
+  __device__
+  void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
+  {
+    if (!pyld.hasData)  return;         // A transition, or nothing intelligible
+    _copyRaw(pyld, tid, stride);
+  }
+};
+
+// BEAM mode: calibrate every event, and on the ~1 Hz the timing system marked, copy
+// the raw data as well so offline can reproduce the calibration from it.  Both read
+// the same source bytes: for this detector the two blocks are one block of the DMA
+// buffer.  The Reader gives a marked event a raw block and the rest none, so
+// _copyRaw's own test is what selects them.
+struct EpixUHRemuPrescale
+{
+  PedGainCalib calib;
+
+  __device__
+  void process(const EventPayload& pyld, unsigned tid, unsigned stride) const
+  {
+    calib.process(pyld, tid, stride);
+    if (pyld.hasData)  _copyRaw(pyld, tid, stride);
+  }
+};
+
+// Instantiating the kernel templates here puts the per-element work in the same CUDA
 // module as the kernel, so it inlines.  See ReaderKernels.cuh.
 void EpixUHRemu::recordEvent(cudaStream_t           stream,
                              unsigned               blocks,
                              unsigned               threads,
                              const EventKernelArgs& args)
 {
+  if (m_passthru) {
+    _event<EpixUHRemuCalib><<<blocks, threads, 0, stream>>>(args, EpixUHRemuCalib{});
+    return;
+  }
+
   // No reference buffers: only the simulator controls the raw data it generates,
   // so only it can supply something to verify the calibration against
   PedGainCalib const calib{pedestals_d(),
@@ -205,8 +271,10 @@ void EpixUHRemu::recordEvent(cudaStream_t           stream,
                            nullptr,
                            0,
                            rangeOffset(),
-                           rangeBits()};
-  _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
+                           rangeBits(),
+                           dataOffset(),
+                           dataBits()};
+  _event<EpixUHRemuPrescale><<<blocks, threads, 0, stream>>>(args, EpixUHRemuPrescale{calib});
 }
 
 // The class factory

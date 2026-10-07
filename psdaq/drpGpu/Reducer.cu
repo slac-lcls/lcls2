@@ -1,6 +1,7 @@
 #include "Reducer.hh"
 
 #include "Detector.hh"
+#include "PassthruShim.hh"              // Linked in, not loaded: see _setupAlgo()
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -21,6 +22,13 @@ using us_t    = std::chrono::microseconds;
 
 struct red_domain{ static constexpr char const* name{"Reducer"}; };
 using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
+
+// Prescale buffers for prescaled events.  The pebble pool bounds how many can be in
+// flight -- the Reader cannot outrun the recorder by more than nbuffers() events,
+// because pool.allocate() blocks -- which at a 1 Hz keepRaw rate and 33 kHz is a small
+// fraction of one event.  32 is therefore enormous headroom, and cheap: each costs the
+// same as one reduce buffer plus the raw block.
+static constexpr unsigned NPrescaleBuffers{32};
 
 static inline unsigned nxtPwrOf2(unsigned n)
 {
@@ -70,15 +78,44 @@ Reducer::Reducer(const Parameters&                  para,
 
   // The header consists of the Dgram with the parent Xtc, the ShapesData Xtc, the
   // Shapes Xtc with its payload and Data Xtc, the payload of which is on the GPU.
-  auto headerSize  = sizeof(Dgram) + 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  auto shapesDataSize = 3 * sizeof(Xtc) + MaxRank * sizeof(uint32_t);
+  auto headerSize     = sizeof(Dgram) + shapesDataSize;
+  // Exactly what the algorithm asks for; writing more than that is its bug, which
+  // the recorder checks for
   auto payloadSize = m_algo ? m_algo->payloadSize() : 0;
-  auto totalSize   = headerSize + payloadSize;
-  if (totalSize < m_para.maxTrSize)  payloadSize = m_para.maxTrSize - headerSize;
 
-  // Prepare buffers to receive the reduced data,
-  // prepended with some reserved space for the datagram header.
+  // In pass-through the raw block *is* the recorded data and the reduced payload is
+  // unused, which is why payloadSize() may legitimately be 0 there.  Only that mode
+  // puts raw in the reduce buffers: a prescaled BEAM event assembles its datagram in
+  // a prescale buffer instead, so the reduce buffers stay [hdr][reduced] and the raw
+  // block is not multiplied by nbuffers().
+  auto rawSize = det.rawSize();
+  auto redRaw  = det.passthru() ? rawSize : 0;
+  if (redRaw)
+    logging::warning("Reserving %zu B per buffer for raw data ahead of the reduced payload",
+                     redRaw);
+
+  // Prepare buffers to receive the reduced data, prepended with reserved space for
+  // the datagram header and, in pass-through, for raw data.
   // The application sees only the pointer to the data buffer.
-  m_pool.createReduceBuffers(payloadSize, headerSize);
+  m_pool.createReduceBuffers(payloadSize, headerSize, redRaw);
+
+  // Transitions get their own buffers so that the largest transition's size is not
+  // multiplied by nbuffers().  The count comes from the CPU pool: all transitions but
+  // SlowUpdate are synchronous, so only SlowUpdates -- 1 Hz, unacknowledged -- can
+  // accumulate, and that count is many minutes' worth of them.
+  m_pool.createTransitionBuffers(m_para.maxTrSize, m_pool.pebble.nTrBuffers());
+
+  // Prescaled events need somewhere to assemble [hdr][raw][reduced] contiguously.
+  // Only in BEAM: pass-through records raw for every event, through the reduce
+  // buffers, so it needs none of these.  The count is generous because they are
+  // nearly free -- 32 costs ~0.03 GiB where reserving raw in every reduce buffer
+  // costs 0.74 GiB at nbuffers = 2048 -- and because running dry aborts the DAQ.
+  // A prescaled event describes two arrays, so its datagram carries a second block of
+  // descriptors; it goes between the payloads, not in the header reserve, because
+  // CreateData writes each array's descriptors immediately before its bytes.
+  if (rawSize && !det.passthru())
+    m_pool.createPrescaleBuffers(rawSize, NPrescaleBuffers, headerSize, shapesDataSize);
 
   // Set up the worker queues to fit all buffers
   if (m_para.nworkers) {
@@ -214,6 +251,8 @@ Reducer::~Reducer()
   if (m_algo)  delete m_algo;
   m_dl.close();
 
+  m_pool.destroyPrescaleBuffers();
+  m_pool.destroyTransitionBuffers();
   m_pool.destroyReduceBuffers();
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
@@ -259,6 +298,18 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
 
 bool Reducer::_setupAlgo(Detector& det)
 {
+  if (m_algo)  delete m_algo;           // If the object exists, delete it
+  m_dl.close();                         // If a lib is open, close it first
+
+  // Pass-through needs no reduction algorithm, just the shim that reports the raw
+  // block's size and completes each event.  It is linked in rather than loaded so
+  // that the operator can switch between BEAM and CALIB from run to run without the
+  // .cnf.py changing: the kwarg below names the reducer for BEAM either way.
+  if (det.passthru()) {
+    m_algo = new PassthruShim(m_para, m_pool, det);
+    return true;
+  }
+
   // @todo: In the future, find out which Reducer to load from the Detector's configDb entry
   //        For now, load it according to a command line kwarg parameter
   std::string reducer;
@@ -267,9 +318,6 @@ bool Reducer::_setupAlgo(Detector& det)
     return false;
   }
   reducer = m_para.kwargs.at("reducer");
-
-  if (m_algo)  delete m_algo;           // If the object exists, delete it
-  m_dl.close();                         // If a lib is open, close it first
 
   const std::string soName("lib"+reducer+".so");
   logging::debug("Loading library '%s'", soName.c_str());
@@ -363,6 +411,7 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
                   unsigned const*              const __restrict__ index,
                   uint8_t*                     const __restrict__ dataBuffers,
                   size_t                       const              dataBufsCnt,
+                  size_t                       const              rawSize,
                   RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
                   uint64_t*                    const __restrict__ stateMon,
                   uint64_t*                    const __restrict__ outWtCtr,
@@ -371,7 +420,12 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
   if (*state == 2) {
     //*stateMon = 4;
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
-    auto dataSize = ((size_t*)data)[-1];
+    // The size the algorithm recorded, in the word just below whatever it wrote:
+    // below the payload normally, and below the raw block when the Detector asked
+    // for one, since the raw block occupies the space the size would otherwise use.
+    // Either way the slot is in the header reserve or the raw region, both of which
+    // are read here before the recorder copies the Dgram over them.
+    auto dataSize = ((size_t*)(data - rawSize))[-1];
     //printf("### _reducerLoop: pushing {%u, %lu}\n", *index, dataSize);
     bool rc;
     unsigned ns{8};
@@ -413,7 +467,9 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   auto dataBuffers  = m_pool.reduceBuffers_d();
   auto dataBufsRsvd = m_pool.reduceBufsReserved();
   auto dataBufsSz   = m_pool.reduceBufsSize();
-  auto dataBufsCnt  = (dataBufsRsvd + dataBufsSz) / sizeof(*dataBuffers);
+  // The stride is every region of a reduce buffer, not just the reserve plus
+  // payload, so that `&dataBuffers[idx * dataBufsCnt]` indexes buffer idx
+  auto dataBufsCnt  = m_pool.reduceBufsStride() / sizeof(*dataBuffers);
 
   if (chkError(cudaStreamBeginCapture(stream, cudaStreamCaptureModeThreadLocal),
                "Reducer stream begin capture failed")) {
@@ -447,6 +503,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
                                     m_indices[worker],
                                     dataBuffers,
                                     dataBufsCnt,
+                                    m_pool.reduceBufsRaw(),
                                     m_outputQueues2[worker].d,
                                     m_metrics.state[worker],
                                     m_metrics.outWtCtr[worker],

@@ -35,6 +35,7 @@ class JungfrauIdLookup {
         static uint64_t mac_to_hex(std::string mac);
     private:
         void load();
+        void load(const std::string& hostname, const std::string& port);
 
         ArpCache _arp;
 };

@@ -180,7 +180,7 @@ def epixuhr3x2_init(
     # ... gets passed around via this horrible global variable strategy ...
     base = {}
     #  Connect to the camera and the PCIe card
-    emulator: bool = False
+    emulator: bool = True  # Changed per Gabriel: False to initialize nonexistent ASICs
     detectorRoot = epixUhrDev.Root(
         # This specifies datadev for config and data C1100's
         ReadoutSystems = [devReadoutSystem], # List, as you could hvae multiple in 1 proc

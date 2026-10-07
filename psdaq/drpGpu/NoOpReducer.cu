@@ -195,7 +195,7 @@ void NoOpReducer::reduce(cudaGraphExec_t graph,
 
   chkFatal(cudaGraphLaunch(graph, stream));
 
-  auto maxSize  = m_pool.reduceBufsReserved() + m_pool.reduceBufsSize();
+  auto maxSize  = m_pool.reduceBufsStride();
   auto buffer_d = &m_pool.reduceBuffers_d()[index * maxSize];
   auto pSize_d  = buffer_d - sizeof(*dataSize);
   chkError(cudaMemcpyAsync((void*)dataSize, pSize_d,     sizeof(*dataSize), cudaMemcpyDefault, stream));
@@ -218,7 +218,9 @@ void NoOpReducer::reduce(cudaGraphExec_t,
   auto dataBuffers  = m_pool.reduceBuffers_d();
   auto dataBufsRsvd = m_pool.reduceBufsReserved();
   auto dataBufsSz   = m_pool.reduceBufsSize();
-  auto dataBufsCnt  = (dataBufsRsvd + dataBufsSz) / sizeof(*dataBuffers);
+  // The stride is every region of a reduce buffer, not just the reserve plus
+  // payload, so that `&dataBuffers[idx * dataBufsCnt]` indexes buffer idx
+  auto dataBufsCnt  = m_pool.reduceBufsStride() / sizeof(*dataBuffers);
 
   // @todo: Use green context SM splitting results here
   cudaDeviceProp prop;
@@ -249,7 +251,7 @@ void NoOpReducer::reduce(cudaGraphExec_t,
 
   printf("*** NoOp::reduce: 2\n");
 
-  auto maxSize  = dataBufsRsvd + dataBufsSz;
+  auto maxSize  = m_pool.reduceBufsStride();
   auto buffer_d = &dataBuffers[index * maxSize];
   auto pSize_d  = buffer_d - sizeof(*dataSize);
   chkError(cudaMemcpyAsync((void*)dataSize, pSize_d,    sizeof(*dataSize), cudaMemcpyDefault, stream));

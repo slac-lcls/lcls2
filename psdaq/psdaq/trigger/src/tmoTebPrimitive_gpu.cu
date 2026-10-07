@@ -53,7 +53,6 @@ void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                                       unsigned  const* const index_d,
                                       unsigned* const        retCode_d)
 {
-  printf("*** TmoTebPrimitive::event 1\n");
   _event<<<1, 1, 0, stream>>>(calibBuffers,
                               calibBufsCnt,
                               outBuffers,
@@ -62,6 +61,5 @@ void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                               index_d,
                               retCode_d);
   chkError(cudaGetLastError(), "Launch of TmoTebPrimitive _event kernel failed");
-  printf("*** TmoTebPrimitive::event 2\n");
 }
 

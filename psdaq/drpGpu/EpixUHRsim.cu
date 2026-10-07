@@ -288,7 +288,9 @@ void EpixUHRsim::recordEvent(cudaStream_t           stream,
                            referenceBuffers(),
                            referenceBufCnt(),
                            rangeOffset(),
-                           rangeBits()};
+                           rangeBits(),
+                           dataOffset(),
+                           dataBits()};
   _event<PedGainCalib><<<blocks, threads, 0, stream>>>(args, calib);
 }
 

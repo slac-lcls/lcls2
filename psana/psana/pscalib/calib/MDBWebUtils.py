@@ -71,7 +71,17 @@ import json as jsonmet
 import psana.detector.Utils as ut
 #import psana.detector.utils_psana as up # dict_filter
 
-has_kerb = not call(["klist", "-s"])
+def has_kerberos_ticket():
+    """dynamically check if user has a valid Kerberos ticket."""
+    try:
+        return not call(["klist", "-s"])
+    except FileNotFoundError:
+        # klist isn't installed in this environment (e.g. the manylinux
+        # wheel-test container) - treat as "no Kerberos ticket" rather
+        # than crashing the whole module import.
+        return False
+
+has_kerb = has_kerberos_ticket()
 jwt = os.getenv('CALIB_JWT', None)
 has_jwt = bool(jwt)
 
@@ -95,18 +105,18 @@ def path_to_pscalib_calib(path_to_conda2_bin='/sdf/group/lcls/ds/ana/sw/conda2/m
 PASS_TO_REL_CALIB = path_to_pscalib_calib(ext='test') # ext=''/'previous'/'test'
 
 info_missing_jwt = 'JWT TICKET IS UNAVAILABLE OR EXPIRED'\
-      +'\nmake env CALIB_JWT using command:'\
-      +f'\n  source {PASS_TO_REL_CALIB}/get_JWT_from_s3df.sh'\
-      +'\nor'\
-      +f'\n  source {PASS_TO_REL_CALIB}/get_JWT_from_kerberos.sh\n'\
+      +'\n  make env CALIB_JWT using command:'\
+      +f'\n    source {PASS_TO_REL_CALIB}/get_JWT_from_s3df.sh'\
+      +'\n  or (if kerberos available):'\
+      +f'\n    source {PASS_TO_REL_CALIB}/get_JWT_from_kerberos.sh\n'\
 
 info_missing_kerb = 'KERBEROS TICKET IS UNAVAILABLE OR EXPIRED'\
-      +'\nor\n  make kerberos using command: kinit (klist, kdestroy)\n'
+      +'\n  make kerberos using command: kinit (klist, kdestroy)\n'
 
-info_missing_tickets = f'{info_missing_jwt}{info_missing_kerb}'
+info_missing_tickets = f'\n{info_missing_jwt}\n{info_missing_kerb}'
 
-info_ticket = f'using jwt, CALIB_JWT: {jwt[:20]}...' if has_jwt else\
-              f'using kerberos\n{info_missing_jwt}' if has_kerb else\
+info_ticket = f'\nusing jwt, CALIB_JWT: {jwt[:20]}...' if has_jwt else\
+              f'\nusing kerberos, {info_missing_jwt}' if has_kerb else\
               info_missing_tickets
 
 session = req.Session() if has_jwt else None
@@ -116,10 +126,6 @@ if has_jwt:
 
 #print('MDBWebUtils: ' + info_ticket)
 #logger.info(info_ticket)
-
-def has_kerberos_ticket():
-    """dynamically check if user has a valid Kerberos ticket."""
-    return not call(["klist", "-s"])
 
 def check_ticket(exit_if_invalid=True, output=logger.debug):
     """dynamically check any ticket and send message to output method"""
@@ -131,7 +137,7 @@ def check_ticket(exit_if_invalid=True, output=logger.debug):
         return True
     output(info_missing_tickets)
     if exit_if_invalid:
-        sys.exit('EXIT DUE TO MISSING TICKET')
+        sys.exit('\nEXIT DUE TO MISSING KERBEROS OR JWT TICKET, check status and get help with command: jwt')
     return False
 
 
