@@ -30,6 +30,7 @@ lane = 0
 chan = 0
 ocfg = None
 group = None
+args = {}
 
 # user set holding the flat-field (FPN/PRNU) coefficients to load at configure,
 # as written by psdaq/configdb/piranha4_flatfield_cal.py
@@ -115,6 +116,12 @@ def dict_compare(new,curr,result):
             else:
                 result[k] = new[k]
 
+def dumpTiming(tim):
+    logging.warning(f'FidCount  : {tim.FidCount.get()}')
+    logging.warning(f'RxRstCount: {tim.RxRstCount.get()}')
+    logging.warning(f'RxDecErrs : {tim.RxDecErrCount.get()}')
+    logging.warning(f'RxDspErrs : {tim.RxDspErrCount.get()}')
+
 def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M",verbosity=0):
 
     global pv
@@ -125,12 +132,15 @@ def piranha4_init(arg,dev='/dev/datadev_0',lanemask=1,xpmpv=None,timebase="186M"
 
     global clkRate
     global clksPerFrame
+    global args
 
     if timebase == "119M":
         clkRate      = 119
         clksPerFrame = 238
 
-    print('piranha4_init')
+    print(f"piranha4_init (i2c_setup:{timebase})")
+
+    args["timebase"] = timebase
 
     lm=lanemask
     lane = (lm&-lm).bit_length()-1
@@ -272,6 +282,49 @@ def piranha4_connectionInfo(cl, alloc_json_str):
             # and empirically this fixes it.  not sure if we need the sleep - cpo
             #cl.ClinkPcie.Hsio.TimingRx.TimingPhyMonitor.TxPhyReset()
             #time.sleep(0.1)
+
+            tim = cl.ClinkPcie.Hsio.TimingRx.TimingFrameRx
+            dumpTiming(tim)
+            time.sleep(0.1)
+            tim.ClearRxCounters() 
+
+            if args["timebase"]=="186M":
+                clockrange = (180.,190.)
+            elif args["timebase"]=="119M":
+                clockrange = (115.,125.)
+            else:
+                clockrange = None
+
+            if clockrange is not None:
+                if True:
+                    # check timing reference clock, program if necessary
+                    rate = cl.ClinkPcie.Hsio.TimingRx.GthRxAlignCheck[1].TxClkFreq.get()
+
+                    if args["timebase"] == "119M":
+                        rate = cl.ClinkPcie.Hsio.TimingRx.GthRxAlignCheck[0].TxClkFreq.get()
+                    else:
+                        rate = cl.ClinkPcie.Hsio.TimingRx.GthRxAlignCheck[1].TxClkFreq.get()
+
+                    print(f"check clock rate: {rate}")
+                    if (rate < clockrange[0] or rate > clockrange[1]):
+                        print(f"programming clock: {rate}")
+                        if args["timebase"] == "119M":
+                            cl.ClinkPcie.I2CBus.programSi570(119.)
+                            cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV1()
+                        else:
+                            cl.ClinkPcie.I2CBus.programSi570(1300/7.)
+
+                        cl.ClinkPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+                        # tim.RxPllReset.set(1)
+                        # tim.RxPllReset.set(0)
+                        time.sleep(1)
+                        dumpTiming(tim)
+                        #tim.C_RxReset()
+                        time.sleep(0.1)
+                        tim.ClearRxCounters()
+                else:
+                    logging.warning('Supervisor is not I2cBus manager')
+
 
             txId = timTxId('piranha4')
 
