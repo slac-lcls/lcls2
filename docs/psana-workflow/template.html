@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{TITLE}} · psana workflow</title>
+<style>{{STYLE}}</style>
+</head>
+<body>
+<a class="skip" href="#detail">Skip to component details</a>
+<header><div class="eyebrow">LCLS-II / PSANA WORKFLOW</div><h1 id="title"></h1><p id="subtitle"></p><p id="scope" class="scope"></p><div class="header-meta" id="baseline"></div></header>
+<main>
+<noscript><p class="notice">Enable JavaScript for the interactive map. The complete component reference is available below.</p>{{FALLBACK}}</noscript>
+<div id="interactive" hidden>
+<nav class="toolbar" aria-label="Workflow views"><div id="view-buttons" class="segmented"></div><label class="serial-control"><input id="serial" type="checkbox"> Show serial roles</label><button id="download" type="button">Download HTML</button></nav>
+<p id="serial-note" class="notice" hidden></p>
+<div class="section-head"><div><h2 id="map-title"></h2><p id="map-note"></p></div><a class="quiet" href="#transitions">Transition example ↓</a></div>
+<div id="legend" class="legend" aria-label="Relationship types"></div>
+<div class="map-shell"><div id="map" aria-label="Clickable workflow map"></div></div>
+<div class="map-footer"><span>Click a component, or use the keyboard list below. Arrows show responsibilities and dependencies, not elapsed time.</span><button id="toggle-connections" type="button" aria-expanded="false" aria-controls="connections">Show connections</button></div>
+<div id="connections" hidden></div>
+<nav id="component-list" class="component-list" aria-label="Choose a component"></nav>
+<section id="tour" class="tour" aria-label="Follow event T"><div><div class="eyebrow">FOLLOW EVENT T</div><h2 id="tour-title"></h2><p id="tour-text"></p></div><div class="tour-controls"><button id="tour-prev" type="button" aria-label="Previous event step">← Previous</button><span id="tour-count" aria-live="polite"></span><button id="tour-next" type="button" aria-label="Next event step">Next →</button></div></section>
+<section id="detail" class="detail" tabindex="-1" aria-label="Selected component"><div class="detail-head"><div><p id="detail-tag" class="eyebrow"></p><h2 id="detail-title"></h2></div><a id="permalink" href="#">Component link ↗</a></div><p id="detail-summary" class="lead"></p><p id="detail-role" class="role"></p><div class="io-grid"><div><h3>Receives</h3><ul id="detail-inputs"></ul></div><div><h3>Produces</h3><ul id="detail-outputs"></ul></div></div><h3>Class and script relationships</h3><ol id="detail-flow"></ol><details open><summary>Ownership and release</summary><p id="detail-owner"></p></details><div id="detail-notes"></div><details open><summary>Source at the inspected commit</summary><ul id="detail-sources" class="sources"></ul></details></section>
+<section class="reference-grid"><div><h2>Four different sizes of work</h2><dl id="granularities"></dl></div><div><h2>Track lifetime separately</h2><p>Logical event order and physical buffer reuse are different questions.</p><div id="lifetimes"></div></div></section>
+<section id="transitions" class="transition-section" tabindex="-1"><div class="eyebrow">TRANSITION WALKTHROUGH</div><h2 id="transition-title"></h2><p id="transition-intro"></p><div class="transition-grid"><div><h3>CPU: packet order</h3><ol id="transition-cpu" class="timeline"></ol></div><div><h3>GPU: current limitation</h3><ol id="transition-gpu" class="timeline warning"></ol></div></div><ul id="transition-notes"></ul><p class="source-shortcuts"><a href="#/gpu/controller">Inspect GPU controller</a> · <a href="#/gpu/constants">Inspect requested constants</a> · <a id="transition-issue">Issue #153</a></p></section>
+<section id="followups"><h2>Implemented baseline, open design work</h2><p>These issue states were checked on the inspection date. They are not live status indicators.</p><div id="issues" class="issues"></div></section>
+<footer><h2>About this prototype</h2><p>Offline experiment/run processing only. Shared-memory, DRP, live operation, integrating-detector details, and downstream small-data service internals are outside this first map. No performance timing is implied by diagram positions.</p><p id="attribution"></p><p id="attribution-note"></p><details><summary>Redistribution license</summary><pre class="license">{{LICENSE}}</pre></details></footer>
+</div>
+</main>
+<script id="workflow-model" type="application/json">{{MODEL}}</script>
+<script>{{SCRIPT}}</script>
+</body></html>

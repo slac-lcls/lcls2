@@ -1,0 +1,1105 @@
+{
+  "schema_version": 1,
+  "title": "Follow a psana event",
+  "subtitle": "From small-data metadata to user analysis",
+  "baseline": {
+    "repo": "https://github.com/slac-lcls/lcls2",
+    "commit": "e2cdad6e18fd9263d7adfeed0ce58d5ad074e070",
+    "inspected": "2026-10-07",
+    "pr": 151,
+    "state": "OPEN"
+  },
+  "scope": "Documents the proposed psana2-gpu implementation in PRs #136–151, inspected at e2cdad6e18fd on 2026-10-07; not necessarily the merged branch.",
+  "nodes": [
+    {
+      "id": "setup",
+      "title": "Choose a run",
+      "tag": "DataSource / Run",
+      "role": "All psana ranks; setup specializes by role",
+      "serial": "One process uses SerialDataSource and RunSerial.",
+      "summary": "The public DataSource factory chooses the experiment/run implementation. File discovery, Configure and BeginRun establish detector metadata before steady-state event delivery.",
+      "inputs": [
+        "DataSource(exp=…, run=…) arguments",
+        "Configure, BeginRun and calibration metadata"
+      ],
+      "outputs": [
+        "Configured run and detector interfaces",
+        "Stream/file mapping and CPU/GPU selection"
+      ],
+      "flow": [
+        "User script calls DataSource(), then ds.runs().",
+        "MPIDataSource creates role-specific run behavior; Communicators defines SMD0, EB, BD and optional small-data service ranks.",
+        "RunSerial constructs Events for CPU mode or GpuEventManager for GPU mode. Direct files, shared memory and DRP have separate paths outside this map."
+      ],
+      "ownership": "The run owns configuration and calibration context. MPI CPU calibration distribution can use shared host memory; that is separate from GPU constant storage.",
+      "sources": [
+        {
+          "path": "psana/psana/datasource.py",
+          "symbol": "DataSource",
+          "needle": "def DataSource("
+        },
+        {
+          "path": "psana/psana/psexp/mpi_ds.py",
+          "symbol": "MPIDataSource",
+          "needle": "class MPIDataSource"
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "RunSerial",
+          "needle": "class RunSerial"
+        },
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "Communicators",
+          "needle": "class Communicators"
+        }
+      ],
+      "notes": [],
+      "map_title": "Choose a run"
+    },
+    {
+      "id": "smd",
+      "title": "Read small data",
+      "tag": "SMD reader",
+      "role": "SMD0 rank",
+      "serial": "SmdReaderManager and the builder run locally; no SMD0 rank or MPI transfer.",
+      "summary": "Read small-data streams and choose a coherent timestamp window. SMD carries event metadata and locations of full bigdata datagrams; full detector payloads are read later by BD.",
+      "inputs": [
+        "Per-stream small-data XTC files",
+        "Configured stream ordering"
+      ],
+      "outputs": [
+        "SMD chunk: per-stream byte views",
+        "Transition history sent to the selected EB"
+      ],
+      "flow": [
+        "Smd0.start() drives SmdReaderManager.chunks().",
+        "SmdReader uses ParallelReader and build_batch_view() to expose a complete timestamp window.",
+        "SMD0 tracks sent transition bytes per EB and prepends missing history before fresh chunk data. This is a send record, not a processing acknowledgment."
+      ],
+      "ownership": "Reader/repack buffers own chunk bytes while transport uses them. History is maintained separately from payload reads.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "Smd0",
+          "needle": "class Smd0"
+        },
+        {
+          "path": "psana/psana/psexp/smdreader_manager.py",
+          "symbol": "SmdReaderManager",
+          "needle": "class SmdReaderManager"
+        },
+        {
+          "path": "psana/psana/smdreader.pyx",
+          "symbol": "SmdReader.build_batch_view",
+          "needle": "def build_batch_view("
+        },
+        {
+          "path": "psana/psana/parallelreader.pyx",
+          "symbol": "ParallelReader",
+          "needle": "class ParallelReader"
+        },
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "StepHistory",
+          "needle": "class StepHistory"
+        }
+      ],
+      "notes": [],
+      "map_title": "Read small data"
+    },
+    {
+      "id": "eb",
+      "title": "Build aligned events",
+      "tag": "EventBuilder",
+      "role": "EB rank",
+      "serial": "BatchIterator / EventBuilderManager perform local building.",
+      "summary": "Align datagrams by timestamp, apply supported selection/destination logic, and construct a coherent communication batch for a BD.",
+      "inputs": [
+        "SMD stream views and catch-up transitions"
+      ],
+      "outputs": [
+        "CPU/SMD event packet",
+        "Optional GPUBAT1 L1 event/read descriptors"
+      ],
+      "flow": [
+        "EventBuilderNode drives EventBuilderManager and Cython EventBuilder.",
+        "GPU split includes transitions in the CPU/SMD packet; GPUBAT1 describes L1 events and bigdata locations, not transitions.",
+        "A separate step_batch updates EB-local history. It is not a third separately transmitted transition packet. EB prepends history missing for the destination BD."
+      ],
+      "ownership": "The EB owns serialized send buffers until MPI send completion. GPU descriptors refer to bigdata locations, not device allocations.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "EventBuilderNode",
+          "needle": "class EventBuilderNode"
+        },
+        {
+          "path": "psana/psana/psexp/eventbuilder_manager.py",
+          "symbol": "EventBuilderManager",
+          "needle": "class EventBuilderManager"
+        },
+        {
+          "path": "psana/psana/eventbuilder.pyx",
+          "symbol": "EventBuilder._build_fast_batch_gpu_split",
+          "needle": "cdef _build_fast_batch_gpu_split("
+        },
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "repack_for_bd",
+          "needle": "def repack_for_bd("
+        }
+      ],
+      "notes": [
+        "The fast GPU builder appends BeginStep and then ends the batch. A trailing BeginStep after earlier L1 events is possible; see the transition walkthrough."
+      ],
+      "map_title": "Build aligned events"
+    },
+    {
+      "id": "transport",
+      "title": "Deliver a batch",
+      "tag": "BigDataNode / Events",
+      "role": "BD CPU process",
+      "serial": "No BigDataNode: local reader/builder hands batches to Events or GpuEventManager.",
+      "summary": "Receive one coherent EB communication unit, unpack its CPU and GPU portions, and select the batch processor. A GPU BD is still a CPU process orchestrating reads and CUDA work.",
+      "inputs": [
+        "MPI message: CPU/SMD packet + GPU packet + footer"
+      ],
+      "outputs": [
+        "BatchEnvelope(smd, gpu)",
+        "CPU EventManager or GPU manager iteration"
+      ],
+      "flow": [
+        "BigDataNode.start() supplies BatchEnvelope objects to Events.",
+        "Events.__next__() calls EventManager for CPU-only processing, or GpuEventManager.process_batch(smd, gpu) for GPU processing.",
+        "BD requests further work from its EB; communication batches and execution-slot depth are different controls."
+      ],
+      "ownership": "The receive/batch envelope retains serialized packet storage while managers create views from it.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "BigDataNode",
+          "needle": "class BigDataNode"
+        },
+        {
+          "path": "psana/psana/psexp/events.py",
+          "symbol": "BatchEnvelope",
+          "needle": "class BatchEnvelope"
+        },
+        {
+          "path": "psana/psana/psexp/events.py",
+          "symbol": "Events",
+          "needle": "class Events"
+        }
+      ],
+      "notes": [],
+      "map_title": "Deliver a batch"
+    },
+    {
+      "id": "cpu",
+      "title": "Materialize CPU dgrams",
+      "tag": "EventManager",
+      "role": "BD CPU process",
+      "serial": "Same EventManager, reached through the local Events iterator.",
+      "summary": "Decode SMD offsets, read required bigdata windows, and assemble each event’s datagrams in configured stream positions. Missing stream entries can be None.",
+      "inputs": [
+        "CPU/SMD event packet",
+        "Bigdata files and stream configuration"
+      ],
+      "outputs": [
+        "EventEnvelope with dgrams",
+        "Transition envelopes in packet order"
+      ],
+      "flow": [
+        "EventManager._get_offset_and_size() reads SMD bigdata descriptors.",
+        "_fill_bd_chunk() uses positional file reads for contiguous bigdata windows.",
+        "_get_next_dgrams() selects full payload or SMD-backed datagrams. GPU mode also uses this path for retained CPU and hybrid inputs."
+      ],
+      "ownership": "Datagram views retain their backing Python buffers. Bigdata buffers and packet views are host storage, separate from GPU input windows and leases.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager",
+          "needle": "class EventManager"
+        },
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager._get_offset_and_size",
+          "needle": "def _get_offset_and_size("
+        },
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager._fill_bd_chunk",
+          "needle": "def _fill_bd_chunk("
+        },
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager._get_next_dgrams",
+          "needle": "def _get_next_dgrams("
+        }
+      ],
+      "notes": [],
+      "map_title": "Read CPU payloads"
+    },
+    {
+      "id": "controller",
+      "title": "Plan GPU work",
+      "tag": "GpuEventManager",
+      "role": "BD CPU process",
+      "serial": "RunSerial owns the same manager and supplies local batches.",
+      "summary": "Coordinate CPU materialization, GPU read planning, byte-budget admission, execution submission and ordered event delivery. This is host orchestration, not a GPU-resident scheduler.",
+      "inputs": [
+        "CPU/SMD packet and GPUBAT1 descriptors",
+        "Device budget and execution-pool configuration"
+      ],
+      "outputs": [
+        "Complete-event execution subbatches",
+        "Read requests, task submissions and joined event envelopes"
+      ],
+      "flow": [
+        "process_batch() adapts MPI packets; serial iteration obtains batch dictionaries locally. Both reach _process_batch().",
+        "The manager handles transitions, splits GPU work to fit the current byte budget and issues the first subbatch read before CPU materialization.",
+        "It maps CPU envelopes and GPU event metadata by timestamp, synthesizing metadata for GPU-only events before attaching GPU state.",
+        "Slot retirement and completion tokens protect reuse. An execution slot is not an input read group."
+      ],
+      "ownership": "The manager coordinates the reader, parser/input groups, execution pool, requested constants and publication staging. Yielding an event alone does not prove its asynchronous consumers finished.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager",
+          "needle": "class GpuEventManager"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager._process_batch",
+          "needle": "def _process_batch("
+        },
+        {
+          "path": "psana/psana/gpu/gpu_batch.py",
+          "symbol": "GpuBatchView",
+          "needle": "class GpuBatchView"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_batch.py",
+          "symbol": "GpuSubbatchView",
+          "needle": "class GpuSubbatchView"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager._handle_steps",
+          "needle": "def _handle_steps("
+        }
+      ],
+      "notes": [
+        "Current transition handling scans transitions before this packet’s L1 submission. #153 tracks ordered transition/step support.",
+        "Memory admission covers participating allocations, not arbitrary user scratch or all CUDA/KvikIO overhead."
+      ],
+      "map_title": "Plan GPU work"
+    },
+    {
+      "id": "input",
+      "title": "Read and parse on device",
+      "tag": "KvikIO / InputWindow",
+      "role": "BD host issues I/O; GPU holds input",
+      "serial": "Same device input path without MPI batch transport.",
+      "summary": "Use bigdata locations to issue reads into device storage, then parse XTC layout into event/field views. CUDA kernels do not open files.",
+      "inputs": [
+        "Bigdata read descriptors and file mapping",
+        "Configure-derived parser metadata"
+      ],
+      "outputs": [
+        "Device-resident raw datagrams",
+        "InputWindow owners and parsed field locations"
+      ],
+      "flow": [
+        "KvikioGpuReader submits I/O from the CPU. Direct GDS versus a fallback depends on the runtime; this map does not claim GDS is active.",
+        "Optional bulk grouping coalesces compatible reads. One execution subbatch may consume multiple input groups, and one group can serve multiple executions.",
+        "The parser makes InputWindow-backed views; slot streams wait for input readiness before accessing data."
+      ],
+      "ownership": "Reader/parser allocations are held by InputWindow and planned/execution/input uses. Closing a planning window and completing all dependent consumers are distinct lifetime events.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_kvikio_read.py",
+          "symbol": "KvikioGpuReader",
+          "needle": "class KvikioGpuReader"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_input_window.py",
+          "symbol": "InputWindow",
+          "needle": "class InputWindow"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_input_group.py",
+          "symbol": "InputGroupPool",
+          "needle": "class InputGroupPool"
+        },
+        {
+          "path": "psana/psana/gpu/gpudgram/parser.py",
+          "symbol": "GpuEventBatch",
+          "needle": "class GpuEventBatch"
+        },
+        {
+          "path": "psana/psana/gpu/gpudgram/batch.py",
+          "symbol": "GpuXtcBatchPool",
+          "needle": "class GpuXtcBatchPool"
+        }
+      ],
+      "notes": [],
+      "map_title": "Read device inputs"
+    },
+    {
+      "id": "execute",
+      "title": "Run the user task",
+      "tag": "EventPool / GpuTask",
+      "role": "BD host dispatches on a slot CUDA stream",
+      "serial": "Same pool/task contract.",
+      "summary": "An execution slot owns one CUDA stream. Prepared inputs and declared constants feed an external GpuTask callback once per nonempty selected execution subbatch.",
+      "inputs": [
+        "Ready input windows and event identities",
+        "Declared task inputs and requested constants"
+      ],
+      "outputs": [
+        "Published named GPU arrays",
+        "Producer-completion event and leases"
+      ],
+      "flow": [
+        "EventPool.submit() waits on input readiness and constructs BatchInputContext.",
+        "dispatch_task() invokes function(batch, stream). Inputs and outputs have a leading event-row dimension; this is not one callback per pixel.",
+        "The task owns its algorithm. Framework raw-input access and constants do not imply built-in detector calibration.",
+        "select_task_events() omits rows without GPU datagrams. Missing detector/segment policy is an explicit limitation, not assumed CPU-equivalent behavior."
+      ],
+      "ownership": "Producer owners and input leases survive until registered consumer completion. Slots may overlap, but reuse waits for all relevant consumers, including escaped input-view work.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_stream.py",
+          "symbol": "EventPool",
+          "needle": "class EventPool"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_task.py",
+          "symbol": "GpuTask",
+          "needle": "class GpuTask"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_task_batch.py",
+          "symbol": "BatchInputContext",
+          "needle": "class BatchInputContext"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_producer.py",
+          "symbol": "dispatch_task",
+          "needle": "def dispatch_task("
+        }
+      ],
+      "notes": [
+        "Dense raw preparation is currently Jungfrau-specific; generic field selectors are separate. #170 tracks missing-input behavior discussion."
+      ],
+      "map_title": "Run the user task"
+    },
+    {
+      "id": "constants",
+      "title": "Supply requested constants",
+      "tag": "RequestedConstants",
+      "role": "One current device copy per BD",
+      "serial": "One local device copy per requested selector.",
+      "summary": "Upload only constants declared by the external task and expose them through batch.calibconst(detector, key). Preserve shape and dtype.",
+      "inputs": [
+        "Host dsparms.calibconst arrays",
+        "Task declaration of (detector, key) pairs"
+      ],
+      "outputs": [
+        "Admitted per-BD device arrays"
+      ],
+      "flow": [
+        "Manager setup constructs RequestedConstants and performs the initial refresh.",
+        "BeginStep dispatch updates host transition state and refreshes changed requested arrays after draining prior consumers. BeginStep does not itself fetch new values from the calibration database.",
+        "#168 proposes restoring CUDA-IPC sharing between peer BDs on the same GPU. It is not implemented at this baseline."
+      ],
+      "ownership": "RequestedConstants retains host snapshots and device allocations. Replacement can need old/new overlap; escaped participating aliases retain budget charges. Cross-BD shared ownership is future design work.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_task.py",
+          "symbol": "RequestedConstants",
+          "needle": "class RequestedConstants"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager._dispatch_transition",
+          "needle": "def _dispatch_transition("
+        }
+      ],
+      "notes": [
+        "#153 must correct packet-relative transition ordering even though earlier in-flight work is drained."
+      ],
+      "map_title": "Requested constants"
+    },
+    {
+      "id": "publish",
+      "title": "Publish results to host",
+      "tag": "PublicationD2H",
+      "role": "BD host + CUDA copy stream",
+      "serial": "Same publication path.",
+      "summary": "Enqueue copies of named task publications. A copy stream waits for producer completion; one terminal completion token covers all copies for the execution.",
+      "inputs": [
+        "Published contiguous GPU arrays",
+        "Producer-ready token"
+      ],
+      "outputs": [
+        "Timestamp-keyed HostResult rows",
+        "Copy completion registered with producer lease"
+      ],
+      "flow": [
+        "GpuEventManager schedules PublicationD2H.enqueue() after task submission.",
+        "Bounded pinned staging enables asynchronous output copies; cap/oversize pressure can choose blocking ordinary-host copies.",
+        "evt.gpu.get(name).on_cpu waits if necessary and materializes an independent cached NumPy row. That access does not rerun the user task."
+      ],
+      "ownership": "The producer lease protects source arrays through copy completion. Staging blocks cannot be reused while copies or host-result aliases still need them. Input device views use separate leases.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_d2h.py",
+          "symbol": "PublicationD2H",
+          "needle": "class PublicationD2H"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_d2h.py",
+          "symbol": "HostResult",
+          "needle": "class HostResult"
+        },
+        {
+          "path": "psana/psana/gpu/context.py",
+          "symbol": "SlotLease",
+          "needle": "class SlotLease"
+        },
+        {
+          "path": "psana/psana/gpu/context.py",
+          "symbol": "GPUResult",
+          "needle": "class GPUResult"
+        }
+      ],
+      "notes": [],
+      "map_title": "Copy results to host"
+    },
+    {
+      "id": "event",
+      "title": "Create the public Event",
+      "tag": "EventEnvelope → Event",
+      "role": "BD / user analysis process",
+      "serial": "RunSerial uses the common Run materialization boundary.",
+      "summary": "Convert an internal handoff into one public Event containing CPU datagrams and optional GPU state. CPU-only and GPU-assisted processing meet at this API boundary.",
+      "inputs": [
+        "EventEnvelope(dgrams, gpu_state)",
+        "Run context"
+      ],
+      "outputs": [
+        "Public Event with event identity",
+        "Detector-accessible dgrams and optional evt.gpu"
+      ],
+      "flow": [
+        "CPU Run iteration handles non-L1 transitions before yielding the next Event.",
+        "Run._materialize_event() constructs Event exactly at the public boundary.",
+        "GPU manager attaches results and input state to the envelope; GPU-only metadata allows Event identity without full CPU detector payloads."
+      ],
+      "ownership": "Event and GPU state retain access owners/tokens according to their APIs. Advancing the iterator is not a substitute for CUDA completion or documented input-view scope.",
+      "sources": [
+        {
+          "path": "psana/psana/event.py",
+          "symbol": "EventEnvelope",
+          "needle": "class EventEnvelope"
+        },
+        {
+          "path": "psana/psana/event.py",
+          "symbol": "Event",
+          "needle": "class Event:"
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run._materialize_event",
+          "needle": "def _materialize_event("
+        },
+        {
+          "path": "psana/psana/psexp/mpi_ds.py",
+          "symbol": "RunParallel._events_impl",
+          "needle": "def _events_impl("
+        }
+      ],
+      "notes": [],
+      "map_title": "Public Event"
+    },
+    {
+      "id": "analysis",
+      "title": "Analyze and release",
+      "tag": "User event loop",
+      "role": "BD user code; optional SRV output",
+      "serial": "User loop runs in the single local process.",
+      "summary": "User analysis consumes Events, detector methods, or named GPU task results. Optional small-data output is downstream; it is not required to create an Event.",
+      "inputs": [
+        "Public Event",
+        "Detector objects created by run.Detector()"
+      ],
+      "outputs": [
+        "User analysis results",
+        "Optional smalldata records"
+      ],
+      "flow": [
+        "CPU example: for evt in run.events(): det.raw.raw(evt). Exact detector methods depend on the detector.",
+        "GPU publications: evt.gpu.get(name).on_cpu. Parsed input field views retain separate context-managed device access.",
+        "CPU run.steps()/step.events() expose step boundaries. Working GPU step iteration is still missing at this baseline (#153).",
+        "Use documented explicit/context-managed close for early exit; a bare break does not close a retained generator. MPI run.terminate() coordinates intentional run termination."
+      ],
+      "ownership": "A scoped GPU input view must pair entry with exit so completion is recorded. User-retained independent NumPy results have their own lifetime. Teardown must respect pending reads and consumers.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.events",
+          "needle": "def events("
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.Detector",
+          "needle": "def Detector("
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.terminate",
+          "needle": "def terminate("
+        },
+        {
+          "path": "psana/psana/psexp/step.py",
+          "symbol": "Step",
+          "needle": "class Step"
+        },
+        {
+          "path": "psana/psana/gpu/context.py",
+          "symbol": "GpuEventState",
+          "needle": "class GpuEventState"
+        },
+        {
+          "path": "psana/psana/psexp/mpi_ds.py",
+          "symbol": "RunParallel.steps",
+          "needle": "def steps("
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.steps",
+          "needle": "def steps("
+        }
+      ],
+      "notes": [],
+      "map_title": "Analyze and release"
+    }
+  ],
+  "edges": [
+    {
+      "id": "configure",
+      "source": "setup",
+      "target": "smd",
+      "kind": "call",
+      "label": "Run setup selects local SMD reader or MPI role loop.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "chunk",
+      "source": "smd",
+      "target": "eb",
+      "kind": "mpi",
+      "label": "SMD chunk and missing transition history; serial: local byte views.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "batch",
+      "source": "eb",
+      "target": "transport",
+      "kind": "mpi",
+      "label": "Coherent CPU/SMD + optional GPU packet; serial: local batch handoff.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "cpu-dispatch",
+      "source": "transport",
+      "target": "cpu",
+      "kind": "call",
+      "label": "Events selects EventManager in CPU mode; GPU controller uses EventManager for its CPU side.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "gpu-dispatch",
+      "source": "transport",
+      "target": "controller",
+      "kind": "call",
+      "label": "Events calls GpuEventManager.process_batch(); serial RunSerial owns the manager.",
+      "views": [
+        "overview",
+        "gpu"
+      ]
+    },
+    {
+      "id": "cpu-envelope",
+      "source": "cpu",
+      "target": "event",
+      "kind": "data",
+      "label": "CPU envelopes; in GPU mode the manager correlates these with GPU event identity.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "gpu-envelope",
+      "source": "controller",
+      "target": "event",
+      "kind": "data",
+      "label": "Joined GPU-assisted envelopes (GPU internals collapsed in overview).",
+      "views": [
+        "overview"
+      ]
+    },
+    {
+      "id": "issue",
+      "source": "controller",
+      "target": "input",
+      "kind": "io",
+      "label": "Host planner issues descriptor-driven bigdata reads through KvikIO.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "ready",
+      "source": "input",
+      "target": "execute",
+      "kind": "cuda",
+      "label": "Input readiness and parsed-window dependencies precede slot work.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "constant-use",
+      "source": "constants",
+      "target": "execute",
+      "kind": "ownership",
+      "label": "Declared device constants remain owned through task consumers.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "copy",
+      "source": "execute",
+      "target": "publish",
+      "kind": "cuda",
+      "label": "Copy stream waits for task producer; terminal copy event protects reuse.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "result",
+      "source": "publish",
+      "target": "event",
+      "kind": "data",
+      "label": "Timestamp-keyed host tokens attach to GPU event state via the controller.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "yield",
+      "source": "event",
+      "target": "analysis",
+      "kind": "call",
+      "label": "Run yields the public Event to user analysis.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    }
+  ],
+  "views": {
+    "overview": {
+      "title": "One event, several representations",
+      "note": "Read left to right across the first row, then follow the CPU or GPU branch into the common Event boundary. GPU work is collapsed here.",
+      "positions": {
+        "setup": [
+          20,
+          35
+        ],
+        "smd": [
+          280,
+          35
+        ],
+        "eb": [
+          540,
+          35
+        ],
+        "transport": [
+          800,
+          35
+        ],
+        "cpu": [
+          800,
+          300
+        ],
+        "controller": [
+          540,
+          300
+        ],
+        "event": [
+          280,
+          300
+        ],
+        "analysis": [
+          20,
+          300
+        ]
+      },
+      "size": [
+        1060,
+        470
+      ],
+      "routes": {
+        "cpu-envelope": [
+          [
+            900,
+            430
+          ],
+          [
+            380,
+            430
+          ]
+        ],
+        "gpu-dispatch": [
+          [
+            900,
+            210
+          ],
+          [
+            640,
+            210
+          ]
+        ]
+      }
+    },
+    "cpu": {
+      "title": "CPU: offsets become datagrams",
+      "note": "SMD0 and EB move small-data metadata. BD reads full payloads directly from bigdata storage and preserves transition order.",
+      "positions": {
+        "setup": [
+          20,
+          35
+        ],
+        "smd": [
+          280,
+          35
+        ],
+        "eb": [
+          540,
+          35
+        ],
+        "transport": [
+          800,
+          35
+        ],
+        "cpu": [
+          800,
+          300
+        ],
+        "event": [
+          410,
+          300
+        ],
+        "analysis": [
+          20,
+          300
+        ]
+      },
+      "size": [
+        1060,
+        470
+      ],
+      "routes": {}
+    },
+    "gpu": {
+      "title": "GPU: host orchestration, explicit lifetimes",
+      "note": "Follow the middle row right to left. Constants feed the task; CPU materialization is the lower-right side lane. Input windows and execution slots have distinct lifetimes.",
+      "positions": {
+        "setup": [
+          20,
+          35
+        ],
+        "smd": [
+          280,
+          35
+        ],
+        "eb": [
+          540,
+          35
+        ],
+        "transport": [
+          800,
+          35
+        ],
+        "constants": [
+          20,
+          265
+        ],
+        "execute": [
+          280,
+          265
+        ],
+        "input": [
+          540,
+          265
+        ],
+        "controller": [
+          800,
+          265
+        ],
+        "analysis": [
+          20,
+          510
+        ],
+        "publish": [
+          280,
+          510
+        ],
+        "event": [
+          540,
+          510
+        ],
+        "cpu": [
+          800,
+          510
+        ]
+      },
+      "size": [
+        1060,
+        710
+      ],
+      "routes": {
+        "cpu-dispatch": [
+          [
+            1030,
+            77
+          ],
+          [
+            1030,
+            552
+          ]
+        ],
+        "yield": [
+          [
+            640,
+            665
+          ],
+          [
+            120,
+            665
+          ]
+        ]
+      }
+    }
+  },
+  "tour": [
+    {
+      "node": "setup",
+      "title": "Choose offline run and event T",
+      "text": "T denotes one L1 event timestamp, not a buffer index. Configure and BeginRun establish the context before this event enters steady-state processing."
+    },
+    {
+      "node": "smd",
+      "title": "Locate T in small data",
+      "text": "SMD0 reads stream metadata containing T and its bigdata locations. Other events share the chunk. In serial execution this reader is local."
+    },
+    {
+      "node": "eb",
+      "title": "Align streams at T",
+      "text": "EventBuilder gathers matching timestamp contributions. CPU mode keeps SMD descriptors; GPU mode additionally creates GPUBAT1 entries for selected inputs. A missing stream can be represented without inventing a payload."
+    },
+    {
+      "node": "transport",
+      "title": "Assign T’s batch to a BD",
+      "text": "MPI sends one coherent batch to a BD. The BD is a CPU process even when it controls a GPU. Serial execution skips this transport hop."
+    },
+    {
+      "node": "cpu",
+      "title": "Materialize retained CPU inputs",
+      "text": "EventManager reads full CPU payloads from bigdata offsets. Hybrid detector streams can have both CPU and GPU input; an exclusive GPU detector need not have its raw payload materialized here."
+    },
+    {
+      "node": "controller",
+      "title": "Plan an execution containing T",
+      "text": "The GPU controller selects complete-event execution slices under its byte budget. T belongs to an execution subbatch; that is not necessarily one EB packet or one read group. CPU-only processing goes directly to the Event boundary."
+    },
+    {
+      "node": "input",
+      "title": "Bring T’s GPU input into device storage",
+      "text": "Host-submitted KvikIO reads complete and parsing exposes fields. The input owner may serve more than one execution. A slot waits on readiness before consuming these bytes."
+    },
+    {
+      "node": "constants",
+      "title": "Bind declared constants",
+      "text": "The task receives its requested per-BD device constants. Sharing them through CUDA-IPC is proposed in #168, not implemented in this baseline."
+    },
+    {
+      "node": "execute",
+      "title": "Run the external callback",
+      "text": "The task sees selected rows including T and publishes named arrays. Work is enqueued on this execution slot’s stream. Completion, not callback return alone, controls downstream dependencies."
+    },
+    {
+      "node": "publish",
+      "title": "Copy T’s published row",
+      "text": "The copy stream waits for the producer, then copies publication groups. HostResult retains T’s row and its completion token; copies need not be one operation per event."
+    },
+    {
+      "node": "event",
+      "title": "Join the event’s representations",
+      "text": "The manager associates CPU datagrams, GPU metadata and results by event identity. Run materializes one public Event; GPU-only metadata supplies identity when full CPU payloads are absent."
+    },
+    {
+      "node": "analysis",
+      "title": "Consume T and release safely",
+      "text": "User code accesses detector data or evt.gpu results. Device input views follow scoped lease rules. Slot/storage reuse waits for registered consumers; yielding the next event is not proof that T’s GPU work is finished."
+    }
+  ],
+  "kinds": {
+    "call": "Call / iterator handoff",
+    "mpi": "MPI / serial local transfer",
+    "data": "Data association",
+    "io": "File I/O submission",
+    "cuda": "CUDA dependency",
+    "ownership": "Ownership dependency"
+  },
+  "granularities": [
+    [
+      "SMD chunk",
+      "Reader timestamp window sent from SMD0 to an EB."
+    ],
+    [
+      "EB communication batch",
+      "Event-aligned CPU/SMD packet plus optional GPUBAT1 descriptors sent to one BD."
+    ],
+    [
+      "Execution subbatch",
+      "Complete-event slice admitted to one execution slot under the current byte budget."
+    ],
+    [
+      "Input read group",
+      "Compatible/coalesced file ranges and their input storage; may cross execution cuts."
+    ]
+  ],
+  "lifetimes": [
+    [
+      "Raw input",
+      "Reader/parser allocation → InputWindow → planned and input leases",
+      "Release only after planned uses and registered consumers retire."
+    ],
+    [
+      "Task publication",
+      "Task owners → producer lease → D2H completion",
+      "Producer storage stays alive until every registered consumer completes."
+    ],
+    [
+      "Host result",
+      "Pinned block → HostResult tokens → independent NumPy row",
+      "Reuse staging only when copies and outstanding row tokens permit it."
+    ],
+    [
+      "Device input view",
+      "Event input state → scoped view → external completion",
+      "Pair scope entry/exit; record consumer completion before slot/input reuse."
+    ]
+  ],
+  "transitions": {
+    "title": "Transitions belong at their event positions",
+    "intro": "Example: Step 1 contains L1 A and B; Step 2 begins afterward. Missing history prefixes are legitimate catch-up state. Fresh transitions keep their packet position.",
+    "cpu": [
+      {
+        "label": "BeginStep 1",
+        "text": "Update run/scan environment before A."
+      },
+      {
+        "label": "L1 A → L1 B",
+        "text": "Deliver events with Step 1 state."
+      },
+      {
+        "label": "EndStep 1",
+        "text": "Finish the step; keep the run available."
+      },
+      {
+        "label": "BeginStep 2",
+        "text": "Update state before the next step’s events."
+      }
+    ],
+    "gpu": [
+      {
+        "label": "Packet: [L1 A, L1 B, BeginStep 2]",
+        "text": "Fast GPU EB can append BeginStep and then stop. A/B precede it in the CPU/SMD packet; GPUBAT1 contains L1 only."
+      },
+      {
+        "label": "Current: scan and dispatch transitions first",
+        "text": "GpuEventManager._handle_steps() drains previous work and dispatches BeginStep 2 before submitting this packet’s A/B."
+      },
+      {
+        "label": "Effect: state can advance too early",
+        "text": "Draining previously submitted work does not protect A/B, which have not been submitted yet. Fixed-state calculations may still work; step-dependent state is not safe to assume."
+      },
+      {
+        "label": "Proposed contract under #153",
+        "text": "Preserve missing history → preceding L1 range → transition → next L1 range, with explicit state lifetimes. This is a requirement, not implemented behavior."
+      }
+    ],
+    "notes": [
+      "CPU run.events() processes/swallow transitions in order; run.steps() exposes Step objects.",
+      "Current MPI GPU steps() returns immediately. Serial GPU processing consumes transitions internally, so working GPU step iteration is also missing.",
+      "SlowUpdate already reaches the host transition/envstore path; event-relative ordering still needs verification. Do not describe SlowUpdate as wholly absent.",
+      "The ClearReadout service-zero ambiguity and empty-step behavior are also tracked in #153.",
+      "BeginStep does not itself fetch calibration constants from the database. CUDA-IPC restoration (#168) must coordinate version lifetimes with transition ordering."
+    ]
+  },
+  "issues": [
+    {
+      "number": 153,
+      "title": "Ordered GPU transitions and working step iteration",
+      "state": "OPEN",
+      "note": "P1 follow-up; current limitations, not a completed feature."
+    },
+    {
+      "number": 168,
+      "title": "Restore CUDA-IPC sharing of requested constants",
+      "state": "OPEN",
+      "note": "P2 follow-up; current device copies are per BD."
+    },
+    {
+      "number": 170,
+      "title": "Discuss CPU-compatible missing GPU input behavior",
+      "state": "OPEN",
+      "note": "P2 follow-up; no-GPU rows and missing segments need an explicit contract."
+    }
+  ],
+  "serial_note": "Serial offline experiment processing uses local SmdReaderManager / EventBuilder machinery. There is no SMD0 → EB → BD MPI transport. RunSerial owns Events in CPU mode or GpuEventManager in GPU mode. The shared diagram stages describe responsibilities, not extra serial processes.",
+  "attribution": {
+    "name": "Cong Wang’s interactive LCLS-II DAQ design documentation",
+    "url": "https://carbonscott.github.io/lcls2/dev/design/",
+    "source": "https://github.com/carbonscott/lcls2/tree/e49563c40bbbbbf0ef96ed3520079c42388a14a2/docs/design",
+    "note": "Inspired by its single content model, typed relationships, clickable component details and event tour. This smaller viewer is an original implementation for offline HTML sharing; it does not copy Cong’s viewer code or DAQ prose."
+  }
+}
