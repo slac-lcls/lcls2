@@ -235,6 +235,31 @@ Measured at 4 peers with a 12 MiB intersection and a 3 MiB owner-private
 selector: owner charged 15 MiB, three followers charged 0 while each importing
 12 MiB.
 
+### Lifetime: valid until the next transition
+
+**A shared constant array must not be kept past the callback that obtained
+it.** Read it, or copy it with `.get()`, and let the reference go.
+
+This is narrower than `RequestedConstants`, which documents that *"replacement
+is atomic and may require space for both generations; escaped aliases retain
+their budget charges"* — an array a callback keeps there holds the old values
+until it is collected. A shared generation cannot offer that, because one
+allocation backs every peer on the device:
+
+| At a BeginStep | What happens to a kept array |
+| --- | --- |
+| Case B | The owner rewrites the allocation in place, so a kept array silently shows the **new** values |
+| Case C | Importers close and the owner frees, so a kept array points at **freed** memory |
+| `close()` | Same as Case C |
+
+`before_upload()` drains running kernels, not references user code holds.
+
+Retiring generations only once every peer confirms no references would restore
+the wider contract, at the cost of a coordinated retirement list and a
+device-wide agreement at each transition. Tracked as follow-up; it is not
+implemented here, which is why the rule above is a requirement rather than a
+recommendation.
+
 ### When sharing does not happen
 
 Capability failures degrade; agreement failures abort. A rank that cannot share

@@ -659,6 +659,16 @@ class SharedRequestedConstants(RequestedConstants):
             wanted * peers, wanted)
         self._note_sharing(f'fallback({reason})')
         self._release_shared()
+        if self._sizing is not None:
+            # Give back the sharing budget before uploading privately. The
+            # limits were set for one device copy -- followers at
+            # (usable - shared)/peers -- but every rank is about to hold a
+            # full copy, so they must be checked against usable/peers again.
+            # Measured on a 40 GiB four-peer device, a 9-10 GiB intersection
+            # fits 10 GiB but not 7, so the group aborted here instead of
+            # degrading. Ordered after _release_shared because set_limit
+            # refuses to drop the owner's limit below what it still holds.
+            self._sizing(0)
         self._private = self.requests
         self._shared = ()
         for selector in self.requests:

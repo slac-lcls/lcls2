@@ -64,7 +64,7 @@ alone.
 
 ## Results
 
-Job 40267619, 2026-10-08. **9/9 PASS**, `collective_order_
+Job 40268803, 2026-10-08. **9/9 PASS**, `collective_order_
 diverged: 0` in every case.
 
 Discovery: 2 devices x 4 peers (3+4 for `discovery-uneven`), `aggregate_claim`
@@ -84,7 +84,7 @@ shrink their real budget by memory they do not own.
 false`. `fail-follower-import` degraded uniformly and values stayed correct
 through the private path.
 
-Multi-node: job 40265864, 2 nodes. PASS. Four device
+Multi-node: job 40268804, 2 nodes. PASS. Four device
 groups, none spanning a host, `aggregate_claim` 1.0 on each, against
 `current_believed_peers: [2, 3]` — peers disagreeing — and `current_aggregate:
 1.1667` under the old arithmetic. This case matters because the hostname half

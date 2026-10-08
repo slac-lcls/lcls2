@@ -319,8 +319,15 @@ class GpuEventManager:
         """
         placement = self._placement
         shared = int(shared_bytes or 0)
-        if not shared or placement is None:
+        if placement is None:
             return
+        # shared == 0 is a RESET, not a no-op: the fallback calls it after
+        # releasing the shared blocks so private copies are checked against
+        # usable/peers again. Returning early here left followers holding
+        # (usable - shared)/peers while each uploaded its own full copy, so a
+        # group that used to degrade cleanly aborted instead -- measured on a
+        # 40 GiB four-peer device for a 9-10 GiB intersection, which fits
+        # 10 GiB but not 7.
         placement.shared_bytes = shared
         if float(getattr(self.dsparms, "gpu_memory_budget_gb", 0) or 0):
             # An explicit budget is the user's ceiling and discover_peers has

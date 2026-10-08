@@ -1089,3 +1089,59 @@ def test_failed_import_closes_a_partly_built_block():
     follower = peers[1]
     assert follower.shared_selectors == ()
     assert follower.private_selectors == tuple(declared)
+
+
+def test_fallback_returns_the_sharing_budget_before_uploading_privately():
+    """Sizing the budget before the exchange made the fallback abort.
+
+    The limits are set for ONE device copy -- followers at
+    (usable - shared)/peers -- but a capability failure means every rank
+    uploads its own full copy. Leaving the sharing limits in place made the
+    private upload fail with GpuMemoryPressureError, so a group that used to
+    degrade cleanly aborted instead: measured on a 40 GiB four-peer device, a
+    9-10 GiB intersection fits usable/peers (10 GiB) but not
+    (usable - shared)/peers (7 GiB).
+
+    Scaled to the fixture heap: usable 400 KiB, 4 peers, shared 100 KiB, so
+    usable/peers == 100 KiB fits and (usable - shared)/peers == 75 KiB does
+    not.
+    """
+    import psana.gpu.gpu_shared_constants as module
+    from psana.gpu.gpu_placement import per_rank_limit
+
+    usable, peer_count = 400 * 1024, 4
+    shared = np.zeros((25 * 1024,), dtype=np.float32)        # 100 KiB
+    assert shared.nbytes <= usable // peer_count
+    assert shared.nbytes > (usable - shared.nbytes) // peer_count
+
+    declared = [('jf', 'pedestals')]
+    budgets = [_GpuBudget(limit_bytes=usable // peer_count)
+               for _ in range(peer_count)]
+    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
+    for peer, budget in zip(peers, budgets):
+        _wire_sizing(peer, budget, usable)
+
+    # Fail the owner's export, so the owner takes the fallback itself rather
+    # than learning about it through an allreduce the fake cannot propagate.
+    original = module._OwnedBlock
+
+    class FailsToExport(original):
+        def handle(self):
+            raise RuntimeError('injected: ipcGetMemHandle failed')
+
+    module._OwnedBlock = FailsToExport
+    try:
+        for peer in peers:
+            # Must not raise: the whole point of the fallback is to keep the
+            # job running on private copies.
+            peer.refresh({'jf': {'pedestals': shared}})
+    finally:
+        module._OwnedBlock = original
+
+    expected = usable // peer_count
+    for index, budget in enumerate(budgets):
+        assert budget.limit() == expected, (
+            f'peer {index} kept the sharing limit {budget.limit()} instead of '
+            f'returning to {expected}; its private copy would be refused')
+    assert peers[0]._placement.shared_bytes == 0
+    assert all(peer.shared_selectors == () for peer in peers)

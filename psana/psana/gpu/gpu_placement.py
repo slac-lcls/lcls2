@@ -499,7 +499,17 @@ def discover_peers(pinned, comm, *, is_gpu_worker, cp=None,
     # Make the chosen device current, then verify. One path: a mask narrowed
     # by the launcher is simply a permitted set of size one, and select_device
     # finds that one device by PCI bus id like any other.
-    if pinned.usable and not select_device(pinned, cp):
+    if pinned.permitted == () and os.environ.get('CUDA_VISIBLE_DEVICES') == '':
+        # A GPU role with an empty mask is a configuration error, and saying so
+        # here is what makes pin_device's warning true. Otherwise this rank
+        # reaches verify_pin, cp.cuda.Device().id raises on a context with no
+        # devices, and the user gets a raw CUDA error turned into an abort by
+        # gpu_error_handler rather than the reason.
+        errors = ['the launcher exposed no GPU to this BD rank '
+                  '(CUDA_VISIBLE_DEVICES is set but empty), so it cannot do '
+                  'GPU work; give it a device or run it as a CPU role']
+        actual, ordinal, visible = '', -1, 0
+    elif pinned.usable and not select_device(pinned, cp):
         errors = [f'no visible device has pci {pinned.requested_pci}; '
                   f'permitted={",".join(pinned.permitted) or "<unset>"}']
         actual, ordinal, visible = pinned.requested_uuid, -1, 0
