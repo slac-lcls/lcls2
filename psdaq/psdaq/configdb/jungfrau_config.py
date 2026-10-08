@@ -112,13 +112,26 @@ def config_expert(jungfrau_kcu, cfg):
     trig_event_buf.PauseThreshold.set(pause_thresh)
 
 
+def check_i2c_clk(jungfrau_kcu):
+
+    clockrange = (180.,190.)
+    rate = jungfrau_kcu.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].TxClkFreq.get()
+
+    print(f"check clock rate: {rate}")
+    if (rate < clockrange[0] or rate > clockrange[1]):
+        print(f"programming clock: {rate}")
+        jungfrau_kcu.DevPcie.I2CBus.programSi570(1300/7.)
+        jungfrau_kcu.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+
+        time.sleep(1)
+
 def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     # detsegm is either int (1 module) or "_" delimited string (multiple modules)
     global ocfg
     global group
     global lm # May be multiple lanes
 
-    print("jungfrau_config")
+    print("jungfrau_config (i2c setup: 185.71MHz)")
     group = grp  # Assign before calling other functions.
 
     detsegm_list = []
@@ -131,6 +144,10 @@ def jungfrau_config(jungfrau_kcu, connect_str, cfgtype, detname, detsegm, grp):
     cfg_list = [] # Json strings
     segm_lane = 0
     jungfrau_kcu.StopRun()
+
+    # check I2C clock rate
+    check_i2c_clk(jungfrau_kcu)
+
     # reset the card if needed
     jungfrau_reset(jungfrau_kcu)
     for segm in detsegm_list:
