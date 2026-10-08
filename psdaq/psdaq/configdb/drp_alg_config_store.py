@@ -58,6 +58,29 @@ def cmd_register(args: argparse.Namespace, mgr: DrpAlgParamManager) -> None:
     print(f"[SUCCESS] Registered: {res}")
 
 
+def cmd_metadata(args: argparse.Namespace, mgr: DrpAlgParamManager) -> None:
+    """Register new metadata (GUI Plugins) for a DRP algorithm version.
+
+    Args:
+        args (argparse.Namespace): Parsed arguments from drp_alg_config_store.
+
+        mgr (DrpAlgParamManager): The manager class to interface with mongoDB.
+    """
+    gui_plugin_data: Optional[Dict[str, Any]] = None
+    if args.gui_plugin:
+        with open(args.gui_plugin, "r") as f:
+            gui_plugin_data = json.load(f)
+
+    print(f"Adding new metadata for {args.alg} version {args.version}...")
+    res: str = mgr.update_algorithm_metadata(
+        alg_name=args.alg,
+        version=args.version,
+        gui_plugin=gui_plugin_data,
+        schema_version=args.schema_version,
+    )
+    print(f"[SUCCESS] Updated metadata: {res}")
+
+
 def cmd_save_params(args: argparse.Namespace, mgr: DrpAlgParamManager) -> None:
     """Save a new parameter preset or parameter set for an algorithm version.
 
@@ -201,6 +224,16 @@ def main():
     )
     p_reg.add_argument("--schema-version", default="1.0.0", help="GUI Schema Version")
     p_reg.set_defaults(func=cmd_register)
+
+    # update_metadata
+    p_meta: argparse.ArgumentParser = subparsers.add_parser(
+        "metadata", help="Update GUI plugin metadata for an algorithm version"
+    )
+    p_meta.add_argument("--alg", required=True, help="Algorithm name")
+    p_meta.add_argument("--version", required=True, help="Algorithm version")
+    p_meta.add_argument("--gui-plugin", required=True, help="Path to optional GUI plugin metadata JSON")
+    p_meta.add_argument("--schema-version", required=True, help="GUI Schema Version")
+    p_meta.set_defaults(func=cmd_metadata)
 
     # Save Params CLI
     p_save: argparse.ArgumentParser = subparsers.add_parser(
