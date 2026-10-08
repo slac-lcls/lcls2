@@ -851,3 +851,66 @@ def test_close_records_one_sequence(monkeypatch):
         peer.close()
     sequences = {peer._recorder.sequence_digest() for peer in peers}
     assert len(sequences) == 1
+
+
+# ---------------------------------------------------------------------------
+# A task that declares no constants (PR 175 review)
+# ---------------------------------------------------------------------------
+
+def test_empty_declaration_establishes_once():
+    """`not self._shared and not self._private` could not tell "not yet
+    established" from "established, nothing requested", so every transition
+    re-ran establish: collectives and a cache trim per step for a task that
+    asked for nothing."""
+    peers, _ = make_peers([[], []])
+    trims = [0, 0]
+
+    def trim(index):
+        def record():
+            trims[index] += 1
+        return record
+
+    for _ in range(4):
+        for index, peer in enumerate(peers):
+            peer.refresh({}, before_upload=trim(index))
+
+    assert trims == [1, 1], f'cache trimmed {trims} times, expected once each'
+
+
+def test_empty_declaration_reports_that_nothing_moved():
+    """refresh() returns True only when something moved. Returning True for an
+    empty declaration makes the caller recompute its subbatch budget every
+    step."""
+    peers, _ = make_peers([[], []])
+    first = [peer.refresh({}) for peer in peers]
+    later = [peer.refresh({}) for peer in peers]
+    assert first == [False, False], 'nothing was declared, so nothing moved'
+    assert later == [False, False]
+
+
+def test_empty_declaration_keeps_peers_on_one_path(monkeypatch):
+    """Establish still runs once even with nothing declared, because peers may
+    declare different sets by design and _intersect's allgather needs every
+    rank. Skipping it on one rank would hang the others."""
+    peers = peers_with_checking([[], []], monkeypatch)[0]
+    for _ in range(3):
+        for peer in peers:
+            peer.refresh({})
+    sequences = {peer._recorder.sequence_digest() for peer in peers}
+    assert len(sequences) == 1, f'peers diverged: {sequences}'
+
+
+def test_one_peer_declaring_nothing_still_agrees():
+    """The degrade design permits unequal declarations. The rank that declared
+    nothing must still take part in the intersection, and neither rank may
+    end up sharing a selector the other never asked for."""
+    declared = [('jf', 'pedestals')]
+    peers, _ = make_peers([[], declared])
+    sources = [{}, host()]
+    for peer, source in zip(peers, sources):
+        peer.refresh(source)
+
+    assert peers[0].shared_selectors == ()
+    assert peers[1].shared_selectors == (), \
+        'a selector only one peer declared must not be shared'
+    assert peers[1].private_selectors == tuple(declared)

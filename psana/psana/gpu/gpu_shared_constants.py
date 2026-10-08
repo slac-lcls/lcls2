@@ -166,6 +166,13 @@ class SharedRequestedConstants(RequestedConstants):
         self._imported = {}     # selector -> _ImportedBlock
         self._shared = ()       # selectors backed by one device copy
         self._private = ()      # selectors uploaded by this rank alone
+        # Whether the shared/private split has been negotiated, tracked
+        # separately from whether it is non-empty. A task declaring no
+        # constants leaves both tuples empty forever, so deriving "not yet
+        # established" from them re-ran establish on every transition --
+        # collectives and a cache trim per step for a task that asked for
+        # nothing, reported as work done.
+        self._established = False
         self._generation = 0
         self._closed = False
         self._ipc_error = None
@@ -261,12 +268,24 @@ class SharedRequestedConstants(RequestedConstants):
             self._upload_private(hosts, moved)
             return True
 
-        if not self._shared and not self._private:
+        if not self._established:
+            # Flag rather than `not self._shared and not self._private`: a
+            # task declaring no constants leaves both tuples empty, so that
+            # test re-established on every transition -- collectives and a
+            # cache trim per step, reported as work done.
+            #
+            # Establish runs even for an empty declaration, because peers may
+            # declare different sets by design and _intersect's allgather
+            # needs every rank. Only the second and later transitions are
+            # skipped.
+            self._established = True
             if before_upload is not None:
                 before_upload()
             self._establish(hosts)
             self._check_order('establish')
-            return True
+            # Nothing was declared, so nothing moved. Saying otherwise makes
+            # the caller recompute its subbatch budget every step.
+            return bool(self._shared or self._private)
 
         # All ranks must take the same branch or the job hangs, and the
         # branch must reflect EVERY rank's view: a follower whose shared

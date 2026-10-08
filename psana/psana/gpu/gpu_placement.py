@@ -268,13 +268,24 @@ def pin_device(*, local_rank_override=None):
         warnings.append('no GPU identity available; not pinning')
         return PinnedDevice(identity_source=source, warnings=tuple(warnings))
 
+    # An UNSET mask and an EMPTY mask mean opposite things, so they must not
+    # share a branch. Unset is "the launcher did not restrict anything", so
+    # every device on the node is permitted. Empty -- `CUDA_VISIBLE_DEVICES=""`
+    # -- is how a launcher says "this rank gets NO GPU", and CUDA itself
+    # reports zero devices for it. Expanding that to the whole node would let
+    # a rank select a device outside its allocation and quietly share another
+    # job's card.
     mask = os.environ.get('CUDA_VISIBLE_DEVICES')
-    if mask is None or not mask.strip():
+    if mask is None:
         permitted = tuple(str(i) for i in sorted(table))
     else:
         permitted = tuple(p.strip() for p in mask.split(',') if p.strip())
     if not permitted:
-        warnings.append('launcher mask is empty; not pinning')
+        warnings.append(
+            'CUDA_VISIBLE_DEVICES is set but empty, so the launcher has '
+            'exposed no GPU to this rank; not pinning. A GPU role here is a '
+            'configuration error -- discovery will report it rather than '
+            'selecting a device outside the allocation.')
         return PinnedDevice(permitted=permitted, identity_source=source,
                             n_node_devices=len(table), warnings=tuple(warnings))
 

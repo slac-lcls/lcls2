@@ -209,8 +209,10 @@ def test_empty_mask_does_not_pin(monkeypatch):
     use_devices(monkeypatch, TWO_GPUS)
     monkeypatch.setenv('CUDA_VISIBLE_DEVICES', '')
     monkeypatch.setenv('SLURM_LOCALID', '0')
-    # An empty string means "no devices", not "all devices".
-    assert pin_device().permitted == ('0', '1')
+    # An empty string means "no devices", not "all devices". This assertion
+    # previously read ('0', '1') -- the comment was right and the assertion
+    # encoded the bug, which is how it survived review.
+    assert pin_device().permitted == ()
 
 
 def test_mig_is_detected_from_the_identity_source(monkeypatch):
@@ -464,3 +466,48 @@ def test_unmatched_device_uuid_mask_also_warns(monkeypatch):
     pinned = pin_device()
     assert not pinned.pinned
     assert any('not in the node device map' in w for w in pinned.warnings)
+
+
+def test_unset_mask_permits_every_device(monkeypatch):
+    """Unset means the launcher did not restrict anything."""
+    use_devices(monkeypatch, TWO_GPUS)
+    monkeypatch.delenv('CUDA_VISIBLE_DEVICES', raising=False)
+    monkeypatch.setenv('SLURM_LOCALID', '1')
+    pinned = pin_device()
+    assert pinned.permitted == ('0', '1')
+    assert pinned.pinned
+
+
+@pytest.mark.parametrize('mask', ['', '   ', ',', ' , '])
+def test_empty_mask_permits_no_device(monkeypatch, mask):
+    """An EMPTY CUDA_VISIBLE_DEVICES is the opposite of an unset one.
+
+    `CUDA_VISIBLE_DEVICES=""` is how a launcher says this rank gets no GPU,
+    and CUDA reports zero devices for it. Both used to share a branch, so an
+    empty mask expanded to every device on the node and the rank could select
+    a card outside its allocation -- quietly sharing another job's GPU.
+    """
+    use_devices(monkeypatch, TWO_GPUS)
+    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', mask)
+    monkeypatch.setenv('SLURM_LOCALID', '1')
+
+    pinned = pin_device()
+    assert pinned.permitted == ()
+    assert not pinned.pinned
+    assert not pinned.usable
+    assert pinned.requested_pci == ''
+    message = ' '.join(pinned.warnings)
+    assert 'no GPU' in message
+    assert 'CUDA_VISIBLE_DEVICES' in message
+
+
+def test_empty_mask_does_not_borrow_a_device_from_the_node(monkeypatch):
+    """The specific regression: with two devices present and an empty mask,
+    no device may be selected at all."""
+    use_devices(monkeypatch, TWO_GPUS)
+    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', '')
+    for local_rank in ('0', '1', '2'):
+        monkeypatch.setenv('SLURM_LOCALID', local_rank)
+        pinned = pin_device()
+        assert pinned.requested_pci == '', \
+            f'local rank {local_rank} selected {pinned.requested_pci} from an empty mask'
