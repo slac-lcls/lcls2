@@ -53,10 +53,11 @@ normal detector. `hybrid_det` keeps the same stream in both CPU and GPU packets;
 it supports shared streams by reading their complete bigdata twice. A detector
 cannot be selected in both modes, nor can exclusive/mirrored stream sets overlap.
 
-MPI assigns devices before importing CuPy using `bd_rank - 1` within the EB
-group and the configured GPU count. Automatic budgets count sharing BDs in that
-same group. This is not node-wide coordination across EB groups; see
-[limitations](limitations.md#multi-eb-device-accounting).
+MPI selects each BD worker's device from the launcher's node-local rank, then
+groups ranks by driver-reported `(hostname, device UUID)` once a communicator
+exists. Automatic budgets divide the discovered device capacity among those
+true peers, so the count no longer depends on EB-group rank arithmetic. See
+[device placement and shared constants](device_placement_and_shared_constants.md).
 
 `GpuEventManager._setup_gpu_pipeline()` creates the shared device budget,
 Configure tables, detector bindings, execution pool, parser and reader. It

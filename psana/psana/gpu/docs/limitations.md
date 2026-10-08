@@ -6,15 +6,33 @@ current design and tests; this page contains current restrictions and open work.
 
 ## Multi-EB device accounting
 
-**Open correctness/resource issue:** BD GPU pinning and automatic peer counts
-use the EB-local `bd_comm`. With several EB groups on one node, local rank
-numbering restarts: groups can select the same GPU while budgeting only their
-own peers. `PS_EB_NODES > 1` on shared GPUs is not a validated configuration.
-The accepted campaigns use one EB. Resolving this requires node-wide BD device
-assignment and memory accounting before CUDA initialization, followed by uneven
-multi-EB/BD/GPU placement tests. An explicit memory quota alone does not implement
-that coordination. Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
-[gpu_mpi.py](../gpu_mpi.py).
+**Resolved.** Peer counts came from the EB-local `bd_comm`, so with several EB
+groups on one node local rank numbering restarted: groups selected the same GPU
+while budgeting only their own peers. Measured 2.0x over-commit at
+`PS_EB_NODES=2` and 3.0x at 3, with ranks on one device disagreeing about the
+count in uneven layouts.
+
+Peers are now grouped by driver-reported `(hostname, device UUID)`, so the
+count is independent of EB topology by construction and no rank arithmetic
+participates. Validated on A100s at `PS_EB_NODES` 1, 2 and 3, contiguous and
+round-robin, an uneven 8-rank split, and across two nodes: aggregate claim
+1.0 on every device. See
+[device placement and shared constants](device_placement_and_shared_constants.md).
+
+Two items remain open.
+
+**The automatic budget is conservative.** It takes the job-wide minimum of free
+memory, so one busy GPU, or a mix of 40 GB and 80 GB cards, lowers every rank's
+limit to the worst device's share. No rank over-commits, but ranks on roomier
+cards leave memory unused. An explicit `gpu_memory_budget_gb` is validated
+against the busiest device in the job, so the verdict is the same on every rank.
+
+**MIG is not supported and not tested.** See
+[device placement and shared constants](device_placement_and_shared_constants.md#limits)
+for what happens on a MIG node.
+
+Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
+[gpu_placement.py](../gpu_placement.py).
 
 ## Supported interface and configuration
 

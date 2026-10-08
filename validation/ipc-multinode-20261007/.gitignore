@@ -1,0 +1,10 @@
+__pycache__/
+cupy-cache/
+cases-*/
+session-*/
+job-*.log
+dbg-*.log
+dbg-sh-*.log
+leak-*.log
+sh4-*.log
+*.log

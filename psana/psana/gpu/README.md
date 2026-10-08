@@ -55,9 +55,11 @@ calibration or output copies.
 
 The same experiment/run interface supports serial and MPI execution. MPI GPU
 initialization belongs to BD workers; keep CUDA imports/allocation out of module
-initialization. Use the site's built psana/CuPy/KvikIO environment. The measured
-single-node MPI configuration has one EB and one or more BDs; multi-EB GPU
-accounting is an [open limitation](docs/limitations.md#multi-eb-device-accounting).
+initialization. Use the site's built psana/CuPy/KvikIO environment. BD workers
+sharing a GPU are discovered by device identity rather than EB-group
+arithmetic, so multi-EB accounting is
+[resolved](docs/limitations.md#multi-eb-device-accounting); see
+[device placement and shared constants](docs/device_placement_and_shared_constants.md).
 
 ## Read next
 
@@ -70,6 +72,7 @@ accounting is an [open limitation](docs/limitations.md#multi-eb-device-accountin
 | [Read/staging performance](docs/performance/read_staging.md) | Latest full JF and partial JF+feespec cold/warm, bulk off/on matrices |
 | [User-kernel performance](docs/performance/user_kernels.md) | Matched scheduling comparison and calibration/integration scaling |
 | [CPU/GPU complexity](docs/complexity.md) | Measured code size and responsibility comparison |
+| [Device placement and shared constants](docs/device_placement_and_shared_constants.md) | Peer discovery by device identity, per-device budgets and CUDA-IPC constant sharing |
 
 For calibrated images use [calibrate_jungfrau.py](examples/calibrate_jungfrau.py).
 For calibration followed by radial integration in one callback use
