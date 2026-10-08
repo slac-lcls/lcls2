@@ -616,10 +616,15 @@ class PVStats(object):
     def init(self):
         pass
 
+    def registerLinkUpCallback(self, cb):
+        self._linkUpCb = cb
+        
     def cuLinkUp(self):
+        self._linkUpCb()
         pass
 
     def usLinkUp(self):
+        self._linkUpCb()
         self.updatePaddr()
 
     def updatePaddr(self):

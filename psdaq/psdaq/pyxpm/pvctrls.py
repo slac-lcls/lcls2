@@ -556,16 +556,17 @@ class ClockControl(object):
 
     _epoch = datetime.datetime(1990,1,1)
 
-    def __init__(self, xpm):
+    def __init__(self, mini, advance=True):
+        self._mini = mini
         #  Set the initial timestamp
         ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
         ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
-        xpm.TPGMini.TStampWr.set(ts)
-        xpm.TPGMini.TStampSet.set(1)
+        self._mini.TStampWr.set(ts)
+        self._mini.TStampSet.set(1,verify=False)
         print(f'Wrote {ts:016x} to timestamp')
 
-        self._reg = xpm.TPGMini.ClockAdvanceRate
         self._mode = 0
+        self._advance = advance
 
     def update(self, ts):
 
@@ -574,25 +575,31 @@ class ClockControl(object):
         
 #        print(f'ClockControl.update {ts[0]:08x} {ts[1]:08x} {int(ut):08x}.{int(math.fmod(ut,1)*1.e9):08x} {dsec}')
 
-        if self._reg is None:
-            pass
-        else:
+        if self._advance:
             if self._mode==0 and dsec < -0.005:  # Lagging
                 self._mode = 1
-                self._reg.set(0x050c1f)
+                self._mini.ClockAdvanceRate.set(0x050c1f)
                 print(f'ClockControl.update ut={ut}  dsec={dsec}.  Lagging.  Raise clock rate')
             elif self._mode==0 and dsec > 0.005: # Leading
                 self._mode = -1
-                self._reg.set(0x050815)
+                self._mini.ClockAdvanceRate.set(0x050815)
                 print(f'ClockControl.update ut={ut}  dsec={dsec}.  Leading.  Reduce clock rate')
             elif (self._mode==1 and dsec > 0) or (self._mode==-1 and dsec<0):  # Recovered
                 self._mode = 0
-                self._reg.set(0x05050d)
+                self._mini.ClockAdvanceRate.set(0x05050d)
                 print(f'ClockControl.update ut={ut}  dsec={dsec}.  Recovered')
-
+        else:
+            #  We can only set a new timestamp, the advance rate is not exposed
+            if dsec < -0.05 or dsec > 0.05:
+                ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
+                self._mini.TStampWr.set(ts)
+                self._mini.TStampSet.set(1,verify=False)
+                print(f'ClockControl.update ut={ut}  dsec={dsec}.  Set new timestamp {ts:016x}')
+        
 class PVCtrls(object):
 
-    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, usTiming=None, handle=None, paddr=None, notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3, imageName=None):
+    def __init__(self, p, m, name=None, ip=None, xpm=None, stats=None, usTiming=None, handle=None, paddr=None,
+                 notify=True, db=None, cuInit=False, fidPrescale=200, fidPeriod=1400/1.3, imageName=None):
         global provider
         provider = p
         global lock
@@ -635,16 +642,11 @@ class PVCtrls(object):
 
         self._cu    = CuGenCtrls(name+':XTPG', xpm)
 
-#        self._clock_control = ClockControl(xpm) if 'Gen' in imageName else None
         self._clock_control = None
-
-        if 'XTPG' in imageName:
-            #  Set the initial timestamp
-            ut = (datetime.datetime.utcnow() - self._epoch).total_seconds()
-            ts = (int(ut)<<32) + int(math.fmod(ut,1)*1.e9)
-            xpm.TPGMiniStream.TStampWr.set(ts)
-            xpm.TPGMiniStream.TStampSet.set(1)
-            print(f'Wrote {ts:016x} to timestamp')
+        if 'Gen' in imageName:
+            self._clock_control = ClockControl(xpm.TPGMini)
+        if 'xtpg' in imageName:
+            self._clock_control = ClockControl(xpm.TPGMiniStream, advance=False)
 
         self._group = GroupCtrls(name, app, stats)
 
@@ -709,6 +711,9 @@ class PVCtrls(object):
                     s._eng.resetDone()
                     pvUpdate(s._pv_Running,1)
 
+    def resetSequences(self):
+        self.seqReset(self._pv_seqReset,(1<<int(NCODES//4))-1)
+        
     def update(self,cycle):
         #  The following section will throw an exception if the CuInput PV is not set properly
         if cycle < 10:

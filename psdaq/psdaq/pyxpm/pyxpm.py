@@ -75,7 +75,10 @@ def main():
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
     # Set base
-    base = pr.Root(name='AMCc',description='',pollEn=False) 
+    base = pr.Root(name='AMCc',description='',pollEn=False)
+
+    zmqServer = pyrogue.interfaces.ZmqServer(root=base, addr='127.0.0.1', port=0)
+    base.addInterface(zmqServer)
 
     base.add(Top(
         name   = 'XPM',
@@ -118,6 +121,8 @@ def main():
                       noTiming=args.T, fidRate=1./args.F)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)
 
+    pvstats.registerLinkUpCallback(pvctrls.resetSequences)
+    
     pvxtpg = None
 
     # process PVA transactions
@@ -147,6 +152,9 @@ def main():
                         xpm.TPGMini.setup(False)
                     else:
                         print(f'No TPGMini')
+
+                    print(f'Resetting sequences')
+                    pvctrls.resetSequences()
 
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))
