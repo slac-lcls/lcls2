@@ -37,20 +37,28 @@ class PatternStats(object):
             d[a] = getattr(rval.value,a)[self.group]
         return d
             
-if __name__=='__main__':
+def main():
     import argparse
     import sys
     import time
     
-    parser = argparse.ArgumentParser(prog=sys.argv[0], description='test pattern fetch')
-    parser.add_argument('-P', default='DAQ:NEH:XPM:5', help='XPM PV')
-    parser.add_argument('--group', default=7, type=int, help='readout group')
+    parser = argparse.ArgumentParser(prog=sys.argv[0], description='fetch pattern statistics of an event code or beam')
+    parser.add_argument('-P', default='DAQ:NEH:XPM:5', help='XPM PV name (default DAQ:NEH:XPM:5)')
+    parser.add_argument('--group', default=7, type=int, help='readout group (default 7)')
     parser.add_argument('--code', default=None, type=int, help='event code')
-    parser.add_argument('--beam', default=None, nargs='+', help='include destinations comma-separated list of {BSYD,HXR,SXR}')
+    parser.add_argument('--beam', default=None, nargs='+', help='include destinations comma-separated list of {BSYD,HXR,SXR} [only with SC Timing input]')
     args = parser.parse_args()
     print(f'args {args}')
+
+    masters = ('DAQ:NEH:XPM:2','DAQ:NEH:XPM:3','DAQ:FEH:XPM:4','DAQ:FEH:XPM:2')
+    if args.P in masters:
+        raise ValueError(f'Using any of {masters} may interfere with operations')
     
     stats = PatternStats(args.P,args.group)
     stats.setup(args.code,args.beam)
     time.sleep(3)
     print(stats.get())
+
+if __name__=='__main__':
+    main()
+    

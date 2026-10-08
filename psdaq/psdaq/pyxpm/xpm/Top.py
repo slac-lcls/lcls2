@@ -214,7 +214,7 @@ class Top(pr.Device):
             ))        
 
         # XTPG
-        self.add(xpm.TPGMini(
+        self.add(timing.TPGMiniCore(
             memBase = self.srp,
             name    = 'TPGMiniStream',
             offset  = 0x0c100000,
