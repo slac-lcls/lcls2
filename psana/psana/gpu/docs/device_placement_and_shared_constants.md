@@ -123,6 +123,14 @@ it independently derive limits that sum to slightly more than the device.
 limit adds it back, because `_OwnedBlock` already charges it to the owner's
 budget and subtracting it from the owner's share too would charge it twice.
 
+Both adjustments are applied **before** the intersection is allocated, through
+a `sizing` callback that `SharedRequestedConstants` invokes once the
+intersection is known. Applying them afterwards meant the owner allocated
+against `usable / peers`: a 12 GiB intersection on a 40 GiB four-peer device
+fits this accounting (owner 7 + 12 = 19 GiB) but was charged against 10 GiB, so
+the shared copy was refused, the group degraded, and the private copy was then
+refused by the same limit.
+
 An explicit `gpu_memory_budget_gb` is validated against the group total; `N`
 ranks each claiming the whole device is otherwise accepted silently. The claim
 is checked against the **busiest** device in the job, reduced with `MPI.MAX`,

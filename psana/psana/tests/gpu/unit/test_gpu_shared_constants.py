@@ -914,3 +914,107 @@ def test_one_peer_declaring_nothing_still_agrees():
     assert peers[1].shared_selectors == (), \
         'a selector only one peer declared must not be shared'
     assert peers[1].private_selectors == tuple(declared)
+
+
+# ---------------------------------------------------------------------------
+# The budget must be sized before the intersection is allocated (PR 175)
+# ---------------------------------------------------------------------------
+
+class WatchingBudget(_GpuBudget):
+    """Records the limit in force at each reserve() call.
+
+    The defect was an ordering one, so what matters is not the final limit
+    but the limit the owner saw while allocating.
+    """
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        self.seen = []
+
+    def reserve(self, n):
+        self.seen.append((int(n), int(self.limit())))
+        return super().reserve(n)
+
+
+def _wire_sizing(peer, budget, usable):
+    """Attach the sizing hook exactly as GpuEventManager does."""
+    from psana.gpu.gpu_placement import per_rank_limit
+    placement = peer._placement
+    placement.usable_bytes = usable
+
+    def resize(shared_bytes):
+        placement.shared_bytes = int(shared_bytes)
+        limit = per_rank_limit(placement)
+        if placement.is_owner:
+            limit += int(shared_bytes)
+        budget.set_limit(limit)
+
+    peer._sizing = resize
+
+
+def test_budget_is_resized_before_the_intersection_is_allocated():
+    """The owner used to allocate against usable/peers, with the shared bytes
+    added only after refresh() returned.
+
+    A 12 GiB intersection on a 40 GiB four-peer device fits the documented
+    accounting -- owner 7 + 12 = 19 GiB -- but was charged against 10 GiB, so
+    the shared copy was refused, the group degraded, and the private copy was
+    then refused by the same limit. Scaled down here to the fixture's heap.
+    """
+    usable, peer_count = 400 * 1024, 4
+    shared = np.zeros((16 * 1024,), dtype=np.float32)     # 64 KiB
+    declared = [('jf', 'pedestals')]
+
+    budgets = [WatchingBudget(limit_bytes=usable // peer_count)
+               for _ in range(peer_count)]
+    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
+    for peer, budget in zip(peers, budgets):
+        _wire_sizing(peer, budget, usable)
+
+    naive_limit = usable // peer_count
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': shared}})
+
+    # The owner allocates the shared block; the limit must already include it.
+    owner_reserves = budgets[0].seen
+    assert owner_reserves, 'the owner never reserved anything'
+    first_bytes, limit_then = owner_reserves[0]
+    assert first_bytes == shared.nbytes
+    assert limit_then > naive_limit, (
+        f'owner allocated {first_bytes} bytes against {limit_then}, the '
+        f'un-resized {naive_limit}: the limit was raised too late')
+
+    # And the accounting itself: shared counted once, owner gets it back.
+    expected_share = (usable - shared.nbytes) // peer_count
+    assert budgets[0].limit() == expected_share + shared.nbytes
+    assert budgets[1].limit() == expected_share
+
+
+def test_sizing_is_not_called_before_the_intersection_is_known():
+    """Sizing must see the negotiated intersection, not this rank's
+    declaration: a selector only one peer declared is private, not shared."""
+    seen = []
+    declared = [('jf', 'pedestals')]
+    peers, _ = make_peers([[], declared])
+    for peer in peers:
+        peer._sizing = seen.append
+
+    sources = [{}, host()]
+    for peer, source in zip(peers, sources):
+        peer.refresh(source)
+
+    # The intersection is empty, so no shared bytes on either rank.
+    assert seen == [0, 0], f'sizing saw {seen}, expected no shared bytes'
+
+
+def test_explicit_budget_is_not_moved_by_sizing():
+    """An explicit gpu_memory_budget_gb is the user's ceiling and
+    discover_peers has already validated it against the group."""
+    declared = [('jf', 'pedestals')]
+    peers, _ = make_peers([declared, declared])
+    # No sizing hook is wired when an explicit budget is in force, so the
+    # limit must be whatever the caller set.
+    before = [peer.budget.limit() for peer in peers]
+    for peer in peers:
+        peer.refresh(host())
+    assert [peer.budget.limit() for peer in peers] == before

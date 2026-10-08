@@ -302,6 +302,39 @@ class GpuEventManager:
             _fmt_mib(hw.get("pinned", 0)),
         )
 
+    def _resize_budget_for_shared(self, shared_bytes):
+        """Account for the shared intersection before it is allocated.
+
+        Called by SharedRequestedConstants once the intersection is known and
+        before anything is allocated. Shared constants are device overhead
+        counted once, so every rank's share is computed net of them while the
+        owner -- which actually holds the allocation -- gets those bytes added
+        back.
+
+        Doing this after refresh() meant the owner allocated against
+        usable/peers: a 12 GiB intersection on a 40 GiB four-peer device fits
+        the documented accounting (7 + 12 = 19 GiB) but was charged against
+        10 GiB, so the shared copy was refused, the group degraded, and the
+        private copy was refused by the same limit.
+        """
+        placement = self._placement
+        shared = int(shared_bytes or 0)
+        if not shared or placement is None:
+            return
+        placement.shared_bytes = shared
+        if float(getattr(self.dsparms, "gpu_memory_budget_gb", 0) or 0):
+            # An explicit budget is the user's ceiling and discover_peers has
+            # already validated it against the group; do not move it.
+            return
+        from psana.gpu.gpu_placement import per_rank_limit
+        limit = per_rank_limit(placement)
+        if placement.is_owner:
+            # _OwnedBlock charges the shared bytes to the owner, and
+            # per_rank_limit has subtracted the same amount from every rank's
+            # share. Without this the owner pays twice.
+            limit += shared
+        self._gpu_budget.set_limit(limit)
+
     def _setup_gpu_pipeline(self):
         """Initialize this BD's run-scoped GPU resources and processing pipeline."""
         # Budget must exist before constructing input resources.
@@ -439,27 +472,12 @@ class GpuEventManager:
                 # privately upload the remainder.
                 from .gpu_shared_constants import SharedRequestedConstants
                 self._task_constants = SharedRequestedConstants(
-                    self._gpu_task.calibconst, self._gpu_budget, placement)
+                    self._gpu_task.calibconst, self._gpu_budget, placement,
+                    sizing=self._resize_budget_for_shared)
             else:
                 self._task_constants = RequestedConstants(
                     self._gpu_task.calibconst, self._gpu_budget)
             self._task_constants.refresh(getattr(self.dsparms, 'calibconst', {}))
-            # Shared bytes are device overhead, subtracted once: re-derive the
-            # per-rank limit now that their size is known.
-            shared = int(getattr(self._task_constants, 'shared_bytes', 0) or 0)
-            if shared and placement is not None:
-                placement.shared_bytes = shared
-                if not float(getattr(self.dsparms, 'gpu_memory_budget_gb', 0) or 0):
-                    from psana.gpu.gpu_placement import per_rank_limit
-                    limit = per_rank_limit(placement)
-                    if placement.is_owner:
-                        # The owner's budget already carries the shared bytes
-                        # (_OwnedBlock reserves them), and per_rank_limit has
-                        # subtracted the same amount from every rank's share.
-                        # Without this the owner pays twice and can be left
-                        # with nothing.
-                        limit += shared
-                    self._gpu_budget.set_limit(limit)
         self._setup_input_io()
 
         # Report which I/O path kvikio will use for this run.

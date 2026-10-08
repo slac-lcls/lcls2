@@ -155,7 +155,14 @@ class SharedRequestedConstants(RequestedConstants):
     content disagreement aborts.
     """
 
-    def __init__(self, requests, budget, placement=None, *, cp=None):
+    def __init__(self, requests, budget, placement=None, *, cp=None,
+                 sizing=None):
+        # ``sizing(shared_bytes)`` is called once, after the intersection is
+        # known and before anything is allocated, so the caller can set this
+        # rank's budget limit with the shared bytes counted once. Optional:
+        # without it the limit is whatever the caller already set, which is
+        # correct whenever an explicit gpu_memory_budget_gb is in force.
+        self._sizing = sizing
         self.requests = _selectors(requests, constants=True)
         self.budget = budget
         self._host = {}
@@ -485,6 +492,25 @@ class SharedRequestedConstants(RequestedConstants):
             self._cp = cp
 
         self._shared, self._private = self._intersect()
+
+        # Resize the budget BEFORE anything is allocated. The intersection is
+        # device overhead counted once, so the owner's limit has to include it
+        # and every rank's share is computed net of it -- but both were applied
+        # only after refresh() returned, by which time the owner had already
+        # tried to allocate against limit = usable/peers. A 12 GiB intersection
+        # on a 40 GiB four-peer device fits the documented accounting (owner
+        # 7 + 12 = 19 GiB) yet was charged against 10 GiB: the shared copy was
+        # refused, the group degraded, and the private copy was then refused
+        # by the same limit. The size is knowable here -- the selectors come
+        # from _intersect and the arrays from `hosts` -- so no allocation is
+        # needed to learn it.
+        #
+        # Sizes are taken from this rank's own `hosts`. The shared SET is
+        # identical on every rank by construction; a shape or dtype
+        # disagreement aborts the whole group in _settle moments later.
+        if self._sizing is not None:
+            self._sizing(sum(int(np.ascontiguousarray(hosts[s]).nbytes)
+                             for s in self._shared if s in hosts))
 
         if self._private:
             arrays = upload_owned(self._cp, [hosts[s] for s in self._private],

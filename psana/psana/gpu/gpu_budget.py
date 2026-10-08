@@ -273,9 +273,10 @@ class _GpuBudget:
     def set_limit(self, limit_bytes: int):
         """Replace the limit, rejecting one the current state already exceeds.
 
-        Setup discovers some costs only after allocating -- shared constants
-        are sized once their intersection is known -- so the limit can move.
-        Lowering it below what is already committed would defer the failure to
+        Setup learns some costs only after the budget exists -- shared
+        constants are sized once their intersection has been negotiated -- so
+        the limit can move. It moves *before* those bytes are allocated;
+        lowering it below what is already committed would defer the failure to
         an unrelated allocation later, so refuse instead.
         """
         limit_bytes = int(limit_bytes)
