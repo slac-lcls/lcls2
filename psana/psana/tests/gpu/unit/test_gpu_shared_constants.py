@@ -1018,3 +1018,74 @@ def test_explicit_budget_is_not_moved_by_sizing():
     for peer in peers:
         peer.refresh(host())
     assert [peer.budget.limit() for peer in peers] == before
+
+
+def test_mixed_declarations_do_not_diverge_across_transitions(monkeypatch):
+    """The empty-declaration bug was a HANG, not only wasted work.
+
+    Pre-fix, a rank that declared nothing matched `not self._shared and not
+    self._private` on every transition and re-entered _establish, whose first
+    collective is _intersect's allgather. Its peer with a non-empty
+    declaration took the case path, whose first collective is the case
+    allreduce. Measured sequences were ['allgather', 'allgather'] against
+    ['allgather', 'Iallreduce', 'Iallreduce'] -- two ranks blocked in
+    different collectives, which MPI pairs by call order.
+    """
+    peers = peers_with_checking([[], [('jf', 'pedestals')]], monkeypatch)[0]
+    sources = [{}, host()]
+    for _ in range(3):
+        for peer, source in zip(peers, sources):
+            peer.refresh(source)
+
+    sequences = {peer._recorder.sequence_digest() for peer in peers}
+    assert len(sequences) == 1, (
+        'a rank declaring nothing diverged from one declaring a selector: '
+        f'{[peer._recorder.calls for peer in peers]}')
+
+
+def test_failed_import_closes_a_partly_built_block():
+    """ipcOpenMemHandle can succeed while view() then raises.
+
+    The block never reaches self._imported, so _release_shared would not
+    close it -- and the owner frees its allocation after that barrier, with
+    this rank's mapping still open, which CUDA forbids. The owner's half in
+    _publish already handled the same window.
+    """
+    import psana.gpu.gpu_shared_constants as module
+
+    original = module._ImportedBlock
+    opened, closed = [], []
+
+    class OpensThenFailsToView(original):
+        def __init__(self, cp, handle, nbytes):
+            super().__init__(cp, handle, nbytes)
+            opened.append(id(self))          # the mapping is now open
+
+        def view(self, *args, **kwargs):
+            raise RuntimeError('injected: view fails after the mapping opened')
+
+        def close(self):
+            closed.append(id(self))
+            return super().close()
+
+    declared = [('jf', 'pedestals')]
+    peers, _ = make_peers([declared, declared])
+    module._ImportedBlock = OpensThenFailsToView
+    try:
+        for peer in peers:
+            peer.refresh(host())
+    finally:
+        module._ImportedBlock = original
+
+    assert opened, 'the test did not reach the import'
+    assert len(closed) == len(opened), (
+        f'{len(opened) - len(closed)} mapping(s) left open; the owner frees '
+        'its allocation underneath them')
+    # Scoped to the follower that failed. FakeComm's Iallreduce answers each
+    # rank with its own contribution, so a capability flag cannot propagate
+    # here and the owner still reports sharing. Whether the whole group
+    # degrades together is asserted on real MPI by the follower-import case
+    # in mpi_failure_paths.py, which is where it is observable.
+    follower = peers[1]
+    assert follower.shared_selectors == ()
+    assert follower.private_selectors == tuple(declared)

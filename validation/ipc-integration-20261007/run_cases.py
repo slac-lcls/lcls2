@@ -96,9 +96,19 @@ def run_case(tag, ranks, script, extra, one_gpu, expect='clean', timeout=180):
         ok, detail = False, {'error': f'timed out after {timeout}s'}
     else:
         ok, detail = parse(text)
+        # The log alone is not enough in the other direction either: a crash
+        # AFTER the rank records are written -- in teardown, say, where close()
+        # frees shared allocations -- leaves a log full of passes. Require a
+        # clean exit as well. Passing runs already report exit=0.
+        if ok and status != 0:
+            ok = False
+            detail['error'] = (f'every rank passed but mpirun exited {status}; '
+                               'something failed after the records were '
+                               'written, most likely in teardown')
     detail['exit'] = status
     detail['elapsed'] = elapsed
-    # mpirun exits 0 even when ranks report failures, so the log decides.
+    # Both conditions are required: mpirun exits 0 even when ranks report
+    # failures, and the ranks can all report success before a late crash.
     print(f'CASE_END {tag} ok={ok} exit={status} elapsed={elapsed}s '
           f'{json.dumps(detail, sort_keys=True)}', flush=True)
     return ok, detail

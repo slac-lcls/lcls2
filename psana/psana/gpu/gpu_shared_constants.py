@@ -605,6 +605,7 @@ class SharedRequestedConstants(RequestedConstants):
                     f'{selector!r}: peers disagree on content; sharing would '
                     'silently substitute the owner\'s values for this rank\'s')
                 continue
+            block = None
             try:
                 block = _ImportedBlock(self._cp, entry['handle'],
                                        entry['nbytes'])
@@ -613,6 +614,14 @@ class SharedRequestedConstants(RequestedConstants):
                                   offset=entry['offset'])
             except Exception as exc:                      # noqa: BLE001
                 capability = f'{type(exc).__name__}: {exc}'
+                # The block never reached self._imported, so _release_shared
+                # would not close it -- and the owner frees its allocation
+                # after that barrier, while this mapping is still open, which
+                # CUDA forbids. `block` is None when the constructor itself
+                # raised, meaning no mapping was opened. Same shape as the
+                # owner's half in _publish.
+                if block is not None:
+                    block.close()
                 break
             self._imported[selector] = block
             self._device[selector] = view
