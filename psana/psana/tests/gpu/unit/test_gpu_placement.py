@@ -511,3 +511,28 @@ def test_empty_mask_does_not_borrow_a_device_from_the_node(monkeypatch):
         pinned = pin_device()
         assert pinned.requested_pci == '', \
             f'local rank {local_rank} selected {pinned.requested_pci} from an empty mask'
+
+
+@pytest.mark.parametrize('mask', ['', '   ', ',', ' , '])
+def test_empty_mask_is_recorded_as_a_flag(monkeypatch, mask):
+    """Discovery needs to tell an empty mask from no GPU identity.
+
+    Both leave `permitted == ()`, and re-reading CUDA_VISIBLE_DEVICES in
+    discover_peers matched only the exact empty string, so ' ', ',' and ' , '
+    still reached verify_pin and raised a raw CUDA error instead of the
+    reason.
+    """
+    use_devices(monkeypatch, TWO_GPUS)
+    monkeypatch.setenv('CUDA_VISIBLE_DEVICES', mask)
+    monkeypatch.setenv('SLURM_LOCALID', '0')
+    assert pin_device().empty_mask is True
+
+
+def test_absent_identity_is_not_an_empty_mask(monkeypatch):
+    """The no-identity branch also returns permitted == (), but the cause and
+    the message differ, so the flag must not be set there."""
+    monkeypatch.setattr(gp, 'node_devices', lambda: ({}, ''))
+    monkeypatch.delenv('CUDA_VISIBLE_DEVICES', raising=False)
+    pinned = pin_device()
+    assert pinned.permitted == ()
+    assert pinned.empty_mask is False

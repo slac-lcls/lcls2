@@ -90,6 +90,11 @@ class PinnedDevice:
     requested_uuid: str = ''      # what we asked CUDA_VISIBLE_DEVICES for
     requested_pci: str = ''
     is_mig: bool = False
+    # CUDA_VISIBLE_DEVICES was set but named no device. Recorded rather than
+    # re-derived: `permitted == ()` is also what the no-GPU-identity branch
+    # returns, and re-reading the variable misses the spellings pin_device
+    # already treats as empty (' ', ',', ' , ').
+    empty_mask: bool = False
     local_rank: int = -1
     local_rank_source: str = ''
     permitted: tuple = ()         # launcher's device set, as seen by us
@@ -287,7 +292,8 @@ def pin_device(*, local_rank_override=None):
             'configuration error -- discovery will report it rather than '
             'selecting a device outside the allocation.')
         return PinnedDevice(permitted=permitted, identity_source=source,
-                            n_node_devices=len(table), warnings=tuple(warnings))
+                            n_node_devices=len(table), empty_mask=True,
+                            warnings=tuple(warnings))
 
     if local_rank_override is not None:
         rank, rank_source = int(local_rank_override), 'override'
@@ -499,7 +505,7 @@ def discover_peers(pinned, comm, *, is_gpu_worker, cp=None,
     # Make the chosen device current, then verify. One path: a mask narrowed
     # by the launcher is simply a permitted set of size one, and select_device
     # finds that one device by PCI bus id like any other.
-    if pinned.permitted == () and os.environ.get('CUDA_VISIBLE_DEVICES') == '':
+    if pinned.empty_mask:
         # A GPU role with an empty mask is a configuration error, and saying so
         # here is what makes pin_device's warning true. Otherwise this rank
         # reaches verify_pin, cp.cuda.Device().id raises on a context with no

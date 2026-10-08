@@ -64,7 +64,7 @@ alone.
 
 ## Results
 
-Job 40268803, 2026-10-08. **9/9 PASS**, `collective_order_
+Job 40270233, 2026-10-08. **9/9 PASS**, `collective_order_
 diverged: 0` in every case.
 
 Discovery: 2 devices x 4 peers (3+4 for `discovery-uneven`), `aggregate_claim`

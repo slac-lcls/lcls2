@@ -1145,3 +1145,73 @@ def test_fallback_returns_the_sharing_budget_before_uploading_privately():
             f'returning to {expected}; its private copy would be refused')
     assert peers[0]._placement.shared_bytes == 0
     assert all(peer.shared_selectors == () for peer in peers)
+
+
+def test_case_c_resizes_the_budget_for_the_new_intersection():
+    """Case C replaces the allocation, so the budget must be re-sized for the
+    NEW size before the new copy is allocated.
+
+    Sizing happened at establish and in the fallback but not here, so the
+    budget still reflected the old intersection. Growing, the owner could be
+    refused for a copy that would have fit with the right limit -- the setup
+    defect again, at Case C. Shrinking, followers kept a limit computed from
+    the larger old size and were left over-committed.
+    """
+    from psana.gpu.gpu_placement import per_rank_limit
+
+    usable, peer_count = 400 * 1024, 4
+    small = np.zeros((4, 8), dtype=np.float32)               # 128 B
+    # A different SHAPE, which is what makes this Case C rather than Case B.
+    large = np.ones((4, 8, 16), dtype=np.float32)            # 2 KiB
+    declared = [('jf', 'pedestals')]
+
+    budgets = [_GpuBudget(limit_bytes=usable // peer_count)
+               for _ in range(peer_count)]
+    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
+    for peer, budget in zip(peers, budgets):
+        _wire_sizing(peer, budget, usable)
+
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': small}})
+    assert peers[0]._placement.shared_bytes == small.nbytes
+    owner_at_small = budgets[0].limit()
+
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': large}})
+
+    # The group must still be sharing -- a budget too small for the new copy
+    # would have degraded it to private copies.
+    assert all(peer.shared_selectors == tuple(declared) for peer in peers)
+    assert peers[0]._placement.shared_bytes == large.nbytes, \
+        'the budget still reflects the old intersection size'
+    assert budgets[0].limit() > owner_at_small, \
+        'the owner limit did not grow with the intersection'
+
+    # And the accounting is exactly the documented split, at the new size.
+    expected_share = (usable - large.nbytes) // peer_count
+    assert budgets[1].limit() == expected_share
+    assert budgets[0].limit() == expected_share + large.nbytes
+
+
+def test_case_c_shrinking_returns_the_difference():
+    """The other direction: a smaller intersection must give the bytes back,
+    or followers stay more constrained than the device requires."""
+    usable, peer_count = 400 * 1024, 4
+    large = np.ones((4, 8, 16), dtype=np.float32)            # 2 KiB
+    small = np.zeros((4, 8), dtype=np.float32)               # 128 B
+    declared = [('jf', 'pedestals')]
+
+    budgets = [_GpuBudget(limit_bytes=usable // peer_count)
+               for _ in range(peer_count)]
+    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
+    for peer, budget in zip(peers, budgets):
+        _wire_sizing(peer, budget, usable)
+
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': large}})
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': small}})
+
+    expected_share = (usable - small.nbytes) // peer_count
+    assert budgets[1].limit() == expected_share
+    assert budgets[0].limit() == expected_share + small.nbytes

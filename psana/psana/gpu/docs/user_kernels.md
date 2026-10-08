@@ -51,6 +51,12 @@ manager builds this binding from sorted Configure segment IDs. Missing or
 rejected segments are zero-filled and marked absent. A valid field with a
 non-`Corrupted` damage flag remains usable; presence does not mean damage-free.
 
+A constants array from `batch.calibconst()` must not be kept past the
+callback that obtained it: read it, or copy it with `.get()`, and let the
+reference go. When BD ranks share a GPU, one device allocation backs every
+peer, so it is rewritten in place or freed at the next transition. See
+[lifetime](device_placement_and_shared_constants.md#lifetime-valid-until-the-next-transition).
+
 Generic fields need no dense adapter or CPU detector class. They preserve
 physical segment identity and runtime shape in device descriptors. Configure
 payload fields are not event selectors. Pointer-consuming kernels must check

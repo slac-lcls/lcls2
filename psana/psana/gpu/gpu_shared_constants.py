@@ -153,6 +153,15 @@ class SharedRequestedConstants(RequestedConstants):
     whenever sharing is unavailable: a single peer, no communicator, a MIG
     instance, or an IPC call that fails. Capability failures degrade; only
     content disagreement aborts.
+
+    **An array returned by ``get`` is valid only until the next transition.**
+    One allocation backs every peer, so a BeginStep rewrites it in place
+    (Case B) or frees and replaces it (Case C): a reference kept past the
+    callback silently changes value or dangles. This is narrower than
+    ``RequestedConstants``, where escaped aliases retain the old generation
+    until collected; restoring that needs coordinated retirement across peers
+    and is tracked as follow-up. See ``docs/`` ->
+    ``device_placement_and_shared_constants.md`` ("Lifetime").
     """
 
     def __init__(self, requests, budget, placement=None, *, cp=None,
@@ -726,6 +735,20 @@ class SharedRequestedConstants(RequestedConstants):
         for selector in self._shared:
             self._device.pop(selector, None)
             self._host.pop(selector, None)
+        # Re-size for the NEW intersection before re-allocating it. Case C
+        # fires because a shape or dtype changed, so the size usually changes
+        # too, and the budget still reflects the old one. Growing, the owner
+        # could be refused for a copy that would have fit -- the setup defect
+        # again, at Case C. Shrinking, followers keep a limit computed from
+        # the larger old size, so they are left over-committed against what
+        # the device now holds.
+        #
+        # After _release_shared for the same reason as the fallback:
+        # set_limit refuses to lower the owner's limit below what it still
+        # holds, and the old blocks are freed by then.
+        if self._sizing is not None:
+            self._sizing(sum(int(np.ascontiguousarray(hosts[s]).nbytes)
+                             for s in self._shared if s in hosts))
         # Same agreement as _establish, through the same entry point: without
         # it an owner failure leaves followers with no device arrays for the
         # shared selectors, so the next get() fails far from the cause.
