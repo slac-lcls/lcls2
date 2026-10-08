@@ -164,6 +164,7 @@ class GpuEventManager:
         run,
         smdr_man=None,
         n_bd_per_gpu=1,
+        placement=None,
     ):
         self.configs = configs
         self.dm = dm
@@ -173,9 +174,15 @@ class GpuEventManager:
         self.dsparms = dsparms
         self.run = run
         self.smdr_man = smdr_man
-        # BD workers sharing this rank's physical GPU.  Sizes the auto VRAM
-        # budget so N ranks on one device do not each claim the whole device.
-        self._n_bd_per_gpu = max(1, int(n_bd_per_gpu or 1))
+        # Device placement discovered before the event loop: which physical
+        # GPU this rank holds, who shares it, and who owns shared constants.
+        # When absent (serial runs, or an un-migrated caller) fall back to the
+        # supplied peer count, which is what n_bd_per_gpu meant.
+        self._placement = placement
+        if placement is not None:
+            self._n_bd_per_gpu = max(1, int(placement.n_device_peers))
+        else:
+            self._n_bd_per_gpu = max(1, int(n_bd_per_gpu or 1))
 
         self._batch_iter = iter([])
         self._iter = None
@@ -301,12 +308,19 @@ class GpuEventManager:
         from psana.gpu.gpu_budget import _GpuBudget
 
         budget_gb = float(getattr(self.dsparms, "gpu_memory_budget_gb", 0) or 0)
+        placement = self._placement
         if budget_gb > 0:
+            # discover_peers has already validated this against the group
+            # total and folded it into usable_bytes; re-checking it here would
+            # be dead code.
             self._gpu_budget = _GpuBudget(limit_bytes=int(budget_gb * 1024**3))
+        elif placement is not None:
+            # Divide the discovered device capacity among its true peers,
+            # counting any shared constants once rather than per rank.
+            from psana.gpu.gpu_placement import per_rank_limit
+            self._gpu_budget = _GpuBudget(limit_bytes=per_rank_limit(placement))
         else:
-            # Divide the device between the BD workers that share it.  The
-            # count comes from the caller (bd_ranks_sharing_gpu on the MPI
-            # path); the serial path has a single rank and so keeps 1.
+            # Serial, or a caller that supplied only a peer count.
             self._gpu_budget = _GpuBudget.auto(n_bd_ranks=self._n_bd_per_gpu)
 
         ids_table = getattr(self.dsparms, "det_stream_ids_table", {})
@@ -418,8 +432,34 @@ class GpuEventManager:
                 n_slots=pool_depth, budget=self._gpu_budget)
             for preparer in self.input_preparers.values():
                 preparer.configure_gather(self.gpu_xtc_parser.handle_indices)
-            self._task_constants = RequestedConstants(self._gpu_task.calibconst, self._gpu_budget)
+            placement = self._placement
+            if placement is not None and placement.can_share:
+                # One device copy for every BD rank on this GPU. Peers that
+                # declared different selectors share the intersection and
+                # privately upload the remainder.
+                from .gpu_shared_constants import SharedRequestedConstants
+                self._task_constants = SharedRequestedConstants(
+                    self._gpu_task.calibconst, self._gpu_budget, placement)
+            else:
+                self._task_constants = RequestedConstants(
+                    self._gpu_task.calibconst, self._gpu_budget)
             self._task_constants.refresh(getattr(self.dsparms, 'calibconst', {}))
+            # Shared bytes are device overhead, subtracted once: re-derive the
+            # per-rank limit now that their size is known.
+            shared = int(getattr(self._task_constants, 'shared_bytes', 0) or 0)
+            if shared and placement is not None:
+                placement.shared_bytes = shared
+                if not float(getattr(self.dsparms, 'gpu_memory_budget_gb', 0) or 0):
+                    from psana.gpu.gpu_placement import per_rank_limit
+                    limit = per_rank_limit(placement)
+                    if placement.is_owner:
+                        # The owner's budget already carries the shared bytes
+                        # (_OwnedBlock reserves them), and per_rank_limit has
+                        # subtracted the same amount from every rank's share.
+                        # Without this the owner pays twice and can be left
+                        # with nothing.
+                        limit += shared
+                    self._gpu_budget.set_limit(limit)
         self._setup_input_io()
 
         # Report which I/O path kvikio will use for this run.

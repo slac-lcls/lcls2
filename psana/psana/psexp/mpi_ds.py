@@ -124,6 +124,56 @@ class RunParallel(Run):
         log_gpu_mem('after  _setup_jungfrau_shared_calib', rank=_r)
         self._setup_jungfrau_shared_caches()
         log_gpu_mem('after  _setup_jungfrau_shared_caches', rank=_r)
+        self._discover_gpu_placement()
+
+    def _discover_gpu_placement(self):
+        """Group ranks by physical GPU and size per-device budgets.
+
+        Collective over psana_comm, so EVERY rank must call it -- non-GPU
+        roles included, with is_gpu_worker=False. They contribute to the
+        splits and receive a placement with no device. Skipping the call on
+        any rank deadlocks the others.
+        """
+        # Close the previous run's constants BEFORE freeing the communicator
+        # they synchronise on: SharedRequestedConstants.close() uses
+        # device_comm for the importers-close barrier, and would fail on a
+        # freed or None communicator.
+        previous = getattr(self, '_gpu_placement', None)
+        if previous is not None:
+            stale = getattr(self, '_gpu_manager_for_placement', None)
+            if stale is not None:
+                try:
+                    stale.close()
+                except Exception:                         # noqa: BLE001
+                    self.logger.debug('closing the previous GPU manager failed',
+                                      exc_info=True)
+                self._gpu_manager_for_placement = None
+            from psana.gpu.gpu_placement import release_placement
+            release_placement(previous)
+        self._gpu_placement = None
+        if not self.dsparms.gpu_enabled or self.comms is None:
+            return
+        # Failures here are not recoverable and not local: a rank that raises
+        # leaves EB, smd0 and BD ranks on other nodes blocked in their next
+        # psana_comm collective. The device-group allreduce inside
+        # discover_peers cannot reach them, so abort the communicator.
+        from psana.gpu.gpu_mpi import gpu_error_handler
+        with gpu_error_handler(self.comms.psana_comm):
+            self._discover_gpu_placement_impl()
+
+    def _discover_gpu_placement_impl(self):
+        from psana.gpu.gpu_placement import discover_peers, PinnedDevice
+        is_worker = nodetype == 'bd'
+        pinned = getattr(self, '_gpu_pinned', None) or PinnedDevice()
+        budget_gb = float(getattr(self.dsparms, 'gpu_memory_budget_gb', 0) or 0)
+        placement = discover_peers(
+            pinned,
+            self.comms.psana_comm,
+            is_gpu_worker=is_worker,
+            explicit_limit_bytes=int(budget_gb * 1024 ** 3),
+            logger=self.logger if is_worker else None,
+        )
+        self._gpu_placement = placement if is_worker else None
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
             self._calib_xtc_buffer = None
@@ -454,23 +504,11 @@ class RunParallel(Run):
         except Exception:
             pass
 
-        physical_gpu = int(
-            os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
-        )
-        # Size the auto VRAM budget by how many BD workers share this GPU.
-        # Falling back to 1 only under-constrains the budget, which is the
-        # historical behaviour, so a failure here is never fatal.
-        try:
-            from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-            n_bd_per_gpu = bd_ranks_sharing_gpu(
-                self.comms.bd_comm, physical_gpu
-            )
-        except Exception:
-            n_bd_per_gpu = 1
-        self.logger.debug(
-            "GPU budget: gpu=%d bd_workers_on_gpu=%d",
-            physical_gpu, n_bd_per_gpu,
-        )
+        # Placement was discovered during setup, collectively over
+        # psana_comm (see _discover_gpu_placement). No collective here: #155
+        # requires _make_gpu_event_manager to perform none, because only BD
+        # ranks reach it and a collective would deadlock against EB and smd0.
+        placement = getattr(self, '_gpu_placement', None)
 
         manager = GpuEventManager(
             self.configs,
@@ -480,15 +518,31 @@ class RunParallel(Run):
             self.shared_state,
             self.dsparms,
             self,
-            n_bd_per_gpu=n_bd_per_gpu,
+            placement=placement,
         )
-
+        # Retained so a later rediscovery can close it before freeing the
+        # communicator its constants synchronise on.
+        self._gpu_manager_for_placement = manager
         return manager
 
     def _events_impl(self):
         gpu_manager = None
         if self.dsparms.gpu_enabled and nodetype == "bd":
-            gpu_manager = self._make_gpu_event_manager()
+            # Setup raises on individual ranks -- an explicit budget the group
+            # cannot honour, or set_limit() rejecting a lowered limit on
+            # followers only. Those are per-rank conditions that the other
+            # ranks cannot observe, so abort rather than leave them waiting.
+            from contextlib import nullcontext
+
+            from psana.gpu.gpu_mpi import gpu_error_handler
+            comms = getattr(self, 'comms', None)
+            # No communicator means nothing to abort -- a single process, or a
+            # caller that supplied no comms. Create the manager unguarded
+            # rather than failing on the guard itself.
+            guard = (gpu_error_handler(comms.psana_comm)
+                     if comms is not None else nullcontext())
+            with guard:
+                gpu_manager = self._make_gpu_event_manager()
 
         evt_iter = self.start(gpu_manager=gpu_manager)
         st = time.time()
@@ -660,24 +714,24 @@ class MPIDataSource(DataSourceBase):
         if self.dsparms.gpu_enabled and nodetype not in ('bd',):
             os.environ['CUDA_VISIBLE_DEVICES'] = ''
 
-        # GPU BD ranks: pin each rank to the correct GPU device BEFORE any
-        # CuPy import.  We use the BD-local rank (bd_rank - 1, 0-indexed within
-        # the BD worker pool) rather than SLURM_LOCALID so that GPU pinning
-        # works correctly both when using:
-        #   (a) srun -n N python3 script.py  — SLURM_LOCALID is reliable
-        #   (b) srun -n 1 bash -c "mpirun -n N ..."  — all ranks share
-        #       SLURM_LOCALID=0, so SLURM_LOCALID is useless; bd_rank is not.
+        # GPU BD ranks: choose this rank's physical device.
         #
-        # bd_rank=0 is always the EB in bd_comm; BD workers start at bd_rank=1.
-        # bd_local_rank = bd_rank - 1  gives a 0-indexed BD worker index.
-        # n_gpus is read from SLURM_GPUS_ON_NODE (set by --gres=gpu:a100:N).
+        # Choosing, not masking. By this point psana's own import has loaded
+        # mpi4py and initialised CUDA, so a CUDA_VISIBLE_DEVICES write would
+        # be ignored. discover_peers() makes the chosen device current with
+        # Device.use() and verifies it by PCI bus id. Measured on a 4-rank,
+        # 2-GPU run: every rank's allocations land on its selected device and
+        # the driver reports each PID on exactly one GPU, so leaving the mask
+        # wide costs nothing.
         #
-        # This is a no-op when no GPU detector mode is set (CPU-only jobs).
+        # A launcher may still narrow it (srun --gpus-per-task=1, or a wrapper
+        # setting CUDA_VISIBLE_DEVICES from OMPI_COMM_WORLD_LOCAL_RANK). That
+        # is defence in depth and needs no separate code path here.
         if self.dsparms.gpu_enabled and nodetype == 'bd':
-            from psana.gpu.gpu_mpi import init_gpu_rank
-            bd_local_rank = self.comms.bd_rank - 1   # 0-indexed BD worker
-            n_gpus = int(os.environ.get('SLURM_GPUS_ON_NODE', 1))
-            init_gpu_rank(local_rank=bd_local_rank, n_gpus=n_gpus)
+            from psana.gpu.gpu_placement import pin_device
+            self._gpu_pinned = pin_device()
+            for message in self._gpu_pinned.warnings:
+                self.logger.debug('gpu placement: %s', message)
 
         # prepare comms for running SmallData
         PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))

@@ -269,6 +269,25 @@ class _GpuBudget:
         """Configured limit in bytes."""
         return self._limit
 
+    @_locked
+    def set_limit(self, limit_bytes: int):
+        """Replace the limit, rejecting one the current state already exceeds.
+
+        Setup discovers some costs only after allocating -- shared constants
+        are sized once their intersection is known -- so the limit can move.
+        Lowering it below what is already committed would defer the failure to
+        an unrelated allocation later, so refuse instead.
+        """
+        limit_bytes = int(limit_bytes)
+        if limit_bytes < 0:
+            raise ValueError('negative budget limit')
+        if limit_bytes < self._committed + self._held:
+            raise GpuMemoryPressureError(
+                f'cannot lower the GPU budget to {limit_bytes / 1024**3:.2f} '
+                f'GiB: {self._committed / 1024**3:.2f} GiB is already '
+                f'committed and {self._held / 1024**3:.2f} GiB held')
+        self._limit = limit_bytes
+
     @classmethod
     def auto(cls, n_bd_ranks: int = 1) -> "_GpuBudget":
         """Create a budget sized to device_total / n_bd_ranks.
