@@ -1336,24 +1336,77 @@ def issue_2026_10_05(args):
        PROBLEM:
        FIX:
     """
-    #import logging
     from psana import DataSource
-
-    #logging.basicConfig(level=logging.WARNING)
-    CM = (7, 3, 200, 10)
-
-    ds = DataSource(exp="mfx101555026", run=13, max_events=20)
+    ds = DataSource(exp='mfx101555026', run=13, max_events=20)
     run = next(ds.runs())
     det = run.Detector("jungfrau")
     raw = det.raw
     evt = next(evt for evt in run.events() if raw.raw(evt) is not None)
-
-    # Fresh calibration cache: no A/B or changed-kwargs condition is involved.
     assert raw._odc is None
-    image = raw.calib(evt, cversion=3, cmpars=CM)
+    image = raw.calib(evt, cversion=3, cmpars=(7, 3, 200, 10))
     assert image is not None
     print("effective cversion:", raw._odc.cversion)  # 3
-    print("cached cmpars:", raw._odc.cmps)          # (7, 3, 200, 10)
+    print("cached cmpars:", raw._odc.cmps)
+
+
+def issue_2026_10_07(args):
+    """datinfo -k exp=rix101607226,run=22 -d c_epixm
+       c_epixm             | epixm320   | config    | 1_0_0
+       c_epixm             | epixm320   | raw       | 0_1_0
+    """
+    from psana import DataSource
+    from psana.detector.NDArrUtils import info_ndarr
+    from psana.detector.UtilsGraphics import gr, fleximage
+
+    ds = DataSource(exp='rix101607226', run=22, max_events=5) #,dir='/reg/neh/operator/tstopr/data/drp/tst/tstx00417/xtc/')
+    orun = next(ds.runs())
+    det = orun.Detector('c_epixm')
+    print(f'in issue_2026_10_07') # OR {sys._getframe().f_code.co_name}')
+
+    flimg = None
+
+    if False:
+        calibconst = det.calibconst #['pedestals'][0]
+        print('calibconst.keys():', calibconst.keys())
+        geo = det.raw._det_geo()
+        print('geo.shape3d:', geo.shape3d())
+        peds = det.raw._pedestals()
+        print(info_ndarr(peds, 'peds'))
+
+        #step_value = orun.Detector('step_value')
+        #step_docstring = orun.Detector('step_docstring')        sconfs = det.raw._seg_configs()
+        print('\ndet.raw._seg_configs():', sconfs) # {0: <psana.container.Container object at 0x7f93260f61f0>}
+        #print('\ndir(det.raw._seg_configs()):', dir(sconfs))
+        print('\nsconfs.keys():', sconfs.keys())
+
+        for k,v in det.raw._seg_configs().items():
+            cob = v.config
+            print('dir(cob) w/o underscores:', [v for v in tuple(dir(cob)) if v[0]!='_'])
+            print('  cob.step', cob.step)
+            print('  cob.startCol', cob.startCol)
+            print('  cob.endCol', cob.endCol)
+            print('  cob.currentAsic', cob.currentAsic)
+            print('  cob.CompTH_ePixM', cob.CompTH_ePixM)
+            print('  cob.Precharge_DAC_ePixM', cob.Precharge_DAC_ePixM)
+
+    for nstep, step in enumerate(orun.steps()):
+        print(f'\n==== step: {nstep}') # , step_value(step), step_docstring(step))
+        for nevt,evt in enumerate(step.events()):
+            #if nevt==3: print('evt3 nstep:', nstep, ' step_value:', step_value(evt), ' step_docstring:', step_docstring(evt))
+            print(f'== evt: {nevt}')
+            print(info_ndarr(det.raw.raw(evt),   '     raw:'))
+            print(info_ndarr(det.raw.calib(evt), '   calib:')) #, version=2), '   calib:'))
+
+        if False:
+            img = det.raw.image(evt)
+            print(info_ndarr(img, 'image'))
+
+            if flimg is None:
+               flimg = fleximage(img, arr=None, h_in=5, w_in=10, nneg=1, npos=3)
+            gr.set_win_title(flimg.fig, titwin='Event %d' % nevt)
+            flimg.update(img, arr=None)
+            gr.show(mode='DO NOT HOLD')
+        #gr.show()
 
 #===
 
@@ -1423,6 +1476,8 @@ def selector():
     elif TNAME in ('20',):issue_2026_09_09(args) # Philip timestamp is 1990...
     elif TNAME in ('21',):issue_2026_09_21(args) # Philip, calib for epixuhr3x2
     elif TNAME in ('22',):issue_2026_10_05(args) # Mona, jungfrau common mode does not work in raw.calib(evt, cversion=3, cmpars=CM)
+    elif TNAME in ('23',):issue_2026_10_07(args) # config and event loop for epixm
+
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
         print(USAGE())
