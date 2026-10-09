@@ -79,7 +79,11 @@ def krbheaders():
     logger.debug(f'krbheaders:\n {json.dumps(krbh, indent=2)}')
     return krbh
 
-KRBHEADERS = krbheaders()
+def __getattr__(name):
+    # Keep the legacy attribute available without contacting Kerberos on import.
+    if name == 'KRBHEADERS':
+        return krbheaders()
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 HOST = 'psdb02' # psdb01/02/03/04 'psdbdev01' # 'psanaphi103'
 PORT = 9307

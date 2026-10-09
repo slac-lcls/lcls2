@@ -57,6 +57,7 @@ import os
 import sys
 import numpy as np
 import io
+from urllib.parse import urlsplit
 
 from psana.pscalib.calib.CalibDoc import CalibDoc
 import psana.pscalib.calib.CalibConstants as cc
@@ -209,6 +210,13 @@ def put(url, doc, **kwa):
 
 def get(url, query=None, timeout=180, **kwa):
     logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_ticket}')
+    path = urlsplit(url).path
+    if any(path == base or path.startswith(base + '/')
+           for base in ('/ws/calib_ws', '/calib_ws')):
+        # Public reads must not depend on a Kerberos ticket or a valid JWT.
+        # Preserve the query encoding selected by the caller.
+        return req.get(url, params=query, timeout=timeout) if USE_QUERY_STR else \
+               req.get(url, json=query, timeout=timeout)
     if has_jwt:
         r = session.get(url, json=query, timeout=timeout)
         logger.debug(f'ZZZZ get for jwt  url: {url}  query: {str(query)}  ticket: {info_ticket}  resp.ok: {r.ok}') #resp: {r.text[:100]}')
