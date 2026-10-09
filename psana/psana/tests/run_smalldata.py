@@ -4,6 +4,7 @@ import os
 # cpo found this on the web as a way to get mpirun to exit when
 # one of the ranks has an exception
 import sys
+import subprocess
 from glob import glob
 
 import h5py
@@ -43,22 +44,27 @@ def gen_h5(source='xtc', pid=None):
 
     if source == 'xtc':
         xtc_dir = os.path.join(os.environ.get('TEST_XTC_DIR', os.getcwd()),'.tmp')
-        ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=lambda x : True, batch_size=2)
+        ds = DataSource(exp='xpptut15', run=14, dir=xtc_dir, filter=lambda x : True, batch_size=2,
+                        skip_calib_load='all')
     elif source == 'shmem':
         # Add a timeout to break infinite reads in reader thread
         # Needed since introducing the threaded dgrammanager for shared memory
         os.environ["PSANA_TESTS_SHMEM_TMO"] = "10" # In seconds
 
-        ds = DataSource(shmem='shmem_test_' + pid)
+        # This test writes synthetic values. Calibration loading can outlast
+        # the finite shared-memory stream before event consumption starts.
+        ds = DataSource(shmem='shmem_test_' + pid, skip_calib_load='all')
 
     smd = ds.smalldata(filename='smalldata_test.h5', batch_size=5,
                        callbacks=[test_callback])
 
+    event_count = 0
     for run in ds.runs():
         # test that we can make a Detector, which is somewhat subtle
         # because SRV cores make dummy detectors using NullDataSource/NullRun
         run.Detector('xppcspad')
         for i,evt in enumerate(run.events()):
+            event_count += 1
 
             print('event:', i)
 
@@ -99,7 +105,7 @@ def gen_h5(source='xtc', pid=None):
         smd.save_summary({'summary_array' : np.arange(3)}, summary_int=1)
     smd.done()
 
-    return
+    return event_count
 
 
 class SmallDataTest:
@@ -165,29 +171,43 @@ class SmallDataTest:
 
 def run_test(mode, tmp_path):
 
+    CALLBACK_OUTPUT.clear()
     if rank == 0:
         for fn in glob(".?_smalldata_test.h5"):
             os.remove(fn)
     comm.barrier()
 
     if mode == 'xtc':
-        gen_h5('xtc')
+        event_count = gen_h5('xtc')
     elif mode == 'shmem':
         pid = None
         if rank == 0:
             pid = str(os.getpid())
             tmp_file = tmp_path / '.tmp/shmem/data_shmem.xtc2'
             ShmemTest.setup_input_files(tmp_path  / '.tmp')
-            ShmemTest.launch_server(tmp_file, pid)
+            server = ShmemTest.launch_server(tmp_file, pid)
 
         pid = comm.bcast(pid, root=0)
-        gen_h5('shmem', pid=pid)
+        try:
+            event_count = gen_h5('shmem', pid=pid)
+        finally:
+            if rank == 0:
+                try:
+                    server.wait(timeout=15)
+                except subprocess.TimeoutExpired:
+                    server.terminate()
+                    server.wait(timeout=5)
 
     # make sure everyone is finished writing test file
     # then test with a single rank
     comm.barrier()
+    total_events = comm.allreduce(event_count, op=MPI.SUM)
+    total_callbacks = comm.allreduce(len(CALLBACK_OUTPUT), op=MPI.SUM)
+    assert total_events > 0, f'{mode}: no events reached smalldata'
+    assert total_callbacks == total_events
     if rank == 0:
         testobj = SmallDataTest()
+        assert testobj.f['oneint'].shape == (total_events,)
         testobj.test_int()
         testobj.test_float()
         testobj.test_arrint()
