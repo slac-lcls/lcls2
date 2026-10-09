@@ -653,12 +653,16 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
           // which the recording path already resolved to the right one, keeps the two
           // in step: reading reduceBuffers_d() unconditionally would overrun into the
           // next buffer whenever raw was part of the payload.
-          auto payload       = dgram->xtc.payload();
-          auto sizeofPayload = dgram->xtc.sizeofPayload();
-          const auto data    = buffer + cpSize;
-          chkError(cudaMemcpyAsync((void*)payload, data, sizeofPayload, cudaMemcpyDeviceToHost, m_stream));
+          auto host = reinterpret_cast<uint8_t*>((Dgram*)dgram);
+          if (hdrSplit) {
+            // For prescale - layout is: [Dgram][raw shapes][raw][reduced shapes][reduced]
+            chkError(cudaMemcpyAsync(host + hdrSplit, buffer + hdrSplit, rawBytes, D2H, m_stream));
+            chkError(cudaMemcpyAsync(host + cpSize + rawBytes, buffer + cpSize + rawBytes, dataSize, D2H, m_stream));
+          } else {
+            // Otherwise - layout is: [Dgram][reduced shapes][reduced]
+            chkError(cudaMemcpyAsync(host + cpSize, buffer + cpSize, dgSize - cpSize, D2H, m_stream));
+          }
           chkError(cudaStreamSynchronize(m_stream)); // Ensure payload is on CPU before posting
-
           m_mon.post(dgram, result->monBufNo());
         }
       } else {                          // Other Transition already on the CPU
