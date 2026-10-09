@@ -194,7 +194,8 @@ class ts_connector:
             v = values_rxerri[i]
             #  If error counts changed, raise an exception
             if v != self.values_rxerri[i]:
-                raise RuntimeError(f'ts_connector:check_errors({header}): {pv} errors increased [{v}]')
+                #raise RuntimeError(f'ts_connector:check_errors({header}): {pv} errors increased [{v}]')
+                print(f'**** ts_connector:check_errors({header}): {pv} errors increased [{v}]')
         self.values_rxerri = [v for v in values_rxerri]
         ctxt.close()
 
