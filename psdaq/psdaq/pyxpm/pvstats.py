@@ -8,7 +8,6 @@ from p4p.nt import NTScalar
 from p4p.nt import NTTable
 from psdaq.pyxpm.pvhandler import *
 
-lock     = None
 provider = None
 fidPeriod   = 1400e-6/1300.
 
@@ -561,12 +560,10 @@ class PathTimer(object):
         updatePv(self._pv_array, pathtm, timev)
 
 class PVStats(object):
-    def __init__(self, p, m, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False,fidRate=13e6/14.):
+    def __init__(self, p, name, xpm, fiducialPeriod, axiv, hasSfp=True,nAMCs=2,noTiming=False,fidRate=13e6/14.):
         setProvider(p)
         global provider
         provider = p
-        global lock
-        lock     = m
         global fidPeriod
         fidPeriod  = fiducialPeriod
 

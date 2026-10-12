@@ -68,8 +68,10 @@ def retry(cmd,pv,value):
 
 def retry_wlock(cmd,pv,value):
     lock.acquire()
-    retry(cmd,pv,value)
-    lock.release()
+    try:
+        retry(cmd,pv,value)
+    finally:
+        lock.release()
 
 class RetryWLock(object):
     def __init__(self, func):
