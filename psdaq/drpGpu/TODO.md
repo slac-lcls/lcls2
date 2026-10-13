@@ -344,21 +344,18 @@ diverge silently -- that has happened once already.
   `cores: 4`**, so 4 was once sufficient.  The honest statement is that the allocation is
   tight and unmanaged, not that it is the bottleneck.
 
-  **WEKA is granted cores that Slurm then hands to the DRPs as well.**  Measured on
-  gpu008, 2026-10-12, intersecting each job's `Cpus_allowed_list` with the CPUs carrying
-  WEKA threads (`1 2 7 8 13 15 16 19 25 31 32 51 54 60 61`):
+  **WEKA does NOT overlap the DRPs' cores, checked 2026-10-12.**  `/etc/fstab` mounts
+  `drpsrcf/ffb` with `num_cores=3`, and exactly three threads spin: `wekanode` pinned 1:1
+  to CPUs **1, 2 and 32**, each at ~100%.  The GPU DRPs ran in `15-18`, `19-22`, `23-26`,
+  `33-35` and `36-39`, so the intersection is **empty**.
 
-      tstcam1_0   cpus 15-18   overlaps WEKA on 15, 16   -- half its allocation
-      tstcam1_1   cpus 19-22   overlaps on 19
-      tstcam1_2   cpus 23-26   overlaps on 25
-      tstcam1_3   cpus 33-35   no overlap, but only 3 CPUs for a cores: 4 request
-      tstcam1_5   cpus 36-39   no overlap
+  **The trap that produced a wrong answer here**: matching `ps` on the process name finds
+  **134** WEKA threads across many CPUs, of which only 3 are busy -- the rest are idle and
+  their momentary `psr` says nothing about where WEKA runs.  Intersect against the
+  *pinned, spinning* threads (`taskset -pc` on a thread with real CPU time), not against
+  wherever a sleeping thread was last scheduled.
 
-  So three of five GPU DRPs share cores with the filesystem, one of them two of four.
-  The lever is Slurm's `CpuSpecList` -- stop it granting WEKA's cores -- not `cores:`,
-  which cannot express "not those".  `tstcam1_3`'s short allocation is a **separate and
-  unexplained** effect: it has no WEKA overlap, so whatever truncated 4 to 3 is not that.
-  (An earlier note here blamed WEKA for it; the intersection shows otherwise.)
+  So `tstcam1_3`'s 3-CPU cpuset for a `cores: 4` request is **unexplained and not WEKA**.
 
   **A `cores:` value is a request; what the process gets is what `sched_getaffinity`
   reports.**  That is the argument for having the DRP log both.
@@ -649,8 +646,10 @@ diverge silently -- that has happened once already.
   assumes no ordering would be needed.  A related pre-existing leak is already noted in the
   source at `:292`.
 
-- **`nPidJumps` cannot work as conceived: DELETE the check.**  It tries to spot a trigger
-  the detector was given and never answered, by inferring the trigger period from the
+- **`nPidJumps` cannot work as conceived, and was never committed.**  The check and its
+  metric exist only in `wip-2026-10-12-full-diagnostics.patch`; nothing is owed in the
+  code.  Kept here so the idea is not re-proposed.  It tried to spot a trigger the
+  detector was given and never answered, by inferring the trigger period from the
   spacing of arriving L1Accepts.  **Deadtime makes that inference impossible, not merely
   inaccurate** -- and the inference is the whole mechanism, so no amount of fixing the
   convergence rule rescues it.
