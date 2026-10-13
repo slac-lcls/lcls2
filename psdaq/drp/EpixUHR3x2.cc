@@ -34,7 +34,12 @@ static struct sigaction old_actions[64];
 static void sigHandler(int signal)
 {
     psignal(signal, "epixUHR received signal");
-    epix->monStreamEnable();
+
+    // Deliberately no monStreamEnable() here: it calls into CPython, and a
+    // signal is delivered on whichever thread the kernel picks, which need not
+    // hold the GIL -- so the call faults and the SIGSEGV buries the signal that
+    // prompted it.  Re-enabling the monitor stream belongs on the orderly
+    // shutdown path, where the GIL can be held; see the TODO item.
 
     sigaction(signal, &old_actions[signal], NULL);
     raise(signal);
@@ -56,6 +61,7 @@ namespace Drp {
     : BEBDetector   (para, pool)
     , m_env_sem     (Pds::Semaphore::FULL)
     , m_env_empty   (true)
+    , m_monStreamOn (true)      // The stream is on until Enable disables it
   {
     // VC 0 is for data. VC 1 loopback
     virtChan = 0;
@@ -74,15 +80,16 @@ namespace Drp {
     // updating the BEBDetector function, or making it virtual seems less appropriate
     _init_dual_dev(para->detName, m_para->device, m_para->laneMask);
 
-#define REGISTER(t) {                               \
-      if (sigaction(t, &sa, &old_actions[t]) > 0)   \
-        printf("Couldn't set up #t handler\n");     \
+#define REGISTER(t) {                                   \
+      if (sigaction(t, &sa, &old_actions[t]) < 0)       \
+        printf("Couldn't set up %s handler\n", #t);     \
     }
 
     REGISTER(SIGINT);
+    REGISTER(SIGTERM);           // What Slurm sends to stop a task
+    REGISTER(SIGQUIT);
     REGISTER(SIGABRT);
-    REGISTER(SIGKILL);
-    REGISTER(SIGSEGV);
+    REGISTER(SIGSEGV);           // SIGKILL cannot be caught, so don't try
 
 #undef REGISTER
   }
@@ -388,10 +395,20 @@ namespace Drp {
     return false;
   }
 
-  void EpixUHR3x2::shutdown() {}
+  void EpixUHR3x2::shutdown()
+  {
+    // Re-enable the monitor stream here rather than from sigHandler(), which
+    // may not call CPython: the caller, _disconnect(), holds the GIL.  Not
+    // done in the dtor, which has no such guarantee.
+    if (m_module && !m_monStreamOn) {
+      monStreamEnable();
+      m_monStreamOn = true;
+    }
+  }
 
   void EpixUHR3x2::monStreamEnable()
   {
+    m_monStreamOn = true;
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
     sprintf(func_name,"%s_disable",m_para->detType.c_str());
@@ -405,6 +422,7 @@ namespace Drp {
 
   void EpixUHR3x2::monStreamDisable()
   {
+    m_monStreamOn = false;
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
     sprintf(func_name,"%s_enable",m_para->detType.c_str());
