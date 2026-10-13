@@ -3,11 +3,15 @@
 
 This tool can:
 - List currently registered algorithms and their versions.
+- Update an algorithm's metadata, e.g. to change a GUI plugin
 - Register a new algorithm, or version of an algorithm, with its parameter schema
   and any initial default parameter set to use.
 - Add a new "named" preset parameter set.
 - Given a pointer to a parameter set, attach it to a requested detector config.
 - Convert a configDB algorithm parameter set entry into XTC2 format.
+- Remove an algorithm version from the DB.
+  - NOTE: BE VERY CAREFUL! This function drops a database collection.
+    It CANNOT BE UNDONE!
 
 For more information, refer to each sub-command's help.
 """
@@ -199,6 +203,23 @@ def cmd_export_xtc2(args: argparse.Namespace, mgr: DrpAlgParamManager) -> None:
         sys.exit(-1)
 
 
+def cmd_remove_alg_ver(args: argparse.Namespace, mgr: DrpAlgParamManager) -> None:
+    """Remove an Algorithm version.
+
+    Args:
+        args (argparse.Namespace): Parsed arguments from drp_alg_config_store.
+
+        mgr (DrpAlgParamManager): The manager class to interface with mongoDB.
+    """
+    alg_name: str = args.alg
+    alg_version: str = args.version
+
+    print(f"Removing algorithm {alg_name} version {alg_version}")
+    mgr.remove_algorithm(alg_name=alg_name, version=alg_version)
+
+    print(f"[SUCCESS] Removed algorithm {alg_name} version {alg_version}")
+
+
 def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="DRP Algorithm Parameter Manager CLI"
@@ -231,7 +252,9 @@ def main():
     )
     p_meta.add_argument("--alg", required=True, help="Algorithm name")
     p_meta.add_argument("--version", required=True, help="Algorithm version")
-    p_meta.add_argument("--gui-plugin", required=True, help="Path to optional GUI plugin metadata JSON")
+    p_meta.add_argument(
+        "--gui-plugin", required=True, help="Path to optional GUI plugin metadata JSON"
+    )
     p_meta.add_argument("--schema-version", required=True, help="GUI Schema Version")
     p_meta.set_defaults(func=cmd_metadata)
 
@@ -278,6 +301,14 @@ def main():
     p_export.add_argument("--version", required=True, help="Algorithm version")
     p_export.add_argument("--params-id", help="Optional parameter document ID")
     p_export.set_defaults(func=cmd_export_xtc2)
+
+    # Remove algorithm
+    p_remove: argparse.ArgumentParser = subparsers.add_parser(
+        "remove", help="Remove an algorithm version. CAUTION! - DROPS DB COLLECTION!"
+    )
+    p_remove.add_argument("--alg", required=True, help="Algorithm name")
+    p_remove.add_argument("--version", required=True, help="Algorithm version")
+    p_remove.set_defaults(func=cmd_remove_alg_ver)
 
     args: argparse.Namespace = parser.parse_args()
 
