@@ -147,6 +147,21 @@ void dmaTgtSet(CoreRegisters&, DmaTgt_t);
 void dmaIdxReset(CoreRegisters&);
 
 /**
+ * PCI address of a CUDA device, lower case to match the sysfs names.
+ * \param device The CUDA device number
+ * \returns The address, or an empty string if CUDA would not supply one
+ */
+std::string pciAddrOfGpu(int device);
+
+/**
+ * NUMA node a CUDA device is attached to.  The CUDA counterpart of
+ * Pds::numaNodeOfPciDev(), which cannot live beside it because service/ has no CUDA.
+ * \param device The CUDA device number
+ * \returns The NUMA node, or -1 if unknown
+ */
+int numaNodeOfGpu(int device);
+
+/**
  * Class for timing various things
  */
 struct GPUTimer

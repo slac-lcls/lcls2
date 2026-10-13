@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
@@ -1763,6 +1764,7 @@ void DrpBase::printParams() const
     logging::info("Parameters of Contributor ID %d (%s:%s):",           m_tPrms.id,
                                                                         m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
     logging::info("  Thread core numbers:          %d, %d",             m_tPrms.core[0], m_tPrms.core[1]);
+    Pds::logCpuAllocation("  CPU allocation");
     logging::info("  Instrument:                   %s",                 m_tPrms.instrument.c_str());
     logging::info("  Partition:                    %u",                 m_tPrms.partition);
     logging::info("  Alias (detName, detSeg):      %s ('%s', %u)",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);

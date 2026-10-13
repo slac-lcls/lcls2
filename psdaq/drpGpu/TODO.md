@@ -567,24 +567,28 @@ diverge silently -- that has happened once already.
   - A CPU-starvation reading of a low rate is therefore not supportable from the rate
     alone -- an earlier version of this file argued one and it was wrong.
 
-- **Log the libfabric configuration once, and log more of it.**  What provider and version
-  a run used is the first thing asked when a transport problem is suspected, and today it
-  is either absent or buried.  `EbLfClient::connect` (`EbLfClient.cc:58`) and
-  `EbLfServer::listen` (`EbLfServer.cc:85`) print version, domain, fabric and provider
-  under `-v`, but the client's sits inside the per-link `connect`, so `linksConnect` emits
-  one copy **per link** -- N identical lines for N peers -- and the server prints its own
-  besides.  Once per process is enough.
+- **Log the libfabric configuration: DONE 2026-10-13.**  `Pds::Eb::logFabricInfo()`
+  (`eb/src/utilities.cc`) is called from both `linksConnect()`s, guards itself with a
+  `static bool` so it reports once however many links connect, and logs unconditionally at
+  `LOG_INFO`.  It replaced two `-v` prints, one of which sat inside the per-link
+  `connect()` and so emitted N identical copies for N peers.
 
-  Worth adding, since each has cost time to establish by hand: `rx_attr->size` and
-  `tx_attr->size` as **negotiated** (the hint at `EbLfServer.cc:72` asks for 0, so the
-  value is whatever the provider chose, and it bounds the CQ); the resulting
-  `cq_attr.size`; `tx_attr->msg_order` (the `FI_ORDER_RMA_WAW` guarantee the orphan trap's
-  reasoning depends on); `inject_size`; `mr_mode` as negotiated, which the sockets
-  provider is known to rewrite (`Endpoint.cc:923`); and `data_progress`/`control_progress`.
-  Log it unconditionally rather than under `-v`: it is a few lines once per process, and a
-  run whose log lacks it cannot be diagnosed after the fact.  Log the CPU allocation in the
-  same place -- the CPUs `sched_getaffinity` reports, their NUMA nodes, and which thread
-  went where -- so that `cores:` and thread placement become checkable rather than hoped at.
+  It reports version, provider and its version, domain and fabric, then the values that
+  had each cost time to establish by hand: `rx_attr->size`/`tx_attr->size` as
+  **negotiated** (the hint asks for 0, and `rx_size` bounds the Rx CQ), `inject_size`,
+  `cq_data_size`, `data_progress`/`control_progress`, `mr_mode`, and `msg_order`.  So a
+  log now carries the provider, the interface *and* the HCA, which on 10-12 had to be
+  reconstructed from peer addresses in the TEB's log.
+
+  **The trap, and it is worth knowing for anything else formatting libfabric values**:
+  `fi_tostr()` returns a pointer to a single static buffer, so two or more calls in one
+  statement all render the last one evaluated.  The first version of this printed
+  `mr_mode FI_PROGRESS_AUTO`, which looks plausible and is wrong.  One `fi_tostr()` per
+  logging call.  **Caught by running it; compiling could not have.**
+
+  Still open, and deliberately left with the thread-placement item rather than here: log
+  the CPU allocation in the same place -- the CPUs `sched_getaffinity` reports, their NUMA
+  nodes, and which thread went where -- so `cores:` and placement become checkable.
 
   **`data_progress` is the sharpest reason to log this.**  We never ask for a progress mode,
   so we take whatever `fi_getinfo` returns first, and that ordering is not contractual:
@@ -598,8 +602,8 @@ diverge silently -- that has happened once already.
   the provider, and a poller that reads one completion per call with a 100 ms `pend()`
   timeout would couple all progress to its own call rate.  The clean 11.6M-batch `tcp` run
   was on AUTO.  But if a libfabric update reordered those 30 infos we would silently get
-  MANUAL, and the symptom would look like an unexplained throughput collapse.  One logged
-  line turns that into a one-line diagnosis.
+  MANUAL, and the symptom would look like an unexplained throughput collapse -- which is
+  what the logging above now makes a one-line diagnosis instead of a hunt.
 
   MANUAL is worth revisiting later, and only after **batched CQ reads** plus a poller that
   drives progress on a schedule rather than only when it wants a completion.  The prize is

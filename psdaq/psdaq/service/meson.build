@@ -13,7 +13,8 @@ service_sources = files(
     'Histogram.cc',
     'Dl.cc',
     'Json2Xtc.cc',
-    'IpcUtils.cc'
+    'IpcUtils.cc',
+    'Affinity.cc'
 )
 
 service_lib = shared_library('service',

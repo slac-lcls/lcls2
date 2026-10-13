@@ -5,6 +5,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/src/TebContributor.hh"
 #include "psdaq/eb/src/ResultDgram.hh"
@@ -915,6 +916,10 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
   // Start the Reducers
   if (m_reducer->startup())
     return "Reducer startup failed";
+
+  // Everything of ours is now running, so the thread count means something.  Ours
+  // that spin: TigRcvr, TEBreceiver, Collector and Recorder.
+  Pds::logThreadBudget("PGPDrp", 4);
 
   return std::string{};
 }

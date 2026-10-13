@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <zmq.h>
 #include <nlohmann/json.hpp>
 

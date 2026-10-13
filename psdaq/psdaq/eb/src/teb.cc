@@ -13,6 +13,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/Dl.hh"
 #include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
@@ -1343,6 +1344,7 @@ void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
   logging::info("Parameters of TEB ID %d (%s:%s):",                   prms.id,
                                                                       prms.ifAddr.c_str(), prms.ebPort.c_str());
   logging::info("  Thread core numbers:          %d, %d",             prms.core[0], prms.core[1]);
+  logCpuAllocation("  CPU allocation");
   logging::info("  Instrument:                   %s",                 prms.instrument.c_str());
   logging::info("  Partition:                    %u",                 prms.partition);
   logging::info("  Alias:                        %s",                 prms.alias.c_str());

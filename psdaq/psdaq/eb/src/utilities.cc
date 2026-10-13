@@ -6,16 +6,35 @@
 #include <stdlib.h>                     // posix_memalign()
 #include <string.h>                     // strerror(), memset()
 #include <dlfcn.h>
+#include <limits.h>                    // PATH_MAX
 
 #include <Python.h>
 #include <rapidjson/document.h>
 
+#include "psdaq/service/Affinity.hh"   // logDeviceLocality
 #include "psalg/utils/SysLog.hh"
 using logging = psalg::SysLog;
 
 using namespace Pds::Eb;
 using namespace rapidjson;
 
+
+// PCI address of a libfabric domain, which names either an RDMA device (mlx5_0) or a
+// netdev (enp73s0f0) depending on the provider.  Empty if neither resolves.
+static std::string _devicePciAddr(const char* domain)
+{
+  if (!domain || !*domain)  return std::string();
+
+  for (auto dir : {"/sys/class/infiniband/", "/sys/class/net/"}) {
+    std::string link(std::string(dir) + domain + "/device");
+    char        path[PATH_MAX];
+    if (auto p = realpath(link.c_str(), path)) {
+      std::string resolved(p);
+      return resolved.substr(resolved.rfind('/') + 1);
+    }
+  }
+  return std::string();
+}
 
 void Pds::Eb::logFabricInfo(const char* who, Pds::Fabrics::Fabric* fabric)
 {
@@ -58,6 +77,10 @@ void Pds::Eb::logFabricInfo(const char* who, Pds::Fabrics::Fabric* fabric)
   // Results region, which the orphaned-Input trap's reasoning depends on.
   logging::info("%s:   msg_order %s", who,
                 fi_tostr(&info->tx_attr->msg_order, FI_TYPE_MSG_ORDER));
+
+  // A network filesystem may share this device, so its locality is not only ours.
+  auto pci = _devicePciAddr(fabric->domain_name());
+  if (!pci.empty())  logDeviceLocality(who, "fabric device", pci);
 }
 
 
