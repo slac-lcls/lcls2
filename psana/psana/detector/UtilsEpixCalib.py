@@ -312,17 +312,19 @@ def save_constants_in_repository(dic_consts, **kwa):
     fdark    = kwa.get('dark_factor', None)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
+    fmt_offs   = kwa.get('fmt_offs', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
     fmt_max    = kwa.get('fmt_max', '%i')
     fmt_min    = kwa.get('fmt_min', '%i')
-    fmt_gain   = kwa.get('fmt_gain', '%.3f')
+    fmt_gain   = kwa.get('fmt_gain', '%.6f')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
 
@@ -403,6 +405,15 @@ def epix_deploy_constants(parser):
     repoman = set_repoman_and_logger(kwa)
     ds, orun, odet = ds_run_det(**kwa)
     kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
+
+    kwa_depl['fmt_peds']   = '%' + kwa.get('fmt_peds',   '.3f')
+    kwa_depl['fmt_offs']   = '%' + kwa.get('fmt_offs',   '.3f')
+    kwa_depl['fmt_rms']    = '%' + kwa.get('fmt_rms',    '.3f')
+    kwa_depl['fmt_status'] = '%' + kwa.get('fmt_status', '4i')
+    kwa_depl['fmt_max']    = '%' + kwa.get('fmt_max',    'i')
+    kwa_depl['fmt_min']    = '%' + kwa.get('fmt_min',    'i')
+    kwa_depl['fmt_gain']   = '%' + kwa.get('fmt_gain',   '.6f')
+
     dettype = kwa_depl.get('dettype', None)
     ctdepl  = kwa.get('ctdepl', 'prs')
     ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
@@ -437,19 +448,20 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
     segind   = kwa.get('segind', 0)
 
-    fmt_peds   = kwa.get('fmt_peds', '%.3f')
-    fmt_offs   = kwa.get('fmt_offs', '%.3f')
-    fmt_rms    = kwa.get('fmt_rms',  '%.3f')
-    fmt_status = kwa.get('fmt_status', '%4i')
-    fmt_max    = kwa.get('fmt_max', '%i')
-    fmt_min    = kwa.get('fmt_min', '%i')
-    fmt_gain   = kwa.get('fmt_gain', '%.3f')
+    fmt_peds   = kwa.pop('fmt_peds', '%.3f')
+    fmt_offs   = kwa.pop('fmt_offs', '%.3f')
+    fmt_rms    = kwa.pop('fmt_rms',  '%.3f')
+    fmt_status = kwa.pop('fmt_status', '%4i')
+    fmt_max    = kwa.pop('fmt_max', '%i')
+    fmt_min    = kwa.pop('fmt_min', '%i')
+    fmt_gain   = kwa.pop('fmt_gain', '%.6f')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
 
@@ -490,7 +502,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
 
         try:
           data = data_from_file(fname, ctype, dtype, True)
-          logger.info(info_ndarr(data, 'constants loaded from file', last=5))
+          logger.info(info_ndarr(data, 'constants loaded from file', last=5, vfmt=fmt))
         except AssertionError as err:
           logger.warning(err)
           shape_seg = shape_as_daq[-2:]
@@ -504,7 +516,7 @@ def deploy_constants(ctypes, gainmodes, **kwa):
           else:
              data = np.zeros(shape_seg, vtype) # np.uint16)
 
-          logger.info(info_ndarr(data, 'substitute array with', last=5))
+          logger.info(info_ndarr(data, 'substitute array with', last=5, vfmt=fmt))
         dic_nda[gm] = reshape_to_3d(data)
 
       nda = np.stack([dic_nda[gm] for gm in gainmodes])
