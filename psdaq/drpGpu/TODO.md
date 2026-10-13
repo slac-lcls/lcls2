@@ -130,14 +130,14 @@ diverge silently -- that has happened once already.
   **`sockets` ALONE IS NOT SUFFICIENT: gpu008 ran it clean, 2026-10-12.**  Six DRPs
   (`epixuhremu`) on `ep_provider=sockets` over 10 GbE, at ~19.25 kHz:
 
-      TEB_EvtCt   134,215,408        TEB_BatCt    60,317,027
+      TEB_EvtCt   503,641,618        TEB_BatCt   226,195,659
       TCtbI_OrphCt  0 on all six     TCtbI_NPrgCt  0 on all six
       TCtbI_DefSz   0                TCtbI_MisCt   0, BypCt 0, TEB_SpltCt 0
 
-  **123x the gpu006 `sockets` mean time-to-first-loss and 38x its maximum, with the trap
-  armed and never firing.**  So the provider is necessary-looking but not sufficient, and
-  gpu006 has something further.  The sharpest remaining difference is **two readout groups
-  at different rates on gpu006 against one on gpu008** (`gpu6.py` sets
+  **461x the gpu006 `sockets` mean time-to-first-loss (490,833) and 143x its maximum,
+  with the trap armed and never firing.**  So the provider is necessary-looking but not
+  sufficient, and gpu006 has something further.  The sharpest remaining difference is
+  **two readout groups at different rates on gpu006 against one on gpu008** (`gpu6.py` sets
   `groups = platform + ' 3 4'`, `gpu8.py` just `platform`) -- which is also the
   configuration gpu008 had never exercised, the original "what changed" answer from 10-07.
   Secondary differences: real `epixuhr3x2` against `epixuhremu`, 10 GbE against IB
@@ -540,7 +540,7 @@ diverge silently -- that has happened once already.
      **Why there and not at the call sites.**  `post()` is the only place that knows a
      write has just been queued -- it is where `_posted` is counted -- so putting the two
      together makes it impossible to forget.  The previous arrangement had the call at
-     five of six `->post()` sites and had already been missed at eleven; a sixth site
+     five of six `->post()` sites, and before 10-12 at only one of them; a seventh site
      added later would have been missed again.  It also collapses five calls plus five
      comments into one.
 
