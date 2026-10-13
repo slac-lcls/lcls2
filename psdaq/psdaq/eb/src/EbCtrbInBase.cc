@@ -481,6 +481,18 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
 
 void EbCtrbInBase::_defer(const ResultDgram* results)
 {
+  // A Result whose RoGs don't intersect ours never matches an Input, so it
+  // must not head a deferred batch: _deliver's `rPid <= iPid` loop is not
+  // entered when the head is newer than the pending Input, so the entry that
+  // would skip it is never reached and the list grows for ever.  Advance to
+  // the first entry that is ours -- later entries can still need delivering,
+  // a batch being able to carry several readout groups.
+  while (!(results->readoutGroups() & _prms.readoutGroup))
+  {
+    if (results->isEOL())  return;      // No entry in this batch is ours
+    results = (const ResultDgram*)((const char*)results + _maxResultSize);
+  }
+
 
   for (auto it = _deferred.begin(); it != _deferred.end(); ++it)
   {
