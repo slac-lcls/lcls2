@@ -24,6 +24,7 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _verbose(verbose),
   _pending(0),
   _posting(0),
+  _noCtxCnt(0ull),
   _pep    (nullptr),
   _mr     (nullptr)
 {
@@ -37,6 +38,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _verbose(verbose),
   _pending(0),
   _posting(0),
+  _noCtxCnt(0ull),
   _pep    (nullptr),
   _mr     (nullptr),
   _info   (kwargs)

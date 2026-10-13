@@ -103,6 +103,9 @@ EbLfLink::EbLfLink(Endpoint*          ep,
   _timedOut(0ull),
   _pending (pending),
   _posting (posting),
+  _posted   (0ull),
+  _completed(0ull),
+  _txErrors (0ull),
   _depth   (depth),
   _credits (0)
 {
@@ -557,6 +560,15 @@ int EbLfCltLink::post(const void* buf,
 
   _posting &= ~(1 << _id);
 
+  if (!rc)  ++_posted;                  // Queued only; _reapTx() reports delivery
+
+  // Collect whatever delivery status is ready.  Doing it here rather than at
+  // each call site is what makes it impossible to forget: the write has just
+  // been queued and nothing else reads that queue.  Note writedata() above
+  // touches the same CQ on its -FI_EAGAIN path, but only via fi_cq_read, which
+  // leaves an error entry queued for the fi_cq_readerr() below to find.
+  _reapTx();
+
   return rc;
 }
 
@@ -596,6 +608,8 @@ int EbLfLink::post(const void* buf,
   }
 
   _posting &= ~(1 << _id);
+
+  _reapTx();                            // No-op without a Tx CQ
 
   return rc;
 }
@@ -726,6 +740,53 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
               __PRETTY_FUNCTION__, _id, rc, cq->error());
   }
   return rc;
+}
+
+// Reap whatever Tx completions are ready, without blocking.  An RMA write
+// that fails after fi_writedata has accepted it is reported only here, so
+// without this a lost write is invisible to both ends.
+//
+// Note the Tx CQ is bound with FI_SELECTIVE_COMPLETION (EbLfClient.cc), so
+// successful writes generate no completion unless the operation asks for one
+// with FI_COMPLETION -- fi_writedata does not.  _completed therefore counts
+// only what the provider volunteers.  **Errors are always reported**, with or
+// without selective completion, so the error path below is the one that
+// matters; the posted-vs-completed deficit is not a loss count by itself.
+ssize_t Pds::Eb::EbLfLink::_reapTx()
+{
+  auto cq = _ep->txcq();
+  if (!cq)  return 0;                   // No Tx CQ on this endpoint
+
+  struct fi_cq_data_entry cqe[8];
+  ssize_t rc;
+
+  while ((rc = cq->comp(cqe, 8)) > 0)  _completed += rc;
+
+  if ((rc < 0) && (rc != -FI_EAGAIN))
+  {
+    if (rc == -FI_EAVAIL)               // An error entry is waiting
+    {
+      struct fi_cq_err_entry err;
+      if (cq->comp_error(&err) > 0)
+      {
+        ++_txErrors;
+        // Report a bounded number: a broken link would otherwise flood
+        if (_txErrors < 10)
+        {
+          fprintf(stderr, "%s:\n  Tx CQ error on link ID %d: write of %zu B "
+                  "failed: %s (err %d, prov_errno %d)\n", __PRETTY_FUNCTION__,
+                  _id, err.len, fi_strerror(err.err), err.err, err.prov_errno);
+          cq->comp_error_dump(err);
+        }
+        rc = -err.err;
+      }
+    }
+    else
+      fprintf(stderr, "%s:\n  Error reading Tx CQ on link ID %d: rc %zd: %s\n",
+              __PRETTY_FUNCTION__, _id, rc, cq->error());
+    return rc;
+  }
+  return 0;
 }
 
 ssize_t Pds::Eb::EbLfLink::postCompRecv(unsigned count)

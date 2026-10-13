@@ -40,6 +40,9 @@ namespace Pds {
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
       const uint64_t&    tmoCnt()   const { return _timedOut; }
+      const uint64_t&    postCnt()  const { return _posted; }
+      const uint64_t&    compCnt()  const { return _completed; }
+      const uint64_t&    errCnt()   const { return _txErrors; }
     public:
       int post(const void* buf,
                size_t      len,
@@ -49,6 +52,17 @@ namespace Pds {
       int poll(uint64_t* data, int msTmo);
     public:
       ssize_t postCompRecv(const unsigned count);
+    protected:
+      // Drain the Tx CQ without blocking, so an RMA write that fails after
+      // being queued is seen.  fi_writedata returning FI_SUCCESS means only
+      // that the write was queued; the delivery status arrives here.  Also
+      // required under FI_PROGRESS_MANUAL, where reading a CQ *is* what
+      // advances the provider.
+      //
+      // Called by post(), which is the only place that knows a write has been
+      // queued, so no caller has to remember to do it.  A no-op on a link with
+      // no Tx CQ, which is every server-side link.
+      ssize_t _reapTx();
     protected:
       enum { _BegSync = 0x11111111,
              _EndSync = 0x22222222,
@@ -63,6 +77,9 @@ namespace Pds {
       uint64_t               _timedOut;
       volatile uint64_t&     _pending; // Flag set when currently pending
       volatile uint64_t&     _posting; // Bit list of IDs currently posting
+      uint64_t               _posted;    // RMA writes queued
+      uint64_t               _completed; // Their Tx completions reaped
+      uint64_t               _txErrors;  // Of which reported an error
     public:
       const unsigned         _depth;
       unsigned               _credits;
