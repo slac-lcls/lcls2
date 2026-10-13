@@ -38,7 +38,7 @@ def dic_ctype_fmt(**kwargs):
             'pixel_max'   : kwargs.get('fmt_max',    '%d'),
             'pixel_min'   : kwargs.get('fmt_min',    '%d'),
             'pixel_mask'  : kwargs.get('fmt_mask',   '%2d'),
-            'pixel_gain'  : kwargs.get('fmt_gain',   '%.3f'),
+            'pixel_gain'  : kwargs.get('fmt_gain',   '%.6f'),
             'pixel_offset': kwargs.get('fmt_offset', '%.3f'),
             'pixel_status': kwargs.get('fmt_status', '%d'),
             'status_extra': kwargs.get('fmt_status', '%d')}
