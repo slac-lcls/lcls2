@@ -101,7 +101,10 @@ static struct sigaction old_actions[64];
 static void sigHandler(int signal)
 {
   psignal(signal, "epixm320 received signal");
-  epix->monStreamEnable();
+    // Deliberately no monStreamEnable() here: it calls into CPython, and a
+    // signal is delivered on whichever thread the kernel picks, which need not
+    // hold the GIL -- so the call faults and the SIGSEGV buries the signal that
+    // prompted it.  It runs in shutdown() instead, where the GIL is held.
 
   sigaction(signal,&old_actions[signal],NULL);
   raise(signal);
@@ -111,7 +114,8 @@ static void sigHandler(int signal)
 EpixM320::EpixM320(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
     m_env_sem     (Pds::Semaphore::FULL),
-    m_env_empty   (true)
+    m_env_empty   (true),
+    m_monStreamOn (true)      // The stream is on until Enable disables it
 {
     // VC 0 is used with XilinxKcu1500Pgp4_10Gbps
     // VC 1 is used with Lcls2EpixHrXilinxKcu1500Pgp4_10Gbps, which is the default
@@ -128,15 +132,16 @@ EpixM320::EpixM320(Parameters* para, MemPool* pool) :
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-#define REGISTER(t) {                               \
-        if (sigaction(t, &sa, &old_actions[t]) > 0) \
-            printf("Couldn't set up #t handler\n"); \
+#define REGISTER(t) {                                       \
+        if (sigaction(t, &sa, &old_actions[t]) < 0)         \
+            printf("Couldn't set up %s handler\n", #t);      \
     }
 
     REGISTER(SIGINT);
+    REGISTER(SIGTERM);           // What Slurm sends to stop a task
+    REGISTER(SIGQUIT);
     REGISTER(SIGABRT);
-    REGISTER(SIGKILL);
-    REGISTER(SIGSEGV);
+    REGISTER(SIGSEGV);           // SIGKILL cannot be caught, so don't try
 
 #undef REGISTER
 }
@@ -375,10 +380,17 @@ bool     EpixM320::scanEnabled()
 
 void     EpixM320::shutdown()
 {
+    // Re-enable the monitor stream here rather than from sigHandler(), which
+    // may not call CPython: the caller, _disconnect(), holds the GIL.  Not
+    // done in the dtor, which has no such guarantee.
+    if (m_module && !m_monStreamOn) {
+        monStreamEnable();
+    }
 }
 
 void     EpixM320::monStreamEnable()
 {
+    m_monStreamOn = true;
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
     sprintf(func_name,"%s_disable",m_para->detType.c_str());
@@ -391,6 +403,7 @@ void     EpixM320::monStreamEnable()
 
 void     EpixM320::monStreamDisable()
 {
+    m_monStreamOn = false;
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
     sprintf(func_name,"%s_enable",m_para->detType.c_str());
