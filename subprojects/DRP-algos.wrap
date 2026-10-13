@@ -1,0 +1,4 @@
+[wrap-git]
+url = https://github.com/slac-lcls/DRP-algos.git
+revision = ENH/roibin
+depth = 1

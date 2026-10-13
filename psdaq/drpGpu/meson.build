@@ -317,6 +317,23 @@ cuda_inc_dir = include_directories([
     ],
   )
 
+  DrpAlgos_dep = dependency('DrpAlgos', fallback: ['DRP-algos', 'DrpAlgos_dep'])
+
+  DrpAlgosReducer_lib = shared_library('DrpAlgosReducer',
+    'DrpAlgosReducer.cu',
+    include_directories: [drpgpu_inc_dir],
+    install: true,
+    install_rpath: libdir_install_rpath,
+    cuda_args: cuda_args,
+    dependencies: [
+      python_dep,
+      xtcdata_dep,
+      psalg_utils_dep,
+      nlohmann_json_dep,
+      DrpAlgos_dep,
+    ],
+  )
+
   # 6/16/26: Comment this out as it produces lots of warnings
   #CuSzReducer_lib = shared_library('CuSzReducer',
   #  'CuSzReducer.cu',
