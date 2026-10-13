@@ -1304,3 +1304,38 @@ which on gpu001 symlinks through `/etc/alternatives` to
 so behaviour today is the same either way and compat mode is in force as expected -- but any
 *other* setting in the run-directory copy has never taken effect.  Point
 `CUFILE_ENV_PATH_JSON` at it if it is meant to be authoritative.
+
+## `nPidJumps` cannot work: a deadtime veto and an unanswered trigger are indistinguishable
+
+The idea was to spot a trigger the detector was given and never answered, by inferring the
+trigger period from the spacing of arriving L1Accepts.  **Deadtime makes that inference
+impossible, not merely inaccurate** -- and the inference is the whole mechanism, so no
+amount of fixing the convergence rule rescues it.  Never committed: the check and its
+metric exist only in `wip-2026-10-12-full-diagnostics.patch`, whose base is `c58f0185`.
+
+**Measured on gpu008, 2026-10-12, which settles it.**  The XPM reports
+`L0InpRate{partition="7"}` = **71,428 Hz = 13 ticks** and `DeadFrac` = **0.70**.  So the
+true trigger cadence is 13 ticks, deadtime vetoes ~70% of them, and the L1Accepts that
+arrive are spaced 26, 39, 52... ticks apart -- whole multiples, legitimately.  The
+arithmetic closes: 71428 x (1 - 0.70) = 21.1 kHz against ~19.25 kHz measured.
+
+    latched m_dPid   13     correct, it is the real cadence
+    observed gap     26     = 2 x 13, so reported as "1 trigger unanswered"
+    reality                 the vetoed trigger was never sent to the detector
+
+**So the five messages were false in the one run where the period latched correctly.**
+Earlier runs latched 64 and 38 against a true 68 and were wrong in the other direction,
+which is what the "minimum, not mode" diagnosis was about -- but that was a second bug on
+top of this one, and fixing it would only convert silent nonsense into confident false
+alarms.  Both a veto and an unanswered trigger leave `evtCounter` contiguous and a gap
+that is a whole multiple of the cadence.
+
+**What would work, if the question is ever worth answering**: compare the XPM's
+`NumL0Inp`/`NumL0Acc` against the DRP's own event count, since the XPM knows what it
+vetoed and the DRP does not.  Those counters are already in Prometheus but the DRP does
+not read them -- it only subscribes to an XPM deadtime PV (`DrpBase.cc:1637-1646`).  That
+is a real comparison rather than an inference, and it belongs in a dashboard query, not in
+the DRP's hot path.
+
+The skipped-trigger hypothesis it was built to test remains **untested**, and is no longer
+needed: the lost Result writes it was meant to explain were explained without it.

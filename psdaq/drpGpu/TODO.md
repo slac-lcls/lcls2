@@ -398,32 +398,148 @@ diverge silently -- that has happened once already.
   **Do the logging below first.**  Too many parameters are set by guess for tuning to be
   productive before the system reports what it actually chose.
 
-- **`getNicIp()` must not fall back to Ethernet when InfiniBand is missing.**  It
-  currently prefers the first IB interface and silently drops to Ethernet with only a
-  warning (`Collection.cc:218-258`, "No Infiniband interface found - using Ethernet").
-  **This has cost real debugging time**: when IB is expected across the DAQ and one node
-  has lost its NIC, that node alone comes up on Ethernet, the mixed system cannot
-  communicate, and nothing says why.  A warning in one log among dozens is not findable
-  when the symptom is "the DAQ will not connect".
+- **`getNicIp()`: DONE 2026-10-13.**  All three parts -- abort rather than fall back,
+  require `IFF_RUNNING` on both branches, and log the selection.  `Collection.cc:218-285`.
 
-  Fail loudly instead.  The fallback is only correct when Ethernet is what was *intended*,
-  which `forceEnet=yes` already expresses -- every caller passes it
-  (`PGPDetectorApp.cc:570`, `drp/PGPDetectorApp.cc:730`, `BldDetector.cc:1190`,
-  `UdpEncoder.cc:1243`, `PvaDetector.cc:1223`), so the deliberate case is already
-  distinguishable from the accidental one.  So: no IB and no `forceEnet` should abort with
-  a message naming the node and saying that the rest of the DAQ is presumably on IB, not
-  warn and carry on.
+  It used to prefer the first IB interface and drop to Ethernet with only a warning.
+  **That cost real debugging time**: when IB is expected across the DAQ and one node has
+  lost its NIC, that node alone comes up on Ethernet, the mixed system cannot communicate,
+  and nothing says why -- a warning in one log among dozens is not findable when the
+  symptom is "the DAQ will not connect".  The fallback is only right when another
+  interface was *intended*, which `ep_domain` already expresses, so the accidental case
+  can abort.  It names the node and the interface it rejected: **"Provide
+  `ep_domain=<name>` to use that interface deliberately"**.
 
-  Two details found while reading it, 2026-10-12:
+  **`ep_domain` takes an interface NAME, not an IP** -- it reaches the
+  `getNicIp(const std::string&)` overload, which compares against `ifa->ifa_name`
+  (`Collection.cc:202`) and returns that interface's address.  `cnf/rix.py:41` has the
+  existing precedent, `ep_domain=eno1`.  So the message can name exactly what to paste.
+  It advises `ep_domain` rather than `forceEnet=yes` because `forceEnet` only re-expresses
+  the same guess one level up -- the first running Ethernet interface -- whereas the node
+  that needs help is the one where that guess is wrong.
 
-  - **The IB branch does not test `IFF_RUNNING` but the Ethernet branch does.**  So a
-    *down* IB interface is still selected if it enumerates first, while a down Ethernet
-    one is skipped.  gpu008 has `ibp113s0f0` up and `ibp113s0f1` down, so the asymmetry
-    is live, not hypothetical -- it happens to pick the working one by enumeration order.
-  - **Selection is per node and reported nowhere afterwards.**  The provider and interface
-    actually in use had to be recovered by reading peer addresses out of the TEB's log
-    (`172.21.167.x` = IB, `172.21.155.x` = Ethernet on gpu008), which is the same argument
-    as the logging item below.  Log the chosen interface, its type and its address.
+  **RoCE is why this matters, and it is the one case the type test cannot settle.**
+  gpu005's two ConnectX cards report `ibstat` **Link layer: Ethernet**, and their netdevs
+  (`enp153s0f0np0`, `enp153s0f1np1`) carry `hatype` **1 = ARPHRD_ETHER**, not 32.  An IB
+  card in Ethernet/RoCE mode is therefore indistinguishable from a plain NIC at the
+  `getifaddrs` level, so no amount of care in this function finds it; both ports are also
+  Down today, so gpu005's only running interface is the 1 GbE `enp3s0f0`.  Asking for
+  Infiniband there now aborts and names `enp3s0f0` -- which is the right outcome: it says
+  the node cannot give what was asked for, instead of silently running the DAQ over the
+  management NIC.  A RoCE deployment selects its port by name with `ep_domain`.
+
+- **RoCE: how to ask for it, and what is NOT yet in place.**  Measured 2026-10-13 on
+  gpu005 (RoCE-mode ConnectX) and gpu008 (IB-mode).  **A RoCE run is expressible today**,
+  but only via `ep_domain`, and one piece of plumbing is missing.
+
+  **The two "domain" words are different things, which is the thing to get straight.**
+  `ep_domain` is **our** kwarg and takes a **netdev name** (`getNicIp` matches
+  `ifa->ifa_name`, `Collection.cc:202`); libfabric's *domain* is an HCA
+  (`mlx5_0`).  We never name a libfabric domain -- `Fabric::initialize` passes the
+  **address** as `fi_getinfo`'s `node` (`Endpoint.cc:922`), so **the chosen IP is what
+  selects the HCA**.  Hence a RoCE deployment is specified as
+  **`ep_provider=verbs,ep_domain=<roce-netdev>`**: the netdev gives the address, the
+  address resolves to `mlx5_x`, and `verbs` runs RoCE over it.
+
+  **Confirmed on the hardware:** with its IB port up, gpu008 offers
+  `provider: verbs, domain: mlx5_0`.  gpu005 offers **no `verbs` at all** -- only
+  `tcp`/`tcp;ofi_rxm` on `enp3s0f0` -- because both RoCE ports are Down and have no IP.
+  The RDMA stack itself is fine and RoCE-capable (`mlx5_0`/`mlx5_1` present,
+  `gid_attrs/types/0` = `IB/RoCE v1`), so `verbs` should appear once a port is up and
+  addressed.  **Untested end to end: no RoCE port has been brought up yet**, so "verbs
+  appears and connects over RoCE" is an expectation, not a measurement.
+
+  **The automatic path cannot find RoCE**, since `getNicIp(forceEnet)` decides from
+  `hatype`.  So on a RoCE node `ep_domain` is the only correct answer.
+
+  **Decision, Ric 2026-10-13: leave the kwargs alone for now.**  Not urgent, and the hard
+  requirement on any future change is that **the existing `.cnf.py` files keep working** --
+  the default and whatever they specify today must behave exactly as they do now.
+  Augmenting the choice set for RoCE is allowed when it is wanted; changing the meaning of
+  what is already written is not.
+
+  If it is taken up, the better selector is **RDMA capability rather than `hatype`**: for
+  each candidate netdev ask whether `/sys/class/infiniband/*/device` resolves to the same
+  PCI device, which is true for RoCE *and* IB and false for a plain NIC.  That makes "give
+  me the RDMA interface" automatic in both modes.  It belongs behind a new, explicitly
+  requested value rather than silently redefining the present default.
+
+- **The IB NIC is contended between inter-DAQ traffic and WEKA, and the NUMA map is
+  hostile.**  Ric's point, 2026-10-13: both uses must be optimised together or one
+  produces deadtime in the other.  Measured on gpu008, and the numbers are specific:
+
+      HCA  mlx5_0 (0000:71:00.0)          NUMA 0     the ONLY HCA; mlx5_1 is its 2nd port
+      datadevs 04,05,53:00.0              NUMA 0
+      datadevs 84,85,a1,d5:00.0           NUMA 1     four of seven
+      GPUs 03,54,55:00.0                  NUMA 0
+      GPUs 83,d3:00.0                     NUMA 1     two of five
+      WEKA's 3 pinned cores: 1, 2 (NUMA 0) and 32 (NUMA 1)
+      gpu008 is 2 sockets x 32 cores, NUMA node0 = CPU 0-31, node1 = 32-63
+
+  **WEKA and the DAQ share the interface, not merely the fabric**: `/etc/fstab` mounts
+  `drpsrcf/ffb` with **`net=ibp113s0f0`**, which is exactly the netdev `getNicIp` selects
+  for IB.  So recorded data going out to WEKA and inter-DAQ Results/Inputs traffic cross
+  the same port and the same HCA.
+
+  **The structural problem is that there is one HCA and it is on NUMA 0**, while most of
+  the datadevs and two GPUs are on NUMA 1.  A DRP serving a NUMA-1 card therefore cannot
+  be local to its datadev, its GPU *and* the HCA at once -- the best available placement
+  is local to the datadev and GPU, with the eb traffic crossing the socket link.  That is
+  a reason to measure rather than assume which locality matters more, and it is the
+  concrete form of the thread-placement item above: `sched_getaffinity` gives the granted
+  CPUs, and `/sys/bus/pci/devices/*/numa_node` gives each device's node, so the DRP can
+  log the three-way relationship instead of leaving it to chance.
+
+  **And the NIC's placement is not a free choice, so this cannot be fixed by moving it.**
+  Chris, 2026-10-13: every regular slot in these chassis is spoken for by a GPU or an FPGA,
+  so the mlx card goes in one of the two AIOM slots -- which fixes its NUMA node and
+  guarantees some DRPs are remote from it.  Treat the asymmetry as a constraint to schedule
+  around, not a layout bug.
+
+  **A competing partitioning is on the table: Cheolhong wants all GPUs on one NUMA node and
+  all FPGAs on the other**, so that MPS can be 256 for the GPUs' gen5 x16 and 512 for the
+  FPGAs' gen4 x8, reaching 113 Gbps.  That is a different optimum from "each DRP local to
+  its own datadev and GPU", since it makes *every* DRP cross the socket link for one of the
+  two, and it interacts with the single HCA's node as well.  **Three claims on the same
+  topology that have not been evaluated together**: datadev/GPU locality per DRP, the
+  GPU/FPGA split for MPS and link rate, and the HCA shared with WEKA.  Settle it with
+  measurements rather than by argument -- the deadtime identity gives a single number to
+  compare against.
+
+  **What to measure, before any tuning**: WEKA's throughput and the DAQ's deadtime as a
+  pair, since the point is that neither may be optimised alone.  `DeadFrac` beside
+  `L0InpRate` is the DAQ-side number (see the deadtime item); WEKA's own counters are the
+  other half.  Also worth knowing whether WEKA's `num_cores=3` and our `cores:` can be
+  kept on opposite sockets -- today WEKA has 1 and 2 on NUMA 0 and 32 on NUMA 1, so it
+  straddles, and its NUMA-0 cores are the ones nearest the HCA it shares with us.
+
+  **The `IFF_RUNNING` test was on the Ethernet branch only**, so a *down* IB interface
+  was selected if it enumerated first.  It is now a single test ahead of the type check.
+  gpu008 has `ibp113s0f0` up and `ibp113s0f1` down, so this was live, not hypothetical --
+  it happened to pick the working one by enumeration order.
+
+  The loop now takes the first running interface of the *wanted* type and **breaks**.  It
+  used to collect an IB name and an Ethernet name in one pass and choose afterwards, which
+  the old fallback needed -- with the fallback gone only one of the two could ever select
+  anything.  The Ethernet name is still noted when Infiniband was wanted, solely so the
+  abort message can name what it declined to use silently.
+
+  **Trap, checked rather than assumed:** `/sys/class/net/*/flags` does **not** show
+  `IFF_RUNNING` -- it reads `0x1003` for gpu008's up *and* down IB interfaces alike, which
+  makes the change look like it would abort on a healthy node.  `getifaddrs` does report
+  it (`0x11043` running, `0x1003` not), and that is what the code reads.  Check with
+  `tools/ifflags.c` in the session directory, not with sysfs.
+
+  Verified on gpu008 against the real function (`tools/nictest.cc`), five cases: IB chosen
+  (`ibp113s0f0`, 172.21.167.165); `forceEnet` chosen (`enp73s0f0`, 172.21.155.165) -- both
+  addresses independently matching what had previously been recovered by hand out of the
+  TEB's log; Ethernet-only abort with the new message; down-Ethernet-only abort; and
+  loopback-only abort.  The last three in a `unshare -rn` namespace.
+
+  Selection was also **reported nowhere**, which is why the interface in use had to be
+  recovered from peer addresses in the TEB's log.  Both overloads now log type, name and
+  address at `LOG_INFO`, which is the default without `-v` in both the DRP
+  (`drpGpu/PGPDetectorApp.cc:781`) and the TEB (`teb.cc:1446`), so it lands in every log.
 
 - **An L1Accept rate is a deadtime measurement, not a throughput measurement.**  Measured
   twice on gpu008 on 2026-10-12, four minutes apart, same code and trigger cadence:
@@ -588,7 +704,13 @@ diverge silently -- that has happened once already.
      for ever and never becomes fatal.  Decide deliberately which errors are fatal
      rather than letting repetition be the test.
 
-- **Sweep out a missing Result rather than aborting on it.**  Ric's proposal, 2026-10-10.
+- **Sweep out a missing Result rather than aborting on it.  DEFERRED, 2026-10-13: leave a
+  missing Result blocking so that it stays easy to see.**  Ric's call -- the abort is the
+  clearest possible signal that the fault recurred, and masking it before the cause is
+  known trades diagnosis for uptime.  Revisit if it becomes an operational problem.  The
+  design below stands as written; nothing about it has been invalidated.
+
+  Original proposal, 2026-10-10.
   The Results/Inputs matcher has no timeout on a Result that never arrives and does not
   flush an incomplete pair when a newer complete one is available, so one lost write ends
   the run.  Instead: time out the stuck Input, fabricate a Result with `persist` set,
@@ -646,43 +768,6 @@ diverge silently -- that has happened once already.
   assumes no ordering would be needed.  A related pre-existing leak is already noted in the
   source at `:292`.
 
-- **`nPidJumps` cannot work as conceived, and was never committed.**  The check and its
-  metric exist only in `wip-2026-10-12-full-diagnostics.patch`; nothing is owed in the
-  code.  Kept here so the idea is not re-proposed.  It tried to spot a trigger the
-  detector was given and never answered, by inferring the trigger period from the
-  spacing of arriving L1Accepts.  **Deadtime makes that inference impossible, not merely
-  inaccurate** -- and the inference is the whole mechanism, so no amount of fixing the
-  convergence rule rescues it.
-
-  **Measured on gpu008, 2026-10-12, which settles it.**  The XPM reports
-  `L0InpRate{partition="7"}` = **71,428 Hz = 13 ticks** and `DeadFrac` = **0.70**.  So the
-  true trigger cadence is 13 ticks, deadtime vetoes ~70% of them, and the L1Accepts that
-  arrive are spaced 26, 39, 52... ticks apart -- whole multiples, legitimately.  The
-  arithmetic closes: 71428 x (1 - 0.70) = 21.1 kHz against ~19.25 kHz measured.
-
-      latched m_dPid   13     correct, it is the real cadence
-      observed gap     26     = 2 x 13, so reported as "1 trigger unanswered"
-      reality                 the vetoed trigger was never sent to the detector
-
-  **So the five messages are false in the one case where the period was latched
-  correctly.**  Earlier runs latched 64 and 38 against a true 68 and were wrong in the
-  other direction, which is what the "minimum, not mode" diagnosis was about -- but that
-  was a second bug on top of this one, and fixing it only converts silent nonsense into
-  confident false alarms.  A deadtime veto and an unanswered trigger are indistinguishable
-  from pulse ID spacing alone: both leave `evtCounter` contiguous and a gap that is a whole
-  multiple of the cadence.
-
-  **What would work, if the question is ever worth answering**: compare the XPM's
-  `NumL0Inp`/`NumL0Acc` against the DRP's own event count, since the XPM knows what it
-  vetoed and the DRP does not.  Those counters are already in Prometheus but the DRP does
-  not read them -- it only subscribes to an XPM deadtime PV (`DrpBase.cc:1637-1646`).
-  That is a real comparison rather than an inference, and it belongs in a dashboard query,
-  not in the DRP's hot path.
-
-  Until then `drp_num_pid_jump` is noise and the five log lines are false alarms.  The
-  skipped-trigger hypothesis remains **untested** -- and no longer needed, the lost Result
-  writes above having been explained without it.
-
 - **Two MEB sizing questions that prescaling makes reachable**, neither a GPU DRP bug:
   the MEB path copies the raw block into the **pebble** buffer, which the recording
   path deliberately never does (`PGPDetector.cc:467`), so confirm the `pblReach` check
@@ -724,9 +809,16 @@ diverge silently -- that has happened once already.
   false to everyone else.  One such comment was written and removed on 10-08; check for
   more before committing.
 
-- **Straighten out the epix-family signal handling.**  `drp/EpixUHR3x2.cc` was fixed on
-  2026-10-08; `EpixUHR.cc`, `EpixM320.cc`, `EpixHR2x2.cc` and `Epix100.cc` still share
-  all three defects, and `Jungfrau.cc` is the one that mostly gets it right:
+- **Epix-family signal handling: DONE 2026-10-13.**  `EpixUHR.cc`, `EpixM320.cc`,
+  `EpixHR2x2.cc` and `Epix100.cc` now match the `EpixUHR3x2` fix, and `Jungfrau.cc` has
+  the macro's two defects fixed plus `SIGQUIT`.  All four epixes were structurally
+  identical -- same handler, same `REGISTER` block, same empty `shutdown()` -- so the fix
+  transferred verbatim; Jungfrau needed only the macro, its handler calling
+  `cleanup()`/`sls` rather than CPython.  `monStreamEnable` is now driven by
+  `m_monStreamOn`, since `enable()` disables the stream and `disable()` re-enables it
+  every cycle.  **Compile-tested only: none of these five detectors has been run.**
+
+  The three defects, for the record:
 
   - **`monStreamEnable()` is called from a signal handler**, and it calls into CPython.
     A signal is delivered on whichever thread the kernel picks, which need not hold the
@@ -816,16 +908,20 @@ diverge silently -- that has happened once already.
 
 ## Performance and structure
 
-- **`maxTrSize` bounds a Configure and the buffer it is built in, so it cannot be sized
-  from either.**  `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON into a
-  *temporary* buffer sized `maxTrSize`, then copies it into a transition Xtc bounded by the
-  same number.  A value that is too small therefore fails at whatever it is raised to
-  rather than by a fixed shortfall, which is what made 2026-09-25's two failures read as
-  near misses; see `FINDINGS.md`.  It is in the CPU `drp`, shared with every CPU DRP.
+- **`maxTrSize`: the value is settled, the diagnosis is not.**  The sizing was fixed in
+  2026-09 -- `drpGpu/PGPDetectorApp.cc:858` sets 2 MiB against the CPU `drp`'s 8 MiB
+  (`drp/drp.cc:170`) -- and an ePixUHR3x2 Configure fits.  **What remains is the error
+  message**, and it is small.
 
-  Cheap now that transitions have their own buffers: 2 MiB costs 2 MiB per transition
-  buffer, not per reduce buffer.  Worth a `static_assert` or a Configure-time check that
-  names the real requirement rather than a kwarg.
+  `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON into a *temporary*
+  buffer sized `maxTrSize`, then copies it into a transition Xtc bounded by the same
+  number.  So a value that is too small **fails at whatever it is raised to** rather than
+  by a fixed shortfall: the two 2026-09-25 failures read as 392-byte near misses at 256 kiB
+  and at 512 kiB, while the real config was 902026 bytes.  The check at `:264` reports the
+  extent it reached, which is the number that misleads.
+
+  Worth a Configure-time check that names the **real** requirement.  Shared with every CPU
+  DRP, so it is one of the small CPU-side diagnosis wins.
 
 - **Nothing coordinates the green context split with the kernels' launch geometry**: three
   hard-coded SM tables that disagree, at `PGPDetector.cc:615` (the 6/40/remainder split),
