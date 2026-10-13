@@ -12,11 +12,17 @@
 
 namespace Pds
 {
+  namespace Fabrics { class Fabric; }
+
   namespace Eb
   {
     size_t roundUpSize(size_t size);
     void*  allocRegion(size_t size);
     int    pinThread(const pthread_t& th, int cpu);
+
+    // Log the libfabric configuration actually negotiated, once per process.  Repeat
+    // calls are ignored, so every transport may call it without coordinating.
+    void   logFabricInfo(const char* who, Fabrics::Fabric* fabric);
 
     class ImmData
     {

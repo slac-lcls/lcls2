@@ -52,12 +52,8 @@ int EbLfClient::connect(EbLfCltLink** link,
     return fab ? fab->error_num() : -FI_ENOMEM;
   }
 
-  if (_verbose)
-  {
-    void* data = fab;                   // Something since data can't be NULL
-    fprintf(stderr, "EbLfClient: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
-            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
-  }
+  // The configuration is logged once per process from linksConnect(), rather than
+  // here, which runs per link and so emitted N identical copies.
 
   struct fi_info*  info   = fab->info();
   size_t           cqSize = info->tx_attr->size;
@@ -153,6 +149,7 @@ int EbLfClient::disconnect(EbLfCltLink* link)
 
 
 // --- Revisit: The following maybe better belongs somewhere else
+#include "utilities.hh"            // logFabricInfo()
 #include "psalg/utils/SysLog.hh"
 
 using logging = psalg::SysLog;
@@ -177,6 +174,7 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
                      __PRETTY_FUNCTION__, peer, addr, port, i);
       return rc;
     }
+    logFabricInfo("EbLfClient", tmpLinks[i]->endpoint()->fabric());
   }
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
