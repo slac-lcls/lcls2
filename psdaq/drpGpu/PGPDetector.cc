@@ -656,11 +656,11 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
           auto host = reinterpret_cast<uint8_t*>((Dgram*)dgram);
           if (hdrSplit) {
             // For prescale - layout is: [Dgram][raw shapes][raw][reduced shapes][reduced]
-            chkError(cudaMemcpyAsync(host + hdrSplit, buffer + hdrSplit, rawBytes, D2H, m_stream));
-            chkError(cudaMemcpyAsync(host + cpSize + rawBytes, buffer + cpSize + rawBytes, dataSize, D2H, m_stream));
+            chkError(cudaMemcpyAsync(host + hdrSplit, buffer + hdrSplit, rawBytes, cudaMemcpyDeviceToHost, m_stream));
+            chkError(cudaMemcpyAsync(host + cpSize + rawBytes, buffer + cpSize + rawBytes, dataSize, cudaMemcpyDeviceToHost, m_stream));
           } else {
             // Otherwise - layout is: [Dgram][reduced shapes][reduced]
-            chkError(cudaMemcpyAsync(host + cpSize, buffer + cpSize, dgSize - cpSize, D2H, m_stream));
+            chkError(cudaMemcpyAsync(host + cpSize, buffer + cpSize, dgSize - cpSize, cudaMemcpyDeviceToHost, m_stream));
           }
           chkError(cudaStreamSynchronize(m_stream)); // Ensure payload is on CPU before posting
           m_mon.post(dgram, result->monBufNo());
