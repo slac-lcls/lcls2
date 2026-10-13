@@ -339,17 +339,29 @@ diverge silently -- that has happened once already.
   unnamed ~33%, `TEBreceiver` ~23%) timesharing four CPUs, with `sockets`' 8 progress and
   CM threads in the same cpuset.
 
-  **Do not read that as the cause of that run's 22 kHz ceiling**: `gpu8_save.py`, the
-  config whose runs reached 33 kHz, used **the same `cores: 4`**.  So 4 was once
-  sufficient and the oversubscription is at most a contributing factor; what else changed
-  is unseparated (the provider's thread count, the code base, and five enabled DRPs
-  against six).  The honest statement is that the allocation is tight and unmanaged, not
-  that it is the bottleneck.
+  **That is not a rate ceiling, and the rate question has a different answer -- see
+  the deadtime item below.**  `gpu8_save.py`, whose runs reached 33 kHz, used **the same
+  `cores: 4`**, so 4 was once sufficient.  The honest statement is that the allocation is
+  tight and unmanaged, not that it is the bottleneck.
 
-  Also seen on gpu008: `tstcam1_3` was granted `cores: 4` by Slurm but ran in a **3-CPU**
-  cpuset (`Cpus_allowed_list: 33-35`), its range straddling CPUs 32 and 41 which WEKA
-  holds.  So a `cores:` value is a request, and what the process gets is what
-  `sched_getaffinity` reports -- which is the argument for having the DRP log both.
+  **WEKA is granted cores that Slurm then hands to the DRPs as well.**  Measured on
+  gpu008, 2026-10-12, intersecting each job's `Cpus_allowed_list` with the CPUs carrying
+  WEKA threads (`1 2 7 8 13 15 16 19 25 31 32 51 54 60 61`):
+
+      tstcam1_0   cpus 15-18   overlaps WEKA on 15, 16   -- half its allocation
+      tstcam1_1   cpus 19-22   overlaps on 19
+      tstcam1_2   cpus 23-26   overlaps on 25
+      tstcam1_3   cpus 33-35   no overlap, but only 3 CPUs for a cores: 4 request
+      tstcam1_5   cpus 36-39   no overlap
+
+  So three of five GPU DRPs share cores with the filesystem, one of them two of four.
+  The lever is Slurm's `CpuSpecList` -- stop it granting WEKA's cores -- not `cores:`,
+  which cannot express "not those".  `tstcam1_3`'s short allocation is a **separate and
+  unexplained** effect: it has no WEKA overlap, so whatever truncated 4 to 3 is not that.
+  (An earlier note here blamed WEKA for it; the intersection shows otherwise.)
+
+  **A `cores:` value is a request; what the process gets is what `sched_getaffinity`
+  reports.**  That is the argument for having the DRP log both.
 
   **Check the allocation against what the process needs, and say so.**  The DRP knows how
   many hot threads it is about to start -- it creates them -- and `sched_getaffinity` says
@@ -388,6 +400,59 @@ diverge silently -- that has happened once already.
 
   **Do the logging below first.**  Too many parameters are set by guess for tuning to be
   productive before the system reports what it actually chose.
+
+- **`getNicIp()` must not fall back to Ethernet when InfiniBand is missing.**  It
+  currently prefers the first IB interface and silently drops to Ethernet with only a
+  warning (`Collection.cc:218-258`, "No Infiniband interface found - using Ethernet").
+  **This has cost real debugging time**: when IB is expected across the DAQ and one node
+  has lost its NIC, that node alone comes up on Ethernet, the mixed system cannot
+  communicate, and nothing says why.  A warning in one log among dozens is not findable
+  when the symptom is "the DAQ will not connect".
+
+  Fail loudly instead.  The fallback is only correct when Ethernet is what was *intended*,
+  which `forceEnet=yes` already expresses -- every caller passes it
+  (`PGPDetectorApp.cc:570`, `drp/PGPDetectorApp.cc:730`, `BldDetector.cc:1190`,
+  `UdpEncoder.cc:1243`, `PvaDetector.cc:1223`), so the deliberate case is already
+  distinguishable from the accidental one.  So: no IB and no `forceEnet` should abort with
+  a message naming the node and saying that the rest of the DAQ is presumably on IB, not
+  warn and carry on.
+
+  Two details found while reading it, 2026-10-12:
+
+  - **The IB branch does not test `IFF_RUNNING` but the Ethernet branch does.**  So a
+    *down* IB interface is still selected if it enumerates first, while a down Ethernet
+    one is skipped.  gpu008 has `ibp113s0f0` up and `ibp113s0f1` down, so the asymmetry
+    is live, not hypothetical -- it happens to pick the working one by enumeration order.
+  - **Selection is per node and reported nowhere afterwards.**  The provider and interface
+    actually in use had to be recovered by reading peer addresses out of the TEB's log
+    (`172.21.167.x` = IB, `172.21.155.x` = Ethernet on gpu008), which is the same argument
+    as the logging item below.  Log the chosen interface, its type and its address.
+
+- **An L1Accept rate is a deadtime measurement, not a throughput measurement.**  Measured
+  twice on gpu008 on 2026-10-12, four minutes apart, same code and trigger cadence:
+
+      provider   DeadFrac   predicted            measured    agreement
+      sockets     0.705     71428*(1-0.705)      19.25 kHz   ~91%
+      verbs       0.558     31535 Hz             31.53 kHz   99.97%
+
+  where the XPM reports `L0InpRate{partition=N}` = **71428 Hz** (13 ticks, the real
+  trigger cadence) and `DeadFrac` per partition.  **`measured = L0InpRate * (1 -
+  DeadFrac)`**, so in both runs the DAQ took everything the XPM offered it and no rate
+  ceiling was reached.
+
+  Consequences, because this is easy to misread:
+
+  - **Comparing raw rates across runs compares deadtime.**  The historical "33 kHz" is
+    itself a deadtime-limited figure; reaching it needs `DeadFrac` 0.538 against the
+    0.558 measured, so a 1.5 kHz shortfall is a 2-point deadtime difference and not a
+    regression.  Quote `L0InpRate` and `DeadFrac` beside any rate, or the number means
+    little.
+  - **The provider's cost shows up here, not as lost throughput.**  `sockets` runs 8
+    progress and CM threads inside the DRP's cpuset where `verbs` offloads to the HCA,
+    and the dead fraction fell from 70% to 56% when that changed.  That is the measured
+    form of the `cores:` pressure above.
+  - A CPU-starvation reading of a low rate is therefore not supportable from the rate
+    alone -- an earlier version of this file argued one and it was wrong.
 
 - **Log the libfabric configuration once, and log more of it.**  What provider and version
   a run used is the first thing asked when a transport problem is suspected, and today it
