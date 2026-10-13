@@ -51,7 +51,7 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from pathlib import Path
 
 DEFAULT_PATTERN = r"<[EC]>"
@@ -181,12 +181,22 @@ def cmd_grep(args):
 
 
 def cmd_list(args):
+    # Comparisons below happen in the launcher's LOCAL frame, never UTC --
+    # a DD_HH:MM:SS prefix is local wall-clock by construction (it's parsed
+    # directly off the launch host's clock, see session_start()), and so is
+    # the mtime side (datetime.fromtimestamp() with no tz is local). Aware
+    # input (e.g. an explicit UTC offset) is converted INTO that local frame
+    # here, never the reverse -- converting to UTC instead silently shifted
+    # every comparison by the local UTC offset, verified live against mfx
+    # data: 2026-10-12T17:02:40+00:00 (UTC) and the equivalent
+    # 2026-10-12T10:02:40 (local, naive) describe the same instant but
+    # returned 1 vs. 10 sessions respectively before this fix.
     start = datetime.fromisoformat(args.start)
     end = datetime.fromisoformat(args.end)
     if start.tzinfo is not None:
-        start = start.astimezone(timezone.utc).replace(tzinfo=None)
+        start = start.astimezone().replace(tzinfo=None)
     if end.tzinfo is not None:
-        end = end.astimezone(timezone.utc).replace(tzinfo=None)
+        end = end.astimezone().replace(tzinfo=None)
 
     log_dir = args.log_dir
     try:

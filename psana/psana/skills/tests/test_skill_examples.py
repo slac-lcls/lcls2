@@ -212,6 +212,47 @@ class DaqLogsListTests(unittest.TestCase):
         self.assertEqual(rows[0]["error_count"], 1)  # RTPRIO excluded
         self.assertIn("real failure", rows[0]["first_error"])
 
+    def test_tz_aware_and_naive_same_instant_agree(self):
+        # Session timestamps (prefix + mtime) are local wall-clock by
+        # construction -- see the comment at the top of cmd_list(). A
+        # tz-aware spelling of the exact same instant must therefore
+        # select the identical session set as the naive-local spelling;
+        # converting to UTC instead of local silently shifted every
+        # comparison by the local offset (verified live against real mfx
+        # data before this fix: the same window returned 10 sessions as
+        # naive-local and only 1 as an explicit UTC offset).
+        #
+        # The window below is deliberately TIGHT (1h, centered on the
+        # session) rather than a full day: a day-wide window tolerates a
+        # multi-hour offset shift without losing the session, which is
+        # exactly how this bug first slipped through -- a wide window
+        # masks it, a tight one around the session boundary doesn't.
+        self.make_session("17_10:00:00", mtime=datetime(2026, 9, 17, 10, 5, 0))
+        naive_start = datetime(2026, 9, 17, 9, 30, 0)
+        naive_end = datetime(2026, 9, 17, 10, 30, 0)
+
+        # Derive this machine's actual local UTC offset at that instant
+        # (via the stdlib, not hardcoded) so this test is not tied to a
+        # specific timezone and still exercises a real, non-zero offset
+        # wherever it runs.
+        local_tz = naive_start.astimezone().tzinfo
+        aware_start = naive_start.replace(tzinfo=local_tz)
+        aware_end = naive_end.replace(tzinfo=local_tz)
+
+        naive_result = self.run_script(
+            "--start", naive_start.isoformat(), "--end", naive_end.isoformat(), "--json"
+        )
+        aware_result = self.run_script(
+            "--start", aware_start.isoformat(), "--end", aware_end.isoformat(), "--json"
+        )
+        self.assertEqual(naive_result.returncode, 0, naive_result.stderr)
+        self.assertEqual(aware_result.returncode, 0, aware_result.stderr)
+
+        naive_prefixes = {r["prefix"] for r in json.loads(naive_result.stdout)}
+        aware_prefixes = {r["prefix"] for r in json.loads(aware_result.stdout)}
+        self.assertEqual(naive_prefixes, aware_prefixes)
+        self.assertIn("17_10:00:00", naive_prefixes)
+
 
 # ---------------------------------------------------------------------------
 # psana-configdb — get_history curl example
