@@ -23,3 +23,5 @@ from .jungfrauemu           import *
 #from .epixhremu             import *
 from .generic               import *
 from .epixuhr3x2            import *
+from .drpalgos_roibin       import *
+
