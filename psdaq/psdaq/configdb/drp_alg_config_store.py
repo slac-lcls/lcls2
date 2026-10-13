@@ -224,8 +224,14 @@ def main():
     parser: argparse.ArgumentParser = argparse.ArgumentParser(
         description="DRP Algorithm Parameter Manager CLI"
     )
-    parser.add_argument("--url", default="http://localhost:5000", help="ConfigDB URL")
-    parser.add_argument("--root", default="ws", help="ConfigDB root collection name")
+    parser.add_argument(
+        "--url",
+        default="https://pswww.slac.stanford.edu/ws-auth/configdb/ws",
+        help="ConfigDB URL",
+    )
+    parser.add_argument(
+        "--root", default="configDB", help="ConfigDB root collection name"
+    )
     parser.add_argument("--user", default="tstopr", help="Username")
     parser.add_argument("--password", default="", help="Password")
 
