@@ -10,6 +10,7 @@
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/EbDgram.hh"
+#include "psdaq/service/fast_monotonic_clock.hh"
 
 #ifdef NDEBUG
 #undef NDEBUG
@@ -19,6 +20,7 @@
 #include <string>
 #include <bitset>
 #include <chrono>
+#include <thread>
 
 #if !defined(_GNU_SOURCE)
 #  define _GNU_SOURCE
@@ -33,7 +35,6 @@ using namespace Pds;
 using namespace Pds::Eb;
 using logging  = psalg::SysLog;
 using ms_t     = std::chrono::milliseconds;
-
 
 struct Tbuf
 {
@@ -59,6 +60,38 @@ static void _tbDump()
              tb - _tbStart, tb->kind, tb->results, tb->idx, tb->pulseId, tb->src);
     if (++tb == _tbEnd)  tb = _tbStart;
   }
+}
+
+// The Results region as it stands right now, around the slot the stuck Input
+// needs.  Says what the memory holds, which is what distinguishes a Result
+// that arrived and was mishandled from one that never landed: the awaited
+// pulse ID means it was delivered, an older or unrelated one means it was not.
+void EbCtrbInBase::_slotDump()
+{
+  if (!_region || !_inputs)  return;
+
+  auto iPid = _inputs->pulseId();
+  fprintf(stderr, "*** Results region around the stuck Input pid %014lx:\n", iPid);
+
+  // Walk every slot, reporting those whose pid brackets the stuck Input, so
+  // the slot it should occupy is shown whether or not it holds the right pid.
+  unsigned shown = 0;
+  for (unsigned i = 0; i < _numBuffers; ++i)
+  {
+    auto r = (const ResultDgram*)((char*)_region + size_t(i) * _maxResultSize);
+    auto d = int64_t(r->pulseId() - iPid) / 68;    // Events from the stuck one
+    if ((d < -8) || (d > 8))  continue;            // Only the neighbourhood
+    fprintf(stderr, "***   idx %4u, pid %014lx, %+4ld events, RoG %02hx, "
+            "%-10s%s%s\n",
+            i, r->pulseId(), d, r->readoutGroups(),
+            TransitionId::name(r->service()),
+            r->isEOL() ? " EOL" : "",
+            r->pulseId() == iPid ? "   <-- the one awaited" : "");
+    ++shown;
+  }
+  if (!shown)
+    fprintf(stderr, "***   no slot holds a pid within 8 events of the stuck "
+            "Input: the region has moved entirely past it\n");
 }
 
 static void dumpBatch(const TebContributor& ctrb,
@@ -93,6 +126,9 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _bypassCount  (0),
   _noProgCount  (0),
   _prvNPCnt     (0),
+  _newestRcvd   {},
+  _rcvdFrom     {},
+  _orphanCount  (0),
   _prms         (prms),
   _regSize      (0),
   _region       (nullptr)
@@ -114,6 +150,11 @@ int EbCtrbInBase::resetCounters()
 
   _noProgCount = 0;
   _prvNPCnt    = 0;
+  _orphanCount = 0;
+
+  // Not the per-TEB state: a batch received before an Enable is still evidence
+  // of what that TEB has delivered, and zeroing it would disarm the trap until
+  // every TEB had been heard from again.
 
   return 0;
 }
@@ -168,6 +209,7 @@ int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
   exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
   exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
+  exporter->add("TCtbI_OrphCt", labels, MetricType::Counter, [&](){ return _orphanCount;         });
 
   return 0;
 }
@@ -382,6 +424,13 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     print = true;
   }
 
+  // The batch head's pulse ID, recorded before _defer's RoG walk can advance
+  // past it.  The walk's result is not usable here: a Result matching our
+  // Input can sit behind a head that isn't ours, so comparing against the
+  // walked-to entry would call an Input lost while its Result is still coming.
+  _newestRcvd[src] = bdg->pulseId();
+  ++_rcvdFrom[src];
+
   if (print || (_prms.verbose >= VL_BATCH)) [[unlikely]]
   {
     auto     pid     = bdg->pulseId();
@@ -400,6 +449,88 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
   ++_batchCount;
 
   return 0;
+}
+
+// Can the Input at iPid still be paired?  Events reach the TEB in pulse ID
+// order and it emits Results in that order, and the providers in use all
+// guarantee FI_ORDER_RMA_WAW, so writes into the Results region arrive in the
+// order they were posted.  A TEB that has delivered a batch newer than iPid
+// has therefore delivered everything it ever will for iPid.
+//
+// This holds whatever the readout groups involved: _deliver pairs purely on
+// pulse ID (RoGs are consulted only to decide whether an unmatched Result is
+// worth reporting), and a batch can carry entries for groups we don't share.
+//
+// Every TEB must be heard from, since one lagging TEB's Result is legitimately
+// still in flight.  A TEB that has delivered nothing at all is not yet
+// evidence of anything.
+bool EbCtrbInBase::_orphaned(uint64_t iPid) const
+{
+  bool heard = false;
+
+  for (unsigned src = 0; src < _links.size(); ++src)
+  {
+    if (!_rcvdFrom[src])    return false; // Nothing yet from this TEB
+    if (_newestRcvd[src] <= iPid)  return false; // Its Result may still come
+    heard = true;
+  }
+  return heard;
+}
+
+void EbCtrbInBase::_orphanDump(TebContributor& ctrb, const EbDgram* inp)
+{
+  auto iPid = inp->pulseId();
+
+  fprintf(stderr, "*** ORPHANED INPUT: no Result will ever arrive for pid "
+          "%014lx (%s, RoG %02hx, pebble idx %u)\n",
+          iPid, TransitionId::name(inp->service()),
+          inp->readoutGroups(), ctrb.index(inp));
+  fprintf(stderr, "*** my RoG %02hx, contractor %02hx, batch %lu, "
+          "deferred %zu, noProgCount %lu\n",
+          _prms.readoutGroup, _prms.contractor, _batchCount,
+          _deferred.size(), _noProgCount);
+
+  // Per TEB, so a lagging TEB is distinguishable from a lost write: a TEB that
+  // is past the Input has delivered everything it ever will for it.
+  for (unsigned src = 0; src < _links.size(); ++src)
+  {
+    auto newest = _newestRcvd[src];
+    fprintf(stderr, "***   TEB %u: batches %lu, newest head pid %014lx, "
+            "%+ld ticks past the Input\n",
+            src, _rcvdFrom[src], newest, (long)(newest - iPid));
+  }
+
+  if (!_deferred.empty())
+  {
+    auto front = _deferred.front();
+    fprintf(stderr, "*** oldest deferred Result pid %014lx RoG %02hx, "
+            "%+ld ticks past the Input\n",
+            front->pulseId(), front->readoutGroups(),
+            (long)(front->pulseId() - iPid));
+  }
+
+  // Our own Tx accounting, per TEB.  "CQ errors" is the number that matters: a
+  // posted-vs-completed deficit is expected, the Tx CQ being bound with
+  // FI_SELECTIVE_COMPLETION, so a successful write volunteers no completion.
+  // A nonzero error count here means the loss was outbound and ours.
+  for (auto link : ctrb.links())
+  {
+    if (!link)  continue;
+    fprintf(stderr, "***   Inputs to TEB %u: posted %lu, completed %lu, "
+            "CQ errors %lu, tmo %lu\n", link->id(), link->postCnt(),
+            link->compCnt(), link->errCnt(), link->tmoCnt());
+  }
+
+  // With the counts above clean, which direction lost the message is settled by
+  // the TEB's log: an Input that never reached the TEB is fixed up there and
+  // draws no Result by design (teb.cc posts to _receivers(rogs) & ~remaining(),
+  // masking off a contributor still outstanding), so a "missing src" line for
+  // this pulse ID means the loss was outbound.  Silence there means inbound.
+  //
+  // The slot the Result belonged in says where an inbound loss happened:
+  // holding iPid means the write landed, while an older or unrelated pulse ID
+  // means it never arrived.
+  _slotDump();
 }
 
 void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
@@ -452,6 +583,24 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
     // arrives (according to the Input), it will be handled in the proper order
     if ((results == res) && (inputs == inp))
     {
+      // Report the onset once, naming both sides.  A stall runs until the TEB
+      // laps the Results region and reuses a slot we still hold -- up to
+      // _numBuffers events -- so without this the log shows only the
+      // consequence.
+      if (_noProgCount == _prvNPCnt)
+      {
+        unsigned rIdx = ((char*)res - (char*)_region) / _maxResultSize;
+        fprintf(stderr, "*** No progress begins: res idx %u pid %014lx %s RoG %02hx%s, "
+                "inp pid %014lx %s RoG %02hx, input is %s, my RoG %02hx, defSz %zu\n",
+                rIdx, res->pulseId(), TransitionId::name(res->service()),
+                res->readoutGroups(),
+                (res->readoutGroups() & _prms.readoutGroup) ? "" : " NOMATCH",
+                inp->pulseId(), TransitionId::name(inp->service()),
+                inp->readoutGroups(),
+                inp->pulseId() == res->pulseId() ? "EQUAL" :
+                inp->pulseId() <  res->pulseId() ? "OLDER" : "NEWER",
+                _prms.readoutGroup, _deferred.size());
+      }
       //if (_noProgCount - _prvNPCnt < 5)
       //{
       //  unsigned rIdx = (reinterpret_cast<const char*>(res) -
@@ -471,6 +620,20 @@ void EbCtrbInBase::_matchUp(TebContributor&    ctrb,
       //    dumpBatch(ctrb, batch, _maxResultSize, index);
       //  }
       //}
+      // The trap: no progress is only legitimate while a Result for this Input
+      // might still arrive.  Once every TEB has delivered a batch newer than
+      // it, the Result is gone and nothing downstream can recover.  This fires
+      // at the first loss, rather than up to _numBuffers events later when the
+      // region laps and the duplicate-pid abort notices.
+      if (_orphaned(inp->pulseId())) [[unlikely]]
+      {
+        ++_orphanCount;
+        logging::critical("%s:\n  No Result will ever arrive for Input %014lx",
+                          __PRETTY_FUNCTION__, inp->pulseId());
+        _orphanDump(ctrb, inp);
+        abort();
+      }
+
       ++_noProgCount;
       break;                              // Exit loop on no progress
     }
@@ -493,7 +656,6 @@ void EbCtrbInBase::_defer(const ResultDgram* results)
     results = (const ResultDgram*)((const char*)results + _maxResultSize);
   }
 
-
   for (auto it = _deferred.begin(); it != _deferred.end(); ++it)
   {
     const auto& batch = *it;
@@ -503,7 +665,45 @@ void EbCtrbInBase::_defer(const ResultDgram* results)
                         __PRETTY_FUNCTION__, results->pulseId(), TransitionId::name(results->service()),
                         results->xtc.src.value(), batch->xtc.src.value());
       unsigned rIdx = ((char*)results - (char*)_region) / _maxResultSize;
-      fprintf(stderr, "*** results %p, idx %u\n", results, rIdx);
+      unsigned bIdx = ((char*)batch   - (char*)_region) / _maxResultSize;
+      fprintf(stderr, "*** results %p, idx %u, RoG %02hx, ctl %02x%s\n", results, rIdx,
+              results->readoutGroups(), results->control(),
+              results->isEOL() ? " EOL" : "");
+      fprintf(stderr, "*** batch   %p, idx %u, RoG %02hx, ctl %02x%s\n", batch, bIdx,
+              batch->readoutGroups(), batch->control(),
+              batch->isEOL() ? " EOL" : "");
+      fprintf(stderr, "*** noProgCount %lu, deferred %zu entries of %u buffers, "
+              "my RoG %02hx, contractor %02hx\n",
+              _noProgCount, _deferred.size(), _numBuffers,
+              _prms.readoutGroup, _prms.contractor);
+      _slotDump();
+      // The Input this DRP is stuck on, and the gap to the oldest Result it
+      // holds: the Results in between are the ones that never arrived.
+      if (_inputs && !_deferred.empty())
+      {
+        auto iPid = _inputs->pulseId();
+        auto rPid = _deferred.front()->pulseId();
+        fprintf(stderr, "*** stuck Input pid %014lx RoG %02hx; oldest deferred Result pid "
+                "%014lx RoG %02hx; gap %ld ticks\n",
+                iPid, _inputs->readoutGroups(),
+                rPid, _deferred.front()->readoutGroups(), (long)(rPid - iPid));
+      }
+      fprintf(stderr, "*** deferred list, re-read now (first and last 8):\n");
+      size_t n = 0, sz = _deferred.size();
+      for (const auto& b : _deferred)
+      {
+        if ((n < 8) || (n + 8 >= sz))
+        {
+          unsigned i = ((char*)b - (char*)_region) / _maxResultSize;
+          fprintf(stderr, "***   [%4zu] idx %4u, pid %014lx, RoG %02hx%s, ctl %02x%s, src %u\n",
+                  n, i, b->pulseId(), b->readoutGroups(),
+                  (b->readoutGroups() & _prms.readoutGroup) ? "" : " NOMATCH",
+                  b->control(), b->isEOL() ? " EOL" : "",
+                  b->xtc.src.value());
+        }
+        else if (n == 8)  fprintf(stderr, "***   ...\n");
+        ++n;
+      }
       _tbDump();
       abort();
     }
