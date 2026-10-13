@@ -908,20 +908,30 @@ diverge silently -- that has happened once already.
 
 ## Performance and structure
 
-- **`maxTrSize`: the value is settled, the diagnosis is not.**  The sizing was fixed in
-  2026-09 -- `drpGpu/PGPDetectorApp.cc:858` sets 2 MiB against the CPU `drp`'s 8 MiB
-  (`drp/drp.cc:170`) -- and an ePixUHR3x2 Configure fits.  **What remains is the error
-  message**, and it is small.
+- **`maxTrSize`: the buffer-sizing problem IS fixed.  What is left is only the error
+  message.**  Two separate things wore the same name, which is why this item has read
+  confusingly:
 
-  `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON into a *temporary*
-  buffer sized `maxTrSize`, then copies it into a transition Xtc bounded by the same
-  number.  So a value that is too small **fails at whatever it is raised to** rather than
-  by a fixed shortfall: the two 2026-09-25 failures read as 392-byte near misses at 256 kiB
-  and at 512 kiB, while the real config was 902026 bytes.  The check at `:264` reports the
-  extent it reached, which is the number that misleads.
+  1. **`maxTrSize` governing every reduce buffer -- FIXED.**  `ReducerAlgo::payloadSize()`
+     used to be silently overridden by a `totalSize < maxTrSize` floor, so a
+     Configure-shaped hole was carved out of **all `nbuffers()`** to serve something that
+     happens once per run.  Transitions now have their own allocation --
+     `createTransitionBuffers(m_para.maxTrSize, pebble.nTrBuffers())`, `Reducer.cu:107`,
+     separate from `createReduceBuffers(payloadSize, ...)` at `:101` -- and the floor is
+     gone (no `totalSize` comparison remains anywhere in `drpGpu`).  This is the one worth
+     remembering as done.
+  2. **The error message when `maxTrSize` is too small -- STILL OPEN, and it is only a
+     message.**  `BEBDetector::_addJson` (`drp/BEBDetector.cc:233`) builds the JSON into a
+     *temporary* buffer sized `maxTrSize`, then copies it into a transition Xtc bounded by
+     the same number, and the check at `:264` reports **the extent it reached** rather than
+     what was needed.  So raising the value moves the failure instead of fixing it: the two
+     2026-09-25 failures read as 392-byte near misses at 256 kiB *and* at 512 kiB, while
+     the real config was 902026 B.  The value itself is settled -- 2 MiB in the GPU DRP
+     (`drpGpu/PGPDetectorApp.cc:858`), 8 MiB in the CPU `drp` (`drp/drp.cc:170`).
 
-  Worth a Configure-time check that names the **real** requirement.  Shared with every CPU
-  DRP, so it is one of the small CPU-side diagnosis wins.
+  So the remaining work is a Configure-time check that names the real requirement.  It is
+  in the CPU `drp` and shared with every CPU DRP, which is what makes it a cheap CPU-side
+  diagnosis win -- not a sizing bug.
 
 - **Nothing coordinates the green context split with the kernels' launch geometry**: three
   hard-coded SM tables that disagree, at `PGPDetector.cc:615` (the 6/40/remainder split),
