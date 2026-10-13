@@ -23,6 +23,7 @@ install_subdir(
     'utils/CMakeLists.txt',
     'utils/ctest_utils.hh',
     'utils/DirFileIterator.hh',
+    'utils/dgramCreate.pyx',
     'utils/Logger.hh',
     'utils/MacTimeFix.hh',
     'utils/meson.build',

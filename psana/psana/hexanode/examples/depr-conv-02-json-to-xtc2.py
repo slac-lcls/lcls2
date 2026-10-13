@@ -6,7 +6,7 @@
 #import numpy as np
 #import dgramCreate as dc
 import numpy as np
-import dgramCreate as dc
+import psalg.utils.dgramCreate as dc
 import os, pickle, json, base64
 
 from psana.dgrammanager import DgramManager
