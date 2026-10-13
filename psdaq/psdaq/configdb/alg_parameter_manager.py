@@ -2,147 +2,41 @@
 Interface for the configDB to faciliate DRP algorithm configuration.
 
 Classes:
-    AlgParamManager: Manager class to talk with the configDB service for parameter
+    DrpAlgParamManager: Manager class to talk with the configDB service for parameter
         configuration editing/management.
 """
 
 import logging
 import re
-from typing import Any, Dict, List, Literal, Optional, Union, overload
+from typing import (
+    Any,
+    Dict,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Union,
+    overload,
+)
 
 import requests
 from requests.auth import HTTPBasicAuth
 
 from psdaq.configdb.alg_parameter_validator import (
-    normalize_developer_schema,
     convert_params_to_xtc2_format,
+    normalize_developer_schema,
 )
+from psdaq.configdb.configdb_endpoints import *  # All endpoints, and normalize_version
+
+# from psdaq.configdb.configdb_testing import _FileStub, _STUB_ENV # Local file tests
 
 logger: logging.Logger = logging.getLogger(__name__)
 
 
-def normalize_version(version: str) -> str:
-    """Normalize an algorithm version to MAJOR.MINOR.MICRO format.
+class DrpAlgConfigError(Exception):
+    """Raised when a drp_algN reference could not be resolved"""
 
-    Args:
-        version (str): The possibly un-normalized version (e.g. v1).
-
-    Returns:
-        normalized_version (str): The normalized version (eg. 1.0.0).
-    """
-
-    m: Optional[re.Match] = re.fullmatch(
-        r"[vV]?(\d+)(?:\.(\d+))?(?:\.(\d+))?", str(version)
-    )
-    if m is None:
-        raise ValueError(
-            f"Invalid algorithm version {version!r}; expected [v]MAJOR[.MINOR[.MICRO]]"
-        )
-    return ".".join(g or "0" for g in m.groups())
-
-
-class Endpoint(str): ...
-
-
-class GetAlgorithmsEndpoint(Endpoint):
-    """Endpoint to get a list of algorithm name/version documents."""
-
-    def __new__(cls):
-        return super().__new__(cls, "/get_algorithms/")
-
-
-class GetAlgorithmSchemaEndpoint(Endpoint):
-    """Endpoint to get the parameter validation schema for a specific algorithm version."""
-
-    def __new__(cls, name: str, version: str):
-        return super().__new__(
-            cls, f"/get_algorithm/{name}/{normalize_version(version)}/schema/"
-        )
-
-
-class GetAlgorithmPresetsEndpoint(Endpoint):
-    """Endpoint to get the list of named preset parameter sets for an algorithm version."""
-
-    def __new__(cls, name: str, version: str):
-        return super().__new__(
-            cls, f"/get_algorithm/{name}/{normalize_version(version)}/presets/"
-        )
-
-
-class GetAlgorithmParamsEndpoint(Endpoint):
-    """Endpoint to get a specific parameter set, or the latest parameter set."""
-
-    def __new__(cls, name: str, version: str):
-        return super().__new__(
-            cls, f"/get_algorithm/{name}/{normalize_version(version)}/params/"
-        )
-
-
-class AddAlgorithmEndpoint(Endpoint):
-    """Endpoint to register a new algorithm, or to add a new version of an existing one."""
-
-    def __new__(cls, name: str, version: str, hutch: str):
-        return super().__new__(
-            cls, f"/new_algorithm/{hutch}/{name}/{normalize_version(version)}/"
-        )
-
-
-class AddAlgorithmParamsEndpoint(Endpoint):
-    """Endpoint to add a new parameter set for a version of an algorithm."""
-
-    def __new__(cls, name: str, version: str, hutch: str):
-        return super().__new__(
-            cls, f"/add_algorithm_params/{hutch}/{name}/{normalize_version(version)}/"
-        )
-
-
-class UpdateAlgorithmMetadataEndpoint(Endpoint):
-    """Endpoint to update metadata (e.g. GUI plugins) associated to an algorithm."""
-
-    def __new__(cls, name: str, version: str, hutch: str):
-        return super().__new__(
-            cls,
-            f"/update_algorithm_metadata/{hutch}/{name}/{normalize_version(version)}/",
-        )
-
-
-class RemoveAlgorithmVersionEndpoint(Endpoint):
-    """Endpoint to remove an algorihtm version.
-
-    If version is specified as `all` all algorithm versions will be dropped.
-    """
-
-    def __new__(cls, name: str, version: str, hutch: str):
-        safe_ver: str = version if version == "all" else normalize_version(version)
-        return super().__new__(cls, f"/remove_algorithm/{hutch}/{name}/{safe_ver}/")
-
-
-class AddHutchEndpoint(Endpoint):
-    """Create a new hutch."""
-
-    def __new__(cls, hutch: str = "tst"):
-        return super().__new__(cls, f"/create_collections/{hutch}/")
-
-
-class AddAliasEndpoint(Endpoint):
-    """Create a new alias in the hutch if it doesn't exist."""
-
-    def __new__(cls, hutch: str = "tst", alias: str = "BEAM"):
-        return super().__new__(cls, f"/add_alias/{hutch}/{alias}/")
-
-
-class AddDetectorEndpoint(Endpoint):
-    """Endpoint to add a new detector if it doesn't exist."""
-
-    def __new__(cls, hutch: str = "tst", dettype: str = "device"):
-        return super().__new__(cls, f"/add_device_config/{hutch}/{dettype}/")
-
-
-class ModifyDetectorEndpoint(Endpoint):
-    """Endpoint to update the configuration for a detector."""
-
-    def __new__(cls, hutch: str = "tst", alias: str = "BEAM"):
-        return super().__new__(cls, f"/modify_device/{hutch}/{alias}/")
+    ...
 
 
 class DrpAlgParamManager:
@@ -153,7 +47,7 @@ class DrpAlgParamManager:
         user: str,
         pw: str,
         timeout: int = 10,
-        hutch: Optional[str] = None, # Only used for authentication
+        hutch: Optional[str] = None,  # Only used for authentication
     ):
         self.pswww_url: str = db_url
         self.configroot: str = configdb_root
@@ -163,6 +57,11 @@ class DrpAlgParamManager:
         self.hutch: str = hutch or (
             self.user[:3] if self.user.endswith("opr") else "tst"
         )
+
+        # stub_path: Optional[str] = os.getenv(_STUB_ENV)
+        # self._stub: Optional[_FileStub] = _FileStub(stub_path) if stub_path else None
+        # if self._stub:
+        #     logger.warning("DrpAlgParamManager: Using a file stub instead of database!")
 
     @overload
     def _request(
@@ -190,6 +89,14 @@ class DrpAlgParamManager:
         self,
         method: Literal["GET"],
         endpoint: GetAlgorithmParamsEndpoint,
+        json_data: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]: ...
+
+    @overload
+    def _request(
+        self,
+        method: Literal["GET"],
+        endpoint: GetAlgorithmMetadataEndpoint,
         json_data: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]: ...
 
@@ -257,6 +164,17 @@ class DrpAlgParamManager:
         endpoint: Endpoint,
         json_data: Optional[Dict[str, Any]] = None,
     ) -> Union[Dict[str, Any], List[Any], int, str, None]:
+        # For testing with stub without database...
+        # _passthrough: Tuple[Type[Endpoint], ...] = (
+        #     AddHutchEndpoint,
+        #     AddAliasEndpoint,
+        #     AddDetectorEndpoint,
+        #     ModifyDetectorEndpoint,
+        # )
+        # if self._stub is not None and not isinstance(endpoint, _passthrough):
+        #     return self._stub.request(method, endpoint, json_data)
+
+        # Real routine...
         url: str = f"{self.pswww_url}/{self.configroot}/{endpoint.lstrip('/')}"
         auth: Optional[HTTPBasicAuth] = (
             HTTPBasicAuth(self.user, self.password) if self.user else None
@@ -338,6 +256,20 @@ class DrpAlgParamManager:
         return self._request(
             "GET", GetAlgorithmParamsEndpoint(alg_name, version), json_data=payload
         )
+
+    def get_algorithm_metadata(self, alg_name: str, version: str) -> Dict[str, Any]:
+        """Retrieve the metadata for a version of an algorithm.
+
+        Args:
+            alg_name (str): The name of the DRP algorithm.
+
+            version (str): The version of the DRP algorithm.
+
+        Returns:
+            metadata (Dict[str, Any]): The algorithm's schema document, i.e.
+                schema_version, gui_plugin (if any), and json_schema.
+        """
+        return self._request("GET", GetAlgorithmMetadataEndpoint(alg_name, version))
 
     @overload
     def register_new_algorithm(
@@ -581,6 +513,22 @@ class DrpAlgParamManager:
                     )
                 )
 
+    @classmethod
+    def from_configdb_client(
+        cls, confdb_client: Any, hutch: Optional[str] = None
+    ) -> "DrpAlgParamManager":
+        url: str
+        root: str
+        url, root = confdb_client.prefix.rstrip("/").rsplit("/", 1)
+        return cls(
+            db_url=url,
+            configdb_root=root,
+            user=confdb_client.user,
+            pw=confdb_client.password,
+            timeout=confdb_client.timeout,
+            hutch=hutch,
+        )
+
     def attach_alg_to_detector(
         self,
         hutch: str,
@@ -655,6 +603,7 @@ class DrpAlgParamManager:
             logger.info(
                 "Detector configuration already points to alg param set. Skipping update."
             )
+            return None
 
         detector_doc[target_key] = new_alg_ref
 
@@ -665,6 +614,45 @@ class DrpAlgParamManager:
         )
 
         return new_key
+
+    def detach_alg_from_detector(
+        self,
+        hutch: str,
+        alias: str,
+        detector_doc: Dict[str, Any],
+        alg_index: int = 0,
+        alg_key: Optional[str] = None,
+    ) -> Optional[int]:
+        """Remove a drp_algN reference from a detector config (i.e. disable it).
+
+        Args:
+            hutch (str): The hutch the detector is in.
+
+            alias (str): The alias for the configuration type (e.g. BEAM).
+
+            detector_doc (Dict[str, Any]): The current detector configuration.
+
+            alg_index (int): The sequential order for the DRP algorithm (starting from 0).
+
+            alg_key (Optional[str]): Instead of providing an index, can provide the full
+                key matching the pattern: "^drp_alg[0-9]+$".
+
+        Returns:
+            new_key (Optional[int]): The key for the new, updated, detector document
+                if one was inserted.
+        """
+        target_key: str = alg_key if alg_key is not None else f"drp_alg{alg_index}"
+        if target_key not in detector_doc:
+            logger.info(
+                f"{target_key} not present in detector configuration. Skipping update."
+            )
+            return None
+        del detector_doc[target_key]
+        return self._request(
+            "GET",
+            ModifyDetectorEndpoint(hutch=hutch, alias=alias),
+            json_data=detector_doc,
+        )
 
     @staticmethod
     def inline_drp_alg_config(
@@ -714,85 +702,73 @@ class DrpAlgParamManager:
         # Do not need to recurse - `drp_alg` (should be) is a top-level key
         updated_config: Dict[str, Any] = dict(det_config)
         top_types: Dict[str, Any] = updated_config.get(":types:", {})
+        _REF_KEYS: Set[str] = {"alg_name", "version", "params_id"}
         for key, value in det_config.items():
-            if isinstance(key, str) and (re.match(r"^drp_alg[0-9]+$", key)):
-                if not isinstance(value, dict) or "params_id" not in value:
-                    logger.warning(
-                        f"DRP Algorithm Reference {key} is not a valid reference! Skipping..."
-                    )
-                    continue
+            if not (isinstance(key, str) and re.match(r"^drp_alg[0-9]+$", key)):
+                continue
 
-                alg_ref: Dict[str, str] = value
-                alg_name: str = alg_ref["alg_name"]
-                version: str = alg_ref["version"]
-                params_id: str = alg_ref["params_id"]
+            if not isinstance(value, dict) or not _REF_KEYS <= value.keys():
+                raise DrpAlgConfigError(
+                    f"{key} is not a valid algorithm reference: {value!r}"
+                )
 
-                try:
-                    schema: Dict[str, Any] = alg_man.get_algorithm_schema(
-                        alg_name, version
-                    )
-                except Exception as err:
-                    logger.error(
-                        f"Unable to retrieve schema for {key}! Need schema for soname! "
-                        f"(alg: {alg_name}, ver: {version}, params_id: {params_id})!"
-                    )
-                    continue
+            alg_ref: Dict[str, str] = value
+            alg_name: str = alg_ref["alg_name"]
+            version: str = alg_ref["version"]
+            params_id: str = alg_ref["params_id"]
+            ctx: str = f"{key} (alg={alg_name}, ver={version}, params_id={params_id})"
 
-                try:
-                    params_doc: Dict[str, Any] = alg_man.get_algorithm_parameters(
-                        alg_name=alg_name,
-                        version=version,
-                        params_id=params_id,
-                    )
+            try:
+                schema: Dict[str, Any] = alg_man.get_algorithm_schema(alg_name, version)
+                params_doc: Dict[str, Any] = alg_man.get_algorithm_parameters(
+                    alg_name, version, params_id
+                )
+            except Exception as err:
+                raise DrpAlgConfigError(
+                    f"Unable to retrieve {ctx} from configdb: {err}"
+                ) from err
 
-                    if not params_doc or "parameters" not in params_doc:
-                        logger.error(
-                            f"Malformed parameter set for {key}! "
-                            f"(alg: {alg_name}, ver: {version}, params_id: {params_id})! "
-                            "Check database interface code!"
-                        )
-                        continue
+            if not params_doc or not {"parameters", "soname"} <= params_doc.keys():
+                raise DrpAlgConfigError(
+                    f"Malformed parameter document for {ctx}; keys={sorted(params_doc or {})}"
+                )
 
-                    soname: str = params_doc["soname"]
-                    raw_params: Dict[str, Any] = params_doc["parameters"]
+            soname: str = params_doc["soname"]
+            raw_params: Dict[str, Any] = params_doc["parameters"]
+            # NOTE: Assume the uint64/int64 is happening from service-side.
+            #       If this ever changes MUST do update here!!
+            # params_unsigned: Dict[str, Any] = int64_to_uint64(raw_params)
+            try:
+                typed_params = convert_params_to_xtc2_format(
+                    params=raw_params, json_schema=schema, alg_name=alg_name
+                )
+            except Exception as err:
+                raise DrpAlgConfigError(
+                    f"Cannot convert parameters for {ctx} to XTC2: {err}"
+                ) from err
 
-                    # NOTE: Assume the uint64/int64 is happening from service-side.
-                    #       If this ever changes MUST do update here!!
-                    # params_unsigned: Dict[str, Any] = int64_to_uint64(raw_params)
+            param_types: Dict[str, Any] = typed_params.pop(":types:")
+            enum_defs: Dict[str, Any] = param_types.pop(":enum:", {})
 
-                    typed_params: Dict[str, Any] = convert_params_to_xtc2_format(
-                        params=raw_params, json_schema=schema, alg_name=alg_name
-                    )
-
-                    # Separate the parameter types; enum definitions merge at the top level
-                    param_types: Dict[str, Any] = typed_params.pop(":types:")
-                    enum_defs: Dict[str, Any] = param_types.pop(":enum:", {})
-
-                    # Add the shared library name, and type it
-                    # Include the actual algorithm name and fully normalized version
-                    # as well, to make look-up easier on the C++ side
-                    # Parameters are nested under the parameters key, so no names are
-                    # reserved - algorithms can name their parameters as they wish
-                    updated_config[key] = {
-                        "name": alg_name,
-                        "version": normalize_version(version),
-                        "soname": soname,
-                        "parameters": typed_params,
-                    }
-                    top_types[key] = {
-                        "name": "CHARSTR",
-                        "version": "CHARSTR",
-                        "soname": "CHARSTR",
-                        "parameters": param_types,
-                    }
-                    if enum_defs:
-                        top_types.setdefault(":enum:", {}).update(enum_defs)
-
-                except Exception as err:
-                    logger.error(
-                        f"Unknown failured occurred during parameter inlining! {err}"
-                    )
-                    continue
+            # Add the shared library name, and type it
+            # Include the actual algorithm name and fully normalized version
+            # as well, to make look-up easier on the C++ side
+            # Parameters are nested under the parameters key, so no names are
+            # reserved - algorithms can name their parameters as they wish
+            updated_config[key] = {
+                "name": alg_name,
+                "version": normalize_version(version),
+                "soname": soname,
+                "parameters": typed_params,
+            }
+            top_types[key] = {
+                "name": "CHARSTR",
+                "version": "CHARSTR",
+                "soname": "CHARSTR",
+                "parameters": param_types,
+            }
+            if enum_defs:
+                top_types.setdefault(":enum:", {}).update(enum_defs)
 
         updated_config[":types:"] = top_types
 
