@@ -1216,6 +1216,9 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  // Report an uncaught exception from any thread, not just its type name
+  initExceptionReporting(prms.alias);
+
   // Set up signal handler
   initShutdownSignals(prms.alias, [](){ lRunning = 0; });
 

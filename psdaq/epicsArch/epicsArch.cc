@@ -784,6 +784,9 @@ int main(int argc, char* argv[])
             return 1;
         }
 
+        // Report an uncaught exception from any thread, not just its type name
+        initExceptionReporting(para.alias);
+
         // Set up signal handler
         initShutdownSignals(para.alias, [](){ exit(0); });
 

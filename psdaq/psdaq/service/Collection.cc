@@ -12,6 +12,7 @@
 #include <sys/resource.h>
 #include <ctime>
 #include <csignal>
+#include <exception>
 #include <sys/stat.h>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
@@ -84,6 +85,40 @@ static void sigHandler(int sig)
     logging::critical("Aborting on 2nd signal");
   }
   exit(EXIT_FAILURE);
+}
+
+// An exception that escapes a thread's entry function reaches std::terminate, which
+// reports the mangled type and nothing else -- so a throw off the main thread says
+// "terminate called after throwing an instance of std::__cxx11::basic_string".
+// current_exception() is valid here, on whichever thread threw, so rethrowing it
+// recovers the message without a try/catch in every thread.
+static void terminateHandler()
+{
+  if (auto e = std::current_exception()) {
+    try                             { std::rethrow_exception(e); }
+    catch (const std::exception& x) { logging::critical("Uncaught exception: %s", x.what()); }
+    catch (const std::string& x)    { logging::critical("Uncaught exception: %s", x.c_str()); }
+    catch (char const* x)           { logging::critical("Uncaught exception: %s", x); }
+    catch (...)                     { logging::critical("Uncaught exception of unknown type"); }
+  }
+  else
+    logging::critical("terminate() called without an active exception");
+
+  // The throw site is otherwise unrecoverable, so dump the stack as a fault does.
+  if (!lAlias.empty()) {
+    std::string filePath(mkFilePath(lAlias + ".dump"));
+    dumpStack(filePath);
+    logging::critical("Logged StackTrace to %s", filePath.c_str());
+  }
+
+  abort();
+}
+
+void initExceptionReporting(const std::string& alias)
+{
+  if (lAlias.empty())  lAlias = alias;  // initShutdownSignals may own it already
+
+  std::set_terminate(terminateHandler);
 }
 
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)())

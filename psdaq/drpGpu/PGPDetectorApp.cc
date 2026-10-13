@@ -848,6 +848,9 @@ int main(int argc, char* argv[])
     // deployed copy loads its libraries and plugins from the tree it was built in
     _checkImage(para);
 
+    // Report an uncaught exception from any thread, not just its type name
+    initExceptionReporting(para.alias);
+
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });
 

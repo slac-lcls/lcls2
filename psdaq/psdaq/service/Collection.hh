@@ -93,4 +93,8 @@ nlohmann::json createAsyncWarnMsg(const std::string& alias, const std::string& w
 
 bool checkResourceLimits();
 
+// Report an exception that escapes any thread, rather than letting std::terminate
+// print only its mangled type.  Call once per process, as early as possible.
+void initExceptionReporting(const std::string& alias);
+
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)());
