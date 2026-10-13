@@ -121,8 +121,6 @@ def main():
                       noTiming=args.T, fidRate=1./args.F)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)
 
-    pvstats.registerLinkUpCallback(pvctrls.resetSequences)
-    
     pvxtpg = None
 
     # process PVA transactions
@@ -153,6 +151,8 @@ def main():
                     else:
                         print(f'No TPGMini')
 
+                    pvstats.registerLinkUpCallback(pvctrls.resetSequences)
+    
                     print(f'Resetting sequences')
                     pvctrls.resetSequences()
 
