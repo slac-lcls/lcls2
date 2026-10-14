@@ -247,6 +247,120 @@ static int setDictUnsigned(PyObject* dict, const char* key, unsigned long value)
     return setDictObject(dict, key, PyLong_FromUnsignedLong(value));
 }
 
+static int setDictSigned(PyObject* dict, const char* key, long value)
+{
+    return setDictObject(dict, key, PyLong_FromLong(value));
+}
+
+static PyObject* buildConfigNamesEntry(NameIndex& nameIndex)
+{
+    Names& names = nameIndex.names();
+    NamesId namesId = names.namesId();
+    Alg& detAlg = names.alg();
+    const uint32_t algVersion = detAlg.version();
+
+    PyObject* pyFields = PyList_New(0);
+    if (!pyFields) return NULL;
+
+    IndexMap& shapeMap = nameIndex.shapeMap();
+    for (unsigned i = 0; i < names.num(); i++) {
+        Name& name = names.get(i);
+        long shapeIndex = -1;
+        if (name.rank() > 0) {
+            auto it = shapeMap.find(name.name());
+            if (it != shapeMap.end()) shapeIndex = it->second;
+        }
+
+        PyObject* pyField = PyDict_New();
+        if (!pyField) {
+            Py_DECREF(pyFields);
+            return NULL;
+        }
+
+        int fail = 0;
+        fail |= setDictString(pyField, "name", name.name());
+        fail |= setDictUnsigned(pyField, "type", name.type());
+        fail |= setDictUnsigned(
+            pyField,
+            "element_size",
+            Name::get_element_size(name.type())
+        );
+        fail |= setDictUnsigned(pyField, "rank", name.rank());
+        fail |= setDictUnsigned(pyField, "field_index", i);
+        fail |= setDictSigned(pyField, "shape_index", shapeIndex);
+        if (fail || PyList_Append(pyFields, pyField)) {
+            Py_DECREF(pyField);
+            Py_DECREF(pyFields);
+            return NULL;
+        }
+        Py_DECREF(pyField);
+    }
+
+    PyObject* pyNames = PyDict_New();
+    if (!pyNames) {
+        Py_DECREF(pyFields);
+        return NULL;
+    }
+
+    int fail = 0;
+    fail |= setDictString(pyNames, "det_name", names.detName());
+    fail |= setDictString(pyNames, "det_type", names.detType());
+    fail |= setDictString(pyNames, "det_id", names.detId());
+    fail |= setDictString(pyNames, "alg_name", detAlg.name());
+    fail |= setDictObject(
+        pyNames,
+        "alg_version",
+        Py_BuildValue(
+            "(III)",
+            (algVersion >> 16) & 0xff,
+            (algVersion >> 8) & 0xff,
+            algVersion & 0xff
+        )
+    );
+    fail |= setDictUnsigned(pyNames, "segment", names.segment());
+    fail |= setDictUnsigned(pyNames, "names_id_value", (unsigned)namesId);
+    fail |= setDictUnsigned(pyNames, "node_id", namesId.nodeId());
+    fail |= setDictUnsigned(pyNames, "names_id", namesId.namesId());
+    fail |= setDictUnsigned(pyNames, "n_fields", names.num());
+    fail |= setDictObject(pyNames, "fields", pyFields);
+    if (fail) {
+        Py_DECREF(pyNames);
+        return NULL;
+    }
+
+    return pyNames;
+}
+
+static PyObject* config_names(PyDgramObject* self)
+{
+    if (!self->namesIter) {
+        PyErr_SetString(
+            PyExc_RuntimeError,
+            "config_names is only available on Configure dgrams"
+        );
+        return NULL;
+    }
+
+    PyObject* pyConfigNames = PyList_New(0);
+    if (!pyConfigNames) return NULL;
+
+    NamesLookup& namesLookup = self->namesIter->namesLookup();
+    for (auto& namesPair : namesLookup) {
+        NameIndex& nameIndex = namesPair.second;
+        if (!nameIndex.exists()) continue;
+
+        PyObject* pyNames = buildConfigNamesEntry(nameIndex);
+        if (!pyNames || PyList_Append(pyConfigNames, pyNames)) {
+            Py_XDECREF(pyNames);
+            Py_DECREF(pyConfigNames);
+            return NULL;
+        }
+        Py_DECREF(pyNames);
+    }
+
+    return pyConfigNames;
+}
+
 static unsigned fieldOffset(ShapesData& shapesdata, Names& names, unsigned fieldIndex)
 {
     unsigned offset = 0;
@@ -1284,6 +1398,7 @@ static PyMethodDef dgram_methods[] = {
     {"service", (PyCFunction)service, METH_NOARGS, "service"},
     {"timestamp", (PyCFunction)timestamp, METH_NOARGS, "timestamp"},
     {"get_dgram_ptr", (PyCFunction)get_dgram_ptr, METH_NOARGS, "dgram pointer"},
+    {"config_names", (PyCFunction)config_names, METH_NOARGS, "Configure Names metadata"},
     {"raw_descriptors", (PyCFunction)raw_descriptors, METH_VARARGS | METH_KEYWORDS, "L1Accept raw payload descriptors"},
     {NULL}  /* Sentinel */
 };
