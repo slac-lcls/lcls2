@@ -9,6 +9,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
@@ -322,18 +323,15 @@ int EbCtrbInBase::_linksConfigure(std::vector<EbLfSvrLink*>& links,
 
 void EbCtrbInBase::receiver(TebContributor& ctrb, std::atomic<bool>& running)
 {
-  int rc = pinThread(pthread_self(), _prms.core[1]);
-  if (rc && _prms.verbose)
-  {
-    logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
-                   __PRETTY_FUNCTION__, _prms.core[1]);
-  }
-
   logging::info("TEB Receiver thread is starting with process ID %lu", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "drp/TEBreceiver", 0, 0, 0) == -1) {
       perror("prctl");
   }
+  // A no-op unless the process enabled pinning, so the CPU DRP, TEB and MEB, which
+  // share this code, are unaffected.
+  Pds::pinHotThread("TEBreceiver");
 
+  int rc    = 0;
   int rcPrv = 0;
   while (true)
   {

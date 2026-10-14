@@ -5,6 +5,7 @@
 #include "PGPDetectorApp.hh"
 #include "rapidjson/document.h"
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/kwargs.hh"
 using logging = psalg::SysLog;
 using json = nlohmann::json;
@@ -132,6 +133,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "batching")          continue;  // DrpBase
         if (kwargs.first == "directIO")          continue;  // DrpBase
         if (kwargs.first == "pva_addr")          continue;  // DrpBase
+        if (kwargs.first == "pinThreads")        continue;
         if (para.detType == "opal" || para.detType == "piranha4") {
             if (kwargs.first == "simxtc")            continue;  // Opal
             if (kwargs.first == "simxtc2")           continue;  // Opal
@@ -165,6 +167,9 @@ int main(int argc, char* argv[])
 
     // Report an uncaught exception from any thread, not just its type name
     initExceptionReporting(para.alias);
+
+    // Before any thread that pins itself is created
+    Pds::setThreadPinning(para.kwargs, Pds::DRP_HOT_THREADS, para.nworkers);
 
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });

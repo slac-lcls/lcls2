@@ -82,7 +82,6 @@ namespace Pds {
       vecstr_t addrs;              // TEB addresses
       vecstr_t ports;              // TEB ports
       size_t   maxInputSize;       // Max size of contribution
-      int      core[2];            // Cores to pin threads to
       mutable
       unsigned verbose;            // Level of detail to print
       uint16_t readoutGroup;       // RO group receiving trigger result data
@@ -147,7 +146,6 @@ namespace Pds {
       string_t  prometheusDir;     // Run-time monitoring prometheus config file
       vecstr_t  drps;              // Unique DRP names from cnf id field
       kwmap_t   kwargs;            // Keyword arguments
-      int       core[2];           // Cores to pin threads to
       mutable
       unsigned  verbose;           // Level of detail to print
     };

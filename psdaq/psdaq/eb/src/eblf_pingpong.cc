@@ -4,6 +4,7 @@
 #include "EbLfLink.hh"
 #include "utilities.hh"
 
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/epicstools/PvMonitorBase.hh"
 
@@ -155,7 +156,7 @@ int main(int argc, char **argv)
 
   if (core != -1)
   {
-    rc = pinThread(pthread_self(), core);
+    rc = Pds::pinThread(pthread_self(), core);
     if (rc != 0)
     {
       fprintf(stderr, "%s:\n  Error from pinThread:\n  %s\n",

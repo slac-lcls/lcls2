@@ -57,8 +57,6 @@ using string_t = std::string;
 using ms_t     = std::chrono::milliseconds;
 using us_t     = std::chrono::microseconds;
 
-static const int CORE_0 = -1;           // devXXX: 18, devXX:  7, accXX:  9
-static const int CORE_1 = -1;           // devXXX: 19, devXX: 19, accXX: 21
 
 static volatile sig_atomic_t lRunning = 1;
 
@@ -424,16 +422,11 @@ void Teb::run()
 {
   logging::info("TEB thread started");
 
-  int rc = pinThread(pthread_self(), _prms.core[0]);
-  if (rc && _prms.verbose)
-  {
-    logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
-                   __PRETTY_FUNCTION__, _prms.core[0]);
-  }
   logging::info("TEB is starting with process ID %lu", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "Teb", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Teb");
 
   _batch.start = nullptr;
   _batch.end   = nullptr;
@@ -445,6 +438,7 @@ void Teb::run()
 
   resetCounters();
 
+  int rc    = 0;
   int rcPrv = 0;
   while (true)
   {
@@ -1343,7 +1337,6 @@ void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
   logging::info("");
   logging::info("Parameters of TEB ID %d (%s:%s):",                   prms.id,
                                                                       prms.ifAddr.c_str(), prms.ebPort.c_str());
-  logging::info("  Thread core numbers:          %d, %d",             prms.core[0], prms.core[1]);
   logCpuAllocation("  CPU allocation");
   logging::info("  Instrument:                   %s",                 prms.instrument.c_str());
   logging::info("  Partition:                    %u",                 prms.partition);
@@ -1396,10 +1389,9 @@ void usage(const char *name, const char *desc, const EbParams& prms)
           "Prometheus config file directory");
   fprintf(stderr, " %-23s %s\n",                      "-k <key=value>[, ...]",
           "Keyword arguments");
-  fprintf(stderr, " %-23s %s (default: %u)\n",        "-1 <core>",
-          "Core number for pinning App thread to",    CORE_0);
-  fprintf(stderr, " %-23s %s (default: %u)\n",        "-2 <core>",
-          "Core number for pinning other threads to", CORE_1);
+  fprintf(stderr, "\n Hot threads are pinned across the CPUs this process was granted,\n"
+                  " which Slurm's cores: sets, or taskset -c <list> for a standalone run.\n"
+                  " Use -k pinThreads=no to leave placement to the scheduler.\n\n");
 
   fprintf(stderr, " %-23s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-23s %s\n", "-h", "display this help output");
@@ -1415,11 +1407,9 @@ int main(int argc, char **argv)
 
   prms.instrument = {};
   prms.partition  = NO_PARTITION;
-  prms.core[0]    = CORE_0;
-  prms.core[1]    = CORE_1;
   prms.verbose    = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:k:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:A:E:R:u:M:k:h?v")) != -1)
   {
     switch (op)
     {
@@ -1429,8 +1419,6 @@ int main(int argc, char **argv)
       case 'A':  prms.ifAddr        = optarg;                       break;
       case 'E':  prms.ebPort        = optarg;                       break;
       case 'R':  prms.mrqPort       = optarg;                       break;
-      case '1':  prms.core[0]       = atoi(optarg);                 break;
-      case '2':  prms.core[1]       = atoi(optarg);                 break;
       case 'u':  prms.alias         = optarg;                       break;
       case 'M':  prms.prometheusDir = optarg;                       break;
       case 'k':  kwargs_str         = kwargs_str.empty()
@@ -1486,6 +1474,7 @@ int main(int argc, char **argv)
     if (kwargs.first == "script_path")  continue;
     if (kwargs.first == "mon_throttle") continue;
     if (kwargs.first == "eb_timeout")   continue; // EbAppBase
+    if (kwargs.first == "pinThreads")   continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
@@ -1493,6 +1482,9 @@ int main(int argc, char **argv)
 
   // Report an uncaught exception from any thread, not just its type name
   initExceptionReporting(prms.alias);
+
+  // Before any thread that pins itself is created
+  Pds::setThreadPinning(prms.kwargs, 1, 0);
 
   // Set up signal handler
   initShutdownSignals(prms.alias, [](){ lRunning = 0; });

@@ -1177,8 +1177,6 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
     m_tPrms.maxEntries = m_para.kwargs["batching"] == "no" ? 1 : Pds::Eb::MAX_ENTRIES; // Default to "yes"
-    m_tPrms.core[0]    = -1;
-    m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
     m_tebContributor   = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
@@ -1763,7 +1761,6 @@ void DrpBase::printParams() const
     logging::info("");
     logging::info("Parameters of Contributor ID %d (%s:%s):",           m_tPrms.id,
                                                                         m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
-    logging::info("  Thread core numbers:          %d, %d",             m_tPrms.core[0], m_tPrms.core[1]);
     Pds::logCpuAllocation("  CPU allocation");
     logging::info("  Instrument:                   %s",                 m_tPrms.instrument.c_str());
     logging::info("  Partition:                    %u",                 m_tPrms.partition);

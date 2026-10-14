@@ -110,14 +110,3 @@ void* Pds::Eb::allocRegion(size_t size)
   return region;
 }
 
-int Pds::Eb::pinThread(const pthread_t& th, int cpu)
-{
-  if (cpu > 0)
-  {
-    cpu_set_t cpuset;
-    CPU_ZERO(&cpuset);
-    CPU_SET(cpu, &cpuset);
-    return pthread_setaffinity_np(th, sizeof(cpu_set_t), &cpuset);
-  }
-  return 0;
-}

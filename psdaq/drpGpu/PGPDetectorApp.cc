@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <unistd.h>                     // For readlink
 #include "psalg/utils/SysLog.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/kwargs.hh"
 #include "xtcdata/xtc/TransitionId.hh"
 
@@ -834,6 +835,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "dmaBufCount")    continue;  // GPU DRP
         if (kwargs.first == "gpuId")          continue;  // GPU DRP
         if (kwargs.first == "imageCheck")     continue;  // GPU DRP
+        if (kwargs.first == "pinThreads")     continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
         if (kwargs.first == "raw")            continue;  // GPU DRP, raw data format
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
@@ -850,6 +852,9 @@ int main(int argc, char* argv[])
 
     // Report an uncaught exception from any thread, not just its type name
     initExceptionReporting(para.alias);
+
+    // Before any thread that pins itself is created
+    Pds::setThreadPinning(para.kwargs, Pds::GPU_DRP_HOT_THREADS, 0);
 
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });

@@ -5,6 +5,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Affinity.hh"    // pinHotThread
 #include "psdaq/service/EbDgram.hh"     // For TimingHeader
 #include "psdaq/trigger/src/TriggerPrimitive.hh"
 #include "psdaq/eb/src/eb.hh"
@@ -401,6 +402,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
   if (prctl(PR_SET_NAME, "drp_gpu/TigRcvr", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("TigRcvr");
 
   // If triggers had been left running, they will have been stopped during Allocate
   // Flush anything that accumulated
