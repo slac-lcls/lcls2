@@ -71,7 +71,29 @@ def test_routing_and_source_validation_before_cuda(monkeypatch):
             DataSourceBase.__init__(NS(), gpu_fn=task, **kwargs)
     ds = NS(get_filter_timestamps=lambda x: np.array([], dtype=np.uint64))
     DataSourceBase.__init__(ds, exp='x', gpu_det='jf', gpu_fn=task)
-    assert ds.dsparms.gpu_fn is task and ds.batch_size == 1
+    assert ds.dsparms.gpu_fn is task and ds.batch_size == 20
+
+
+@pytest.mark.parametrize('routing,with_task,expected', [
+    ({}, False, 1000),
+    ({'gpu_det': [], 'hybrid_det': []}, False, 1000),
+    ({'gpu_det': 'jf'}, False, 20),
+    ({'gpu_det': ['jf']}, True, 20),
+    ({'hybrid_det': 'jf'}, False, 20),
+    ({'hybrid_det': ['jf']}, True, 20),
+])
+@pytest.mark.parametrize('explicit_batch', [None, 1, 1000])
+def test_datasource_batch_defaults_and_overrides_before_cuda(
+        monkeypatch, routing, with_task, expected, explicit_batch):
+    monkeypatch.setitem(sys.modules, 'cupy', None)
+    kwargs = dict(exp='x', detectors=['jf', 'cpu_detector'], **routing)
+    if with_task:
+        kwargs['gpu_fn'] = GpuTask(noop, ['jf.raw'])
+    if explicit_batch is not None:
+        kwargs['batch_size'] = expected = explicit_batch
+    ds = NS(get_filter_timestamps=lambda x: np.array([], dtype=np.uint64))
+    DataSourceBase.__init__(ds, **kwargs)
+    assert ds.batch_size == ds.dsparms.batch_size == expected
 
 
 def test_empty_requests_touch_neither_source_nor_cuda(monkeypatch):

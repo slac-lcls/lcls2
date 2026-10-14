@@ -33,7 +33,7 @@ python validation/batched-locators-20260917/trace_summary.py \
 After both traces have exported, generate their summaries and run `audit.py` on
 the job directory. The completed evidence for this implementation is in
 `job-38504647-warm-ab`; the report is
-`psana/psana/gpu/docs/performance/batched_locators_sdf.md`. The audit checks counts,
+[batched_locators_sdf.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/batched_locators_sdf.md). The audit checks counts,
 cache residency, timestamps, memory samples, and unchanged installed-source hashes;
 it does not impose a hardware speed threshold.
 

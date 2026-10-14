@@ -1,7 +1,7 @@
 """Reusable CUDA stream slots for the integrated GPU event path.
 
-EventPool manages N in-flight GPU subbatches. Each slot follows the
-state machine documented in docs/memory_backpressure_and_results.md:
+EventPool manages N in-flight GPU subbatches. Slot lifetime rules are
+documented in docs/design.md; the conceptual progression is:
 
     FREE → READING/COMPUTING → RESULT_READY → CONSUMER_IN_FLIGHT → FREE
 

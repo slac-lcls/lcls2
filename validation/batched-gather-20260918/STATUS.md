@@ -3,7 +3,7 @@
 Historical snapshot at completion of job 38561649 on 2026-09-18. References to
 "current source" and "uncommitted" below describe that measurement, before the
 memory-reporting and on-demand-wrapper follow-ups. See
-`psana/psana/gpu/docs/batched_pre_bulk_review.md` for final review status.
+[batched_pre_bulk_review.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/batched_pre_bulk_review.md) for final review status.
 
 Production implementation is frozen for measurement. Base B+ commit:
 `b0c9c3c02`; no new commits or pushes. Frozen installed B+ is in ignored
@@ -43,10 +43,10 @@ installation match current source; the frozen O source matches B+.
   driver-launch and copy counts reconcile. See the report for limitations.
 - Final diff check passes. New implementation remains uncommitted for review.
 
-Report: psana/psana/gpu/docs/performance/batched_canonical_gather_sdf.md.
+Report: [batched_canonical_gather_sdf.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/performance/batched_canonical_gather_sdf.md).
 Primary artifacts: job-38561649-warm-ab/{results,audit,summary}.json and traces.
 
-Review/call path: psana/psana/gpu/docs/batched_canonical_gather_review.md.
+Review/call path: [batched_canonical_gather_review.md](https://github.com/slac-lcls/lcls2/blob/fa40ec52a/psana/psana/gpu/docs/batched_canonical_gather_review.md).
 Bulk read remains deferred: parser location belongs to each input window;
 gathering belongs to each detector execution subbatch. This implementation
 explicitly supports one parsed owner per execution and requires eager handles.
