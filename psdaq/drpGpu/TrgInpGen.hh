@@ -56,8 +56,7 @@ public:
   ~TrgInpGen(); // = default;
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels);
-  bool setup();
-  bool startup();
+  void start();
   void start(SPSCQueue<unsigned>& collectorQueue);
   void shutdown();
   void handleBrokenEvent(const PGPEvent&) {}

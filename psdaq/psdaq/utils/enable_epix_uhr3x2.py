@@ -2,7 +2,9 @@ import pyrogue as pr
 import os
 import sys
 
-submoduledir = os.environ["SUBMODULEDIR"]
+# submoduledir = os.environ["SUBMODULEDIR"]
+# submoduledir = "/cds/sw/package/conda_envs/dorlhiac"
+submoduledir = "/cds/home/d/dorlhiac/Repos"
 
 top_level = submoduledir + "/epixuhr-3x2-readout-testing/"
 

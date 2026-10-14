@@ -5,7 +5,6 @@ from datetime import datetime
 import subprocess
 import time
 import logging
-import re
 import shlex
 from subprocess import CalledProcessError, PIPE
 
@@ -14,6 +13,9 @@ SLURM_PARTITION = "drpq"
 DRP_N_RSV_CORES = int(os.environ.get("PS_DRP_N_RSV_CORES", "4"))
 SCRIPTS_ROOTDIR = "/reg/g/pcds/dist/pds"
 RETRYABLE_CMDS = {"sbatch", "sinfo", "scancel"}
+HUTCH_DEFAULT_LOG_SUBDIRS = {
+    "xpp": os.path.join("daq", "logs"),
+}
 DAQMGR_DEBUG_ENV = "DAQMGR_DEBUG_ENV"
 DAQMGR_DEBUG_ENV_TRUE_VALUES = {"1", "true", "yes", "on"}
 DAQMGR_DEBUG_ENV_DUMP_CMD = (
@@ -124,11 +126,11 @@ class SbatchManager:
         self.user = os.environ["USER"]
         self.hutch = self.user[: self.user.find("opr")]
         self.output_prefix_datetime = now.strftime("%d_%H:%M:%S")
-        log_root = output
-        if log_root is None:
-            log_root = self.get_default_log_root()
+        output_root = output
+        if output_root is None:
+            output_root = self.get_default_output_root()
         self.output_path = os.path.join(
-            log_root, now.strftime("%Y"), now.strftime("%m")
+            output_root, now.strftime("%Y"), now.strftime("%m")
         )
         if not os.path.exists(self.output_path):
             os.makedirs(self.output_path)
@@ -140,9 +142,12 @@ class SbatchManager:
         self.verbose = verbose
         self.scripts_dir = os.path.join(SCRIPTS_ROOTDIR, self.hutch, "scripts")
 
-    def get_default_log_root(self):
+    def get_default_output_root(self):
         home_dir = os.environ.get("HOME", "")
-        return os.path.join(home_dir, "daq", "logs")
+        hutch_log_subdir = HUTCH_DEFAULT_LOG_SUBDIRS.get(self.hutch)
+        if hutch_log_subdir is not None:
+            return os.path.join(home_dir, hutch_log_subdir)
+        return home_dir
 
     def set_attr(self, attr, val):
         setattr(self, attr, val)
@@ -277,13 +282,8 @@ class SbatchManager:
                 cmd += f" -u {job_name}"
         if job_name == "daqstat":
             cmd += f" {self.configfilename}"
-        # If the number of workers is not specified, set it based on ncores
-        if self.is_drp(details["cmd"]) and not " -W " in cmd:
-            n_cube_workers = 0
-            if ' -Q ' in cmd:
-                args = cmd.split()
-                n_cube_workers = int( re.match('^\d+', args[args.index('-Q')+1]).group() )
-            n_workers = self.get_n_cores(details) - n_cube_workers - DRP_N_RSV_CORES
+        if self.is_drp(details["cmd"]):
+            n_workers = self.get_n_cores(details) - DRP_N_RSV_CORES
             if n_workers < 1:
                 n_workers = 1
             cmd += f" -W {n_workers}"

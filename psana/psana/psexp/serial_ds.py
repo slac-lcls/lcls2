@@ -56,7 +56,6 @@ class SerialDataSource(DataSourceBase):
         self.dm = DgramManager(
             self.xtc_files, configs=configs, config_consumers=[self.dsparms]
         )
-        self.dsparms.resolve_gpu_stream_ids()
         return True
 
     def _setup_beginruns(self):

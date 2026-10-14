@@ -36,18 +36,6 @@ class SharedGeoCache:
         self.shared_mem = shared_mem
         self.logger = logger or Logger(name="SharedGeoCache")
         self._local_meta: Dict[str, Dict[str, Any]] = {}
-        self._local_arrays = {}
-
-    def get_or_compute_local(self, key: SharedGeoKey, kind: str, compute):
-        """Cache an unseeded variant on this rank without MPI operations.
-
-        Shared construction belongs to coordinated startup. Event-loop callers
-        may be the only rank requesting this geometry variant.
-        """
-        local_key = (key, kind)
-        if local_key not in self._local_arrays:
-            self._local_arrays[local_key] = compute()
-        return self._local_arrays[local_key]
 
     @property
     def enabled(self) -> bool:

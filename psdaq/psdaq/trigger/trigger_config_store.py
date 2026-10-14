@@ -18,7 +18,7 @@ def usual_cdict():
     help_str += "\nsoname       : The trigger library the DRPs and TEBs are to use"
     help_str += "\n               It is to be found in $TESTRELDIR"
     help_str += "\nprescale     : Record 1 in N events for which the persist trigger"
-    help_str += "\n               condition isn't met" # Obsolete; no longer used
+    help_str += "\n               condition isn't met"
     help_str += "\npersistValue : Value DRP must provide to have TEB issue a"
     help_str += "\n               persist trigger"
     help_str += "\nmonitorValue : Value DRP must provide to have TEB issue a"
@@ -35,7 +35,7 @@ def usual_cdict():
     top.set('soname', 'libtmoTrigger.so',  'CHARSTR')
 
     # This is a required entry by the TEB:
-    top.set('prescale', 1000, 'UINT32') # Obsolete; no longer used
+    top.set('prescale', 1000, 'UINT32')
 
     # Detector names handled by this library must be listed here
     #  Values are arbitrary but must match the trigger code's usage
@@ -69,7 +69,7 @@ def calib_cdict():
     top.set('soname', 'libcalibTrigger.so',  'CHARSTR')
 
     top.set('buildAll:RO', 1, 'UINT32') # Required parameter
-    top.set('prescale:RO', 1, 'UINT32') # Obsolete parameter, no longer used
+    top.set('prescale:RO', 1, 'UINT32') # Required parameter
 
     return top
 

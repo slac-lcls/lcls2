@@ -1,7 +1,6 @@
 # import detectors
 
 import datetime
-from dataclasses import dataclass
 import numpy as np
 
 
@@ -16,14 +15,6 @@ from psana import utils
 epoch = datetime.datetime(1990, 1, 1)
 
 
-@dataclass
-class EventEnvelope:
-    """Internal handoff used to materialize one public :class:`Event`."""
-
-    dgrams: object
-    gpu_state: object = None
-
-
 class DrpClassContainer(object):
     def __init__(self):
         pass
@@ -34,26 +25,13 @@ class Event:
     Event holds list of dgrams
     """
 
-    def __init__(self, dgrams, run=None, proxy_evt=None, gpu=None):
+    def __init__(self, dgrams, run=None, proxy_evt=None):
         self._dgrams = dgrams
         self._size = len(dgrams)
         self._complete()
         self._position = 0
         self._run = run  # RunCtx object
         self._proxy_evt = proxy_evt # For smalldata-event loop
-        self._gpu = gpu
-
-    @property
-    def gpu(self):
-        """Per-event GPU results, or ``None`` for a CPU-only event."""
-        return self._gpu
-
-    def _attach_gpu(self, gpu):
-        """Attach GPU state exactly once while assembling this event."""
-        if self._gpu is not None:
-            raise RuntimeError("GPU state is already attached to this event")
-        self._gpu = gpu
-        return self
 
     def __iter__(self):
         return self

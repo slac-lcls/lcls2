@@ -8,8 +8,7 @@ detector_sources = files(
     'src/AreaDetectorPnccd.cc',
     'src/AreaDetectorOpal.cc',
     'src/AreaDetectorEpix100a.cc',
-    'src/AreaDetectorStore.cc',
-    'src/FFT.cc'
+    'src/AreaDetectorStore.cc'
 )
 
 detector_headers = files(
@@ -24,13 +23,12 @@ detector_headers = files(
     'AreaDetectorOpal.hh',
     'AreaDetectorEpix100a.hh',
     'DataSourceSimulator.hh',
-    'FFT.hh',
 )
 
 detector_shlib = shared_library(
     'detector',
     detector_sources,
-    include_directories: [psalg_incdir, xtcdata_incdir],
+    include_directories: [psalg_incdir, xtcdata_incdir, conda_incdir],
     install: true,
     install_rpath: libdir_install_rpath,
     link_with: [xtc_shlib, utils_shlib, calib_shlib, geometry_shlib]

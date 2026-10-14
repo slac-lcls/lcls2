@@ -1,4 +1,0 @@
-install/
-cupy-cache/
-*.log
-__pycache__/

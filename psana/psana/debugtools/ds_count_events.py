@@ -19,9 +19,9 @@ Example usage:
 
 Other options:
     --detectors q_atmopal rix_fim0
+    --ffb
     --gpu_det jungfrau
     --gpu_pool_depth 2
-    --gpu_d2h_chunk_size 2
     --gpu_d2h_interval 1000
     --max_events 10000
     --log_level INFO
@@ -49,6 +49,14 @@ def parse_args():
     parser.add_argument('-r', '--run', type=int, help='Run number, e.g. 52')
     parser.add_argument('--xtc_files', nargs='+', help='Explicit list of XTC2 files to process')
     parser.add_argument('--dir', help='Path to directory containing XTC2 files')
+    parser.add_argument(
+        '--ffb',
+        action='store_true',
+        help=(
+            'Use /sdf/data/lcls/drpsrcf/ffb/<hutch>/<exp>/xtc when '
+            '--dir is not provided'
+        ),
+    )
     parser.add_argument('-d', '--detectors', nargs='*', default=[], help='List of detector names')
     parser.add_argument('-c', '--cached_detectors', nargs='*', default=[], help='Detectors with cached pixel coords')
     parser.add_argument('--gpu_det', default=None,
@@ -56,10 +64,8 @@ def parse_args():
     parser.add_argument('--gpu_pool_depth', '--n_gpu_streams',
                         dest='n_gpu_streams', type=int, default=None,
                         help='GPU EventPool depth / DataSource(n_gpu_streams=...)')
-    parser.add_argument('--gpu_d2h_chunk_size', type=int, default=0,
-                        help='Async D2H chunk size / DataSource(gpu_d2h_chunk_size=...) (0=disabled)')
     parser.add_argument('--gpu_d2h_interval', type=int, default=0,
-                        help='Call evt.gpu.get("calib").on_cpu every N events in GPU mode (0=never)')
+                        help='Call ctx.get("calib").on_cpu every N events in GPU mode (0=never)')
     parser.add_argument('--max_events', type=int, default=0, help='Max number of events per rank (0=all)')
     parser.add_argument('--batch_size', type=int, default=1000, help='Events per batch (default: 1000)')
     parser.add_argument('--print_interval', type=int, default=1000,
@@ -100,7 +106,6 @@ def create_datasource(args, rank):
         common_kwargs["skip_calib_load"] = args.skip_calib_load
     if args.gpu_det:
         common_kwargs["gpu_det"] = args.gpu_det
-        common_kwargs["gpu_d2h_chunk_size"] = args.gpu_d2h_chunk_size
         if args.n_gpu_streams is not None:
             common_kwargs["n_gpu_streams"] = args.n_gpu_streams
 
@@ -120,8 +125,8 @@ def create_datasource(args, rank):
         # Determine xtc directory path
         if args.dir:
             dir_path = args.dir
-        elif args.live:
-            # Construct default FFB path for live mode
+        elif args.ffb or args.live:
+            # Construct the default FFB path from the experiment's hutch code.
             dir_path = f"/sdf/data/lcls/drpsrcf/ffb/{args.exp[:3]}/{args.exp}/xtc"
         else:
             dir_path = None
@@ -137,6 +142,36 @@ def create_datasource(args, rank):
             dir=dir_path,
         )
     return ds
+
+
+def _print_gpu_config(args, ds):
+    """Print requested and effective GPU/KvikIO benchmark settings."""
+    task_size_env = os.environ.get("KVIKIO_TASK_SIZE", "unset")
+    nthreads_env = os.environ.get("KVIKIO_NTHREADS", "unset")
+
+    try:
+        import kvikio.defaults as kvikio_defaults
+
+        task_size = kvikio_defaults.task_size()
+        nthreads = kvikio_defaults.get_num_threads()
+        kvikio_msg = (
+            f"KVIKIO_TASK_SIZE={task_size_env} "
+            f"effective_task_size={task_size}B ({task_size / (1024 ** 2):g} MiB) "
+            f"KVIKIO_NTHREADS={nthreads_env} effective_nthreads={nthreads}"
+        )
+    except Exception as exc:
+        kvikio_msg = (
+            f"KVIKIO_TASK_SIZE={task_size_env} "
+            f"KVIKIO_NTHREADS={nthreads_env} "
+            f"effective_defaults=unavailable ({exc})"
+        )
+
+    print(
+        f"[{args.log_level}] GPU_CONFIG gpu_det={args.gpu_det} "
+        f"psana_batch_size={ds.dsparms.batch_size} "
+        f"gpu_pool_depth={ds.dsparms.n_gpu_streams} "
+        f"gpu_d2h_interval={args.gpu_d2h_interval} {kvikio_msg}"
+    )
 
 
 def _rss_gb():
@@ -155,6 +190,9 @@ def main():
     t0 = time.time()
 
     ds = create_datasource(args, rank)
+
+    if args.gpu_det and rank == 0:
+        _print_gpu_config(args, ds)
 
     smd = None
     ps_srv_nodes = int(os.environ.get('PS_SRV_NODES', '0'))
@@ -216,7 +254,7 @@ def main():
         if args.gpu_det:
             if args.gpu_d2h_interval > 0 and i_evt % args.gpu_d2h_interval == 0:
                 det_t0 = time.perf_counter()
-                _ = evt.gpu.get("calib").on_cpu
+                _ = evt.get("calib").on_cpu
                 gpu_d2h_seconds += time.perf_counter() - det_t0
                 gpu_d2h_count += 1
                 det_accessed = True

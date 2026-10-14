@@ -48,30 +48,13 @@ py.extension_module(
     install: true,
     subdir: 'psdaq',
     install_rpath: libdir_install_rpath,
-    link_with: [
-        xtc_shlib,
-	contributor_lib,
-    ],
+    link_with: [xtc_shlib],
     override_options: ['cython_language=cpp'],
 )
 
 py.extension_module(
     'CubeResultDgram',
     'psdaq/trigger/CubeResultDgram.pyx',
-    include_directories: [
-        psdaq_incdir,
-        xtcdata_incdir,
-    ],
-    install: true,
-    subdir: 'psdaq',
-    install_rpath: libdir_install_rpath,
-    link_with: [xtc_shlib],
-    override_options: ['cython_language=cpp'],
-)
-
-py.extension_module(
-    'WindowResultDgram',
-    'psdaq/trigger/WindowResultDgram.pyx',
     include_directories: [
         psdaq_incdir,
         xtcdata_incdir,
@@ -210,8 +193,6 @@ install_subdir(
     'trigger/CubeConfigDgramw.pxd',
     'trigger/CubeResultDgram.pyx',
     'trigger/CubeResultDgramw.pxd',
-    'trigger/WindowResultDgram.pyx',
-    'trigger/WindowResultDgramw.pxd',
     'trigger/EbDgram.pyx',
     'trigger/EbDgramw.pxd',
     'trigger/EBeamTebData.pxd',

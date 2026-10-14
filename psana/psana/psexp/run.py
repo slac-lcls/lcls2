@@ -10,7 +10,7 @@ from psana import dgram
 from psana.detector.detector_cache import DetectorCacheManager
 from psana.detector.detector_impl import MissingDet
 from psana.dgramedit import DgramEdit
-from psana.event import Event, EventEnvelope
+from psana.event import Event
 from psana.pscalib.app.calib_prefetch import calib_utils
 import psana.pscalib.calib.MDBWebUtils as wu
 from psana import utils
@@ -140,19 +140,21 @@ class Run(object):
         return self.runnum
 
     def events(self):
-        for envelope in self._evt_iter:
-            dgrams = envelope.dgrams
+        if getattr(self._evt_iter, "is_gpu_events", False):
+            yield from self._evt_iter
+            return
+        # CPU path (unchanged).
+        for dgrams in self._evt_iter:
             if self._handle_transition(dgrams):
                 # EndRun handling here ends the stream
                 if utils.first_service(dgrams) == TransitionId.EndRun:
                     return
                 continue  # swallow non-L1 transitions in events() stream
             # L1Accept: construct Event at the Run level
-            yield self._materialize_event(envelope)
+            yield Event(dgrams=dgrams, run=self._run_ctx)
 
     def steps(self):
-        for envelope in self._evt_iter:
-            dgrams = envelope.dgrams
+        for dgrams in self._evt_iter:
             svc = utils.first_service(dgrams)
             if TransitionId.isEvent(svc):
                 # steps() only yields on BeginStep transitions; ignore L1
@@ -164,7 +166,7 @@ class Run(object):
                 return
             if svc == TransitionId.BeginStep:
                 yield Step(
-                    self._materialize_event(envelope),
+                    Event(dgrams=dgrams, run=self._run_ctx),
                     self._evt_iter,
                     self._run_ctx,
                     esm=self.esm,
@@ -511,17 +513,6 @@ class Run(object):
         step_dgrams = self.esm.stores["scan"].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self._run_ctx)
 
-    def _materialize_event(self, envelope, proxy_evt=None):
-        """Construct the public Event at the Run API boundary."""
-        if not isinstance(envelope, EventEnvelope):
-            raise TypeError("event iterator must yield EventEnvelope")
-        return Event(
-            dgrams=envelope.dgrams,
-            run=self._run_ctx,
-            proxy_evt=proxy_evt,
-            gpu=envelope.gpu_state,
-        )
-
     def _setup_envstore(self):
         assert hasattr(self, "configs")
         assert hasattr(self, "_evt")  # BeginRun
@@ -671,8 +662,7 @@ class RunDrp(Run):
     def events(self):
         self._prime_run_once()
 
-        for envelope in self._evt_iter:
-            dgrams = envelope.dgrams
+        for dgrams in self._evt_iter:
             svc = utils.first_service(dgrams)
             bufsize = self.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.dm.transition_bufsize
 
@@ -690,15 +680,14 @@ class RunDrp(Run):
                 continue
 
             # L1Accept: yield first so user may edit, then save
-            evt = self._materialize_event(envelope)
+            evt = Event(dgrams=dgrams, run=self._run_ctx)
             yield evt
             self.curr_dgramedit.save(self.dm.shm_res_mv)
 
     def steps(self):
         self._prime_run_once()
 
-        for envelope in self._evt_iter:
-            dgrams = envelope.dgrams
+        for dgrams in self._evt_iter:
             svc = utils.first_service(dgrams)
             if TransitionId.isEvent(svc):
                 # steps() ignores L1s entirely
@@ -715,7 +704,7 @@ class RunDrp(Run):
 
             if svc == TransitionId.BeginStep:
                 # Yield a Step (user may edit), then save
-                step_evt = self._materialize_event(envelope)
+                step_evt = Event(dgrams=dgrams, run=self._run_ctx)
                 yield Step(step_evt, self._evt_iter, self._run_ctx, esm=self.esm, run=self)
                 self.curr_dgramedit.save(self.dm.shm_res_mv)
                 continue
@@ -749,18 +738,16 @@ class RunSerial(Run):
         self.configs = configs
         super()._setup_envstore()
         self._setup_run_calibconst()
-        if self.dsparms.gpu_enabled:
-            from psana.gpu.gpu_events import GpuEventManager
-            self._evt_iter = GpuEventManager(
-                configs,
-                dm,
-                self.dsparms.max_retries,
-                self.dsparms.use_smds,
-                self.shared_state,
-                self.dsparms,
-                self,
-                smdr_man=smdr_man,
-            )
+        if self.dsparms.gpu_det:
+            from psana.gpu.gpu_events import GpuEvents
+            self._evt_iter = GpuEvents(configs,
+                                       dm,
+                                       self.dsparms.max_retries,
+                                       self.dsparms.use_smds,
+                                       self.shared_state,
+                                       self.dsparms,
+                                       self,
+                                       smdr_man=smdr_man)
         else:
             self._evt_iter = Events(configs,
                                     dm,
@@ -771,21 +758,6 @@ class RunSerial(Run):
         self._smd_iter = None
         self._ts_table = None
 
-    def events(self):
-        """Deliver events and close GPU resources when iteration is closed.
-
-        Use contextlib.closing(run.events()) for deterministic cleanup on an
-        early break or an exception in the loop body. Closing is terminal for
-        this run's GPU event stream. CPU-only iteration keeps its usual behavior.
-        """
-        if not self.dsparms.gpu_enabled:
-            yield from super().events()
-            return
-        try:
-            yield from super().events()
-        finally:
-            self._evt_iter.close()
-
     @contextmanager
     def build_table(self):
         """
@@ -794,7 +766,7 @@ class RunSerial(Run):
         Yields True if any L1 timestamps were captured.
         """
         if self._smd_iter is None:
-            # SmdEvents yields EventEnvelopes without materializing Events.
+            # Now yields dgram lists
             self._smd_iter = SmdEvents(self.configs,
                                        self.dm,
                                        self.dsparms.max_retries,
@@ -804,8 +776,7 @@ class RunSerial(Run):
 
         self._ts_table = {}
         try:
-            for envelope in self._smd_iter:
-                dgrams = envelope.dgrams
+            for dgrams in self._smd_iter:
                 svc = utils.first_service(dgrams)
                 if svc != TransitionId.L1Accept:
                     # Keep EnvStore in sync for transitions observed during the scan

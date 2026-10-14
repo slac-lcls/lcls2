@@ -5,14 +5,12 @@
 #include <chrono>
 #include <future>
 #include <thread>
-#include <stdexcept>
 
 #include "pva/client.h"
 #include "pv/ntscalar.h"
 #include "pv/pvIntrospect.h"
 #include "pv/pvData.h"
 #include "pv/createRequest.h"
-#include <epicsEvent.h>
 
 #include "psdaq/epicstools/PVMonitorCb.hh"
 
@@ -26,11 +24,14 @@ namespace Pds_Epics {
     // Both the PutTracker's are copied over from the V4 example code.
     template<typename T> struct PutTracker : public pvac::ClientChannel::PutCallback {
         POINTER_DEFINITIONS(PutTracker);
-        epicsEvent completionEvent;
         const T value;
-        PutTracker(const T& val) : value(val) {}
+        pvac::Operation op;
+        PutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const T& val)
+            : value(val), op(channel.put(this, pvReq)) {
 
-        virtual ~PutTracker() {}
+            }
+
+        virtual ~PutTracker() { op.cancel(); }
 
         virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args) {
             pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
@@ -44,26 +45,30 @@ namespace Pds_Epics {
         {
             switch(evt.event) {
             case pvac::PutEvent::Fail:
-                std::cerr<<"putDone Error: "<<evt.message<<"\n";
+                std::cerr<<op.name()<<" Error: "<<evt.message<<"\n";
                 break;
             case pvac::PutEvent::Cancel:
-                std::cerr<<"putDone Cancelled\n";
+                std::cerr<<op.name()<<" Cancelled\n";
                 break;
             case pvac::PutEvent::Success:
+                // std::cout<<op.name()<<" Done\n";
                 break;
             }
 
-	    completionEvent.signal();
+            delete this;
         }
     };
 
     template<typename T> struct VectorPutTracker : public pvac::ClientChannel::PutCallback {
         POINTER_DEFINITIONS(VectorPutTracker);
-        epicsEvent completionEvent;
         const pvd::shared_vector<const T> value;
-        VectorPutTracker(const pvd::shared_vector<const T>& val) : value(val) {}
+        pvac::Operation op;
+        VectorPutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const pvd::shared_vector<const T>& val)
+            : value(val), op(channel.put(this, pvReq)) {
 
-        virtual ~VectorPutTracker() {}
+            }
+
+        virtual ~VectorPutTracker() { op.cancel(); }
 
         virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args) {
             pvd::PVStructurePtr root(pvd::getPVDataCreate()->createPVStructure(build));
@@ -77,47 +82,48 @@ namespace Pds_Epics {
         {
             switch(evt.event) {
             case pvac::PutEvent::Fail:
-	      std::cerr<<"putDone Error: "<<evt.message<<"\n";
+                std::cerr<<op.name()<<" Error: "<<evt.message<<"\n";
                 break;
             case pvac::PutEvent::Cancel:
-                std::cerr<<"putDone Cancelled\n";
+                std::cerr<<op.name()<<" Cancelled\n";
                 break;
             case pvac::PutEvent::Success:
                 // std::cout<<op.name()<<" Done\n";
                 break;
             }
 
-	    completionEvent.signal();
+            delete this;
         }
     };
 
     struct StructurePutTracker : public pvac::ClientChannel::PutCallback {
         POINTER_DEFINITIONS(StructurePutTracker);
-        epicsEvent completionEvent;
         const char* value;
         const unsigned* sizes;
         bool ldebug; 
-        StructurePutTracker(const char* val, const unsigned* sz, bool debug)
-          : value(val), sizes(sz), ldebug(debug) {
+        pvac::Operation op;
+      StructurePutTracker(pvac::ClientChannel& channel, const pvd::PVStructure::const_shared_pointer& pvReq, const char* val, const unsigned* sz, bool debug)
+          : value(val), sizes(sz), ldebug(debug), op(channel.put(this, pvReq)) {
         }
 
-        virtual ~StructurePutTracker() {}
+        virtual ~StructurePutTracker() { op.cancel(); }
 
         virtual void putBuild(const epics::pvData::StructureConstPtr &build, pvac::ClientChannel::PutCallback::Args& args);
         virtual void putDone(const pvac::PutEvent &evt) OVERRIDE FINAL
         {
             switch(evt.event) {
             case pvac::PutEvent::Fail:
- 	        std::cerr<<"putDone Error: "<<evt.message<<"\n";
+                std::cerr<<op.name()<<" putDone Error: "<<evt.message<<"\n";
                 break;
             case pvac::PutEvent::Cancel:
-                std::cerr<<"putDone Cancelled\n";
+                std::cerr<<op.name()<<" Cancelled\n";
                 break;
             case pvac::PutEvent::Success:
+                // std::cout<<op.name()<<" Done\n";
                 break;
             }
 
-	    completionEvent.signal();
+            delete this;
         }
     };
 
@@ -158,9 +164,8 @@ namespace Pds_Epics {
 
     template<typename T> void putFrom(T val) {
         try {
-	  PutTracker<T> putter(val);
-	  pvac::Operation op = _channel.put(&putter,pvd::CreateRequest::create()->createRequest("field()"));
-	  putter.completionEvent.wait();
+            new PutTracker<T>(_channel, pvd::CreateRequest::create()->createRequest("field()"), val);
+            // _channel.put().set("value", val).exec();
         } catch(const pvac::Timeout& t) {
             std::cout << "Timeout when putting to pv " << name() << std::endl;
         } catch(const std::runtime_error& r) {
@@ -170,9 +175,8 @@ namespace Pds_Epics {
 
     template<typename T> void putFromVector(const pvd::shared_vector<const T>& val) {
         try {
-	  VectorPutTracker<T> putter(val);
-	  pvac::Operation op = _channel.put(&putter,pvd::CreateRequest::create()->createRequest("field()"));
-	  putter.completionEvent.wait();
+            new VectorPutTracker<T>(_channel, pvd::CreateRequest::create()->createRequest("field()"), val);
+            // _channel.put().set("value", val).exec();
         } catch(const pvac::Timeout& t) {
             std::cout << "Timeout when putting a vector of size " << val.size() << " to pv " << name() << std::endl;
         }
@@ -180,9 +184,7 @@ namespace Pds_Epics {
 
     void putFromStructure(const void* val, const unsigned* sizes, bool ldebug=false) {
       try {
-	StructurePutTracker putter(reinterpret_cast<const char*>(val), sizes, ldebug);
-	pvac::Operation op = _channel.put(&putter,pvd::CreateRequest::create()->createRequest("field()"));
-	putter.completionEvent.wait();
+        new StructurePutTracker(_channel, pvd::CreateRequest::create()->createRequest("field()"), reinterpret_cast<const char*>(val), sizes, ldebug);
       } catch(const pvac::Timeout& t) {
         std::cout << "Timeout when putting a structure to pv " << name() << std::endl;
       }

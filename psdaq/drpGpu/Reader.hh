@@ -44,10 +44,8 @@ public:
   ~Reader();
   int setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
                    std::map<std::string, std::string>& labels);
-  bool setup();
-  bool startup();
+  void start();
   void freeDma(PGPEvent*);
-  void flush();
 public:
   auto& pool()         const { return m_pool; }
   auto& readerQueues() const { return m_readerQueues; }
