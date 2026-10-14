@@ -51,6 +51,40 @@ def event_view():
                                          first_desc=0, n_desc=2),)))
 
 
+def test_configured_ready_is_required_without_locator_wrappers():
+    configured = Token()
+    configured.fail = True
+    batch = NS(n_dgrams=0, walk_done=Token(), _locators={},
+               _configured_backing=object(),
+               configured_locations=lambda: NS(ready=configured))
+    released = []
+    owner = InputWindow(0, 0, batch, np.zeros((0, DESC_NCOLS), np.uint64),
+                        release=lambda: released.append(True))
+    stream = Stream()
+    owner.wait_ready(stream)
+    assert configured in stream.waited
+    with pytest.raises(RuntimeError, match='completion failure'):
+        owner.close()
+    assert not released and not owner.released
+    configured.fail = False
+    assert owner.close() and released == [True]
+
+
+def test_shared_locator_readiness_is_deduplicated_without_losing_consumers():
+    owner = window()
+    shared, fallback, consumer = Token(), Token(), Token()
+    owner.batch.locate = lambda handle, **kw: NS(ready=shared if handle == 0 else fallback)
+    owner.locate(0)
+    owner.locate(0)
+    owner.locate(1)
+    use = owner.acquire()
+    use.register_consumer_done(consumer)
+    use.register_consumer_done(consumer)
+    owner.close()
+    use.wait_until_safe_to_reuse()
+    assert shared.waits == fallback.waits == consumer.waits == 1
+
+
 def test_fast_input_survives_repeated_execution_retirement(monkeypatch):
     monkeypatch.setitem(sys.modules, 'cupy', NS(cuda=NS(Stream=Stream, Event=Token)))
     releases = []
@@ -212,3 +246,38 @@ def test_failed_execution_keeps_its_input_reference_until_stream_drains(monkeypa
     failed_stream.fail = False
     list(pool.flush())
     assert fast.released and slow.released
+
+
+def test_partial_multi_owner_acquisition_returns_prior_reference(monkeypatch):
+    released = []
+    fast = window(release=lambda: released.append('fast'))
+    slow = window(1, release=lambda: released.append('slow'))
+    def fail():
+        assert fast.references == 1
+        raise RuntimeError('injected second owner acquisition failure')
+    monkeypatch.setattr(slow, 'acquire', fail)
+    with pytest.raises(RuntimeError, match='second owner acquisition failure'):
+        InputSlotLease(Token(), (fast, slow))
+    assert fast.references == slow.references == 0
+    assert not fast.released and not slow.released
+    assert fast.close() and slow.close()
+    assert released == ['fast', 'slow']
+
+
+def test_partial_multi_owner_view_fork_preserves_parent_and_returns_child(monkeypatch):
+    fast, slow = window(), window(1)
+    ready = Token()
+    parent = InputSlotLease(ready, (fast, slow))
+    assert not fast.close() and not slow.close()
+    def fail():
+        assert fast.references == 2
+        raise RuntimeError('injected second owner fork failure')
+    monkeypatch.setattr(parent._uses[1], 'fork', fail)
+    with pytest.raises(RuntimeError, match='second owner fork failure'):
+        parent.acquire_view()
+    assert fast.references == slow.references == 1
+    assert not fast.released and not slow.released and ready.waits == 0
+    parent.require_active()
+    parent.wait_until_safe_to_reuse()
+    assert fast.released and slow.released
+    assert fast.references == slow.references == 0

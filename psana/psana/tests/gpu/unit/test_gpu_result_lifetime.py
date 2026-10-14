@@ -319,7 +319,7 @@ class TestOnGpuAndView:
         with result.on_gpu_view(stream):
             pass
         assert lease._consumer_done is not None, "__exit__ must register a done event on the lease"
-        assert lease._consumer_done in stream.recorded_events, \
+        assert all(event in stream.recorded_events for event in lease._consumer_done), \
             "done event must be recorded on the provided stream"
 
     def test_on_gpu_view_retire_safe_after_context_exit(self):
@@ -332,8 +332,9 @@ class TestOnGpuAndView:
         result = GPUResult(arr_gpu=arr, lease=lease)
         with result.on_gpu_view(_FakeStream()):
             pass
+        consumers = tuple(lease._consumer_done)
         lease.wait_until_safe_to_reuse()   # must not raise
-        assert lease._consumer_done._synced, "final retirement must synchronize the done event"
+        assert all(event._synced for event in consumers), "final retirement must synchronize the done event"
 
     def test_on_gpu_view_raises_without_lease(self):
         """on_gpu_view must raise RuntimeError when the GPUResult has no lease."""

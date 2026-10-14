@@ -1,6 +1,7 @@
 """CPU-only tests for GPU input-to-detector ownership contracts."""
 
 from types import SimpleNamespace
+import sys
 
 import numpy as np
 import pytest
@@ -295,7 +296,16 @@ def _locator_rows(n_dgrams, dgram_index, handle, offset, shape):
     return rows
 
 
-def test_event_detector_field_access_preserves_segment_shape_and_dtype():
+@pytest.fixture
+def field_cuda(monkeypatch):
+    from test_gpu_result_lifetime import _FakeEvent, _FakeStream
+    stream = _FakeStream()
+    monkeypatch.setitem(sys.modules, 'cupy', SimpleNamespace(cuda=SimpleNamespace(
+        Event=_FakeEvent, Stream=SimpleNamespace(null=stream),
+        get_current_stream=lambda: stream)))
+
+
+def test_event_detector_field_access_preserves_segment_shape_and_dtype(field_cuda):
     from psana.gpu.context import GpuEventState
 
     seg9 = _handle(1, 10)
@@ -339,7 +349,7 @@ def test_event_detector_field_access_preserves_segment_shape_and_dtype():
     np.testing.assert_array_equal(selected.only(), values4)
 
 
-def test_two_detector_bindings_can_read_the_same_event_stream():
+def test_two_detector_bindings_can_read_the_same_event_stream(field_cuda):
     from psana.gpu.context import GpuEventState
 
     camera_handle = _handle(4, 10)

@@ -22,109 +22,120 @@ from __future__ import annotations
 
 
 class SlotLease:
-    """Controls when an EventPool slot may be recycled.
+    """A result slot stays occupied through every consumer and open view.
 
-    Lifecycle
-    ---------
-    1. EventPool.submit() queues detector processing on ``stream``, records
-       ``result_ready`` after that producer work, then creates one
-       SlotLease per (timestamp, result key), sharing ``result_ready``.
-
-    2. GpuEventManager._D2hPipeline receives the submitted slot record. It issues
-       cudaMemcpyAsync on a separate D→H stream after waiting for result_ready,
-       then records a completion event and calls register_consumer_done(event).
-
-    3. EventPool.begin_retire_next() exposes the result and its prepared host
-       token.  After the caller has had a chance to register any external GPU
-       consumer, finish_retire_next() waits before reuse.
-
-    Intended rule: a slot may be reused only after every consumer of that
-    slot has completed — generator advancement alone is not sufficient.
-    This result lease currently stores one terminal event; registering another
-    replaces it. InputSlotLease provides the multi-consumer implementation for
-    parsed input fields.
+    Retirement rejects new acquisitions. An open context reports pressure
+    rather than blocking its own caller; its completion permits a later retry.
     """
 
-    __slots__ = ('result_ready', '_consumer_done')
+    __slots__ = ('result_ready', '_consumer_done', '_lock', '_views',
+                 '_closing', '_closed', '_callbacks')
 
     def __init__(self, result_ready):
-        """
-        Parameters
-        ----------
-        result_ready : cp.cuda.Event
-            Fires after calibration and final result-routing work completes.
-        """
+        from threading import RLock
         self.result_ready = result_ready
-        self._consumer_done = None
+        self._consumer_done = []
+        self._lock = RLock()
+        self._views = 0
+        self._closing = False
+        self._closed = False
+        self._callbacks = []
+
+    def on_retire(self, callback):
+        from weakref import WeakMethod
+        with self._lock:
+            if self._closed:
+                callback()
+            else:
+                self._callbacks.append(WeakMethod(callback))
+
+    def require_active(self):
+        if self._closing or self._closed:
+            raise RuntimeError("GPU result lease is retiring or released")
+
+    def acquire_view(self):
+        with self._lock:
+            self.require_active()
+            self._views += 1
+
+    def finish_view(self, event):
+        with self._lock:
+            if not self._views:
+                raise RuntimeError("GPU view already released")
+            if event is not None:
+                self._consumer_done.append(event)
+            self._views -= 1
 
     def register_consumer_done(self, event):
-        """Record the CUDA event that fires when this slot's consumer is done.
-
-        Called by _D2hPipeline after issuing cudaMemcpyAsync, or by
-        _GpuViewContext.__exit__ after the user's downstream GPU kernel.
-        EventPool waits on this event in finish_retire_next() before reuse.
-        Only one event is retained; multiple zero-copy consumers of the same
-        result are not currently supported.
-        """
-        self._consumer_done = event
+        with self._lock:
+            self.require_active()
+            self._consumer_done.append(event)
 
     def wait_until_safe_to_reuse(self):
-        """Block until the consumer has completed during final retirement.
-
-        Two outcomes:
-          _consumer_done set  → synchronize then recycle
-          neither        → recycle immediately (on_gpu copy or no access)
-        """
-        if self._consumer_done is not None:
-            self._consumer_done.synchronize()
+        with self._lock:
+            if self._closed:
+                return
+            self._closing = True
+            if self._views:
+                raise RuntimeError("GPU result has an open view; exit its context before retrying retirement")
+            for event in ([self.result_ready] if self.result_ready is not None else []) + self._consumer_done:
+                event.synchronize()
+            self._closed = True
+            self.result_ready = None
+            self._consumer_done.clear()
+            callbacks, self._callbacks = self._callbacks, []
+            for ref in callbacks:
+                callback = ref()
+                if callback is not None:
+                    callback()
 
 
 class _GpuViewContext:
-    """Context manager returned by GPUResult.on_gpu_view(stream).
+    """Acquire on entry; record completion on the actual consumer stream."""
 
-    ``__enter__`` returns the raw slot-buffer array (zero-copy).
-    ``__exit__`` records a CUDA done-event on *stream* so that
-    EventPool.finish_retire_next() knows the slot is safe to recycle once
-    that event fires.
+    __slots__ = ('_result', '_stream', '_entered', '_exited')
 
-    ``__del__`` is a safety fallback: if the caller somehow receives
-    this object but never uses it as a ``with`` statement, the done-event
-    is recorded on the null stream (conservative — the null stream
-    serialises with all default-stream work) so the slot is never
-    permanently held.
-    """
-
-    __slots__ = ('_arr', '_lease', '_stream', '_exited')
-
-    def __init__(self, arr, lease, stream):
-        self._arr    = arr
-        self._lease  = lease
+    def __init__(self, result, stream):
+        self._result = result
         self._stream = stream
+        self._entered = False
         self._exited = False
 
     def __enter__(self):
-        return self._arr
+        import cupy as cp
+        if self._entered or self._exited:
+            raise RuntimeError("GPU view context cannot be entered twice")
+        lease = self._result._lease
+        with lease._lock:
+            self._result._require_device_storage("on_gpu_view")
+            lease.acquire_view()
+            self._entered = True
+        self._stream = self._stream or cp.cuda.Stream.null
+        try:
+            if lease.result_ready is not None:
+                self._stream.wait_event(lease.result_ready)
+            return self._result._arr
+        except BaseException:
+            lease.finish_view(None)
+            self._exited = True
+            raise
 
     def __exit__(self, *_):
         import cupy as cp
-        stream = self._stream or cp.cuda.Stream.null
-        done   = cp.cuda.Event(disable_timing=True)
-        stream.record(done)
-        self._lease.register_consumer_done(done)
+        if not self._entered or self._exited:
+            return
+        # If recording fails, drain this same stream. If that also fails,
+        # leave the view acquired so the occupied slot remains retryable.
+        try:
+            done = cp.cuda.Event(disable_timing=True)
+            self._stream.record(done)
+        except BaseException:
+            self._stream.synchronize()
+            self._result._lease.finish_view(None)
+            self._exited = True
+            raise
+        self._result._lease.finish_view(done)
         self._exited = True
-
-    def __del__(self):
-        # Safety: if the object is GC'd without having been used as a context
-        # manager, record a conservative done-event on the null stream so the
-        # slot is not held forever.  Same pattern as _PendingD2H.__del__.
-        if not self._exited and self._lease._consumer_done is None:
-            try:
-                import cupy as cp
-                done = cp.cuda.Event(disable_timing=True)
-                cp.cuda.Stream.null.record(done)
-                self._lease.register_consumer_done(done)
-            except Exception:
-                pass
 
 
 class GPUResult:
@@ -152,7 +163,7 @@ class GPUResult:
     """
 
     __slots__ = ('_arr', '_lease', '_cpu_cache', '_pending_d2h',
-                 '_device_released')
+                 '_device_released', '__weakref__')
 
     def __init__(self, arr_gpu, lease=None, device_released=False):
         """
@@ -171,8 +182,15 @@ class GPUResult:
         # Automatic D2H contexts can outlive the EventPool device slot.  Keep
         # that state explicit so stale slot-backed arrays are never exposed.
         self._device_released = device_released
+        if lease is not None and hasattr(lease, 'on_retire'):
+            lease.on_retire(self._retire_device)
+
+    def _retire_device(self):
+        self._arr = None
 
     def _require_device_storage(self, accessor: str):
+        if self._lease is not None:
+            self._lease.require_active()
         if self._device_released or self._arr is None:
             raise RuntimeError(
                 f"{accessor} is unavailable because automatic D2H completed "
@@ -186,13 +204,16 @@ class GPUResult:
         """Return an independent D→D copy of the calibrated result.
 
         The copy is not tied to the EventPool slot buffer — the slot can
-        be recycled after the copy completes. Current EventPool retirement
-        synchronizes the CuPy null stream, so call this accessor on that
-        stream. For a custom stream, use on_gpu_view(stream), which registers
-        its completion explicitly.
+        be recycled after the copy completes. A completion event is recorded
+        on the current CuPy stream and joined during slot retirement.
         """
         self._require_device_storage("on_gpu")
-        return self._arr.copy()
+        if self._lease is None:
+            return self._arr.copy()
+        import cupy as cp
+        stream = getattr(cp.cuda, 'get_current_stream', lambda: cp.cuda.Stream.null)()
+        with _GpuViewContext(self, stream) as array:
+            return array.copy()
 
     def on_gpu_view(self, stream=None):
         """Return a context manager that yields a zero-copy view into the slot buffer.
@@ -225,7 +246,7 @@ class GPUResult:
                 "scheduled. Use gpu_d2h_chunk_size=0 for a zero-copy GPU "
                 "consumer, or use on_gpu for an independent D→D copy."
             )
-        return _GpuViewContext(self._arr, self._lease, stream)
+        return _GpuViewContext(self, stream)
 
     @property
     def on_cpu(self):
@@ -252,6 +273,7 @@ class GPUResult:
                 "was released; this indicates an incomplete automatic-D2H "
                 "handoff."
             )
+        self._require_device_storage("on_cpu")
         self._cpu_cache = self._arr.get()
         return self._cpu_cache
 
@@ -272,7 +294,7 @@ class GpuEventState:
     __slots__ = ('_gpu_results', '_detector_names', '_cache', '_leases',
                  '_pending_d2h', '_cached_cpu_results',
                  '_device_released', '_detector_bindings', '_event_dgrams',
-                 '_input_lease', '_detector_cache')
+                 '_input_lease', '_detector_cache', '__weakref__')
 
     def __init__(self, gpu_results: dict, detector_names=None,
                  leases: dict | None = None,
@@ -297,7 +319,7 @@ class GpuEventState:
         cached_cpu_results : dict  {key: np.ndarray} | None
             Independent CPU results materialized under pinned-buffer pressure.
         """
-        self._gpu_results = gpu_results
+        self._gpu_results = dict(gpu_results)
         if detector_names is None:
             detector_names = dict.fromkeys(
                 key.split('.', 1)[0]
@@ -314,6 +336,13 @@ class GpuEventState:
         self._input_lease = input_lease
         self._detector_cache = {}
         self._cache: dict = {}
+        for lease in self._leases.values():
+            if hasattr(lease, 'on_retire'):
+                lease.on_retire(self._retire_device)
+
+    def _retire_device(self):
+        if all(getattr(lease, '_closed', False) for lease in self._leases.values()):
+            self._gpu_results = dict.fromkeys(self._gpu_results)
 
     def detector(self, det_name):
         """Return Configure-backed field access for one GPU detector.

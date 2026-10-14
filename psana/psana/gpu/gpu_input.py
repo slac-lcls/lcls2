@@ -1,7 +1,6 @@
 """Contracts between the GPU XTC input path and detector consumers."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 from types import MappingProxyType
 
 import numpy as np
@@ -37,37 +36,84 @@ _XTC_DTYPES = {
 }
 
 
-@dataclass(frozen=True)
+class _EventBatchAccess:
+    """Keep saved public batch handles inside their event's access lifetime."""
+
+    _attributes = frozenset(('data_gpu', 'device_configs', 'dgram_records_gpu',
+                            'shape_counts_gpu', 'shape_refs_gpu', 'walk_done',
+                            'stream_ids_by_dgram', 'n_dgrams', 'stream',
+                            'max_shapes_per_dgram', 'threads'))
+
+    def __init__(self, batch, lease, owner=None):
+        self._batch, self._lease, self._owner = batch, lease, owner
+        lease.on_retire(self._retire)
+
+    def _retire(self):
+        self._batch = self._owner = None
+
+    def __getattr__(self, name):
+        if name not in self._attributes:
+            raise AttributeError(name)
+        self._lease.require_active()
+        return getattr(self._batch, name)
+
+    def locate(self, handle, *, stream=None):
+        from psana.gpu.gpudgram.parser import DeviceFieldLocators
+        with self._lease._lock:
+            self._lease.require_active()
+            target = self._owner if self._owner is not None else self._batch
+            result = target.locate(handle, stream=stream)
+            return DeviceFieldLocators(handle, result.rows_gpu, result.ready, self._lease)
+
+
 class GpuStreamDgramView:
-    """One event's parsed dgram in a physical input stream.
+    """Event-scoped facade; an owner supplies backing while its lease is live."""
 
-    The view does not own another copy of the XTC bytes. ``batch`` remains the
-    view of ``data_gpu`` and parser-produced tables. ``owner`` pins their
-    independent input storage when present.
-    """
+    def __init__(self, stream_id, dgram_index, batch, owner=None):
+        self.stream_id, self.dgram_index = int(stream_id), int(dgram_index)
+        self.owner = owner
+        self._batch = batch if owner is None else None
+        self._lease = None
 
-    stream_id: int
-    dgram_index: int
-    batch: object
-    owner: object = None
+    def bind_lease(self, lease):
+        self._lease = lease
+        lease.on_retire(self._retire)
+
+    def _retire(self):
+        self._batch = None
+        self.owner = None
+
+    def _storage_batch(self):
+        if self._lease is not None:
+            self._lease.require_active()
+        if self.owner is not None:
+            self.owner.require_storage()
+            return self.owner.batch
+        return self._batch
+
+    @property
+    def batch(self):
+        batch = self._storage_batch()
+        if self._lease is None:
+            return batch
+        return _EventBatchAccess(batch, self._lease, self.owner)
 
     @property
     def data_gpu(self):
-        if self.owner is not None:
-            self.owner.require_storage()
-        return self.batch.data_gpu
+        return self._storage_batch().data_gpu
 
     def locate(self, handle, *, stream=None):
-        """Return the batch locator table for a field in this stream."""
         if not isinstance(handle, GpuFieldHandle):
             raise TypeError("handle must be a GpuFieldHandle")
         if int(handle.stream_id) != self.stream_id:
-            raise ValueError(
-                f"field handle belongs to stream {handle.stream_id}, "
-                f"not stream {self.stream_id}"
-            )
-        target = self.owner if self.owner is not None else self.batch
-        return target.locate(handle, stream=stream)
+            raise ValueError(f"field handle belongs to stream {handle.stream_id}, not stream {self.stream_id}")
+        batch = self._storage_batch()  # event scope also applies to resident input
+        target = self.owner if self.owner is not None else batch
+        result = target.locate(handle, stream=stream)
+        if self._lease is None:
+            return result
+        from psana.gpu.gpudgram.parser import DeviceFieldLocators
+        return DeviceFieldLocators(result.handle, result.rows_gpu, result.ready, lease=self._lease)
 
 
 class GpuEventDgrams(Mapping):
@@ -154,6 +200,19 @@ class GpuEventDgrams(Mapping):
             view._dgrams = MappingProxyType(dgrams)
             result.append(view)
         return tuple(result)
+
+    def bind_lease(self, lease):
+        self._lease = lease
+        if self.batch is not None:
+            owner = self.input_windows[0] if len(self.input_windows) == 1 else None
+            self.batch = _EventBatchAccess(self.batch, lease, owner)
+        lease.on_retire(self._retire)
+        for dgram in self._dgrams.values():
+            dgram.bind_lease(lease)
+
+    def _retire(self):
+        self.batch = None
+        self.input_windows = ()
 
     @property
     def timestamp(self):
@@ -391,6 +450,7 @@ class InputSlotLease:
         self._consumer_done = []
         self._lock = RLock()
         self._closed = False
+        self._callbacks = []
         self._owners = tuple(dict.fromkeys(owners))
         self._uses = []
         try:
@@ -400,6 +460,14 @@ class InputSlotLease:
             for use in self._uses:
                 use.wait_until_safe_to_reuse()
             raise
+
+    def on_retire(self, callback):
+        from weakref import WeakMethod
+        with self._lock:
+            if self._closed:
+                callback()
+            else:
+                self._callbacks.append(WeakMethod(callback))
 
     def require_active(self):
         with self._lock:
@@ -432,6 +500,11 @@ class InputSlotLease:
         with self._lock:
             if not self._closed:
                 self._closed = True
+                callbacks, self._callbacks = self._callbacks, []
+                for ref in callbacks:
+                    callback = ref()
+                    if callback is not None:
+                        callback()
                 events = ([self.result_ready] if self.result_ready is not None else []) + self._consumer_done
                 for use in self._uses:
                     for event in events:
@@ -442,6 +515,10 @@ class InputSlotLease:
             else:
                 for event in self._consumer_done:
                     event.synchronize()
+            self._uses.clear()
+            self._owners = ()
+            self._consumer_done.clear()
+            self.result_ready = None
 
 
 class GpuFieldData(Mapping):
@@ -483,51 +560,63 @@ class GpuFieldData(Mapping):
 
 
 class _GpuFieldViewContext:
-    __slots__ = ("_result", "_stream", "_exited", "_lease")
+    __slots__ = ("_result", "_stream", "_exited", "_lease", "_closing")
 
     def __init__(self, result, stream):
         self._result = result
         self._stream = stream
         self._exited = False
         self._lease = None
+        self._closing = False
 
     def __enter__(self):
         import cupy as cp
 
+        if self._lease is not None or self._exited:
+            raise RuntimeError("GPU field context cannot be entered twice")
         stream = self._stream or cp.cuda.Stream.null
-        self._lease = self._result._lease.acquire_view()
-        ready = self._lease.result_ready
-        if ready is not None:
-            stream.wait_event(ready)
+        parent = self._result._lease
+        with parent._lock:
+            self._lease = parent.acquire_view()
+            try:
+                ready = self._lease.result_ready
+                if ready is not None:
+                    stream.wait_event(ready)
+                return self._result._slot_views()
+            except BaseException:
+                self._closing = True
+                if self._lease is not parent:
+                    self._lease.wait_until_safe_to_reuse()
+                self._exited = True
+                raise
+
+    def __exit__(self, *_):
+        import cupy as cp
+        if self._exited or self._lease is None:
+            return
+        if self._closing:
+            # Completion was already transferred to the input owner. Retry
+            # its drain without registering a new event on a closed lease.
+            if self._lease is not self._result._lease:
+                self._lease.wait_until_safe_to_reuse()
+            self._exited = True
+            return
+        stream = self._stream or cp.cuda.Stream.null
         try:
-            return self._result._slot_views()
+            done = cp.cuda.Event(disable_timing=True)
+            stream.record(done)
         except BaseException:
+            stream.synchronize()
+            self._closing = True
             if self._lease is not self._result._lease:
                 self._lease.wait_until_safe_to_reuse()
             self._exited = True
             raise
-
-    def __exit__(self, *_):
-        import cupy as cp
-
-        stream = self._stream or cp.cuda.Stream.null
-        done = cp.cuda.Event(disable_timing=True)
-        stream.record(done)
         self._lease.register_consumer_done(done)
+        self._closing = True
         if self._lease is not self._result._lease:
             self._lease.wait_until_safe_to_reuse()
         self._exited = True
-
-    def __del__(self):
-        if not self._exited and self._lease is self._result._lease:
-            try:
-                import cupy as cp
-
-                done = cp.cuda.Event(disable_timing=True)
-                cp.cuda.Stream.null.record(done)
-                self._result._lease.register_consumer_done(done)
-            except Exception:
-                pass
 
 
 class GpuFieldResult:
@@ -546,6 +635,7 @@ class GpuFieldResult:
         "_device_released",
         "_views",
         "_cpu_cache",
+        "__weakref__",
     )
 
     def __init__(
@@ -568,6 +658,12 @@ class GpuFieldResult:
         self._device_released = bool(device_released)
         self._views = None
         self._cpu_cache = None
+        if lease is not None and hasattr(lease, 'on_retire'):
+            lease.on_retire(self._retire)
+
+    def _retire(self):
+        self._views = None
+        self.event_dgrams = None
 
     @property
     def segment_ids(self):
@@ -650,22 +746,10 @@ class GpuFieldResult:
         import cupy as cp
 
         self._require_device_storage("on_gpu")
-        stream = cp.cuda.Stream.null
-        lease = self._lease.acquire_view()
-        try:
-            if lease.result_ready is not None:
-                stream.wait_event(lease.result_ready)
+        stream = getattr(cp.cuda, 'get_current_stream', lambda: cp.cuda.Stream.null)()
+        with self.on_gpu_view(stream) as values:
             with stream:
-                copied = {
-                    segment: value.copy()
-                    for segment, value in self._slot_views().items()
-                }
-        finally:
-            done = cp.cuda.Event(disable_timing=True)
-            stream.record(done)
-            lease.register_consumer_done(done)
-            if lease is not self._lease:
-                lease.wait_until_safe_to_reuse()
+                copied = {segment: value.copy() for segment, value in values.items()}
         return GpuFieldData(self.binding, copied)
 
     def on_gpu_view(self, stream=None):
@@ -679,22 +763,13 @@ class GpuFieldResult:
     def on_cpu(self):
         """Return independent NumPy values keyed by physical segment id."""
         if self._cpu_cache is None:
-            self._require_device_storage("on_cpu")
-            lease = self._lease.acquire_view()
-            try:
-                if lease.result_ready is not None:
-                    lease.result_ready.synchronize()
+            import cupy as cp
+            stream = cp.cuda.get_current_stream()
+            with self.on_gpu_view(stream) as values:
                 self._cpu_cache = GpuFieldData(
                     self.binding,
-                    {segment: value.get() for segment, value in self._slot_views().items()},
+                    {segment: value.get() for segment, value in values.items()},
                 )
-            finally:
-                if lease is not self._lease:
-                    import cupy as cp
-                    done = cp.cuda.Event(disable_timing=True)
-                    cp.cuda.get_current_stream().record(done)
-                    lease.register_consumer_done(done)
-                    lease.wait_until_safe_to_reuse()
         return self._cpu_cache
 
 

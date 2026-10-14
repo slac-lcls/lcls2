@@ -6,7 +6,8 @@ from types import SimpleNamespace as NS
 import numpy as np
 import pytest
 
-from psana.gpu.gpu_budget import _GpuBudget
+from psana.gpu.gpu_budget import _GpuBudget, allocation_growth_bytes
+from psana.gpu.gpu_allocation import allocation_capacity
 from psana.gpu.gpu_calib import _upload_fixed_arrays
 from psana.gpu.gpu_detector import GPUDetector
 from psana.gpu.gpu_events import GpuEventManager
@@ -26,14 +27,8 @@ def available():
         return False
 
 
-@pytest.mark.gpu
-@pytest.mark.skipif(not available(), reason='no CUDA device')
-@pytest.mark.parametrize('fast_padding,slow_padding', [
-    (0, 1024**2),
-    (16 * 1024, 64 * 1024),  # frequent small dgrams have the larger total footprint
-])
-def test_resident_fast_and_five_slow_reads_match_cpu(
-        tmp_path, mixed_packet, fast_padding, slow_padding):
+def residency_case(tmp_path, mixed_packet, fast_padding=0, slow_padding=1024**2):
+    """Real reader/parser/detector fixture shared with lifecycle acceptance."""
     import cupy as cp
     from psana import dgram
 
@@ -77,11 +72,22 @@ def test_resident_fast_and_five_slow_reads_match_cpu(
     peds, gain = _upload_fixed_arrays((np.zeros(54, np.float32), np.ones(54, np.float32)), budget)
     detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=2, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=handles, n_slots=3, budget=budget)
+    detector.configure_gather(parser.handle_indices)
     per_dgram = parser.estimate_batch_bytes(1)
     resident_bytes = 1000 * (fast_size + per_dgram)
     slow_cost = slow_size + per_dgram + detector.estimate_subbatch_bytes(1)
     capacity = resident_bytes + 4 * slow_cost
-    budget._limit = budget.committed() + capacity
+    # Keep the same logical residency plan and explicitly budget the pool's
+    # rounded blocks: one resident input/parser set and two transient sets.
+    def rounding(n, dgram_size):
+        physical = (allocation_capacity(cp, n * dgram_size)
+                    + allocation_growth_bytes(parser.allocation_requirements(n)))
+        if n == 2:
+            physical += allocation_growth_bytes(detector.allocation_requirements(n, 0))
+            return physical - n * (dgram_size + per_dgram + detector.estimate_subbatch_bytes(1))
+        return physical - n * (dgram_size + per_dgram)
+    pool_rounding = rounding(1000, fast_size) + 2 * rounding(2, slow_size)
+    budget._limit = budget.committed() + capacity + pool_rounding
     m = GpuEventManager.__new__(GpuEventManager)
     m.dm = NS(xtc_files=paths, get_chunk_id=lambda _: 0, fds=[0, 1])
     m.dsparms = NS(gpu_bulk_read=True, n_gpu_streams=2, max_events=0)
@@ -96,6 +102,26 @@ def test_resident_fast_and_five_slow_reads_match_cpu(
     m._n_events, m._pending_gpu_read = 0, None
     packet = mixed_packet(fast_size=fast_size, slow_size=slow_size,
                           timestamp_base=timestamp_base)
+    return NS(manager=m, packet=packet, expected=expected, handles=handles,
+              fast_size=fast_size, slow_size=slow_size,
+              resident_bytes=resident_bytes, per_dgram=per_dgram,
+              timestamp_base=timestamp_base)
+
+
+@pytest.mark.gpu
+@pytest.mark.skipif(not available(), reason='no CUDA device')
+@pytest.mark.parametrize('fast_padding,slow_padding', [
+    (0, 1024**2),
+    (16 * 1024, 64 * 1024),  # frequent small dgrams have the larger total footprint
+])
+def test_resident_fast_and_five_slow_reads_match_cpu(
+        tmp_path, mixed_packet, fast_padding, slow_padding):
+    import cupy as cp
+    case = residency_case(tmp_path, mixed_packet, fast_padding, slow_padding)
+    m, packet, expected, handles = case.manager, case.packet, case.expected, case.handles
+    budget = m._gpu_budget
+    fast_size, slow_size = case.fast_size, case.slow_size
+    resident_bytes, per_dgram = case.resident_bytes, case.per_dgram
     fast_owner, fast_bytes, rows, slow_owners, observed = None, None, None, set(), []
     try:
         for envelope in m._process_batch({}, {0: (packet, [])}, {}):

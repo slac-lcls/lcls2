@@ -102,31 +102,33 @@ class Events:
                     return envelope
                 except StopIteration:
                     self._emit_batch_end()
-                    try:
-                        envelope = next(self._batch_source)
-                    except StopIteration:
-                        if self.gpu_manager is not None and not self._gpu_finished:
-                            self._gpu_finished = True
-                            self._evt_man = iter(self.gpu_manager.finish())
-                            continue
-                        raise
+                # Advance the yielding batch source outside the exhausted
+                # iterator's exception handler: its traceback owns old events.
+                try:
+                    envelope = next(self._batch_source)
+                except StopIteration:
+                    if self.gpu_manager is not None and not self._gpu_finished:
+                        self._gpu_finished = True
+                        self._evt_man = iter(self.gpu_manager.finish())
+                        continue
+                    raise
 
-                    if self.gpu_manager is None:
-                        self._evt_man = EventManager(
-                            envelope.smd,
-                            self.configs,
-                            self.dm,
-                            self.max_retries,
-                            self.use_smds,
+                if self.gpu_manager is None:
+                    self._evt_man = EventManager(
+                        envelope.smd,
+                        self.configs,
+                        self.dm,
+                        self.max_retries,
+                        self.use_smds,
+                    )
+                else:
+                    self._evt_man = iter(
+                        self.gpu_manager.process_batch(
+                            envelope.smd, envelope.gpu
                         )
-                    else:
-                        self._evt_man = iter(
-                            self.gpu_manager.process_batch(
-                                envelope.smd, envelope.gpu
-                            )
-                        )
-                    self._batch_event_count = 0
-                    self._batch_start_time = time.monotonic()
+                    )
+                self._batch_event_count = 0
+                self._batch_start_time = time.monotonic()
 
         elif self.smdr_man:
             # RunSerial: iterate over batches, skipping empty ones

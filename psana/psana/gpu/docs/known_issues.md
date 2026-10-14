@@ -38,30 +38,18 @@ multi-EB GPU placement is not a validated configuration.
 
 Relevant code: `psexp/mpi_ds.py` and `gpu/gpu_mpi.py`.
 
-### Result-lease fan-out
+### Result-lease fan-out (fixed in ownership Stage 3)
 
-**Impact:** high when the same `GPUResult` is consumed zero-copy on more than
-one CUDA stream.
+`SlotLease` now collects every terminal event. Open zero-copy contexts pin the
+slot; retirement rejects fresh access and can be retried after those contexts
+exit. `GPUResult.on_gpu` records completion on the actual copy stream.
+Retired facades release backing references while independent CPU caches remain
+available. Escaped raw ndarray aliases remain charged but are not snapshots
+and must not be used after their context ends.
 
-`SlotLease` stores one `_consumer_done` event. Each
-`on_gpu_view(stream).__exit__` assigns that field, so a second consumer
-replaces the first event instead of adding another dependency. EventPool can
-therefore reuse the slot after the last registered event while an earlier
-consumer is still running. `InputSlotLease` already uses the required list of
-completion events for parsed fields.
-
-Until this is fixed, use at most one `on_gpu_view()` consumer stream for each
-detector result. If several kernels consume the view, enqueue them on that one
-stream inside one context. An independent `on_gpu` copy is safe only under the
-documented default/null-stream usage; the property does not enforce that
-stream itself.
-
-The result lease should collect every registered event, wait for all of them,
-and have unit coverage matching `InputSlotLease`. `GPUResult.on_gpu` should
-also either force its copy onto the null stream or explicitly register the
-actual copy stream.
-
-Relevant code: `gpu/context.py`, `gpu/gpu_input.py`, and `gpu/gpu_stream.py`.
+See [Stage 3 ownership findings](bulk_ownership_stage3_findings.md) for the
+implementation and [Stage 4 acceptance](bulk_ownership_stage4_findings.md) for
+the completed single-BD JF validation.
 
 ### Accounting boundary outside pipeline-owned device storage
 

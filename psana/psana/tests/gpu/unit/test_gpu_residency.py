@@ -35,13 +35,17 @@ class Parser:
             self.budget.release(self.capacity[i])
             self.capacity[i] = n
         release_raw = read.retain_input()
+        history = NS(released=False)
         def release():
             release_raw()
             self.owners[i] = None
+            history.released = True
         batch = NS(n_dgrams=n, data_gpu=read.data_gpu, walk_done=Token())
         owner = InputWindow(batch_id, len(self.windows), batch, read.desc_table, release=release)
         self.owners[i] = owner
-        self.windows.append(owner)
+        # Keep lifecycle observations without retaining every old input array.
+        # Retained backing is now intentionally charged after cache trimming.
+        self.windows.append(history)
         return owner
 
     def trim_free_buffers(self):
@@ -139,6 +143,7 @@ def test_tight_budget_preserves_all_events_and_each_input_once(io, capacity, mix
     assert timestamps == list(range(1000, 2000))
     assert m.gpu_reader.io_stats()['requested_bytes'] == 11000
     assert m._gpu_budget.committed() <= capacity and m._gpu_budget._held == 0
+
 
 
 def test_resident_only_execution_does_not_issue_empty_reads(io, mixed_packet):

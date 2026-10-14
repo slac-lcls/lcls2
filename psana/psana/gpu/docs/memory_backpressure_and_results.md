@@ -24,10 +24,10 @@ The intended central invariant is:
 
 Advancing a Python generator is not a CUDA completion signal.
 
-`InputSlotLease` implements this invariant for multiple parsed-field
-consumers. The detector-result `SlotLease` currently stores only one terminal
-event, so multiple `on_gpu_view()` consumers of the same result are a known
-gap. See [Known problems and limitations](known_issues.md#result-lease-fan-out).
+Both `InputSlotLease` and detector-result `SlotLease` collect every terminal
+consumer. An entered result view prevents slot retirement until it exits.
+Retirement rejects new acquisitions, and an open-view error permits retry
+after the caller finishes its context.
 
 The measurements that motivated this design are retained in
 [D2H bandwidth](performance/d2h_bandwidth.md).
@@ -88,13 +88,14 @@ recorded.
 Each result lease contains:
 
 - `result_ready`: the producer/result-ready CUDA event.
-- `_consumer_done`: the terminal-consumer CUDA event, when one is registered.
+- `_consumer_done`: all registered terminal-consumer CUDA events.
 
 Automatic D2H registers its copy-completion event. An external
 `on_gpu_view(stream)` consumer registers an event recorded after the user's
-kernel launches. `EventPool` waits for the registered event before reuse.
-Unlike `InputSlotLease`, this class stores one `_consumer_done` value rather
-than a list; registering a second event replaces the first.
+kernel launches. `EventPool` waits for every registered event before reuse.
+An open context produces an explicit retirement error instead of deadlocking
+its own caller. Exit the context and retry retirement. Failed completion keeps
+the slot occupied and its allocations charged.
 
 ### `_PinnedSlot`: bounded host retention
 
@@ -311,10 +312,10 @@ With automatic D2H disabled, `on_gpu` returns an independent D2D copy:
 arr = evt.gpu.get("jungfrau.calib").on_gpu
 ```
 
-The copy should be requested during the current event iteration on the CuPy
-null/default stream. The next slot submission synchronizes that stream before
-overwriting the calibration output slot. For a custom consumer stream, use
-`on_gpu_view(stream)` so its completion event is registered explicitly.
+The copy must be requested while the event lease is active. Its completion
+is recorded on the current CuPy stream and joined before the source slot can
+be overwritten. For zero-copy consumers, use `on_gpu_view(stream)` and enqueue
+all work inside that context on the specified stream.
 
 In the conditional early-release automatic-D2H path, device storage has
 already been released and `on_gpu` raises. When parsed input keeps the slot
@@ -574,3 +575,31 @@ and its CPU delivery are visible in Nsight Systems.
 - Correctness and completeness gaps in leases, user-allocation accounting,
   pinned-host sizing, and multi-BD coordination are tracked in
   [Known problems and limitations](known_issues.md).
+
+
+### Allocation ownership after retirement
+
+Reader, parser, detector output, and fixed storage use allocation-backed
+charges. Replacing or trimming a cache removes its reference; surviving
+ndarray aliases retain the rounded pool charge until the backing is actually
+relinquished. Reuse safety remains governed by CUDA consumer leases.
+
+Retired public facades reject new device access and detach backing. Independent
+cached host results remain readable. A raw ndarray escaping a view context is
+not a valid reusable-data snapshot, even though its live allocation remains
+charged. Fixed setup uploads drain their upload stream before returning;
+failed drains retain both device and host storage for explicit retry.
+Failed setup uploads keep a process-level safety reference to their budget so
+constructor failure and Python garbage collection cannot discard pending work.
+A successful `drain_failed_allocations()` removes that reference. If completion
+can never be established, those allocations remain retained until process exit.
+
+Parsed-field CPU copies use the same consumer-context cleanup as GPU views.
+After an input owner fails to drain, context-exit retry resumes that drain
+without registering a new completion event on its already-closed child lease.
+
+Memory snapshots distinguish committed, held, retained, failed, borrowed IPC
+mappings, pool-used, pool-total, and pinned-host storage. Borrowed calibration
+mappings are not charged again in followers. See
+[Stage 4 acceptance](bulk_ownership_stage4_findings.md) and the
+[pre-commit review](bulk_ownership_review.md) for measured coverage.

@@ -7,6 +7,7 @@ import pytest
 
 from psana.gpu.gpu_admission import AdmissionEvent, plan_admission, _resident_candidates
 from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError, allocation_growth_bytes
+from psana.gpu.gpu_allocation import owned_empty
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu import gpu_calib
@@ -275,11 +276,11 @@ def test_growth_refuses_old_plus_new_peak_before_allocator():
 
 def test_reader_trimming_preserves_live_input_and_io():
     reader = KvikioGpuReader.__new__(KvikioGpuReader)
-    reader._slot_bufs = [np.empty(10, np.uint8) for _ in range(3)]
     reader._input_holds = {0: 1}
     reader._pending = [NS(slot_id=1)]
     reader._budget = _GpuBudget(100)
-    reader._budget.reserve(30)
+    reader._slot_bufs = [owned_empty(np, 10, np.uint8, reader._budget, 'reader')
+                        for _ in range(3)]
     reader.trim_free_buffers()
     assert reader._slot_bufs[0] is not None and reader._slot_bufs[1] is not None
     assert reader._slot_bufs[2] is None and reader._budget.committed() == 20
@@ -308,10 +309,11 @@ def test_parser_trimming_retains_owned_rows_and_fixed_charge():
     from psana.gpu.gpudgram.batch import GpuXtcBatchPool, _GpuXtcSlotBuffers
     parser = GpuXtcBatchPool.__new__(GpuXtcBatchPool)
     parser.cp, parser._budget = np, _GpuBudget(1000)
-    parser._budget.reserve(200)  # 40 fixed + 80 per parser slot
+    parser._budget.reserve(40)  # fixed configuration remains legacy in Stage 2
     parser._owners = [object(), None]
     parser._slots = [_GpuXtcSlotBuffers(np, parser._budget,
-                                       dgram_records=np.empty((1, 10), np.uint64))
+                                       dgram_records=owned_empty(np, (1, 10), np.uint64,
+                                                                parser._budget, 'parser'))
                      for _ in range(2)]
     live = parser._slots[0]
     parser.trim_free_buffers()
@@ -324,15 +326,16 @@ def test_parser_trimming_retains_owned_rows_and_fixed_charge():
 def test_fixed_upload_reserves_before_transfer_and_rolls_back(monkeypatch):
     budget = _GpuBudget(100)
     calls = []
-    def upload(array):
-        assert budget.committed() == 80
+    def upload(target, array):
+        assert budget.committed() + budget._held == 80
         calls.append(True)
         if len(calls) == 2:
             raise RuntimeError('upload failed')
         return array.copy()
     drained = []
     monkeypatch.setattr(gpu_calib, '_cupy', lambda: NS(
-        asarray=upload, cuda=NS(get_current_stream=lambda: NS(synchronize=lambda: drained.append(True)))))
+        empty=np.empty, cuda=NS(get_current_stream=lambda: NS(synchronize=lambda: drained.append(True)))))
+    monkeypatch.setattr(np, "copyto", upload)
     with pytest.raises(RuntimeError, match='upload failed'):
         gpu_calib._upload_fixed_arrays((np.zeros(10, np.float32),) * 2, budget)
     assert drained == [True] and budget.committed() == 0
@@ -343,10 +346,14 @@ def test_fixed_upload_failure_with_unproven_completion_stays_charged(monkeypatch
     def fail(*args):
         raise RuntimeError('CUDA failure')
     monkeypatch.setattr(gpu_calib, '_cupy', lambda: NS(
-        asarray=fail, cuda=NS(get_current_stream=lambda: NS(synchronize=fail))))
+        empty=np.empty, cuda=NS(get_current_stream=lambda: NS(synchronize=fail))))
     with pytest.raises(RuntimeError):
         gpu_calib._upload_fixed_arrays((np.zeros(10, np.float32),), budget)
     assert budget.committed() == 40 and len(budget._failed_allocations) == 1
+    budget._failed_allocations[0][0].synchronize = lambda: None
+    budget.drain_failed_allocations()
+    budget.drain_failed_allocations()  # retry is idempotent
+    assert budget.committed() == 0 and not budget._failed_allocations
 
 
 def test_ipc_follower_does_not_double_subtract_shared_constants():

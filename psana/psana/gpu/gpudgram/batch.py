@@ -4,6 +4,11 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+from psana.gpu.gpu_allocation import (
+    owned_empty, upload_owned, allocation_requirement, backing_capacity,
+)
+from .config import build_field_location_tables
+
 from psana.gpu.gpu_kvikio_read import (
     DESC_DEVICE_OFFSET,
     DESC_EVENT_INDEX,
@@ -81,24 +86,26 @@ class _GpuXtcSlotBuffers:
     shape_counts: object = None
     shape_refs: object = None
     locators: dict = field(default_factory=dict)
+    locator_backing: object = None
+
+    def batched_locator_rows(self, n_handles, n_dgrams):
+        """Return [handle, capacity, column] storage; tails keep capacity strides."""
+        existing = self.locator_backing
+        if existing is not None and existing.shape[1] >= n_dgrams:
+            return existing
+        shape = (int(n_handles), int(n_dgrams), LOC_NCOLS)
+        replacement = owned_empty(self.cp, shape, self.cp.uint64,
+                                  self.budget, 'parser')
+        self.locator_backing = replacement
+        return replacement
 
     def _rows(self, existing, n_rows, row_shape):
         required_shape = (int(n_rows),) + tuple(row_shape)
         if existing is not None and existing.shape[0] >= n_rows:
             return existing, existing[:n_rows]
 
-        old_nbytes = int(existing.nbytes) if existing is not None else 0
-        required_nbytes = int(np.prod(required_shape, dtype=np.int64)) * 8
-        if self.budget is not None:
-            self.budget.reserve(required_nbytes)
-        try:
-            replacement = self.cp.empty(required_shape, dtype=self.cp.uint64)
-        except Exception:
-            if self.budget is not None:
-                self.budget.release(required_nbytes)
-            raise
-        if self.budget is not None:
-            self.budget.release(old_nbytes)
+        replacement = owned_empty(self.cp, required_shape, self.cp.uint64,
+                                  self.budget, 'parser')
         return replacement, replacement
 
     def prepare(self, desc_table, max_shapes_per_dgram, stream):
@@ -127,9 +134,10 @@ class _GpuXtcSlotBuffers:
 
     @property
     def memory_bytes(self):
-        arrays = (self.dgram_records, self.shape_counts, self.shape_refs)
-        return sum(int(array.nbytes) for array in arrays if array is not None) + sum(
-            int(array.nbytes) for array in self.locators.values()
+        arrays = (self.dgram_records, self.shape_counts, self.shape_refs,
+                  self.locator_backing)
+        return sum(backing_capacity(array) for array in arrays if array is not None) + sum(
+            backing_capacity(array) for array in self.locators.values()
         )
 
 
@@ -151,7 +159,10 @@ class GpuXtcBatchPool:
 
         self.cp = cp
         self.configs = configs
-        self.field_handles = tuple(field_handles)
+        (self.field_handles, stream_handles, handle_table) = (
+            build_field_location_tables(configs, field_handles)
+        )
+        self.handle_indices = {h: i for i, h in enumerate(self.field_handles)}
         self.n_slots = int(n_slots)
         if self.n_slots <= 0:
             raise ValueError("n_slots must be positive")
@@ -164,24 +175,15 @@ class GpuXtcBatchPool:
             raise ValueError("max_shapes_per_dgram must be positive")
 
         self._budget = budget
-        self._config_bytes = sum(
-            int(table.nbytes)
-            for table in (
-                configs.stream_names_index,
-                configs.names_table,
-                configs.fields_table,
-            )
+        self.device_configs = configs.to_device(cp, budget=budget)
+        self.stream_handles_gpu, self.handle_table_gpu = upload_owned(
+            cp, (stream_handles, handle_table), budget,
         )
-        if budget is not None:
-            budget.reserve(self._config_bytes)
-        try:
-            self.device_configs = configs.to_device(cp)
-            self._config_ready = cp.cuda.Event(disable_timing=True)
-            self._config_ready.record(cp.cuda.get_current_stream())
-        except Exception:
-            if budget is not None:
-                budget.release(self._config_bytes)
-            raise
+        self._config_bytes = sum(backing_capacity(a) for a in (
+            self.device_configs.stream_names_index, self.device_configs.names,
+            self.device_configs.fields, self.stream_handles_gpu, self.handle_table_gpu))
+        self._config_ready = cp.cuda.Event(disable_timing=True)
+        self._config_ready.record(cp.cuda.get_current_stream())
 
         self._owners = [None] * self.n_slots
         self._next_window_id = 0
@@ -218,8 +220,15 @@ class GpuXtcBatchPool:
                 desc_table[:, DESC_STREAM_ID], dtype=np.uint64, copy=True
             ),
         )
-        for handle in self.field_handles:
-            batch.locate(handle, stream=stream)
+        if self.field_handles:
+            with stream:
+                backing = slot.batched_locator_rows(
+                    len(self.field_handles), len(desc_table)
+                )
+                batch._locate_configured(
+                    self.field_handles, self.stream_handles_gpu,
+                    self.handle_table_gpu, backing, self.handle_indices,
+                )
         return batch
 
     def parse_window(self, gpu_read, stream, *, batch_id):
@@ -287,19 +296,17 @@ class GpuXtcBatchPool:
         slot = self._slots[index]
         rows = [(DGRAM_NCOLS * 8, slot.dgram_records), (8, slot.shape_counts),
                 (self.max_shapes_per_dgram * REF_NCOLS * 8, slot.shape_refs)]
-        rows.extend((LOC_NCOLS * 8, slot.locators.get(h)) for h in self.field_handles)
-        return [(int(n_dgrams) * size, int(a.nbytes) if a is not None else 0)
+        if self.field_handles:
+            rows.append((len(self.field_handles) * LOC_NCOLS * 8, slot.locator_backing))
+        return [allocation_requirement(self.cp, int(n_dgrams) * size, a)
                 for size, a in rows]
 
     def trim_free_buffers(self):
         for index, slot in enumerate(self._slots):
             if self._owners[index] is not None:
                 continue
-            nbytes = slot.memory_bytes
             self._slots[index] = _GpuXtcSlotBuffers(self.cp, self._budget)
             del slot
-            if self._budget is not None:
-                self._budget.release(nbytes)
 
     def memory_bytes(self):
         per_slot = [slot.memory_bytes for slot in self._slots]

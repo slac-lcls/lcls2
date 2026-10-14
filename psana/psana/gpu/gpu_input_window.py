@@ -41,8 +41,19 @@ class InputWindow:
         self._retiring = False
         self._released = False
         self._release = release
-        self._ready = [getattr(batch, 'walk_done', None)]
-        self._ready.extend(loc.ready for loc in getattr(batch, '_locators', {}).values())
+        self._ready = []
+        self._ready_ids = set()
+        self._add_ready((getattr(batch, 'walk_done', None),))
+        if getattr(batch, '_configured_backing', None) is not None:
+            self._add_ready((batch.configured_locations().ready,))
+        self._add_ready(loc.ready for loc in getattr(batch, '_locators', {}).values())
+
+    def _add_ready(self, events):
+        """Keep distinct producer, lazy-locator, and consumer dependencies."""
+        for event in events:
+            if event is not None and id(event) not in self._ready_ids:
+                self._ready.append(event)
+                self._ready_ids.add(id(event))
 
     @property
     def released(self):
@@ -81,7 +92,7 @@ class InputWindow:
             result = self.batch.locate(handle, stream=stream)
             # A lazily requested locator is itself a consumer of raw/parser
             # storage, even before its caller registers a kernel completion.
-            self._ready.append(result.ready)
+            self._add_ready((result.ready,))
             return result
 
     def close(self):
@@ -109,6 +120,12 @@ class InputWindow:
                 self._retiring = False  # closed, but completion can be retried
             raise
         with self._lock:
+            retire = getattr(self.batch, 'retire', None)
+            if retire is not None:
+                retire()
+            self.batch = None
+            self._ready.clear()
+            self._ready_ids.clear()
             self._released = True
             self._retiring = False
             self._release = None
@@ -145,7 +162,8 @@ class InputWindowUse:
         with self.window._lock:
             if not self._released:
                 self._closing = True
-                self.window._ready.extend(self._done)
+                self.window._add_ready(self._done)
+                self._done.clear()
                 self.window._uses.remove(self)
                 self._released = True
         return self.window._try_retire()

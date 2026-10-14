@@ -1,0 +1,147 @@
+{
+  "jobs": [
+    {
+      "path": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/job-38478311-warm-ab",
+      "node": "sdfampere003",
+      "B_revision": "803a70011d18168200927e279cbeaca90568e13f",
+      "calibration_sha256": "c3679e0fb47bebfafe41f36750e88fe1ec0d6b71ef386814fb1eac37dc197ce9",
+      "clean_times_s": {
+        "A": [
+          24.16858826301177,
+          21.75617381298798,
+          21.767786540003726
+        ],
+        "B": [
+          34.64607745400281,
+          33.45098799499101,
+          33.14201272901846
+        ]
+      },
+      "B_instrumented": [
+        {
+          "case": "B-warm-cpu-nvtx-r1",
+          "loop_s": 34.495499073993415,
+          "setup_s": 0.945442278,
+          "read_wait_s": 16.640255146
+        },
+        {
+          "case": "B-warm-cpu-nvtx-r2",
+          "loop_s": 33.3356371060072,
+          "setup_s": 1.000170868,
+          "read_wait_s": 15.595601732
+        },
+        {
+          "case": "B-warm-cpu-nvtx-r3",
+          "loop_s": 33.21522205701331,
+          "setup_s": 0.93941204,
+          "read_wait_s": 15.387806493
+        }
+      ]
+    },
+    {
+      "path": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-batched-locators/validation/batched-locators-20260917/job-38504647-warm-ab",
+      "node": "sdfampere004",
+      "B_revision": "803a70011d18168200927e279cbeaca90568e13f",
+      "calibration_sha256": "c3679e0fb47bebfafe41f36750e88fe1ec0d6b71ef386814fb1eac37dc197ce9",
+      "clean_times_s": {
+        "B": [
+          37.38039118796587,
+          45.33073985995725,
+          40.23800075286999
+        ],
+        "O": [
+          38.507889807689935,
+          30.53933632094413,
+          35.45156817184761
+        ]
+      },
+      "B_instrumented": [
+        {
+          "case": "B-warm-cpu-nvtx-r1",
+          "loop_s": 37.27434927178547,
+          "setup_s": 0.959301493,
+          "read_wait_s": 19.322805014
+        },
+        {
+          "case": "B-warm-cpu-nvtx-r2",
+          "loop_s": 43.99871319113299,
+          "setup_s": 5.659890443,
+          "read_wait_s": 18.22052585
+        },
+        {
+          "case": "B-warm-cpu-nvtx-r3",
+          "loop_s": 35.79689972102642,
+          "setup_s": 1.014058067,
+          "read_wait_s": 17.418911042
+        }
+      ]
+    }
+  ],
+  "verified_equal": {
+    "all_clean_workload_settings": {
+      "batch_size": 20,
+      "budget_gib": 8.0,
+      "cache": "warm",
+      "depth": 1,
+      "diagnostics": false,
+      "events": 10000,
+      "n_bds": 1,
+      "nsight_capture": false,
+      "payload_bytes": 335571760000,
+      "timestamp_sha256": "23f9051ac9f98208310171f734251b0ccd1f40fa048d1748553cbd38cce559d6",
+      "timing_mode": "off"
+    },
+    "all_six_B_clean_runtime_records": {
+      "rank": 2,
+      "psana": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/__init__.py",
+      "cupy": "13.6.0",
+      "cuda": 12090,
+      "kvikio": "24.08.02",
+      "compat": true,
+      "gds_available": false,
+      "visibility": "0",
+      "task_size": 1048576,
+      "nthreads": 8,
+      "modules": {
+        "psana.dgram": {
+          "path": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/dgram.cpython-39-x86_64-linux-gnu.so",
+          "sha256": "d99039df40d918d4456ffb35dc92319e9d026a080da382563b6a62e60aedb417"
+        },
+        "psana.eventbuilder": {
+          "path": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/eventbuilder.cpython-39-x86_64-linux-gnu.so",
+          "sha256": "f6216bd01644aaabdf66b7ffb374e2fb43044d16d538cd476dc5700a5ae97b72"
+        },
+        "psana.gpu.gpu_events": {
+          "path": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/gpu/gpu_events.py",
+          "sha256": "62fe3120bf29b8d9f338149d43615625173ab5e73a86512acaab44b278e812c6"
+        },
+        "psana.gpu.gpu_kvikio_read": {
+          "path": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu-d2h-pipeline/validation/perf-acceptance-20260916/sources/b/install_psana/lib/python3.9/site-packages/psana/gpu/gpu_kvikio_read.py",
+          "sha256": "a163a7a9e6a0c17a592b117b920cd045eed00dc728ccf29115ae3cb0c128b66e"
+        }
+      }
+    },
+    "stage_manifests": true,
+    "all_clean_cache_before_and_after": 1.0
+  },
+  "B_steady_host_scope_medians_s": {
+    "steady/read.wait": [
+      15.595601732,
+      18.22052585
+    ],
+    "steady/submit": [
+      14.283318305,
+      14.74736547
+    ],
+    "steady/xtc.locate_all": [
+      5.179428974,
+      5.321524554
+    ],
+    "steady/detector.gather": [
+      7.009389081,
+      7.282516453
+    ]
+  },
+  "B_clean_median_difference_s": 6.787012757878983,
+  "B_clean_median_increase_percent": 20.289423914460404
+}
