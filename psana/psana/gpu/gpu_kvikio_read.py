@@ -20,6 +20,8 @@ DESC_NCOLS = 6
 class KvikioBatchRead:
     desc_table: np.ndarray
     data_gpu: object = None
+    data_u16: object = None   # cp.uint16 view of data_gpu — raw ADC path
+    data_f32: object = None   # cp.float32 view of data_gpu — passthrough path
 
 
 @dataclass
@@ -36,7 +38,7 @@ class PendingBatch:
 
 
 class KvikioGpuReader:
-    def __init__(self, task_size=None, n_slots=4):
+    def __init__(self, task_size=None, n_slots=2, budget=None):
         """Create a GPU reader with optional pre-allocated per-slot buffers.
 
         Parameters
@@ -97,6 +99,7 @@ class KvikioGpuReader:
         # start of a run as batch sizes stabilise).
         self._slot_bufs: list = [None] * n_slots
         self._n_slots: int = n_slots
+        self._budget = budget  # _GpuBudget | None
         self._slot_idx: int = 0     # incremented on every issue_batch() call
 
     def io_stats(self) -> dict:
@@ -130,6 +133,18 @@ class KvikioGpuReader:
         for fh in self._files.values():
             fh.close()
         self._files.clear()
+
+    def memory_bytes(self) -> dict:
+        """Return current VRAM usage for the raw input slot buffers.
+
+        Used by GpuEvents.log_memory() for Phase-0 accounting.
+        """
+        slot_sizes = [int(b.nbytes) if b is not None else 0
+                      for b in self._slot_bufs]
+        return {
+            'raw_input_slots': sum(slot_sizes),
+            'per_slot':        slot_sizes,
+        }
 
     def issue_batch(self, gpu_view, bd_dm, slot_id=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
@@ -165,11 +180,18 @@ class KvikioGpuReader:
         )
         # Use the pre-allocated per-slot buffer when available.
         # Only re-allocate when the current buffer is too small (grows lazily).
-        slot = (self._slot_idx % self._n_slots
-                if slot_id is None else int(slot_id) % self._n_slots)
-        self._slot_idx += 1
+        if slot_id is not None:
+            slot = int(slot_id) % self._n_slots
+        else:
+            slot = self._slot_idx % self._n_slots
+            self._slot_idx += 1
         existing = self._slot_bufs[slot]
         if existing is None or existing.nbytes < total_nbytes:
+            old_size = int(existing.nbytes) if existing is not None else 0
+            if self._budget is not None:
+                if old_size:
+                    self._budget.release(old_size)
+                self._budget.reserve(total_nbytes)
             self._slot_bufs[slot] = self.cp.empty(
                 total_nbytes, dtype=self.cp.uint8
             )
@@ -219,9 +241,12 @@ class KvikioGpuReader:
         KvikioBatchRead with the CPU descriptor table and GPU data populated.
         """
         if not pending.futures:
+            _dgpu = pending.data_gpu
             return KvikioBatchRead(
                 pending.desc_table,
-                data_gpu=pending.data_gpu,
+                data_gpu=_dgpu,
+                data_u16=_dgpu.view(self.cp.uint16),
+                data_f32=_dgpu.view(self.cp.float32),
             )
 
         # Time the I/O wait to track effective bandwidth.
@@ -242,9 +267,12 @@ class KvikioGpuReader:
         self._total_bytes_read += _bytes
         self._total_io_ns      += _elapsed_ns
 
+        _dgpu = pending.data_gpu
         return KvikioBatchRead(
             pending.desc_table,
-            data_gpu=pending.data_gpu,
+            data_gpu=_dgpu,
+            data_u16=_dgpu.view(self.cp.uint16),
+            data_f32=_dgpu.view(self.cp.float32),
         )
 
     def _file_for_stream(self, bd_dm, stream_id):
