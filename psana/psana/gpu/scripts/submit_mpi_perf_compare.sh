@@ -46,7 +46,6 @@ export PS_EB_NODES=${PS_EB_NODES_VAL}
 export PS_SRV_NODES=0
 export SLURM_GPUS_ON_NODE=${N_GPUS_PER_NODE}
 export OMPI_MCA_btl='^smcuda'
-unset  PS_TEST_GPU_STREAM_IDS
 mkdir -p "/lscratch/${USER:-nobody}/tmp"
 export TMPDIR="/lscratch/${USER:-nobody}/tmp"
 

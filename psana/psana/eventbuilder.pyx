@@ -228,29 +228,19 @@ cdef class EventBuilder:
 
         self._use_proxy_events = bool(use_proxy_flag)
         self._init_profile()
-        self._init_test_gpu(gpu_stream_ids=_gpu_stream_ids_kwarg)
+        self._init_gpu(gpu_stream_ids=_gpu_stream_ids_kwarg)
         self._scratch_pydgrams = [0] * self.nsmds
         self._event_footer = array.array('I', [0] * (self.nsmds + 1))
 
-    cdef void _init_test_gpu(self, gpu_stream_ids=None):
-        """Initialise GPU stream routing.
-
-        Priority:
-          1. gpu_stream_ids kwarg (passed from EventBuilderManager via DsParms)
-          2. PS_TEST_GPU_STREAM_IDS env var (legacy / direct testing)
-        """
+    cdef void _init_gpu(self, gpu_stream_ids=None):
+        """Initialise Configure-derived whole-stream GPU routing."""
         # All cdef declarations must be at the top in Cython.
         cdef object ids_src
-        cdef object env_val
         self._split_gpu_enabled = 0
         self._gpu_stream_ids = set()
         ids_src = None
         if gpu_stream_ids is not None and len(gpu_stream_ids) > 0:
             ids_src = gpu_stream_ids
-        else:
-            env_val = os.environ.get("PS_TEST_GPU_STREAM_IDS", "")
-            if env_val:
-                ids_src = [int(x.strip()) for x in env_val.split(",") if x.strip()]
         if ids_src:
             self._gpu_stream_ids = set(int(x) for x in ids_src)
             self._split_gpu_enabled = 1

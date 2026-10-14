@@ -1,6 +1,6 @@
 """
 Unit tests for SlotLease, EventPool lease tracking, and the internal
-GpuEvents._D2hPipeline.
+GpuEventManager._D2hPipeline.
 
 All tests run on CPU only — CuPy is replaced with a lightweight fake that:
   - alloc_pinned_memory → bytearray (supports np.frombuffer)
@@ -24,6 +24,9 @@ from types import SimpleNamespace
 
 import numpy as np
 import pytest
+
+from psana.event import EventEnvelope
+from psana.gpu.gpu_events import _GpuOnlyDgram
 
 
 # ---------------------------------------------------------------------------
@@ -221,7 +224,7 @@ class TestEventPoolLeases:
         pool._slots[0] = _EventSlot(
             slot_id=0,
             gpu_results_by_ts={},
-            cpu_evts=[],
+            event_envelopes=[],
             stream=stream,
             leases=[lease],
             leases_by_ts={},
@@ -247,7 +250,7 @@ class TestEventPoolLeases:
         record = _EventSlot(
             slot_id=0,
             gpu_results_by_ts={},
-            cpu_evts=[],
+            event_envelopes=[],
             stream=pool._streams[0],
             leases=[lease],
             leases_by_ts={},
@@ -269,7 +272,7 @@ class TestEventPoolLeases:
 
 
 # ===========================================================================
-# GPUResult._cpu_cache / GpuEventContext._cached_cpu_results tests
+# GPUResult._cpu_cache / GpuEventState._cached_cpu_results tests
 # ===========================================================================
 
 
@@ -394,8 +397,8 @@ class TestGpuBudget:
 
 
 class TestCpuCache:
-    """Tests for the GpuEvents internal D→H path where _cpu_cache is set
-    on GPUResult and _cached_cpu_results is set on GpuEventContext before the
+    """Tests for the manager's internal D→H path where _cpu_cache is set
+    on GPUResult and _cached_cpu_results is set on GpuEventState before the
     context is yielded to the user."""
 
     def test_on_cpu_returns_cached_result_immediately(self):
@@ -436,19 +439,15 @@ class TestCpuCache:
         assert arr.get_calls == 1
         np.testing.assert_allclose(second, 3.0)
 
-    def test_gpu_event_context_get_returns_gpu_result(self):
-        """GpuEventContext.get() must return a GPUResult with the correct array."""
-        from psana.gpu.context import GpuEventContext, GPUResult
-        from types import SimpleNamespace
+    def test_gpu_event_state_get_returns_gpu_result(self):
+        """GpuEventState.get() must return the matching GPUResult."""
+        from psana.gpu.context import GpuEventState, GPUResult
 
         arr = _make_arr(fill=5.0)
-        fake_evt = SimpleNamespace(timestamp=42)
-
-        ctx = GpuEventContext(
-            evt=fake_evt,
+        state = GpuEventState(
             gpu_results={"jungfrau.calib": arr},
         )
-        result = ctx.get("jungfrau.calib")
+        result = state.get("jungfrau.calib")
         assert isinstance(result, GPUResult)
         assert result._arr is arr
         # on_cpu falls back to arr.get() when no _pending_d2h is set
@@ -456,7 +455,7 @@ class TestCpuCache:
 
 
 # ===========================================================================
-# _D2hPipeline tests (GpuEvents internal class)
+# _D2hPipeline tests (GpuEventManager internal class)
 # ===========================================================================
 
 
@@ -470,11 +469,11 @@ class TestD2hPipeline:
 
         gpu_results_by_ts = {}
         leases_by_ts = {}
-        cpu_evts = []
+        event_envelopes = []
         leases = []
         for fill in fills:
             ts = int(fill * 100)
-            evt = SimpleNamespace(timestamp=ts)
+            envelope = EventEnvelope([_GpuOnlyDgram(ts)])
             lease = SlotLease(result_ready=_FakeEvent())
             gpu_results_by_ts[ts] = {
                 key: _make_arr(
@@ -485,24 +484,24 @@ class TestD2hPipeline:
                 )
             }
             leases_by_ts[ts] = {key: lease}
-            cpu_evts.append(evt)
+            event_envelopes.append(envelope)
             leases.append(lease)
         return _EventSlot(
             slot_id=0,
             gpu_results_by_ts=gpu_results_by_ts,
-            cpu_evts=cpu_evts,
+            event_envelopes=event_envelopes,
             stream=_FakeStream(),
             leases=leases,
             leases_by_ts=leases_by_ts,
         )
 
     @staticmethod
-    def _make_ctx(record, evt):
-        from psana.gpu.context import GpuEventContext
+    def _make_state(record, envelope):
+        from psana.gpu.context import GpuEventState
+        from psana import utils
 
-        ts = evt.timestamp
-        return GpuEventContext(
-            evt=evt,
+        ts = utils.first_timestamp(envelope.dgrams)
+        return GpuEventState(
             gpu_results=record.gpu_results_by_ts.get(ts, {}),
             leases=record.leases_by_ts.get(ts, {}),
             pending_d2h=record.pending_d2h_by_ts.get(ts, {}),
@@ -528,9 +527,9 @@ class TestD2hPipeline:
         pipe = _D2hPipeline(det_key="jungfrau.calib", chunk_size=2)
         record = self._make_record(fills=(1.0, 2.0))
         pipe.schedule(record)
-        for evt in record.cpu_evts:
-            ctx = self._make_ctx(record, evt)
-            result = ctx.get("jungfrau.calib")
+        for envelope in record.event_envelopes:
+            state = self._make_state(record, envelope)
+            result = state.get("jungfrau.calib")
             assert result._pending_d2h is not None, "_pending_d2h must be set so on_cpu can sync lazily"
 
     def test_on_cpu_returns_correct_data(self):
@@ -546,9 +545,9 @@ class TestD2hPipeline:
         fills = [3.0, 7.0]
         record = self._make_record(fills=fills)
         pipe.schedule(record)
-        for evt, expected in zip(record.cpu_evts, fills):
-            ctx = self._make_ctx(record, evt)
-            result = ctx.get("jungfrau.calib")
+        for envelope, expected in zip(record.event_envelopes, fills):
+            state = self._make_state(record, envelope)
+            result = state.get("jungfrau.calib")
             np.testing.assert_allclose(result.on_cpu, expected)
 
     def test_pipeline_schedules_partial_chunk_immediately(self):
@@ -599,13 +598,13 @@ class TestD2hPipeline:
 
         record2 = self._make_record(fills=(3.0,))
         pipe.schedule(record2)
-        ctx2 = self._make_ctx(record2, record2.cpu_evts[0])
-        result2 = ctx2.get("jungfrau.calib")
+        state2 = self._make_state(record2, record2.event_envelopes[0])
+        result2 = state2.get("jungfrau.calib")
         assert result2._pending_d2h is None
         np.testing.assert_allclose(result2.on_cpu, 3.0)
 
         # Free a slot: dec_ref() puts the slot back into _available.
-        self._make_ctx(record0, record0.cpu_evts[0]).get("jungfrau.calib").on_cpu
+        self._make_state(record0, record0.event_envelopes[0]).get("jungfrau.calib").on_cpu
         assert not pipe._available.empty(), "slot should be back in the free queue"
 
         # Fourth event: slot available → async D→H resumes.

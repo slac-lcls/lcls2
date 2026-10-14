@@ -13,7 +13,7 @@ Usage
     budget.release(array_bytes)     # when replacing or freeing a buffer
 
 Passed to GPUDetector and KvikioGpuReader at construction time.
-Created by GpuEvents.__init__; auto-sized to device_total / n_bd_ranks
+Created by GpuEventManager.__init__; auto-sized to device_total / n_bd_ranks
 if gpu_memory_budget_gb is not configured.
 """
 
@@ -35,7 +35,7 @@ class _GpuBudget:
 
     This is intentionally simple: no active-lease byte tracking (correctness
     is enforced by SlotLease.wait_until_safe_to_reuse, not the budget), no
-    per-category breakdown (that is covered by GpuEvents.log_memory).
+    per-category breakdown (that is covered by GpuEventManager.log_memory).
     """
 
     def __init__(self, limit_bytes: int):

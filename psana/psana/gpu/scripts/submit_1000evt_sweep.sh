@@ -34,7 +34,6 @@ PYTHON="$(which python3)"
 
 export PYTHONUNBUFFERED=1 PS_EB_NODES=${PS_EB_NODES_VAL} PS_SRV_NODES=0
 export SLURM_GPUS_ON_NODE=${N_GPUS_PER_NODE} OMPI_MCA_btl='^smcuda'
-unset PS_TEST_GPU_STREAM_IDS
 mkdir -p "/lscratch/${USER:-nobody}/tmp" && export TMPDIR="/lscratch/${USER:-nobody}/tmp"
 
 NOISE="shmem:\|UCX WARN\|PMIx\|PSANA-INFO\|UserWarning\|self\.gpu_reader\|KvikioGpuReader\|site-packages\|^---\|Component:\|Framework:\|Host:\|create_and_attach\|unable to"

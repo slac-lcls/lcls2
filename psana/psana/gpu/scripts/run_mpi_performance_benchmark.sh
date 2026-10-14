@@ -100,7 +100,6 @@ export OMPI_MCA_btl='^smcuda'
 export PS_EB_NODES=${PS_EB_NODES_VAL}
 export PS_SRV_NODES=0
 export SLURM_GPUS_ON_NODE=${N_GPUS_PER_NODE}
-unset PS_TEST_GPU_STREAM_IDS
 
 export PYTHONPATH='${INSTALL_PYTHONPATH}'
 if [ -n '${CUDA_LIBS}' ]; then

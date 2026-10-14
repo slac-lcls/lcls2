@@ -3,7 +3,7 @@ import time
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana import utils
 from psana.dgramedit import DgramEdit
-from psana.event import Event
+from psana.event import Event, EventEnvelope
 
 
 class Step(object):
@@ -35,11 +35,21 @@ class Step(object):
         for i, item in enumerate(self._evt_iter):
             proxy_evt = None
             if self.proxy_events is not None:
-                dgrams, proxy_evt = item
+                item, proxy_evt = item
+
+            if isinstance(item, EventEnvelope):
+                envelope = item
             else:
-                dgrams = item
+                # RunSmallData still supplies its EventBuilder dgram tuple.
+                envelope = EventEnvelope(dgrams=item)
+            dgrams = envelope.dgrams
+            evt = Event(
+                dgrams=dgrams,
+                run=self._run_ctx,
+                proxy_evt=proxy_evt,
+                gpu=envelope.gpu_state,
+            )
             svc = utils.first_service(dgrams)
-            evt = Event(dgrams=dgrams, run=self._run_ctx, proxy_evt=proxy_evt)
             if self.run is not None:
                 bufsize = self.run.dm.pebble_bufsize if TransitionId.isEvent(svc) else self.run.dm.transition_bufsize
 

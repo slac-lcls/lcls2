@@ -1,17 +1,12 @@
 #!/usr/bin/env python
-"""Reproduce late-consumer registration overwriting a GPU execution slot.
+"""Probe late-consumer registration against GPU result reuse.
 
 This is a diagnostic for the current GPU DataSource iterator ordering.  It
 uses a pool depth and batch size of one, disables automatic D2H, and launches
 a deliberately delayed external CUDA consumer for event 0.  Advancing the
-normal ``run.events()`` iterator submits event 1 into the same calibration
-slot before the external consumer's completion event is honored.
-
-The normal Jungfrau path assembles calibration into a newly allocated full
-detector array during routing.  That allocation masks execution-slot reuse,
-so this diagnostic monkey-patches only ``_apply_full_routing`` to return the
-underlying slot-backed calibration view.  DataSource, EventPool, GPUDetector,
-SlotLease, ``on_gpu_view()``, and the event iterator remain unchanged.
+normal ``run.events()`` iterator while checking whether the prior result can
+change during use. DataSource, EventPool, GPUDetector, SlotLease,
+``on_gpu_view()``, and the event iterator remain unchanged.
 
 Expected result on the affected implementation::
 
@@ -88,20 +83,10 @@ def _parse_args():
                         help="Number of float32 words included in each hash")
     parser.add_argument("--log-level", default="WARNING")
     parser.add_argument(
-        "--expect", choices=("overwrite", "safe"), default="overwrite",
-        help="Expected outcome; use 'safe' to validate the retirement fix",
+        "--expect", choices=("overwrite", "safe"), default="safe",
+        help="Expected outcome (default: safe)",
     )
     return parser.parse_args()
-
-
-def _disable_full_routing_copy():
-    """Expose GPUDetector's execution-slot view through the normal context."""
-    import psana.gpu.gpu_events as gpu_events
-
-    def identity_routing(gpu_results, evt, gpu_detectors, router):
-        return gpu_results
-
-    gpu_events._apply_full_routing = identity_routing
 
 
 def _hash_now(cp, kernel, arr, samples):
@@ -116,14 +101,14 @@ def _hash_now(cp, kernel, arr, samples):
     return int(hashes[0].item())
 
 
-def _run_probe(first_ctx, event_iter, args):
+def _run_probe(first_evt, event_iter, args):
     import cupy as cp
 
     kernel = cp.RawKernel(_PROBE_SOURCE, "psana_slot_overwrite_probe")
     probe_stream = cp.cuda.Stream(non_blocking=True)
     hashes_gpu = cp.zeros(2, dtype=cp.uint64)
 
-    result0 = first_ctx.get("calib")
+    result0 = first_evt.gpu.get("calib")
     with result0.on_gpu_view(probe_stream) as arr0:
         ptr0 = int(arr0.data.ptr)
         words0 = arr0.view(cp.uint32).ravel()
@@ -137,8 +122,8 @@ def _run_probe(first_ctx, event_iter, args):
 
     # Resuming the real iterator submits event 1 calibration into pool slot 0.
     # Event 1 itself is yielded once event 2 causes that slot to retire again.
-    second_ctx = next(event_iter)
-    result1 = second_ctx.get("calib")
+    second_evt = next(event_iter)
+    result1 = second_evt.gpu.get("calib")
     arr1 = result1._arr  # Diagnostic inspection of the execution-slot view.
     ptr1 = int(arr1.data.ptr)
 
@@ -153,8 +138,8 @@ def _run_probe(first_ctx, event_iter, args):
     reproduced = same_pointer and changed_while_consumed and after_matches_event1
 
     return {
-        "timestamp0": int(first_ctx.timestamp),
-        "timestamp1": int(second_ctx.timestamp),
+        "timestamp0": int(first_evt.timestamp),
+        "timestamp1": int(second_evt.timestamp),
         "ptr0": ptr0,
         "ptr1": ptr1,
         "hash0_before": before0,
@@ -171,8 +156,6 @@ def main():
     args = _parse_args()
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
-
-    _disable_full_routing_copy()
 
     from psana import DataSource
 
