@@ -841,21 +841,93 @@ diverge silently -- that has happened once already.
   Confirmed working under `scancel` on 2026-10-08: `Terminated` then
   `Shutting down on TERM signal`, no fault.
 
-- **A double free in EPICS teardown, and a reproducer for it from 2022.**  Every DRP
-  takes ~30 s to exit after SIGTERM -- `KillWait`, after which Slurm SIGKILLs it --
-  because the shutdown action is `exit(0)` (`PGPDetectorApp.cc:852`), which runs static
-  destructors and faults somewhere inside EPICS.  The time is most likely
-  `systemd-coredump` writing a dump of a process holding a 1.1 GB pebble; the dump has
-  never actually been found, and defeating core dumps on the GPU nodes is outstanding.
+- **The EPICS teardown double free is EXPLAINED, 2026-10-13: two builds of EPICS 7.0.7
+  are loaded into one process.**  Not an EPICS design problem and nothing to raise
+  upstream -- a conda-environment layout issue with a local fix, demonstrated on the
+  reproducer but **not yet on the tree**.
 
-  Worth fixing for its own sake: it costs 30 s per stop, and it masks whatever the exit
-  path was really doing.  Note Ric has moved many sites to `abort()` over `exit(0)` to
-  skip static destruction entirely; the GPU DRP's shutdown action was missed.
+  The conda environment carries the same upstream EPICS version twice:
 
-  **The reproducer is `~/lclsii/daq/obsolete/drp/pvPutTest.cc` with `p4pImpTest.py`**
-  (and `p4pTest.cc` beside them).  The switch between working and double-freeing is
-  whether the three `p4p` imports in the `.py` are commented out -- they are commented
-  out as the files stand.  Written under RHEL7, so the behaviour may have changed.
+      epics/lib/linux-x86_64/libCom.so.3.22.0                1906200 B   what we link
+      site-packages/epicscorelibs/lib/libCom.so.7.0.7.99.0    549032 B   what p4p loads
+
+  Both report `EPICS R7.0.7` / `EPICS 7.0.7.0` and **both define
+  `fileDescriptorManager`**.  So a process that links one and imports anything bringing
+  the other -- `p4p`, hence `psdaq.configdb`, hence every DRP -- ends up with two
+  `fdManager` objects and two static destructors over the same symbol.  At `_dl_fini` the
+  second frees what the first already freed:
+
+      #6  free ()
+      #7  fdManager::~fdManager (this=0x... <fileDescriptorManager>) at ../fdmgr/fdManager.cpp:73
+      #8  __cxa_finalize ()
+      #9  __do_global_dtors_aux () from .../epics/lib/linux-x86_64/libCom.so.3.22.0
+      #10 _dl_fini ()
+
+  **The fix that works: link the copy `p4p` already loads.**  Same source, only the
+  `-I`/`-L` changed, plus an explicit `-lpthread` (that build does not carry
+  `pthread_atfork` itself):
+
+      minimal.cc    linking epics/           double free, SIGABRT
+      minimal.cc    linking epicscorelibs    exit 0
+      pvPutTest.cc  linking epics/           double free, SIGABRT
+      pvPutTest.cc  linking epicscorelibs    exit 0
+
+  `epicscorelibs` ships what would be needed: headers plus `libCom`, `libca`, `libpvData`,
+  `libpvAccess`, `libpvAccessCA`, `libdbCore`, `libdbRecStd`, `libqsrv`.  In
+  `meson_options.txt` terms it is `epics_base` pointing at
+  `site-packages/epicscorelibs` rather than `epics/`.
+
+  **What is NOT established, and is the work:**
+
+  - **Ten `meson.build` files reference EPICS**, and only two standalone programs have
+    been tried.  A real change means rebuilding everything that links it -- `epicsArch`,
+    `PvaDetector`, `xpm`, `hsd`, `epicstools`, `app` -- and showing nothing regresses.
+  - **The two builds may not be interchangeable.**  Both say 7.0.7 but the sonames differ
+    (`3.22.0` against `7.0.7.99.0`) and the size differs 3.5x, so `epicscorelibs` is built
+    with different options or stripped.  Something we use may be missing;
+    `libpvAccessIOC` and `libqsrv` being present is encouraging, not conclusive.
+  - **Whether a live DRP really loads both** -- one `grep` of `/proc/<pid>/maps` for
+    `libCom`, which wants doing the next time one is up.  The reproducer stands in for it
+    and was pared down from the DRP in the first place.
+
+  **Then give Valerio instructions**, he heading conda environment development (Ric,
+  10-13).  The ask is for an environment where a program linking EPICS and a Python module
+  importing EPICS resolve to **one** set of shared objects -- either by not shipping the
+  second copy, or by having `epics/` be a link to `epicscorelibs`, or by building
+  `epicscorelibs` against the environment's EPICS rather than vendoring its own.  Which of
+  those is practical is his call; the demonstration is what makes the request concrete, so
+  do it before asking.
+
+  **Consequence for the 30 s exit, which is the lesser half.**  Every DRP takes ~30 s to
+  exit after SIGTERM -- `KillWait`, after which Slurm SIGKILLs it -- because the shutdown
+  action is `exit(0)` (`PGPDetectorApp.cc:852`), which runs the static destructors that
+  fault.  `abort()` instead skips a teardown that is broken in a *library* for reasons
+  outside our control, which is a better argument than speed; Ric has moved many sites
+  that way already and the GPU DRP's was missed.  The time itself is most likely
+  `systemd-coredump` writing a dump of a process holding a 1.1 GB pebble, but **that dump
+  has never been found**, so the attribution is unverified; defeating core dumps on the
+  GPU nodes is outstanding.
+
+  **The reproducer, and what it took to reduce it.**  Ric's original is
+  `~/lclsii/daq/obsolete/drp/pvPutTest.cc` with `p4pImpTest.py` (and `p4pTest.cc` beside
+  them), pared down from the DRP in 2022 under RHEL7; it still reproduces.  The switch is
+  whether the three `p4p` imports in the `.py` are commented out -- as shipped, they are.
+  Built and bisected 2026-10-13 in
+  `claude-sessions/2026-09-11-gpu-drp/doublefree/`, which also holds a 9-line
+  `minimal.cc`: link `libCom`, `PyImport_ImportModule("p4p.nt")`, return.  **No EPICS call
+  is made at all.**  What the bisection settled:
+
+      imports commented out (as shipped)      exit 0
+      any ONE of the three p4p imports        crashes -- not specific to p4p.server
+      PyGILState_Ensure() removed             still crashes
+      Py_Finalize() removed                   still crashes
+      all Python removed                      exit 0
+      minimal.cc linking libCom               crashes
+      minimal.cc NOT linking libCom           exit 0
+
+  So the GIL and `Py_Finalize` are both red herrings, which is worth knowing because the
+  reproducer's shape invites blaming them.  The trigger is only: link EPICS directly
+  **and** import a module that carries its own.
 
 ## Detector configuration
 
