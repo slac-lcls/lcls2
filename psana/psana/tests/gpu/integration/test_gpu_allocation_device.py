@@ -101,7 +101,6 @@ def test_reader_and_parser_charges_survive_retirement_and_trim(tmp_path):
     from psana import dgram
     from psana.gpu.gpu_batch import GpuReadDesc
     from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-    from psana.gpu.gpu_file_epochs import GpuFileEpochs
     from psana.gpu.gpudgram.batch import GpuXtcBatchPool
     from psana.gpu.gpudgram.config import GpuStreamConfigTable
 
@@ -122,13 +121,12 @@ def test_reader_and_parser_charges_survive_retirement_and_trim(tmp_path):
     configs = GpuStreamConfigTable.from_configs([config])
     handle = configs.resolve('xppcspad', 1, 'raw', 'arrayRaw', stream_id=0)
     budget = _GpuBudget(16*1024**2)
-    reader = KvikioGpuReader(n_slots=1, budget=budget)
+    reader = KvikioGpuReader(n_slots=1, budget=budget, bulk_read=False)
     parser = GpuXtcBatchPool(configs, field_handles=[handle], n_slots=1, budget=budget)
     fixed = budget.committed()
     stream = cp.cuda.Stream(non_blocking=True)
-    epochs = GpuFileEpochs(dm).resolve(descs, [])
     def parse():
-        read = reader.wait_batch(reader.issue_batch(view, dm, file_epochs=epochs))
+        read = reader.wait_batch(reader.issue_batch(view, dm))
         return parser.parse_window(read, stream, batch_id=1)
     window = parse()
     stream.synchronize()
@@ -288,6 +286,8 @@ def test_failed_upload_survives_lost_budget_owner_and_gc():
     import weakref
     from types import SimpleNamespace as NS
     import cupy as cp
+    # Collect unrelated cyclic owners before measuring this test's allocation.
+    gc.collect()
     baseline = cp.get_default_memory_pool().used_bytes()
     budget = _GpuBudget(1024)
     array = owned_empty(cp, 128, cp.uint32, budget, 'fixed')

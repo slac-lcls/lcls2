@@ -138,7 +138,7 @@ class EventPool:
 
     def submit(
         self, gv, gpu_read, event_envelopes: list, gpu_detectors: dict,
-        xtc_parser=None, *, input_windows=None, batch_id=0,
+        xtc_parser=None, *, input_windows=None, input_uses=None, batch_id=0,
     ):
         """Queue execution using owned inputs, independently of its slot ID.
 
@@ -168,7 +168,7 @@ class EventPool:
         windows = tuple(input_windows)
         all_leases = []
         try:
-            execution_inputs = InputSlotLease(None, windows)
+            execution_inputs = InputSlotLease(None, windows, planned_uses=input_uses)
             if windows:
                 all_leases.append(execution_inputs)
             for window in windows:
@@ -200,7 +200,7 @@ class EventPool:
 
             input_dgrams_by_ts, input_leases_by_ts = {}, {}
             for event in gpu_event_dgrams:
-                lease = InputSlotLease(result_ready, event.input_windows)
+                lease = InputSlotLease(result_ready, event.input_windows, planned_uses=input_uses)
                 event.bind_lease(lease)
                 input_dgrams_by_ts[event.timestamp] = event
                 input_leases_by_ts[event.timestamp] = lease

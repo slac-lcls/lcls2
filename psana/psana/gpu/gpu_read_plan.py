@@ -122,6 +122,66 @@ class ReadPlan:
         return len(self.physical_ranges)
 
 
+def validate_read_descriptors(descriptors, capacity_bytes, max_read_bytes=_U64_MAX):
+    """Validate resolved rows without constructing a physical read plan.
+
+    ResolvedDgram construction validates field types, uint64 bounds and stream
+    IDs. Callers provide normalized limits and separately check physical spans
+    (generic planner: sorting/overlap; group reader: exact contiguity).
+    """
+    seen = set()
+    timestamps = {}
+    useful_bytes = 0
+    for desc in descriptors:
+        if not isinstance(desc, ResolvedDgram):
+            raise TypeError("descriptors must contain ResolvedDgram records")
+        key = (desc.batch_event_index, desc.stream_id)
+        if key in seen:
+            raise ValueError(f"duplicate event/stream descriptor: {key}")
+        seen.add(key)
+        previous_ts = timestamps.setdefault(desc.batch_event_index, desc.timestamp)
+        if previous_ts != desc.timestamp:
+            raise ValueError(f"inconsistent timestamp for event {desc.batch_event_index}")
+        if desc.size > max_read_bytes:
+            raise ValueError(
+                f"dgram event={desc.batch_event_index} stream={desc.stream_id} "
+                f"size={desc.size} exceeds max_read_bytes={max_read_bytes}"
+            )
+        useful_bytes += desc.size
+        if useful_bytes > _U64_MAX:
+            raise ValueError("total input size exceeds uint64")
+    if useful_bytes > capacity_bytes:
+        raise ValueError(
+            f"input window requires {useful_bytes} bytes; capacity_bytes={capacity_bytes}"
+        )
+
+    return useful_bytes
+
+
+def ordered_nonoverlapping_indices(descriptors):
+    """Validate nonempty physical spans and return their file/offset ordering.
+
+    Use after descriptor validation. Empty rows cause no physical read and do
+    not constrain spans. Both planners share these overlap semantics.
+    """
+    ordered = sorted(
+        (i for i, desc in enumerate(descriptors) if desc.size),
+        key=lambda i: (descriptors[i].file, descriptors[i].file_offset),
+    )
+    previous = None
+    for i in ordered:
+        desc = descriptors[i]
+        if previous is not None and previous.file == desc.file:
+            end = previous.file_offset + previous.size
+            if desc.file_offset < end:
+                raise ValueError(
+                    f"overlapping dgrams in {desc.file}: offset={desc.file_offset} "
+                    f"precedes previous end={end}"
+                )
+        previous = desc
+    return ordered
+
+
 def build_read_plan(
     descriptors: Iterable[ResolvedDgram],
     *,
@@ -153,36 +213,9 @@ def build_read_plan(
             raise ValueError("max_read_bytes must be positive")
 
     descriptors = tuple(descriptors)
-    seen = set()
-    timestamps = {}
-    useful_bytes = 0
-    for desc in descriptors:
-        if not isinstance(desc, ResolvedDgram):
-            raise TypeError("descriptors must contain ResolvedDgram records")
-        key = (desc.batch_event_index, desc.stream_id)
-        if key in seen:
-            raise ValueError(f"duplicate event/stream descriptor: {key}")
-        seen.add(key)
-        previous_ts = timestamps.setdefault(desc.batch_event_index, desc.timestamp)
-        if previous_ts != desc.timestamp:
-            raise ValueError(f"inconsistent timestamp for event {desc.batch_event_index}")
-        if desc.size > max_read_bytes:
-            raise ValueError(
-                f"dgram event={desc.batch_event_index} stream={desc.stream_id} "
-                f"size={desc.size} exceeds max_read_bytes={max_read_bytes}"
-            )
-        useful_bytes += desc.size
-        if useful_bytes > _U64_MAX:
-            raise ValueError("total input size exceeds uint64")
-    if useful_bytes > capacity_bytes:
-        raise ValueError(
-            f"input window requires {useful_bytes} bytes; capacity_bytes={capacity_bytes}"
-        )
+    useful_bytes = validate_read_descriptors(descriptors, capacity_bytes, max_read_bytes)
 
-    ordered = sorted(
-        (i for i, desc in enumerate(descriptors) if desc.size),
-        key=lambda i: (descriptors[i].file, descriptors[i].file_offset),
-    )
+    ordered = ordered_nonoverlapping_indices(descriptors)
     ranges = []
     logical = [LogicalDgram(desc, None, 0) for desc in descriptors]
     cursor = 0
@@ -192,11 +225,6 @@ def build_read_plan(
         adjacent = False
         if previous is not None and previous.file == desc.file:
             end = previous.file_offset + previous.size
-            if desc.file_offset < end:
-                raise ValueError(
-                    f"overlapping dgrams in {desc.file}: offset={desc.file_offset} "
-                    f"precedes previous end={end}"
-                )
             adjacent = desc.file_offset == end
         if adjacent and previous.size + desc.size <= max_read_bytes:
             ranges[-1] = replace(previous, size=previous.size + desc.size)

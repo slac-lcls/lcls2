@@ -64,7 +64,8 @@ class DsParms:
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
     gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
-    gpu_bulk_read: bool = True  # adjacent reads inside existing GPU subbatches
+    gpu_bulk_read: bool = True  # adjacent per-stream input groups
+    gpu_bulk_target_bytes: int = 1 << 20  # small-dgram classification and coalescing limit
     # Whole bigdata stream indices selected for either GPU mode. Populated
     # from Configure by DgramManager and forwarded to EventBuilder.
     gpu_stream_ids: list = None  # list[int] | None
@@ -72,6 +73,10 @@ class DsParms:
     hybrid_stream_ids: list = None  # list[int] | None
 
     def __post_init__(self):
+        if type(self.gpu_bulk_target_bytes) is not int:
+            raise TypeError("gpu_bulk_target_bytes must be an int")
+        if not 0 < self.gpu_bulk_target_bytes <= (1 << 64) - 1:
+            raise ValueError("gpu_bulk_target_bytes must be a positive uint64")
         if type(self.gpu_bulk_read) is not bool:
             raise TypeError("gpu_bulk_read must be a bool")
         if self.gpu_enabled and self.gpu_bulk_read and (self.intg_det or (self.timestamps is not None and len(self.timestamps))):
@@ -278,9 +283,14 @@ class DataSourceBase(abc.ABC):
     hybrid_det : str or list[str]
         Detectors whose complete streams are read by both CPU and GPU paths.
     gpu_bulk_read : bool
-        Coalesce adjacent KvikIO reads inside existing GPU subbatches (default:
+        Coalesce adjacent per-stream input datagrams (default:
         True). Set False for per-dgram comparison/debugging. Applies only to
         gpu_det/hybrid_det; requires ordinary GPUBAT1 batching.
+    gpu_bulk_target_bytes : int
+        Positive byte limit for coalescing small datagrams (default: 1 MiB).
+        Datagrams at or above this size remain whole, individual reads. Groups
+        cannot cross an EventBuilder batch, file, transition, or offset gap.
+        Independent of KVIKIO_TASK_SIZE, which splits physical I/O requests.
     """
 
     def __init__(self, **kwargs):
@@ -329,6 +339,7 @@ class DataSourceBase(abc.ABC):
         self.gpu_d2h_chunk_size = kwargs.get("gpu_d2h_chunk_size", 0)
         self.gpu_memory_budget_gb = kwargs.get("gpu_memory_budget_gb", 0)
         self.gpu_bulk_read = kwargs.get("gpu_bulk_read", True)
+        self.gpu_bulk_target_bytes = kwargs.get("gpu_bulk_target_bytes", 1 << 20)
         self.smalldata_kwargs = kwargs.get("smalldata_kwargs", {})
         self.files = [self.files] if isinstance(self.files, str) else self.files
         self.auto_tune = kwargs.get("auto_tune", False)
@@ -369,6 +380,7 @@ class DataSourceBase(abc.ABC):
             gpu_d2h_chunk_size=self.gpu_d2h_chunk_size,
             gpu_memory_budget_gb=self.gpu_memory_budget_gb,
             gpu_bulk_read=self.gpu_bulk_read,
+            gpu_bulk_target_bytes=self.gpu_bulk_target_bytes,
         )
 
         # Warn about unrecognized kwargs
@@ -409,6 +421,7 @@ class DataSourceBase(abc.ABC):
             "gpu_d2h_chunk_size",
             "gpu_memory_budget_gb",
             "gpu_bulk_read",
+            "gpu_bulk_target_bytes",
         }
         for k in kwargs:
             if k not in known_keys:

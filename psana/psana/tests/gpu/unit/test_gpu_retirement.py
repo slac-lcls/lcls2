@@ -141,7 +141,7 @@ def test_retained_result_state_releases_backing_but_keeps_host_cache(cuda):
     np.testing.assert_array_equal(result.on_cpu, np.arange(3))
 
 
-def test_saved_stream_and_locator_reject_access_while_resident_window_is_live():
+def test_saved_stream_and_locator_reject_access_while_input_window_is_live():
     from psana.gpu.gpu_input import GpuStreamDgramView, InputSlotLease
     from psana.gpu.gpudgram.parser import DeviceFieldLocators
     owner = window()
@@ -172,7 +172,6 @@ def test_manager_failed_drain_remains_retryable():
     closed = []
     manager.gpu_reader = NS(close=lambda: closed.append(True))
     manager._drain_pending_gpu_read = lambda: None
-    manager._close_resident_input = lambda: None
     def fail():
         raise RuntimeError('consumer failed')
         yield
