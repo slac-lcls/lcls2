@@ -31,20 +31,21 @@ struct TrgInpGenMetrics
   uint64_t* rcvWtCtr {nullptr};
   uint64_t* fwdWtCtr {nullptr};
 
-  uint64_t  pndWtCtr     {0};
-  uint64_t  pidWtCtr     {0};
+  uint64_t  pndWtCtr        {0};
+  uint64_t  pidWtCtr        {0};
 
-  uint64_t  nEvents      {0};
-  uint64_t  nDmaRet      {0};
-  uint64_t  nHdrMismatch {0};
-  uint64_t  dmaSize      {0};
-  uint64_t  dmaBytes     {0};
-  uint64_t  latency      {0};
-  uint64_t  nDmaErrors   {0};
-  uint64_t  nNoComRoG    {0};
-  uint64_t  nMissingRoGs {0};
-  uint64_t  nTmgHdrError {0};
-  uint64_t  nPgpJumps    {0};
+  uint64_t  nEvents         {0};
+  uint64_t  nDmaRet         {0};
+  uint64_t  nHdrMismatch    {0};
+  uint64_t  dmaSize         {0};
+  uint64_t  dmaBytes        {0};
+  uint64_t  latency         {0};
+  uint64_t  nDmaErrors      {0};
+  uint64_t  nNoComRoG       {0};
+  uint64_t  nMissingRoGs    {0};
+  uint64_t  nTmgHdrError    {0};
+  uint64_t  nEvtStatusError {0}; // Reader-reported per-event problems
+  uint64_t  nPgpJumps       {0};
 };
 
 class TrgInpGen

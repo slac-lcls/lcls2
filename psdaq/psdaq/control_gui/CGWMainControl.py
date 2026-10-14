@@ -39,7 +39,7 @@ from psdaq.control_gui.CGDaqControl import daq_control_set_state, daq_control_se
                                            #daq_control_get_state, daq_control_get_status
 from psdaq.control_gui.CGConfigParameters import cp
 from psdaq.control_gui.QWProgressBar import QWProgressBar
-
+from psdaq.control_gui.CGWDrpAlgManagerSplitPanel import CGWDrpAlgManagerSplitPanel
 
 class CGWMainControl(QGroupBox):
     """
@@ -61,6 +61,10 @@ class CGWMainControl(QGroupBox):
 
         self.but_record = QPushButton(icon.icon_record_start, '') # icon.icon_record_stop
         self.lab_record = QLabel('Recording')
+
+        self.but_drp_alg_config = QPushButton(icon.icon_drp_alg_config, '')
+        self.lab_drp_alg_config = QLabel('Reduction')
+        self.w_drp_alg_config = None
 
         self.box_state      = CustomQComboBox()
         self.but_transition = QPushButton('Unknown')
@@ -99,8 +103,18 @@ class CGWMainControl(QGroupBox):
 
         else:
             self.grid = QGridLayout()
+            # Two switch the position of the record button and reduciton button
+            # Uncomment these 4 lines, and comment the following 4
+            # self.grid.addWidget(self.lab_drp_alg_config, 0, 0, 1, 1)
+            # self.grid.addWidget(self.but_drp_alg_config, 0, 4, 1, 1)
+            # self.grid.addWidget(self.lab_record,      0, 7, 1, 1)
+            # self.grid.addWidget(self.but_record,      0, 9, 1, 1)
+
+            self.grid.addWidget(self.lab_drp_alg_config, 0, 7, 1, 2)
+            self.grid.addWidget(self.but_drp_alg_config, 0, 9, 1, 1)
             self.grid.addWidget(self.lab_record,      0, 0, 1, 1)
             self.grid.addWidget(self.but_record,      0, 4, 1, 1)
+
             self.grid.addWidget(self.lab_state,       1, 0, 1, 1)
             self.grid.addWidget(self.lab_trans,       1, 9, 1, 1)
             self.grid.addWidget(self.box_state,       2, 0, 1, 1)
@@ -117,6 +131,7 @@ class CGWMainControl(QGroupBox):
         self.but_transition.clicked.connect(self.on_but_transition)
         self.but_record.clicked.connect(self.on_but_record)
         self.but_ctrls.clicked.connect(self.on_but_ctrls)
+        self.but_drp_alg_config.clicked.connect(self.on_but_drp_alg_config)
 
         #self.timer = QTimer()
         #self.timer.timeout.connect(self.on_timeout)
@@ -137,6 +152,7 @@ class CGWMainControl(QGroupBox):
         self.box_state.setToolTip('Select desirable state.')
         self.but_transition.setToolTip('Last transition info.')
         self.but_ctrls.setToolTip('State info.')
+        self.but_drp_alg_config.setToolTip('Open DRP algorithm manager')
 
 
     def set_style(self):
@@ -144,6 +160,8 @@ class CGWMainControl(QGroupBox):
         self.lab_record.setFixedWidth(100)
         self.but_record.setFixedSize(50, 50)
         self.but_record.setIconSize(QSize(48, 48))
+        self.but_drp_alg_config.setFixedSize(50, 50)
+        self.but_drp_alg_config.setIconSize(QSize(48, 48))
         self.bar_progress.setFixedWidth(100)
         self.bar_progress.setVisible(False)
         self.but_ctrls.setStyleSheet(style.styleButtonGood)
@@ -206,6 +224,25 @@ class CGWMainControl(QGroupBox):
 #        logger.debug('DEPRICATED set_but_record: %s' % recording)
 
 
+    def on_but_drp_alg_config(self):
+        logger.debug('on_but_drp_alg_config')
+        if self.w_drp_alg_config is not None and self.w_drp_alg_config.isVisible():
+            self.w_drp_alg_config.raise_()
+            self.w_drp_alg_config.activateWindow()
+            return
+
+        wconf = cp.cgwmainconfiguration
+        if wconf is None:
+            logger.warning('on_but_drp_alg_config: configuration widget is not available')
+            return
+        if cp.s_cfgtype is None:
+            logger.warning('on_but_drp_alg_config: configuration type (alias) is not set')
+            return
+
+        inst, confdb = wconf.inst_configdb('on_but_drp_alg_config: ')
+        self.w_drp_alg_config = CGWDrpAlgManagerSplitPanel(confdb=confdb, hutch=inst, alias=cp.s_cfgtype)
+        self.w_drp_alg_config.show()
+
     def check_state(self):
         #logger.debug('check_state -> daq_control_get_state()')
         s = cp.s_state # daq_control_get_state()
@@ -242,6 +279,9 @@ class CGWMainControl(QGroupBox):
 
         self.set_transition(transition)
 
+        if self.w_drp_alg_config is not None:
+            self.w_drp_alg_config.set_alias(cfgtype)
+
 
 #    def on_timeout(self):
 #        #logger.debug('CGWMainDetector Timeout %.3f sec' % time())
@@ -267,6 +307,8 @@ class CGWMainControl(QGroupBox):
 
     def closeEvent(self, e):
         #logger.debug('closeEvent')
+        if self.w_drp_alg_config is not None:
+            self.w_drp_alg_config.close()
         QGroupBox.closeEvent(self, e)
         cp.cgwmaincontrol = None
 

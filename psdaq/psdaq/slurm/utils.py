@@ -64,6 +64,32 @@ def daqmgr_debug_env_enabled(source_env=None):
     return source_env.get(DAQMGR_DEBUG_ENV, "").lower() in DAQMGR_DEBUG_ENV_TRUE_VALUES
 
 
+def run_slurm(*args, check=False, capture_output=False):
+    """
+    Calls a subprocess without retries.
+
+    Parameters:
+    - *args: Command and arguments to pass to subprocess.
+    - check: 'check' argument for subprocess.run()
+    - capture_output: 'capture_output' argument for subprocess.run()
+
+    Returns:
+    - Decoded output string from the subprocess call.
+    """
+    if capture_output:
+        # stdout and stderr arguments may not be used with capture_output
+        output = subprocess.run(args, text=True, check=check,
+                                capture_output=capture_output)
+    else:
+        output = subprocess.run(args, text=True, check=check,
+                                stdout=PIPE, stderr=PIPE)
+    if output.returncode != 0:
+        cmd_str = " ".join(args)
+        logger.error(f"Subprocess call '{cmd_str}' failed.\n"
+                     "Error: {output.stderr.decode('utf-8').strip()}")
+    return output
+
+
 def run_slurm_with_retries(*args, max_retries=3, retry_delay=5):
     """
     Calls a subprocess, with retries for specific Slurm commands,
@@ -288,6 +314,41 @@ class SbatchManager:
                 n_workers = 1
             cmd += f" -W {n_workers}"
         return cmd
+
+    def get_gres(self, details):
+        """The Slurm gres a process needs, from the datadev it was told to open.
+
+        gres.conf names each datadev/GPU pairing after the card's PCI bus number, so
+        '-d /dev/datadev_a1' pairs with 'gpu:dda1:1'.  Deriving the request from the
+        same string that names the device is the point: the two cannot drift apart,
+        which an independently maintained list of GPU ids could.  See
+        psdaq/psdaq/slurm/gen_gres_conf.py, which emits the matching records.
+
+        Only the GPU is a gres; the datadev is not, so nothing here constrains which
+        card a process may open.  See gen_gres_conf.py for why.
+
+        Returns None when the command names no datadev, or names one whose suffix is
+        not a PCI bus number, so those callers fall back to whatever they did before.
+
+        The suffix has to be exactly two hex digits, because that is what the driver's
+        cfgDevName=1 option produces and what gen_gres_conf derives its type names
+        from: bus 0xa1 gives /dev/datadev_a1, bus 0x02 gives /dev/datadev_02.  Without
+        that option the driver names devices by probe order instead -- /dev/datadev_1 --
+        and deriving 'dd1' from it would request a type that exists nowhere, which Slurm
+        answers by pending the job for ever rather than by complaining.
+        """
+        cmd = details.get("cmd", "")
+        m = re.search(r"-d\s+/dev/datadev_([0-9a-fA-F]+)\b", cmd)
+        if m is None:
+            return None
+        suffix = m.group(1)
+        if len(suffix) != 2:
+            logger.warning("Cannot derive a gres from /dev/datadev_%s: expected a two "
+                           "digit PCI bus number, so this node is probably missing "
+                           "'options datadev cfgDevName=1'.  See gen_gres_conf.",
+                           suffix)
+            return None
+        return f"gpu:dd{suffix.lower()}:1"
 
     def is_drp(self, cmd):
         return cmd.strip().startswith("drp ")
@@ -517,7 +578,16 @@ class SbatchManager:
             sb_script += f"#SBATCH --constraint={job_name} -c {n_cores}" + "\n"
 
         if "flags" in details and details["flags"].find("g") > -1:  # @todo: Is a flag appropriate?
-            sb_script += f"#SBATCH --gres=gpu:1 --gpus=1" + "\n"
+            # A typed gres, because the GPU has to be the one paired with the card this
+            # process was given: the FPGA DMAs peer-to-peer into GPU memory, and a plain
+            # --gpus request would hand out any GPU on the node.  No fallback to --gpus
+            # on purpose -- an arbitrary GPU is the failure this exists to prevent, and
+            # asking for none fails immediately in CUDA init instead of running slower
+            # than it should for reasons nobody can see.  get_gres() has already said
+            # why it declined.
+            gres = self.get_gres(details)
+            if gres is not None:
+                sb_script += f"#SBATCH --gres={gres}" + "\n"
 
         sb_script += self.get_jobstep_cmd(node, job_name, details)
         self.sb_script = sb_script

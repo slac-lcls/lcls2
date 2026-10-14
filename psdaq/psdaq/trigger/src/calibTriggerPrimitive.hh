@@ -1,0 +1,34 @@
+#ifndef Pds_Trg_CalibTriggerPrimitive_hh
+#define Pds_Trg_CalibTriggerPrimitive_hh
+
+#include "TriggerPrimitive.hh"
+
+namespace Pds {
+  namespace Trg {
+
+    class CalibPrimitive : public TriggerPrimitive
+    {
+    public:
+      using TriggerPrimitive::configure; // Unhide the Xtc overload, which is not overridden
+      int    configure(const nlohmann::json& configureMsg,
+                       const nlohmann::json& connectMsg,
+                       size_t                collectionId) override;
+      void   event(const Drp::MemPool& pool,
+                   uint32_t            idx,
+                   const XtcData::Xtc& ctrb,
+                   XtcData::Xtc&       xtc,
+                   const void*         bufEnd) override;
+      void   event(cudaStream_t           stream,
+                   unsigned* const        state,
+                   float     const* const calibBuffers,
+                   size_t    const        calibBufsCnt,
+                   uint32_t* const        outBuffers,
+                   size_t    const        outBufsCnt,
+                   unsigned  const* const index,
+                   unsigned* const        retCode_d) override;
+      size_t size() const override { return 0; }
+    };
+  }
+}
+
+#endif
