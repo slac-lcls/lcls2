@@ -1,13 +1,9 @@
-"""One fresh MPI Jungfrau-only sample; pin CUDA before importing MPI/psana."""
+"""One fresh MPI Jungfrau staging sample; pin CUDA before importing MPI/psana."""
 import argparse
 import gc
-import gzip
-import hashlib
 import json
 import os
 from pathlib import Path
-import pickle
-import struct
 import time
 
 rank_hint = int(os.environ['OMPI_COMM_WORLD_RANK'])
@@ -32,7 +28,6 @@ assert os.environ['PS_EB_NODES'] == '1' and os.environ['PS_SRV_NODES'] == '0'
 
 
 def main():
-    raise SystemExit("This historical calibration scaling harness requires callback support; use examples/input_only.py for input-only diagnostics. Baseline: 1d484d43d.")
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--directory', required=True)
     p.add_argument('--reference', required=True)
@@ -52,15 +47,16 @@ def main():
     def calibration(self):
         self._clear_calibconst()
         self._calib_const = {name: {} for name in self.dsparms.configinfo_dict}
-        with gzip.open(a.constants, 'rb') as source:
-            self._calib_const['jungfrau'] = pickle.load(source)['jungfrau']
         self.dsparms.calibconst = self._calib_const
     Run._setup_run_calibconst = calibration
 
     counters = dict(bytes=0, requests=0, read_wait_s=0., peak_owned_and_held=0,
                     budget_limit=0, cpu_bd_reads=0)
     managers = []
+    preparation_checks = []
     if is_bd:
+        from input_adapter import install
+        install(preparation_checks, pixels if a.check_pixels else {})
         import cupy as cp
         import kvikio
         import kvikio.defaults
@@ -112,12 +108,14 @@ def main():
         device = None
 
     selected = ['jungfrau', 'feespec'] if a.include_feespec else ['jungfrau']
+    setup_start = time.perf_counter()
     ds = DataSource(exp='mfx101210926', run=387, dir=a.directory,
         detectors=selected, gpu_det=selected, gpu_bulk_read=a.bulk == 'on',
         gpu_bulk_target_bytes=1 << 20, max_events=a.events, batch_size=20,
         n_gpu_streams=1, gpu_memory_budget_gb=0, gpu_d2h_chunk_size=0,
         skip_calib_load='all', log_level='ERROR')
     run = next(ds.runs())
+    setup_s = time.perf_counter() - setup_start
     feespec_arrays = []
     if is_bd and a.include_feespec:
         # Compact validation result only; copied to CPU after the timed loop.
@@ -138,10 +136,6 @@ def main():
                 if a.check_pixels:
                     feespec_arrays.append(dict(timestamp=timestamp, digest=digest(values.get())))
             field = segments = values = None
-        if a.check_pixels and timestamp in pixels:
-            checks.append(dict(timestamp=timestamp,
-                raw=digest(evt.gpu.get('jungfrau.raw').on_cpu),
-                calib=digest(evt.gpu.get('jungfrau.calib').on_cpu)))
     if is_bd:
         cp.cuda.Device().synchronize()
     elapsed = time.perf_counter() - start
@@ -149,8 +143,9 @@ def main():
         assert managers and all(m._closed for m in managers)
         assert all(m._gpu_budget._held == 0 and not m.gpu_reader._pending for m in managers)
         assert all(not m.event_pool.active_count for m in managers)
+    checks = preparation_checks
     record = dict(rank=comm.rank, is_bd=is_bd, timestamps=stamps, checks=checks,
-        loop_s=elapsed, device=device, physical_gpu=physical_gpu, counts=counters,
+        setup_s=setup_s, loop_s=elapsed, device=device, physical_gpu=physical_gpu, counts=counters,
         affinity=sorted(os.sched_getaffinity(0)), pid=os.getpid(),
         peers=[m._n_bd_per_gpu for m in managers])
     if a.include_feespec:
@@ -159,6 +154,7 @@ def main():
     records = comm.gather(record, root=0)
     if comm.rank == 0:
         from contract import validate_result
+        pixels = {t: dict(timestamp=t, raw=v['raw']) for t, v in pixels.items()}
         result = validate_result(records, reference[str(a.events)], pixels,
             events=a.events, ngpus=ngpus, check_pixels=a.check_pixels,
             expected_requests=reference[str(a.events)]['requests'][a.bulk] if a.include_feespec else None)
@@ -166,7 +162,8 @@ def main():
             from feespec import validate_feespec
             result.update(validate_feespec(records, reference[str(a.events)]['feespec'], a.check_pixels))
         result.update(bulk=a.bulk, diagnostic=a.check_pixels, ranks=records,
-                      include_feespec=a.include_feespec)
+                      include_feespec=a.include_feespec, workload='dense-input-no-calibration',
+                      setup_s=max(r['setup_s'] for r in records))
         print('JF_SCALE_RESULT ' + json.dumps(result, sort_keys=True), flush=True)
     # All GPU work and peer checks finish before shared windows are freed.
     comm.Barrier()

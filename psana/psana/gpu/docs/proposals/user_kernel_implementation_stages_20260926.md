@@ -1,5 +1,22 @@
 # User-kernel implementation stages
 
+**September 27 correction:** Stage 3 must invoke once per memory-bounded
+execution subbatch and support batched scratch, kernels, and publications.
+The [batched scheduling amendment](user_kernel_batched_scheduling_20260927.md)
+supersedes the per-event contract and deferred-batching statements below.
+Stages 1–4, including Stage 3c acceptance, are complete. Stage 4 is committed
+as `9730a9982`; follow-up geometry and serial cleanup fixes are `10173a263` and
+`10df4c6e3`. Stages 5 and 6 remain pending. The current public contract is in
+the [task/results guide](../user_task_results.md).
+See [Stage 3c campaign](../user_kernel_stage3c_findings_20260927.md).
+
+Stage 3a aligned inputs are implemented and validated on CPU/A100, with MPI
+input/setup acceptance. See [Stage 3a findings](../user_kernel_stage3a_findings_20260927.md).
+
+Stage 3b single invocation and batched publications are implemented and validated
+on CPU/A100, with MPI input/setup acceptance. See
+[Stage 3b findings](../user_kernel_stage3b_findings_20260927.md).
+
 2026-09-26. Implementation tracking; the initial planning checkpoint was
 `480f7074c`. See [Stage 1 findings](../user_kernel_stage1_findings_20260926.md)
 for the raw-preparation extraction and validation evidence.
@@ -50,7 +67,7 @@ complete on CPU mocks alone when its contract depends on CUDA lifetimes.
 | 1. Raw preparation boundary | Extract requested dense raw/presence preparation from `gpu_detector.py`; separate legacy calibration setup in `gpu_events.py`, `gpu_calib.py`, and MPI setup | Raw-only preparation works without pedestals or legacy calibration/geometry allocations; default calibration remains pixel-exact; existing batched gather structure is preserved |
 | 1b. Remove built-in calibration | Delete automatic GPU calibration/geometry setup, producer, refresh, fixed-pair IPC, synthetic outputs, and image-only D2H; migrate fixtures | Serial/MPI input processing works without pedestals or legacy work; CPU/hybrid calibration and collectives remain correct; no-callback mode has parsed inputs but no synthetic outputs |
 | 2. Task declaration and requested constants | Small task configuration type, public export, `ds_base.py`/Run/MPI plumbing; selective original-value uploads with existing admission accounting | Empty requests upload nothing; gain-only requests need no pedestals; dtype/shape/segment mapping survive; refresh drains prior users; CUDA exists only on assigned BDs |
-| 3. Producer dispatch and owner retention | Producer context and callback invocation in `EventPool.submit()`; integrate selected event identity and existing leases | Exactly one call per eligible selected event, including max-events tails; no-output and scratch-only work are safe; failures drain or retain owners; no repeated per-field parser/gather submissions |
+| 3. Producer dispatch and owner retention | Producer context and callback invocation in `EventPool.submit()`; integrate selected event identity and existing leases | Exactly one call per nonempty selected execution subbatch, including max-events tails; no-output and scratch-only work are safe; failures drain or retain owners; no repeated per-field parser/gather submissions |
 | 4. Generic publication and host delivery | Extend delivery in `gpu_events.py` and result access in `context.py` using publication-specific byte extents and metadata | Scalars, empty arrays, mixed/changing shapes and dtypes, conditional/every-N outputs, exact names, retained events, and delayed copies work; aggregate pinned cap and synchronous fallback prevent self-deadlock |
 | 5. User calibration plus azimuthal integration | Adapt Amanda's CUDA algorithms as a user callable; psana schedules it through `DataSource` and delivers the histogram | Calibration and integration match stated references; geometry/segment mapping, missing-segment counts, and concurrent scratch lifetimes are correct; no kernels or normal D2H are launched from the public loop |
 | 6. Lifecycle and integration acceptance | Exercise serial/MPI, transitions, multiple BDs, input modes, failures, and early close; update runnable examples | Required psana suites and real-device acceptance pass with recorded provenance; baseline launch structure is preserved; remaining limitations and measured submission costs are documented |
@@ -98,8 +115,8 @@ usable public callback milestone is the integrated Stage 4 path.
   correctness before considering user pooling.
 
 These are implementation choices within the agreed design, not prerequisites
-for another design approval. Batch callbacks, fused kernels, native-library
-loading, generic CUDA IPC constant sharing, and performance tuning are follow-ups.
+for another design approval. Batch callbacks are implemented. Fused kernels, native-library loading, generic
+CUDA IPC constant sharing, and further performance tuning are follow-ups.
 
 ## Validation and progress
 
@@ -134,5 +151,11 @@ the 5% investigation threshold was observed.
 Stage 3 internal producer dispatch, publication registration, and owner retention
 are implemented and validated on CPU and A100, with MPI input/task setup regression
 checks. See the [Stage 3 findings](../user_kernel_stage3_findings_20260927.md).
-Stages 4–6 remain pending. Next: generic publication copies and host delivery;
-declared tasks still reject public event processing until Stage 4 is available.
+That report describes the original per-event checkpoint. Batched scheduling was
+subsequently accepted in [Stage 3c](../user_kernel_stage3c_findings_20260927.md).
+[Stage 4](../user_kernel_stage4_findings_20260928.md) enables public serial/MPI
+host delivery and records completed performance campaigns. Later
+[geometry cache](../geometry_cache_fallback_20260928.md) and
+[serial cleanup](../serial_gpu_close_20260928.md) fixes passed core, byhand,
+A100 and MPI checks. This does not mark the Stage 5 scientific example or
+Stage 6 consolidated acceptance complete.

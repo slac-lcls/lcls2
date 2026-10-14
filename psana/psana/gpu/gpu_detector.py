@@ -237,13 +237,15 @@ class DenseInputPreparer:
             self.binding, handle_indices, self._budget,
         )
 
-    def prepare_batch(self, gpu_events, stream=None, slot_id=None):
+    def prepare_batch(self, gpu_events, stream=None, slot_id=None, *, aligned=False):
         """Queue one gather and return borrowed event-major data/presence.
 
-        Events without any source dgram are omitted without changing identity.
+        By default events without source dgrams are omitted. Task preparation
+        uses aligned=True to preserve every selected row across detectors.
         Missing/rejected fields have zero data and presence.
         """
-        events = tuple(event for event in gpu_events if self.binding.has_sources(event))
+        events = tuple(event for event in gpu_events
+                       if aligned or self.binding.has_sources(event))
         if not events:
             return None
         if slot_id is None:
@@ -258,7 +260,10 @@ class DenseInputPreparer:
                                    "field-presence")
         sctx = stream if stream is not None else cp.cuda.Stream.null
         if self._gather_plan is None:
-            source = next(events[0][sid] for sid in self._sources_by_stream if sid in events[0])
+            source = next((event[sid] for event in events
+                           for sid in self._sources_by_stream if sid in event), None)
+            if source is None:
+                raise RuntimeError('aligned absent input requires configure_gather at setup')
             self.configure_gather(source._storage_batch().configured_locations().handle_indices)
         with sctx:
             inputs = self._gather_maps[slot].prepare(events, self._gather_plan.streams,

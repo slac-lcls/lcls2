@@ -470,7 +470,7 @@ class TestDeviceReleasedResults:
         from psana.gpu.context import GPUResult, SlotLease
 
         r = GPUResult(None, lease=SlotLease(None), device_released=True)
-        with pytest.raises(RuntimeError, match="automatic D2H completed"):
+        with pytest.raises(RuntimeError, match="host-delivered or released"):
             r.on_gpu_view()
 
     def test_on_cpu_still_works_through_pending_token(self):
@@ -515,9 +515,9 @@ class TestDeviceReleasedResults:
             detector_names=["jungfrau"],
             device_released=True,
         )
-        result = state.get("calib")           # unqualified key resolves
+        result = state.get("jungfrau.calib")  # exact published key
         assert result._device_released is True
-        with pytest.raises(RuntimeError, match="automatic D2H completed"):
+        with pytest.raises(RuntimeError, match="host-delivered or released"):
             result.on_gpu
 
     def test_state_without_release_keeps_device_access(self):

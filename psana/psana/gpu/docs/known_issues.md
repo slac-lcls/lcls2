@@ -1,6 +1,6 @@
 # Known psana2 GPU Problems and Limitations
 
-**Status:** Current issue register, updated for calibration removal on 2026-09-26.
+**Status:** Current issue register, updated after Stage 4 and lifecycle fixes on 2026-09-28.
 
 This document records verified gaps between the intended architecture and the
 implementation. It is not a proposal backlog: speculative interfaces belong
@@ -57,7 +57,8 @@ The ledger covers participating owners, not every CUDA allocation in the
 process. User-owned independent GPU copies, escaped array references, custom
 kernel allocations, and CUDA/KvikIO runtime allocations are outside it; the
 10% allocator margin is headroom, not a bound on arbitrary user allocations.
-User-task output publication and bounded host-byte staging remain future work.
+User-task outputs remain outside the device ledger. Output host staging has a
+separate aggregate pinned-memory cap of 64 MiB per BD by default.
 
 Reader/parser buffers still require their existing lifetime reservations, and
 execution storage must drain all supported consumer leases before trimming.
@@ -68,16 +69,21 @@ Relevant code: `gpu/gpu_budget.py`, `gpu/gpu_admission.py`,
 
 ## Incomplete pipeline behavior
 
-### User callbacks and published outputs are not implemented
+### User-task scope and remaining examples
 
-Stage 1b exposes parsed GPU input fields without built-in calibration. There are
-no implicit `.calib`, `.raw`, or `.image` results and no automatic image D2H.
-Nonzero `gpu_d2h_chunk_size` is retired. Stage 2 accepts a host-only `GpuTask`
-through `gpu_fn` and stages declared inputs/constants on each BD, but rejects
-event processing until the callback and publication parts of the
-[task/publication stages](proposals/user_kernel_implementation_stages_20260926.md)
-are implemented. Bare callables are rejected. Existing calibration-based benchmark results are historical;
-the corresponding benchmark entry points now reject unsupported workloads.
+Batched callbacks and named host outputs are implemented; see the
+[task/results guide](user_task_results.md). There are no implicit calibrated
+results. Bare callables and nonzero `gpu_d2h_chunk_size` are rejected. Task
+outputs currently expose `.on_cpu` only; parsed input fields retain GPU access.
+The calibration-plus-azimuthal-integration example remains pending. Historical
+calibration benchmarks must be identified separately from staging-only runs.
+
+Geometry variants absent from startup shared caches now compute per rank,
+without event-loop collectives. Serial GPU iterator closure now drains resources;
+use `with closing(run.events())` when breaking early or handling loop-body errors.
+These fixes and their tests are recorded in the
+[geometry](geometry_cache_fallback_20260928.md) and
+[serial cleanup](serial_gpu_close_20260928.md) reports.
 
 ### GPU `RunParallel.steps()` is not implemented
 

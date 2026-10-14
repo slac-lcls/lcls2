@@ -54,15 +54,6 @@ def test_selected_tail_multiple_inputs_constants_fields_and_launches(monkeypatch
                  'other.raw': DenseInputPreparer((1,3,100), other, budget=budget, n_slots=1)}
     constants = RequestedConstants([('camera','gain')], budget)
     constants.refresh({'camera': {'gain': np.array(2, np.uint32)}})
-    counter = cp.RawKernel('''extern "C" __global__ void counter(
-        const unsigned char* raw, unsigned long long size,
-        const unsigned long long* loc, unsigned long long index, unsigned int* out) {
-        const unsigned long long* r=loc+index*11;
-        *out=0xffffffff;
-        if(r[10]==1 && r[1]==2 && r[2]==0 && r[9]==4 && r[8]<=size && 4<=size-r[8])
-            *out=*(const unsigned int*)(raw+r[8]);
-    }''', 'counter')
-    counter.compile()
     calls, contexts, gathers = [], [], []
     gather = gd._batched_gather_kernel
     def counted(dtype):
@@ -72,46 +63,40 @@ def test_selected_tail_multiple_inputs_constants_fields_and_launches(monkeypatch
             return kernel(*args, **kw)
         return launch
     monkeypatch.setattr(gd, '_batched_gather_kernel', counted)
-    def callback(evt, stream):
+    def callback(batch, stream):
         assert cp.cuda.get_current_stream().ptr == stream.ptr
-        calls.append((evt.timestamp,evt.batch_event_index,evt.batch_id,evt.run,evt.step_generation))
-        contexts.append(evt)
-        assert evt.segment_ids('camera') == (9,4,8)
-        evt.publish('gain_alias', evt.calibconst('camera','gain'))
-        raw = evt.input('camera.raw')
-        if raw is None:
-            assert evt.present('camera.raw') is None
-            evt.publish('other_pixels', evt.input('other.raw'))
-        else:
-            assert evt.input('other.raw') is None
-            evt.publish('pixels', raw)
-            evt.publish('presence', evt.present('camera.raw'))
-        fields = evt.field('camera','raw','counter')
-        assert fields is evt.field('camera','raw','counter')
-        for field in fields:
-            out = cp.empty((), cp.uint32)
-            evt.publish('counter_'+str(field.segment_id), out)
-            counter((1,), (1,), (field.data_gpu,np.uint64(field.raw_nbytes),
-                    field.locator_rows,np.uint64(field.row),out), stream=stream)
+        calls.append((batch.timestamps,batch.batch_event_indices,batch.batch_id,batch.run,batch.step_generation))
+        contexts.append(batch)
+        assert batch.segment_ids('camera') == (9,4,8)
+        batch.publish('gain_alias', batch.calibconst('camera','gain').reshape(1),event_indices=[1])
+        batch.publish('pixels', batch.input('camera.raw'))
+        batch.publish('presence', batch.present('camera.raw'))
+        batch.publish('other_pixels', batch.input('other.raw'))
+        fields=batch.field('camera','raw','counter')
+        assert fields is batch.field('camera','raw','counter')
+        batch.publish('field_rows',fields.rows)
     task = GpuTask(callback, ['camera.raw','other.raw',('camera','raw','counter')],
                    [('camera','gain')])
-    pool = EventPool(n=1)
+    pool = EventPool(n=1,budget=budget)
     record = pool.submit(NS(iter_events=lambda: iter(specs)), None, envelopes(specs[:4]),
         preparers, input_windows=(window,), batch_id=7, task=task,
         detector_bindings=mapping, task_constants=constants, run=51, step_generation=3)
     assert not window.close()
-    assert calls == [(100,7,7,51,3),(101,10,7,51,3),(102,13,7,51,3)]
+    assert calls == [((100,101,102),(7,10,13),7,51,3)]
     assert len(gathers)==2 and window.batch._locators=={}
+    assert len(record.publication_batches)==5
     assert pool.begin_retire_next() is record
     for ts, outputs in record.publications_by_ts.items():
-        assert cp.asnumpy(outputs['gain_alias'].array)==2
-        for name,pub in outputs.items():
-            if name.startswith('counter_'):assert cp.asnumpy(pub.array)==ts-100
-        if ts!=101:np.testing.assert_array_equal(outputs['pixels'].array.get(),expected[0 if ts==100 else 1])
+        if ts==101:
+            assert cp.asnumpy(outputs['gain_alias'].array)==2
+            assert not outputs['pixels'].array.any()
+        else:
+            np.testing.assert_array_equal(outputs['pixels'].array.get(),expected[0 if ts==100 else 1])
     for ctx in contexts:
         with pytest.raises(RuntimeError,match='during its callback'):ctx.input('camera.raw')
     pool.finish_retire_next()
     assert window.released and not record.producer_owners and not record.publications_by_ts
+    assert not record.publication_batches
     constants.close()
 
 
@@ -168,7 +153,7 @@ def test_failed_completion_keeps_registered_owners_and_inputs_until_retry():
     stream=RetryStream();pool._streams[0]=stream
     refs=[]
     def callback(evt, stream):
-        array=cp.empty(5,cp.uint32)
+        array=cp.empty((1,5),cp.uint32)
         refs.append(weakref.ref(array))
         evt.publish('out',array)
         array.fill(37)
@@ -195,12 +180,12 @@ def test_publication_metadata_validation_and_borrowed_input_consumer_lease():
     import cupy as cp
     parser,detector,_,specs,expected,window=fixture(cp,((0,),))
     def callback(evt,stream):
-        evt.publish('scalar',cp.array(4,cp.uint32))
-        evt.publish('empty',cp.empty((0,3),cp.float64))
+        evt.publish('scalar',cp.array([4],cp.uint32))
+        evt.publish('empty',cp.empty((1,0,3),cp.float64))
         with pytest.raises(ValueError,match='duplicate'):evt.publish('scalar',cp.empty(1))
         with pytest.raises(ValueError,match='reserved'):evt.publish('camera.raw',cp.empty(1))
         with pytest.raises(TypeError,match='CuPy'):evt.publish('host',np.empty(1))
-        with pytest.raises(ValueError,match='contiguous'):evt.publish('strided',cp.empty(8)[::2])
+        with pytest.raises(ValueError,match='contiguous'):evt.publish('strided',cp.empty((1,8))[:,::2])
         evt.publish('borrowed',evt.input('camera.raw'))
     pool=EventPool(n=1)
     record=pool.submit(NS(iter_events=lambda:iter(specs)),None,envelopes(specs),
@@ -231,27 +216,92 @@ def test_publication_metadata_validation_and_borrowed_input_consumer_lease():
     np.testing.assert_array_equal(copied.get(),expected[0])
 
 
-def test_generic_fields_from_independent_input_bases():
+@pytest.mark.parametrize('depth', [1,2])
+def test_one_scratch_allocation_and_launch_per_subbatch_with_tail_reuse(monkeypatch,depth):
     import cupy as cp
-    parser,detector,_,specs,_,owner=fixture_inputs(cp)
-    stream=cp.cuda.Stream(non_blocking=True)
-    windows=tuple(owner((i,),range(4),stream) for i in range(2))
-    seen=[]
-    def callback(evt,stream):
-        fields=evt.field('camera','raw','pixels')
-        seen.append(tuple((f.segment_id,f.raw_ptr,f.row) for f in fields))
-        assert all(f.rank==2 and f.xtc_type==1 and f.element_size==2 for f in fields)
-        for f in fields:evt.publish('locator_'+str(f.segment_id),f.locator_rows[f.row])
-    pool=EventPool(n=1)
+    parser,initial,budget,specs,expected,window=fixture(cp, ((0,),)*20)
+    detector=DenseInputPreparer(initial.det_shape,initial.binding,n_slots=depth,budget=budget)
+    detector.configure_gather(parser.handle_indices)
+    kernel=cp.RawKernel('''extern "C" __global__ void scratch(
+        const unsigned short* raw, unsigned short* out, unsigned long long n) {
+        unsigned long long i=blockIdx.x*blockDim.x+threadIdx.x;
+        if(i<n) out[i]=raw[i]+1;
+    }''','scratch')
+    kernel.compile()
+    counts=dict(callback=0,allocate=0,launch=0,completion=0)
+    real_allocate=cp.empty_like
+    def allocate(*a,**kw):
+        counts['allocate']+=1
+        return real_allocate(*a,**kw)
+    monkeypatch.setattr(cp,'empty_like',allocate)
+    real_event=cp.cuda.Event
+    def completion(**kw):
+        counts['completion']+=1
+        return real_event(**kw)
+    monkeypatch.setattr(cp.cuda,'Event',completion)
+    contexts=[]
+    def callback(batch,stream):
+        counts['callback']+=1
+        contexts.append(batch)
+        raw=batch.input('camera.raw')
+        out=cp.empty_like(raw)
+        batch.keepalive(out)
+        kernel(((raw.size+255)//256,),(256,),(raw,out,np.uint64(raw.size)),stream=stream)
+        counts['launch']+=1
+    pool=EventPool(n=depth,budget=budget)
+    def check(record):
+        if record is None:return
+        arrays=[a for a in record.producer_owners if isinstance(a,cp.ndarray)]
+        assert len(arrays)==1 and not record.publications_by_ts and not record.publication_batches
+        n=record.batch_inputs.size
+        np.testing.assert_array_equal(arrays[0].get(),np.asarray(expected[:n])+1)
+    for n in (20,3,1):
+        check(pool.begin_retire_next());pool.finish_retire_next()
+        pool.submit(NS(iter_events=lambda:iter(specs)),None,envelopes(specs[:n]),
+            {'camera.raw':detector},input_windows=(window,),batch_id=7,
+            task=GpuTask(callback,['camera.raw']),detector_bindings=bindings(parser,detector))
+    assert not window.close()
+    for record in pool.flush():check(record)
+    assert counts==dict(callback=3,allocate=3,launch=3,completion=3)
+    assert window.released
+    for context in contexts:
+        with pytest.raises(RuntimeError,match='during its callback'):context.timestamps_gpu
+
+
+def test_sparse_mixed_publication_groups_and_shared_consumer_completion():
+    import cupy as cp
+    parser,detector,budget,specs,expected,window=fixture(cp,((0,),)*3)
+    saved=[]
+    def callback(batch,stream):
+        raw=batch.input('camera.raw')
+        batch.publish('out',raw[1:3],event_indices=[2,0])
+        scalar=cp.array([42],cp.uint32)
+        batch.publish('out',scalar,event_indices=[1])
+        batch.publish('empty',cp.empty((3,0,2),cp.float32))
+        with pytest.raises(ValueError,match='duplicate'):
+            batch.publish('out',raw,event_indices=[0,1,2])
+        saved.append(batch)
+    pool=EventPool(n=1,budget=budget)
     rec=pool.submit(NS(iter_events=lambda:iter(specs)),None,envelopes(specs),
-        input_windows=windows,batch_id=7,task=GpuTask(callback,[('camera','raw','pixels')]),
-        detector_bindings=bindings(parser,detector))
-    assert len({ptr for _,ptr,_ in seen[0]})==2
-    assert [s for s,_,_ in seen[0]]==[9,4,8]
-    assert all(w.batch._locators=={} for w in windows)
+        {'camera.raw':detector},input_windows=(window,),batch_id=7,
+        task=GpuTask(callback,['camera.raw']),detector_bindings=bindings(parser,detector))
+    assert len(rec.publication_batches)==3
+    p0,p1,p2=[rec.publications_by_ts[t]['out'] for t in (100,101,102)]
+    assert p0.batch is p2.batch and p1.batch is not p0.batch
+    assert p0.row==1 and p2.row==0 and p1.shape==()
+    assert p0.array.data.ptr==p0.batch.array.data.ptr+p0.nbytes
+    copy=cp.empty_like(p0.array)
+    consumer=cp.cuda.Stream(non_blocking=True)
+    with consumer:
+        consumer.wait_event(p0.lease.result_ready)
+        cp.copyto(copy,p0.array)
+        done=cp.cuda.Event();done.record(consumer)
+    p0.lease.register_consumer_done(done)
     pool.begin_retire_next()
-    for pubs in rec.publications_by_ts.values():
-        for pub in pubs.values():assert int(pub.array.get()[10])==1
-    for w in windows:assert not w.close()
+    np.testing.assert_array_equal(p1.array.get(),42)
+    assert all(pub['empty'].shape==(0,2) and pub['empty'].nbytes==0
+               for pub in rec.publications_by_ts.values())
+    assert not window.close()
     pool.finish_retire_next()
-    assert all(w.released for w in windows)
+    np.testing.assert_array_equal(copy.get(),expected[2])
+    assert window.released and not rec.publication_batches

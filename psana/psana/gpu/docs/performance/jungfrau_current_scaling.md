@@ -1,5 +1,10 @@
 # Current-runtime Jungfrau GPU/BD scaling
 
+This report preserves the **pre-user-kernel September 26 baseline**. For current
+runtime scaling and the per-event versus batched kernel comparison, see
+[user-kernel scaling](user_kernel_scaling_20260928.md).
+
+
 **Status: job 39104724 COMPLETED, exit 0:0; all acceptance gates passed.**
 Verified 2026-09-26. Elapsed **1h25m58s**, node **sdfampere030**.
 This campaign follows the user's request to check Jungfrau-only scaling before

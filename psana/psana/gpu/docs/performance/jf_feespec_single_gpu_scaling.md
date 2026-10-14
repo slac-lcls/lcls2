@@ -1,14 +1,21 @@
 # JF + feespec, one GPU and 1/2/4 BigData ranks
 
-**Current attempt: job 39178621 RUNNING on sdfampere031**, checked 2026-09-26
-at handoff (about nine minutes elapsed). All six pixel preflights and the first
-cold 1-BD bulk-off sample passed. Complete results remain pending. This retry
-uses bounded missing-page warm-cache repair. Frozen campaign:
+**Measured historical baseline:** job **39178621 COMPLETED**, exit 0, on
+`sdfampere031` in **1h07m57s**, 2026-09-26. All six pixel preflights and 24 timed
+samples passed. This is the pre-user-kernel runtime `ad8d454d1`, with automatic
+JF calibration. The [combined baseline report](jungfrau_current_scaling.md)
+contains the accepted results and JF-only comparison.
+
+| BDs / one A100 | Cold bulk off | Cold bulk on | Warm bulk off | Warm bulk on |
+|---|---:|---:|---:|---:|
+| 1 | 198.80 | 187.93 | 315.89 | 291.23 |
+| 2 | 281.84 | 272.73 | 342.18 | 402.51 |
+| 4 | 305.87 | 313.06 | 408.40 | 416.99 |
+
+Rates are events/s from median loop duration for two repetitions, excluding
+explicit initialization. Bulk off/on refers to file-read grouping, not kernel
+scheduling. Frozen campaign:
 `/sdf/scratch/users/m/monarin/gpu-validation/jf-feespec-scale-20260926-r2`.
-All six pixel preflights and 24 timed samples are rerun; no samples are reused
-from the failed attempt. Production runtime, references, requested resources,
-and all benchmark settings are unchanged. Estimated runtime remains
-**65–90 minutes after allocation**, excluding queue time, with a **1h59m** limit.
 
 ## Warm-cache repair
 
@@ -46,7 +53,7 @@ Device preflight **39174462 COMPLETED**, exit **0:0**, in **2m45s** on
 `sdfampere038`. Both modes passed with 1 and 4 BDs: each case validated
 200 feespec arrays, 200 sums, three JF raw/calibrated samples and exact read
 counts (1,200 off / 1,012 on). The `afterok` gate released the full sweep.
-Full-campaign results are incomplete. Original runtime estimate **65–90 minutes after allocation**;
+The first attempt was incomplete; the retry above completed. Original runtime estimate **65–90 minutes after allocation**;
 walltime limit **1h59m**.
 The estimate is based on the prior 86-minute JF-only campaign with 32 samples;
 this campaign has 24 samples and adds a small feespec GPU consumer.

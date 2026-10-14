@@ -62,6 +62,7 @@ class DsParms:
     gpu_det: object = None  # str | list[str] | None
     hybrid_det: object = None  # str | list[str] | None
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
+    gpu_d2h_pinned_bytes: int = 64 << 20  # aggregate per-BD output staging cap
     gpu_d2h_chunk_size: int = 0  # retired; only zero is accepted
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
     gpu_bulk_read: bool = True  # adjacent per-stream input groups
@@ -74,6 +75,8 @@ class DsParms:
     gpu_fn: object = None  # GpuTask | None; host-only declaration
 
     def __post_init__(self):
+        from psana.gpu.gpu_d2h import validate_pinned_bytes
+        validate_pinned_bytes(self.gpu_d2h_pinned_bytes)
         if self.gpu_fn is not None:
             from psana.gpu.gpu_task import GpuTask
             if not isinstance(self.gpu_fn, GpuTask):
@@ -293,9 +296,13 @@ class DataSourceBase(abc.ABC):
     hybrid_det : str or list[str]
         Detectors whose complete streams are read by both CPU and GPU paths.
     gpu_fn : GpuTask, optional
-        Declare GPU inputs and exact calibration keys. Stage 2 stages these
-        dependencies; event processing rejects tasks until callback dispatch
-        is implemented. An omitted task batch size defaults to one.
+        Run one callback per selected GPU execution subbatch. Declare inputs
+        and exact calibration keys; publish named arrays for automatic host
+        delivery via evt.gpu.get(name).on_cpu. An omitted task batch size is one.
+    gpu_d2h_pinned_bytes : int
+        Aggregate per-BD output pinned staging cap in bytes (default: 64 MiB),
+        including free cached and token-held capacity. Zero, oversized outputs,
+        or unavailable capacity use synchronous ordinary-host copies.
     gpu_bulk_read : bool
         Coalesce adjacent per-stream input datagrams (default:
         True). Set False for per-dgram comparison/debugging. Applies only to
@@ -361,6 +368,7 @@ class DataSourceBase(abc.ABC):
             )
         self.n_gpu_streams = kwargs.get("n_gpu_streams", 2)
         self.gpu_d2h_chunk_size = kwargs.get("gpu_d2h_chunk_size", 0)
+        self.gpu_d2h_pinned_bytes = kwargs.get("gpu_d2h_pinned_bytes", 64 << 20)
         self.gpu_memory_budget_gb = kwargs.get("gpu_memory_budget_gb", 0)
         self.gpu_bulk_read = kwargs.get("gpu_bulk_read", True)
         self.gpu_bulk_target_bytes = kwargs.get("gpu_bulk_target_bytes", 1 << 20)
@@ -401,6 +409,7 @@ class DataSourceBase(abc.ABC):
             gpu_det=self.gpu_det,
             hybrid_det=self.hybrid_det,
             gpu_fn=self.gpu_fn,
+            gpu_d2h_pinned_bytes=self.gpu_d2h_pinned_bytes,
             n_gpu_streams=self.n_gpu_streams,
             gpu_d2h_chunk_size=self.gpu_d2h_chunk_size,
             gpu_memory_budget_gb=self.gpu_memory_budget_gb,
@@ -445,6 +454,7 @@ class DataSourceBase(abc.ABC):
             "gpu_fn",
             "n_gpu_streams",
             "gpu_d2h_chunk_size",
+            "gpu_d2h_pinned_bytes",
             "gpu_memory_budget_gb",
             "gpu_bulk_read",
             "gpu_bulk_target_bytes",

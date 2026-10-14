@@ -771,6 +771,21 @@ class RunSerial(Run):
         self._smd_iter = None
         self._ts_table = None
 
+    def events(self):
+        """Deliver events and close GPU resources when iteration is closed.
+
+        Use contextlib.closing(run.events()) for deterministic cleanup on an
+        early break or an exception in the loop body. Closing is terminal for
+        this run's GPU event stream. CPU-only iteration keeps its usual behavior.
+        """
+        if not self.dsparms.gpu_enabled:
+            yield from super().events()
+            return
+        try:
+            yield from super().events()
+        finally:
+            self._evt_iter.close()
+
     @contextmanager
     def build_table(self):
         """

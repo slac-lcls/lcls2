@@ -154,6 +154,10 @@ apply. Both versions use `gpu_fn=None` with identical benchmark dense preparatio
 `callback_cost.py` measures Stage 3 internally using the synthetic GPU acceptance
 fixture (900 uint16 pixels per event). It compares no task, an empty callback,
 registered scratch plus one kernel, and a scalar publication plus one kernel.
+The current harness uses one callback per execution subbatch. Scratch covers
+the entire event dimension and scalar outputs have shape `(N,)`; each nonempty
+scratch/publication callback launches one user kernel. Historical September 27
+per-event results use their frozen script and are not measurements of this API.
 Batch sizes 1/20 and depths 1/2 run six alternating-order rounds. Compilation,
 parsing and initial preparation are outside timing; each submission still queues
 one dense gather. Fresh window facades reference immutable fixture storage and

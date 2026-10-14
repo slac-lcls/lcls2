@@ -11,17 +11,27 @@ and the configurations that produced them.
 
 ## Current design
 
-Stage 1b removes built-in GPU calibration, geometry, calibrated output buffers,
-and image-specific automatic D2H. GPU routing currently exposes parsed inputs.
-Stage 2 adds host-only `GpuTask` declarations and requested input/constant setup;
-callback execution and publication remain unfinished. Start with the
-[input-only example](examples/input_only.py) and
-[Stage 1b findings](docs/user_kernel_stage1b_findings_20260926.md).
-See [Stage 2 findings](docs/user_kernel_stage2_findings_20260927.md) for the
-declaration and upload contract. Nonzero `gpu_d2h_chunk_size` fails explicitly;
-`gpu_fn=GpuTask(...)` stages dependencies but rejects event processing until
-callback execution and publication are implemented.
-CPU/hybrid detector calibration remains available through normal CPU APIs.
+Stages 1–4 are implemented: `GpuTask` runs once per nonempty selected execution
+subbatch, and named publications receive batched host delivery. Start with the
+[task and results guide](docs/user_task_results.md) or the
+[input-only example](examples/input_only.py). Set `batch_size` explicitly;
+the task default is one. Memory admission can split an EventBuilder batch.
+
+The runtime provides input preparation, requested original calibration constants,
+completion tracking, and bounded output staging. User code owns calibration,
+geometry algorithms, kernels, scratch, and device outputs. With no task there
+is no automatic calibration or output D2H. CPU/hybrid calibration remains available.
+The default output pinned-memory cap is 64 MiB per BD; nonzero
+`gpu_d2h_chunk_size` remains retired.
+
+[Stage 4 findings](docs/user_kernel_stage4_findings_20260928.md) record correctness
+and performance. Subsequent fixes cover
+[noncollective geometry cache misses](docs/geometry_cache_fallback_20260928.md)
+and [serial iterator cleanup](docs/serial_gpu_close_20260928.md).
+Use `with closing(run.events())` for deterministic cleanup on early exit.
+The calibration-plus-azimuthal-integration example (Stage 5) and final consolidated
+acceptance (Stage 6) remain pending; see the
+[stage tracker](docs/proposals/user_kernel_implementation_stages_20260926.md).
 
 
 - [Architecture overview](docs/architecture_overview.md): components,
@@ -47,6 +57,9 @@ CPU/hybrid detector calibration remains available through normal CPU APIs.
 
 ## Performance evidence
 
+- [User-kernel scaling and batch scheduling](docs/performance/user_kernel_scaling_20260928.md):
+  full JF / partial JF+feespec reruns and measured per-event versus batched kernels.
+
 - [Code-size simplification handoff](docs/simplification_baseline_20260925.md):
   committed baseline, completed JF results, mixed-detector campaign and invariants.
 - [Jungfrau single-node scaling](docs/performance/jungfrau_single_node_sdf.md):
@@ -54,7 +67,7 @@ CPU/hybrid detector calibration remains available through normal CPU APIs.
   the 1-GPU/4-BD cold and 4-GPU/8-BD warm results.
 
 - [Current Jungfrau scaling campaign](docs/performance/jungfrau_current_scaling.md):
-  current-code multi-GPU/BD rerun, validation gates and job status.
+  pre-user-kernel multi-GPU/BD results and completed mixed-detector comparison.
 - [User-kernel Stage 1/1b regression check](docs/performance/user_kernel_stage1_regression_20260926.md):
   matched JF-only comparisons on one GPU with 1–4 BDs.
 - [JF + feespec one-GPU scaling](docs/performance/jf_feespec_single_gpu_scaling.md):

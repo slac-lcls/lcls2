@@ -50,6 +50,8 @@ def main():
         p.error('--include-feespec uses the fixed one-GPU 1/2/4-BD matrix')
     root = a.root.resolve()
     verify(root)
+    adapter = root/'scripts/stage1_regression/input_adapter.py'
+    assert str(adapter) in json.loads((root/'hashes.json').read_text())
     job = os.environ['SLURM_JOB_ID']
     output = root/('job-'+job)
     output.mkdir(exist_ok=False)
@@ -79,6 +81,8 @@ def main():
         settings=dict(events=10000, batch=20, depth=1, workers=8, task_mib=1,
                       bulk_target_mib=1, d2h=0, budget='automatic device_total/BD peers',
                       modes=a.modes, repetitions=2, include_feespec=a.include_feespec,
+                      workload='dense-input-no-calibration',
+                      kernel_scheduling='no GpuTask; feespec per-event consumer when selected',
                       consumer='feespec GPU int64 sum' if a.include_feespec else 'timestamp only'),
         points=FEESPEC_POINTS if a.include_feespec else (FULL_POINTS if a.full else KEY_POINTS))
     save(output/'provenance.json', provenance)

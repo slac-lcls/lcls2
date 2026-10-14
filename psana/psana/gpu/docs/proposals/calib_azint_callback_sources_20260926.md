@@ -1,5 +1,11 @@
 # Calibration and azimuthal integration callback sources
 
+**September 28 status:** the batched `GpuTask` API is implemented; the scientific
+`CalibAzint` example remains pending (Stage 5). The dated source survey and
+illustrative per-event signatures below are historical. Adapt algorithms to
+`function(batch, stream)` using the [current guide](../user_task_results.md).
+
+
 2026-09-26. Source inspection only; no callback API or adapted kernels have
 been implemented or tested here. The first user-kernel example should run
 **user calibration followed by azimuthal integration inside one callback**

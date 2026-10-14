@@ -788,24 +788,25 @@ def test_gpu_io_error_aborts_mpi_job():
     assert abort_calls == [1]
 
 
-def test_unqualified_result_key_resolves_for_one_gpu_detector():
+def test_exact_result_key_for_one_gpu_detector():
     arr = object()
     state = GpuEventState(
         {"jungfrau.calib": arr},
         detector_names=["jungfrau"],
     )
 
-    assert state.get("calib")._arr is arr
+    with pytest.raises(KeyError):
+        state.get("calib")
     assert state.get("jungfrau.calib")._arr is arr
 
 
-def test_unqualified_result_key_rejects_multiple_gpu_detectors():
+def test_exact_result_key_for_multiple_gpu_detectors():
     state = GpuEventState(
         {"jungfrau.calib": object(), "epix.calib": object()},
         detector_names=["jungfrau", "epix"],
     )
 
-    with pytest.raises(KeyError, match="ambiguous"):
+    with pytest.raises(KeyError, match="not available"):
         state.get("calib")
 
 

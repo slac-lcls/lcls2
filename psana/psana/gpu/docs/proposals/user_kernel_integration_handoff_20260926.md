@@ -135,6 +135,10 @@ draining when extending the pipeline.
 
 ## Direction for the new task
 
+September 27: the [batched scheduling amendment](user_kernel_batched_scheduling_20260927.md)
+supersedes the per-event invocation and deferred-batching direction below.
+Complete the Stage 3 correction before Stage 4 public delivery.
+
 - Priority: simple structure, minimum viable code addition, then measured
   optimization. Reuse the existing producer/ownership/delivery path. Preserve
   the parser's batched launches; do not reintroduce CPU loops that submit GPU

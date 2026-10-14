@@ -194,9 +194,12 @@ def test_step_refresh_follows_drains_and_host_update(monkeypatch, cpu_uploads):
     assert log == ['executions', 'inputs', 'host']
 
 
-def test_task_cannot_be_silently_ignored_by_event_processing():
+def test_public_submission_queues_delivery_after_releasing_input_reservation():
     from psana.gpu.gpu_events import GpuEventManager
     manager = GpuEventManager.__new__(GpuEventManager)
-    manager._gpu_task = GpuTask(noop)
-    with pytest.raises(NotImplementedError, match='callback execution'):
-        next(manager._process_batch({}, {}, {}))
+    record, calls = object(), []
+    manager._submit_per_dgram_gpu = lambda *a: calls.append('submit') or record
+    manager._close_gpu_reservation = lambda: calls.append('release-hold')
+    manager._output_d2h = NS(enqueue=lambda r:calls.append(('delivery',r)))
+    assert manager._submit_gpu(None,None,[]) is record
+    assert calls == ['submit','release-hold',('delivery',record)]

@@ -28,48 +28,90 @@ def envelope(timestamp):
     return NS(dgrams=[NS(timestamp=lambda: timestamp)])
 
 
-def test_selected_identity_missing_dense_rows_and_context_expiry(monkeypatch):
+def test_one_batch_invocation_identity_stream_and_context_expiry(monkeypatch):
     monkeypatch.setitem(sys.modules, 'cupy', NS(cuda=NS(Device=lambda: NS(id=0))))
-    events = (Event(7, 100), Event(10, 101), Event(13, 102), Event(16, 103, False), Event(19, 104))
-    batch = NS(events=(events[0], events[2], events[4]),
-               data=np.array([[7], [13], [19]]), present=np.ones((3, 1), np.uint8))
-    calls, contexts, owners, pubs = [], [], [], {}
+    data = np.array([[7], [0], [13]])
+    inputs = NS(size=3, timestamps=(100,101,102), batch_event_indices=(7,10,13),
+                batch_id=3, run=51, step_generation=2,
+                input=lambda name:data, present=lambda name:np.array([[1],[0],[1]]),
+                segment_ids=lambda name:(9,4))
+    calls, contexts, owners, pubs, batches = [], [], [], {}, []
     sentinel = object()
-    def callback(evt, stream):
+    def callback(batch, stream):
         assert stream.current
-        contexts.append(evt)
-        calls.append((evt.batch_event_index, evt.timestamp, evt.run,
-                      evt.batch_id, evt.step_generation))
-        assert evt.segment_ids('jf') == (9, 4)
-        if evt.timestamp == 101:
-            assert evt.input('jf.raw') is evt.present('jf.raw') is None
-        else:
-            assert evt.input('jf.raw')[0] == evt.batch_event_index
-            assert evt.present('jf.raw')[0] == 1
-        for access in (lambda: evt.input('other.raw'), lambda: evt.field('jf','raw','raw'),
-                       lambda: evt.calibconst('jf','gain'), lambda: evt.segment_ids('other')):
-            with pytest.raises(KeyError, match='not declared'):
-                access()
-        evt.keepalive(sentinel)
-        return np.array([1])  # Returning a value does not publish it.
+        contexts.append(batch)
+        calls.append((batch.batch_event_indices, batch.timestamps, batch.run,
+                      batch.batch_id, batch.step_generation))
+        assert batch.segment_ids('jf') == (9,4)
+        np.testing.assert_array_equal(batch.input('jf.raw'), data)
+        np.testing.assert_array_equal(batch.present('jf.raw'), [[1],[0],[1]])
+        batch.keepalive(sentinel)
+        return np.array([1])  # Return values do not publish.
     stream = Stream()
-    dispatch_task(GpuTask(callback, ['jf.raw']), events,
-                  [envelope(t) for t in (100,101,102,103)], {'jf.raw': batch},
-                  {'jf': NS(canonical_segment_ids=(9,4), fields={})}, None,
-                  stream, owners, pubs, object(), batch_id=3, run=51, step_generation=2)
-    assert calls == [(7,100,51,3,2),(10,101,51,3,2),(13,102,51,3,2)]
-    assert owners == [sentinel]*3 and pubs == {} and not stream.current
-    with pytest.raises(RuntimeError, match='during its callback'):
-        contexts[0].keepalive(object())
-    assert contexts[0]._dense is None
+    dispatch_task(GpuTask(callback, ['jf.raw']), inputs,
+                  {'jf': NS(canonical_segment_ids=(9,4), fields={})},
+                  stream, owners, pubs, batches, object())
+    assert calls == [((7,10,13),(100,101,102),51,3,2)]
+    assert owners == [sentinel] and pubs == {} and batches == [] and not stream.current
+    for access in (lambda:contexts[0].keepalive(object()), lambda:contexts[0].timestamps,
+                   lambda:contexts[0].input('jf.raw')):
+        with pytest.raises(RuntimeError, match='during its callback'): access()
+    assert contexts[0]._inputs is None
 
 
 def test_no_selected_events_invokes_nothing(monkeypatch):
-    monkeypatch.setitem(sys.modules, 'cupy', NS(cuda=NS(Device=lambda: NS(id=0))))
-    def fail(*args):
-        raise AssertionError('unselected callback')
-    dispatch_task(GpuTask(fail), (Event(7, 100),), [], {}, {}, None,
-                  Stream(), [], {}, object(), batch_id=1, run=51, step_generation=0)
+    monkeypatch.setitem(sys.modules, 'cupy', None)
+    def fail(*args): raise AssertionError('unselected callback')
+    dispatch_task(GpuTask(fail), NS(size=0), {}, Stream(), [], {}, [], object())
+
+
+def publication_context(monkeypatch, size=3):
+    from psana.gpu.gpu_producer import ProducerContext
+    class DeviceArray(np.ndarray):
+        @property
+        def device(self): return NS(id=0)
+    monkeypatch.setitem(sys.modules,'cupy',NS(ndarray=DeviceArray))
+    context = ProducerContext(NS(size=size,timestamps=tuple(range(100,100+size))),
+                              [],{},[],object(),{'jf','jf.raw'},0)
+    return context, lambda shape,dtype=np.float32:np.zeros(shape,dtype).view(DeviceArray)
+
+
+def test_sparse_publication_groups_are_atomic_and_share_backing(monkeypatch):
+    ctx, array = publication_context(monkeypatch)
+    first, second = array((2,4)), array((1,),np.uint32)
+    ctx.publish('out',first,event_indices=[2,0])
+    ctx.publish('out',second,event_indices=np.array([1]))
+    assert len(ctx._batches)==2 and len(ctx._owners)==2
+    for ts,row in [(102,0),(100,1)]:
+        pub=ctx._publications[ts]['out']
+        assert pub.batch is ctx._batches[0] and pub.row==row
+        assert pub.shape==(4,) and pub.nbytes==16
+        assert np.shares_memory(pub.array,first)
+    assert ctx._publications[101]['out'].shape==()
+    with pytest.raises(ValueError,match='duplicate publication'):
+        ctx.publish('out',array((2,)),event_indices=[0,1])
+    assert len(ctx._batches)==2 and len(ctx._owners)==2
+    ctx.publish('empty',array((3,0,2)))
+    assert all(p['empty'].nbytes==0 and p['empty'].shape==(0,2) for p in ctx._publications.values())
+    ctx.publish('none_selected',array((0,)),event_indices=[])
+    assert not any('none_selected' in p for p in ctx._publications.values())
+
+
+@pytest.mark.parametrize('indices,error', [([True],TypeError),([0.5],TypeError),
+    ([-1],ValueError),([3],ValueError),([0,0],ValueError)])
+def test_bad_publication_indices_do_not_register(monkeypatch,indices,error):
+    ctx,array=publication_context(monkeypatch)
+    with pytest.raises(error):ctx.publish('out',array((len(indices),)),event_indices=indices)
+    assert ctx._owners==[] and ctx._batches==[] and ctx._publications=={}
+
+
+def test_publication_requires_host_indices_and_leading_axis(monkeypatch):
+    ctx,array=publication_context(monkeypatch)
+    with pytest.raises(TypeError,match='host integer'):ctx.publish('out',array((1,)),array((1,),np.int64))
+    with pytest.raises(ValueError,match='leading event-row'):ctx.publish('out',array(()))
+    with pytest.raises(ValueError,match='leading axis'):ctx.publish('out',array((2,)))
+    with pytest.raises(ValueError,match='reserved'):ctx.publish('jf.raw',array((3,)))
+    with pytest.raises(ValueError,match='contiguous'):ctx.publish('out',array((3,4))[:,::2])
 
 
 def test_manager_supplies_task_and_transition_generation():

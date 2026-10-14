@@ -1,7 +1,7 @@
 """GPU input routing and parsed-field access; no automatic calibration.
 
 Use evt.gpu.detector(name).field(algorithm, field) for leased input access.
-User callback support is under development.
+GpuTask callbacks process execution subbatches and publish named host results.
 """
 
 from psana.gpu.context import GPUResult, GpuEventState
