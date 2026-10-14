@@ -310,8 +310,180 @@ diverge silently -- that has happened once already.
   granted and place its own hot threads across *those*, with no absolute numbers in any
   `.cnf.py`, no coordination between instances, and correct behaviour if Slurm moves the
   job to another socket.  `cores:` then becomes the only knob and it means something.
-  Make `pinThread` allocation-relative (pin the k-th hot thread to the k-th granted CPU),
-  and leave it off behind a kwarg until it is measured.
+
+  **DONE 2026-10-14, and ON BY DEFAULT.**  `Pds::setThreadPinning` and
+  `Pds::pinHotThread` in `Affinity.cc`, called from each hot thread after its
+  `prctl(PR_SET_NAME)`.  `pinThreads=no` turns it off; `spread` is the only other value.
+
+  **Why on by default** (Ric, 10-14, from Chris's point at that morning's meeting):
+  nobody should have to edit every `.cnf.py` out there when a capability appears, and
+  flipping a default later costs a **second deployment to N hutches**, which is hard to
+  coordinate.  So the knob exists to turn pinning *off* when it is suspected in a
+  problem, not to turn it on.  Pinning itself remains **unmeasured**.
+
+  **Wired into all nine processes, Ric 2026-10-14 (he wanted it before the master
+  merge).  Each count was read off the `std::thread` sites, not assumed:**
+
+      drp_gpu         TigRcvr, Collector, Recorder, TEBreceiver   4
+      drp             PGPreader, Collector, TEBreceiver           3 + nworkers
+      drp_pva         Reader, Collector, TEBreceiver              3
+      drp_udpencoder  Receiver, Worker, TEBreceiver               3
+      drp_bld         Worker, TEBreceiver                         2
+      epicsArch       Worker, TEBreceiver                         2
+      BldDetectorSlow Worker, TEBreceiver                         2   not built
+      teb             Teb                                         1
+      monReqServer    Meb                                         1
+
+  `BldDetectorSlow.cc` is commented out of `drp/meson.build:108`, so the compiler never
+  sees it; it is carried along with the same four edits as its compiled sibling
+  `BldDetector.cc`, and was `-fsyntax-only` checked.
+
+  **Default-on made this an audit, not a choice.**  `pinHotThread` lives in
+  `EbCtrbInBase.cc` -> `libcontributor`, which `drp_pva`, `drp_bld` and
+  `drp_udpencoder` all link, so with pinning on by default their TEBreceiver threads
+  would have pinned whether or not anyone asked -- and without a `setThreadPinning`
+  call they could not have been told `pinThreads=no`.  All three are now wired.
+  `ctrb` does not link `libcontributor` and is not built by default, so it is moot.
+
+  **A bug default-on exposed in `drp_pva`, worth remembering:** it calls `get_kwargs`
+  *inside* its `try` block, after the point the other programs parse kwargs, so a
+  `setThreadPinning` placed beside `initExceptionReporting` read an **empty** map and
+  silently left pinning enabled with no way to disable it.  Checked across all seven:
+  `setThreadPinning` must follow `get_kwargs` and the allowlist, and `drp_pva` was the
+  only one where the obvious placement was wrong.
+
+  `nworkers` is `-W` and every config in `runs/eb/data` passes `-W 1`, so the CPU DRP's
+  hot set is also 4 in practice, despite `drp.hh:34` defaulting `nworkers` to 10.
+  CPU-DRP workers spin only ~1 ms before blocking on a condition variable
+  (`spscqueue.hh:109`), so an idle worker is not hot -- which is why the count is
+  `cores:` advice and not a pinning requirement.  The GPU DRP has **no** worker threads:
+  its `nworkers` sizes CUDA streams and a round-robin index, not a thread pool.
+
+  **Workers are excluded when the pool cannot be spread** (Ric's rule, 10-14).  If
+  `nFixedHot + nWorkers` exceeds the granted CPUs, `pinWorkerThread()` becomes a no-op
+  and only the fixed threads are pinned; the fixed few gain most from a stable CPU,
+  while a pool that outnumbers the allocation would get a fixed round-robin where the
+  scheduler can at least migrate.  This matters for configs that exist today:
+  **`psdaq/psdaq/cnf/epixHrEmu.cnf:112` runs `-W 26` with no `cores:` key**, and
+  `slurm/utils.py:357` defaults an absent `cores:` to **1**, so that DRP would otherwise
+  pin 29 threads round-robin onto 1 CPU.  Verified on the real `drp`: `-W 26` in a
+  4-CPU cpuset warns `29 hot threads (26 of them workers) exceed 4 granted CPUs ...
+  Consider cores: 29` and pins only the 3 fixed ones.
+
+  - **The old `core[]` path is GONE from the production programs** (Ric, 10-14, having
+    spotted that `Meb::run()` called both mechanisms back to back).  What it did: the
+    `core[]` call ran *first* with the default `-1`, which `pinThread` treats as a
+    no-op, so `pinHotThread` then pinned from the granted set and the MEB thread was
+    pinned correctly -- but if anyone had passed `-1 41`, `pinThread` would have pinned
+    to 41 and `pinHotThread` would have **silently overridden** it.  Measured both ways
+    with `tools/orderprove.cc` before deciding.  Removed: the `pinThread(core[])` calls
+    in `Meb::run`, `Teb::run` and `EbCtrbInBase::receiver`, the `-1`/`-2` getopt entries
+    and usage text in `teb`/`monReqServer`, their `CORE_0`/`CORE_1`, `DrpBase`'s
+    hardcoded `-1`s, and the now-dead "Thread core numbers" log lines.
+    - **`ctrb`'s pinning is removed too, so `eb.hh`'s `core[2]` fields are gone**
+      (Ric, 10-14).  `core[]`, `CORE_0` and `CORE_1` no longer appear anywhere in
+      `psdaq`, leaving exactly one pinning mechanism.  `ctrb` had no `prctl` naming and
+      no kwargs, so there was nothing to hook the new mechanism onto; its
+      `EbCtrbInBase` thread already would not pin, `setThreadPinning` never being
+      called there.
+    - **`ctrb.cc` is bit-rotted independently of this work, which is why it is absent
+      from `eb/meson.build`.**  `-fsyntax-only` in place: **32 errors at HEAD, 23
+      after** -- its calls do not match current `EbCtrbInBase` signatures
+      (`EbCtrbInBase(prms, exporter)` against a 1-arg ctor, `configure()` against
+      `configure(unsigned)`).  Diffing the error *sets* shows **no error introduced**
+      and four classes removed.  Trap worth noting: syntax-checking a copy under
+      `/tmp` fails instantly on the relative `#include "MebContributor.hh"` and
+      reports a misleading "1 error", so check it in place.
+    - **A standalone run names its CPUs with `taskset -c <list>`, not `-1`/`-2`**, and
+      that is now in `teb`'s usage text so the removal is discoverable.  It reproduces
+      the old behaviour exactly: `taskset -c 18,19` lands the threads on 18 and 19.
+      Note the `.cnf` precedents already paired `-1 18 -2 19` *with* a `taskset`
+      (`psdaq/cnf/lab3-ric.cnf:37`), so the cpuset was always the outer constraint and
+      `-1`/`-2` only chose within it -- which is what `pinHotThread` now does.
+      **Standalone caveat: with no cpuset the granted set is the whole machine**, so
+      pinning picks the lowest-numbered CPUs unless a `taskset` narrows it.
+    - **The removal re-taught the 10-12 lesson.**  Deleting the pin blocks took the
+      `int rc` declaration that each function's *later* `while` loop depends on, in
+      three files; the compiler caught it, and the fix is a plain `int rc = 0;`.  Every
+      deleted line was then audited against HEAD, which is how the `ctrb` getopt
+      inconsistency was found.
+  - **`Eb::pinThread` MOVED to `Pds::pinThread` in `Affinity.cc`** (Ric's call: it should
+    not have been copied, and `Eb::pinThread` should go away).  All five callers --
+    `teb.cc`, `ctrb.cc`, `EbCtrbInBase.cc`, `monReqServer.cc`, `eblf_pingpong.cc` -- now
+    call `Pds::`.  This also removes the reason the copy existed: `eb/meson.build:6`
+    links `service_lib`, so `service` could not have called *into* `Pds::Eb`.
+  - **NO relative/absolute or abstract/machine id hazard, and the reason is structural:
+    we only ever hand back ids the kernel just gave us.**  Ric's question, 10-14 -- could
+    a numbering clash pin a thread onto a WEKA CPU?  Measured on gpu008, not reasoned:
+    - `sched_getaffinity` returns **absolute** ids inside a cpuset.  `taskset -c
+      37,41,52` reads back `[37, 41, 52]`, not `[0, 1, 2]`; a relative scheme would give
+      the latter.  Last night's real Slurm allocations likewise reported 9-15, not 0-2.
+    - **WEKA's cores cannot be selected because the kernel has already removed them.**
+      `weka-drpsrcf/cpuset.cpus.effective` is `1-2,32`, and those exact three ids are
+      the *only* ones absent from our affinity mask.  `cpuAllocation()` therefore never
+      offers a WEKA CPU.
+    - SMT is off on these nodes (`Thread(s) per core: 1`), so abstract and machine ids
+      coincide -- the condition under which `CpuSpecList` and the cgroup are comparable.
+    - Round-trip proven end to end: `taskset -c 37,41,52 ./pintest spread 3` lands on
+      37, 41 and 52, and the harness's "is this CPU in the granted set?" assertion stays
+      silent.
+    The property to preserve: **never compute a CPU number, only index the granted
+    list.**  An absolute number from a config or a `cores:` count would reintroduce
+    exactly the hazard asked about.
+  - **SMT is ON on 22 of 116 `drp-srcf-*` nodes**, so this is not hypothetical:
+    `cmp057`-`cmp076` (a contiguous block of 20), `gpu007` and `mon014`, all
+    `ThreadsPerCore=2` with 128 CPUs.  Surveyed from the controller with
+    `scontrol show nodes`, which touches no node.
+    - **Safety holds there anyway, and `CpuSpecList` is NOT what provides it.**  On
+      `gpu007`, `CpuSpecList=2-5,64-65` misses four of WEKA's six cores
+      (`1-2,32,65-66,96`), yet all six are absent from a process's affinity mask: the
+      **cgroup** does the exclusion and the kernel composes it with Slurm's allocation.
+      So an accidental non-clash between `CpuSpecList` and WEKA does not expose us.
+      The SMT `cmp` nodes have `CpuSpecList=0-3`, reserving CPUs 0-3 while their
+      siblings 64-67 stay schedulable -- the trap already recorded in these notes.
+    - **What SMT did break was the spread, not the safety**, and that is now fixed.
+      `_spreadOrder()` reorders the granted set so one CPU per physical core comes
+      first and the siblings follow, using `coreOfCpu()` (the first id in
+      `thread_siblings_list`).  Plain ascending order put 4 threads on 2 cores for a
+      granted set of `6,7,70,71`, reporting "4 distinct CPUs" while two pairs shared
+      execution units.
+    - **Greppable for the nodes nobody can check** (Ric's ask, 10-14): an SMT-paired
+      allocation logs at startup
+      `SMT is on: the N granted CPUs are only M physical cores, so any hot thread past
+      the first M shares a core`.  Emitted once from `setThreadPinning`, so it is
+      deterministic rather than from whichever thread raced first.  Verified on
+      `gpu007` with the real `drp`; **silent on SMT-off nodes**, where the order is
+      also returned unchanged.
+    - **Known limit, left deliberately: the worker fit test counts CPUs, not cores.**
+      4 hot threads in 4 SMT-paired CPUs (2 cores) still pins the workers, since
+      4 <= 4.  Siblings are real scheduling slots, so this is better than not pinning,
+      and the SMT warning says what happened -- whereas testing against cores would
+      silently stop pinning workers on all 22 SMT nodes, a larger behaviour change
+      than it is worth.  Revisit if a measurement says sibling sharing hurts.
+  - **`pinThread`'s guard is now `cpu >= 0`, was `cpu > 0`.**  The old form reserved CPU
+    0 for the OS, which is now an external policy: Slurm's `CPUSpecList=0-3` on the DRP
+    nodes already excludes it, so a granted set never contains CPU 0 under Slurm and
+    reserving it again in our code only made CPU 0 unpinnable standalone.  Ric, 10-14:
+    the allowable-CPU policy is governed externally, and a standalone run is the
+    runner's look-out.  `pinHotThread` therefore uses `pinThread` rather than repeating
+    it.  (An earlier note here called this an imminent bug; it was latent, since
+    `CPUSpecList` keeps CPU 0 out of every Slurm allocation.  The 61-CPU set it was
+    observed in was a login shell, where only WEKA's cgroup cores 1, 2 and 32 are
+    excluded.)
+  - **The CPU index comes from an atomic counter, not from the caller.**  The threads are
+    created in several libraries, so a shared numbering would have to be threaded through
+    all of them; only distinctness matters.  Ric, 10-14: leave it, fix it if it bites.
+  - The fit decision is made once in `setThreadPinning`, from counts the *app* knows,
+    rather than per thread -- `EbCtrbInBase.cc` is shared by all four processes and
+    cannot know either count.
+  - Verified against the kernel with `tools/pintest.cc`, which reads
+    `pthread_getaffinity_np` back rather than trusting the log: 4 of 4 pinned to distinct
+    granted CPUs by default, 0 of 4 under `pinThreads=no`, 3 of 29 with the worker
+    exclusion, all pinned when the pool fits, a thread on CPU 0 when granted, and
+    `abort()` on a bad value.  Also driven through the real `drp` binary for all three
+    modes.
+  - On a node whose granted set skips WEKA's cores, indexing the granted set avoids them
+    for free -- gpu008's allocation omits 1 and 2, so `spread` picked 0,3,4,5.
 
   **The thread census, from the 2026-10-11 gdb backtrace of one epix `drp_gpu`** -- the
   first hard numbers, and they say `cores: 10` is defensible:
@@ -844,7 +1016,8 @@ diverge silently -- that has happened once already.
 - **The EPICS teardown double free is EXPLAINED, 2026-10-13: two builds of EPICS 7.0.7
   are loaded into one process.**  Not an EPICS design problem and nothing to raise
   upstream -- a conda-environment layout issue with a local fix, demonstrated on the
-  reproducer but **not yet on the tree**.
+  reproducer but **not yet on the tree**.  **Both copies confirmed mapped into a live
+  `drp_gpu` on 2026-10-14**; see the maps check below.
 
   The conda environment carries the same upstream EPICS version twice:
 
@@ -882,13 +1055,31 @@ diverge silently -- that has happened once already.
   - **Ten `meson.build` files reference EPICS**, and only two standalone programs have
     been tried.  A real change means rebuilding everything that links it -- `epicsArch`,
     `PvaDetector`, `xpm`, `hsd`, `epicstools`, `app` -- and showing nothing regresses.
-  - **The two builds may not be interchangeable.**  Both say 7.0.7 but the sonames differ
-    (`3.22.0` against `7.0.7.99.0`) and the size differs 3.5x, so `epicscorelibs` is built
-    with different options or stripped.  Something we use may be missing;
-    `libpvAccessIOC` and `libqsrv` being present is encouraging, not conclusive.
-  - **Whether a live DRP really loads both** -- one `grep` of `/proc/<pid>/maps` for
-    `libCom`, which wants doing the next time one is up.  The reproducer stands in for it
-    and was pared down from the DRP in the first place.
+  - ~~**The two builds may not be interchangeable**~~ **NO SYMBOL IS MISSING, measured
+    2026-10-14.**  `nm -D --undefined-only` over all 18 installed targets that link EPICS
+    (13 executables + 5 libraries) gives 859 undefined symbols, of which **88** are
+    satisfied by `epics/` today and **0** are absent from `epicscorelibs` -- which exports
+    8054 against `epics/`'s 8027.  So the 3.5x size difference is not missing
+    functionality.  **This is a link-time check only**: the include layouts differ (below),
+    so header compatibility is untested, and behaviour is untested.
+  - **`-Depics_base=<epicscorelibs>` cannot work as-is -- the layouts are different
+    shapes.**  This is a build-system port, not a reconfigure:
+
+        epics/         lib/linux-x86_64/libCom.so.3.22.0  include/{,compiler/gcc,os/Linux}/
+        epicscorelibs  lib/libCom.so.7.0.7.99.0           include/  flattened, no subdirs
+
+    `meson.build:68` composes `lib/<epics_host_arch>`, and `epicstools/meson.build:9-11`
+    add `include/compiler/gcc` and `include/os/Linux` as include directories.  Neither
+    subdir exists under `epicscorelibs`; the headers themselves are all present, just
+    flat (`compilerSpecific.h`, `osdSock.h`, `epicsAtomicOSD.h` sit directly in
+    `include/`).  A symlink shim presenting the epics-base shape would let this be tested
+    without touching any `meson.build`, if it is ever wanted.
+  - ~~**Whether a live DRP really loads both**~~ **CONFIRMED 2026-10-14 on a live
+    `drp_gpu`** (gpu001, Unallocated): `grep libCom /proc/<pid>/maps` shows five mappings
+    of `epicscorelibs/lib/libCom.so.7.0.7.99.0` and five of
+    `epics/lib/linux-x86_64/libCom.so.3.22.0`, distinct inodes, each with its own writable
+    `rw-p` segment -- so each copy has its own `fileDescriptorManager`.  The reproducer is
+    no longer standing in for anything.
 
   **Then give Valerio instructions**, he heading conda environment development (Ric,
   10-13).  The ask is for an environment where a program linking EPICS and a Python module
@@ -897,6 +1088,14 @@ diverge silently -- that has happened once already.
   `epicscorelibs` against the environment's EPICS rather than vendoring its own.  Which of
   those is practical is his call; the demonstration is what makes the request concrete, so
   do it before asking.
+
+  **Scope of our help, Ric 2026-10-14: the environment and the build are Valerio's to
+  sort out; help where we cheaply can, but do not bend over backwards.**  So what we
+  hand over is the diagnosis, the live-process confirmation and the symbol comparison --
+  all of which are done.  **Porting `meson.build` to the `epicscorelibs` layout is
+  deliberately NOT ours** and was stopped before it started: it would change what every
+  EPICS target links against, which is the wrong change to land right before a master
+  merge and a stability demonstration.
 
   **Consequence for the 30 s exit, which is the lesser half.**  Every DRP takes ~30 s to
   exit after SIGTERM -- `KillWait`, after which Slurm SIGKILLs it -- because the shutdown
