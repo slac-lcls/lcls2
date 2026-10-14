@@ -723,6 +723,8 @@ class EventBuilderNode(object):
         _smd_packed = repack_for_bd(
             smd_batch, missing_step_views, self.configs, client=dest_rank
         )
+        # Complete the previous send before replacing this destination's buffer.
+        self.requests[dest_rank - 1].Wait()
         # Pack smd_batch alongside gpubat1_bytes so that GPU BD ranks receive
         # both in one MPI message.  gpubat1_bytes is empty for CPU-only batches.
         batches[dest_rank] = self.pack(_smd_packed, gpubat1_bytes or bytearray())
@@ -1072,6 +1074,8 @@ class EventBuilderNode(object):
                     _smd_packed = repack_for_bd(
                         smd_batch, missing_step_views, self.configs, client=dest_rank
                     )
+                    # Complete the previous send before replacing this destination's buffer.
+                    self.requests[dest_rank - 1].Wait()
                     # Pack smd_batch alongside gpubat1_bytes so GPU BD ranks
                     # receive both in one message.  CPU BD ranks unpack and
                     # discard the empty gpu_chunk transparently.

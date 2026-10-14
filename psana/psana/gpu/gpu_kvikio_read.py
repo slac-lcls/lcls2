@@ -20,8 +20,6 @@ DESC_NCOLS = 6
 class KvikioBatchRead:
     desc_table: np.ndarray
     data_gpu: object = None
-    data_u16: object = None   # cp.uint16 view of data_gpu — raw ADC path
-    data_f32: object = None   # cp.float32 view of data_gpu — passthrough path
 
 
 @dataclass
@@ -146,6 +144,32 @@ class KvikioGpuReader:
             'per_slot':        slot_sizes,
         }
 
+    def _ensure_slot_buffer(self, slot: int, total_nbytes: int):
+        """Grow slot ``slot``'s input buffer to hold at least total_nbytes.
+
+        Buffers only ever grow, so the budget is charged the growth alone.
+        Releasing the old size up front instead would drop a still-allocated
+        buffer from the committed total and leave the budget under-reporting by
+        that much for the rest of the run.  Mirrors GPUDetector._slot_buffer.
+        """
+        existing = self._slot_bufs[slot]
+        if existing is not None and existing.nbytes >= total_nbytes:
+            return
+
+        old_size = int(existing.nbytes) if existing is not None else 0
+        delta = total_nbytes - old_size
+        if self._budget is not None:
+            self._budget.reserve(delta)
+        try:
+            new_buf = self.cp.empty(total_nbytes, dtype=self.cp.uint8)
+        except Exception:
+            # Roll back so a failed allocation cannot leave the budget
+            # permanently committed against memory that was never obtained.
+            if self._budget is not None:
+                self._budget.release(delta)
+            raise
+        self._slot_bufs[slot] = new_buf
+
     def issue_batch(self, gpu_view, bd_dm, slot_id=None) -> "PendingBatch":
         """Issue GDS reads for a GPU batch non-blocking.
 
@@ -186,15 +210,7 @@ class KvikioGpuReader:
             slot = self._slot_idx % self._n_slots
             self._slot_idx += 1
         existing = self._slot_bufs[slot]
-        if existing is None or existing.nbytes < total_nbytes:
-            old_size = int(existing.nbytes) if existing is not None else 0
-            if self._budget is not None:
-                if old_size:
-                    self._budget.release(old_size)
-                self._budget.reserve(total_nbytes)
-            self._slot_bufs[slot] = self.cp.empty(
-                total_nbytes, dtype=self.cp.uint8
-            )
+        self._ensure_slot_buffer(slot, total_nbytes)
         data_gpu = self._slot_bufs[slot][:total_nbytes]
         if os.environ.get('PSANA_GPU_MEM_DEBUG'):
             try:
@@ -241,12 +257,9 @@ class KvikioGpuReader:
         KvikioBatchRead with the CPU descriptor table and GPU data populated.
         """
         if not pending.futures:
-            _dgpu = pending.data_gpu
             return KvikioBatchRead(
                 pending.desc_table,
-                data_gpu=_dgpu,
-                data_u16=_dgpu.view(self.cp.uint16),
-                data_f32=_dgpu.view(self.cp.float32),
+                data_gpu=pending.data_gpu,
             )
 
         # Time the I/O wait to track effective bandwidth.
@@ -267,12 +280,9 @@ class KvikioGpuReader:
         self._total_bytes_read += _bytes
         self._total_io_ns      += _elapsed_ns
 
-        _dgpu = pending.data_gpu
         return KvikioBatchRead(
             pending.desc_table,
-            data_gpu=_dgpu,
-            data_u16=_dgpu.view(self.cp.uint16),
-            data_f32=_dgpu.view(self.cp.float32),
+            data_gpu=pending.data_gpu,
         )
 
     def _file_for_stream(self, bd_dm, stream_id):

@@ -586,6 +586,21 @@ class RunParallel(Run):
         except Exception:
             calib_leader = True
 
+        # Size the auto VRAM budget by how many BD workers share this GPU.
+        # Falling back to 1 only under-constrains the budget, which is the
+        # historical behaviour, so a failure here is never fatal.
+        try:
+            from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
+            n_bd_per_gpu = bd_ranks_sharing_gpu(
+                self.comms.bd_comm, physical_gpu
+            )
+        except Exception:
+            n_bd_per_gpu = 1
+        self.logger.debug(
+            "GPU budget: gpu=%d bd_workers_on_gpu=%d",
+            physical_gpu, n_bd_per_gpu,
+        )
+
         manager = GpuEventManager(
             self.configs,
             self.dm,
@@ -599,6 +614,7 @@ class RunParallel(Run):
                 getattr(self, "_gpu_geometry_arrays", None)
             ),
             calib_leader=calib_leader,
+            n_bd_per_gpu=n_bd_per_gpu,
         )
 
         try:
