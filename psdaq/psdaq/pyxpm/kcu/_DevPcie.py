@@ -11,6 +11,7 @@
 
 import pyrogue as pr
 import pyrogue.protocols
+import logging
 import time
 import xpm
 import kcu
