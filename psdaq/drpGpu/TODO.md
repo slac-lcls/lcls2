@@ -319,7 +319,45 @@ diverge silently -- that has happened once already.
   nobody should have to edit every `.cnf.py` out there when a capability appears, and
   flipping a default later costs a **second deployment to N hutches**, which is hard to
   coordinate.  So the knob exists to turn pinning *off* when it is suspected in a
-  problem, not to turn it on.  Pinning itself remains **unmeasured**.
+  problem, not to turn it on.
+
+  **VALIDATED ON HARDWARE 2026-10-14, gpu008, on `verbs` over IB -- the transport
+  production actually uses.**  Four runs: a `sockets` control (`pinThreads=no`), a
+  `sockets` treatment, then `verbs` with the provider and domain kwargs **removed**, so
+  `getNicIp`'s automatic path ran, which is what the production `.cnf.py`s do.
+
+      L0InpRate  71,428 Hz    DeadFrac 0.5599    L0AccRate 31,435 Hz
+      agreement  100.00% of L0InpRate * (1 - DeadFrac), at every 30 s sample
+
+  31.4 kHz matches the 10-12 `verbs` reference (31.53 kHz at DeadFrac 0.558) and is
+  within 2.2 deadtime points of the remembered 33 kHz.  `TCtbI_OrphCt` and
+  `TCtbI_NPrgCt` **0 on all six** throughout.  All six DRPs at **0.1-0.2 ms**
+  `DRP_evtLatency`.
+
+  - **The `verbs` latency floor is ~250x below `sockets`**: 0.1-0.2 ms against a uniform
+    85-94 ms on `sockets`.  That uniformity is why the `sockets` latency comparison was
+    worthless -- 85 ms of transport latency masked all per-DRP variation, and individual
+    DRPs swung up to **61% between two samples of the same run**, against a ~6% effect.
+    Any future placement measurement needs `verbs` and windowed averages, not instant
+    samples on `sockets`.
+  - **The under-allocated DRP was the one case where pinning cost anything, and the new
+    warning is what found it.**  `tstcam1_3` at `cores: 4` gets 3 CPUs (see the WEKA
+    item above), so 4 hot threads wrapped onto 3 and its latency ran **2.4 ms average,
+    15.7 ms peak** while its unwrapped peers sat at 2-9 us.  The log said
+    `will share.  Consider cores: 4`; `cores: 6` -> 5 granted CPUs -> four threads on
+    33-36 with one spare, and it joined the others at 0.1-0.2 ms.  So pinning plus an
+    adequate allocation beats not pinning, and the warning turns what used to be silent
+    timesharing into an explicit instruction.
+  - **Pinning's effect on an adequately-allocated DRP is still not measurable** at this
+    precision, and that is the honest statement: no regression, no demonstrated gain.
+  - **A separate, pre-existing fault surfaced and is NOT ours**: one GPU DRP at a time
+    asserts ~33% `drp_deadtime` -- `tstcam1_1` in the 16:15 run, `tstcam1_2` in the
+    16:34 one -- with identical `cores:`, NUMA placement, detector and `sim_length` to
+    its clean siblings.  It alone sets the system `DeadFrac` and hence the rate: the
+    33 kHz appears for the one sample before it engages, then the rate settles to
+    31.4 kHz.  Same shape as the 10-10 finding that the stall is not tied to one DRP,
+    datadev or GPU.  `drp_deadtime` says a DRP asserts deadtime, not why.  **Worth its
+    own session**; it predates this branch and bounds the achievable rate.
 
   **Wired into all nine processes, Ric 2026-10-14 (he wanted it before the master
   merge).  Each count was read off the `std::thread` sites, not assumed:**
@@ -527,7 +565,27 @@ diverge silently -- that has happened once already.
   *pinned, spinning* threads (`taskset -pc` on a thread with real CPU time), not against
   wherever a sleeping thread was last scheduled.
 
-  So `tstcam1_3`'s 3-CPU cpuset for a `cores: 4` request is **unexplained and not WEKA**.
+  **`tstcam1_3`'s 3 CPUs for a `cores: 4` request IS WEKA after all -- SOLVED
+  2026-10-14, and the "not WEKA" conclusion above was wrong.**  WEKA holds CPU **32**,
+  which is the **first CPU of NUMA node 1**.  `tstcam1_3` is the first job placed on
+  node 1 (its GPU and datadev are there, `gen_gres_conf.py` keeping them local), Slurm
+  hands it `32-35`, and the kernel subtracts WEKA's 32, leaving `33,34,35`.  The
+  allocation order makes it visible:
+
+      teb0      9-11    timing_2  12-14   cam0  15-18
+      cam1     19-22    cam2      23-26   cam3  33-35  <- jumps to node 1, loses 32
+      cam5     36-39
+
+  **Why the 10-12 check missed it, which is the lesson**: it intersected WEKA's cores
+  with the DRP *ranges* and correctly found nothing -- the intersection is empty
+  **because the kernel had already removed 32** from what `tstcam1_3` was granted.  The
+  subtraction happens upstream of the comparison, so comparing the end states can never
+  see it.  Compare what Slurm *allocated* (`sacct`, or the contiguous-from-the-previous
+  -job pattern above) against what `sched_getaffinity` *reports*.
+
+  Consequence: the first job on each NUMA node loses a CPU wherever WEKA pins one there,
+  so a `cores: N` request for it should be `N+1`.  WEKA's node-0 cores (1, 2) sit below
+  the first DRP allocation, which is why only the node-1 boundary shows the effect.
 
   **A `cores:` value is a request; what the process gets is what `sched_getaffinity`
   reports.**  That is the argument for having the DRP log both.
