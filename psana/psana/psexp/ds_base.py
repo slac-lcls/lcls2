@@ -56,16 +56,46 @@ class DsParms:
     smd_callback: int = 0
     smd_files: list[str] = field(default_factory=list)
     use_smds: list[bool] = field(default_factory=list)
-    # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau') or
-    # DataSource(gpu_det=['jungfrau', 'epix']). Run.events() still yields
-    # Event; per-event GPU results are available through evt.gpu.
+    # GPU acceleration. gpu_det gives the GPU exclusive ownership of every
+    # selected detector stream; hybrid_det mirrors selected streams through
+    # both the normal CPU path and the GPU path.
     gpu_det: object = None  # str | list[str] | None
+    hybrid_det: object = None  # str | list[str] | None
     n_gpu_streams: int = 2  # EventPool execution-slot depth; 2 permits pipeline overlap
     gpu_d2h_chunk_size: int = 0  # 0 disables automatic D2H; on_cpu does one cached blocking D2H
     gpu_memory_budget_gb: float = 0  # per-BD VRAM limit in GiB; 0 = auto (device_total / n_bd_ranks)
-    # Whole bigdata stream indices for gpu_det. Populated from the Configure
-    # dgrams already parsed by DgramManager and forwarded to EventBuilder.
+    # Whole bigdata stream indices selected for either GPU mode. Populated
+    # from Configure by DgramManager and forwarded to EventBuilder.
     gpu_stream_ids: list = None  # list[int] | None
+    # Subset of gpu_stream_ids that EventBuilder also retains in the CPU batch.
+    hybrid_stream_ids: list = None  # list[int] | None
+
+    def __post_init__(self):
+        if self.smd_callback and self.gpu_enabled:
+            raise NotImplementedError(
+                "smd_callback is not supported with gpu_det or hybrid_det "
+                "because callback batching does not produce GPUBAT1 descriptors"
+            )
+
+    @staticmethod
+    def _detector_names(value):
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [value]
+        return list(value)
+
+    @property
+    def gpu_detector_names(self):
+        """Detector names handled by either GPU routing mode, in user order."""
+        return list(dict.fromkeys(
+            self._detector_names(self.gpu_det)
+            + self._detector_names(self.hybrid_det)
+        ))
+
+    @property
+    def gpu_enabled(self):
+        return bool(self.gpu_detector_names)
 
     def set_det_class_table(
         self,
@@ -86,29 +116,61 @@ class DsParms:
         self.use_smds = use_smds
 
     def resolve_gpu_stream_ids(self):
-        """Resolve and validate whole-stream GPU routing from Configure."""
-        if not self.gpu_det:
+        """Resolve exclusive and mirrored whole-stream GPU routing."""
+        exclusive_names = self._detector_names(self.gpu_det)
+        hybrid_names = self._detector_names(self.hybrid_det)
+        duplicate_names = set(exclusive_names) & set(hybrid_names)
+        if duplicate_names:
+            raise RuntimeError(
+                "Detectors cannot be selected by both gpu_det and hybrid_det: "
+                f"{sorted(duplicate_names)}"
+            )
+
+        if not exclusive_names and not hybrid_names:
             self.gpu_stream_ids = None
+            self.hybrid_stream_ids = None
             return
 
-        gpu_det_names = (
-            [self.gpu_det] if isinstance(self.gpu_det, str) else list(self.gpu_det)
-        )
         ids_table = getattr(self, "det_stream_ids_table", {})
         segments_table = getattr(self, "det_stream_segments_table", {})
         stream_owners = getattr(self, "stream_id_to_detnames", {})
-        gpu_stream_ids = set()
+        streams_by_name = {}
 
-        for det_name in gpu_det_names:
-            stream_ids = ids_table.get(det_name) or list(
-                segments_table.get(det_name, {}).keys()
-            )
-            if not stream_ids:
-                raise RuntimeError(
-                    f"gpu_det={det_name!r} did not resolve to any stream ids"
+        for argument, det_names in (
+            ("gpu_det", exclusive_names),
+            ("hybrid_det", hybrid_names),
+        ):
+            for det_name in det_names:
+                stream_ids = ids_table.get(det_name) or list(
+                    segments_table.get(det_name, {}).keys()
                 )
+                if not stream_ids:
+                    raise RuntimeError(
+                        f"{argument}={det_name!r} did not resolve to any stream ids"
+                    )
+                streams_by_name[det_name] = {int(x) for x in stream_ids}
 
-            for stream_id in stream_ids:
+        exclusive_stream_ids = {
+            stream_id
+            for det_name in exclusive_names
+            for stream_id in streams_by_name[det_name]
+        }
+        hybrid_stream_ids = {
+            stream_id
+            for det_name in hybrid_names
+            for stream_id in streams_by_name[det_name]
+        }
+        conflicting_stream_ids = exclusive_stream_ids & hybrid_stream_ids
+        if conflicting_stream_ids:
+            raise RuntimeError(
+                "gpu_det and hybrid_det cannot select the same physical streams: "
+                f"{sorted(conflicting_stream_ids)}"
+            )
+
+        # Preserve gpu_det's existing contract: removing a stream from the CPU
+        # batch is safe only when the selected detector is its sole owner.
+        for det_name in exclusive_names:
+            for stream_id in streams_by_name[det_name]:
                 owners = set(stream_owners.get(stream_id, ()))
                 if owners != {det_name}:
                     raise RuntimeError(
@@ -116,9 +178,9 @@ class DsParms:
                         f"contains normal detectors {sorted(owners)}. GPUBAT1 "
                         "requires exactly one normal detector per GPU stream."
                     )
-                gpu_stream_ids.add(stream_id)
 
-        self.gpu_stream_ids = sorted(gpu_stream_ids)
+        self.hybrid_stream_ids = sorted(hybrid_stream_ids)
+        self.gpu_stream_ids = sorted(exclusive_stream_ids | hybrid_stream_ids)
 
     @property
     def intg_stream_id(self):
@@ -180,7 +242,8 @@ class DataSourceBase(abc.ABC):
     intg_delta_t : float
         Integration delay in seconds.
     smd_callback : callable or int
-        Callback for SMD event handling.
+        Callback for SMD event handling. Not supported with ``gpu_det`` or
+        ``hybrid_det``.
     psmon_publish : psmon.publish
         Enable publishing to psmon (default: None).
     prom_jobid : str
@@ -202,6 +265,10 @@ class DataSourceBase(abc.ABC):
         Log file path. If None, logs to stdout (default: None).
     auto_tune : bool
         Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
+    gpu_det : str or list[str]
+        Detectors whose complete streams are read only by the GPU path.
+    hybrid_det : str or list[str]
+        Detectors whose complete streams are read by both CPU and GPU paths.
     """
 
     def __init__(self, **kwargs):
@@ -238,8 +305,14 @@ class DataSourceBase(abc.ABC):
         self.use_calib_cache = kwargs.get("use_calib_cache", False)
         self.fetch_calib_cache_max_retries = kwargs.get("fetch_calib_cache_max_retries", 60)
         self.cached_detectors = kwargs.get("cached_detectors", [])
-        # GPU acceleration — opt-in via DataSource(gpu_det='jungfrau', ...)
+        # GPU acceleration: exclusive and explicitly mirrored stream modes.
         self.gpu_det = kwargs.get("gpu_det", None)
+        self.hybrid_det = kwargs.get("hybrid_det", None)
+        if self.hybrid_det:
+            self.logger.warning(
+                "hybrid_det mirrors complete bigdata streams through both CPU "
+                "and GPU paths and therefore duplicates their bigdata I/O"
+            )
         self.n_gpu_streams = kwargs.get("n_gpu_streams", 2)
         self.gpu_d2h_chunk_size = kwargs.get("gpu_d2h_chunk_size", 0)
         self.gpu_memory_budget_gb = kwargs.get("gpu_memory_budget_gb", 0)
@@ -256,9 +329,9 @@ class DataSourceBase(abc.ABC):
             self.timestamps = self.get_filter_timestamps(self.timestamps)
 
         # Final sanity check.
-        # batch_size=0 is allowed when gpu_det is set: GpuEventManager will
+        # batch_size=0 is allowed when a GPU mode is set: GpuEventManager will
         # auto-compute the optimal value from GPU detector properties.
-        if self.batch_size == 0 and not kwargs.get("gpu_det"):
+        if self.batch_size == 0 and not (self.gpu_det or self.hybrid_det):
             self.batch_size = 1  # default for CPU path
         assert self.batch_size >= 0, "batch_size must be >= 0"
 
@@ -278,6 +351,7 @@ class DataSourceBase(abc.ABC):
             self.dbsuffix,
             smd_callback=self.smd_callback,
             gpu_det=self.gpu_det,
+            hybrid_det=self.hybrid_det,
             n_gpu_streams=self.n_gpu_streams,
             gpu_d2h_chunk_size=self.gpu_d2h_chunk_size,
             gpu_memory_budget_gb=self.gpu_memory_budget_gb,
@@ -316,6 +390,7 @@ class DataSourceBase(abc.ABC):
             "log_file",
             "auto_tune",
             "gpu_det",
+            "hybrid_det",
             "n_gpu_streams",
             "gpu_d2h_chunk_size",
             "gpu_memory_budget_gb",

@@ -1,114 +1,73 @@
-#!/bin/bash
-# =============================================================================
-# run_multi_gpu_test.sh
-# Multi-GPU MPI correctness test for psana2 GPU BD ranks.
-#
-# Uses the same srun --mpi=pmix --export=ALL approach as
-# run_mpi_perf_compare.sh: one Slurm task per MPI rank, SLURM_PROCID for
-# per-rank GPU pinning, and setup_env.sh forwarded via --export=ALL.
-# No mpirun, no --oversubscribe, no wrapper scripts.
-#
-# Topology (PS_EB_NODES=1, 4 total ranks):
-#   rank 0  — SMD0
-#   rank 1  — EB
-#   rank 2  — BD: SLURM_PROCID=2 → CUDA_VISIBLE_DEVICES=0 (A100 #0)
-#   rank 3  — BD: SLURM_PROCID=3 → CUDA_VISIBLE_DEVICES=1 (A100 #1)
-#
-# Usage (from ~/lcls2 on a login node):
-#   sh psana/psana/gpu/scripts/run_multi_gpu_test.sh
-#   sh psana/psana/gpu/scripts/run_multi_gpu_test.sh --max-events 20
-#
-# Optional environment variables:
-#   PSANA_GPU_TEST_SMD_GLOB  — override the default MFX SMD glob pattern
-#   N_GPUS_PER_NODE          — number of A100s to request (default 2)
-# =============================================================================
+#!/usr/bin/env bash
+# Single-node MPI/GPU transport smoke check, not a numerical or performance test.
+# Activate the build's Python environment before running this launcher.
+# Default: one SMD0 + one EB + two BDs on two A100s.
+# Options are forwarded unchanged to gpu_multi_rank_smoke.py.
+set -euo pipefail
 
-set -e
-
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../../../.." && pwd)"
 TEST_SCRIPT="${SCRIPT_DIR}/gpu_multi_rank_smoke.py"
-
 N_GPUS_PER_NODE="${N_GPUS_PER_NODE:-2}"
-PS_EB_NODES_VAL="${PS_EB_NODES:-1}"
-N_BD=$(( N_GPUS_PER_NODE ))          # 1 BD rank per GPU
-N_TOTAL=$(( 1 + PS_EB_NODES_VAL + N_BD ))
+PSANA_GPU_TEST_PREFIX="${PSANA_GPU_TEST_PREFIX:-${REPO_ROOT}/install_psana}"
 
-PYTHON="/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python3"
+if [[ ! "$N_GPUS_PER_NODE" =~ ^[1-9][0-9]*$ ]] || (( N_GPUS_PER_NODE < 2 )); then
+    echo "Need N_GPUS_PER_NODE >= 2" >&2
+    exit 1
+fi
+if [[ "${PS_EB_NODES:-1}" != 1 || "${PS_SRV_NODES:-0}" != 0 ]]; then
+    echo "Supported topology: PS_EB_NODES=1, PS_SRV_NODES=0" >&2
+    exit 1
+fi
+N_TOTAL=$((2 + N_GPUS_PER_NODE))
 
-# Forward CLI args to the test script.
-PYTHON_ARGS="$*"
+# Use a selected local install, without resetting the caller's conda environment.
+# Missing/broken setup is fatal; do not fall back to an unrelated psana install.
+source "${PSANA_GPU_TEST_PREFIX}/activate.sh"
+PYTHON="$(command -v python)"
+PS_PARALLEL=none CUDA_VISIBLE_DEVICES= "$PYTHON" - "$PSANA_GPU_TEST_PREFIX" <<'PY'
+from pathlib import Path
+import sys
+import psana
 
-echo "Topology: ${N_TOTAL} ranks  (smd0=1, eb=${PS_EB_NODES_VAL}, bd=${N_BD})"
-echo "Hardware: 1 node × ${N_GPUS_PER_NODE} A100(s)"
-echo ""
+prefix = Path(sys.argv[1]).resolve()
+module = Path(psana.__file__).resolve()
+if prefix not in module.parents:
+    raise SystemExit(f"Wrong psana install: {module}; expected under {prefix}")
+print(f"Python: {sys.executable}", flush=True)
+print(f"psana: {module}", flush=True)
+PY
 
-# Source setup_env.sh so PYTHONPATH and LD_LIBRARY_PATH are set in this shell;
-# --export=ALL forwards them to every srun task automatically.
-source "${REPO_ROOT}/setup_env.sh" 2>/dev/null || true
-
-export PS_EB_NODES="${PS_EB_NODES_VAL}"
-export PS_SRV_NODES=0
-export SLURM_GPUS_ON_NODE="${N_GPUS_PER_NODE}"
+export PS_EB_NODES=1 PS_SRV_NODES=0 PS_EB_NODE_LOCAL=0 PS_PARALLEL=mpi
+export SLURM_GPUS_ON_NODE="$N_GPUS_PER_NODE"
 export OMPI_MCA_btl='^smcuda'
-[ -n "${PSANA_GPU_TEST_SMD_GLOB}" ] && export PSANA_GPU_TEST_SMD_GLOB
-mkdir -p "/lscratch/${USER:-nobody}/tmp" 2>/dev/null || true
 export TMPDIR="${TMPDIR:-/tmp}"
 
-# Two srun invocations depending on context:
-#
-#   Inside a Slurm job (SLURM_JOB_ID is set, e.g. run via sbatch or from
-#   within an salloc session):
-#     Use a plain step srun — no --partition, --account, --gres, or --time
-#     flags.  The existing job allocation already owns the GPUs; requesting
-#     them again causes "Invalid generic resource (gres) specification".
-#     The parent job must have been submitted with --gres=gpu:a100:2 (or more)
-#     and --ntasks >= N_TOTAL.
-#
-#   Outside a Slurm job (login node, e.g. sdfiana026):
-#     Request a fresh allocation with the full set of flags.
+echo "Topology: 1 SMD0 + 1 EB + ${N_GPUS_PER_NODE} BDs, one node"
+echo "Validation: event delivery and BD/GPU participation (not pixel correctness)"
 
-_RANK_WRAPPER='
-    R=${SLURM_PROCID:-0}
-    PS_EB='"${PS_EB_NODES_VAL}"'
-    N_GPUS='"${N_GPUS_PER_NODE}"'
-    if [ "${R}" -gt "${PS_EB}" ]; then
-        BD_IDX=$(( R - PS_EB - 1 ))
-        export CUDA_VISIBLE_DEVICES=$(( BD_IDX % N_GPUS ))
+# Mask CPU roles before Python imports. For this single-EB topology, the
+# BD-local index is world rank - 2, matching MPIDataSource's own GPU pinning.
+# Pass executable/script/arguments positionally, never interpolate user argv.
+RANK_WRAPPER='
+    rank=${SLURM_PROCID:?srun must supply SLURM_PROCID}
+    if (( rank >= 2 )); then
+        export CUDA_VISIBLE_DEVICES=$((rank - 2))
     else
         export CUDA_VISIBLE_DEVICES=""
     fi
-    exec '"\"${PYTHON}\" \"${TEST_SCRIPT}\""' '"${PYTHON_ARGS}"'
+    exec "$@"
 '
-
-_FILTER='grep -v "shmem: mmap\|create_and_attach\|unable to create shared\|coordinating structure\|UCX  WARN\|A requested component\|was not found\|unable to be opened\|not installed\|shared libraries\|that the component\|unable to be found\|PMIx stopped\|Framework:\|Component:\|Host:\|^---"'
-
-if [ -n "${SLURM_JOB_ID}" ]; then
-    # ── Already inside a Slurm allocation ──────────────────────────────────
-    echo "Running inside Slurm job ${SLURM_JOB_ID} — using existing allocation"
-    srun \
-        --ntasks="${N_TOTAL}" \
-        --ntasks-per-node="${N_TOTAL}" \
-        --cpus-per-task=2 \
-        --gpu-bind=none \
-        --mpi=pmix \
-        --export=ALL \
-        bash -c "${_RANK_WRAPPER}" \
-    2>&1 | eval "${_FILTER}"
+SRUN_ARGS=(
+    --nodes=1 --ntasks="$N_TOTAL" --ntasks-per-node="$N_TOTAL"
+    --cpus-per-task=2 --gpu-bind=none --mpi=pmix --export=ALL
+    --kill-on-bad-exit=1 --time="${PSANA_GPU_TEST_TIME:-00:15:00}"
+)
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    echo "Using allocation ${SLURM_JOB_ID}; it must provide ${N_TOTAL} tasks and ${N_GPUS_PER_NODE} GPUs"
 else
-    # ── Login node — request a fresh allocation ────────────────────────────
-    srun \
-        -p ampere \
-        -A lcls \
-        -N 1 \
-        --ntasks="${N_TOTAL}" \
-        --ntasks-per-node="${N_TOTAL}" \
-        --cpus-per-task=2 \
-        --gres="gpu:a100:${N_GPUS_PER_NODE}" \
-        --gpu-bind=none \
-        --mpi=pmix \
-        --export=ALL \
-        -t 00:05:00 \
-        bash -c "${_RANK_WRAPPER}" \
-    2>&1 | eval "${_FILTER}"
+    SRUN_ARGS+=(-p ampere -A lcls --gres="gpu:a100:${N_GPUS_PER_NODE}")
 fi
+
+# No output filter or pipe: retain diagnostics and return srun's failure status.
+exec srun "${SRUN_ARGS[@]}" bash -c "$RANK_WRAPPER" gpu-smoke "$PYTHON" "$TEST_SCRIPT" "$@"

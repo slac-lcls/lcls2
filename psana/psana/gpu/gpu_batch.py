@@ -341,8 +341,8 @@ class GpuBatchView:
 class GpuSubbatchView:
     """Event-range slice of a GpuBatchView for byte-bounded scheduling.
 
-    Duck-types GpuBatchView for KvikioGpuReader.issue_batch() and
-    GPUDetector.process_batch():
+    Duck-types GpuBatchView for KvikioGpuReader.issue_batch() and the
+    EventPool's construction of event-scoped GPU dgram views:
 
       - iter_events()          yields GpuBatchEvent with first_desc re-indexed
                                to the subbatch's own desc_table row ordering.

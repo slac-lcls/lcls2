@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:a100:2
 #SBATCH --gpu-bind=none
 #SBATCH -t 00:45:00
-#SBATCH -o /sdf/home/s/seema/lcls2/psana/psana/gpu/notes/perf_compare_%j.out
+#SBATCH -o psana_gpu_perf_compare_%j.out
 #SBATCH -J mpi_perf_compare
 
 # =============================================================================
@@ -20,7 +20,7 @@
 #   sbatch psana/psana/gpu/scripts/submit_mpi_perf_compare.sh
 #
 # Monitor progress:
-#   tail -f psana/psana/gpu/notes/perf_compare_<JOBID>.out
+#   tail -f psana_gpu_perf_compare_<JOBID>.out
 # =============================================================================
 
 # Absolute paths — $0 inside sbatch resolves to the Slurm temp copy

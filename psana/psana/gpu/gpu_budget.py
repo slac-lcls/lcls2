@@ -1,10 +1,11 @@
 """
-psana/gpu/gpu_budget.py — GPU and pinned-host memory budget.
+psana/gpu/gpu_budget.py — GPU device-memory budget.
 
-_GpuBudget tracks committed VRAM (all cp.empty() allocations) and raises
-GpuMemoryPressureError before any allocation that would exceed the configured
-per-BD limit.  This prevents the silent OOM crash that otherwise propagates
-as a confusing MPI broken-pipe error.
+_GpuBudget tracks VRAM explicitly reserved by participating input, parser, and
+slot-buffer owners and raises GpuMemoryPressureError before a tracked
+allocation would exceed the configured per-BD limit. Calibration constants and
+geometry are not yet reserved in this counter; the design documentation tracks
+that known accounting gap.
 
 Usage
 -----
@@ -12,7 +13,7 @@ Usage
     budget.reserve(array_bytes)     # before cp.empty()
     budget.release(array_bytes)     # when replacing or freeing a buffer
 
-Passed to GPUDetector and KvikioGpuReader at construction time.
+Passed to GPUDetector, KvikioGpuReader, and GpuXtcBatchPool at construction.
 Created by GpuEventManager.__init__; auto-sized to device_total / n_bd_ranks
 if gpu_memory_budget_gb is not configured.
 """
@@ -29,9 +30,10 @@ class GpuMemoryPressureError(RuntimeError):
 class _GpuBudget:
     """Simple committed-bytes counter for GPU VRAM.
 
-    Tracks the total bytes of all active cp.empty() allocations owned by
-    this BD rank.  Before any new allocation, reserve() checks the limit
-    and optionally frees the CuPy pool to recover cached-but-unused blocks.
+    Tracks the total bytes explicitly reserved by participating allocation
+    owners in this BD rank. Before any new tracked allocation, reserve() checks
+    the limit and optionally frees the CuPy pool to recover cached-but-unused
+    blocks. It is not a complete measurement of every live CuPy allocation.
 
     This is intentionally simple: no active-lease byte tracking (correctness
     is enforced by SlotLease.wait_until_safe_to_reuse, not the budget), no

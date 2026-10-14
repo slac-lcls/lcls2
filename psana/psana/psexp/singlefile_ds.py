@@ -9,9 +9,9 @@ from psana import utils
 class SingleFileDataSource(DataSourceBase):
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
-        if self.dsparms.gpu_det:
+        if self.dsparms.gpu_enabled:
             raise NotImplementedError(
-                "gpu_det is supported only by RunSerial and RunParallel; "
+                "gpu_det and hybrid_det are supported only by RunSerial and RunParallel; "
                 "DataSource(files=...) uses RunSingleFile"
             )
         self.runnum_list = list(range(len(self.files)))

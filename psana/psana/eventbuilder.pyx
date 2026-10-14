@@ -181,13 +181,15 @@ cdef class EventBuilder:
     # GPU-Test
     cdef bint _split_gpu_enabled
     cdef object _gpu_stream_ids
+    cdef object _hybrid_stream_ids
     cdef list _smdinfo_lites
     cdef uint64_t _gpu_stream_mask
 
     def __init__(self, views, configs, *args, **kwargs):
-        # Pop gpu_stream_ids before PyArg_ParseTupleAndKeywords so it does
-        # not count against the 4-slot kwlist.
+        # Pop GPU routing arguments before PyArg_ParseTupleAndKeywords so they
+        # do not count against the 4-slot kwlist.
         cdef object _gpu_stream_ids_kwarg = kwargs.pop('gpu_stream_ids', None)
+        cdef object _hybrid_stream_ids_kwarg = kwargs.pop('hybrid_stream_ids', None)
         self.nsmds  = len(views)
         self.configs= configs
         self.nevents= 0
@@ -228,22 +230,30 @@ cdef class EventBuilder:
 
         self._use_proxy_events = bool(use_proxy_flag)
         self._init_profile()
-        self._init_gpu(gpu_stream_ids=_gpu_stream_ids_kwarg)
+        self._init_gpu(
+            gpu_stream_ids=_gpu_stream_ids_kwarg,
+            hybrid_stream_ids=_hybrid_stream_ids_kwarg,
+        )
         self._scratch_pydgrams = [0] * self.nsmds
         self._event_footer = array.array('I', [0] * (self.nsmds + 1))
 
-    cdef void _init_gpu(self, gpu_stream_ids=None):
-        """Initialise Configure-derived whole-stream GPU routing."""
+    cdef void _init_gpu(self, gpu_stream_ids=None, hybrid_stream_ids=None):
+        """Initialise Configure-derived exclusive and mirrored GPU routing."""
         # All cdef declarations must be at the top in Cython.
         cdef object ids_src
         self._split_gpu_enabled = 0
         self._gpu_stream_ids = set()
+        self._hybrid_stream_ids = set()
         ids_src = None
         if gpu_stream_ids is not None and len(gpu_stream_ids) > 0:
             ids_src = gpu_stream_ids
         if ids_src:
             self._gpu_stream_ids = set(int(x) for x in ids_src)
             self._split_gpu_enabled = 1
+        if hybrid_stream_ids is not None and len(hybrid_stream_ids) > 0:
+            self._hybrid_stream_ids = set(int(x) for x in hybrid_stream_ids)
+        if not self._hybrid_stream_ids.issubset(self._gpu_stream_ids):
+            raise ValueError("hybrid_stream_ids must be a subset of gpu_stream_ids")
 
         self._smdinfo_lites = [None] * self.nsmds
         self._gpu_stream_mask = 0
@@ -579,8 +589,8 @@ cdef class EventBuilder:
 
                 continue
 
-            # For L1Accepts, cpu_batch skips gpu dgrams and marks them as missing in the footer.
-            # GPU batch is built according to the ABI described above.
+            # For L1Accepts, exclusive GPU streams are omitted from cpu_batch;
+            # hybrid streams are represented in both CPU and GPU batches.
             cpu_evt = bytearray()
             cpu_footer = array.clone(int_array_template, self.nsmds + 1, zero=True)
             cpu_footer[self.nsmds] = self.nsmds
@@ -621,11 +631,12 @@ cdef class EventBuilder:
                     ))
                     n_desc += 1
                     present_gpu_mask |= (1 << i)
-                    # Mark gpu dgram size as 0 in cpu batch since it's not included there
-                    cpu_footer[i] = 0
-                else:
+                if i not in self._gpu_stream_ids or i in self._hybrid_stream_ids:
                     cpu_footer[i] = pydg_size
                     cpu_evt.extend(bytearray(pydg.as_memoryview()))
+                else:
+                    # Exclusive gpu_det stream: keep only the GPUBAT1 descriptor.
+                    cpu_footer[i] = 0
                 self._release_pydgram(pydg)
                 self._scratch_pydgrams[i] = 0
 

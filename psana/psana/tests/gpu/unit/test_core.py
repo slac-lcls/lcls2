@@ -2,13 +2,13 @@
 
 import os
 import sys
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 
 import psana.gpu.gpu_events as gpu_events_module
-from psana.gpu.dgram_layout import segment_ids_in_l1_order
 from psana.gpu.gpu_calib import _compute_calib_constants_cpu
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_events import GpuEventManager
@@ -19,34 +19,41 @@ from psana.psexp.ds_base import DsParms
 from psana.psexp.packet_footer import PacketFooter
 
 
-def test_public_gpu_api_is_minimal():
+def test_public_gpu_api_exports_result_types_and_rank_helpers():
     import psana.gpu as gpu
 
-    assert "GpuEventState" in gpu.__all__
-    assert "GpuEventContext" not in gpu.__all__
-    # D→H join is internal to GpuEventManager — no join class in public API.
-    assert "EventJoiner" not in gpu.__all__, "EventJoiner was made internal"
-    assert "CalibJoiner" not in gpu.__all__, "CalibJoiner was renamed then made internal"
-    # These implementation-detail names must never be public.
-    internal_names = {
-        "gpu_error_handler",
-        "share_calib_between_gpu_peers",
-        "verify_gpu_pinning",
+    # Check supported imports without freezing the API against future additions.
+    required_exports = {
+        "GPUResult",
+        "GpuEventState",
+        "GpuFieldData",
+        "GpuFieldResult",
+        "init_gpu_rank",
+        "is_calib_leader",
     }
-    assert internal_names.isdisjoint(gpu.__all__)
+    assert required_exports.issubset(gpu.__all__)
+    for name in required_exports:
+        assert callable(getattr(gpu, name))
 
 
-def test_single_file_datasource_rejects_gpu_mode():
+@pytest.mark.parametrize("argument", ["gpu_det", "hybrid_det"])
+def test_single_file_datasource_rejects_gpu_mode(argument):
     from psana.psexp.singlefile_ds import SingleFileDataSource
 
     with pytest.raises(
         NotImplementedError,
         match="supported only by RunSerial and RunParallel",
     ):
-        SingleFileDataSource(files=[], gpu_det="jungfrau")
+        SingleFileDataSource(files=[], **{argument: "jungfrau"})
 
 
-def _routing_dsparms(gpu_det, ids_table, stream_owners):
+def _routing_dsparms(
+    gpu_det,
+    ids_table,
+    stream_owners,
+    hybrid_det=None,
+    smd_callback=0,
+):
     dsparms = DsParms(
         batch_size=1,
         max_events=0,
@@ -60,12 +67,32 @@ def _routing_dsparms(gpu_det, ids_table, stream_owners):
         fetch_calib_cache_max_retries=0,
         skip_calib_load=[],
         dbsuffix="",
+        smd_callback=smd_callback,
         gpu_det=gpu_det,
+        hybrid_det=hybrid_det,
     )
     dsparms.det_stream_ids_table = ids_table
     dsparms.det_stream_segments_table = {}
     dsparms.stream_id_to_detnames = stream_owners
     return dsparms
+
+
+@pytest.mark.parametrize(
+    ("gpu_det", "hybrid_det"),
+    [("jungfrau", None), (None, "qadc_ch0")],
+)
+def test_gpu_routing_rejects_smd_callback(gpu_det, hybrid_det):
+    with pytest.raises(
+        NotImplementedError,
+        match="callback batching does not produce GPUBAT1 descriptors",
+    ):
+        _routing_dsparms(
+            gpu_det,
+            {},
+            {},
+            hybrid_det=hybrid_det,
+            smd_callback=lambda run: None,
+        )
 
 
 def test_gpu_routing_allows_one_detector_across_multiple_streams():
@@ -78,6 +105,7 @@ def test_gpu_routing_allows_one_detector_across_multiple_streams():
     dsparms.resolve_gpu_stream_ids()
 
     assert dsparms.gpu_stream_ids == [3, 5, 7, 8, 9]
+    assert dsparms.hybrid_stream_ids == []
 
 
 def test_gpu_routing_allows_detectors_on_disjoint_streams():
@@ -90,6 +118,7 @@ def test_gpu_routing_allows_detectors_on_disjoint_streams():
     dsparms.resolve_gpu_stream_ids()
 
     assert dsparms.gpu_stream_ids == [3, 5, 6]
+    assert dsparms.hybrid_stream_ids == []
 
 
 @pytest.mark.parametrize("gpu_det", ["jungfrau", ["jungfrau", "other"]])
@@ -105,6 +134,120 @@ def test_gpu_routing_rejects_shared_detector_stream(gpu_det):
         match="GPUBAT1 requires exactly one normal detector per GPU stream",
     ):
         dsparms.resolve_gpu_stream_ids()
+
+
+def test_hybrid_routing_allows_detectors_to_share_a_stream():
+    dsparms = _routing_dsparms(
+        None,
+        {"qadc_ch0": [2], "qadc_ch1": [2]},
+        {2: ["qadc_ch0", "qadc_ch1"]},
+        hybrid_det="qadc_ch0",
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_enabled
+    assert dsparms.gpu_detector_names == ["qadc_ch0"]
+    assert dsparms.gpu_stream_ids == [2]
+    assert dsparms.hybrid_stream_ids == [2]
+
+
+def test_hybrid_routing_deduplicates_shared_stream_descriptors():
+    dsparms = _routing_dsparms(
+        None,
+        {"qadc_ch0": [2], "qadc_ch1": [2], "timing": [4]},
+        {2: ["qadc_ch0", "qadc_ch1"], 4: ["timing"]},
+        hybrid_det=["qadc_ch0", "qadc_ch1", "timing"],
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_detector_names == ["qadc_ch0", "qadc_ch1", "timing"]
+    assert dsparms.gpu_stream_ids == [2, 4]
+    assert dsparms.hybrid_stream_ids == [2, 4]
+
+
+def test_exclusive_and_hybrid_routing_can_use_disjoint_streams():
+    dsparms = _routing_dsparms(
+        "large",
+        {"large": [1], "small": [2], "other": [2]},
+        {1: ["large"], 2: ["small", "other"]},
+        hybrid_det="small",
+    )
+
+    dsparms.resolve_gpu_stream_ids()
+
+    assert dsparms.gpu_detector_names == ["large", "small"]
+    assert dsparms.gpu_stream_ids == [1, 2]
+    assert dsparms.hybrid_stream_ids == [2]
+
+
+def test_routing_rejects_detector_in_both_gpu_modes():
+    dsparms = _routing_dsparms(
+        "qadc_ch0",
+        {"qadc_ch0": [2]},
+        {2: ["qadc_ch0"]},
+        hybrid_det="qadc_ch0",
+    )
+
+    with pytest.raises(RuntimeError, match="both gpu_det and hybrid_det"):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def test_routing_rejects_exclusive_hybrid_physical_stream_overlap():
+    dsparms = _routing_dsparms(
+        "large",
+        {"large": [2], "small": [2]},
+        {2: ["large", "small"]},
+        hybrid_det="small",
+    )
+
+    with pytest.raises(RuntimeError, match="same physical streams: \\[2\\]"):
+        dsparms.resolve_gpu_stream_ids()
+
+
+def _split_one_stream_batch(hybrid):
+    from psana.psexp.smdreader_manager import SmdReaderManager
+
+    smd_path = (
+        Path(__file__).resolve().parents[2]
+        / "test_data/intg_det/smalldata/xpptut15-r0014-s000-c000.smd.xtc2"
+    )
+    dsparms = _routing_dsparms(None, {}, {})
+    dsparms.batch_size = 2
+    dsparms.timestamps = np.empty(0, dtype=np.uint64)
+    dsparms.gpu_stream_ids = [0]
+    dsparms.hybrid_stream_ids = [0] if hybrid else []
+
+    fd = os.open(smd_path, os.O_RDONLY)
+    try:
+        manager = SmdReaderManager(np.array([fd], dtype=np.int32), dsparms)
+        assert manager.get_next_dgrams()[0].service() == TransitionId.Configure
+        assert manager.get_next_dgrams()[0].service() == TransitionId.BeginRun
+        batch_iter = next(manager)
+        batch_iter.next_with_gpu()  # BeginStep-only batch
+        cpu_batches, gpu_batches, _ = batch_iter.next_with_gpu()
+        cpu_bytes, cpu_event_sizes = cpu_batches[0]
+        gpu_bytes, _ = gpu_batches[0]
+        return bytes(cpu_bytes), cpu_event_sizes, bytes(gpu_bytes)
+    finally:
+        os.close(fd)
+
+
+def test_eventbuilder_hybrid_stream_is_present_in_cpu_and_gpu_batches():
+    exclusive_cpu, exclusive_sizes, exclusive_gpu = _split_one_stream_batch(False)
+    hybrid_cpu, hybrid_sizes, hybrid_gpu = _split_one_stream_batch(True)
+
+    # Both modes generate identical GPUBAT1 descriptors for the GPU reader.
+    assert hybrid_gpu == exclusive_gpu
+    # The transition remains identical. Each exclusive L1 contains only its
+    # one-stream PacketFooter (8 bytes); hybrid L1s retain the SMD proxy bytes.
+    assert len(exclusive_sizes) == len(hybrid_sizes)
+    assert len(exclusive_sizes) >= 2
+    assert hybrid_sizes[0] == exclusive_sizes[0]
+    assert all(size == 8 for size in exclusive_sizes[1:])
+    assert all(size > 8 for size in hybrid_sizes[1:])
+    assert len(hybrid_cpu) > len(exclusive_cpu)
 
 
 def test_gpu_only_event_preserves_l1_metadata_without_detector_segments():
@@ -167,31 +310,6 @@ def test_run_events_materializes_event_envelope():
     assert events[0].timestamp == 43
     assert events[0].gpu is gpu_state
     assert events[0].run() is run._run_ctx
-
-
-def test_segment_ids_preserve_l1_child_order():
-    dgram = SimpleNamespace(
-        jungfrau={
-            17: object(),
-            13: object(),
-            9: object(),
-            5: object(),
-            29: object(),
-            25: object(),
-            21: object(),
-        }
-    )
-
-    assert segment_ids_in_l1_order(dgram, "jungfrau") == [
-        17,
-        13,
-        9,
-        5,
-        29,
-        25,
-        21,
-    ]
-    assert segment_ids_in_l1_order(object(), "jungfrau") == []
 
 
 class _FakeEvent:
@@ -308,6 +426,76 @@ def test_event_pool_retires_slot_before_reuse(monkeypatch):
 
     pool.finish_retire_next()
     pool.submit(None, None, ["event-1"], detectors)
+
+
+def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
+    monkeypatch.setitem(
+        sys.modules,
+        "cupy",
+        SimpleNamespace(cuda=SimpleNamespace(Stream=_FakeStream, Event=_FakeEvent)),
+    )
+    log = []
+    xtc_batch = SimpleNamespace(
+        data_gpu=object(),
+        stream_ids_by_dgram=np.asarray([7], dtype=np.uint64),
+        n_dgrams=1,
+    )
+    gpu_event = SimpleNamespace(
+        timestamp=42,
+        first_desc=0,
+        n_desc=1,
+        batch_event_index=3,
+    )
+    gpu_view = SimpleNamespace(iter_events=lambda: iter((gpu_event,)))
+    detector_events = []
+
+    class _Parser:
+        def parse(self, slot_id, data_gpu, desc_table, stream):
+            log.append(("parse", slot_id, data_gpu, desc_table, stream))
+            return xtc_batch
+
+    class _Detector:
+        def __init__(self, name):
+            self.name = name
+
+        def process_batch(self, gpu_events, **kwargs):
+            detector_events.append(gpu_events)
+            log.append((self.name, kwargs["slot_id"], kwargs["stream"]))
+            return iter(())
+
+    gpu_read = SimpleNamespace(data_gpu="bytes", desc_table="descriptors")
+    pool = EventPool(n=1)
+    record = pool.submit(
+        gpu_view,
+        gpu_read,
+        ["event"],
+        {
+            "det-a": (None, _Detector("detector-a")),
+            "det-b": (None, _Detector("detector-b")),
+        },
+        xtc_parser=_Parser(),
+    )
+
+    assert record.xtc_batch is xtc_batch
+    assert record.gpu_event_dgrams is detector_events[0]
+    assert record.gpu_event_dgrams is detector_events[1]
+    assert record.gpu_event_dgrams[0].dgrams[7].dgram_index == 0
+    assert record.input_dgrams_by_ts[42] is record.gpu_event_dgrams[0]
+    assert record.input_leases_by_ts[42] in record.leases
+    assert [entry[0] for entry in log] == [
+        "parse",
+        "detector-a",
+        "detector-b",
+    ]
+    assert log[0][4] is log[1][2] is log[2][2] is pool._streams[0]
+
+    pool.begin_retire_next()
+    assert record.xtc_batch is xtc_batch
+    pool.finish_retire_next()
+    assert record.xtc_batch is None
+    assert record.gpu_event_dgrams == ()
+    assert record.input_dgrams_by_ts == {}
+    assert record.input_leases_by_ts == {}
 
 
 def test_beginstep_flushes_before_calib_update(monkeypatch, fake_transition_decode):
@@ -706,8 +894,12 @@ class _FakeDetForEstimate:
     """Minimal stand-in for GPUDetector used in estimate_subbatch_bytes tests."""
     _passthrough = False   # normal (uint16) mode — matches GPUDetector default
 
-    def __init__(self, n_segs, nrows, ncols, stream_seg_map=None):
-        self._stream_seg_map = stream_seg_map
+    def __init__(self, n_segs, nrows, ncols, n_routed_segs=None):
+        if n_routed_segs is None:
+            n_routed_segs = n_segs
+        self._field_handles_by_segment = {
+            segment: object() for segment in range(n_routed_segs)
+        }
         self._n_segs_calib   = n_segs
         self._nrows          = nrows
         self._ncols          = ncols
@@ -829,17 +1021,16 @@ class TestEstimateSubbatchBytes:
         e10 = det.estimate_subbatch_bytes(10)
         assert e10 == 10 * e1
 
-    def test_formula_with_stream_seg_map(self):
-        # stream_seg_map: 2 GPU streams, 5 and 7 segs respectively → 12 total GPU segs
+    def test_formula_uses_routed_field_handles(self):
         det = _FakeDetForEstimate(
             n_segs=32, nrows=512, ncols=1024,
-            stream_seg_map={6: list(range(5)), 8: list(range(7))},
+            n_routed_segs=12,
         )
         n_segs_gpu = 5 + 7
         expected   = 1 * n_segs_gpu * 512 * 1024 * (4 + 2)
         assert det.estimate_subbatch_bytes(1) == expected
 
-    def test_formula_without_stream_seg_map_uses_n_segs_calib(self):
+    def test_formula_defaults_to_all_calib_segments(self):
         det = _FakeDetForEstimate(n_segs=8, nrows=256, ncols=512)
         expected = 1 * 8 * 256 * 512 * (4 + 2)
         assert det.estimate_subbatch_bytes(1) == expected
@@ -875,13 +1066,36 @@ class TestSplitSubbatches:
         assert sbs[0]._start == 0 and sbs[0]._end == 2
         assert sbs[1]._start == 2 and sbs[1]._end == 4
 
-    def test_single_oversized_event_not_split(self):
-        """An event that alone exceeds budget must still be included."""
+    def test_parser_slot_metadata_counts_toward_subbatch_budget(self):
+        det = _FakeDetForEstimate(1, 1, 1)
+        per_dgram = 100
+        per_event = det.estimate_subbatch_bytes(1) + 2 * per_dgram
+        events = _new_splitting_gpu_events(det, per_event * 2)
+        events.gpu_xtc_parser = SimpleNamespace(
+            estimate_batch_bytes=lambda n_dgrams: n_dgrams * per_dgram
+        )
+
+        gv = GpuBatchView(
+            _make_batch(4, descs_per_event=2, bd_size=0)
+        )
+        subbatches = events._split_subbatches(gv)
+
+        assert [(batch._start, batch._end) for batch in subbatches] == [
+            (0, 2),
+            (2, 4),
+        ]
+
+    def test_splitter_preserves_indivisible_events_above_target_size(self):
+        """Splitting preserves event identity; it does not authorize allocation.
+
+        This checks only the proposed subbatch boundaries, not admission of
+        an oversized event or permission to exceed the device-memory quota.
+        """
         det    = _FakeDetForEstimate(4, 512, 1024)
         events = _new_splitting_gpu_events(det, budget_bytes=1)   # effectively 0
         gv     = GpuBatchView(_make_batch(3, bd_size=0))
         sbs    = events._split_subbatches(gv)
-        # Each event must appear in exactly one subbatch (even with tiny budget)
+        # Each event appears in one proposed subbatch, with no partial event.
         assert len(sbs) == 3
         for i, sb in enumerate(sbs):
             assert sb._start == i and sb._end == i + 1
@@ -1141,11 +1355,11 @@ class TestKvikioSlotBufferBudget:
 class TestDescTableDensity:
     """GPUBAT1 desc rows must be dense: contiguous, fully owned, all VALID.
 
-    GPUDetector.process_batch indexes the reader's desc table positionally as
+    GpuEventDgrams indexes the reader's desc table positionally as
     desc_table[event.first_desc + i], and GpuSubbatchView re-indexes by
-    subtraction.  iter_read_descs() drops non-VALID rows.  If the table is
-    sparse in either sense the two views disagree and events silently
-    calibrate another event's payload, so the parser must reject it.
+    subtraction. iter_read_descs() drops non-VALID rows. If the table is sparse
+    in either sense the two views disagree and detector consumers could read
+    another event's payload, so the parser must reject it.
     """
 
     @staticmethod

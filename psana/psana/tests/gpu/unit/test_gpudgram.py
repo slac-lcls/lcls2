@@ -1,6 +1,14 @@
 import numpy as np
 import pytest
 
+from psana.gpu.gpudgram.batch import (
+    DGRAM_EVENT_INDEX,
+    DGRAM_NCOLS,
+    DGRAM_OFFSET,
+    DGRAM_SIZE,
+    DGRAM_STREAM_ID,
+    build_dgram_records,
+)
 from psana.gpu.gpudgram.config import (
     FIELD_ELEMENT_SIZE,
     FIELD_RANK,
@@ -12,6 +20,13 @@ from psana.gpu.gpudgram.config import (
     SCALAR_SHAPE_INDEX,
     GpuFieldHandle,
     GpuStreamConfigTable,
+)
+from psana.gpu.gpu_kvikio_read import (
+    DESC_DEVICE_OFFSET,
+    DESC_EVENT_INDEX,
+    DESC_NCOLS,
+    DESC_READ_SIZE,
+    DESC_STREAM_ID,
 )
 
 
@@ -134,6 +149,173 @@ def test_resolve_all_preserves_detector_ownership_across_streams():
     assert [handle.stream_id for handle in handles] == [0, 1]
     with pytest.raises(ValueError, match="multiple matches"):
         configs.resolve("det", 0, "raw", "array")
+
+
+def test_field_handles_filter_detectors_streams_and_scalars():
+    configs = GpuStreamConfigTable(
+        {
+            0: [
+                _entry(
+                    "wanted",
+                    0,
+                    "raw",
+                    20,
+                    [
+                        _field("scalar", 3, 8, 0, 0, -1),
+                        _field("array", 1, 2, 2, 1, 0),
+                    ],
+                )
+            ],
+            1: [
+                _entry(
+                    "wanted",
+                    1,
+                    "raw",
+                    10,
+                    [_field("other_array", 1, 2, 1, 0, 0)],
+                ),
+                _entry(
+                    "ignored",
+                    0,
+                    "raw",
+                    30,
+                    [_field("array", 1, 2, 1, 0, 0)],
+                ),
+            ],
+        }
+    )
+
+    handles = configs.field_handles(
+        det_names=["wanted"], stream_ids=[0], arrays_only=True
+    )
+
+    assert len(handles) == 1
+    assert handles[0] == configs.resolve("wanted", 0, "raw", "array")
+
+
+def test_detector_array_handles_follow_configure_stream_ownership():
+    configs = GpuStreamConfigTable(
+        {
+            0: [
+                _entry(
+                    "det",
+                    4,
+                    "raw",
+                    10,
+                    [
+                        _field("counter", 3, 8, 0, 0, -1),
+                        _field("pixels", 1, 2, 2, 1, 0),
+                    ],
+                )
+            ],
+            1: [
+                _entry(
+                    "det",
+                    9,
+                    "raw",
+                    11,
+                    [_field("arrayRaw", 1, 2, 3, 0, 0)],
+                )
+            ],
+        }
+    )
+
+    handles = configs.detector_array_handles(
+        "det",
+        stream_segments={0: [4], 1: [9]},
+        alg_names={"raw"},
+        element_size=2,
+    )
+
+    assert handles == {
+        4: configs.resolve("det", 4, "raw", "pixels", stream_id=0),
+        9: configs.resolve("det", 9, "raw", "arrayRaw", stream_id=1),
+    }
+
+
+def test_detector_field_handles_group_all_fields_by_name_and_segment():
+    configs = GpuStreamConfigTable({
+        0: [_entry(
+            "det", 4, "raw", 10,
+            [
+                _field("image", 1, 2, 2, 0, 0),
+                _field("counter", 3, 8, 0, 1, -1),
+            ],
+        )],
+        1: [_entry(
+            "det", 9, "raw", 11,
+            [
+                _field("image", 1, 2, 2, 0, 0),
+                _field("counter", 3, 8, 0, 1, -1),
+            ],
+        )],
+    })
+
+    fields = configs.detector_field_handles(
+        "det",
+        stream_segments={0: [4], 1: [9]},
+        alg_names={"raw"},
+    )
+
+    assert tuple(fields) == (("raw", "counter"), ("raw", "image"))
+    assert fields[("raw", "image")] == {
+        4: configs.resolve("det", 4, "raw", "image", stream_id=0),
+        9: configs.resolve("det", 9, "raw", "image", stream_id=1),
+    }
+    assert fields[("raw", "counter")][4].rank == 0
+
+
+def test_adapter_array_selection_rejects_ambiguity_but_named_fields_work():
+    """Only automatic adapter-input selection requires a unique array."""
+    configs = GpuStreamConfigTable(
+        {
+            0: [
+                _entry(
+                    "det",
+                    0,
+                    "raw",
+                    10,
+                    [
+                        _field("first", 1, 2, 1, 0, 0),
+                        _field("second", 1, 2, 1, 1, 1),
+                    ],
+                )
+            ]
+        }
+    )
+
+    fields = configs.detector_field_handles(
+        "det", stream_segments={0: [0]}, alg_names={"raw"}
+    )
+    assert fields == {
+        ("raw", name): {0: configs.resolve("det", 0, "raw", name, stream_id=0)}
+        for name in ("first", "second")
+    }
+
+    with pytest.raises(ValueError, match="exactly one event array"):
+        configs.detector_array_handles(
+            "det",
+            stream_segments={0: [0]},
+            alg_names={"raw"},
+            element_size=2,
+        )
+
+
+def test_kvikio_descriptors_translate_to_device_dgram_records():
+    desc = np.zeros((2, DESC_NCOLS), dtype=np.uint64)
+    desc[:, DESC_EVENT_INDEX] = [7, 7]
+    desc[:, DESC_STREAM_ID] = [2, 5]
+    desc[:, DESC_READ_SIZE] = [128, 256]
+    desc[:, DESC_DEVICE_OFFSET] = [0, 128]
+
+    records = build_dgram_records(desc)
+
+    assert records.shape == (2, DGRAM_NCOLS)
+    assert records[:, DGRAM_EVENT_INDEX].tolist() == [7, 7]
+    assert records[:, DGRAM_STREAM_ID].tolist() == [2, 5]
+    assert records[:, DGRAM_OFFSET].tolist() == [0, 128]
+    assert records[:, DGRAM_SIZE].tolist() == [128, 256]
+    assert np.count_nonzero(records[:, 4:]) == 0
 
 
 @pytest.mark.parametrize(
