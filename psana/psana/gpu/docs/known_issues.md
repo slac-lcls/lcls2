@@ -72,9 +72,11 @@ Relevant code: `gpu/gpu_budget.py`, `gpu/gpu_admission.py`,
 
 Stage 1b exposes parsed GPU input fields without built-in calibration. There are
 no implicit `.calib`, `.raw`, or `.image` results and no automatic image D2H.
-Nonzero `gpu_d2h_chunk_size` is retired. `gpu_fn` fails explicitly until the
+Nonzero `gpu_d2h_chunk_size` is retired. Stage 2 accepts a host-only `GpuTask`
+through `gpu_fn` and stages declared inputs/constants on each BD, but rejects
+event processing until the callback and publication parts of the
 [task/publication stages](proposals/user_kernel_implementation_stages_20260926.md)
-are implemented. Existing calibration-based benchmark results are historical;
+are implemented. Bare callables are rejected. Existing calibration-based benchmark results are historical;
 the corresponding benchmark entry points now reject unsupported workloads.
 
 ### GPU `RunParallel.steps()` is not implemented

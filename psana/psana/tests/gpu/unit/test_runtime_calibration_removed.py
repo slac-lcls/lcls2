@@ -13,8 +13,8 @@ def test_image_d2h_option_is_retired_before_run_setup(value):
         DataSourceBase.__init__(NS(), gpu_d2h_chunk_size=value)
 
 
-def test_unimplemented_callback_is_rejected_before_run_setup():
-    with pytest.raises(NotImplementedError, match='not implemented'):
+def test_bare_callback_requires_a_task_declaration():
+    with pytest.raises(TypeError, match='GpuTask'):
         DataSourceBase.__init__(NS(), gpu_fn=lambda *args: None)
 
 

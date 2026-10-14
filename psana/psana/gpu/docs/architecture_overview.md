@@ -14,6 +14,11 @@ The runtime performs no calibration, geometry preparation, or automatic output
 D2H. Calibration algorithms belong in explicit user code; the producer callback
 API is still under development. The internal `DenseInputPreparer` supports
 validated Jungfrau raw panels, independently of calibration constants.
+Stage 2 exports `GpuTask(function, inputs=(), calibconst=())` from `psana.gpu`.
+Passing it as `DataSource(gpu_fn=task)` resolves requested dense/descriptor inputs
+and uploads only declared calibration dictionary values on each BD. It does not
+execute the function yet; event processing fails explicitly. See the
+[Stage 2 findings](user_kernel_stage2_findings_20260927.md).
 
 ## User-facing routing
 
