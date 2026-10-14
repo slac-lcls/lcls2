@@ -129,7 +129,9 @@ class GpuEventBatch:
     Notes
     -----
     This object never copies parser metadata to the CPU.  Its buffers must
-    remain owned by its EventPool slot until that slot is safely retired.
+    remain owned until all consumers complete. The production path uses an
+    InputWindow to protect raw bytes and parser tables independently of
+    execution slots; standalone callers must coordinate their own reuse.
     """
 
     def __init__(

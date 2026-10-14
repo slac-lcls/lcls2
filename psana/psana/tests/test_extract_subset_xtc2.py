@@ -1,6 +1,7 @@
 import importlib.util
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -156,12 +157,12 @@ def test_generated_smalldata_can_be_read_back(tmp_path):
         "count = 0\n"
         "for evt in run.events():\n"
         "    count += 1\n"
-        "print(count)\n"
+        "assert count == 2, f'Expected 2 events, got {count}'\n"
     ) % str(tmp_path)
-    result = subprocess.run(
-        ["python", "-c", script],
+    # Calibration startup may print diagnostics; validate data, not stdout.
+    subprocess.run(
+        [sys.executable, "-c", script],
         check=True,
         capture_output=True,
         text=True,
     )
-    assert result.stdout.strip() == "2"

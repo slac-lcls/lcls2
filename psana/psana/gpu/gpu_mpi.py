@@ -62,7 +62,7 @@ def is_calib_leader(bd_comm, phys_gpu_id):
     non-owning CUDA IPC views from the leader via
     ``share_calib_between_gpu_peers()``.
 
-    This function must be called **before** ``_setup_detectors()`` so that
+    This function must be called **before** ``_setup_gpu_pipeline()`` so that
     followers never allocate ``peds_gpu`` / ``gmask_gpu`` at all.  Allocating
     on all ranks and then deleting on followers creates a peak-allocation window
     of ``n_bd_per_gpu × ~400 MiB`` that can exhaust GPU VRAM before sharing
@@ -200,7 +200,7 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
     gpu_detectors : dict  {det_name: (psana_det, GPUDetector)}
         From GpuEventManager.gpu_detectors — already initialised with peds/gmask
         on the leader, and with peds_gpu=gmask_gpu=None on followers
-        (is_calib_leader() returned False before _setup_detectors() ran).
+        (is_calib_leader() returned False before _setup_gpu_pipeline() ran).
     bd_comm       : mpi4py.MPI.Comm
         BD-only communicator (bd_rank 0 = EB, bd_rank 1+ = BD workers).
         No collectives are used — only point-to-point sends and receives
@@ -292,12 +292,12 @@ def share_calib_between_gpu_peers(gpu_detectors, bd_comm, phys_gpu_id):
              peds_nbytes,  gmask_nbytes) = meta
 
             # Followers arrive here with peds_gpu=None (is_calib_leader()
-            # returned False before _setup_detectors(); prep_calib_constants()
+            # returned False before _setup_gpu_pipeline(); prep_calib_constants()
             # was never called).  Assert this to catch stale call patterns.
             assert gpu_det.peds_gpu is None and gpu_det.gmask_gpu is None, (
                 "share_calib_between_gpu_peers: follower rank already has "
                 "peds_gpu allocated.  Call is_calib_leader() before "
-                "_setup_detectors() so followers skip prep_calib_constants()."
+                "_setup_gpu_pipeline() so followers skip prep_calib_constants()."
             )
 
             peds_ptr  = cp.cuda.runtime.ipcOpenMemHandle(

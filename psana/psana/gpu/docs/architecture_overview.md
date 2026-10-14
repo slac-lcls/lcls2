@@ -41,6 +41,19 @@ paths when a selected detector shares a stream with CPU consumers. Mirroring
 therefore trades compatibility for duplicate bigdata I/O. A detector cannot be
 selected by both modes, and exclusive and mirrored stream sets cannot overlap.
 
+GPU reads coalesce adjacent ranges by default inside the existing subbatch/slot.
+No extra DataSource argument is needed. `gpu_bulk_read=False` retains per-dgram
+reads for debugging and comparison. The BD resolves file/chunk identities
+from ordered SMD transitions before submitting reads, then coalesces ranges
+within each file and transition interval. GPUBAT1 and logical event order stay
+unchanged; parser offsets are rebased into the physical read layout.
+
+This mode requires ordinary GPU batch routing; `intg_det`, timestamp filtering,
+and `smd_callback` do not supply the required supported packet path. It does
+not yet retain a full fast stream across several slow execution slots. That
+input-ownership and scheduling work is in later stages of the
+[bulk-read plan](proposals/bulk_read_plan.md).
+
 ## End-to-end flow
 
 ```text
@@ -54,7 +67,7 @@ EventBuilder
   -> send one coherent BatchEnvelope to a BD worker
 
 BD / GpuEventManager
-  -> issue KvikIO reads into an EventPool slot
+  -> issue KvikIO reads into reusable input storage
   -> construct CPU events for CPU-routed streams
   -> parse XTC and locate configured fields on the GPU
   -> gather detector fields into canonical segment order
@@ -111,9 +124,27 @@ policy.
 - The per-BD device-memory budget and asynchronous D2H pipeline.
 - `EventPool`, whose reusable slots each own a non-blocking CUDA stream.
 
-Each occupied slot owns its input bytes, parser rows, detector buffers, result
-views, and completion state. Per-event `GpuEventState` objects expose only that
-event's results and input bindings; they do not own the manager.
+Execution slots own detector buffers, result views, and execution completion
+state. They hold references to `InputWindow` owners for raw bytes and parser
+rows. An input window can serve multiple executions and cannot be recycled
+until planned uses, event consumers, and CUDA work have finished. The current
+scheduler admits affordable complete stream inputs for one EB batch, reads and
+parses them once, and combines them with transient inputs for ordered execution
+subbatches. Reader/parser pools have one extra lazy slot for resident input;
+execution and detector slot counts are unchanged. When no complete input fits,
+the scheduler uses common input/execution subbatches.
+
+Before issuing each read, Stage 4 admission reserves growth capacity for its
+reader, parser, and detector buffers together. Fixed calibration, geometry, and
+Configure allocations are charged once to their owning BD; IPC followers do
+not charge shared calibration views again. Cached buffers retain their charge.
+Under pressure, the manager drains execution consumers before trimming free
+buffers and retrying. A 10% margin covers runtime/allocator overhead; independent
+user allocations and host staging are outside this device-memory ledger.
+
+Per-event `GpuEventState` objects expose that event's results and input bindings;
+they do not own the manager. Field-view contexts and field copies reserve input
+references before accessing raw storage.
 
 The intended lifetime rule is:
 
@@ -178,4 +209,5 @@ is [Known problems and limitations](known_issues.md).
 | `gpu_stream.py` | Reusable execution slots and retirement |
 | `context.py` | `GpuEventState`, `GPUResult`, and result access modes |
 | `gpu_budget.py` | Per-BD accounting for explicitly tracked device allocations |
+| `gpu_admission.py` | Presence-aware execution sizing and stream-residency admission |
 | `gpu_mpi.py` | Device assignment and CUDA IPC calibration sharing |

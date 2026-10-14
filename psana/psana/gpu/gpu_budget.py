@@ -3,9 +3,9 @@ psana/gpu/gpu_budget.py — GPU device-memory budget.
 
 _GpuBudget tracks VRAM explicitly reserved by participating input, parser, and
 slot-buffer owners and raises GpuMemoryPressureError before a tracked
-allocation would exceed the configured per-BD limit. Calibration constants and
-geometry are not yet reserved in this counter; the design documentation tracks
-that known accounting gap.
+allocation would exceed the configured per-BD limit. Admission holds reserve
+future allocations before I/O; they are converted to committed bytes as the
+reader, parser, and detectors allocate. Cached owner capacity remains charged.
 
 Usage
 -----
@@ -27,17 +27,56 @@ class GpuMemoryPressureError(RuntimeError):
     """
 
 
+def allocation_growth_bytes(requirements):
+    """Extra capacity for every new/replacement allocation before submission.
+
+    Each pair is (required, existing capacity). Existing allocations remain
+    charged while their replacements are allocated; reusable buffers cost zero.
+    Old event views can survive several replacements, so reserve all new arrays
+    rather than assuming each old array disappears before the next allocation.
+    """
+    growing = [(need, old) for need, old in requirements if need > old]
+    return sum(need for need, _ in growing)
+
+
+class _GpuAdmissionHold:
+    """BD-local reservation activated around input/compute allocation phases."""
+
+    def __init__(self, budget, n):
+        self.budget, self.remaining, self.closed = budget, n, False
+
+    def __enter__(self):
+        if self.closed or self.budget._active_hold is not None:
+            raise RuntimeError("admission hold is closed or another hold is active")
+        self.budget._active_hold = self
+        return self
+
+    def __exit__(self, *exc):
+        self.budget._active_hold = None
+
+    def _consume(self, n):
+        if n > self.remaining:
+            raise GpuMemoryPressureError(
+                f"allocation exceeds admission estimate: need={n}, held={self.remaining}"
+            )
+        self.remaining -= n
+        self.budget._held -= n
+
+    def close(self):
+        if self.budget._active_hold is self:
+            raise RuntimeError("cannot close active admission hold")
+        if not self.closed:
+            self.budget._held -= self.remaining
+            self.remaining = 0
+            self.closed = True
+
+
 class _GpuBudget:
     """Simple committed-bytes counter for GPU VRAM.
 
-    Tracks the total bytes explicitly reserved by participating allocation
-    owners in this BD rank. Before any new tracked allocation, reserve() checks
-    the limit and optionally frees the CuPy pool to recover cached-but-unused
-    blocks. It is not a complete measurement of every live CuPy allocation.
-
-    This is intentionally simple: no active-lease byte tracking (correctness
-    is enforced by SlotLease.wait_until_safe_to_reuse, not the budget), no
-    per-category breakdown (that is covered by GpuEventManager.log_memory).
+    Tracks explicit allocation ownership and pending admission in this BD rank.
+    Lifetime remains enforced by input/result leases. A declared margin covers
+    allocator/runtime overhead; arbitrary user CuPy allocations are not tracked.
     """
 
     def __init__(self, limit_bytes: int):
@@ -50,39 +89,24 @@ class _GpuBudget:
         """
         self._limit = limit_bytes
         self._committed = 0
+        self._held = 0
+        self._active_hold = None
+        self._failed_allocations = []
 
     # ------------------------------------------------------------------
 
     def reserve(self, n: int):
-        """Reserve n bytes before calling cp.empty().
-
-        If the budget would be exceeded, first attempts to free cached
-        blocks from the CuPy memory pool (which holds freed arrays until
-        explicitly released).  Raises GpuMemoryPressureError if there is
-        still not enough room after the pool flush.
-
-        Parameters
-        ----------
-        n : int
-            Bytes about to be allocated via cp.empty().
-        """
-        if self._committed + n <= self._limit:
-            self._committed += n
-            return
-
-        # Try releasing cached (but unused) CuPy pool blocks first.
-        try:
-            import cupy as cp
-
-            cp.get_default_memory_pool().free_all_blocks()
-        except Exception:
-            pass
-
-        if self._committed + n > self._limit:
+        """Charge a new allocation, including the full replacement on growth."""
+        if n < 0:
+            raise ValueError("cannot reserve negative bytes")
+        if self._active_hold is not None:
+            self._active_hold._consume(n)
+        elif n > self.available():
             raise GpuMemoryPressureError(
                 f"GPU memory budget exceeded:\n"
                 f"  need      {n / 1024**3:.2f} GiB\n"
                 f"  committed {self._committed / 1024**3:.2f} GiB\n"
+                f"  held      {self._held / 1024**3:.2f} GiB\n"
                 f"  limit     {self._limit / 1024**3:.2f} GiB\n"
                 f"Reduce batch_size or n_gpu_streams, or increase "
                 f"gpu_memory_budget_gb."
@@ -92,13 +116,37 @@ class _GpuBudget:
     def release(self, n: int):
         """Return n bytes to the budget (called when a buffer is freed
         or replaced by a smaller/larger allocation)."""
-        self._committed = max(0, self._committed - n)
+        if n < 0:
+            raise ValueError("cannot release negative bytes")
+        released = min(n, self._committed)
+        self._committed -= released
+        if self._active_hold is not None:
+            self._active_hold.remaining += released
+            self._held += released
+
+    def hold(self, n, *, margin=0):
+        """Reserve allocation progress before issuing I/O; no CUDA allocation."""
+        if n < 0 or margin < 0:
+            raise ValueError("negative admission reservation")
+        if n + margin > self.available():
+            raise GpuMemoryPressureError(
+                f"GPU admission needs {n} allocation bytes + {margin} margin; "
+                f"committed={self._committed}, held={self._held}, limit={self._limit}"
+            )
+        self._held += n
+        return _GpuAdmissionHold(self, n)
 
     # ------------------------------------------------------------------
 
     def available(self) -> int:
         """Bytes remaining before the limit is reached."""
-        return max(0, self._limit - self._committed)
+        return max(0, self._limit - self._committed - self._held)
+
+    def allocation_available(self):
+        """Credit usable by the currently allocating phase, excluding other holds."""
+        if self._active_hold is not None:
+            return self._active_hold.remaining
+        return self.available()
 
     def committed(self) -> int:
         """Bytes currently reserved."""
