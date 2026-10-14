@@ -10,7 +10,7 @@ from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError, allocation_
 from psana.gpu.gpu_allocation import owned_empty
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_kvikio_read import KvikioGpuReader
-from psana.gpu import gpu_calib
+from psana.gpu.gpu_allocation import upload_owned
 
 
 def mixed_events():
@@ -52,7 +52,7 @@ def test_no_floor_and_no_calibration_required_for_admission():
     manager._gpu_budget = _GpuBudget(100)
     manager._gpu_budget.reserve(30)  # fixed/config ownership, once
     manager.dsparms = NS(n_gpu_streams=2)
-    manager.gpu_detectors = {}
+    manager.input_preparers = {}
     assert manager._compute_subbatch_budget() == 30
     assert manager._admission_capacity == 60
 
@@ -134,7 +134,7 @@ def test_trimming_checks_occupied_executions_including_retirement():
     manager.event_pool = pool
     calls = []
     manager.gpu_reader = NS(trim_free_buffers=lambda: calls.append('reader'))
-    manager.gpu_xtc_parser, manager.gpu_detectors = None, {}
+    manager.gpu_xtc_parser, manager.input_preparers = None, {}
     assert len(pool) == 2 and pool.active_count == 1
     with pytest.raises(RuntimeError, match='active executions'):
         manager._trim_gpu_caches()
@@ -173,11 +173,10 @@ def test_fixed_upload_reserves_before_transfer_and_rolls_back(monkeypatch):
             raise RuntimeError('upload failed')
         return array.copy()
     drained = []
-    monkeypatch.setattr(gpu_calib, '_cupy', lambda: NS(
-        empty=np.empty, cuda=NS(get_current_stream=lambda: NS(synchronize=lambda: drained.append(True)))))
+    cp = NS(empty=np.empty, cuda=NS(get_current_stream=lambda: NS(synchronize=lambda: drained.append(True))))
     monkeypatch.setattr(np, "copyto", upload)
     with pytest.raises(RuntimeError, match='upload failed'):
-        gpu_calib._upload_fixed_arrays((np.zeros(10, np.float32),) * 2, budget)
+        upload_owned(cp, (np.zeros(10, np.float32),) * 2, budget)
     assert drained == [True] and budget.committed() == 0
 
 
@@ -185,10 +184,9 @@ def test_fixed_upload_failure_with_unproven_completion_stays_charged(monkeypatch
     budget = _GpuBudget(100)
     def fail(*args):
         raise RuntimeError('CUDA failure')
-    monkeypatch.setattr(gpu_calib, '_cupy', lambda: NS(
-        empty=np.empty, cuda=NS(get_current_stream=lambda: NS(synchronize=fail))))
+    cp = NS(empty=np.empty, cuda=NS(get_current_stream=lambda: NS(synchronize=fail)))
     with pytest.raises(RuntimeError):
-        gpu_calib._upload_fixed_arrays((np.zeros(10, np.float32),), budget)
+        upload_owned(cp, (np.zeros(10, np.float32),), budget)
     assert budget.committed() == 40 and len(budget._failed_allocations) == 1
     budget._failed_allocations[0][0].synchronize = lambda: None
     budget.drain_failed_allocations()
@@ -196,23 +194,13 @@ def test_fixed_upload_failure_with_unproven_completion_stays_charged(monkeypatch
     assert budget.committed() == 0 and not budget._failed_allocations
 
 
-def test_ipc_follower_does_not_double_subtract_shared_constants():
-    manager = GpuEventManager.__new__(GpuEventManager)
-    manager._gpu_budget = _GpuBudget(1000)
-    manager._gpu_budget.reserve(20)  # only this rank's Configure tables
-    manager.gpu_detectors = {'jf': (None, NS(
-        _is_calib_follower=True, memory_bytes=lambda: {'constants': 400, 'geometry': 0}))}
-    manager.dsparms = NS(n_gpu_streams=2)
-    assert manager._compute_subbatch_budget() == 440  # (1000-20-100)/2
-
-
 def test_source_presence_controls_detector_cost():
     from psana.gpu.gpu_batch import GpuBatchView
     from test_core import _make_batch
     manager = GpuEventManager.__new__(GpuEventManager)
-    manager.gpu_detectors = {
-        'fast': (None, NS(binding=NS(has_sources=lambda s: 0 in s), estimate_subbatch_bytes=lambda n: 10*n)),
-        'slow': (None, NS(binding=NS(has_sources=lambda s: 1 in s), estimate_subbatch_bytes=lambda n: 1000*n)),
+    manager.input_preparers = {
+        'fast': NS(binding=NS(has_sources=lambda s: 0 in s), estimate_subbatch_bytes=lambda n: 10*n),
+        'slow': NS(binding=NS(has_sources=lambda s: 1 in s), estimate_subbatch_bytes=lambda n: 1000*n),
     }
     view = GpuBatchView(_make_batch(2, descs_per_event=1, stream_ids=[0], bd_size=5))
     costs = manager._event_memory(view)
@@ -245,7 +233,6 @@ def test_pressure_drains_consumer_delivery_before_trimming_and_retry():
     log, attempts = [], []
     manager.event_pool = NS(begin_retire_next=lambda: 'old',
                             finish_retire_next=lambda: log.append('finish old'), next_slot_id=0)
-    manager._d2h_pipelines = {}
     manager._yield_ready = lambda *a, **k: iter(('old event',))
     def flush():
         yield 'other event'
@@ -284,7 +271,7 @@ def test_wait_and_submission_failures_return_unused_progress_credit():
         manager._wait_gpu_read(pending)
     assert budget.available() == 100 and manager._pending_gpu_read is None
     manager._gpu_read_reservation = budget.hold(80)
-    manager.gpu_detectors, manager.gpu_xtc_parser = {}, None
+    manager.input_preparers, manager.gpu_xtc_parser = {}, None
     def submit(*args, **kwargs):
         budget.reserve(20)  # allocated storage retained by failed parser owner
         raise RuntimeError('injected failure')

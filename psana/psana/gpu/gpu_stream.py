@@ -32,24 +32,15 @@ class _EventSlot:
     input_leases_by_ts: dict = field(default_factory=dict)
     pending_d2h_by_ts: dict = field(default_factory=dict)
     cached_cpu_results_by_ts: dict = field(default_factory=dict)
+    prepared_inputs: dict = field(default_factory=dict)
 
 
 class EventPool:
-    """Keep N GPU calibration batches in flight simultaneously.
+    """Keep N GPU input batches in flight simultaneously.
 
-    For each submitted batch:
-      1. submit()      — launch detector work on the slot's stream; record one
-                         result-ready event; create one SlotLease per result.
-      2. automatic D2H may be armed immediately against that event.
-      3. begin_retire_next() — synchronise the producer stream but retain
-                               ownership of the outgoing slot.
-      4. finish_retire_next() — wait for each registered terminal consumer,
-                                then release the slot for reuse.
-
-    GpuEventManager must complete both retirement phases before submit()
-    so the outgoing slot is fully drained before overwrite.  External-GPU mode
-    yields between the phases so user work can register its completion event;
-    automatic-D2H mode may finish retirement before yielding a host result.
+    Submission records input completion. Retirement yields parsed inputs so
+    consumers can register completion events, then drains every lease before
+    the slot can be reused.
 
     Parameters
     ----------
@@ -132,12 +123,13 @@ class EventPool:
         old.input_dgrams_by_ts = {}
         old.input_leases_by_ts = {}
         old.gpu_event_dgrams = ()
+        old.prepared_inputs = {}
         old.xtc_batch = None
         old.input_windows = ()
         self._retiring = None
 
     def submit(
-        self, gv, gpu_read, event_envelopes: list, gpu_detectors: dict,
+        self, gv, gpu_read, event_envelopes: list, input_preparers=None,
         xtc_parser=None, *, input_windows=None, input_uses=None, batch_id=0,
     ):
         """Queue execution using owned inputs, independently of its slot ID.
@@ -147,7 +139,6 @@ class EventPool:
         that caller controls when those windows close to new planned uses.
         """
         import cupy as cp
-        from psana.gpu.context import SlotLease
         from psana.gpu.gpu_input import GpuEventDgrams, InputSlotLease
 
         slot = self.next_slot_id
@@ -179,25 +170,14 @@ class EventPool:
             )
 
             gpu_results_by_ts = {}
-            for det_name, det_info in gpu_detectors.items():
-                for ec in det_info[1].process_batch(
-                    gpu_event_dgrams, stream=stream, slot_id=slot
-                ):
-                    results = gpu_results_by_ts.setdefault(ec.timestamp, {})
-                    results[f'{det_name}.calib'] = ec.calib_gpu
-                    if ec.raw_gpu is not None:
-                        results[f'{det_name}.raw'] = ec.raw_gpu
-                    if ec.image_gpu is not None:
-                        results[f'{det_name}.image'] = ec.image_gpu
-
+            prepared = {
+                name: preparer.prepare_batch(gpu_event_dgrams, stream=stream, slot_id=slot)
+                for name, preparer in (input_preparers or {}).items()
+            }
             result_ready = cp.cuda.Event(disable_timing=True)
             result_ready.record(stream)
             execution_inputs.result_ready = result_ready
             leases_by_ts = {}
-            for ts, results in gpu_results_by_ts.items():
-                leases_by_ts[ts] = {key: SlotLease(result_ready) for key in results}
-                all_leases.extend(leases_by_ts[ts].values())
-
             input_dgrams_by_ts, input_leases_by_ts = {}, {}
             for event in gpu_event_dgrams:
                 lease = InputSlotLease(result_ready, event.input_windows, planned_uses=input_uses)
@@ -220,6 +200,7 @@ class EventPool:
                 input_windows=windows, gpu_event_dgrams=gpu_event_dgrams,
                 input_dgrams_by_ts=input_dgrams_by_ts,
                 input_leases_by_ts=input_leases_by_ts,
+                prepared_inputs=prepared,
             )
         except BaseException:
             # Preserve every owner if CUDA completion cannot be established.
@@ -266,6 +247,7 @@ class EventPool:
                 record.input_dgrams_by_ts = {}
                 record.input_leases_by_ts = {}
                 record.gpu_event_dgrams = ()
+                record.prepared_inputs = {}
                 record.xtc_batch = None
                 record.input_windows = ()
 

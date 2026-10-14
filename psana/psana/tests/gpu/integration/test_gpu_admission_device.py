@@ -10,8 +10,7 @@ import pytest
 from psana.gpu.gpu_admission import AdmissionEvent
 from psana.gpu.gpu_batch import GpuReadDesc
 from psana.gpu.gpu_budget import _GpuBudget, GpuMemoryPressureError, allocation_growth_bytes
-from psana.gpu.gpu_calib import _upload_fixed_arrays
-from psana.gpu.gpu_detector import GPUDetector
+from psana.gpu.gpu_detector import DenseInputPreparer
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_file_epochs import GpuFileEpochs
 from psana.gpu.gpu_input import GpuDetectorBinding
@@ -52,20 +51,19 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
                                  field_handles_by_segment={1: handle},
                                  field_handles_by_name={('raw', 'arrayRaw'): {1: handle}})
     budget = _GpuBudget(1024**2)
-    peds, gain = _upload_fixed_arrays((np.zeros(54, np.float32), np.ones(54, np.float32)), budget)
-    detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=1, budget=budget)
+    detector = DenseInputPreparer((1, 3, 6), binding, n_slots=1, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=(handle,), n_slots=1, budget=budget)
     detector.configure_gather(parser.handle_indices)
-    reader = KvikioGpuReader(n_slots=1, budget=budget)
+    # This fixture exercises per-dgram admission, without an InputGroupPool.
+    reader = KvikioGpuReader(n_slots=1, budget=budget, bulk_read=False)
     manager = GpuEventManager.__new__(GpuEventManager)
     manager.dm = NS(xtc_files=[path], get_chunk_id=lambda _: 0)
-    manager.dsparms = NS(gpu_bulk_read=True)
+    manager.dsparms = NS(gpu_bulk_read=False)
     manager.gpu_reader, manager.gpu_xtc_parser = reader, parser
-    manager.gpu_detectors = {'xppcspad': (None, detector)}
+    manager.input_preparers = {'xppcspad': detector}
     manager.event_pool = EventPool(n=1)
     manager._gpu_budget, manager._admission_margin = budget, 0
     manager._pending_gpu_read = None
-    manager._d2h_pipelines = {}
     try:
         for batch_id, count in enumerate((1, 4, 2)):
             descs = [GpuReadDesc(i, ts, 0, off, size, 0, 1)
@@ -90,7 +88,7 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
             record.stream.synchronize()
             for desc in descs:
                 cpu = dgram.Dgram(config=config, view=memoryview(data), offset=desc.offset)
-                raw = cp.asnumpy(record.gpu_results_by_ts[desc.timestamp]['xppcspad.raw'])[0]
+                raw = cp.asnumpy(record.prepared_inputs['xppcspad'].data[desc.batch_event_index])[0]
                 np.testing.assert_array_equal(raw, cpu.xppcspad[1].raw.arrayRaw)
             owned = reader.memory_bytes()['raw_input_slots'] + parser.memory_bytes()['total'] + detector.memory_bytes()['total']
             assert budget.committed() == owned <= budget.limit()
@@ -98,7 +96,7 @@ def test_read_parse_and_detector_growth_fit_exact_admission(tmp_path):
             manager.event_pool.finish_retire_next()
         # Cached capacity is still charged after leases finish, then trimming
         # returns only variable storage; constants and Configure stay charged.
-        fixed = (parser.memory_bytes()['config'] + detector.memory_bytes()['constants']
+        fixed = (parser.memory_bytes()['config']
                  + detector.memory_bytes()['routing'])
         assert budget.committed() > fixed
         # These public read/record aliases keep reader/parser backing charged

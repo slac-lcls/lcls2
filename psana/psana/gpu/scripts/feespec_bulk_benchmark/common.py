@@ -52,7 +52,7 @@ def cache(path, mode, prepare=True):
     return state
 
 
-def prefix_residency(path, length):
+def prefix_residency(path, length, *, missing_ranges=False):
     """Measure only the input prefix exercised by a short run, without reading it."""
     import ctypes
     import mmap
@@ -72,12 +72,33 @@ def prefix_residency(path, length):
         if rc:
             error = ctypes.get_errno()
             raise OSError(error, os.strerror(error), str(path))
-        resident = int((np.ctypeslib.as_array(vector) & 1).sum(dtype=np.uint64))
+        present = np.ctypeslib.as_array(vector) & 1
+        resident = int(present.sum(dtype=np.uint64))
+        if missing_ranges:
+            edges = np.flatnonzero(np.diff(np.r_[False, present == 0, False]))
+            missing = [(int(first)*mmap.PAGESIZE,
+                        min(int(stop)*mmap.PAGESIZE, length)-int(first)*mmap.PAGESIZE)
+                       for first, stop in zip(edges[::2], edges[1::2])]
     finally:
         del anchor
         mapping.close()
-    return dict(path=str(path), bytes=length, pages=pages, resident_pages=resident,
-                resident_fraction=resident/pages)
+    result = dict(path=str(path), bytes=length, pages=pages, resident_pages=resident,
+                  resident_fraction=resident/pages)
+    if missing_ranges:
+        result['missing_ranges'] = missing
+    return result
+
+
+def rewarm_prefixes(paths, interleave):
+    """Read only absent pages, preserving the initial NUMA allocation policy."""
+    if interleave:
+        subprocess.run(['numactl', '--interleave=all', sys.executable,
+                        str(Path(__file__).with_name('warm_cache.py')), '--missing-prefixes',
+                        json.dumps([(str(p), n) for p, n in paths])], check=True)
+    else:
+        from warm_cache import warm_missing_prefix
+        for path, length in paths:
+            warm_missing_prefix(path, length)
 
 
 def cache_inputs(directory, mode, prepare=True, include_jf=False, ranges=None):
@@ -114,18 +135,32 @@ def cache_inputs(directory, mode, prepare=True, include_jf=False, ranges=None):
                             remaining -= len(chunk)
         # Check all prefixes after preparation, so later reads cannot silently
         # evict an earlier file and still pass the warm gate.
-        rows = []
-        for path, length in paths:
-            row = prefix_residency(path, length)
+        rows = [prefix_residency(path, length) for path, length in paths]
+        warm_retries = 0
+        if prepare and mode == 'warm':
+            # Bound recovery. Each pass rechecks ALL files because repairing one
+            # may evict pages from another. Never repair after a timed sample.
+            for attempt in range(1, 4):
+                missing = [(path, length) for (path, length), row in zip(paths, rows)
+                           if row['resident_fraction'] < .99]
+                if not missing:
+                    break
+                print('CACHE_WARM_RETRY ' + json.dumps(dict(attempt=attempt,
+                    files=[dict(path=str(path), bytes=length) for path, length in missing],
+                    before=rows)), flush=True)
+                rewarm_prefixes(missing, interleave)
+                warm_retries = attempt
+                rows = [prefix_residency(path, length) for path, length in paths]
+        for row in rows:
             if prepare and mode == 'cold' and row['resident_fraction'] > .01:
                 raise RuntimeError(f'Cold prefix residency too high: {row}')
             if mode == 'warm' and row['resident_fraction'] < .99:
                 raise RuntimeError(f'Warm prefix residency too low: {row}')
-            rows.append(row)
         pages = sum(r['pages'] for r in rows)
         resident = sum(r['resident_pages'] for r in rows)
         return dict(files=rows, pages=pages, resident_pages=resident,
-                    resident_fraction=resident/pages, measured_prefixes=True)
+                    resident_fraction=resident/pages, measured_prefixes=True,
+                    warm_retries=warm_retries)
     if not include_jf:
         return cache(Path(directory)/'mfx101210926-r0387-s000-c000.xtc2', mode, prepare)
     paths = sorted(Path(directory).glob('*.xtc2'))

@@ -124,12 +124,6 @@ class RunParallel(Run):
         log_gpu_mem('after  _setup_jungfrau_shared_calib', rank=_r)
         self._setup_jungfrau_shared_caches()
         log_gpu_mem('after  _setup_jungfrau_shared_caches', rank=_r)
-        # _pixel_coord_indexes(all_segs=True) was seeded in
-        # _setup_jungfrau_shared_caches() above, so the call here is a
-        # cheap cache read with no shmem barrier — safe for all N_BD_PER_GPU.
-        self._setup_gpu_geometry()
-        log_gpu_mem('after  _setup_gpu_geometry', rank=_r)
-
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
             self._calib_xtc_buffer = None
@@ -346,15 +340,6 @@ class RunParallel(Run):
                 t_coords = time.perf_counter() - t0
                 t0 = time.perf_counter()
                 iface._pixel_coord_indexes()
-                # Also seed the all_segs=True variant used by _setup_gpu_geometry().
-                # Without this, _pixel_coord_indexes(all_segs=True) would be a
-                # cache miss and trigger a new shmem collective.  That collective
-                # deadlocks when smd0/EB are in the same NUMA group as BD ranks
-                # (N_BD_PER_GPU > 1, numa_size=3) because smd0/EB exit via
-                # try/except before completing the barrier.  Seeding here while
-                # all ranks are already participating in the same collective
-                # makes the later call a cheap cache read with no barrier.
-                iface._pixel_coord_indexes(all_segs=True)
                 t_indexes = time.perf_counter() - t0
                 t_cached = 0.0
                 cache_payload = None
@@ -416,113 +401,6 @@ class RunParallel(Run):
                 getattr(self.comms, "numa_size", -1),
             )
 
-    def _setup_gpu_geometry(self):
-        """Pre-compute GPU scatter indices for GPU BD ranks.
-
-        Called from _setup_run_calibconst() immediately after
-        _setup_jungfrau_shared_caches(), while all ranks are still
-        synchronising in RunParallel.__init__().
-
-        At this point _setup_jungfrau_shared_caches() has already computed
-        pixel coordinate indices and stored them in the SharedGeoCache
-        shared-memory region.  We attach that cache to a fresh detector
-        interface and call _pixel_coord_indexes(all_segs=True) to read the
-        pre-computed arrays without triggering any additional collective.
-
-        The resulting numpy arrays are stored as
-            self._gpu_geometry_arrays = {det_name: (ix_all, iy_all)}
-        and passed to GpuEventManager(prebuilt_geometry=...) so that
-        _setup_gpu_pipeline() calls gpu_detector.setup_geometry_from_arrays()
-        instead of setup_geometry(det), avoiding a shmem collective during
-        the event loop.
-
-        Non-BD ranks and runs without a GPU detector mode are a no-op.
-        """
-        # Only needed for GPU detector modes — skip for CPU-only runs.
-        # _pixel_coord_indexes(all_segs=True) is slow (~seconds for large
-        # detectors) and adds unnecessary overhead to CPU production jobs.
-        if not self.dsparms.gpu_enabled:
-            return
-
-        # _pixel_coord_indexes(all_segs=True) was seeded in
-        # _setup_jungfrau_shared_caches() above — this call is a cache hit
-        # (no shmem barrier).  Only GPU BD ranks store the result.
-        cache = getattr(self, "_shared_geo_cache", None)
-        if cache is None:
-            return
-
-        is_gpu_bd = (
-            nodetype == "bd"
-            and self.dsparms.gpu_enabled
-        )
-        gpu_det_names = self.dsparms.gpu_detector_names if is_gpu_bd else []
-        gpu_det_set = set(gpu_det_names)
-
-        calibc_cache = getattr(self, "_shared_calibc_cache", None)
-        if is_gpu_bd:
-            self._gpu_geometry_arrays = {}
-
-        for det_name, drp_class_name, drp_class, configinfo, calibconst in \
-                self._iter_area_detector_raw(area_only=True):
-            try:
-                iface = drp_class(det_name, drp_class_name,
-                                   configinfo, calibconst, None, None)
-                setattr(iface, "_shared_geo_cache", cache)
-                if calibc_cache is not None:
-                    setattr(iface, "_shared_calibc_cache", calibc_cache)
-                # All ranks call this to satisfy the shmem barrier; mirrors
-                # exactly what _setup_jungfrau_shared_caches() does.
-                ix_all, iy_all = iface._pixel_coord_indexes(all_segs=True)
-                if is_gpu_bd and det_name in gpu_det_set:
-                    if ix_all is not None and iy_all is not None:
-                        self._gpu_geometry_arrays[det_name] = (
-                            np.asarray(ix_all), np.asarray(iy_all)
-                        )
-                        self.logger.debug(
-                            "GPU geometry pre-built for %s: shape=%s",
-                            det_name, ix_all.shape,
-                        )
-            except Exception as exc:
-                self.logger.debug(
-                    "Failed to pre-build GPU geometry for %s: %s",
-                    det_name, exc, exc_info=True,
-                )
-
-    def _iter_area_detector_raw(self, area_only=True):
-        """Iterate over raw-interface detector classes for area detectors.
-
-        Previously named _iter_jungfrau_raw and filtered to Jungfrau only.
-        Generalised to cover all area detectors so that gpu_det= works for
-        ePix, CSPAD, and any other area detector — not just Jungfrau.
-
-        When area_only=True (default) only AreaDetector subclasses are
-        returned, which is the correct behaviour for geometry / GPU setup.
-        When area_only=False all raw-interface detectors are returned
-        (retained for callers that previously passed area_only=False).
-        """
-        det_classes = self.dsparms.det_classes.get("normal", {})
-        targets = []
-        for (det_name, drp_class_name), drp_class in det_classes.items():
-            if drp_class_name != "raw":
-                continue
-            if area_only:
-                try:
-                    from psana.detector.areadetector import AreaDetector
-                    is_area = issubclass(drp_class, AreaDetector)
-                except Exception:
-                    is_area = False
-                if not is_area:
-                    continue
-            configinfo = self.dsparms.configinfo_dict.get(det_name)
-            if configinfo is None:
-                continue
-            calibconst = self.dsparms.calibconst.get(det_name)
-            if calibconst is None:
-                continue
-            targets.append((det_name, drp_class_name, drp_class, configinfo, calibconst))
-        targets.sort(key=lambda item: (item[0], item[1]))
-        return targets
-
     def _iter_jungfrau_raw(self, area_only=False):
         """Iterate over Jungfrau raw-interface detector classes only.
 
@@ -531,13 +409,14 @@ class RunParallel(Run):
         a non-Jungfrau detector (ePix, CSPAD, etc.) would produce a shape
         mismatch in the gain-mode broadcast.
 
-        For GPU geometry setup (_setup_gpu_geometry) use _iter_area_detector_raw
-        instead, which covers all area detectors.
         """
         det_classes = self.dsparms.det_classes.get("normal", {})
         targets = []
+        exclusive = set(self.dsparms._detector_names(self.dsparms.gpu_det))
         for (det_name, drp_class_name), drp_class in det_classes.items():
-            if drp_class_name != "raw":
+            # All shared-memory ranks use the same detector selection. Hybrid
+            # detectors remain CPU consumers and must keep their shared caches.
+            if det_name in exclusive or drp_class_name != "raw":
                 continue
             mod_name   = getattr(drp_class, "__module__", "")
             class_name = getattr(drp_class, "__name__", "").lower()
@@ -576,14 +455,6 @@ class RunParallel(Run):
         physical_gpu = int(
             os.environ.get("CUDA_VISIBLE_DEVICES", "0").split(",")[0]
         )
-        try:
-            from psana.gpu.gpu_mpi import is_calib_leader
-            calib_leader = is_calib_leader(
-                self.comms.bd_comm, physical_gpu
-            )
-        except Exception:
-            calib_leader = True
-
         # Size the auto VRAM budget by how many BD workers share this GPU.
         # Falling back to 1 only under-constrains the budget, which is the
         # historical behaviour, so a failure here is never fatal.
@@ -607,25 +478,9 @@ class RunParallel(Run):
             self.shared_state,
             self.dsparms,
             self,
-            prebuilt_geometry=getattr(self, "_gpu_geometry_arrays", None),
-            setup_geometry=not bool(
-                getattr(self, "_gpu_geometry_arrays", None)
-            ),
-            calib_leader=calib_leader,
             n_bd_per_gpu=n_bd_per_gpu,
         )
 
-        try:
-            from psana.gpu.gpu_mpi import share_calib_between_gpu_peers
-            share_calib_between_gpu_peers(
-                manager.gpu_detectors,
-                self.comms.bd_comm,
-                physical_gpu,
-            )
-        except Exception as exc:
-            self.logger.debug(
-                "share_calib_between_gpu_peers skipped: %s", exc
-            )
         return manager
 
     def _events_impl(self):

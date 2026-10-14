@@ -225,12 +225,10 @@ def install(variant, nvtx=None):
         (GpuEventBatch, '__init__', 'parser.walk_submit'),
         (GpuEventBatch, '_locate_configured', 'parser.locate_submit'),
         (GpuEventDgrams, 'from_windows', 'event.views'),
-        (detector.GPUDetector, 'process_batch', 'detector.process'),
-        (detector.GPUDetector, '_slot_buffer', 'detector.buffer'),
+        (detector.DenseInputPreparer, 'prepare_batch', 'input.prepare'),
+        (detector.DenseInputPreparer, '_slot_buffer', 'detector.buffer'),
         (detector._GatherMap, 'prepare', 'detector.owner_map'),
         (detector._CanonicalGatherPlan, 'gather', 'detector.gather_submit'),
-        (detector, 'fused_calib_gpu', 'detector.calib_submit'),
-        (detector, '_zero_missing_rows_gpu', 'detector.cleanup_submit'),
     ]
     for target in targets:
         wrap(*target)

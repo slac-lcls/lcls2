@@ -67,13 +67,10 @@ def assert_closed(m):
 
 @pytest.mark.parametrize('depth', [1, 2])
 @pytest.mark.parametrize('mib', [4, 8])
-@pytest.mark.parametrize('d2h', [0, 7])
 def test_tight_budget_two_batches_preserve_pixels_and_partial_tail(
-        tmp_path, mixed_packet, monkeypatch, depth, mib, d2h):
+        tmp_path, mixed_packet, monkeypatch, depth, mib):
     case = ownership_case(tmp_path, mixed_packet, monkeypatch, depth, mib)
     m = case.manager
-    if d2h:
-        m._d2h_pipelines = {'slow.calib': gpu_events._D2hPipeline('slow.calib', d2h)}
     seen, slow_seen, windows = [], [], []
     original = m.gpu_xtc_parser.parse_groups
 
@@ -91,8 +88,8 @@ def test_tight_budget_two_batches_preserve_pixels_and_partial_tail(
             if event % 100 in (0, 99) or event == 502:
                 np.testing.assert_array_equal(field(state).on_cpu[1], expected(case, event))
             if event % 100 == 99:
-                np.testing.assert_array_equal(state.get('slow.calib').on_cpu[0],
-                                              expected(case, event, True).astype(np.float32))
+                np.testing.assert_array_equal(field(state, 'slow').on_cpu[1],
+                                              expected(case, event, True))
                 slow_seen.append(event)
 
     try:

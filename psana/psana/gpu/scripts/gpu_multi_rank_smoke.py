@@ -2,7 +2,7 @@
 
 Topology: one SMD0, one EB, and at least two BD ranks, one per GPU.
 MPIDataSource pins BD workers using their BD-local rank before CuPy import.
-This checks event delivery, result availability, actual CUDA device placement,
+This checks event delivery, input availability, actual CUDA device placement,
 and completion. Pixel correctness belongs to the pytest acceptance suite.
 
 Exit status: 0 = PASS, 1 = failure, 2 = incomplete BD/GPU participation.
@@ -150,9 +150,8 @@ def main():
 
         for run in ds.runs():
             for evt in run.events():
-                # Ensure delivery includes the GPU result, without copying
-                # pixels or doing another calibration/benchmark check.
-                evt.gpu.get("jungfrau.raw")
+                # Ensure delivery includes the parsed input binding.
+                evt.gpu.detector("jungfrau").field("raw", "raw")
                 report["timestamps"].append(int(evt.timestamp))
 
         reports = comm.gather(report, root=0)

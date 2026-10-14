@@ -1,4 +1,7 @@
-"""Jungfrau GPU calibration and calibration-constant preparation."""
+"""Historical numerical reference for explicit user calibration tests.
+
+Not imported by the GPU runtime. The callback example will own its algorithm.
+"""
 
 from functools import lru_cache
 from pathlib import Path
@@ -103,96 +106,6 @@ def _compute_calib_constants_cpu(det, canonical_segment_ids=None):
     )
 
 
-def _upload_fixed_arrays(arrays, budget=None):
-    """Reserve fixed storage before upload; retain failed asynchronous work."""
-    from .gpu_allocation import upload_owned
-    return upload_owned(_cupy(), arrays, budget)
-
-
-def prep_calib_constants(det, canonical_segment_ids=None, *, budget=None):
-    """Prepare canonical calibration constants and transfer them to the GPU."""
-    peds_flat, gmask_flat = _compute_calib_constants_cpu(
-        det, canonical_segment_ids=canonical_segment_ids
-    )
-    return _upload_fixed_arrays((peds_flat, gmask_flat), budget)
-
-
-def prepare_geometry(det, canonical_segment_ids, *, budget=None):
-    """Prepare GPU image-scatter metadata from a psana detector."""
-    try:
-        ix_all, iy_all = det.raw._pixel_coord_indexes(all_segs=True)
-    except Exception as exc:
-        import warnings
-
-        warnings.warn(
-            "GPUDetector.setup_geometry: could not load pixel coordinate "
-            f'indices ({exc}). evt.gpu.get("*.image") will fail.'
-        )
-        return None
-    return prepare_geometry_from_arrays(
-        ix_all,
-        iy_all,
-        canonical_segment_ids,
-        source="setup_geometry",
-        budget=budget,
-    )
-
-
-def prepare_geometry_from_arrays(
-    ix_all,
-    iy_all,
-    canonical_segment_ids,
-    source="setup_geometry_from_arrays",
-    *, budget=None,
-):
-    """Prepare GPU image-scatter metadata from coordinate-index arrays."""
-    try:
-        segment_ids = list(canonical_segment_ids)
-        ix = ix_all[segment_ids].astype(np.int64)
-        iy = iy_all[segment_ids].astype(np.int64)
-    except IndexError as exc:
-        import warnings
-
-        warnings.warn(
-            f"GPUDetector.{source}: segment index out of range "
-            f'({exc}). evt.gpu.get("*.image") will fail.'
-        )
-        return None
-
-    image_shape = (int(ix.max()) + 1, int(iy.max()) + 1)
-    try:
-        gx, gy = _upload_fixed_arrays((np.ascontiguousarray(ix.ravel()),
-                                      np.ascontiguousarray(iy.ravel())), budget)
-        return gx, gy, image_shape
-    except Exception as exc:
-        from .gpu_budget import GpuMemoryPressureError
-        if budget is not None or isinstance(exc, GpuMemoryPressureError):
-            raise
-        import warnings
-
-        warnings.warn(
-            f"GPUDetector.{source}: could not transfer scatter indices to GPU "
-            f'({exc}). evt.gpu.get("*.image") will fail.'
-        )
-        return None
-
-
-def assemble_image(calib_gpu, scatter_ix, scatter_iy, image_shape, stream=None):
-    """Scatter calibrated detector segments into a 2-D GPU image."""
-    if scatter_ix is None or image_shape is None:
-        return None
-
-    cp = _cupy()
-    context = stream if stream is not None else cp.cuda.Stream.null
-    try:
-        with context:
-            image_gpu = cp.zeros(image_shape, dtype=cp.float32)
-            image_gpu[scatter_ix, scatter_iy] = calib_gpu.ravel()
-        return image_gpu
-    except Exception:
-        return None
-
-
 @lru_cache(maxsize=1)
 def _cupy():
     import cupy as cp
@@ -212,7 +125,7 @@ def _jungfrau_calib_kernel():
 
 @lru_cache(maxsize=1)
 def _kernel_source():
-    header_path = Path(__file__).with_name("cuda") / "fused_calib.cuh"
+    header_path = Path(__file__).with_name("fused_calib.cuh")
     header = header_path.read_text()
     return header + f"""
 

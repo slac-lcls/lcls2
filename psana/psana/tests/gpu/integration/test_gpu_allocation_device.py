@@ -193,16 +193,16 @@ def test_result_retirement_joins_two_streams_and_releases_only_unaliased_storage
 def test_fixed_uploads_and_output_growth_keep_all_live_generations_charged():
     import cupy as cp
     from psana.gpu.gpu_allocation import upload_owned
-    from psana.gpu.gpu_detector import GPUDetector
+    from psana.gpu.gpu_detector import DenseInputPreparer
     budget = _GpuBudget(4096)
     fixed, = upload_owned(cp, [np.arange(16, dtype=np.float32)], budget)
     fixed_alias = fixed[1:3]
     del fixed
-    detector = GPUDetector.__new__(GPUDetector)
+    detector = DenseInputPreparer.__new__(DenseInputPreparer)
     detector._budget = budget
     buffers = [None]
-    old = detector._slot_buffer(buffers, 0, (100,), np.float32, 'calib')
-    new = detector._slot_buffer(buffers, 0, (200,), np.float32, 'calib')
+    old = detector._slot_buffer(buffers, 0, (100,), np.float32, 'input')
+    new = detector._slot_buffer(buffers, 0, (200,), np.float32, 'input')
     assert budget.committed() == 512 + 512 + 1024
     buffers[0] = None
     del new
@@ -215,17 +215,17 @@ def test_fixed_uploads_and_output_growth_keep_all_live_generations_charged():
 
 def test_repeated_growth_reuse_and_pressure_with_retained_generations(monkeypatch):
     import cupy as cp
-    from psana.gpu.gpu_detector import GPUDetector
+    from psana.gpu.gpu_detector import DenseInputPreparer
     baseline = cp.get_default_memory_pool().used_bytes()
     budget = _GpuBudget(512 * 16)
-    detector = GPUDetector.__new__(GPUDetector)
+    detector = DenseInputPreparer.__new__(DenseInputPreparer)
     detector._budget = budget
     buffers, aliases = [None], []
     capacities = []
     for count in (1, 4, 2, 8):
         previous = buffers[0]
         previous_ptr = None if previous is None else previous.data.ptr
-        array = detector._slot_buffer(buffers, 0, (count * 128,), np.float32, 'calib')
+        array = detector._slot_buffer(buffers, 0, (count * 128,), np.float32, 'input')
         if count == 2:
             assert array.data.ptr == previous_ptr
         else:
@@ -246,7 +246,7 @@ def test_repeated_growth_reuse_and_pressure_with_retained_generations(monkeypatc
         return original(*args, **kwargs)
     monkeypatch.setattr(cp, 'empty', observed)
     with pytest.raises(GpuMemoryPressureError):
-        detector._slot_buffer(buffers, 0, (4 * 128,), np.float32, 'calib')
+        detector._slot_buffer(buffers, 0, (4 * 128,), np.float32, 'input')
     assert not allocations
     for expected in (1, 4, 8):
         alias = aliases.pop(0)

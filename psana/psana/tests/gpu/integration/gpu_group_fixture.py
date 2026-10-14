@@ -6,8 +6,6 @@ from types import SimpleNamespace as NS
 import numpy as np
 
 from psana.gpu.gpu_budget import _GpuBudget
-from psana.gpu.gpu_calib import _upload_fixed_arrays
-from psana.gpu.gpu_detector import GPUDetector
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_file_epochs import GpuFileEpochs
 from psana.gpu.gpu_input import GpuDetectorBinding
@@ -67,10 +65,7 @@ def group_case(tmp_path, mixed_packet, fast_padding=0, slow_padding=1024**2):
     binding = GpuDetectorBinding('slow', canonical_segment_ids=(1,),
                                  field_handles_by_segment={1: handles[1]})
     budget = _GpuBudget(32 * 1024**2)
-    peds, gain = _upload_fixed_arrays((np.zeros(54, np.float32), np.ones(54, np.float32)), budget)
-    detector = GPUDetector((1, 3, 6), peds, gain, binding, n_slots=2, budget=budget)
     parser = GpuXtcBatchPool(configs, field_handles=handles, n_slots=5, budget=budget)
-    detector.configure_gather(parser.handle_indices)
     per_dgram = parser.estimate_batch_bytes(1)
     capacity = 16 * 1024**2
     budget._limit = 64 * 1024**2
@@ -82,9 +77,14 @@ def group_case(tmp_path, mixed_packet, fast_padding=0, slow_padding=1024**2):
     m.gpu_reader = KvikioGpuReader(n_slots=2020, budget=budget)
     m._group_inputs = InputGroupPool(m.gpu_reader)
     m.gpu_xtc_parser, m.event_pool = parser, EventPool(n=2)
-    m.gpu_detectors, m.gpu_det_names = {'slow': (None, detector)}, ['slow']
+    m.input_preparers, m.gpu_det_names = {}, ['slow']
+    m.gpu_detector_bindings = {
+        name: GpuDetectorBinding(name, canonical_segment_ids=(1,),
+            field_handles_by_segment={},
+            field_handles_by_name={('raw', 'arrayRaw'): {1: handle}})
+        for name, handle in zip(('fast', 'slow'), handles)}
     m._gpu_file_epochs = GpuFileEpochs(m.dm)
-    m.configs, m._d2h_pipelines = [config, config], {}
+    m.configs = [config, config]
     m._first_batch_logged, m._done, m._closed = True, False, False
     m._n_events, m._pending_gpu_read = 0, None
     packet = mixed_packet(fast_size=fast_size, slow_size=slow_size,

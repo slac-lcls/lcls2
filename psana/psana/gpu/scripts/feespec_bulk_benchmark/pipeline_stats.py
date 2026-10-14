@@ -12,7 +12,7 @@ from weakref import WeakSet
 class PipelineStats:
     def __init__(self):
         from psana.gpu.gpudgram import parser
-        from psana.gpu import gpu_detector, gpu_calib
+        from psana.gpu import gpu_detector
         from psana.gpu.gpu_budget import _GpuBudget
         from psana.gpu.gpu_stream import EventPool
         self.active = False
@@ -25,8 +25,7 @@ class PipelineStats:
             (parser, '_walk_kernel', 'walk'),
             (parser, '_init_locators_kernel', 'init'),
             (parser, '_locate_fields_kernel', 'locate'),
-            (gpu_detector, '_batched_gather_kernel', 'gather'),
-            (gpu_calib, '_jungfrau_calib_kernel', 'calibration')):
+            (gpu_detector, '_batched_gather_kernel', 'gather')):
             self._kernel(module, name, label)
         reserve, submit = _GpuBudget.reserve, EventPool.submit
 

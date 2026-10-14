@@ -17,7 +17,7 @@ Use gpu_allocation.owned_empty/upload_owned for pipeline arrays. They charge
 the backing allocation through its last alias; trimming a cache must not
 manually release its charge. Admission holds reserve future allocation bytes.
 
-Passed to GPUDetector, KvikioGpuReader, and GpuXtcBatchPool at construction.
+Passed to DenseInputPreparer, KvikioGpuReader, and GpuXtcBatchPool at construction.
 Created by GpuEventManager.__init__; auto-sized to device_total / n_bd_ranks
 if gpu_memory_budget_gb is not configured.
 """

@@ -1,6 +1,6 @@
 # Known psana2 GPU Problems and Limitations
 
-**Status:** Current issue register, reviewed against this branch on 2026-09-11.
+**Status:** Current issue register, updated for calibration removal on 2026-09-26.
 
 This document records verified gaps between the intended architecture and the
 implementation. It is not a proposal backlog: speculative interfaces belong
@@ -15,19 +15,16 @@ under `docs/proposals/`, and performance observations belong under
 group share a node or GPU.
 
 `MPIDataSource` derives GPU identity from `bd_rank - 1`, where `bd_rank` is
-local to one EB group's `bd_comm`. `is_calib_leader()`,
-`bd_ranks_sharing_gpu()`, and calibration CUDA-IPC exchange use that same
+local to one EB group's `bd_comm`. `bd_ranks_sharing_gpu()` uses that same
 per-group communicator. With multiple EB groups, rank numbering restarts, so
-separate groups can select the same device, elect duplicate calibration
-leaders, and each compute a budget using only its own peers.
+separate groups can select the same device and compute a budget using only
+their own peers.
 
 The fix should introduce node-wide BD identity and coordination before CuPy is
 imported:
 
 - Assign devices using a node-local index over all BD processes, independent
   of EB-group rank numbering.
-- Form per-device BD peer groups for one calibration owner and CUDA-IPC
-  exchange.
 - Divide the automatic memory budget by all BD processes on that physical
   device.
 - Validate more than one EB group on a node, including uneven BD/GPU counts.
@@ -53,93 +50,42 @@ the completed single-BD JF validation.
 
 ### Accounting boundary outside pipeline-owned device storage
 
-Stage 4 reserves calibration constants, geometry, Configure tables, reader
-buffers, parser tables, and detector raw/calibrated/presence buffers. IPC
-followers do not charge the leader's constants again. Admission holds include
-future allocations and replacement peaks before reads start. The old 256 MiB
-floor and unconditional admission of an oversized first event are removed.
+Admission reserves Configure tables, reader/parser buffers, and any explicitly
+prepared inputs. Calibration output and geometry allocations have been removed.
 
 The ledger covers participating owners, not every CUDA allocation in the
 process. User-owned independent GPU copies, escaped array references, custom
 kernel allocations, and CUDA/KvikIO runtime allocations are outside it; the
 10% allocator margin is headroom, not a bound on arbitrary user allocations.
-Pinned D2H buffers remain bounded by pipeline count/chunk size and reported in
-memory statistics, but do not yet have a separate host-byte admission policy.
-General user-task output and host-staging quotas remain future work.
+User-task output publication and bounded host-byte staging remain future work.
 
 Reader/parser buffers still require their existing lifetime reservations, and
 execution storage must drain all supported consumer leases before trimming.
 Returning capacity to the ledger is separate from CuPy's cached free blocks.
 
 Relevant code: `gpu/gpu_budget.py`, `gpu/gpu_admission.py`,
-`gpu/gpu_events.py`, `gpu/gpu_calib.py`, and `gpu/gpu_detector.py`.
+`gpu/gpu_events.py` and `gpu/gpu_detector.py`.
 
 ## Incomplete pipeline behavior
 
-### Automatic raw gathering and generic field access differ
+### User callbacks and published outputs are not implemented
 
-The supported Jungfrau adapter automatically gathers raw pixels from XTC into
-execution-slot storage before calibration in `GPUDetector.process_batch()`.
-Supported precalibrated dense adapters also gather their selected array.
-Generic `GpuFieldResult` access instead uses parser-located views into XTC and
-copies on an explicit `on_gpu` request. This includes non-calibration fields
-of Jungfrau itself and fields of detectors without a calibration adapter.
-
-Consequently, GPU-selected detectors do not yet share automatic materialization
-of every supported field. Reader/parser storage remains reserved by input
-leases rather than being released when gathering finishes. The
-[shared materialization proposal](proposals/detector_materialization_ownership.md)
-records the possible unification, its memory tradeoffs, and deferred stages.
-Experimental Stage 3A was reverted; this is not a blocker for the current
-bulk-read Stage 3 review.
-
-Relevant code: `gpu/gpu_detector.py`, `gpu/gpu_input.py`, and `gpu/gpu_stream.py`.
-
-### Automatic D2H covers calibrated dense results only
-
-`GpuEventManager` creates `_D2hPipeline` only for `<det>.calib`. The pipeline
-assumes a dense three-dimensional float32 result. Raw detector results,
-arbitrary parser fields, image results, and proposed user-task outputs are not
-automatically staged to host memory.
-
-Also, `_is_fully_host_backed()` refuses early slot release whenever parsed
-input dgrams are attached. Current GPU events expose parser-backed fields
-eagerly, so automatic calibrated-result D2H normally overlaps the copy but does
-not make the whole event host-only before yield.
-
-Pinned memory is count-bounded by `max(2, n_gpu_streams)` slots per detector
-pipeline, but has no explicit byte cap. Its allocation scales with detector
-result size and `gpu_d2h_chunk_size`. Generalizing this path requires declared
-output shape/dtype, a host-byte budget, and a policy for which published
-results receive a host handoff. Those requirements also apply to the
-[user GPU pipeline proposal](proposals/user_gpu_pipeline.md).
-
-Relevant code: `_D2hPipeline`, `_is_fully_host_backed()`, and
-`_retire_issue_and_yield()` in `gpu/gpu_events.py`.
+Stage 1b exposes parsed GPU input fields without built-in calibration. There are
+no implicit `.calib`, `.raw`, or `.image` results and no automatic image D2H.
+Nonzero `gpu_d2h_chunk_size` is retired. `gpu_fn` fails explicitly until the
+[task/publication stages](proposals/user_kernel_implementation_stages_20260926.md)
+are implemented. Existing calibration-based benchmark results are historical;
+the corresponding benchmark entry points now reject unsupported workloads.
 
 ### GPU `RunParallel.steps()` is not implemented
 
 On a GPU BD rank, `RunParallel.steps()` returns without yielding. BeginStep is
 handled only while iterating `run.events()`, where the manager drains dependent
-work and refreshes calibration constants. GPU applications that require the
+work before dispatching the host transition. GPU applications that require the
 public step iterator need a unified step-envelope implementation rather than a
 second GPU event path.
 
 Relevant code: `RunParallel.steps()` in `psexp/mpi_ds.py`.
-
-### Detector image results are not published
-
-Geometry upload and `GPUDetector.assemble_image()` exist, and `EventContext`
-has an `image_gpu` field. `GPUDetector.process_batch()` never calls the helper
-or assigns that field, so normal processing publishes `<det>.raw` and
-`<det>.calib` but not `<det>.image`.
-
-Before enabling images, decide whether assembly is always-on, explicitly
-requested, or a user-pipeline stage. Include its output allocation in
-subbatch admission and define D2H policy independently from calibrated data.
-
-Relevant code: `gpu/gpu_calib.py`, `gpu/gpu_detector.py`, and
-`gpu/gpu_stream.py`.
 
 ### `smd_callback` cannot be combined with GPU routing
 
