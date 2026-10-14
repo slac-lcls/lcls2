@@ -53,10 +53,11 @@ normal detector. `hybrid_det` keeps the same stream in both CPU and GPU packets;
 it supports shared streams by reading their complete bigdata twice. A detector
 cannot be selected in both modes, nor can exclusive/mirrored stream sets overlap.
 
-MPI selects each BD worker's device from the launcher's node-local rank, then
-groups ranks by driver-reported `(hostname, device UUID)` once a communicator
-exists. Automatic budgets divide the discovered device capacity among those
-true peers, so the count no longer depends on EB-group rank arithmetic. See
+MPI assigns each BD worker a device by a least-loaded pass over the visible
+PCI ids gathered across the node's GPU workers, then groups ranks by
+driver-reported `(hostname, PCI bus id)`. Automatic budgets divide the
+discovered device capacity among those true peers, so the count comes from
+device identity rather than rank arithmetic. See
 [device placement and shared constants](device_placement_and_shared_constants.md).
 
 `GpuEventManager._setup_gpu_pipeline()` creates the shared device budget,

@@ -7,12 +7,8 @@ cause EB ranks to hang waiting for a receive that will never arrive;
 failure and frees the allocation.
 
 Device selection and peer discovery live in
-:mod:`psana.gpu.gpu_placement`. They used to live here as ``init_gpu_rank()``
-and ``bd_ranks_sharing_gpu()``, which selected a device by
-``local_rank % n_gpus`` and counted peers from the EB-local ``bd_comm``. Both
-are gone: the mask write they relied on had no effect once mpi4py had
-initialised CUDA, and the EB-local peer count over-committed the device
-whenever ``PS_EB_NODES > 1``.
+:mod:`psana.gpu.gpu_placement`, which has the communicator needed to group
+ranks by device.
 """
 
 import logging
@@ -44,7 +40,17 @@ def log_gpu_mem(label: str, rank=None) -> None:
     if not os.environ.get('PSANA_GPU_MEM_DEBUG'):
         return
     try:
-        import cupy as cp
+        import sys
+        # Only report if CuPy is already loaded. Importing it here would
+        # create a context on CUDA's default device -- before this rank has
+        # selected its own -- and that context's memory then skews the free
+        # figure discovery samples. Since `usable` is a job-wide MIN, one
+        # rank's stray context lowers every rank's budget. A diagnostic that
+        # perturbs the thing being diagnosed is worse than silence, and this
+        # is enabled precisely when someone is chasing memory.
+        cp = sys.modules.get('cupy')
+        if cp is None:
+            return
         free_b, total_b = cp.cuda.Device().mem_info
         used_b = total_b - free_b
         dev_id = cp.cuda.Device().id

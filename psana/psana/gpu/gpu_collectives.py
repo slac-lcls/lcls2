@@ -19,10 +19,9 @@ unbounded:
 
 * the manifest ``bcast`` in ``_publish``/``_subscribe``
 * ``_intersect``'s ``allgather`` of declared selector sets
-* the Case B digest ``bcast`` in ``_refresh_in_place``
 
 Everything expressible as a NumPy buffer -- barriers, the discovery
-reductions, the agreement vector and the case code -- is bounded.
+reductions and the agreement vector -- is bounded.
 
 **Unit tests cannot see path divergence.** The test fake drives peers
 sequentially, so it has no notion of two ranks blocked in different calls --
@@ -42,16 +41,11 @@ import time
 # Warn here; this is long enough that a healthy rendezvous has completed.
 DEFAULT_WARN_S = 60.0
 # Abort here. A deadline only separates "hung" from "slow" if no legitimate
-# skew can reach it. Two of the bounded steps are rendezvous points where
-# ranks arrive whenever their own work finishes:
-#
-#   release-shared-closed  first collective in teardown, so arrival depends on
-#                          when each BD rank finished its last batch
-#   case-B-drained         gap is each rank's before_upload() drain, including
-#                          in-flight file I/O
-#
+# skew can reach it, and `release-shared-closed` is a rendezvous where ranks
+# arrive whenever their own work finishes: it is the first collective in
+# teardown, so arrival depends on when each BD rank finished its last batch.
 # With uneven event distribution or a loaded filesystem those can be minutes
-# apart. Aborting at 60s would kill an otherwise successful run.
+# apart, and aborting at 60s would kill an otherwise successful run.
 DEFAULT_TIMEOUT_S = 1800.0
 
 # Discovery runs before any event work, so its ranks arrive within

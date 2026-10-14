@@ -63,14 +63,13 @@ def main():
     is_worker = world >= args.eb_ranks
     # Imported normally, as production does.
     from psana.gpu.gpu_placement import (
-        PinnedDevice, discover_peers, pin_device,
+        discover_peers,
     )
-    pinned = pin_device() if is_worker else PinnedDevice()
 
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
     rank = comm.Get_rank()
-    placement = discover_peers(pinned, comm, is_gpu_worker=is_worker)
+    placement = discover_peers(comm, is_gpu_worker=is_worker)
     if not is_worker:
         return 0
 
@@ -90,7 +89,7 @@ def main():
     failures, checks = [], {}
     info = {'rank': rank, 'peers': placement.n_device_peers,
             'is_owner': placement.is_owner,
-            'uuid_hex': placement.device_uuid_hex[:16] + '...'}
+            'device_pci': placement.device_pci}
 
     if placement.n_device_peers < 2 or peers is None:
         info['skipped'] = 'needs >= 2 ranks on one device'
@@ -204,40 +203,52 @@ def main():
     # ---- 2B-5 delayed consumer: a retained host copy is independent ---
     retained = cp.asnumpy(shared.get('jf', 'pixel_gain')).copy()
 
-    # ---- 2B-5 case B: same layout, new values, written in place -------
+    # ---- one upload per run: later refreshes are no-ops ---------------
+    # BeginStep does not fetch the calibration DB and one constant set per
+    # run is the supported model, so a second refresh must not reupload --
+    # for shared constants that would mean replacing an allocation that backs
+    # every peer, with no way to know when each has stopped reading it.
     peers.Barrier()
     changed = constants(scale=3.0)
     moved = shared.refresh(changed)
-    checks['case_B_moved'] = moved is True
+    checks['second_refresh_is_a_no_op'] = moved is False
+    if moved:
+        failures.append('a second refresh reported movement')
+
     peers.Barrier()
     got = cp.asnumpy(shared.get('jf', 'pedestals'))
-    checks['case_B_new_values_visible'] = np.array_equal(
-        got, changed['jf']['pedestals'])
-    if not checks['case_B_new_values_visible']:
-        failures.append('case B: follower view is stale')
+    checks['established_values_survive_a_changed_source'] = np.array_equal(
+        got, host['jf']['pedestals'])
+    if not checks['established_values_survive_a_changed_source']:
+        failures.append('a later refresh changed the device values')
+
+    # A reshaped source must be ignored too, not reallocated.
+    peers.Barrier()
+    reshaped = constants(scale=1.0, shape=(3, 8, 128, 256))
+    checks['reshaped_source_is_a_no_op'] = shared.refresh(reshaped) is False
+    if not checks['reshaped_source_is_a_no_op']:
+        failures.append('a reshaped source triggered a reupload')
+    peers.Barrier()
+    got = cp.asnumpy(shared.get('jf', 'pedestals'))
+    checks['shape_unchanged_after_reshaped_source'] = (
+        got.shape == host['jf']['pedestals'].shape)
+    if not checks['shape_unchanged_after_reshaped_source']:
+        failures.append(f'device shape became {got.shape}')
+
     checks['delayed_consumer_unaffected'] = np.array_equal(
         retained, host['jf']['pixel_gain'])
     if not checks['delayed_consumer_unaffected']:
         failures.append('a retained host copy was mutated by a refresh')
 
-    # ---- 2B-5 case C: layout change -> close, free, re-export ---------
-    peers.Barrier()
-    reshaped = constants(scale=1.0, shape=(3, 8, 128, 256))
-    shared.refresh(reshaped)
-    peers.Barrier()
-    got = cp.asnumpy(shared.get('jf', 'pedestals'))
-    checks['case_C_reestablished'] = (
-        got.shape == (3, 8, 128, 256)
-        and np.array_equal(got, reshaped['jf']['pedestals']))
-    if not checks['case_C_reestablished']:
-        failures.append('case C: wrong shape or values after reallocation')
+    # A kernel must still read the established mapping correctly after all
+    # of that -- on a follower this is the owner's memory.
     total = float(cp.asnumpy(cp.sum(shared.get('jf', 'pixel_gain'),
                                     dtype=cp.float64)))
-    expect = float(reshaped['jf']['pixel_gain'].astype(np.float64).sum())
-    checks['case_C_kernel_reads_new_mapping'] = (
+    expect = float(host['jf']['pixel_gain'].astype(np.float64).sum())
+    checks['kernel_reads_the_shared_mapping'] = (
         abs(total - expect) <= 1e-6 * max(1.0, abs(expect)))
-    if not checks['case_C_kernel_reads_new_mapping']:
-        failures.append(f'case C kernel sum {total} != {expect}')
+    if not checks['kernel_reads_the_shared_mapping']:
+        failures.append(f'kernel sum {total} != {expect}')
 
     # ---- 2B-6: ordered teardown, no growth, idempotent ---------------
     peers.Barrier()

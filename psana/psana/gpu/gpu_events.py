@@ -680,13 +680,16 @@ class GpuEventManager:
         self.run._handle_transition(dgrams)
         if service == TransitionId.BeginStep:
             self._step_generation = getattr(self, '_step_generation', 0) + 1
-        constants = getattr(self, '_task_constants', None)
-        if service == TransitionId.BeginStep and constants is not None:
-            # _handle_steps already drained execution and input consumers.
-            # Resolve after the host transition; BeginStep does not fetch the DB.
-            if constants.refresh(getattr(self.dsparms, 'calibconst', {}),
-                                 before_upload=self._trim_gpu_caches):
-                self._subbatch_budget_bytes = self._compute_subbatch_budget()
+        # No constant refresh here. One constant set per run is the supported
+        # model and BeginStep does not fetch the calibration DB, so a rescan
+        # could only find the values already uploaded at setup. Re-uploading
+        # mid-run would also mean replacing an allocation that backs every
+        # peer on the device, which cannot be done safely without knowing
+        # when each has stopped reading it.
+        #
+        # The transition handling above stays: other GPU work depends on the
+        # step generation and on _handle_steps having drained the execution
+        # and input consumers.
 
     def _handle_steps(self, step_dict):
         end_run_seen = False

@@ -134,22 +134,9 @@ class RunParallel(Run):
         splits and receive a placement with no device. Skipping the call on
         any rank deadlocks the others.
         """
-        # Close the previous run's constants BEFORE freeing the communicator
-        # they synchronise on: SharedRequestedConstants.close() uses
-        # device_comm for the importers-close barrier, and would fail on a
-        # freed or None communicator.
-        previous = getattr(self, '_gpu_placement', None)
-        if previous is not None:
-            stale = getattr(self, '_gpu_manager_for_placement', None)
-            if stale is not None:
-                try:
-                    stale.close()
-                except Exception:                         # noqa: BLE001
-                    self.logger.debug('closing the previous GPU manager failed',
-                                      exc_info=True)
-                self._gpu_manager_for_placement = None
-            from psana.gpu.gpu_placement import release_placement
-            release_placement(previous)
+        # No previous-run cleanup here: RunParallel is constructed fresh for
+        # each run, so this object has never held a placement. Teardown
+        # happens where the run ends, in _events_impl's finally.
         self._gpu_placement = None
         if not self.dsparms.gpu_enabled or self.comms is None:
             return
@@ -162,18 +149,17 @@ class RunParallel(Run):
             self._discover_gpu_placement_impl()
 
     def _discover_gpu_placement_impl(self):
-        from psana.gpu.gpu_placement import discover_peers, PinnedDevice
+        from psana.gpu.gpu_placement import discover_peers
         is_worker = nodetype == 'bd'
-        pinned = getattr(self, '_gpu_pinned', None) or PinnedDevice()
         budget_gb = float(getattr(self.dsparms, 'gpu_memory_budget_gb', 0) or 0)
         placement = discover_peers(
-            pinned,
             self.comms.psana_comm,
             is_gpu_worker=is_worker,
             explicit_limit_bytes=int(budget_gb * 1024 ** 3),
             logger=self.logger if is_worker else None,
         )
         self._gpu_placement = placement if is_worker else None
+
     def build_xtc_buffer(self, det_info):
         if not self._calib_const:
             self._calib_xtc_buffer = None
@@ -520,8 +506,10 @@ class RunParallel(Run):
             self,
             placement=placement,
         )
-        # Retained so a later rediscovery can close it before freeing the
-        # communicator its constants synchronise on.
+        # Exposed on the Run so a test can inspect the live manager -- its
+        # budget, its constants object -- while events are being processed.
+        # Teardown does not use it: _events_impl holds its own reference and
+        # closes that in its finally.
         self._gpu_manager_for_placement = manager
         return manager
 
@@ -583,8 +571,22 @@ class RunParallel(Run):
                     self.ana_t_gauge.set(ana_rate)
                     st = time.time()
         finally:
+            # Order matters: SharedRequestedConstants.close() barriers on
+            # device_comm, so the manager must close before the communicator
+            # is freed. Freeing it is not optional -- discovery creates one
+            # per run, and a job over many runs would otherwise accumulate
+            # them until it hits the MPI communicator limit.
             if gpu_manager is not None:
                 gpu_manager.close()
+            # Drop the inspection handle too. It is only there for tests, but
+            # leaving it set keeps this run's manager -- and whatever device
+            # buffers it still holds -- reachable while the NEXT run's
+            # discovery samples free memory and sizes its budget.
+            self._gpu_manager_for_placement = None
+            placement = getattr(self, '_gpu_placement', None)
+            if placement is not None:
+                from psana.gpu.gpu_placement import release_placement
+                release_placement(placement)
 
     def events(self):
         if self.dsparms.gpu_enabled and nodetype == "bd":
@@ -701,37 +703,30 @@ class MPIDataSource(DataSourceBase):
         global nodetype
         nodetype = self.comms.node_type()
 
-        # Non-BD / non-GPU ranks (smd0, EB) must not allocate GPU memory.
-        # _distribute_calib_xtc() and _setup_jungfrau_shared_caches() import
-        # CuPy and allocate ~1.8 GB on the default CUDA device for ALL ranks
-        # when CUDA_VISIBLE_DEVICES is unset.  Slurm sets CUDA_VISIBLE_DEVICES
-        # to the allocated GPU list (e.g. '0,1') for ALL tasks, so os.environ
-        # .setdefault() has no effect — we must force-overwrite to '' (empty =
-        # no devices visible) for CPU-role ranks before any CuPy import.
-        # _setup_jungfrau_shared_calib() / _setup_jungfrau_shared_caches()
-        # already guard against GPU failures with try/except, so disabling
-        # the GPU for smd0/EB causes graceful fallback, not a crash.
-        if self.dsparms.gpu_enabled and nodetype not in ('bd',):
-            os.environ['CUDA_VISIBLE_DEVICES'] = ''
+        # Non-BD / non-GPU ranks (smd0, EB) must not allocate GPU memory, but
+        # writing CUDA_VISIBLE_DEVICES='' here does NOT achieve that and is
+        # therefore not done. Measured on sdfampere030 (job 40799115): with
+        # psana already imported -- which loads mpi4py and so initialises
+        # CUDA -- writing an empty mask and then importing CuPy still reports
+        # getDeviceCount() == 2. The variable is read once, at driver
+        # initialisation, and ignored afterwards.
+        #
+        # The same probe measured a CuPy context on an idle A100 at 2 MiB,
+        # not the ~1.8 GB an earlier comment here assumed, so the cost this
+        # was guarding against is not what made it seem necessary.
+        #
+        # What keeps CuPy off these ranks is that they do not reach the GPU
+        # paths: discover_peers returns a placement with no device for
+        # is_gpu_worker=False and never imports CuPy, and the Jungfrau shared
+        # setup guards its GPU work with try/except. The integration drivers
+        # assert 'cupy' not in sys.modules on CPU-role ranks, which is the
+        # check that would catch a regression.
 
-        # GPU BD ranks: choose this rank's physical device.
-        #
-        # Choosing, not masking. By this point psana's own import has loaded
-        # mpi4py and initialised CUDA, so a CUDA_VISIBLE_DEVICES write would
-        # be ignored. discover_peers() makes the chosen device current with
-        # Device.use() and verifies it by PCI bus id. Measured on a 4-rank,
-        # 2-GPU run: every rank's allocations land on its selected device and
-        # the driver reports each PID on exactly one GPU, so leaving the mask
-        # wide costs nothing.
-        #
-        # A launcher may still narrow it (srun --gpus-per-task=1, or a wrapper
-        # setting CUDA_VISIBLE_DEVICES from OMPI_COMM_WORLD_LOCAL_RANK). That
-        # is defence in depth and needs no separate code path here.
-        if self.dsparms.gpu_enabled and nodetype == 'bd':
-            from psana.gpu.gpu_placement import pin_device
-            self._gpu_pinned = pin_device()
-            for message in self._gpu_pinned.warnings:
-                self.logger.debug('gpu placement: %s', message)
+        # GPU BD ranks select their device inside discover_peers(), which runs
+        # per run from RunParallel. Two reasons it belongs there rather than
+        # here: assignment needs the node GPU-worker communicator, which does
+        # not exist yet, and a CUDA_VISIBLE_DEVICES write at this point is
+        # ignored because psana's own import has already initialised CUDA.
 
         # prepare comms for running SmallData
         PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))
@@ -889,6 +884,17 @@ class MPIDataSource(DataSourceBase):
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
+            # Release the previous run's placement before building the next.
+            # _events_impl's finally covers the normal path, but a run whose
+            # events() never started -- a skipped run, or a GPU BD rank using
+            # steps() -- would otherwise leak its device_comm. Idempotent, so
+            # the overlap with the finally is harmless.
+            previous = getattr(self, '_previous_gpu_placement', None)
+            if previous is not None:
+                from psana.gpu.gpu_placement import release_placement
+                release_placement(previous)
+                self._previous_gpu_placement = None
+
             run = RunParallel(
                 expt,                 # experiment string
                 runnum,               # run number (int)
@@ -900,6 +906,9 @@ class MPIDataSource(DataSourceBase):
                 self.beginruns,       # beginrun dgrams
                 comms=self.comms,     # MPI communications
             )
+            # Remembered so the next iteration can release it even if this
+            # run's events() is never iterated.
+            self._previous_gpu_placement = getattr(run, '_gpu_placement', None)
             yield run
 
     def is_mpi(self):

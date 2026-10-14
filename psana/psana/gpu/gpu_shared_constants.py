@@ -150,18 +150,26 @@ class SharedRequestedConstants(RequestedConstants):
     """Device constants shared by every BD rank on one physical GPU.
 
     Falls back to ``RequestedConstants`` behaviour -- a private copy per rank --
-    whenever sharing is unavailable: a single peer, no communicator, a MIG
-    instance, or an IPC call that fails. Capability failures degrade; only
-    content disagreement aborts.
+    whenever sharing is unavailable: a single peer, no communicator, or an IPC
+    call that fails. Capability failures degrade; only content disagreement
+    aborts.
 
-    **An array returned by ``get`` is valid only until the next transition.**
-    One allocation backs every peer, so a BeginStep rewrites it in place
-    (Case B) or frees and replaces it (Case C): a reference kept past the
-    callback silently changes value or dangles. This is narrower than
-    ``RequestedConstants``, where escaped aliases retain the old generation
-    until collected; restoring that needs coordinated retirement across peers
-    and is tracked as follow-up. See ``docs/`` ->
-    ``device_placement_and_shared_constants.md`` ("Lifetime").
+    MIG reaches the last of those rather than being detected: instances of one
+    card share a PCI bus id, so discovery groups ranks on different instances
+    as peers, and the import fails because CUDA IPC cannot span them. The
+    degrade is uniform but the peer count is inflated, so for large constants
+    the private upload can itself be refused -- see the grouping comment in
+    :func:`psana.gpu.gpu_placement.discover_peers`.
+
+    **An array returned by ``get`` is valid for the whole run.** One constant
+    set per run is the supported model, so the shared allocation is written
+    once at setup and released at teardown: it is never rewritten in place and
+    never replaced while the run is live. Holding a reference across events or
+    steps is therefore safe.
+
+    It is NOT valid after the run. Teardown frees the owner's allocation and
+    closes the importers' mappings, so a reference kept past that dangles.
+    Copy with ``.get()`` to outlive the run.
     """
 
     def __init__(self, requests, budget, placement=None, *, cp=None,
@@ -193,7 +201,6 @@ class SharedRequestedConstants(RequestedConstants):
         self._closed = False
         self._ipc_error = None
         self._digests = {}      # selector -> digest of the retained snapshot
-        self._new_digests = {}  # selector -> digest of the incoming value
         self._recorder = None
         if placement is not None and placement.device_comm is not None:
             from .gpu_collectives import RecordingComm, checking_enabled
@@ -256,20 +263,27 @@ class SharedRequestedConstants(RequestedConstants):
 
     # -- establish -----------------------------------------------------
     def refresh(self, source, *, before_upload=None):
-        """Upload or re-upload declared constants. Returns True if anything moved.
+        """Upload the declared constants once. Returns True if anything moved.
 
-        Without sharing this is exactly the inherited implementation. With
-        sharing, the intersection is established once and then maintained in
-        place, so an unchanged transition performs no CuPy import, no
-        allocation and no synchronization -- the same fast path as today.
+        One constant set per run is the supported model, so this establishes
+        the shared intersection on the first call and does nothing on any
+        later one. A BeginStep does not reload the calibration DB, so there is
+        nothing for a second call to pick up.
+
+        That is also what makes a shared array safe to hold: the allocation is
+        never rewritten in place and never replaced while the run is live, so
+        a reference obtained from ``get`` stays valid until teardown. Mid-run
+        replacement would need coordinated retirement across peers, because
+        one allocation backs every peer and no rank can know when another has
+        stopped reading.
         """
         if self._closed:
             raise SharedConstantsError('shared constants are closed')
-        hosts, changed, reshaped = self._scan(source)
+        hosts = self._scan(source)
         if not self._sharing:
-            # No peers: every selector is private. Same result as the
-            # inherited path, but it honours an injected CuPy stand-in and
-            # keeps one code path for the snapshot/digest bookkeeping.
+            # No peers: every selector is private, which is the inherited
+            # behaviour. Routed through here so an injected CuPy stand-in is
+            # honoured and the snapshot bookkeeping has one code path.
             self._note_sharing('off')
             if not self._private and self.requests:
                 self._private = self.requests
@@ -284,73 +298,23 @@ class SharedRequestedConstants(RequestedConstants):
             self._upload_private(hosts, moved)
             return True
 
-        if not self._established:
-            # Flag rather than `not self._shared and not self._private`: a
-            # task declaring no constants leaves both tuples empty, so that
-            # test re-established on every transition -- collectives and a
-            # cache trim per step, reported as work done.
-            #
-            # Establish runs even for an empty declaration, because peers may
-            # declare different sets by design and _intersect's allgather
-            # needs every rank. Only the second and later transitions are
-            # skipped.
-            self._established = True
-            if before_upload is not None:
-                before_upload()
-            self._establish(hosts)
-            self._check_order('establish')
-            # Nothing was declared, so nothing moved. Saying otherwise makes
-            # the caller recompute its subbatch budget every step.
-            return bool(self._shared or self._private)
+        if self._established:
+            # Already uploaded for this run. No collective here: every peer
+            # takes this branch, because establishment happened in the same
+            # call on all of them.
+            return False
 
-        # All ranks must take the same branch or the job hangs, and the
-        # branch must reflect EVERY rank's view: a follower whose shared
-        # values changed while the owner's did not would otherwise be told
-        # "A" and keep reading the owner's old values with no error.
-        local_case = 'C' if reshaped else 'B' if changed else 'A'
-
-        # Reduced as an ordinal rather than allgathered as a string, so the
-        # collective can be bounded: MIN != MAX means the ranks disagree.
-        from mpi4py import MPI
-
-        from .gpu_collectives import bounded_allreduce
-        code = 'ABC'.index(local_case)
-        lowest = bounded_allreduce(self._comm, code, MPI.MIN,
-                                   'shared-constants/case-min')
-        highest = bounded_allreduce(self._comm, code, MPI.MAX,
-                                    'shared-constants/case-max')
-        if lowest != highest:
-            # Disagreement means peers hold different values for a shared
-            # selector. That is the fatal case, raised on every rank.
-            self._settle(
-                [f'peers disagree on this transition: proposed '
-                 f'{"ABC"[lowest]} and {"ABC"[highest]} -- shared constants '
-                 'differ between ranks'],
-                None, hosts=hosts)
-        case = 'ABC'[highest]
-
-        if case == 'A':
-            # Shared constants are unchanged, but a private selector may have
-            # moved: those are this rank's own copies and nobody else's
-            # business.
-            self._check_order('refresh-A')
-            moved = self._changed_private(hosts)
-            if not moved:
-                return False
-            if before_upload is not None:
-                before_upload()
-            self._upload_private(hosts, moved)
-            return True
+        # Establish runs even for an empty declaration, because peers may
+        # declare different sets by design and _intersect's allgather needs
+        # every rank.
+        self._established = True
         if before_upload is not None:
             before_upload()
-        self._generation += 1
-        if case == 'B':
-            self._refresh_in_place(hosts, changed)
-            self._check_order('refresh-B')
-            return True
-        self._reestablish(hosts)
-        self._check_order('refresh-C')
-        return True
+        self._establish(hosts)
+        self._check_order('establish')
+        # Nothing declared means nothing moved; saying otherwise makes the
+        # caller recompute its subbatch budget for no reason.
+        return bool(self._shared or self._private)
 
     def _scan(self, source):
         """Resolve declared selectors to validated host arrays."""
@@ -370,25 +334,7 @@ class SharedRequestedConstants(RequestedConstants):
                 raise TypeError(
                     f'{selector!r}: expected a native numeric NumPy array')
             hosts[selector] = np.ascontiguousarray(value)
-
-        changed, reshaped = [], []
-        # Retained for _refresh_in_place: hashing a GiB costs about a second,
-        # so the value computed here is reused rather than recomputed.
-        self._new_digests = {}
-        for selector in self._shared:
-            previous = self._host.get(selector)
-            current = hosts[selector]
-            current_digest = digest_of(current)
-            self._new_digests[selector] = current_digest
-            if previous is None:
-                changed.append(selector)
-                continue
-            if previous.shape != current.shape or previous.dtype != current.dtype:
-                reshaped.append(selector)
-                changed.append(selector)
-            elif self._snapshot_digest(selector, previous) != current_digest:
-                changed.append(selector)
-        return hosts, changed, reshaped
+        return hosts
 
     def _intersect(self):
         """Selectors every peer declared, and this rank's remainder.
@@ -458,8 +404,9 @@ class SharedRequestedConstants(RequestedConstants):
         """Publish or import the shared intersection. Never raises.
 
         One entry point for both roles, so a caller cannot reach agreement
-        through only one of them -- the Case C bug was exactly that: a path
-        that called the role methods and then forgot ``_settle``.
+        through only one of them: calling the role methods directly and
+        forgetting ``_settle`` leaves a follower with no device array for a
+        shared selector, and the next ``get`` fails far from the cause.
 
         Always returns ``(content_errors, capability_error)`` and must always
         be followed by ``_settle``.
@@ -472,10 +419,19 @@ class SharedRequestedConstants(RequestedConstants):
         """Importers close, barrier, then the owner frees.
 
         CUDA requires imported mappings to be closed before the exporter
-        deallocates. The order appeared separately in ``close``,
-        ``_reestablish`` and ``_fall_back_to_private``; keeping it in one place
-        means a fourth caller cannot get it wrong.
+        deallocates. Both callers -- ``close`` and ``_fall_back_to_private``
+        -- go through here, so neither can get the order wrong.
+
+        Synchronises first. Callers are expected to have drained their own
+        work, but this frees memory a *peer's* kernels may still be reading,
+        and a closed mapping or freed allocation under a running kernel is
+        undefined rather than merely late. One device sync per run is not
+        worth economising on.
         """
+        if self._cp is not None:
+            # None when the object was constructed but never refreshed, so
+            # there is no device work to wait for and no CuPy to ask.
+            self._sync_device()
         if not self._is_owner:
             self._close_imported()
         self._barrier('release-shared-closed')
@@ -686,75 +642,6 @@ class SharedRequestedConstants(RequestedConstants):
             self._digests.pop(selector, None)
         self._upload_private(hosts, list(self._private))
 
-    def _refresh_in_place(self, hosts, changed):
-        """Case B: same layout, new values. Imported views stay valid.
-
-        The owner overwrites memory its peers are mapped into, so every peer
-        must have drained its own work first. before_upload() drains only the
-        calling rank, hence the barrier before the write.
-        """
-        # Agreeing on the case is NOT agreeing on the content: if the owner
-        # and a follower both change to different values, both propose B and
-        # the cases match. Without this check the follower would silently read
-        # the owner's values under its own selector name.
-        #
-        # Only the changed selectors need comparing, and _scan already hashed
-        # each one's new value, so the digests are reused rather than recomputed.
-        published = self._comm.bcast(
-            {sel: self._new_digests[sel] for sel in changed}
-            if self._is_owner else None, root=0)
-        mismatched = [
-            f'{sel!r}: peers changed to different values at this transition; '
-            'sharing would substitute the owner\'s for this rank\'s'
-            for sel in changed
-            if (published or {}).get(sel) != self._new_digests.get(sel)]
-        self._settle(mismatched, None, hosts=hosts)
-
-        self._barrier('case-B-drained')   # every peer has drained its own work
-        if self._is_owner:
-            for selector in changed:
-                self._device[selector].set(hosts[selector])
-            self._sync_device()
-        # Publication point, then a second barrier so no peer reads values
-        # from before the write while another has already moved on.
-        # One barrier after the write: peers must not read the new values
-        # until the owner's copy has completed.
-        self._barrier('case-B-published')
-        for selector in self._shared:
-            self._remember(selector, hosts[selector])
-        self._refresh_private(hosts)
-
-    def _reestablish(self, hosts):
-        """Case C: layout changed, so the allocation must be replaced.
-
-        Importers close first and acknowledge; only then may the owner free.
-        CUDA requires imported mappings to be closed before the exporter
-        deallocates, so this ordering is mandatory rather than tidy.
-        """
-        self._release_shared()
-        for selector in self._shared:
-            self._device.pop(selector, None)
-            self._host.pop(selector, None)
-        # Re-size for the NEW intersection before re-allocating it. Case C
-        # fires because a shape or dtype changed, so the size usually changes
-        # too, and the budget still reflects the old one. Growing, the owner
-        # could be refused for a copy that would have fit -- the setup defect
-        # again, at Case C. Shrinking, followers keep a limit computed from
-        # the larger old size, so they are left over-committed against what
-        # the device now holds.
-        #
-        # After _release_shared for the same reason as the fallback:
-        # set_limit refuses to lower the owner's limit below what it still
-        # holds, and the old blocks are freed by then.
-        if self._sizing is not None:
-            self._sizing(sum(int(np.ascontiguousarray(hosts[s]).nbytes)
-                             for s in self._shared if s in hosts))
-        # Same agreement as _establish, through the same entry point: without
-        # it an owner failure leaves followers with no device arrays for the
-        # shared selectors, so the next get() fails far from the cause.
-        self._settle(*self._exchange(hosts), hosts=hosts)
-        self._refresh_private(hosts)
-
     def _snapshot_digest(self, selector, array):
         """Digest of the retained snapshot, hashed once per replacement.
 
@@ -787,11 +674,6 @@ class SharedRequestedConstants(RequestedConstants):
         self._device.update(zip(moved, arrays))
         for selector in moved:
             self._remember(selector, hosts[selector])
-
-    def _refresh_private(self, hosts):
-        moved = self._changed_private(hosts)
-        if moved:
-            self._upload_private(hosts, moved)
 
     # -- teardown ------------------------------------------------------
     def _close_imported(self):

@@ -6,23 +6,22 @@ per-rank budget is validated against the group, and that the discovery
 collective is called by every rank -- the failure mode that deadlocks rather
 than erroring.
 """
+import sys
 from types import SimpleNamespace as NS
 
 import pytest
 
 from psana.gpu.gpu_placement import (
-    GpuPlacement, GpuPlacementError, PinnedDevice, per_rank_limit,
+    GpuPlacement, GpuPlacementError, per_rank_limit,
 )
 
 
 GIB = 1024 ** 3
 
 
-def placement(peers=1, *, usable=40 * GIB, owner=True, shared=0, mig=False):
+def placement(peers=1, *, usable=40 * GIB, owner=True, shared=0):
     return GpuPlacement(
-        pinned=PinnedDevice(requested_uuid='GPU-' + 'a' * 32, pinned=True,
-                            is_mig=mig),
-        hostname='sdfampere001', device_uuid_hex='a' * 32,
+        hostname='sdfampere001', device_pci='0:01:00.0',
         device_comm=NS() if peers > 1 else None,
         is_owner=owner, n_device_peers=peers, usable_bytes=usable,
         shared_bytes=shared)
@@ -33,8 +32,9 @@ def placement(peers=1, *, usable=40 * GIB, owner=True, shared=0, mig=False):
 # ---------------------------------------------------------------------------
 
 def test_capacity_is_divided_among_true_peers_not_eb_group_peers():
-    """Deriving the count from bd_comm counts only intra-group peers: with
-    PS_EB_NODES=2, eight ranks on one card each claimed a quarter of it."""
+    """The divisor is the device's real peer count. Deriving it from bd_comm
+    would count only intra-group peers, so with PS_EB_NODES=2 eight ranks on
+    one card would each claim a quarter of it."""
     assert per_rank_limit(placement(peers=8, usable=40 * GIB)) == 5 * GIB
     assert per_rank_limit(placement(peers=4, usable=40 * GIB)) == 10 * GIB
 
@@ -91,8 +91,9 @@ def test_explicit_budget_within_the_group_total_is_accepted():
 
 
 def test_explicit_budget_that_over_commits_the_device_is_refused():
-    """Today an explicit budget is taken on trust per rank, so four ranks
-    each claiming 20 GiB of a 40 GiB card is accepted silently."""
+    """An explicit budget is per rank, so it has to be checked against the
+    group: four ranks each claiming 20 GiB of a 40 GiB card must not be
+    accepted."""
     dsparms = NS(gpu_memory_budget_gb=20.0)
     with pytest.raises(GpuPlacementError, match='exceeds'):
         manager_budget(dsparms, placement(peers=4, usable=40 * GIB))
@@ -202,20 +203,19 @@ def test_non_gpu_roles_still_perform_the_node_splits(monkeypatch):
     log = []
     fake_mpi = NS(Get_processor_name=lambda: 'sdfampere001', UNDEFINED=-32766,
                   SUM='SUM', MIN='MIN', MAX='MAX')
-    monkeypatch.setitem(gp.sys.modules, 'mpi4py', NS(MPI=fake_mpi))
+    monkeypatch.setitem(sys.modules, 'mpi4py', NS(MPI=fake_mpi))
 
-    result = gp.discover_peers(PinnedDevice(), CountingComm(log),
+    result = gp.discover_peers(CountingComm(log),
                                is_gpu_worker=False)
     kinds = [entry[0] for entry in log]
     assert kinds.count('allgather') == 1       # hostname exchange
     assert kinds.count('split') == 2           # node, then gpu-role
     # Three job-wide reductions, in the order a GPU worker makes them: the
     # failure agreement, the device-capacity minimum, then the busiest-device
-    # peer count. Skipping any leaves this rank racing a peer's MPI_ABORT --
-    # measured on hardware, where rank 0 printed SURVIVED before the abort
-    # landed. The count alone would not catch a reordering, and MPI pairs
-    # collectives by call order rather than by operation, so assert the
-    # sequence.
+    # peer count. Skipping any leaves this rank racing a peer's MPI_ABORT
+    # instead of participating in the failure. MPI pairs collectives by call
+    # order rather than by operation, so assert the sequence and not just the
+    # count.
     assert [k for k in kinds if k == 'allreduce'] == ['allreduce'] * 3
     operations = [entry[2] for entry in log if entry[0] == 'allreduce']
     assert operations == ['SUM', 'MIN', 'MAX']
@@ -228,7 +228,7 @@ def test_non_gpu_role_raises_when_a_gpu_worker_failed(monkeypatch):
     from psana.gpu import gpu_placement as gp
     fake_mpi = NS(Get_processor_name=lambda: 'h', UNDEFINED=-32766,
                   SUM='SUM', MIN='MIN', MAX='MAX')
-    monkeypatch.setitem(gp.sys.modules, 'mpi4py', NS(MPI=fake_mpi))
+    monkeypatch.setitem(sys.modules, 'mpi4py', NS(MPI=fake_mpi))
 
     class Failing(CountingComm):
         def Iallreduce(self, sendbuf, recvbuf, op=None):
@@ -236,7 +236,7 @@ def test_non_gpu_role_raises_when_a_gpu_worker_failed(monkeypatch):
             return NS(Test=lambda: True)
 
     with pytest.raises(GpuPlacementError, match='aborting this rank'):
-        gp.discover_peers(PinnedDevice(), Failing([]), is_gpu_worker=False)
+        gp.discover_peers(Failing([]), is_gpu_worker=False)
 
 
 def test_non_gpu_role_never_touches_cupy(monkeypatch):
@@ -245,12 +245,12 @@ def test_non_gpu_role_never_touches_cupy(monkeypatch):
     from psana.gpu import gpu_placement as gp
     fake_mpi = NS(Get_processor_name=lambda: 'h', UNDEFINED=-32766,
                   SUM='SUM', MIN='MIN', MAX='MAX')
-    monkeypatch.setitem(gp.sys.modules, 'mpi4py', NS(MPI=fake_mpi))
+    monkeypatch.setitem(sys.modules, 'mpi4py', NS(MPI=fake_mpi))
 
     def explode():
         raise AssertionError('CuPy must not be imported on a CPU-role rank')
 
-    gp.discover_peers(PinnedDevice(), CountingComm([]),
+    gp.discover_peers(CountingComm([]),
                       is_gpu_worker=False, cp=NS(boom=explode))
 
 
@@ -266,8 +266,10 @@ def test_sharing_is_skipped_for_a_solo_rank():
     assert not placement(peers=1).can_share
 
 
-def test_sharing_is_skipped_on_mig():
-    """IPC does not span MIG instances: they have separate memory."""
-    p = placement(peers=2, mig=True)
+def test_sharing_is_skipped_without_a_communicator():
+    """A placement with no device_comm cannot share, whatever its peer count:
+    the serial path and non-GPU roles both land here."""
+    p = placement(peers=4)
+    p.device_comm = None
     assert not p.can_share
-    assert p.n_device_peers == 2        # budgets are still sized correctly
+    assert p.n_device_peers == 4      # the count is still known; sharing is not

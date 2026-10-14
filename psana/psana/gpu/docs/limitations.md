@@ -6,17 +6,16 @@ current design and tests; this page contains current restrictions and open work.
 
 ## Multi-EB device accounting
 
-**Resolved.** Peer counts came from the EB-local `bd_comm`, so with several EB
-groups on one node local rank numbering restarted: groups selected the same GPU
-while budgeting only their own peers. Measured 2.0x over-commit at
-`PS_EB_NODES=2` and 3.0x at 3, with ranks on one device disagreeing about the
-count in uneven layouts.
+**Supported.** BD workers sharing a GPU are grouped by driver-reported
+`(hostname, PCI bus id)`, so the peer count is independent of EB topology by
+construction and no rank arithmetic participates. Deriving it from the
+EB-local `bd_comm` instead would over-commit the device, because local rank
+numbering restarts in each group: measured 2.0x at `PS_EB_NODES=2` and 3.0x at
+3, with ranks on one device disagreeing about the count in uneven layouts.
 
-Peers are now grouped by driver-reported `(hostname, device UUID)`, so the
-count is independent of EB topology by construction and no rank arithmetic
-participates. Validated on A100s at `PS_EB_NODES` 1, 2 and 3, contiguous and
-round-robin, an uneven 8-rank split, and across two nodes: aggregate claim
-1.0 on every device. See
+Validated on A100s at `PS_EB_NODES` 1, 2 and 3, contiguous and round-robin, an
+uneven 8-rank split, and across two nodes: aggregate claim 1.0 on every device.
+See
 [device placement and shared constants](device_placement_and_shared_constants.md).
 
 Two items remain open.

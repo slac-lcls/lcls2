@@ -33,13 +33,13 @@ def emit(tag, obj):
 
 
 def current_peers(n_bd_in_comm, phys_gpu_id, n_gpus):
-    """The removed ``bd_ranks_sharing_gpu()`` arithmetic, reproduced here.
+    """Peer count derived from EB-group rank arithmetic, for contrast.
 
-    Kept as a local copy, not an import: the function is gone, but the
-    contrast is the point of this test. It counted only peers inside this
-    rank's own bd_comm, so with several EB groups it undercounted and every
-    rank claimed too much of the device. Each record reports both this value
-    and the discovered one, so the log shows what was fixed.
+    Counts only peers inside this rank's own bd_comm, which is split per EB
+    group, so with several EB groups it undercounts and every rank would
+    claim too much of the device. Each record reports this alongside the
+    discovered count, so the log shows the difference identity-based grouping
+    makes.
     """
     n_gpus = max(1, int(n_gpus))
     target = int(phys_gpu_id) % n_gpus
@@ -58,9 +58,8 @@ def main():
     ap.add_argument('--eb-ranks', type=int, default=1)
     args = ap.parse_args()
 
-    # --- phase 1: pin before mpi4py is imported --------------------------
-    # World rank comes from the environment, not from MPI, because MPI must
-    # not be initialised yet.
+    # World rank from the environment, so the driver can decide its role
+    # before MPI starts. Selection itself happens inside discover_peers.
     world = None
     for name in ('OMPI_COMM_WORLD_RANK', 'PMIX_RANK', 'PMI_RANK',
                  'SLURM_PROCID'):
@@ -76,14 +75,11 @@ def main():
     is_worker = world >= args.eb_ranks
     # Imported normally, exactly as a real job does: psana's own import
     # loads mpi4py and initialises CUDA, and the single path is designed for
-    # that. There is no earlier moment to reach from inside the package.
+    # that; there is no earlier moment reachable from inside the package.
     from psana.gpu.gpu_placement import (
-        GpuPlacementError, PinnedDevice, device_pci, discover_peers,
-        per_rank_limit, pin_device,
+        GpuPlacementError, device_pci, discover_peers, per_rank_limit,
     )
-    pinned = pin_device() if is_worker else PinnedDevice()
 
-    # --- phase 2: MPI may now start --------------------------------------
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
     rank, size = comm.Get_rank(), comm.Get_size()
@@ -93,14 +89,10 @@ def main():
 
     failures = []
     info = {'rank': rank, 'is_worker': is_worker, 'n_eb': args.n_eb,
-            'pinned': {'requested': pinned.requested_uuid,
-                       'local_rank': pinned.local_rank,
-                       'source': pinned.local_rank_source,
-                       'permitted': list(pinned.permitted),
-                       'warnings': list(pinned.warnings)}}
+            'mask': os.environ.get('CUDA_VISIBLE_DEVICES')}
 
     try:
-        placement = discover_peers(pinned, comm, is_gpu_worker=is_worker,
+        placement = discover_peers(comm, is_gpu_worker=is_worker,
                                    explicit_limit_bytes=0)
     except GpuPlacementError as exc:
         info['failures'] = [f'discover_peers: {exc}']
@@ -125,10 +117,9 @@ def main():
 
     import cupy as cp
     info.update({
-        'uuid_hex': placement.device_uuid_hex,
+        'device_pci': placement.device_pci,
         'visible_count': placement.visible_count,
         'ordinal': placement.device_ordinal,
-        'is_mig': placement.is_mig,
         'design_peers': placement.n_device_peers,
         'is_owner': placement.is_owner,
         'usable_bytes': placement.usable_bytes,
@@ -147,10 +138,9 @@ def main():
     probe = cp.empty(1 << 20, dtype=cp.uint8)      # 1 MiB
     alloc_pci = device_pci(cp, int(probe.device.id))
     info['allocation_pci'] = alloc_pci
-    info['requested_pci'] = pinned.requested_pci
-    if pinned.usable and alloc_pci != pinned.requested_pci:
+    if alloc_pci != placement.device_pci:
         failures.append(f'allocation landed on {alloc_pci}, not the selected '
-                        f'{pinned.requested_pci}')
+                        f'{placement.device_pci}')
     del probe
 
     device_comm = placement.device_comm
@@ -163,7 +153,7 @@ def main():
     if len(set(agreed)) != 1:
         failures.append(f'peers disagree on the count: {sorted(set(agreed))}')
 
-    keys = device_comm.allgather(placement.device_uuid_hex)
+    keys = device_comm.allgather(placement.device_pci)
     if len(set(keys)) != 1:
         failures.append('a device communicator spans several devices')
     if len(keys) != placement.n_device_peers:
@@ -202,8 +192,10 @@ def main():
     # NOTE: no COMM_WORLD collective here. The CPU-role rank returned above,
     # so any comm.* call would deadlock. The EB-group membership this contrast
     # needs is derivable arithmetically from the rank layout.
+    # The arithmetic contrast reads this from the environment; fall back to
+    # the visible count, which is what the launcher gave this rank.
     n_gpus = int(os.environ.get('SLURM_GPUS_ON_NODE',
-                                max(1, len(pinned.permitted))))
+                                max(1, placement.visible_count)))
     mine = [r for r in range(args.eb_ranks, size)
             if (min((r - args.eb_ranks) // max(1, total_bd // args.n_eb),
                     args.n_eb - 1) if args.contiguous
@@ -217,7 +209,7 @@ def main():
     # ---- multi-node: grouping must respect the host, and budgets must agree
     # Reduced over every GPU worker, so this works at any node count.
     info['hostname'] = placement.hostname
-    identity = (placement.hostname, placement.device_uuid_hex)
+    identity = (placement.hostname, placement.device_pci)
     all_identities = gpu_workers.allgather(identity)
     all_budgets = gpu_workers.allgather(placement.usable_bytes)
 
@@ -260,7 +252,7 @@ def main():
     if placement.is_owner and gathered is not None:
         members = [r for r in gathered if r]
         emit('DEVICE', {
-            'uuid_hex': placement.device_uuid_hex[:16] + '...',
+            'device_pci': placement.device_pci,
             'peers': len(members),
             'design_peers': placement.n_device_peers,
             'aggregate_claim': info['aggregate_claim'],

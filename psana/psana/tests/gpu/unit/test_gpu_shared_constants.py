@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from psana.gpu.gpu_budget import _GpuBudget
-from psana.gpu.gpu_placement import GpuPlacement, PinnedDevice
+from psana.gpu.gpu_placement import GpuPlacement
 from psana.gpu.gpu_shared_constants import (
     SharedConstantsError, SharedRequestedConstants, digest_of,
 )
@@ -162,8 +162,7 @@ def make_peers(declarations, *, budgets=None, uuid='abcd' * 8):
     for rank, declared in enumerate(declarations):
         comm = FakeComm(group, rank)
         placement = GpuPlacement(
-            pinned=PinnedDevice(requested_uuid=uuid, pinned=True),
-            device_uuid_hex=uuid, device_comm=comm,
+            device_pci=uuid, device_comm=comm,
             is_owner=(rank == 0), n_device_peers=len(declarations),
             usable_bytes=1 << 30)
         budget = (budgets[rank] if budgets else _GpuBudget(1 << 30))
@@ -409,71 +408,74 @@ def test_shared_bytes_are_reported_by_both_roles():
 # BeginStep: three cases, decided by the owner
 # ---------------------------------------------------------------------------
 
-def test_case_a_unchanged_moves_nothing():
+def test_a_second_refresh_does_nothing():
+    """One constant set per run: establish once, then no-op.
+
+    BeginStep does not fetch the calibration DB, so a second refresh could
+    only find the values already uploaded. It must not upload, synchronise or
+    report that anything moved -- reporting True makes the caller recompute
+    its subbatch budget every step.
+    """
     decl = [('jf', 'pedestals')]
     peers, cp = make_peers([decl, decl])
     for peer in peers:
         peer.refresh(host())
-    syncs = cp.syncs
-    assert peers[0].refresh(host()) is False
-    assert peers[1].refresh(host()) is False
-    assert cp.syncs == syncs          # no upload, no synchronization
+    syncs, live_before = cp.syncs, sorted(cp.live)
+
+    for peer in peers:
+        assert peer.refresh(host()) is False
+    assert cp.syncs == syncs, 'a second refresh synchronised the device'
+    assert sorted(cp.live) == live_before, 'a second refresh changed allocations'
 
 
-def test_case_b_same_layout_updates_in_place():
+def test_a_changed_source_is_ignored_after_establishment():
+    """Even a DIFFERENT source is ignored on a later call.
+
+    Replacing a shared allocation mid-run would need coordinated retirement
+    across peers, because one allocation backs all of them and no rank can
+    know when another has stopped reading. Under the one-set-per-run contract
+    this cannot arise, so the second call is a no-op rather than a reupload.
+    """
     decl = [('jf', 'pedestals')]
     peers, cp = make_peers([decl, decl])
     for peer in peers:
         peer.refresh(host())
-    owned_before = sorted(cp.live)
+    live_before = sorted(cp.live)
 
-    new = host(pedestals=PEDS + 7)
-    assert peers[0].refresh(new) is True
-    assert peers[1].refresh(new) is True
-    # Same allocation: followers' imported views stay valid.
-    assert sorted(cp.live) == owned_before
-    np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS + 7)
-
-
-def test_case_c_layout_change_reallocates_after_importers_close():
-    """Layout change replaces the allocation. The owner must publish before a
-    follower can subscribe, so the owner is driven first -- in a real run the
-    barriers inside _reestablish enforce the same ordering."""
-    decl = [('jf', 'pedestals')]
-    peers, cp = make_peers([decl, decl])
     for peer in peers:
-        peer.refresh(host())
-    first_ptr = next(iter(cp.live))
-
-    new = host(pedestals=np.ones((3, 2, 4, 1), dtype=np.float32))
-    peers[0].refresh(new)
-    peers[1].refresh(new)
-
-    assert first_ptr in cp.freed          # CUDA requires close before free
-    assert cp.closed                      # the mapping was closed
-    np.testing.assert_array_equal(
-        peers[1].get('jf', 'pedestals'), new['jf']['pedestals'])
+        assert peer.refresh(host(pedestals=PEDS + 7)) is False
+    assert sorted(cp.live) == live_before
+    # The device still holds the values uploaded at establishment.
+    np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS)
 
 
-def test_in_place_edit_of_the_source_is_detected():
-    """refresh() must notice a mutated array, not just a replaced one.
+def test_a_shared_array_stays_valid_for_the_whole_run():
+    """The guarantee the one-set-per-run contract buys.
 
-    _establish retains the caller's array by reference for shared selectors,
-    so an in-place edit changes both sides of the comparison. The host
-    snapshot must therefore be a copy -- which is what this asserts.
+    The allocation is written once and released at teardown, never rewritten
+    or replaced while the run is live, so a reference a callback keeps across
+    events and steps stays valid and keeps its values. Python cannot prevent
+    a caller retaining a reference -- any returned object can be assigned --
+    so the contract has to be that retention is safe rather than forbidden.
     """
     decl = [('jf', 'pedestals')]
     peers, _ = make_peers([decl, decl])
-    source = host(pedestals=PEDS.copy())
     for peer in peers:
-        peer.refresh(source)
-    source['jf']['pedestals'][0, 0, 0, 0] += 5
-    assert peers[0].refresh(source) is True
+        peer.refresh(host())
 
+    kept = peers[1].get('jf', 'pedestals')          # a follower's view
+    before = np.asarray(kept).copy()
 
-# ---------------------------------------------------------------------------
-# Teardown
-# ---------------------------------------------------------------------------
+    # Several later transitions, including one with a changed source.
+    for _ in range(3):
+        for peer in peers:
+            peer.refresh(host())
+    for peer in peers:
+        peer.refresh(host(pedestals=PEDS + 7))
+
+    np.testing.assert_array_equal(np.asarray(kept), before)
+    assert np.asarray(kept) is not None
+
 
 def test_importers_close_before_the_owner_frees():
     decl = [('jf', 'pedestals')]
@@ -529,15 +531,41 @@ def test_no_placement_uses_the_inherited_private_path():
     assert not peer._sharing
 
 
-def test_mig_does_not_share():
-    """CUDA IPC does not span MIG instances: they have separate memory."""
-    group = {'declared': [[], []], 'contrib': {}, 'bcast': None}
-    placement = GpuPlacement(
-        pinned=PinnedDevice(requested_uuid='MIG-x', is_mig=True, pinned=True),
-        device_comm=FakeComm(group, 0), is_owner=True, n_device_peers=2)
-    peer = SharedRequestedConstants([('jf', 'pedestals')],
-                                    _GpuBudget(1 << 30), placement)
-    assert not peer._sharing
+def test_mig_peers_degrade_rather_than_being_detected():
+    """MIG is handled by the capability path, not by detection.
+
+    Grouping is by PCI bus id, which MIG instances of one card share, so two
+    ranks on different instances look like peers and sharing is attempted.
+    The IPC import then fails -- CUDA IPC cannot span instances, which have
+    separate memory -- and the group degrades to private copies together.
+
+    Detecting MIG up front would need an instance UUID, which neither CUDA nor
+    plain NVML enumeration provides; the grouping comment in
+    gpu_placement.discover_peers records what that would take. The capability
+    path has to exist regardless, for IPC failures unrelated to MIG, so this
+    test drives MIG through it.
+    """
+    import psana.gpu.gpu_shared_constants as module
+
+    declared = [('jf', 'pedestals')]
+    peers, _ = make_peers([declared, declared])
+    original = module._ImportedBlock
+
+    class CannotSpanInstances(original):
+        def __init__(self, *args, **kwargs):
+            raise RuntimeError('cudaIpcOpenMemHandle: invalid device context')
+
+    module._ImportedBlock = CannotSpanInstances
+    try:
+        for peer in peers:
+            peer.refresh(host())           # must not raise
+    finally:
+        module._ImportedBlock = original
+
+    follower = peers[1]
+    assert follower.shared_selectors == ()
+    assert follower.private_selectors == tuple(declared)
+    assert 'fallback' in follower._placement.sharing
 
 
 def test_digest_detects_content_and_ignores_identity():
@@ -614,88 +642,6 @@ def test_fallback_closes_importers_before_the_owner_frees():
     assert peers[1]._imported == {}
     assert peers[1].shared_selectors == ()
     assert peers[1].imported_bytes == 0
-
-
-def test_a_follower_only_change_is_not_silently_substituted():
-    """If a follower's shared values changed and the owner's did not, the
-    owner would say Case A and the follower would keep reading the owner's
-    old values. The case must be agreed, not dictated.
-
-    The agreement is a MIN/MAX reduction of the case ordinal, so disagreement
-    is forced through the fake's reduction rather than by driving the peers:
-    they run sequentially here, and the owner has already returned.
-    """
-    decl = [('jf', 'pedestals')]
-    peers, _ = make_peers([decl, decl])
-    for peer in peers:
-        peer.refresh(host())
-    peers[1]._comm.group['force_cases'] = ['A', 'B']
-    # Either guard may fire first -- the case reduction or the digest check --
-    # and both are correct. What matters is that the follower does not quietly
-    # adopt the owner's values.
-    with pytest.raises(SharedConstantsError,
-                       match='this transition'):
-        peers[1].refresh(host(pedestals=PEDS + 1))
-
-
-# ---------------------------------------------------------------------------
-# Silent substitution: agreeing on the case is not agreeing on the content
-# ---------------------------------------------------------------------------
-
-def test_case_b_rejects_peers_changing_to_different_values():
-    """Both peers change, to different values, at the same transition.
-
-    Both therefore propose case B and the case agreement passes -- which is
-    why it cannot stand in for a content check. Without the digest comparison
-    the follower silently reads the owner's new values under its own selector
-    name, with no error anywhere.
-    """
-    decl = [('jf', 'pedestals')]
-    peers, _ = make_peers([decl, decl])
-    for peer in peers:
-        peer.refresh(host())
-
-    # The owner moves to one value; the follower to another.
-    peers[0].refresh(host(pedestals=PEDS + 1))
-    with pytest.raises(SharedConstantsError, match='different values'):
-        peers[1].refresh(host(pedestals=PEDS + 2))
-
-
-def test_case_b_accepts_peers_changing_to_the_same_values():
-    """The ordinary transition must still pass: identical new values."""
-    decl = [('jf', 'pedestals')]
-    peers, _ = make_peers([decl, decl])
-    for peer in peers:
-        peer.refresh(host())
-    updated = host(pedestals=PEDS + 7)
-    for peer in peers:
-        assert peer.refresh(updated) is True
-    np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS + 7)
-
-
-def test_case_c_owner_failure_is_not_ignored():
-    """A layout change where the owner's reallocation fails.
-
-    _reestablish used to discard what _publish/_subscribe returned, so the
-    follower ended with no device array for the shared selector and the next
-    get() failed far from the cause.
-    """
-    decl = [('jf', 'pedestals')]
-    peers, cp = make_peers([decl, decl])
-    for peer in peers:
-        peer.refresh(host())
-
-    reshaped = host(pedestals=np.ones((3, 2, 4, 1), dtype=np.float32))
-    cp.fail_malloc = True                  # owner's reallocation raises
-    peers[0].refresh(reshaped)
-    cp.fail_malloc = False
-    peers[1].refresh(reshaped)
-
-    # Both degraded rather than leaving the follower without an array.
-    for peer in peers:
-        assert peer.shared_selectors == ()
-        np.testing.assert_array_equal(
-            peer.get('jf', 'pedestals'), reshaped['jf']['pedestals'])
 
 
 def test_failed_publish_releases_its_budget_charge():
@@ -805,22 +751,42 @@ def test_checker_is_absent_when_disabled(monkeypatch):
     assert all(peer._recorder is None for peer in peers)
 
 
-@pytest.mark.parametrize('path', ('A', 'B', 'C'))
-def test_each_refresh_path_records_one_sequence(monkeypatch, path):
-    """A, B and C must each produce the same call order on every peer."""
+def test_establishment_records_one_sequence_on_every_peer(monkeypatch):
+    """Peers must make the same collectives in the same order.
+
+    Establishment is now the only path that collectives at all, so this is
+    where divergence could hide. MPI pairs collectives by call order rather
+    than by operation, so a rank that takes a different route does not raise
+    -- it hangs the others.
+    """
     decl = [('jf', 'pedestals')]
     peers, _ = peers_with_checking([decl, decl], monkeypatch)
     for peer in peers:
         peer.refresh(host())
 
-    updated = {'A': host(),
-               'B': host(pedestals=PEDS + 5),
-               'C': host(pedestals=np.ones((3, 2, 4, 1), dtype=np.float32))}[path]
-    for peer in peers:
-        peer.refresh(updated)
-
     sequences = {peer._recorder.sequence_digest() for peer in peers}
-    assert len(sequences) == 1, f'path {path} diverged: {sequences}'
+    assert len(sequences) == 1, f'peers diverged at establishment: {sequences}'
+
+
+def test_later_refreshes_make_no_collectives(monkeypatch):
+    """A second refresh must not collective at all.
+
+    Under the one-set-per-run contract there is nothing to agree, and a
+    collective here would be a liability: every peer would have to reach it,
+    so any rank that skipped a transition would hang the rest.
+    """
+    decl = [('jf', 'pedestals')]
+    peers, _ = peers_with_checking([decl, decl], monkeypatch)
+    for peer in peers:
+        peer.refresh(host())
+    after_establish = [len(peer._recorder.calls) for peer in peers]
+
+    for _ in range(3):
+        for peer in peers:
+            peer.refresh(host(pedestals=PEDS + 5))
+
+    assert [len(p._recorder.calls) for p in peers] == after_establish, \
+        'a later refresh made a collective'
 
 
 def test_fallback_path_is_recorded(monkeypatch):
@@ -858,10 +824,11 @@ def test_close_records_one_sequence(monkeypatch):
 # ---------------------------------------------------------------------------
 
 def test_empty_declaration_establishes_once():
-    """`not self._shared and not self._private` could not tell "not yet
-    established" from "established, nothing requested", so every transition
-    re-ran establish: collectives and a cache trim per step for a task that
-    asked for nothing."""
+    """Establishment is tracked by a flag, not by whether the selector tuples
+    are non-empty: those two states are indistinguishable for a task that
+    declared no constants, and conflating them re-runs establish on every
+    transition -- collectives and a cache trim per step for a task that asked
+    for nothing."""
     peers, _ = make_peers([[], []])
     trims = [0, 0]
 
@@ -953,13 +920,12 @@ def _wire_sizing(peer, budget, usable):
 
 
 def test_budget_is_resized_before_the_intersection_is_allocated():
-    """The owner used to allocate against usable/peers, with the shared bytes
-    added only after refresh() returned.
+    """The limits must be in place before the intersection is allocated.
 
     A 12 GiB intersection on a 40 GiB four-peer device fits the documented
-    accounting -- owner 7 + 12 = 19 GiB -- but was charged against 10 GiB, so
-    the shared copy was refused, the group degraded, and the private copy was
-    then refused by the same limit. Scaled down here to the fixture's heap.
+    accounting -- owner 7 + 12 = 19 GiB -- but charged against usable/peers
+    (10 GiB) the shared copy is refused, the group degrades, and the private
+    copy is refused by the same limit. Scaled down here to the fixture's heap.
     """
     usable, peer_count = 400 * 1024, 4
     shared = np.zeros((16 * 1024,), dtype=np.float32)     # 64 KiB
@@ -1021,15 +987,13 @@ def test_explicit_budget_is_not_moved_by_sizing():
 
 
 def test_mixed_declarations_do_not_diverge_across_transitions(monkeypatch):
-    """The empty-declaration bug was a HANG, not only wasted work.
+    """Unequal declarations must not split the collective path.
 
-    Pre-fix, a rank that declared nothing matched `not self._shared and not
-    self._private` on every transition and re-entered _establish, whose first
-    collective is _intersect's allgather. Its peer with a non-empty
-    declaration took the case path, whose first collective is the case
-    allreduce. Measured sequences were ['allgather', 'allgather'] against
-    ['allgather', 'Iallreduce', 'Iallreduce'] -- two ranks blocked in
-    different collectives, which MPI pairs by call order.
+    A rank that re-enters _establish begins with _intersect's allgather while
+    a peer on the case path begins with the case allreduce -- measured as
+    ['allgather', 'allgather'] against ['allgather', 'Iallreduce',
+    'Iallreduce']. MPI pairs collectives by call order, so that is a hang
+    rather than wasted work.
     """
     peers = peers_with_checking([[], [('jf', 'pedestals')]], monkeypatch)[0]
     sources = [{}, host()]
@@ -1096,11 +1060,10 @@ def test_fallback_returns_the_sharing_budget_before_uploading_privately():
 
     The limits are set for ONE device copy -- followers at
     (usable - shared)/peers -- but a capability failure means every rank
-    uploads its own full copy. Leaving the sharing limits in place made the
-    private upload fail with GpuMemoryPressureError, so a group that used to
-    degrade cleanly aborted instead: measured on a 40 GiB four-peer device, a
-    9-10 GiB intersection fits usable/peers (10 GiB) but not
-    (usable - shared)/peers (7 GiB).
+    uploads its own full copy. Leaving the sharing limits in place makes that
+    upload fail with GpuMemoryPressureError, turning a clean degrade into an
+    abort: on a 40 GiB four-peer device a 9-10 GiB intersection fits
+    usable/peers (10 GiB) but not (usable - shared)/peers (7 GiB).
 
     Scaled to the fixture heap: usable 400 KiB, 4 peers, shared 100 KiB, so
     usable/peers == 100 KiB fits and (usable - shared)/peers == 75 KiB does
@@ -1147,71 +1110,3 @@ def test_fallback_returns_the_sharing_budget_before_uploading_privately():
     assert all(peer.shared_selectors == () for peer in peers)
 
 
-def test_case_c_resizes_the_budget_for_the_new_intersection():
-    """Case C replaces the allocation, so the budget must be re-sized for the
-    NEW size before the new copy is allocated.
-
-    Sizing happened at establish and in the fallback but not here, so the
-    budget still reflected the old intersection. Growing, the owner could be
-    refused for a copy that would have fit with the right limit -- the setup
-    defect again, at Case C. Shrinking, followers kept a limit computed from
-    the larger old size and were left over-committed.
-    """
-    from psana.gpu.gpu_placement import per_rank_limit
-
-    usable, peer_count = 400 * 1024, 4
-    small = np.zeros((4, 8), dtype=np.float32)               # 128 B
-    # A different SHAPE, which is what makes this Case C rather than Case B.
-    large = np.ones((4, 8, 16), dtype=np.float32)            # 2 KiB
-    declared = [('jf', 'pedestals')]
-
-    budgets = [_GpuBudget(limit_bytes=usable // peer_count)
-               for _ in range(peer_count)]
-    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
-    for peer, budget in zip(peers, budgets):
-        _wire_sizing(peer, budget, usable)
-
-    for peer in peers:
-        peer.refresh({'jf': {'pedestals': small}})
-    assert peers[0]._placement.shared_bytes == small.nbytes
-    owner_at_small = budgets[0].limit()
-
-    for peer in peers:
-        peer.refresh({'jf': {'pedestals': large}})
-
-    # The group must still be sharing -- a budget too small for the new copy
-    # would have degraded it to private copies.
-    assert all(peer.shared_selectors == tuple(declared) for peer in peers)
-    assert peers[0]._placement.shared_bytes == large.nbytes, \
-        'the budget still reflects the old intersection size'
-    assert budgets[0].limit() > owner_at_small, \
-        'the owner limit did not grow with the intersection'
-
-    # And the accounting is exactly the documented split, at the new size.
-    expected_share = (usable - large.nbytes) // peer_count
-    assert budgets[1].limit() == expected_share
-    assert budgets[0].limit() == expected_share + large.nbytes
-
-
-def test_case_c_shrinking_returns_the_difference():
-    """The other direction: a smaller intersection must give the bytes back,
-    or followers stay more constrained than the device requires."""
-    usable, peer_count = 400 * 1024, 4
-    large = np.ones((4, 8, 16), dtype=np.float32)            # 2 KiB
-    small = np.zeros((4, 8), dtype=np.float32)               # 128 B
-    declared = [('jf', 'pedestals')]
-
-    budgets = [_GpuBudget(limit_bytes=usable // peer_count)
-               for _ in range(peer_count)]
-    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
-    for peer, budget in zip(peers, budgets):
-        _wire_sizing(peer, budget, usable)
-
-    for peer in peers:
-        peer.refresh({'jf': {'pedestals': large}})
-    for peer in peers:
-        peer.refresh({'jf': {'pedestals': small}})
-
-    expected_share = (usable - small.nbytes) // peer_count
-    assert budgets[1].limit() == expected_share
-    assert budgets[0].limit() == expected_share + small.nbytes

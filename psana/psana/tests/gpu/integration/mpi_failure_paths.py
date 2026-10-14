@@ -5,9 +5,8 @@ sequentially, so it has no notion of two ranks blocked in *different*
 collectives -- which is the failure mode seven bugs in this work shared, every
 one of which hung rather than erroring.
 
-``--inject verify-pin``
-    One rank is given a device it did not select, so ``verify_pin`` fails
-    there and nowhere else. The ``allreduce`` inside ``discover_peers`` covers
+``--inject select-device``
+    ``Device.use()`` is made to fail on exactly one GPU worker. The ``allreduce`` inside ``discover_peers`` covers
     only GPU workers on this node, so EB and smd0 ranks can only be reached by
     ``gpu_error_handler`` aborting the communicator. This is the only test of
     that, and it is the reason a discovery failure costs a diagnostic rather
@@ -67,44 +66,66 @@ def world_rank():
 
 
 # ---------------------------------------------------------------------------
-# Case 1: verify_pin fails on one rank only
+# Case 1: device selection fails on one rank only
 # ---------------------------------------------------------------------------
 
-def case_verify_pin(rank, eb_ranks):
-    """Give one GPU worker a device it did not select.
+def case_select_device(rank, eb_ranks):
+    """Make Device.use() fail on exactly one GPU worker.
 
     Expected: every rank dies promptly. The injected rank raises from
-    discover_peers; its node peers learn through the allreduce; EB and smd0
-    can only be reached by the communicator abort.
-    """
-    import dataclasses
+    discover_peers; its node peers learn through the node allreduce; EB and
+    smd0 can only be reached by the communicator abort, so this is the only
+    test of that reach.
 
-    from psana.gpu.gpu_placement import PinnedDevice, discover_peers, pin_device
+    Injected at the CuPy boundary rather than by corrupting a requested
+    device id. Selection now happens inside discovery -- there is no
+    caller-supplied device to corrupt -- and failing the real call is closer
+    to what a wrong device or a busy context actually does.
+    """
+    from psana.gpu.gpu_placement import discover_peers
 
     is_worker = rank >= eb_ranks
-    pinned = pin_device() if is_worker else PinnedDevice()
-
-    # The first GPU worker claims a PCI id that does not exist on this node.
-    target = eb_ranks
-    if rank == target and pinned.pinned:
-        pinned = dataclasses.replace(pinned, requested_pci='0:ff:00.0')
-        emit(f'RANK{rank}', {'injected': 'bogus requested_pci',
-                             'note': 'verify_pin must fail here'})
 
     from mpi4py import MPI
     from psana.gpu.gpu_mpi import gpu_error_handler
 
     comm = MPI.COMM_WORLD
+    cp = None
+    target = eb_ranks                   # the first GPU worker
+    if rank == target and is_worker:
+        import cupy
+
+        class FailsToSelect:
+            """CuPy whose Device(...).use() raises, like a device this rank
+            cannot actually take."""
+
+            def __init__(self, real):
+                self.cuda = _Cuda(real)
+
+        class _Cuda:
+            def __init__(self, real):
+                self._real = real
+                self.runtime = real.cuda.runtime
+
+            def Device(self, ordinal=0):
+                raise RuntimeError(
+                    'injected: cudaSetDevice failed for this rank')
+
+        cp = FailsToSelect(cupy)
+        emit(f'RANK{rank}', {'injected': 'Device.use() raises',
+                             'note': 'device selection must fail here'})
+
     emit(f'RANK{rank}', {'phase': 'entering discovery', 'worker': is_worker})
 
     # Wrapped exactly as mpi_ds._discover_gpu_placement wraps it. Without the
     # abort, non-GPU ranks block in their next psana_comm collective.
     with gpu_error_handler(comm):
-        discover_peers(pinned, comm, is_gpu_worker=is_worker)
+        discover_peers(comm, is_gpu_worker=is_worker, cp=cp)
 
     # Reaching here means no rank aborted, which is the bug.
     emit(f'RANK{rank}', {'phase': 'SURVIVED discovery',
-                         'failure': 'a rank with the wrong device was accepted'})
+                         'failure': 'a rank that could not select a device '
+                                    'was accepted'})
     return 1
 
 
@@ -114,14 +135,13 @@ def case_verify_pin(rank, eb_ranks):
 
 def case_follower_import(rank, eb_ranks):
     """Break ipcOpenMemHandle on one follower and require a uniform degrade."""
-    from psana.gpu.gpu_placement import PinnedDevice, discover_peers, pin_device
+    from psana.gpu.gpu_placement import discover_peers
 
     is_worker = rank >= eb_ranks
-    pinned = pin_device() if is_worker else PinnedDevice()
 
     from mpi4py import MPI
     comm = MPI.COMM_WORLD
-    placement = discover_peers(pinned, comm, is_gpu_worker=is_worker)
+    placement = discover_peers(comm, is_gpu_worker=is_worker)
     if not is_worker:
         return 0
 
@@ -227,7 +247,7 @@ def case_follower_import(rank, eb_ranks):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--inject', required=True,
-                    choices=('verify-pin', 'follower-import'))
+                    choices=('select-device', 'follower-import'))
     ap.add_argument('--eb-ranks', type=int, default=1)
     args = ap.parse_args()
 
@@ -236,8 +256,8 @@ def main():
         print('cannot determine world rank', file=sys.stderr)
         return 2
 
-    if args.inject == 'verify-pin':
-        return case_verify_pin(rank, args.eb_ranks)
+    if args.inject == 'select-device':
+        return case_select_device(rank, args.eb_ranks)
     return case_follower_import(rank, args.eb_ranks)
 
 

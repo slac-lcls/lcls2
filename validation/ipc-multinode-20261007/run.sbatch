@@ -59,6 +59,53 @@ echo "========== multi-node discovery : 2 EB groups =========="
 timeout 180 mpirun -n 10 python -u "$D/mpi_placement_discovery.py" \
     --n-eb 2 --expect-hosts 2 --expect-devices 4 || rc=$?
 
+
+# The event loop across nodes, with constants read through the public
+# batch.calibconst() inside a real callback. This is what the discovery cases
+# above do NOT cover: CUDA IPC is single-node, so a 2-node job must end up
+# with one owner PER NODE and one shared copy per node. A grouping bug that
+# let a device group span hosts would fail the remote peer's import and
+# degrade the whole job, and no single-node run can see it.
+#
+# CUDA_VISIBLE_DEVICES=0 narrows each node to one card, so the workers on a
+# node are peers of one another and sharing actually engages -- with the mask
+# left wide they spread over both cards and most groups are solo.
+echo
+echo "========== multi-node event loop : 2 EB groups, shared constants =========="
+# -x, not a prefix assignment: a prefix sets the variable for the local
+# mpirun only, so remote ranks keep Slurm's own mask. Measured in job
+# 40801452, where node 014's ranks saw mask='0' and node 015's saw '0,1',
+# giving three device groups instead of two.
+export PS_EB_NODES=2
+export CUDA_VISIBLE_DEVICES=0
+timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
+    -x PSANA_GPU_CHECK_COLLECTIVES -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
+    python -u "$D/mpi_multinode_event_loop.py" \
+    --expect-hosts 2 --expect-devices 2 --max-events 200 || rc=$?
+
+# Same again with one EB group spanning both nodes: the EB topology must not
+# reach the device grouping at all, so the device groups should be identical.
+echo
+echo "========== multi-node event loop : 1 EB spanning 2 nodes =========="
+export PS_EB_NODES=1
+timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
+    -x PSANA_GPU_CHECK_COLLECTIVES -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
+    python -u "$D/mpi_multinode_event_loop.py" \
+    --expect-hosts 2 --expect-devices 2 --max-events 200 || rc=$?
+
+# mpirun's exit status is not sufficient: it returns 0 even when ranks report
+# failures, and job 40801452 printed OVERALL: PASS while both summaries said
+# all_pass:false. The log decides.
+log="validation/ipc-multinode-20261007/job-${SLURM_JOB_ID}.log"
+if grep -aq '"all_pass": false' "$log" 2>/dev/null; then
+    echo "  a summary reported all_pass:false"
+    rc=1
+fi
+if ! grep -aq '"all_pass": true' "$log" 2>/dev/null; then
+    echo "  no summary reported all_pass:true -- did every case run?"
+    rc=1
+fi
+
 echo
 echo "=============================== VERDICT ==================================="
 if [ "$rc" -eq 0 ]; then echo "  OVERALL: PASS"; else echo "  OVERALL: FAIL (rc=$rc)"; fi
