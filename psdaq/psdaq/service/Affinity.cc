@@ -250,15 +250,15 @@ void setThreadPinning(const std::map<std::string,std::string>& kwargs,
   _pinOrder = _spreadOrder(cpuAllocation());
 
   auto granted = _pinOrder.size();
-  if (nFixedHot + nWorkers > granted) {
+  if (nWorkers && nFixedHot + nWorkers > granted) {
     _pinWorkers = false;
     logging::warning("%u hot threads (%u of them workers) exceed %zu granted CPUs, "
                      "so the workers are left unpinned.  Consider cores: %u",
                      nFixedHot + nWorkers, nWorkers, granted, nFixedHot + nWorkers);
   }
   if (nFixedHot > granted)
-    logging::warning("%u threads to pin in %zu granted CPUs, so some will share",
-                     nFixedHot, granted);
+    logging::warning("%u threads to pin in %zu granted CPUs, so some will share.  "
+                     "Consider cores: %u", nFixedHot, granted, nFixedHot);
 }
 
 // An index into the granted set, never an absolute CPU: Slurm chooses the set and may
