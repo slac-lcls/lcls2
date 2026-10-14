@@ -66,7 +66,7 @@ def _alg_params(container: Any, alg_name: str) -> Optional[Dict[str, Any]]:
 
     # Normal configuration comes inlined under `drp_alg0` in CONFIGURE
     drp_alg: Any = getattr(container, "drp_alg0", None)
-    if getattr(drp_alg, "algname", None) == alg_name:
+    if getattr(drp_alg, "name", None) == alg_name:
         return rbr.seg_params_from_config(drp_alg)
 
     return None
