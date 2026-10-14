@@ -2,6 +2,7 @@
 """
 :py:class:`Mask` - alternative access to AreaDetector det.raw._mask_* methods
 =============================================================================
+This class is intended to access hidden det.raw._mask_* methods directly, without preceeding underscore.
 
 Usage::
 
@@ -15,14 +16,15 @@ Usage::
 
     # All other methods are shotcuts to det._mask* methods w/o "_"
 
-    mask = o.set_mask(**kwa) # forces update
-    mask = o.mask(**kwa)
+    mask = o.set_mask(**kwa) # forces update cached mask
+    mask = o.mask(**kwa) # cached mask in MaskAlgos.mask
     mask = o.mask_default()
     mask = o.mask_calib_or_default()
     mask = o.mask_from_status(status_bits=0xffff, dtype=DTYPE_MASK, **kwa)
     mask = o.mask_edges(width=0, edge_rows=1, edge_cols=1, dtype=DTYPE_MASK, **kwa)
     mask = o.mask_center(wcenter=0, center_rows=1, center_cols=1, dtype=DTYPE_MASK, **kwa)
     mask = o.mask_neighbors(mask, rad=9, ptrn='r')
+    mask = o.mask_comb(self, **kwa)
 
 2022-03-29 created by Mikhail Dubrovin
 """
@@ -46,12 +48,12 @@ class Mask:
 
 
     def mask(self, **kwa):
+        """The ONLY cached mask in MaskAlgos.mask"""
         return self.det_raw._mask(**kwa)
 
 
     def mask_comb(self, **kwa):
         """shortcut to AreaDetector.mask_comb"""
-        kwa['force_update'] = True
         return self.det_raw._mask_comb(**kwa)
 
 

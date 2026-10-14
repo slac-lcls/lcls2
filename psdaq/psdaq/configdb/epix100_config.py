@@ -159,7 +159,9 @@ def epix100_connectionInfo(base, alloc_json_str):
     d["serno"] = epixhrid
 
     # Check that the timing link is up from XPM-side
-    if rxId != 0xFFFFFFFE:
+    # cpo and cheolhong are removing this workaround because
+    # of the progress on making timing links more robust - 09/18/26
+    if rxId != 0xFFFFFFFE and 0:
         from p4p.client.thread import Context
         from p4p.nt.scalar import ntint
         xpm: int = (rxId >> 16) & 0xFF

@@ -18,8 +18,8 @@ public:
     using Detector::event;
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
     // For binning into the cube
-    virtual void     addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
-                               double* dst, XtcData::DescData& rawData) override;
+    virtual unsigned addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                               double* dst, unsigned bin, XtcData::DescData& rawData) override;
     virtual unsigned subIndices    () override;
     virtual unsigned rawNamesIndex () override { return RawNamesIndex; }
     virtual unsigned cubeNamesIndex() override { return CubeNamesIndex; }

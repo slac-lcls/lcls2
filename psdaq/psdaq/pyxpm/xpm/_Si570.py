@@ -35,12 +35,12 @@ class Si570(pr.Device):
 
     def reset(self):
         print('reset')
-        v = self.Regs[135].get() | 1
+        v = self.Regs[135].get() | 1   # Freeze M
         self.Regs[135].set(v)
         v = 1
         while (v&1):
             time.sleep(1.e-3)
-            v = self.Regs[135].get()
+            v = self.Regs[135].get()   # Read until RECALL bit clears
         print('reset complete')
 
     def read(self):
@@ -102,12 +102,16 @@ class Si570(pr.Device):
   
         print('Wrote: hs_div {:x}  n1 {:x}  rfreq {:x}  f {:f} MHz'.format(hs_div, n1, rfreq, fcal))
 
-        #  Unfreeze DCO
+        #  Unfreeze DCO and Assert NewFreq  (must be < 10ms since Unfreeze)
         v = self.Regs[137].get() & ~(1<<4)
-        self.Regs[137].set(v)
-
-        v = self.Regs[135].get() | (1<<6)
-        self.Regs[135].set(v)
-
+        w = self.Regs[135].get() | (1<<6)
+        start_time = time.perf_counter()
+        self.Regs[137].set(v, check=False)
+        #  Intentionally fail
+        #time.sleep(0.01)
+        mid_time = time.perf_counter()
+        self.Regs[135].set(w)
+        stop_time = time.perf_counter()
+        print(f'Unfreeze to Newfreq = {stop_time - start_time}, {stop_time - mid_time}')
 
 

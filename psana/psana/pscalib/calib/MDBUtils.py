@@ -69,6 +69,7 @@ import os
 import sys
 from time import time, gmtime, localtime, strftime
 import json
+#import io
 
 import numpy as np
 import psana.pyalgos.generic.Utils as gu
@@ -349,9 +350,18 @@ def object_from_data_string(s, doc):
         return data
     elif data_type == 'ndarray':
         str_dtype = doc.get('data_dtype', None)
+        logger.debug(f'retrieving data for doc: {str(doc)}'\
+                    +f'\ns: {str(s)[:100]}')
         nda = np.frombuffer(s, dtype=str_dtype)
         nda.shape = eval(doc.get('data_shape', None)) # eval converts string shape to tuple
         return nda
+#    elif data_type == 'ndarray': # NEW-VERSION - DOCUMENT IS NOT USED'
+#        logger.info(f'XXXX retrieving data for doc: {str(doc)}')
+#        logger.info(f'XXXX s: {str(s)[:100]}')
+#        b = io.BytesIO(s) # where s = response.content
+#        b.seek(0)
+#        nda = np.load(b)
+#        return nda
     elif data_type == 'any':
         import pickle
         return pickle.loads(s)
@@ -391,7 +401,7 @@ def dbnames_collection_query(det, exp=None, ctype='pedestals', run=None, time_se
     query['run'] = {'$lte': runq} #query['run_end'] = {'$gte': runq}
     if time_sec is not None: query['time_sec'] = {'$lte': int(time_sec)}
     if vers is not None: query['version'] = vers
-    logger.debug('query: %s' % str(query))
+    logger.debug('dbnames_collection_query query: %s' % str(query))
     db_det, db_exp = db_prefixed_name(_det), db_prefixed_name(str(exp))
     if None in (db_det, db_exp):
         logger.debug('WARNING: dbnames_collection_query: db_det:%s db_exp:%s' % (db_det, db_exp))
@@ -541,11 +551,11 @@ def _short_for_partial_name(detname, ldocs):
 #        return None
 #    return detname if len(detname)<maxsize else _short_detector_name(detname, add_shortname=add_shortname)
 
-def _pro_detector_name(detname, maxsize=cc.MAX_DETNAME_SIZE, add_shortname=False):
-    #import psana.pscalib.calib.MDBWebUtils as mwu
-    from psana.pscalib.calib.MDBWebUtils import pro_detector_name
-    return pro_detector_name(detname, maxsize, add_shortname)
-
+def _pro_detector_name(detname, add_shortname=False, **kwa): # DEPRECATED: maxsize=cc.MAX_DETNAME_SIZE
+    # 2026-09-09 DOES NOT WORK (circular dependency???)
+    #from psana.pscalib.calib.MDBWebUtils import pro_detector_name
+    #return pro_detector_name(detname, add_shortname)
+    return detname
 
 if __name__ == "__main__":
     sys.exit('\nFor test use ./ex_%s <test-number> <mode> <...>' % sys.argv[0].rsplit('/')[-1])

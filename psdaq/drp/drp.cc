@@ -145,7 +145,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "hsd_epics_prefix")  continue;  // Digitizer
             if (kwargs.first == "strm_limit")        continue;  // Digitizer
         }
-        if (para.detType == "wave8")
+        if (para.detType == "wave8" || para.detType == "wave8he")
             if (kwargs.first == "epics_prefix")      continue;  // Wave8
         if (para.detType == "epixhremu") {
             if (kwargs.first == "xtcfile")           continue;  // EpixHRemu
@@ -157,10 +157,6 @@ int main(int argc, char* argv[])
         if (para.detType == "jungfrau") {
             if (kwargs.first == "segNums")           continue;
             if (kwargs.first == "slsHosts")          continue;
-        }
-        if (para.detType == "epixuhr3x2") {
-            if (kwargs.first == "cfgDev")            continue;
-            if (kwargs.first == "cfgLaneMask")       continue;
         }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());

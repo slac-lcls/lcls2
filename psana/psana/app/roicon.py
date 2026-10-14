@@ -23,12 +23,9 @@ USAGE = '\n'\
       + '\n  ex1:   %s 1 -g %s' % (SCRNAME, TGFNAME)\
       + '\n  ex2:   %s 1 -g %s -a %s' % (SCRNAME, TGFNAME, TESTNDA)\
       + '\n  test:  %s 1 -g %s -i test-2d-mask.npy -t' % (SCRNAME, TGFNAME1)\
-      + '\n\n2) (TBD) Create ROI mask using mask editor "med" (DO NOT FORGET to save mask in file!)'\
-      + '\n         %s 2 [-i <image-(input)file>] [-m <roi-mask-(output)file>]' % SCRNAME\
-      + '\n  ex1,2: %s 2' % SCRNAME\
-      + '\n  ex3:   %s 2 -i image.npy -m roi-mask.npy' % SCRNAME\
-      + '\n\n3) Convert ROI mask to ndarray with mask shaped as data'\
-      + '\n         %s 3 -g <geometry-file> [-m <roi-mask-(input)file>] [-n ndarray-with-mask-(output)-file] [-c <control-bitword>]' % SCRNAME\
+      + '\n\n2) Create ROI mask using mask editor "masked" (DO NOT FORGET to save mask in file: <roi-2d-mask-file>!)'\
+      + '\n\n3) Convert ROI mask to 3-d array with mask shaped as data'\
+      + '\n         %s 3 -g <geometry-file> [-m <roi-2d-mask-file>] [-n ndarray-with-mask-(output)-file] [-c <control-bitword>]' % SCRNAME\
       + '\n  ex1,2: %s 3 -g %s' % (SCRNAME, TGFNAME)\
       + '\n  test:  %s 3 -g %s -m test-2d-mask.npy -n test-3d-mask.npy' % (SCRNAME, TGFNAME1)
 

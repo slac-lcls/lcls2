@@ -82,13 +82,12 @@ public:
   virtual ~PGPDrp();
   std::string configure(const nlohmann::json& msg);
   unsigned unconfigure();
-  void reducerConfigure(XtcData::Xtc& xtc, const void* bufEnd)
-    { m_reducer->configure(xtc, bufEnd); }
+  std::string startup(XtcData::Xtc& xtc, const void* be);
   bool reducerStart(unsigned wkr, unsigned& index) const
     { return m_reducer->start(wkr, index); }
   bool reducerReceive(unsigned wkr, ReducerTuple* items) const
     { return m_reducer->receive(wkr, items); }
-  void reducerEvent(XtcData::Xtc& xtc, void* be, size_t sz)
+  void reducerEvent(XtcData::Xtc& xtc, const void* be, size_t sz)
     { m_reducer->event(xtc, be, sz); }
   void freeBuffers(unsigned idx);
   void reducerDump() const

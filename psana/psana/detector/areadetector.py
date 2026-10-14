@@ -369,11 +369,6 @@ class AreaDetector(DetectorImpl):
         #return self._det_calibconst('shape_as_daq')
 
 
-#    def _segment_ids(self):
-#        """Returns list of detector segment ids"""
-#        return self._uniqueid.split('_')[1:]
-
-
     def _substitute_value_for_missing_segments(self, nda_daq, value) -> Array3d:
         nsegs_tot = self._number_of_segments_total()
         nsegs_daq = self._number_of_segments_daq()
@@ -393,7 +388,7 @@ class AreaDetector(DetectorImpl):
         """
         value = value_for_missing_segments
 
-        _nda = self.calib(evt) if nda is None else nda
+        _nda = self.calib(evt, **kwa) if nda is None else nda
 
         segnums = self._segment_numbers
 
@@ -491,13 +486,7 @@ class AreaDetector(DetectorImpl):
     def _mask(self, **kwa):
         """Returns cached mask. **kwargs passed from Detector(..., **kwargs)"""
         logger.debug('in AreaDetector._mask(**kwa - not used, set them in Detector(..., **kwa))')
-        return self._mask_method_wrapper('mask')
-
-#    def _mask(self, status=True, neighbors=False, edges=False, center=False,\
-#              calib=False, umask=None, force_update=False, dtype=DTYPE_MASK, **kwa):
-#        """Returns cached mask. Dict of kwargs is the same as in _mask_comb."""
-#        return self._mask_method_wrapper('mask', status=status, neighbors=neighbors, edges=edges, center=center,\
-#                                         calib=calib, umask=umask, force_update=force_update, dtype=dtype, **kwa)
+        return self._mask_method_wrapper('mask', **kwa)
 
 
 class AreaDetectorRaw(AreaDetector):

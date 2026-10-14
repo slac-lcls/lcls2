@@ -3,6 +3,7 @@ from psana.detector.NDArrUtils import info_ndarr
 import numpy as np
 from amitypes import Array2d, Array3d
 import psana.detector.epix_base as eb
+import psana.detector.UtilsEpixUHR as ueu
 import logging
 from psana.detector.detector_impl import DetectorImpl
 logger = logging.getLogger(__name__)
@@ -95,7 +96,7 @@ class epixuhr_raw_0_0_0(eb.epix_base):
         self._asic_numbers = [0,1,2,3]
         self._nwarnings = 0
         self._nwarnings_max = kwargs.get('nwarnings_max', 5)
-        self._gain_modes = ('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
+        self._gain_modes = ueu.GAIN_MODES #('FHG', 'FMG', 'FLG1', 'FLG2', 'AHLG1', 'AHLG2', 'AMLG1', 'AMLG2')
 
     def _array(self, evt) -> Array2d:
         f = None

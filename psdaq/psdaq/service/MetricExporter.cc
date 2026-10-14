@@ -296,7 +296,7 @@ void Pds::PromHistogram::observe(double sample)
         m_boundaries.begin(),
         std::find_if(m_boundaries.begin(), m_boundaries.end(),
                      [sample](double boundary) { return boundary >= sample; })));
-    if (bin >= 0 && bin < m_counts.size()) {
+    if ((bin >= 0) && (bin < m_counts.size())) {
         m_counts[bin]++;
         m_sum += sample;
     }
@@ -304,8 +304,6 @@ void Pds::PromHistogram::observe(double sample)
       fprintf(stderr, "%s:\n  Bin number %zd is out of range [0, %zd) for sample %f ([%f - %f))\n",
               __PRETTY_FUNCTION__, bin, m_counts.size(), sample, *m_boundaries.begin(), *m_boundaries.end());
     }
-    //printf("observe: sample %f, bin %zd, counts %lu, sum %f\n",
-    //       sample, bin, m_counts[bin], m_sum);
 }
 
 void Pds::PromHistogram::clear()
@@ -313,4 +311,11 @@ void Pds::PromHistogram::clear()
     for (unsigned i = 0; i < m_counts.size(); ++i)
         m_counts[i] = 0;
     m_sum = 0.0;
+}
+
+void Pds::PromHistogram::dump() const
+{
+    printf("Histogram dump:\n");
+    for (unsigned i = 0; i < m_counts.size(); ++i)
+        printf("%u: %lu\n", i, m_counts[i]);
 }

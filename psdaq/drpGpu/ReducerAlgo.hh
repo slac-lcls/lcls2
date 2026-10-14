@@ -6,6 +6,7 @@
 #include "drp/drp.hh"                   // For NamesIndex
 #include "xtcdata/xtc/ShapesData.hh"    // For Alg
 #include "xtcdata/xtc/NamesLookup.hh"
+#include <nlohmann/json.hpp>
 
 #include <cuda_runtime.h>
 
@@ -47,6 +48,9 @@ public:
                              unsigned  index,
                              size_t*   dataSize,
                              unsigned* retCode) = 0;
+  virtual int      configure(const nlohmann::json& configureMsg,
+                             const nlohmann::json& connectMsg,
+                             size_t                collectionId) = 0;                 // Retrieve configDb configuration
   virtual unsigned configure(XtcData::Xtc&, const void* bufEnd) = 0;                  // attach descriptions to xtc
   virtual void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) {} // fill xtc data description
 protected:

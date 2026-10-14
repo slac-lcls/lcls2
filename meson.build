@@ -18,15 +18,16 @@ ar = find_program('gcc-ar', required: true)
 py = import('python').find_installation(pure: false)
 python_dep = py.dependency(embed: true)
 
-# Python 3.11
-#numpy_dep = dependency('numpy')
+numpy_inc = run_command(py, ['-c', 'import numpy; print(numpy.get_include())'], check: true).stdout().strip()
 
-# Python 3.9
-numpy_inc = run_command('python3', ['-c', 'import numpy; print(numpy.get_include())'], check: true).stdout().strip()
 numpy_dep = declare_dependency(include_directories: include_directories(numpy_inc))
 
 # Have to set the linker flags manually, as nvcc's linker conflicts with
 # the gcc linker args that conda sets.
+# Only applies when a Conda environment is actually in use (conda_prefix set).
+# In a manylinux container build, conda_base is empty and these flags are
+# skipped entirely so we fall back to the compiler's default system paths.
+if conda_base != ''
 add_project_link_arguments(
   [
     '-Wl,-O2',
@@ -59,9 +60,17 @@ add_project_link_arguments(
   ],
   language: 'cuda'
 )
+endif
 
+# EPICS is only relevant to DAQ libraries. Without this guard, every shared
+# library in the project (including xtcdata/psalg/psana, which never touch
+# EPICS) gets an EPICS path baked into its RPATH even when build_daq=false.
 epics_lib = join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))
-libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir')) + ':' + epics_lib
+if get_option('build_daq')
+  libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir')) + ':' + epics_lib
+else
+  libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir'))
+endif
 bindir_install_rpath = join_paths(get_option('prefix'), get_option('bindir'))
 
 subdir('xtcdata')

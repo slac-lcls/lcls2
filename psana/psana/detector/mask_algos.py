@@ -88,7 +88,7 @@ class MaskAlgos:
             _smask = um.status_as_mask(status, status_bits=sbits, dtype=DTYPE_MASK, **kwa)
             # smask shape can be e.g.: (!!!7, 4, 352, 384)
             smask = _smask if smask is None else\
-                    um.merge_masks(smask, _smask, dtype=dtype)
+                    um.merge_masks(smask, _smask, dtype=dtype, msg='mask_from_status')
 
         if is_none(smask, 'status_as_mask is None'): return None
 
@@ -160,7 +160,7 @@ class MaskAlgos:
                   center_rows=center_rows, center_cols=center_cols, dtype=dtype, **kwa)
         nsegs = self.cco.number_of_segments_total()
         if is_none(nsegs, '_number_of_segments_total is None, return None'): return None
-        return mask1 if nsegs==1 else np.stack([mask1 for i in range(nsegs)])
+        return mask1 if nsegs==1 else np.array(np.stack([mask1 for i in range(nsegs)]), dtype=dtype)
 
 
     def mask_comb(self, status=True, neighbors=False, edges=False, center=False, calib=False, umask=None,\
@@ -222,7 +222,7 @@ class MaskAlgos:
             erows = kwa.get('edge_rows', 1)
             ecols = kwa.get('edge_cols', 1)
             mask_edges = self.mask_edges(width=width, edge_rows=erows, edge_cols=ecols, dtype=dtype) # masks each segment edges only
-            mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges, dtype=dtype)
+            mask = mask_edges if mask is None else um.merge_masks(mask, mask_edges, dtype=dtype, msg='mask_comb-edges')
             self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_edges:'))
 
         if center:
@@ -230,16 +230,16 @@ class MaskAlgos:
             crows = kwa.get('center_rows', 1)
             ccols = kwa.get('center_cols', 1)
             mask_center = self.mask_center(wcenter=wcent, center_rows=crows, center_cols=ccols, dtype=dtype)
-            mask = mask_center if mask is None else um.merge_masks(mask, mask_center, dtype=dtype)
+            mask = mask_center if mask is None else um.merge_masks(mask, mask_center, dtype=dtype, msg='mask_comb-center')
             self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_center:'))
 
         if calib:
             mask_calib = self.mask_calib_or_default(dtype=dtype)
-            mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib, dtype=dtype)
+            mask = mask_calib if mask is None else um.merge_masks(mask, mask_calib, dtype=dtype, msg='mask_comb-calib')
             self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb after mask_calib:'))
 
         if umask is not None:
-            mask = umask if mask is None else um.merge_masks(mask, umask, dtype=dtype)
+            mask = umask if mask is None else um.merge_masks(mask, umask, dtype=dtype, msg='mask_comb-umask')
             #self.logmet_init(info_ndarr(mask, 'in mask_comb after umask:'))
 
         self.logmet_init(info_ndarr(mask, 'MaskAlgos.mask_comb at exit:'))
@@ -252,7 +252,7 @@ class MaskAlgos:
 #             self._mask = self.mask_comb(status=status, neighbors=neighbors, edges=edges, center=center,\
 #                                       calib=calib, umask=umask, dtype=dtype, **kwa)
     def mask(self, **kwa):
-        """returns cached mask_comb(**self._kwa) with **self._kwa passed from Detector(detname,**kwa)
+        """returns CACHED mask_comb(**self._kwa) with **self._kwa passed from Detector(detname,**kwa)
         Control parameter
         force_update (bool) allows to re-evaluate cached mask for newly passed **kwa
         """

@@ -109,9 +109,9 @@ class DgramManager(object):
                     # one is used. Mona changed this to "replace" so at a time, there's
                     # only one config.
                     self.set_configs([d])
-                    self._shmem_lock = threading.Lock()
-                    # Notifies consumer thread an event is available
-                    self._shmem_event = threading.Event()
+                    # Condition for comm between reader and consumer threads
+                    self._shmem_cond = threading.Condition()
+                    # Maintain a separate queue of transitions to ensure none missed
                     self._transitions = deque()
                     # Holds the last event read from a shmem buffer
                     self._last_event = None
@@ -182,19 +182,33 @@ class DgramManager(object):
             time.sleep(0.01)
         assert not status, "shmem connect failure %d" % status
         # wait for first configure datagram - blocking
-        view = self.shmem_cli.get(self.shmem_kwargs)
-        assert view
-        # Release shmem buffer after copying Transition data
-        # cpo: copy L1Accepts too because some shmem
-        # applications like AMI's pickN can hold references
-        # to dgrams for a long time, consuming the shmem buffers
-        # and creating a deadlock situation. could revisit this
-        # later and only deep-copy arrays inside pickN, for example
-        # but would be more fragile.
-        barray = bytes(view[: dgSize(view)])
-        self.shmem_cli.freeByIndex(
-            self.shmem_kwargs["index"], self.shmem_kwargs["size"]
-        )
+        # Note: there is a race condition where L1Accept events
+        # may arrive in the client's event queue before the
+        # Configure transition arrives on the transition socket.
+        # poll() in ShmemClient::get() prioritizes transitions,
+        # but only when both are ready simultaneously. If only
+        # the event queue has data, an L1Accept is returned.
+        # We must loop here, discarding any non-Configure
+        # datagrams, to ensure we get the actual Configure.
+        while True:
+            view = self.shmem_cli.get(self.shmem_kwargs)
+            assert view
+            # Release shmem buffer after copying Transition data
+            # cpo: copy L1Accepts too because some shmem
+            # applications like AMI's pickN can hold references
+            # to dgrams for a long time, consuming the shmem buffers
+            # and creating a deadlock situation. could revisit this
+            # later and only deep-copy arrays inside pickN, for example
+            # but would be more fragile.
+            svc = _service(view)
+            barray = bytes(view[: dgSize(view)])
+            self.shmem_cli.freeByIndex(
+                self.shmem_kwargs["index"], self.shmem_kwargs["size"]
+            )
+            if svc == TransitionId.Configure:
+                break
+            else:
+                print(f'_connect_shmem_cli: discarding svc {svc} while waiting for Configure ({TransitionId.Configure})')
         view = memoryview(barray)
         return view
 
@@ -471,7 +485,7 @@ class DgramManager(object):
 
     def _shmem_reader(self):
         while self._shmem_thread_continue:
-            with self._shmem_lock:
+            with self._shmem_cond:
                 self.shmem_kwargs["transitionsOnly"] = self._skip_event
 
             view = self.shmem_cli.get(self.shmem_kwargs)
@@ -492,7 +506,7 @@ class DgramManager(object):
                 config = self.configs[len(self.configs) - 1]
                 d = dgram.Dgram(config=config, view=view)
 
-                with self._shmem_lock:
+                with self._shmem_cond:
                     if (transition_id := d.service()) != TransitionId.L1Accept:
                         self._transitions.append(d)
                         if transition_id == TransitionId.Disable:
@@ -503,14 +517,20 @@ class DgramManager(object):
                         # reading the shmem buffers before the consumption thread
                         # has processed the data, it will not drain unneeded datagrams
                         self._skip_event = True
-                        # Signal to consumption thread that a new L1Datagram is available
-                        self._shmem_event.set()
+
+                    # Signal to consumption thread that a new L1Datagram is available
+                    self._shmem_cond.notify_all()
             elif self.shmem_kwargs["eventSkipped"]:
                 # This only happens if we requested to skip an event, and it actually
                 # was skipped. When this happens, NULL is returned, but this is expected
                 # so continue on here normally
                 # Reset the bool so we don't get here accidentally next time
                 self.shmem_kwargs["eventSkipped"] = False
+                # NOTE: May want to force the reader to sleep as well....
+                #       BUT, setting a timeout is... tricky...
+                with self._shmem_cond:
+                    if self._skip_event and self._shmem_thread_continue:
+                        self._shmem_cond.wait(timeout=0.1)
                 continue
             else:
                 # NULL for some other reason
@@ -537,27 +557,31 @@ class DgramManager(object):
             return dgrams
 
         if self.shmem_cli:
-            with self._shmem_lock:
+            with self._shmem_cond:
                 # If we were previously skipping event reads, it is now okay to replace
                 # the event buffer. This is because the __next__ method must have been
                 # called another time, so previous buffer has been used.
-                # Call now, before waiting on _shmem_event so a new event datagram can
+                # Call now, before waiting again, so a new event datagram can
                 # be grabbed from a shmem buffer by the reader thread.
                 self._skip_event = False
-            while True:
-                if len(self._transitions) > 0: # Can we still have a race here?
-                    with self._shmem_lock:
+                self._shmem_cond.notify_all()
+
+                while True:
+                    while not self._transitions and self._last_event is None:
+                        # This should hopefully be a sleep instead of spin
+                        self._shmem_cond.wait()
+
+                    if self._transitions: # Can we still have a race here?
                         d = self._transitions.popleft()
-                    break
-                elif self._shmem_event.is_set():
-                    with self._shmem_lock:
-                        d = self._last_event      # Grab new event
-                        self._shmem_event.clear() # Clear datagram notification
-                        # Check if you have a newer disable
+                        break
+                    else:
+                        d = self._last_event    # Grab a new event
+                        self._last_event = None # Clear event so not consumed twice
+                        # Newer disable?
                         if self._last_disable_ts > d.timestamp():
-                            # Just continue, there should be a disable in the queue now
                             continue
-                    break
+                        break
+
             dgrams = [d]
         elif self.mq_inp:
             if self._stop_iteration:

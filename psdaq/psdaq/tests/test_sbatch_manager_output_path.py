@@ -26,20 +26,29 @@ def create_manager(tmp_path, monkeypatch, user, output=None):
     )
 
 
-def test_xpp_default_output_root_uses_daq_logs(tmp_path, monkeypatch):
-    manager = create_manager(tmp_path, monkeypatch, user="xppopr")
-    expected = Path(tmp_path) / "daq" / "logs" / "2026" / "02"
+def test_default_log_root_uses_daq_logs_for_any_user(tmp_path, monkeypatch):
+    for user in ("xppopr", "tmoopr", "mfxopr", "cpo"):
+        home = tmp_path / user
+        home.mkdir()
+        manager = create_manager(home, monkeypatch, user=user)
 
-    assert Path(manager.output_path) == expected
-    assert expected.exists()
+        assert Path(manager.output_path) == home / "daq" / "logs" / "2026" / "02"
+        assert Path(manager.output_path).is_dir()
 
 
-def test_non_xpp_default_output_root_uses_home(tmp_path, monkeypatch):
+def test_sbatch_script_uses_default_log_root(tmp_path, monkeypatch):
     manager = create_manager(tmp_path, monkeypatch, user="mfxopr")
-    expected = Path(tmp_path) / "2026" / "02"
+    manager.generate(
+        node="mfx-daq",
+        job_name="control",
+        details={"cmd": "echo ready", "comment": "test"},
+        node_features=None,
+    )
+    expected_log = (
+        tmp_path / "daq" / "logs" / "2026" / "02" / "26_08:00:00_mfx-daq:control.log"
+    )
 
-    assert Path(manager.output_path) == expected
-    assert expected.exists()
+    assert f"#SBATCH --output={expected_log}\n" in manager.sb_script
 
 
 def test_output_arg_overrides_default_root(tmp_path, monkeypatch):
@@ -51,3 +60,4 @@ def test_output_arg_overrides_default_root(tmp_path, monkeypatch):
 
     assert Path(manager.output_path) == expected
     assert expected.exists()
+    assert not (tmp_path / "daq" / "logs").exists()

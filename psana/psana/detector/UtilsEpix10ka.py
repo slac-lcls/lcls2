@@ -214,7 +214,9 @@ class Storage_v02(): # Storage):
           + info_ndarr(cbits_lo,  '\n  cbits_lo')\
           + info_ndarr(self.mask, '\n  mask')\
           + info_ndarr(self.peds, '\n  peds')\
-          + info_ndarr(self.gfac, '\n  gfac')
+          + info_ndarr(self.gfac, '\n  gfac')\
+          +'\n  det.raw._data_bit_mask:    %s' % oct(det_raw._data_bit_mask)\
+          +'\n  det_raw._data_gain_bitnum: %d' % det_raw._data_gain_bitnum
         logger.info(s)
 
 
