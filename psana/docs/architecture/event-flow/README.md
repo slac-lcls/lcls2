@@ -42,10 +42,10 @@ From the repository root, using Python 3.8 or newer:
 
 ```bash
 python3 psana/docs/architecture/event-flow/build.py
-python3 psana/docs/architecture/event-flow/build.py --check
+python3 psana/docs/architecture/event-flow/build.py --check --check-source-drift
 ```
 
-No Python packages are needed for generation. The pinned source commit must be available in the local Git repository. `build.py` validates unique node/edge IDs, required content, view membership, routes, tour coverage, existing source files and source-anchor needles. It derives GitHub line links from `git show <baseline>:<path>`; it does not silently repoint them at the current working tree. `--check` also requires deterministic generated HTML to match the checked-in file and disallows remote runtime assets.
+No Python packages are needed for generation. The pinned source commit must be available in the local Git repository. `build.py` validates unique node/edge IDs, required content, view membership, routes, tour coverage, existing source files and source-anchor needles. It derives GitHub line links from `git show <baseline>:<path>`; it does not silently repoint them at the current working tree. `--check` also requires deterministic generated HTML to match the checked-in file and disallows remote runtime assets. `--check-source-drift` additionally compares the listed source paths with the active checkout (including tracked local edits) and fails if they differ. Inspect any changes before adjusting the model or advancing the revision. This checks the listed files, not every possible dependency or the accuracy of prose. Source-link validation alone still works against a historical pinned revision without this flag.
 
 Source anchor `needle` is a literal source line fragment. If the same method name appears more than once, the first match is intentional only when targeting a base-class definition (for example `Run.events`). Use a unique fragment for other cases. Source links are evidence entry points; the validator checks the anchor exists, not that every English claim follows from it. Changes need human/source review.
 
@@ -75,6 +75,14 @@ These docs target `features/psana2-gpu`. The generated `index.html` is committed
 Keep the model and renderer as the editing sources; regenerate the HTML after changes. Review changed source paths and callers before advancing the inspected commit. Do not replace that revision automatically with HEAD or label proposals as implemented because an issue closed.
 
 Publishing with GitHub Pages is a separate follow-up. A future site build can copy this standalone viewer unchanged alongside rendered Markdown guides. The documentation check workflow does not deploy a site.
+
+The **Check psana documentation** workflow runs for relevant PRs targeting the
+feature branch and pushes to it. It checks generation/source drift and Chromium
+interactions, then uploads a `psana-event-flow-preview` artifact containing the
+HTML, screenshots and browser result. Download and extract the artifact to open
+the HTML locally; GitHub Actions artifacts do not host a live page. The source
+drift check deliberately asks for review when an anchored file changes, even if
+the eventual review finds that the diagram remains accurate.
 
 ## Reference and attribution
 

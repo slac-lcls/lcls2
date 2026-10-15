@@ -63,7 +63,7 @@
   text('title', model.title);
   text('subtitle', model.subtitle);
   text('scope', model.scope);
-  $('baseline').append(el('span', 'Baseline '), el('a', model.baseline.commit.slice(0, 12), {
+  $('baseline').replaceChildren(el('span', 'Baseline '), el('a', model.baseline.commit.slice(0, 12), {
     href: model.baseline.repo + '/commit/' + model.baseline.commit
   }), el('span', ' · ' + model.baseline.branch + ' · Reviewed ' + model.baseline.inspected +
     ' · ' + model.baseline.status + ' · Source links are pinned; your checkout may differ.'));

@@ -10,17 +10,35 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[3]
 
+def check_source_drift(model):
+    """Require review when documented source differs from the inspected commit."""
+    baseline = model['baseline']
+    changed = subprocess.check_output(
+        ['git', 'diff', '--name-only', baseline['commit'], '--'] +
+        baseline['source_paths'], cwd=ROOT, encoding='utf-8').splitlines()
+    if changed:
+        raise ValueError(
+            'Documented source changed since the inspected revision; review '
+            'behavior/callers before updating provenance:\n' + '\n'.join(changed))
+
 def checked_model():
     model = json.loads((HERE / 'workflow-model.json').read_text(encoding='utf-8'))
     assert model['schema_version'] == 2, 'unsupported model schema'
     sha = model['baseline']['commit']
     assert re.fullmatch(r'[0-9a-f]{40}', sha), 'baseline must be a full commit'
+    baseline = model['baseline']
+    assert baseline['status'] in ('implemented-reference', 'proposal', 'historical')
+    assert baseline['branch'] and re.fullmatch(r'\d{4}-\d{2}-\d{2}', baseline['inspected'])
+    assert baseline['source_paths'] == sorted(set(baseline['source_paths']))
+    for path in baseline['source_paths']:
+        assert not path.startswith('/') and '..' not in Path(path).parts
     nodes = {n['id']: n for n in model['nodes']}
     assert len(nodes) == len(model['nodes']), 'duplicate node IDs'
     cache = {}
     def resolve_source(src):
         path = src['path']
         assert not path.startswith('/') and '..' not in Path(path).parts
+        assert path in baseline['source_paths'], 'source missing from drift coverage: ' + path
         if path not in cache:
             cache[path] = subprocess.check_output(['git', 'show', sha + ':' + path], cwd=ROOT).decode().splitlines()
         lines = cache[path]
@@ -106,7 +124,10 @@ def fallback(model):
 def build():
     model = checked_model()
     template = (HERE/'template.html').read_text(encoding='utf-8')
-    replacements = {'{{TITLE}}':html.escape(model['title']), '{{STYLE}}':(HERE/'viewer.css').read_text(), '{{SCRIPT}}':(HERE/'viewer.js').read_text(), '{{MODEL}}':json.dumps(model,ensure_ascii=False).replace('<','\\u003c'), '{{FALLBACK}}':fallback(model), '{{LICENSE}}':html.escape((ROOT/'LICENSE.md').read_text())}
+    provenance = '{} · {} · Reviewed {} · {}'.format(
+        model['baseline']['commit'], model['baseline']['branch'],
+        model['baseline']['inspected'], model['baseline']['status'])
+    replacements = {'{{TITLE}}':html.escape(model['title']), '{{SCOPE}}':html.escape(model['scope']), '{{PROVENANCE}}':html.escape(provenance), '{{STYLE}}':(HERE/'viewer.css').read_text(), '{{SCRIPT}}':(HERE/'viewer.js').read_text(), '{{MODEL}}':json.dumps(model,ensure_ascii=False).replace('<','\\u003c'), '{{FALLBACK}}':fallback(model), '{{LICENSE}}':html.escape((ROOT/'LICENSE.md').read_text())}
     for key,value in replacements.items():
         assert key in template
         template=template.replace(key,value)
@@ -117,7 +138,10 @@ def build():
 if __name__ == '__main__':
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--check',action='store_true',help='validate model/source and require committed HTML to match')
+    parser.add_argument('--check-source-drift',action='store_true',help='fail if documented source changed since the inspected commit')
     args=parser.parse_args()
+    if args.check_source_drift:
+        check_source_drift(checked_model())
     result=build()
     dest=HERE/'index.html'
     if args.check:

@@ -18,6 +18,10 @@ with sync_playwright() as p:
     page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
     page.goto((HERE/'index.html').as_uri())
     page.wait_for_selector('body[data-ready="true"]')
+    expect(page.locator('#docs-home')).to_have_attribute('href',model['documentation_url'])
+    expect(page.locator('#baseline')).to_contain_text(model['baseline']['branch'])
+    expect(page.locator('#baseline')).to_contain_text(model['baseline']['status'])
+    expect(page.locator('#baseline a')).to_have_attribute('href',model['baseline']['repo']+'/commit/'+model['baseline']['commit'])
     for view in model['views']:
         page.locator('button[data-view="'+view+'"]').click()
         expect(page.locator('body')).to_have_attribute('data-view',view)
@@ -74,6 +78,7 @@ with sync_playwright() as p:
     page.locator('#component-list a').first.focus();page.keyboard.press('Enter')
     expect(page.locator('#detail')).to_have_attribute('data-node','setup')
     with page.expect_download() as pending:page.locator('#download').click()
+    assert pending.value.suggested_filename=='psana-event-flow.html'
     saved=args.artifacts/'downloaded.html';pending.value.save_as(str(saved))
     downloaded=context.new_page();downloaded.on('pageerror',lambda error:errors.append(str(error)))
     downloaded.goto(saved.as_uri()+'#/gpu/execute')
@@ -91,6 +96,9 @@ with sync_playwright() as p:
     # Verify static references still exist if scripting is disabled.
     noscript=browser.new_context(java_script_enabled=False,offline=True)
     plain=noscript.new_page();plain.goto(saved.as_uri())
+    expect(plain.locator('#baseline')).to_contain_text(model['baseline']['commit'])
+    expect(plain.locator('#baseline')).to_contain_text(model['baseline']['status'])
+    expect(plain.locator('#scope')).to_have_text(model['scope'])
     assert plain.locator('noscript section').count()==len(model['nodes'])
     assert plain.locator('#reference-input .call-tree a').count()>0
     assert not errors,errors
