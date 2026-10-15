@@ -238,7 +238,7 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
 
   if (*state == 0) {
     DBG(*stateMon = 2;)
-    // Get the intermediate buffer index
+    // Get the staging buffer index
     unsigned idx;
     unsigned ns{8};
     while (!readerQueues[lReader]->pop(&idx)) {
@@ -502,7 +502,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
       DmaBuffer* buffer = &event->buffers[lane];
       buffer->size = size;
-      buffer->index = index;                // Intermediate buffer index; NOT DMA buffer index
+      buffer->index = index;                // Staging buffer index; NOT DMA buffer index
       if (event->mask) [[unlikely]] {
         logging::critical("PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
                           event->mask, pgpIndex, evtCounter);

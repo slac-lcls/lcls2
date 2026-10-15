@@ -360,7 +360,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 //             result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
 //    }
 
-    // Release the GPU intermediate buffers for reuse
+    // Release the GPU staging buffers for reuse
     drp.freeBuffers(index);             // Leaves event mask = 0
     nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);
@@ -1049,7 +1049,7 @@ void PGPDrp::_collector()
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
   uint64_t l1Count = 0;
-  unsigned bufIndex = 0;                // Intermediate buffer index
+  unsigned bufIndex = 0;                // Staging buffer index
   while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 

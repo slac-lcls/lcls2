@@ -443,9 +443,9 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
   // Initialize the base class before using dependencies like nbuffers()
   _initialize(para);
-  pgpEvents.resize(nbuffers()); // Need 1 per intermediate buffer - w/o this have only dmaCount buffers
+  pgpEvents.resize(nbuffers()); // Need 1 per staging buffer - w/o this have only dmaCount buffers
 
-  // Set up intermediate buffer pointers
+  // Set up staging buffer pointers
   chkError(cudaMalloc(&m_reduceBuffers_d,    nbuffers() * sizeof(*m_reduceBuffers_d)));
   chkMemory          ( m_reduceBuffers_d,    nbuffers(),  sizeof(*m_reduceBuffers_d), "reduceBuffers");
   chkError(cudaMemset( m_reduceBuffers_d, 0, nbuffers() * sizeof(*m_reduceBuffers_d)));
@@ -469,7 +469,7 @@ MemPoolGpu::~MemPoolGpu()
   if (m_panel->dmaBuffers_d)  chkError(cudaFree(m_panel->dmaBuffers_d));
   m_panel->dmaBuffers_d = nullptr;
 
-  // Free the intermediate buffers
+  // Free the staging buffers
   destroyTransitionBuffers();
   destroyReduceBuffers();
   destroyCalibBuffers();

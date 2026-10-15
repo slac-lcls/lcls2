@@ -400,7 +400,7 @@ void _waitForDMA(unsigned  const                            reader,
     DBG(*stateMon = 3; ++(*dmaWtCtr);)
   }
   if (lclState == 1) {
-    // Allocate the index of the next set of intermediate buffers to be used.
+    // Allocate the index of the next set of staging buffers to be used.
     // If an index is not available, wait here until one is.
     unsigned ns{8};
     unsigned idx;
