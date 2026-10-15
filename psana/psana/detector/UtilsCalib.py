@@ -38,7 +38,7 @@ def dic_ctype_fmt(**kwargs):
             'pixel_max'   : kwargs.get('fmt_max',    '%d'),
             'pixel_min'   : kwargs.get('fmt_min',    '%d'),
             'pixel_mask'  : kwargs.get('fmt_mask',   '%2d'),
-            'pixel_gain'  : kwargs.get('fmt_gain',   '%.3f'),
+            'pixel_gain'  : kwargs.get('fmt_gain',   '%.6f'),
             'pixel_offset': kwargs.get('fmt_offset', '%.3f'),
             'pixel_status': kwargs.get('fmt_status', '%d'),
             'status_extra': kwargs.get('fmt_status', '%d')}
@@ -635,6 +635,7 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['shape_as_daq'] =\
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
     kwa['dark_factor']  = getattr(obdet.raw, '_dark_factor', None)
+    kwa['gain_state_to_factor'] = getattr(obdet.raw, '_dic_gain_state_to_factor', None)
     #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 

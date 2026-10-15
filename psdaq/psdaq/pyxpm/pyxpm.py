@@ -75,7 +75,10 @@ def main():
                         format='%(asctime)s %(levelname)s:%(name)s:%(message)s')
 
     # Set base
-    base = pr.Root(name='AMCc',description='',pollEn=False) 
+    base = pr.Root(name='AMCc',description='',pollEn=False)
+
+    zmqServer = pyrogue.interfaces.ZmqServer(root=base, addr='127.0.0.1', port=0)
+    base.addInterface(zmqServer)
 
     base.add(Top(
         name   = 'XPM',
@@ -114,7 +117,7 @@ def main():
     isXTPG = 'xtpg' in imageName
     isGen  = 'Gen' in imageName
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, nAMCs=args.A, 
+    pvstats = PVStats(provider, args.P, xpm, args.F, axiv, nAMCs=args.A, 
                       noTiming=args.T, fidRate=1./args.F)
     pvctrls = PVCtrls(provider, lock, name=args.P, ip=args.ip, xpm=xpm, stats=pvstats._groups, usTiming=pvstats._usTiming, handle=pvstats.handle, paddr=pvstats.paddr, db=args.db, cuInit=args.I, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)
 
@@ -147,6 +150,11 @@ def main():
                         xpm.TPGMini.setup(False)
                     else:
                         print(f'No TPGMini')
+
+                    pvstats.registerLinkUpCallback(pvctrls.resetSequences)
+    
+                    print(f'Resetting sequences')
+                    pvctrls.resetSequences()
 
                 elif cycle < 5:
                     logging.info('pvxtpg in %d'%(5-cycle))

@@ -89,6 +89,7 @@ class CalibConstants:
         self._calibconst = calibconst
         self._geo = None
         self._pedestals = None
+        self._offset = None
         self._gain = None # ADU/eV
         self._gain_factor = None # keV/ADU
         self._rms = None
@@ -128,6 +129,8 @@ class CalibConstants:
     def common_mode(self): return self.cached_array(self._common_mode, 'common_mode')
 
     def gain(self):        return self.cached_array(self._gain, 'pixel_gain')
+
+    def offset(self):      return self.cached_array(self._offset, 'pixel_offset')
 
     def mask_calib(self):
         a = self.cached_array(self._mask_calib, 'pixel_mask')

@@ -161,6 +161,7 @@ def loop_run_step_evt(ds, run, det, args):
       if dcfg is None: print('det.raw._config_object is MISSING')
 
       det.raw._calibconstants()  # prints cc.info_calibconst()
+      #logger.info(f'info_calibconst: {det.raw._info_calibconst()}')
 
       if do_loopsteps:
        for istep, step in enumerate(run.steps()):

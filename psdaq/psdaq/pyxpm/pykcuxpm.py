@@ -108,7 +108,7 @@ def main():
 
     imageName = axiv.ImageName.get()
 
-    pvstats = PVStats(provider, lock, args.P, xpm, args.F, axiv, hasSfp=False)
+    pvstats = PVStats(provider, args.P, xpm, args.F, axiv, hasSfp=False)
 #    base.handle(pvstats.handle)
 
     pvctrls = PVCtrls(provider, lock, name=args.P, xpm=xpm, stats=pvstats._groups, handle=pvstats.handle, paddr=pvstats.paddr, notify=False, db=args.db, fidPrescale=args.C, fidPeriod=args.F*1.e9, imageName=imageName)

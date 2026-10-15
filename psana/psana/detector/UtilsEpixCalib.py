@@ -312,17 +312,19 @@ def save_constants_in_repository(dic_consts, **kwa):
     fdark    = kwa.get('dark_factor', None)
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
+    fmt_offs   = kwa.get('fmt_offs', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
     fmt_status = kwa.get('fmt_status', '%4i')
     fmt_max    = kwa.get('fmt_max', '%i')
     fmt_min    = kwa.get('fmt_min', '%i')
-    fmt_gain   = kwa.get('fmt_gain', '%.3f')
+    fmt_gain   = kwa.get('fmt_gain', '%.6f')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
 
@@ -376,23 +378,51 @@ def ds_run_det(**kwa):
     return ds, orun, odet
 
 
+def epix_deploy_constants_v01(odet, **kwa_depl):
+    ctdepl  = kwa_depl.get('ctdepl', 'prs')
+    ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
+    gainmodes = odet.raw._gain_states if 'g' in ctypes else\
+                odet.raw._gain_modes # + ('AHLG1_L', 'AHLG2_L', ...
+    logger.info('odet.raw._gain_modes: %s' % str(odet.raw._gain_modes))
+    deploy_constants(ctypes, gainmodes, **kwa_depl)
+
+
+def epix_deploy_constants_epixuhr3x2(odet, **kwa_depl):
+    ctdepl  = kwa_depl.get('ctdepl', 'prs')
+    #ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
+    for c in ctdepl:
+        ctype = cc.dic_calib_char_to_name[c]
+        gainmodes = odet.raw._gain_states     if c == 'g' else\
+                    odet.raw._gain_states_low if c == 'o' else\
+                    odet.raw._gain_modes # 8-modes for pedestals and orther from dark dark
+        logger.info(f'begin deployment for ctype: {ctype} gainmodes: {str(gainmodes)}')
+        deploy_constants((ctype,), gainmodes, **kwa_depl)
+
+
 def epix_deploy_constants(parser):
     args = parser.parse_args()
     kwa = vars(args)
     repoman = set_repoman_and_logger(kwa)
-    #repoman = init_repoman_and_logger(parser=parser, **kwa)
+    ds, orun, odet = ds_run_det(**kwa)
+    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
 
+    kwa_depl['fmt_peds']   = '%' + kwa.get('fmt_peds',   '.3f')
+    kwa_depl['fmt_offs']   = '%' + kwa.get('fmt_offs',   '.3f')
+    kwa_depl['fmt_rms']    = '%' + kwa.get('fmt_rms',    '.3f')
+    kwa_depl['fmt_status'] = '%' + kwa.get('fmt_status', '4i')
+    kwa_depl['fmt_max']    = '%' + kwa.get('fmt_max',    'i')
+    kwa_depl['fmt_min']    = '%' + kwa.get('fmt_min',    'i')
+    kwa_depl['fmt_gain']   = '%' + kwa.get('fmt_gain',   '.6f')
+
+    dettype = kwa_depl.get('dettype', None)
     ctdepl  = kwa.get('ctdepl', 'prs')
     ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
-    logger.info('ctdepl: %s ctypes: %s' % (ctdepl, str(ctypes)))
+    logger.info(f'epix_deploy_constants for dettype: {dettype} ctdepl: {ctdepl} ctypes: {str(ctypes)}')
 
-    ds, orun, odet = ds_run_det(**kwa)
-    gainmodes = odet.raw._gain_states if 'g' in ctypes else\
-                odet.raw._gain_modes # + ('AHLG1_L', 'AHLG2_L', ...
-    logger.info('odet.raw._gain_modes: %s' % str(odet.raw._gain_modes))
-
-    kwa_depl = add_metadata_kwargs(orun, odet, **kwa)
-    deploy_constants(ctypes, gainmodes, **kwa_depl)
+    if dettype == 'epixuhr3x2':
+       epix_deploy_constants_epixuhr3x2(odet, **kwa_depl)
+    else:
+       epix_deploy_constants_v01(odet, **kwa_depl)
 
 
 def deploy_constants(ctypes, gainmodes, **kwa):
@@ -412,26 +442,30 @@ def deploy_constants(ctypes, gainmodes, **kwa):
     group    = kwa.get('group', 'ps-users')
     tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
     tsshort  = kwa.get('tsshort', '20100101000000')
-    runnum   = kwa.get('run_orig',None)
+    runnum   = kwa.get('run_orig', None)
     uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
     shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
     segind   = kwa.get('segind', 0)
 
-    fmt_peds   = kwa.get('fmt_peds', '%.3f')
-    fmt_rms    = kwa.get('fmt_rms',  '%.3f')
-    fmt_status = kwa.get('fmt_status', '%4i')
-    fmt_max    = kwa.get('fmt_max', '%i')
-    fmt_min    = kwa.get('fmt_min', '%i')
-    fmt_gain   = kwa.get('fmt_gain', '%.3f')
+    fmt_peds   = kwa.pop('fmt_peds', '%.3f')
+    fmt_offs   = kwa.pop('fmt_offs', '%.3f')
+    fmt_rms    = kwa.pop('fmt_rms',  '%.3f')
+    fmt_status = kwa.pop('fmt_status', '%4i')
+    fmt_max    = kwa.pop('fmt_max', '%i')
+    fmt_min    = kwa.pop('fmt_min', '%i')
+    fmt_gain   = kwa.pop('fmt_gain', '%.6f')
 
     CTYPE_FMT = {'pedestals'   : fmt_peds,
                  'pixel_rms'   : fmt_rms,
                  'pixel_status': fmt_status,
                  'pixel_max'   : fmt_max,
                  'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
                  'status_extra': fmt_status,
                  'pixel_gain'  : fmt_gain}
+
+    gain_state_to_factor = kwa.pop('gain_state_to_factor' ,None)
 
     repoman = set_repoman_and_logger(kwa)
 
@@ -468,11 +502,21 @@ def deploy_constants(ctypes, gainmodes, **kwa):
 
         try:
           data = data_from_file(fname, ctype, dtype, True)
-          logger.info(info_ndarr(data, 'constants loaded from file', last=5))
+          logger.info(info_ndarr(data, 'constants loaded from file', last=5, vfmt=fmt))
         except AssertionError as err:
           logger.warning(err)
-          data = np.zeros(shape_as_daq, np.uint16)
-          logger.info(info_ndarr(data, 'substitute array with', last=5))
+          shape_seg = shape_as_daq[-2:]
+          vtype = cc.dic_calib_name_to_dtype[ctype]
+          logger.warning(f'using default constants for gm: {gm} ctype:{ctype} vtype:{vtype} segment shape: {str(shape_seg)}')
+
+          if ctype == 'pixel_gain':
+             gfactor = 1 if gain_state_to_factor is None else\
+                       gain_state_to_factor[gm]
+             data = np.ones(shape_seg, vtype) * gfactor
+          else:
+             data = np.zeros(shape_seg, vtype) # np.uint16)
+
+          logger.info(info_ndarr(data, 'substitute array with', last=5, vfmt=fmt))
         dic_nda[gm] = reshape_to_3d(data)
 
       nda = np.stack([dic_nda[gm] for gm in gainmodes])

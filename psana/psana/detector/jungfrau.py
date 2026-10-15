@@ -60,7 +60,7 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         """ use kwa['cversion'] = 0,1,2,3 to switch between python, and C++ 1,2,3
             DEFAULT cversion = 3 is set in UtilsJungfrau.py class DetCache
             To use old good python calib method with common mode evaluation set:
-            cversion=3 and cmpars=(7,3,200,10)
+            cversion=0 and cmpars=(7,3,200,10)
         """
         # Avoid extra raw() copy here; calib immediately consumes raw per-event data.
         # This keeps perf while raw() defaults to copy=True for safety elsewhere.

@@ -11,6 +11,7 @@ from .piranha4              import *
 from .timetool              import *
 from .ts                    import *
 from .wave8                 import *
+from .wave8he               import *
 from .epix10ka              import *
 from .epixhr2x2             import *
 from .epix100               import *

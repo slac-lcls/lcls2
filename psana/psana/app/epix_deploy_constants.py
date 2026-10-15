@@ -42,7 +42,7 @@ def argument_parser():
     d_det     = None # 'epixquad'
     d_dirrepo = DIR_REPO_EPIX
     d_logmode = 'INFO'
-    d_version = 'V2026-07-15'
+    d_version = 'V2026-10-12'
     d_plotim  = 0
     d_deploy  = False
     d_ctdepl  = 'prs'   # for constants from dark, 'prsnxg'
@@ -51,6 +51,14 @@ def argument_parser():
     d_run_end = 'end'
     d_comment = None
     d_dbsuffix= None
+
+    d_fmt_peds   = '.3f'
+    d_fmt_offs   = '.3f'
+    d_fmt_rms    = '.3f'
+    d_fmt_status = '4i'
+    d_fmt_max    = 'i'
+    d_fmt_min    = 'i'
+    d_fmt_gain   = '.6f'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -63,12 +71,21 @@ def argument_parser():
     h_version = 'constants version, default = %s' % str(d_version)
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
     h_deploy  = 'DEPLOY: deploy constants to the calibration DB, default = %s' % d_deploy
-    h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, "g" - gain, default = %s' % d_ctdepl
+    h_ctdepl  = 'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min,'\
+                ' "g" - gain, "o" - offset, default = %s' % d_ctdepl
     h_tstamp  = 'DEPLOY: non-default time stamp in format YYYYmmddHHMMSS, if None - run time is used, default = %s' % str(d_tstamp)
     h_run_beg = 'DEPLOY: first run for validity range, if None - use first run from -k, default = %s' % str(d_run_beg)
     h_run_end = 'DEPLOY: last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'DEPLOY: comment added to constants metadata, default = %s' % str(d_comment)
     h_dbsuffix= 'DEPLOY: suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
+
+    h_fmt_peds   = f'DEPLOY: (omit preciding %%) format of values for pedestals,    default = {d_fmt_peds}'
+    h_fmt_offs   = f'DEPLOY: (omit preciding %%) format of values for pixel_offset, default = {d_fmt_offs}'
+    h_fmt_rms    = f'DEPLOY: (omit preciding %%) format of values for pixel_rms,    default = {d_fmt_rms}'
+    h_fmt_status = f'DEPLOY: (omit preciding %%) format of values for pixel_status, default = {d_fmt_status}'
+    h_fmt_max    = f'DEPLOY: (omit preciding %%) format of values for pixel_max,    default = {d_fmt_max}'
+    h_fmt_min    = f'DEPLOY: (omit preciding %%) format of values for pixel_min,    default = {d_fmt_min}'
+    h_fmt_gain   = f'DEPLOY: (omit preciding %%) format of values for pixel_gain,   default = {d_fmt_gain}'
 
     parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -77,13 +94,21 @@ def argument_parser():
     parser.add_argument('-L', '--logmode', default=d_logmode,    type=str,   help=h_logmode)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
-    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
+    parser.add_argument('-D', '--deploy',  action='store_true',              help=h_deploy)
     parser.add_argument('--ctdepl',  default=d_ctdepl,   type=str,   help=h_ctdepl)
     parser.add_argument('--tstamp',  default=d_tstamp,   type=int,   help=h_tstamp)
     parser.add_argument('--run_beg', default=d_run_beg,  type=int,   help=h_run_beg)
     parser.add_argument('--run_end', default=d_run_end,  type=str,   help=h_run_end)
     parser.add_argument('--comment', default=d_comment,  type=str,   help=h_comment)
     parser.add_argument('--dbsuffix',default=d_dbsuffix, type=str,   help=h_dbsuffix)
+
+    parser.add_argument('--fmt_peds',   default=d_fmt_peds,   type=str, help=h_fmt_peds)
+    parser.add_argument('--fmt_offs',   default=d_fmt_offs,   type=str, help=h_fmt_offs)
+    parser.add_argument('--fmt_rms',    default=d_fmt_rms ,   type=str, help=h_fmt_rms)
+    parser.add_argument('--fmt_status', default=d_fmt_status, type=str, help=h_fmt_status)
+    parser.add_argument('--fmt_max',    default=d_fmt_max,    type=str, help=h_fmt_max)
+    parser.add_argument('--fmt_min',    default=d_fmt_min,    type=str, help=h_fmt_min)
+    parser.add_argument('--fmt_gain',   default=d_fmt_gain,   type=str, help=h_fmt_gain)
 
     return parser
 
