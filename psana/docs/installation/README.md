@@ -1,26 +1,30 @@
 # Installation guides
 
-Status: **proposal** for the guide layout, 2026-10-15. Reference source:
+Status: **implemented-reference** for the linked Perlmutter guide; remaining
+guides are **proposals**. Reviewed 2026-10-15 against source:
 `410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8` on `features/psana2-gpu`.
-Source paths: `README.md`, `build_psana.sh`.
+Source paths: `build_psana.sh`, `pyproject.toml`,
+`psana/psana/pscalib/calib/CalibConstants.py`.
 
-Offsite installation documentation is being prepared separately. Until it is
-integrated here, use the repository's existing
-[build and Perlmutter instructions](../../../README.md#analysis-only-psana-build).
-This page establishes the destination; it does not claim to validate an installation.
+Start with [Psana on NERSC Perlmutter](perlmutter.md) for shared activation,
+private environments, developer builds and MPI/GPU verification. Its verification
+record distinguishes tested configurations from checks readers should perform.
+General offsite documentation is still being prepared; the existing
+[analysis build instructions](../../../README.md#analysis-only-psana-build)
+remain available for that context.
 
-The intended guide split is:
+Guide status:
 
-| Future guide | Scope |
+| Guide | Scope |
 | --- | --- |
-| `offsite.md` | Shared prerequisites, installation procedure, data/calibration prerequisites and a minimal verification |
-| `perlmutter.md` | Site environment, storage paths, MPI/GPU launch commands and site-specific verification |
-| `troubleshooting.md` | Diagnosed installation failures and recovery steps |
+| [Perlmutter](perlmutter.md) | Shared installation, private environments and builds, storage, calibration configuration and MPI/GPU verification |
+| `offsite.md` (planned) | Common prerequisites, installation procedure, data/calibration prerequisites and minimal verification |
+| `troubleshooting.md` (planned) | Cross-site installation failures and recovery steps; current Perlmutter checks are in its site guide |
 
-Each completed guide should identify its source revision, tested environment,
-verification commands and date. Keep common instructions in `offsite.md` and link
-to them from site guides. Separate using an installation from developer rebuilds.
-Replace or redirect overlapping root-README instructions when the maintained guide
-is ready, so two copies do not diverge.
+Each completed guide identifies its source revision, tested environment,
+verification commands and date. Separate using an installation from developer
+rebuilds. When `offsite.md` is added, move common instructions there and link from
+site guides. Keep site-specific instructions in the Perlmutter guide and its
+navigation here; this addition does not require changes to the root README.
 
 [Back to psana documentation](../README.md).

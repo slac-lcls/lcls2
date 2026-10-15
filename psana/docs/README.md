@@ -12,7 +12,7 @@ Source paths: `psana/psana/psexp/`, `psana/psana/gpu/`,
 | Start here | What it provides |
 | --- | --- |
 | [Architecture and event flow](architecture/README.md) | CPU/GPU overview, interactive maps and source-linked call trees |
-| [Installation](installation/README.md) | Existing build instructions and the location for upcoming offsite/Perlmutter guides |
+| [Installation](installation/README.md) | Perlmutter shared installation, private environments, developer builds and verification |
 | [GPU usage](../psana/gpu/README.md) | Current GPU entry point and a short user-task example |
 | [External user kernels](../psana/gpu/docs/user_kernels.md) | Task declaration, batch inputs and publication API |
 | [GPU limitations](../psana/gpu/docs/limitations.md) | Supported scope and known implementation limits |
