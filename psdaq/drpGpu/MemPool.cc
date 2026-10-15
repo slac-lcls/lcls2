@@ -443,7 +443,9 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
   // Initialize the base class before using dependencies like nbuffers()
   _initialize(para);
-  pgpEvents.resize(nbuffers()); // Need 1 per staging buffer - w/o this have only dmaCount buffers
+  // One per staging buffer, not per f/w DMA buffer.  Must follow _initialize(), which
+  // sets m_nbuffers and sizes pgpEvents to the smaller dmaCount.
+  pgpEvents.resize(nbuffers());
 
   // Set up staging buffer pointers
   chkError(cudaMalloc(&m_reduceBuffers_d,    nbuffers() * sizeof(*m_reduceBuffers_d)));

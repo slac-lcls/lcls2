@@ -1274,7 +1274,10 @@ int DrpBase::setupMetrics(const std::shared_ptr<Pds::MetricExporter> exporter)
 
     exporter->add("drp_dma_in_use", labels, Pds::MetricType::Gauge,
                   [&](){return pool.dmaInUse();});
-    exporter->constant("drp_dma_in_use_max", labels, pool.nDmaBuffers());
+    // pgpEvents is the in-flight slot count, which is what allocateDma()/freeDma()
+    // bracket: nDmaBuffers on the CPU path, nbuffers on the GPU one, where the staging
+    // buffers outlive the f/w DMA buffers the gauge cannot see.
+    exporter->constant("drp_dma_in_use_max", labels, pool.pgpEvents.size());
 
     exporter->add("drp_pebble_in_use", labels, Pds::MetricType::Gauge,
                   [&](){return pool.inUse();});
