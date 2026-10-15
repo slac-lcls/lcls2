@@ -159,7 +159,7 @@ void MemPool::_initialize(const Parameters& para)
                       ? m_nDmaBuffers
                       : std::stoul(para.kwargs.at("pebbleBufCount"));
     if (m_nbuffers < m_nDmaBuffers) {
-        logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
+        logging::critical("nPebbleBuffers (%u) must be >= nDmaBuffers (%u)",
                           m_nbuffers, m_nDmaBuffers);
         abort();
     }
