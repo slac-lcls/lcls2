@@ -249,6 +249,27 @@
       })));
   }
 
+  function callTree(items) {
+    const tree = el('ul', null, {class: 'call-tree'});
+    for (const item of items) {
+      const li = el('li', null), entry = el('div', null, {class: 'call-entry'});
+      const code = el('code', item.label);
+      if (item.source) {
+        const link = el('a', null, {
+          href: item.source.url, target: '_blank', rel: 'noopener',
+          title: item.source.path + ':' + item.source.line
+        });
+        link.append(code);
+        entry.append(link);
+      } else entry.append(code);
+      entry.append(el('span', item.note, {class: 'call-note'}));
+      li.append(entry);
+      if (item.children && item.children.length) li.append(callTree(item.children));
+      tree.append(li);
+    }
+    return tree;
+  }
+
   function detail() {
     const n = nodes.get(selected);
     text('detail-title', n.title);
@@ -258,6 +279,11 @@
     list('detail-inputs', n.inputs);
     list('detail-outputs', n.outputs);
     list('detail-flow', n.flow);
+    $('detail-call-paths').replaceChildren(...n.call_paths.map(path => {
+      const section = el('details', null, {class: 'call-path', open: ''});
+      section.append(el('summary', path.title), el('p', path.when), callTree(path.roots));
+      return section;
+    }));
     text('detail-owner', n.ownership);
     $('detail-sources').replaceChildren(...n.sources.map(sourceLink));
     $('detail-notes').replaceChildren(...n.notes.map(note => el('p', note, {

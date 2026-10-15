@@ -1,5 +1,30 @@
 # Prototype validation — 2026-10-07
 
+## Call-path update — 2026-10-13
+
+Added source-linked call trees to all twelve component panels, retaining the
+same inspected source baseline. Reviewed caller nesting against the checkout,
+including separate bulk/per-datagram read and parser paths, manager construction,
+lazy KvikIO file/buffer allocation, iterator entry points and teardown.
+
+- `build.py --check` passed for the schema, class-scoped method anchors and
+  deterministic standalone HTML. `git diff --check` passed.
+- Chromium 153 browser checks passed for all component trees, source links,
+  keyboard collapse/expand, all previous navigation/tour checks, offline
+  download, mobile layout with the deepest tree, and no-JavaScript trees.
+- Tested a call-source link opening the expected commit/line URL in another tab
+  using a locally intercepted response; this does not verify GitHub availability.
+  No external runtime requests or JavaScript errors occurred.
+- Visually inspected the rendered reader-setup tree.
+- Artifacts: `/tmp/psana-workflow-call-path-check/`, including `result.json`,
+  `input-setup.png`, `input-call-paths.png` and the downloaded standalone copy.
+
+This remains documentation validation, with no psana/GPU/MPI runtime tests.
+Source-anchor validation proves definitions exist; call relationships were
+reviewed manually and are not a dynamically captured trace.
+
+## Original prototype
+
 Baseline: `e2cdad6e18fd9263d7adfeed0ce58d5ad074e070`. PR #151 was OPEN and still at this head when checked before completion. Issues #153, #168 and #170 were OPEN. These are inspection-time facts, not live status.
 
 ## Passed

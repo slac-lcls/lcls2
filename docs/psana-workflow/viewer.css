@@ -721,3 +721,20 @@ footer h2 {
     box-shadow: none
   }
 }
+
+/* Call paths retain their hierarchy on narrow screens; long names wrap. */
+.call-help, .call-path > p { color: var(--muted); font-size: .88rem; }
+.call-path { margin: 14px 0; padding: 14px; background: #f7fafc; border: 1px solid var(--line); border-radius: 10px; }
+.call-path summary { font-weight: 700; cursor: pointer; }
+.call-tree { list-style: none; padding-left: 0; margin: 10px 0 0; }
+.call-tree .call-tree { border-left: 1px solid #bccddd; margin: 4px 0 4px 7px; padding-left: 17px; }
+.call-tree li { position: relative; margin: 9px 0; }
+.call-tree .call-tree > li::before { content: ''; position: absolute; top: 12px; left: -17px; width: 12px; border-top: 1px solid #bccddd; }
+.call-entry code { font-size: .87rem; overflow-wrap: anywhere; white-space: normal; }
+.call-entry a { text-decoration-thickness: 1px; text-underline-offset: 3px; }
+.call-note { display: block; font-size: .82rem; color: var(--muted); margin-top: 3px; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .call-path { padding: 10px; }
+  .call-tree .call-tree { padding-left: 10px; margin-left: 3px; }
+  .call-tree .call-tree > li::before { left: -10px; width: 7px; }
+}

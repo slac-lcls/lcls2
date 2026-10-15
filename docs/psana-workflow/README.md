@@ -11,6 +11,7 @@ This prototype documents the proposed implementation in PRs #136–151 at **`e2c
 - **GPU path** expands host orchestration, descriptors, input ownership, slot execution, requested constants, external tasks and host publication.
 - **Show serial roles** explains how the same responsibilities are carried out locally. It does not create fictional SMD0/EB/BD processes in serial mode.
 - Click a diagram component or its keyboard-accessible list link to inspect purpose, inputs/outputs, class/script relationships, ownership and commit-pinned sources.
+- Each component's **Class and script relationships** section includes call-path trees. Setup and processing are separate, with MPI/serial alternatives, iterator handoffs, conditional branches and CUDA launches labeled. Click a method to open its definition at the inspected commit; collapse a phase using its heading. The device-input panel traces reader initialization, lazy file/buffer creation, bulk/per-datagram reads, completion and parsing from the public event iterator.
 - **Follow event T** advances a conceptual event through its representations. CPU view omits GPU-only stages. The tour is explanatory; its steps are not measured timings or a literal serial call trace.
 - Connection colors and line styles distinguish iterator/call handoff, MPI/local data transfer, association, I/O submission, CUDA dependencies and ownership. Connection numbers map to **Show connections**. Routes have no timing meaning.
 - The transition example and buffer-lifetime reference are separate from the event-flow diagram.
@@ -33,6 +34,8 @@ This is an architecture introduction, not a complete bug inventory or a support 
 
 All workflow prose, source anchors, relationships, tour steps and map positions live in **`workflow-model.json`**. The original renderer is in `viewer.js`, layout in `viewer.css`, and the page shell in `template.html`. The model is intentionally a smaller schema than Cong's whole-DAQ viewer; it is not interchangeable with `daq-model.json`.
 
+Schema version 2 adds `call_paths` to every component. A phase has `title`, `when` and `roots`; each call has `label`, `note`, optional `children`, and a `source` anchor. Non-repository user/library calls and explanatory handoffs instead declare `kind`. Children represent calls or explicitly labeled iterator/launch handoffs; siblings follow source order unless marked as alternatives. These are manually reviewed paths for the box's responsibility, not exhaustive runtime traces of every helper or error branch. The same trees appear in the no-JavaScript reference.
+
 From the repository root, using Python 3.8 or newer:
 
 ```bash
@@ -43,6 +46,8 @@ python3 docs/psana-workflow/build.py --check
 No Python packages are needed for generation. The pinned source commit must be available in the local Git repository. `build.py` validates unique node/edge IDs, required content, view membership, routes, tour coverage, existing source files and source-anchor needles. It derives GitHub line links from `git show <baseline>:<path>`; it does not silently repoint them at the current working tree. `--check` also requires deterministic generated HTML to match the checked-in file and disallows remote runtime assets.
 
 Source anchor `needle` is a literal source line fragment. If the same method name appears more than once, the first match is intentional only when targeting a base-class definition (for example `Run.events`). Use a unique fragment for other cases. Source links are evidence entry points; the validator checks the anchor exists, not that every English claim follows from it. Changes need human/source review.
+
+Call-tree method anchors also use `scope`, the exact containing class declaration, so methods such as `__init__` resolve to the correct class. The builder rejects missing or ambiguous anchors within that scope. When updating a path, trace the actual callers as well as the definitions: an existing method alone does not prove a call relationship.
 
 To add a component: give it a stable ID, role and serial explanation, semantic input/output lists, relationship steps, ownership text and source references; place it in each relevant view; add typed edges and tour coverage. Keep reader-facing descriptions in the model rather than adding psana facts to the viewer. Explicit route bend points avoid connections crossing component boxes.
 
