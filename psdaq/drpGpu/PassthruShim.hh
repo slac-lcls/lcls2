@@ -50,8 +50,6 @@ public:
 
   // The reduced payload is unused in pass-through: the recorded data is the raw
   // block, which Detector::rawSize() sizes and MemPool reserves separately.
-  // Returning 0 lets Reducer's maxTrSize floor decide the payload's size, which
-  // must still be large enough for a transition's Xtc.
   size_t payloadSize() const override { return 0; }
 
   void   recordGraph(cudaStream_t       stream,

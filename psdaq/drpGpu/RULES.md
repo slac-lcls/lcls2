@@ -1,7 +1,7 @@
 # Rules that will bite you, learned the hard way
 
 Each of these has already cost time.  These are the conclusions; the reasoning is in
-`TODO.md`'s findings appendix.  They are the rules that bite **while editing this code** --
+`FINDINGS.md`.  They are the rules that bite **while editing this code** --
 violating one produces a bug, not a broken node.
 
 The node and driver rules -- `nvidia-powerd`, `nvidia-persistenced`, `CpuSpecList`, dkms,

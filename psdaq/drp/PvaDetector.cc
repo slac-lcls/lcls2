@@ -29,6 +29,7 @@
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/Json2Xtc.hh"
 #include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psalg/utils/trim.hh"
 
@@ -969,6 +970,7 @@ void PvDrp::_reader()
     if (prctl(PR_SET_NAME, "drp/Reader", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Reader");
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
@@ -1032,6 +1034,7 @@ void PvDrp::_collector()
     if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Collector");
 
     const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
                     std::stoul(m_para.kwargs.at("match_tmo_ms"))              :
@@ -1554,6 +1557,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // Report an uncaught exception from any thread, not just its type name
+    initExceptionReporting(para.alias);
+
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });
 
@@ -1572,6 +1578,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
+            if (kwargs.first == "pinThreads")     continue;
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "data_vsn")       continue;
@@ -1579,6 +1586,9 @@ int main(int argc, char* argv[])
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
+
+        // Before any thread that pins itself is created
+        Pds::setThreadPinning(para.kwargs, 3, 0);
 
         Drp::PvApp(para).run();
         return 0;

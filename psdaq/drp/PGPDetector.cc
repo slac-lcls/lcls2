@@ -15,6 +15,7 @@
 #include "psdaq/aes-stream-drivers/DataDriver.h"
 #include "psdaq/service/EbDgram.hh"
 #include "xtcdata/xtc/Dgram.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/Collection.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psalg/utils/SysLog.hh"
@@ -160,6 +161,7 @@ void workerFunc(const Parameters& para, DrpBase& drp, Detector& det,
     if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinWorkerThread(nameBuf);
 
     while (true) {
 
@@ -425,6 +427,10 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
     m_pgpThread = std::thread{&PGPDrp::reader, std::ref(*this)};
     m_collectorThread = std::thread(&PGPDrp::collector, std::ref(*this));
 
+    // Everything of ours is now running, so the thread count means something.  Ours
+    // that spin: PGPreader, TEBreceiver, Collector and each Worker.
+    Pds::logThreadBudget("PGPDrp", Pds::DRP_HOT_THREADS + m_para.nworkers);
+
     return std::string();
 }
 
@@ -547,6 +553,7 @@ void PGPDrp::reader()
     if (prctl(PR_SET_NAME, "drp/PGPreader", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("PGPreader");
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
@@ -697,6 +704,7 @@ void PGPDrp::collector()
     if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Collector");
 
     int64_t worker = 0L;
     Batch batch;

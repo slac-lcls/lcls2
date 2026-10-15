@@ -1,3 +1,8 @@
+#ifndef _GNU_SOURCE
+#  define _GNU_SOURCE
+#endif
+#include <sched.h>
+#include <dirent.h>
 #include <errno.h>
 #include <iostream>
 #include <iomanip>
@@ -12,6 +17,7 @@
 #include <sys/resource.h>
 #include <ctime>
 #include <csignal>
+#include <exception>
 #include <sys/stat.h>
 #include "Collection.hh"
 #include "psalg/utils/SysLog.hh"
@@ -84,6 +90,40 @@ static void sigHandler(int sig)
     logging::critical("Aborting on 2nd signal");
   }
   exit(EXIT_FAILURE);
+}
+
+// An exception that escapes a thread's entry function reaches std::terminate, which
+// reports the mangled type and nothing else -- so a throw off the main thread says
+// "terminate called after throwing an instance of std::__cxx11::basic_string".
+// current_exception() is valid here, on whichever thread threw, so rethrowing it
+// recovers the message without a try/catch in every thread.
+static void terminateHandler()
+{
+  if (auto e = std::current_exception()) {
+    try                             { std::rethrow_exception(e); }
+    catch (const std::exception& x) { logging::critical("Uncaught exception: %s", x.what()); }
+    catch (const std::string& x)    { logging::critical("Uncaught exception: %s", x.c_str()); }
+    catch (char const* x)           { logging::critical("Uncaught exception: %s", x); }
+    catch (...)                     { logging::critical("Uncaught exception of unknown type"); }
+  }
+  else
+    logging::critical("terminate() called without an active exception");
+
+  // The throw site is otherwise unrecoverable, so dump the stack as a fault does.
+  if (!lAlias.empty()) {
+    std::string filePath(mkFilePath(lAlias + ".dump"));
+    dumpStack(filePath);
+    logging::critical("Logged StackTrace to %s", filePath.c_str());
+  }
+
+  abort();
+}
+
+void initExceptionReporting(const std::string& alias)
+{
+  if (lAlias.empty())  lAlias = alias;  // initShutdownSignals may own it already
+
+  std::set_terminate(terminateHandler);
 }
 
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
@@ -220,9 +260,12 @@ std::string getNicIp(bool forceEnet)
     struct ifaddrs* ifaddr;
     getifaddrs(&ifaddr);
 
+    unsigned    wanted = forceEnet ? ARPHRD_ETHER : ARPHRD_INFINIBAND;
+    const char* type   = forceEnet ? "Ethernet"   : "Infiniband";
+
     char* interface_name = nullptr;
-    char* ethernet_name  = nullptr;
-    // find name of first infiniband, otherwise fall back to ethernet
+    char* fallback_name  = nullptr;     // only to name it in the abort message
+    // take the first running interface of the wanted type
     for (struct ifaddrs* ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
         if (ifa->ifa_addr == NULL) {
             continue;
@@ -230,29 +273,35 @@ std::string getNicIp(bool forceEnet)
         int family = ifa->ifa_addr->sa_family;
         if (family == AF_PACKET) {
             struct sockaddr_ll* s = (struct sockaddr_ll*)ifa->ifa_addr;
-            if (s->sll_hatype == ARPHRD_INFINIBAND) {
-                if (!interface_name) interface_name = ifa->ifa_name;
+            if (!(ifa->ifa_flags & IFF_RUNNING))  continue;
+            if (s->sll_hatype == wanted) {
+                interface_name = ifa->ifa_name;
+                break;
             }
-            else if (s->sll_hatype == ARPHRD_ETHER &&
-                     ifa->ifa_flags & IFF_RUNNING) {
-                if (!ethernet_name) ethernet_name  = ifa->ifa_name;
-            }
+            if (s->sll_hatype == ARPHRD_ETHER && !fallback_name)
+                fallback_name = ifa->ifa_name;    // not loopback, which is its own hatype
         }
     }
-    if ((interface_name == nullptr) || forceEnet) {
-        if (ethernet_name == nullptr) {
-            logging::critical("No Infiniband or Ethernet interface found");
-            abort();
-        }
-        if (!forceEnet)
-            logging::warning("No Infiniband interface found - using Ethernet");
+
+    // Selecting another interface is right only when it was asked for, so name the one
+    // that was rejected: an RoCE card reports hatype Ethernet though it carries IB.
+    if (interface_name == nullptr) {
+        char hostname[HOST_NAME_MAX];  gethostname(hostname, sizeof(hostname));
+
+        if (fallback_name)
+            logging::critical("%s: no running %s interface found.  Provide "
+                              "ep_domain=%s to use that interface deliberately",
+                              hostname, type, fallback_name);
         else
-            logging::warning("Using Ethernet instead of Infiniband");
-        interface_name = ethernet_name;
+            logging::critical("%s: no running %s interface found", hostname, type);
+        abort();
     }
 
     // get address of the first device found above
     std::string host = _getNicIp(ifaddr, std::string(interface_name));
+
+    logging::info("Using %s interface %s, address %s",
+                  type, interface_name, host.c_str());
 
     freeifaddrs(ifaddr);
     return std::string(host);
@@ -265,6 +314,9 @@ std::string getNicIp(const std::string& ifaceName)
 
     // get address of the interface
     std::string host = _getNicIp(ifaddr, ifaceName);
+
+    logging::info("Using requested interface %s, address %s",
+                  ifaceName.c_str(), host.c_str());
 
     freeifaddrs(ifaddr);
     return std::string(host);

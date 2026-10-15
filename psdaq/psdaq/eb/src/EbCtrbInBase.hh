@@ -2,6 +2,7 @@
 #define Pds_Eb_EbCtrbInBase_hh
 
 #include "EbLfServer.hh"
+#include "eb.hh"                        // MAX_TEBS
 
 #include <memory>
 #include <string>
@@ -57,6 +58,9 @@ namespace Pds
       void    _dump(TebContributor&    ctrb,
                     const ResultDgram* results,
                     const EbDgram*     inputs) const;
+      void    _slotDump();
+      bool    _orphaned(uint64_t iPid) const;
+      void    _orphanDump(TebContributor& ctrb, const EbDgram* inp);
     private:
       EbLfServer                    _transport;
       std::vector<EbLfSvrLink*>     _links;
@@ -70,6 +74,12 @@ namespace Pds
       uint64_t                      _bypassCount;
       uint64_t                      _noProgCount;
       uint64_t                      _prvNPCnt;
+      // Newest batch-head pulse ID received per TEB, and a count of batches
+      // from each.  A Result older than every TEB's newest can no longer be
+      // in flight, the transport delivering writes to one region in order.
+      uint64_t                      _newestRcvd[MAX_TEBS];
+      uint64_t                      _rcvdFrom[MAX_TEBS];
+      uint64_t                      _orphanCount;
       const TebCtrbParams&          _prms;
       size_t                        _regSize;
       void*                         _region;

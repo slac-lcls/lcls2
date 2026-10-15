@@ -5,6 +5,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/src/TebContributor.hh"
 #include "psdaq/eb/src/ResultDgram.hh"
@@ -232,6 +233,7 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
   if (prctl(PR_SET_NAME, "drp_gpu/Recorder", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Recorder");
 
   // Establish context in this thread
   auto& memPool = *m_pool.getAs<MemPoolGpu>();
@@ -916,6 +918,9 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
   if (m_reducer->startup())
     return "Reducer startup failed";
 
+  // Everything of ours is now running, so the thread count means something.
+  Pds::logThreadBudget("PGPDrp", Pds::GPU_DRP_HOT_THREADS);
+
   return std::string{};
 }
 
@@ -1022,6 +1027,7 @@ void PGPDrp::_collector()
   if (prctl(PR_SET_NAME, "drp_gpu/Collector", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Collector");
 
   pool.resetCounters();                 // Avoid jumps in TebReceiver
 

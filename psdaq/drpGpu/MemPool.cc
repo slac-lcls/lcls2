@@ -2,6 +2,7 @@
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/range.hh"
+#include "psdaq/service/Affinity.hh"   // logCpuAllocation, logDeviceLocality
 #include "psdaq/service/EbDgram.hh"     // For TimingHeader
 #include "psdaq/aes-stream-drivers/DmaDest.h"
 #include "psdaq/aes-stream-drivers/GpuAsyncUser.h"
@@ -254,6 +255,22 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
   // Now that we _have_ the device, perhaps we now also need to _set_ it?
   chkError(cudaSetDevice(m_context.deviceNo()));
+
+  // Report the CPUs we were granted and whether the datadev and GPU are local to
+  // them.  These chassis have more cards than one NUMA node can host, so a DRP is
+  // not necessarily local to both; say which, rather than leave it to be guessed.
+  logCpuAllocation("MemPoolGpu");
+  logDeviceLocality("MemPoolGpu", "GPU",     pciAddrOfGpu(m_context.deviceNo()));
+  logDeviceLocality("MemPoolGpu", "datadev", pciAddrOfDatadev(para.device));
+
+  // The pairing gen_gres_conf.py works to get right: DMA goes card -> GPU, so the
+  // two being on different nodes costs every event, not just this process's memory
+  // accesses.  Worth a warning even when both are local to our CPUs.
+  int gpuNuma = numaNodeOfGpu(m_context.deviceNo());
+  int dmaNuma = numaNodeOfDatadev(para.device);
+  if (gpuNuma >= 0 && dmaNuma >= 0 && gpuNuma != dmaNuma)
+    logging::warning("MemPoolGpu: datadev is on NUMA node %d but its GPU is on %d, "
+                     "so DMA crosses the socket link", dmaNuma, gpuNuma);
 
   // Check for required device attributes
   struct RequiredExts_t {

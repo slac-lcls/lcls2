@@ -76,6 +76,7 @@ cuda_inc_dir = include_directories([
     link_with: [
       drpbase_lib,
       collection_lib,
+      service_lib,
     ],
     dependencies: [
       cuda_dep,

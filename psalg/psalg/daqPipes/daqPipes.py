@@ -657,7 +657,7 @@ def daqPipes(srvurl, args):
 
 def main():
 
-    promserver = os.environ.get("DM_PROM_SERVER", "http://psmetric03:9090")
+    promserver = os.environ.get("DM_PROM_SERVER", "http://drp-srcf-eb011:9090")
 
     partition = '0'
     hutch     = 'tst'

@@ -24,6 +24,7 @@ EbLfServer::EbLfServer(const unsigned& verbose) :
   _verbose(verbose),
   _pending(0),
   _posting(0),
+  _noCtxCnt(0ull),
   _pep    (nullptr),
   _mr     (nullptr)
 {
@@ -37,6 +38,7 @@ EbLfServer::EbLfServer(const unsigned&                           verbose,
   _verbose(verbose),
   _pending(0),
   _posting(0),
+  _noCtxCnt(0ull),
   _pep    (nullptr),
   _mr     (nullptr),
   _info   (kwargs)
@@ -76,13 +78,7 @@ int EbLfServer::listen(const std::string& addr,
     return _pep ? _pep->error_num(): ENOMEM;
   }
 
-  if (_verbose)
-  {
-    Fabric* fab  = _pep->fabric();
-    void*   data = fab;                 // Something since data can't be NULL
-    fprintf(stderr, "EbLfServer: LibFabric version '%s', domain '%s', fabric '%s', provider '%s', version %08x\n",
-            fi_tostr(data, FI_TYPE_VERSION), fab->domain_name(), fab->fabric_name(), fab->provider(), fab->version());
-  }
+  // The configuration is logged once per process from linksConnect().
 
   bool rc;
   if (port.empty())                     // OS provides an ephemeral port number
@@ -361,6 +357,7 @@ int Pds::Eb::EbLfServer::poll(uint64_t* data)
 
 
 // --- Revisit: The following maybe better belongs somewhere else
+#include "utilities.hh"            // logFabricInfo()
 #include "psalg/utils/SysLog.hh"
 
 using logging = psalg::SysLog;
@@ -398,6 +395,7 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
                      __PRETTY_FUNCTION__, peer, i);
       return rc;
     }
+    logFabricInfo("EbLfServer", tmpLinks[i]->endpoint()->fabric());
   }
   for (unsigned i = 0; i < links.size(); ++i)
   {

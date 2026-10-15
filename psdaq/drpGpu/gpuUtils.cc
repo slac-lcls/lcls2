@@ -1,5 +1,6 @@
 #include "gpuUtils.hh"
 
+#include "psdaq/service/Affinity.hh"   // numaNodeOfPciDev
 #include "psalg/utils/SysLog.hh"
 
 #include <string>
@@ -173,6 +174,24 @@ void Drp::Gpu::dmaIdxReset(CoreRegisters& coreRegs)
     // Toggle the writeEnable register to reset the DMA buffer index
     coreRegs.setWriteEnable(0);
     coreRegs.setWriteEnable(1);
+}
+
+std::string Drp::Gpu::pciAddrOfGpu(int device)
+{
+    // 13 is the minimum for "0000:00:00.0"; CUDA fails rather than truncate
+    char pciBusId[16] = {0};
+    if (chkError(cudaDeviceGetPCIBusId(pciBusId, sizeof(pciBusId), device)))
+        return std::string();
+
+    // CUDA returns the domain upper case, where the sysfs names are lower
+    for (auto p = pciBusId; *p; ++p)  *p = tolower(*p);
+    return std::string(pciBusId);
+}
+
+int Drp::Gpu::numaNodeOfGpu(int device)
+{
+    auto pciAddr = pciAddrOfGpu(device);
+    return pciAddr.empty() ? -1 : Pds::numaNodeOfPciDev(pciAddr);
 }
 
 // -------------------------------------------------------------------

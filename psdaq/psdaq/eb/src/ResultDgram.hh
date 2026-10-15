@@ -29,6 +29,10 @@ namespace Pds {
       static constexpr uint32_t v_monitor {2}, k_monitor {MAX_MRQS};
       static constexpr uint32_t v_auxdata {8}, k_auxdata {24};
 
+      // monitor is sized by MAX_MRQS, so raising it silently walks into auxdata
+      static_assert(v_monitor + k_monitor <= v_auxdata,
+                    "monitor field overlaps auxdata: MAX_MRQS is too large");
+
       static constexpr uint32_t m_prescale{(1 << k_prescale) - 1}, s_prescale{m_prescale << v_prescale};
       static constexpr uint32_t m_persist {(1 << k_persist)  - 1}, s_persist {m_persist  << v_persist };
       static constexpr uint32_t m_monitor {(1 << k_monitor)  - 1}, s_monitor {m_monitor  << v_monitor };
