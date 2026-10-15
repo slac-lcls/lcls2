@@ -45,8 +45,8 @@ import time
 
 # ---------------------------------------------------------------------------
 # Step 1 — MPI init BEFORE any CuPy import.
-# GPU pinning (CUDA_VISIBLE_DEVICES) is set inside MPIDataSource.__init__()
-# via init_gpu_rank(bd_rank - 1) before the CuPy import is triggered.
+# Each BD rank's device is chosen by psana.gpu.gpu_placement from the
+# launcher's node-local rank, then made current once a communicator exists.
 # ---------------------------------------------------------------------------
 
 from mpi4py import MPI

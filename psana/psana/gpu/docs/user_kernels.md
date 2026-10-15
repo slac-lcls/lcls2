@@ -51,6 +51,13 @@ manager builds this binding from sorted Configure segment IDs. Missing or
 rejected segments are zero-filled and marked absent. A valid field with a
 non-`Corrupted` damage flag remains usable; presence does not mean damage-free.
 
+A constants array from `batch.calibconst()` stays valid for the whole run,
+including when BD ranks share a GPU: the device copy is uploaded once at setup
+and released at teardown, never replaced mid-run. Keeping a reference across
+events or steps is therefore safe; keeping one past the run is not, so copy
+with `.get()` to outlive it. See
+[lifetime](device_placement_and_shared_constants.md#lifetime-valid-for-the-whole-run).
+
 Generic fields need no dense adapter or CPU detector class. They preserve
 physical segment identity and runtime shape in device descriptors. Configure
 payload fields are not event selectors. Pointer-consuming kernels must check
@@ -63,8 +70,9 @@ arrays are allowed; missing keys, unsupported values and undeclared access fail
 explicitly. Gains are not implicitly inverted; offsets and masks are not
 implicitly prepared. Empty declarations cause no task-constant upload.
 
-Each BD owns a requested snapshot. BeginStep drains prior work and refreshes
-changed requested arrays after the host transition; it does not fetch the DB.
+Each BD owns a requested snapshot, uploaded once per run. BeginStep drains
+prior work and applies the host transition but does not reupload constants: it
+does not fetch the DB, so one constant set per run is the supported model.
 Original calibration arrays retain their physical segment axis. Map dense rows
 using `segment_ids` rather than assuming a dense row number is a physical ID.
 
