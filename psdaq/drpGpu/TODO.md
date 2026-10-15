@@ -88,6 +88,51 @@ diverge silently -- that has happened once already.
 
 ## Event building
 
+- **ONE CONTRIBUTOR RUNS ~1.6 ms LATE, AND THE ROLE MOVES BETWEEN DRPs.  This is
+  what bounds the rate at 31.4 kHz instead of 33, and it is ours.**  Found
+  2026-10-14 on gpu008, `verbs`, six DRPs; Ric spotted it in `EB_arrTimeN`.
+
+      EB_arrTimeN (us, ns in the metric), 16:55 - 17:10, one sample per minute
+      tstcam1_2   1612 1582 1596 1576 1592 1606 1596 |   60   27   12   13   48   10
+      tstcam1_5     32   35   49   48    0   20   37 | 1592 1633 1567 1616 1611 1607
+      others      7 - 13 throughout                 ^ 17:02, a clean handoff
+
+  **The numbers that make this a bug and not weather:**
+
+  - The late value is **1598 us mean, sd 17 us** over 16 minutes -- a **4% spread**.
+    Contention or thermal effects do not hold a figure that still.
+  - It is **~114 trigger periods** (13 ticks = 14.0 us at `L0InpRate` 71428) or
+    **~50 accepted events** at 31.4 kHz.  A round amount of buffering, not a slow
+    device.
+  - The handoff at 17:02 was **clean and simultaneous**, and the other four DRPs did
+    not move.  So it is not a property of a datadev, a GPU or a NUMA placement -- it
+    is a *role* one contributor occupies, and it transfers.
+  - **It is anti-correlated with buffer occupancy**: the late DRP holds ~6 host
+    buffers where the healthy ones hold ~56 (`drp_dma_in_use` / `drp_pebble_in_use`,
+    which are the same number on the GPU path).  So the late DRP runs **emptier and
+    later**, which does not fit backpressure.
+  - **`EB_arrTime` is lateness relative to the event's first contribution**
+    (`EventBuilder.cc:542`: `t0 - event->_t0`), so exactly one source reads 0 by
+    construction.  A DRP reading 0 is the *earliest*, not the fastest in absolute
+    terms.
+  - **It plausibly causes the ~33% `drp_deadtime`** seen on whichever DRP is late,
+    rather than being a separate fault: making the TEB wait is what asserts deadtime
+    upstream.  `L0AccRate` tracks `L0InpRate * (1 - DeadFrac)` at 100.00% throughout,
+    so nothing is lost -- the rate is simply gated by the slowest contributor.
+
+  **The discriminating tests, in order, none yet run:**
+
+  1. **`TCtbO_BtAge` and `TCtbO_BtEnt` per DRP.**  If the late DRP's batch age is
+     ~1.6 ms while the others' are short, this is batch accumulation -- a DRP sitting
+     one batch behind its peers -- and `batching`/`maxEntries` is where to look.
+  2. **The Reader's own `RingIndexDtoH` occupancy**, for the same asymmetry on the
+     GPU side of the pipeline.
+  3. **Whether the 17:02 handoff coincides with anything in the DRP logs.**  Nothing
+     was looked for at the time.
+
+  Not yet known: whether it appears on `sockets` too.  It would have been invisible
+  there -- `DRP_evtLatency` was a uniform 85-94 ms on all six, which is ~50x the lag.
+
 - **The TEB posts Results that are never delivered, and the DRP wedges on the
   first of them.  Seen only with `ep_provider=sockets`.**  Six stalls at 13.6 kHz with
   two readout groups at different rates, 2026-10-08 (13:46, 17:14, 18:04), 2026-10-09
@@ -350,14 +395,10 @@ diverge silently -- that has happened once already.
     timesharing into an explicit instruction.
   - **Pinning's effect on an adequately-allocated DRP is still not measurable** at this
     precision, and that is the honest statement: no regression, no demonstrated gain.
-  - **A separate, pre-existing fault surfaced and is NOT ours**: one GPU DRP at a time
-    asserts ~33% `drp_deadtime` -- `tstcam1_1` in the 16:15 run, `tstcam1_2` in the
-    16:34 one -- with identical `cores:`, NUMA placement, detector and `sim_length` to
-    its clean siblings.  It alone sets the system `DeadFrac` and hence the rate: the
-    33 kHz appears for the one sample before it engages, then the rate settles to
-    31.4 kHz.  Same shape as the 10-10 finding that the stall is not tied to one DRP,
-    datadev or GPU.  `drp_deadtime` says a DRP asserts deadtime, not why.  **Worth its
-    own session**; it predates this branch and bounds the achievable rate.
+  - **A separate fault surfaced and IS ours to chase** -- see "One contributor runs
+    ~1.6 ms late" under Event building.  (An earlier version of this note called it "NOT ours";
+    Ric's correction, 10-14: a fixed, quantised lag in a system we wrote is not
+    chaos, and he removed that line from the PR.)
 
   **Wired into all nine processes, Ric 2026-10-14 (he wanted it before the master
   merge).  Each count was read off the `std::thread` sites, not assumed:**
@@ -1376,6 +1417,48 @@ diverge silently -- that has happened once already.
   Ask **Mikhail**, who has done the psana equivalent.
 
 ## Runtime behaviour
+
+- **`drp_dma_in_use` reads 56 against a `drp_dma_in_use_max` of 8 on a GPU DRP, and
+  one of the two is wrong.**  Found 2026-10-14; Ric: "we should fix that", but not
+  tonight.  The only consumer is `psalg/psalg/daqPipes/daqPipes.py:610`, which
+  computes `%DMA` as `100.0*drp_dma_in_use/drp_dma_in_use_max` and therefore reports
+  **700%** on those nodes.  daqPipes is not in regular use and knows nothing about
+  the GPU work, so this is cosmetic for now.
+
+  **THERE ARE TWO TIERS OF "DMA BUFFER" AND THE NAMING IS GENUINELY AMBIGUOUS**
+  (Ric, 10-14).  The firmware tier *is* DMA: 8 buffers, `dmaBufCount`, filled by the
+  f/w, which `Reader` copies out of and calibrates from.  The host tier is sized by
+  `pebbleBufCount` (2048 here) and is named to **mirror the CPU DRP's accounting**,
+  which is what forced the collision.
+
+      m_dmaCount / m_nDmaBuffers   8      firmware; nDmaBuffers() = nextPowerOf2()
+      m_nbuffers                   2048   host, = pebbleBufCount
+
+  **The mismatch is not GPU-specific and predates all of this work** (`1d1e6dec`,
+  Jan 2025): `DrpBase.cc:158` defaults `m_nbuffers` to `m_nDmaBuffers`, so the two
+  agree *unless* `pebbleBufCount` is given -- and 39 config entries give it.
+  `timing_2`, a **CPU** DRP, reports `_max` 1024 against a real 1048576.
+
+  **FOUR DEAD ENDS, all mine, recorded so nobody walks them again:**
+
+  1. "Nothing in `drpGpu` increments the counters" -- **wrong**, `Reader.cu:706`
+     calls `freeDma`.  I grepped for `m_dmaAllocs` instead of for the methods.
+  2. "56 > 8 is impossible, so the gauge is broken" -- **wrong**, it is 56 of the
+     2048-deep host tier, nowhere near its rail.
+  3. "`_max` should be `pool.nbuffers()`" -- **contradicted** by `allocateDma()`'s own
+     comment, "the DMA buffer is allocated by the f/w and we only account for it
+     here", which says the gauge tracks the *firmware* tier.  Reverted.
+  4. "The GPU path never allocates, only frees" -- **wrong**, `TrgInpGen.cu:516`
+     calls `allocateDma()`.
+
+  **THE QUESTION THAT SETTLES IT, for someone who knows the hand-off:** on the GPU
+  path, is `allocateDma()` (`TrgInpGen.cu:516`) called once per *firmware* buffer and
+  `freeDma()` (`Reader.cu:706`) once per the *same* buffer?  `Reader::freeDma`'s
+  comment says `// Count freed 'DMA' (host) buffers`, i.e. the other tier, and an
+  alloc/free pair counting different tiers would drift -- which 56-against-8 fits.
+  If they are genuinely paired, the gauge should stay within 8 and something
+  double-counts; if not, the fix is at a call site, not in the `_max` constant.
+
 
 - **Is the spin-loop the right idea?**  `_waitForDMA` polls the DMA doorbell with a
   `__nanosleep` backoff (8 ns doubling to 256 ns) and gives up so the graph can
