@@ -4,12 +4,42 @@
   "subtitle": "From small-data metadata to user analysis",
   "baseline": {
     "repo": "https://github.com/slac-lcls/lcls2",
-    "commit": "e2cdad6e18fd9263d7adfeed0ce58d5ad074e070",
-    "inspected": "2026-10-07",
-    "pr": 151,
-    "state": "OPEN"
+    "branch": "features/psana2-gpu",
+    "commit": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8",
+    "inspected": "2026-10-15",
+    "status": "implemented-reference",
+    "issues_checked": "2026-10-15",
+    "source_paths": [
+      "psana/psana/datasource.py",
+      "psana/psana/event.py",
+      "psana/psana/eventbuilder.pyx",
+      "psana/psana/gpu/context.py",
+      "psana/psana/gpu/gpu_batch.py",
+      "psana/psana/gpu/gpu_d2h.py",
+      "psana/psana/gpu/gpu_events.py",
+      "psana/psana/gpu/gpu_input_group.py",
+      "psana/psana/gpu/gpu_input_window.py",
+      "psana/psana/gpu/gpu_kvikio_read.py",
+      "psana/psana/gpu/gpu_producer.py",
+      "psana/psana/gpu/gpu_stream.py",
+      "psana/psana/gpu/gpu_task.py",
+      "psana/psana/gpu/gpu_task_batch.py",
+      "psana/psana/gpu/gpudgram/batch.py",
+      "psana/psana/gpu/gpudgram/parser.py",
+      "psana/psana/parallelreader.pyx",
+      "psana/psana/psexp/event_manager.py",
+      "psana/psana/psexp/eventbuilder_manager.py",
+      "psana/psana/psexp/events.py",
+      "psana/psana/psexp/mpi_ds.py",
+      "psana/psana/psexp/node.py",
+      "psana/psana/psexp/run.py",
+      "psana/psana/psexp/serial_ds.py",
+      "psana/psana/psexp/smdreader_manager.py",
+      "psana/psana/psexp/step.py",
+      "psana/psana/smdreader.pyx"
+    ]
   },
-  "scope": "Documents the proposed psana2-gpu implementation in PRs #136–151, inspected at e2cdad6e18fd on 2026-10-07; not necessarily the merged branch.",
+  "scope": "Describes features/psana2-gpu at inspected commit 410ebba1ce4d (2026-10-15). Your checkout may differ. Verify behavior in its source; proposals are labeled separately.",
   "nodes": [
     {
       "id": "setup",
@@ -3869,7 +3899,7 @@
       "Current MPI GPU steps() returns immediately. Serial GPU processing consumes transitions internally, so working GPU step iteration is also missing.",
       "SlowUpdate already reaches the host transition/envstore path; event-relative ordering still needs verification. Do not describe SlowUpdate as wholly absent.",
       "The ClearReadout service-zero ambiguity and empty-step behavior are also tracked in #153.",
-      "BeginStep does not itself fetch calibration constants from the database. CUDA-IPC restoration (#168) must coordinate version lifetimes with transition ordering."
+      "The run initializes calibration constants once. The inspected manager checks requested host bytes again at BeginStep but does not fetch the database. Run-scoped CUDA-IPC sharing is tracked separately in #168."
     ]
   },
   "issues": [
@@ -3898,5 +3928,6 @@
     "url": "https://carbonscott.github.io/lcls2/dev/design/",
     "source": "https://github.com/carbonscott/lcls2/tree/e49563c40bbbbbf0ef96ed3520079c42388a14a2/docs/design",
     "note": "Inspired by its single content model, typed relationships, clickable component details and event tour. This smaller viewer is an original implementation for offline HTML sharing; it does not copy Cong’s viewer code or DAQ prose."
-  }
+  },
+  "documentation_url": "https://github.com/slac-lcls/lcls2/blob/features/psana2-gpu/psana/docs/README.md"
 }

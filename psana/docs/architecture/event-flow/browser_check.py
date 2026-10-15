@@ -16,7 +16,7 @@ with sync_playwright() as p:
     context=browser.new_context(viewport={'width':1440,'height':1050},offline=True,accept_downloads=True)
     context.on('request',lambda request:network.append(request.url) if request.url.startswith(('http:','https:')) else None)
     page=context.new_page();page.on('pageerror',lambda error:errors.append(str(error)))
-    page.goto((HERE/'psana-event-flow.html').as_uri())
+    page.goto((HERE/'index.html').as_uri())
     page.wait_for_selector('body[data-ready="true"]')
     for view in model['views']:
         page.locator('button[data-view="'+view+'"]').click()
@@ -32,7 +32,7 @@ with sync_playwright() as p:
                 assert '/blob/'+model['baseline']['commit']+'/' in link.get_attribute('href')
         page.screenshot(path=str(args.artifacts/(view+'.png')),full_page=True)
         assert not page.locator('.node').evaluate_all('nodes=>nodes.flatMap(n=>{const r=n.querySelector("rect").getBBox();return Array.from(n.querySelectorAll("text")).filter(t=>t.getBBox().x+t.getBBox().width>r.x+r.width-5).map(t=>t.textContent)})'), 'map label overflows component'
-    page.goto((HERE/'psana-event-flow.html').as_uri()+'#/gpu/input')
+    page.goto((HERE/'index.html').as_uri()+'#/gpu/input')
     expect(page.locator('#detail')).to_have_attribute('data-node','input')
     calls=page.locator('#detail-call-paths')
     for name in ('KvikioGpuReader.__init__()', 'GpuEventManager._process_batch()',
@@ -62,7 +62,7 @@ with sync_playwright() as p:
     expect(page.locator('#serial-note')).to_be_visible()
     assert page.locator('#detail-role').inner_text().startswith('Serial:')
     page.reload();expect(page.locator('#serial')).to_be_checked()
-    page.goto((HERE/'psana-event-flow.html').as_uri()+'#/gpu/tour/0')
+    page.goto((HERE/'index.html').as_uri()+'#/gpu/tour/0')
     for i,step in enumerate(model['tour']):
         expect(page.locator('#detail')).to_have_attribute('data-node',step['node'])
         if i<len(model['tour'])-1:page.locator('#tour-next').click()

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """Validate source-backed workflow model and build a portable offline HTML file."""
 import argparse
-import copy
 import html
 import json
 import re
@@ -9,7 +8,7 @@ import subprocess
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
+ROOT = HERE.parents[3]
 
 def checked_model():
     model = json.loads((HERE / 'workflow-model.json').read_text(encoding='utf-8'))
@@ -120,7 +119,7 @@ if __name__ == '__main__':
     parser.add_argument('--check',action='store_true',help='validate model/source and require committed HTML to match')
     args=parser.parse_args()
     result=build()
-    dest=HERE/'psana-event-flow.html'
+    dest=HERE/'index.html'
     if args.check:
         assert dest.read_text(encoding='utf-8') == result, 'HTML is stale; run build.py'
         print('PASS: model, source anchors, routes, offline assets and deterministic generated HTML')

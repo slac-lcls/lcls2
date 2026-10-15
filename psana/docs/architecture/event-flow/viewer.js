@@ -65,8 +65,9 @@
   text('scope', model.scope);
   $('baseline').append(el('span', 'Baseline '), el('a', model.baseline.commit.slice(0, 12), {
     href: model.baseline.repo + '/commit/' + model.baseline.commit
-  }), el('span', ' · PR #151 ' + model.baseline.state +
-    ' at inspection · Source links are pinned; external links need internet.'));
+  }), el('span', ' · ' + model.baseline.branch + ' · Reviewed ' + model.baseline.inspected +
+    ' · ' + model.baseline.status + ' · Source links are pinned; your checkout may differ.'));
+  $('docs-home').href = model.documentation_url;
   for (const id of Object.keys(model.views)) {
     const b = el('button', id === 'cpu' ? 'CPU path' : id === 'gpu' ? 'GPU path' : 'Overview', {
       'type': 'button',
