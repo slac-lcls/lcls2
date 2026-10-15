@@ -21,6 +21,9 @@ public:
         time(time_), env((type_<<28)|(tid_<<24)|(env_&0xffffff)) {}
 public:
     uint16_t readoutGroups() const { return (env)&0xffff; }
+    // L0Raw, b6 of the reserved field L1Dgram::reserved() describes: the timing
+    // system marks an event for raw data retention, at a rate set per readout group.
+    bool     keepRaw()       const { return (env>>22)&1; }
 public:
     TimeStamp time;
     uint32_t env;
@@ -57,10 +60,9 @@ public:
     // 8 reserved bits.  Perhaps for future trigger lines?
     // b0   - L0Accept
     // b5:1 - L0Tag
-    // b6   - L0Raw
+    // b6   - L0Raw      -- TransitionBase::keepRaw()
     // b7   - L0Reject
     uint16_t reserved() const { return (env>>16)&0xff; }
-    bool     keepRaw () const { return (env>>22)&1; }
 };
 
 }

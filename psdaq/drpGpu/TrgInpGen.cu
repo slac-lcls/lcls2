@@ -1,6 +1,7 @@
 #include "TrgInpGen.hh"
 
 #include "Reader.hh"
+#include "ReaderKernels.cuh"     // For EventStatus
 
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/MetricExporter.hh"
@@ -181,6 +182,9 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.nTmgHdrError = 0;
   exporter->add("drp_num_th_error", labels, MetricType::Gauge,
                 [&](){return m_metrics.nTmgHdrError;});
+  m_metrics.nEvtStatusError = 0;
+  exporter->add("drp_num_evt_status_error", labels, MetricType::Gauge,
+                [&](){return m_metrics.nEvtStatusError;});
   m_metrics.nPgpJumps = 0;
   exporter->add("drp_num_pgp_jump", labels, MetricType::Gauge,
                 [&](){return m_metrics.nPgpJumps;});
@@ -419,8 +423,8 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       if (m_para.verbose > 2) {
         printf("*** TrgInpGen::receive: dmaDsc[%u] %p, th %p\n", index, dmaDsc, timingHeader);
         const auto& p = (const uint32_t*)dmaDsc;
-        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x\n",
-               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7]);
+        printf("*** TrgInpGen::receive: dmaBuf %08x %08x | %08x %08x %08x %08x %08x %08x | %08x %08x\n",
+               p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[10], p[11]); // Skip TH.opaques
       }
 
       uint64_t pid = timingHeader->pulseId();
@@ -467,6 +471,29 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         }
       }
 
+      // The Reader's verdict on this event.  A kernel can't log, so it hands us a
+      // code in the last word of the event's buffer and we do the reporting.
+      const auto evtStatus = hostWrtBufs[index * hostWrtBufsCnt +
+                                         eventStatusIndex(hostWrtBufsCnt)];
+      if (evtStatus != EventStatusOk) [[unlikely]] {
+        if (m_metrics.nEvtStatusError++ < 5) { // Limit prints at rate
+          switch (evtStatus) {
+            case EventStatusDmaSizeTooSmall:
+              logging::error("DMA of %u B is shorter than a TimingHeader (%zu B)",
+                             dmaDsc->size, sizeof(TimingHeader));
+              break;
+            case EventStatusBatchUnintelligible:
+              logging::error("Corrupt AxiStream Batcher payload of %u B: %s",
+                             dmaDsc->size,
+                             evtBatcherStatusName(m_reader->batcherStatus()));
+              break;
+            default:
+              logging::error("Unrecognized Reader event status %u", evtStatus);
+              break;
+          }
+        }
+      }
+
       uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
       unsigned pgpIndex = evtCounter & bufferMask;
       PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
@@ -487,8 +514,8 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       m_pool.allocateDma(); // DMA buffer was allocated when f/w incremented evtCounter
 
       // Check whether the DMA is reporting an error
-      // @todo: C1100: if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
-      if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
+      if (dmaDsc->header ^ ~dmaDsc->errorMask()) [[unlikely]] {
+      // @todo: KCU: if (dmaDsc->header & dmaDsc->errorMask()) [[unlikely]] {    // Ignore SOF for KCU usage
         // Assume we can recover from non-overflow DMA errors
         if (m_metrics.nDmaErrors++ < 5) {   // Limit prints at rate
           logging::error("DMA error 0x%08x", dmaDsc->header);
@@ -499,7 +526,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         break;
       }
 
-      XtcData::TransitionId::Value transitionId = timingHeader->service();
+      TransitionId::Value transitionId = timingHeader->service();
       const uint32_t* data = reinterpret_cast<const uint32_t*>(timingHeader);
       logging::debug("PGPReader  size %u  hdr %016lx.%016lx.%08x  dma hdr 0x%08x",
                      size,
@@ -538,7 +565,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       auto rogs = timingHeader->readoutGroups();
       if ((rogs & (1 << m_para.partition)) == 0) {
         logging::debug("%s @ %u.%09u (%014lx) without common readout group (%u) in env 0x%08x",
-                       XtcData::TransitionId::name(transitionId),
+                       TransitionId::name(transitionId),
                        timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                        timingHeader->pulseId(), m_para.partition, timingHeader->env);
         ++m_lastComplete;
@@ -547,11 +574,11 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         ++m_metrics.nNoComRoG;
         break;
       }
-      if (transitionId == XtcData::TransitionId::SlowUpdate) {
+      if (transitionId == TransitionId::SlowUpdate) {
         uint16_t missingRogs = m_para.rogMask & ~rogs;
         if (missingRogs) [[unlikely]] {
           logging::debug("%s @ %u.%09u (%014lx) missing readout group(s) (0x%04x) in env 0x%08x",
-                         XtcData::TransitionId::name(transitionId),
+                         TransitionId::name(transitionId),
                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                          timingHeader->pulseId(), missingRogs, timingHeader->env);
           ++m_lastComplete;
@@ -562,16 +589,16 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
         }
       }
 
-      if (transitionId != XtcData::TransitionId::L1Accept) {
-        if (transitionId != XtcData::TransitionId::SlowUpdate) {
+      if (transitionId != TransitionId::L1Accept) {
+        if (transitionId != TransitionId::SlowUpdate) {
           logging::info("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                        XtcData::TransitionId::name(transitionId),
+                        TransitionId::name(transitionId),
                         timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                         timingHeader->pulseId());
         }
         else {
           logging::debug("PGPReader  saw %12s @ %u.%09u (%014lx)",
-                         XtcData::TransitionId::name(transitionId),
+                         TransitionId::name(transitionId),
                          timingHeader->time.seconds(), timingHeader->time.nanoseconds(),
                          timingHeader->pulseId());
         }

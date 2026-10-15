@@ -11,6 +11,10 @@
 namespace Drp {
   namespace Gpu {
 
+// Defined in ReaderKernels.cuh, which only .cu files include: Detector.cc is
+// compiled by the host compiler and must not see __global__ code
+struct EventKernelArgs;
+
 enum { MaxPnlsPerNode = 10 };       // From BEBDetector.hh
 enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
        EventNamesIndex  = unsigned(ConfigNamesIndex) + unsigned(MaxPnlsPerNode),
@@ -58,21 +62,101 @@ public:
     return reinterpret_cast<Pds::TimingHeader*>(&dmaDsc[1]);
   }
 
-  //// Device methods can't be virtual due to the vtable not containing device pointers
-  //__device__ void calibrate(float*    const calib,
-  //                          uint16_t* const raw,
-  //                          unsigned  const count,
-  //                          unsigned  const rangeOffset,
-  //                          unsigned  const rangeBits) const;
+  // Where the gain-range and data fields sit within a raw u16 pixel.  Both are
+  // located explicitly because their order differs between detectors: some put the
+  // range bits above the data (e.g. range 14/2, data 0/14), others below it (e.g.
+  // range 0/1, data 1/11).  The defaults below reproduce the former arrangement, so
+  // a Detector need only override them for the latter.
   virtual unsigned     rangeOffset() const = 0;
   virtual unsigned     rangeBits()   const = 0;
+  virtual unsigned     dataOffset()  const { return 0; }
+  virtual unsigned     dataBits()    const { return rangeOffset(); }
   virtual float const* pedestals_d() const = 0;
   virtual float const* gains_d()     const = 0;
 
-  //virtual void recordGraph(cudaStream_t          stream,
-  //                         const unsigned&       index_d,
-  //                         uint16_t const* const data) = 0;
-  //virtual CalibrateFn_t* getCalibFn() const { return nullptr; } // Not working
+  // The number of AxiStream Batcher sub-frames an L1Accept's payload comprises,
+  // i.e. the highest tdest plus one.  This sizes the Reader's tdest-indexed
+  // sub-frame table, so it counts the leading trigger/event/timing sub-frames as
+  // well as the ones bearing detector data.
+  //
+  // Non-zero: the batch is at the beginning of the DMA payload and the
+  // TimingHeader is sub-frame 0.
+  // Zero:     the DMA payload starts with the TimingHeader, followed by the data
+  //           as one contiguous block.
+  // In both cases a transition's payload is a bare TimingHeader.
+  virtual unsigned     subframeCount()     const { return 0; }
+  // The tdest of the first sub-frame bearing detector data.  Only consulted when
+  // subframeCount() is non-zero.  The Reader concatenates the data sub-frames
+  // into the calibrated buffer in tdest order, so any detector-specific
+  // reordering of them is the Detector's business.
+  virtual unsigned     firstDataSubframe() const { return 0; }
+
+  // Whether to record this detector's data raw, uncalibrated and unreduced, which
+  // is what the CALIB config alias asks for.  A Detector with no raw mode -- one
+  // that does not override rawSize() below -- never sets it.
+  //
+  // Call this from Configure and from nowhere else.  Everything downstream is
+  // decided once per Configure/Unconfigure cycle: the reduce buffers are sized from
+  // rawSize(), the reducer is chosen, the Reader's graph is recorded with one
+  // per-element policy or the other, and the Names entry describing the payload is
+  // written.  Changing it part-way through a cycle would leave those disagreeing
+  // with each other and the recorded data misdescribed.  Switching between BEAM and
+  // CALIB therefore requires the state machine to pass through Configure, which is
+  // the intended operator procedure rather than a limitation.
+  //
+  // It is cleared as readily as it is set because the Detector outlives the cycle:
+  // a CALIB run must not leave the next BEAM run in pass-through.
+  virtual void         setPassthru(bool v)       { m_passthru = v; }
+  bool                 passthru()          const { return m_passthru; }
+
+  // Bytes to reserve in each reduce buffer, between the space kept for the
+  // datagram header and the reduced payload, for a block of raw data that is
+  // recorded alongside -- or instead of -- the reduced data.  Zero when the
+  // Detector has no raw mode at all, which is the usual case.
+  //
+  // This is CAPACITY, not per-event presence, and it must not depend on passthru():
+  // it is read once per Configure to size every buffer, whereas whether an event
+  // actually carries raw data is the per-event keepRaw bit, which no one knows yet.
+  // A detector with a raw mode therefore reserves in BEAM as well as CALIB, because
+  // the timing system's prescale rate is its own business and raw can arrive in any
+  // run.  Unused capacity costs GPU memory but no bytes on disk.
+  //
+  // The recorder writes one contiguous block starting at the datagram header, so
+  // this space is skipped rather than written when the event carries no raw data.
+  // Keeping it here rather than after the payload means a Reducer's
+  // `&dataBuffers[idx * dataBufsCnt]` is unaffected by its presence, so no
+  // Reducer needs to know about raw data at all.
+  virtual size_t       rawSize()           const { return 0; }
+
+  // The shape of the raw block, for whoever writes its Xtc array description.
+  // Fills `shape` and returns the rank, or 0 when the Detector has no raw block or
+  // wants it described as a flat run of bytes.  Only the Detector knows how it
+  // laid the block out, so it is asked rather than the shape being inferred from
+  // rawSize().
+  virtual unsigned     rawShape(unsigned* shape) const { return 0; }
+
+  // Describe this event's raw block in the Xtc, for a detector that has one.
+  // Called only on events that carry raw data, and BEFORE the Reducer's own
+  // description, because the raw block physically precedes the reduced payload in
+  // the buffer and the recorder writes the two as one contiguous region.
+  //
+  // Virtual because Detector.cc is compiled into each detector plugin rather than
+  // into drp_gpu: the executable can only reach this through the vtable of an object
+  // the plugin constructed.
+  virtual void         rawEvent(XtcData::Xtc& xtc, const void* bufEnd);
+
+  // Record this detector's per-event kernel into the given stream.
+  //
+  // Host-side and called once per graph recording, so the virtual costs nothing.
+  // The implementation launches its own instantiation of the _event kernel
+  // template, which is why the detector's per-element work must live in the
+  // detector's .so: device code cannot be called across CUDA module boundaries,
+  // so a device function pointer handed to a kernel in the executable does not
+  // work.  See ReaderKernels.cuh for the details and the measurements.
+  virtual void recordEvent(cudaStream_t    stream,
+                           unsigned        blocks,
+                           unsigned        threads,
+                           const EventKernelArgs&) = 0;
 
   virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
   virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only
@@ -85,6 +169,7 @@ protected:
   }
 protected:
   Drp::Detector* m_det;
+  bool           m_passthru{false};     // See setPassthru()
 };
 
   } // Gpu

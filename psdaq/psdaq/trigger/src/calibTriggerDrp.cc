@@ -1,33 +1,13 @@
-#include "TriggerPrimitive.hh"
+#include "calibTriggerPrimitive.hh"
+
 #include "utilities.hh"
 #include "drp/drp.hh"
 
 #include <cstdint>
 
 using json = nlohmann::json;
-
-
-namespace Pds {
-  namespace Trg {
-
-    class CalibPrimitive : public TriggerPrimitive
-    {
-    public:
-      int    configure(const json&     configureMsg,
-                       const json&     connectMsg,
-                       size_t          collectionId) override;
-      void   event(const Drp::MemPool& pool,
-                   uint32_t            idx,
-                   const XtcData::Xtc& ctrb,
-                   XtcData::Xtc&       xtc,
-                   const void*         bufEnd) override;
-      size_t size() const override { return 0; }
-    };
-  };
-};
-
-
 using namespace Pds::Trg;
+
 
 int Pds::Trg::CalibPrimitive::configure(const json& configureMsg,
                                         const json& connectMsg,

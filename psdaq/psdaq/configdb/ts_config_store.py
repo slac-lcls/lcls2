@@ -27,7 +27,7 @@ def usual_cdict():
     help_str += "\neventcode    : trigger eventcode"
     help_str += "\ndestn.destN  : Require beam to one of destNs"
     help_str += "\n               No destination implies DontCore"
-    help_str += "\nkeepRawRate: raw data retention rate (Hz)" 
+    help_str += "\nkeepRawRate: raw data retention rate (Hz), NOT the L0RawUpdate divisor" 
     top.set('help:RO', help_str, 'CHARSTR')
 
     top.set('user.LINAC', 0, 'linacEnum')
