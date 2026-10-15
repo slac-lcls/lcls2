@@ -13,12 +13,13 @@ one of which hung rather than erroring.
     than a whole allocation's wall time.
 
 ``--inject follower-import``
-    One follower's ``ipcOpenMemHandle`` raises. The group must degrade to
-    private copies *together*: if the owner falls back and a follower does
-    not, the follower reads memory the owner has freed -- silent corruption
-    rather than a hang. Also exercises the owner's half of the fallback
-    ordering (importers close, Barrier, owner frees), which the unit test
-    scopes away because the owner has already returned there.
+    One follower's ``ipcOpenMemHandle`` raises. Every peer must abort
+    *together*, including those whose own import succeeded: the capability
+    flag is reduced over the group, so a rank that carried on would read an
+    allocation its peers have already freed -- silent corruption rather than
+    a hang. Also exercises the release ordering before the raise (importers
+    close, Barrier, owner frees), which the unit test scopes away because the
+    owner has already returned there.
 
 Timing is part of the contract. A correct abort and a regressed deadlock
 produce near-identical logs; the difference is two seconds versus the whole
@@ -134,7 +135,7 @@ def case_select_device(rank, eb_ranks):
 # ---------------------------------------------------------------------------
 
 def case_follower_import(rank, eb_ranks):
-    """Break ipcOpenMemHandle on one follower and require a uniform degrade."""
+    """Break ipcOpenMemHandle on one follower and require a uniform abort."""
     from psana.gpu.gpu_placement import discover_peers
 
     is_worker = rank >= eb_ranks
@@ -150,11 +151,25 @@ def case_follower_import(rank, eb_ranks):
         emit(f'RANK{rank}', {'skipped': 'needs >= 2 peers on one device'})
         return 0
 
+    # Record the collectives so the abort path can be checked for divergence.
+    # This is the case where it matters most: one rank fails its import and
+    # the others do not, so if the release-then-raise sequence were not
+    # identical across them the job would hang instead of aborting -- and the
+    # sequential unit-test fake cannot model that.
+    sys.path.insert(0, os.path.dirname(
+        os.path.dirname(os.path.abspath(__file__))))
+    from collective_recorder import RecordingComm
+    recorder = RecordingComm(peers, 'failure-paths')
+    placement.device_comm = recorder
+    peers = recorder
+
     import psana.gpu.gpu_shared_constants as gsc
     from psana.gpu.gpu_budget import _GpuBudget
 
     # Inject on the LAST follower, so the owner and at least one other
-    # follower have already imported successfully when it fails.
+    # follower have already imported successfully when it fails -- which is
+    # what makes "every peer aborts" a real assertion rather than one rank
+    # reporting its own exception.
     victim = placement.n_device_peers - 1
     injected = peers.Get_rank() == victim
     if injected:
@@ -178,52 +193,79 @@ def case_follower_import(rank, eb_ranks):
     info = {'rank': rank, 'device_rank': peers.Get_rank(),
             'is_owner': placement.is_owner, 'injected': injected}
 
-    shared.refresh(host)
+    # EVERY peer must raise, including the ones whose own import succeeded:
+    # the capability flag is reduced over the group, so a rank that carried on
+    # would be reading an allocation its peers have already freed. A rank that
+    # raised alone would instead leave the others in the next collective.
+    raised = None
+    try:
+        shared.refresh(host)
+    except gsc.SharedConstantsError as exc:       # noqa: BLE001
+        raised = f'{type(exc).__name__}: {exc}'
+    except Exception as exc:                      # noqa: BLE001
+        raised = f'WRONG TYPE {type(exc).__name__}: {exc}'
 
+    info['raised'] = raised
     info['shared_selectors'] = [list(s) for s in shared.shared_selectors]
-    info['private_selectors'] = [list(s) for s in shared.private_selectors]
     info['ipc_error'] = shared._ipc_error
     info['imported_bytes'] = int(shared.imported_bytes)
     info['charged_bytes'] = int(budget.committed())
 
-    # THE assertion: every peer must have reached the same conclusion. A
-    # partial degrade leaves a follower reading memory the owner has freed.
-    counts = peers.allgather(len(shared.shared_selectors))
-    info['shared_counts'] = counts
-    checks['degraded_uniformly'] = len(set(counts)) == 1
-    if not checks['degraded_uniformly']:
-        failures.append(f'peers degraded inconsistently: {counts}; a follower '
-                        'may be reading memory the owner has freed')
+    # THE assertion: every peer reached the same conclusion, and that
+    # conclusion was to stop.
+    verdicts = peers.allgather(bool(raised))
+    info['raised_by_peer'] = verdicts
+    checks['every_peer_aborted'] = all(verdicts)
+    if not all(verdicts):
+        failures.append(
+            f'peers disagreed about aborting: {verdicts}; a rank that carried '
+            'on is reading memory its peers have freed')
+    checks['raised_the_documented_error'] = (
+        raised is not None and not raised.startswith('WRONG TYPE'))
+    if raised is None:
+        failures.append('an injected IPC failure did not raise on this rank')
+    elif raised.startswith('WRONG TYPE'):
+        failures.append(f'raised the wrong exception type: {raised}')
 
-    checks['fell_back_to_private'] = len(shared.shared_selectors) == 0
-    if shared.shared_selectors:
-        failures.append('sharing survived an injected IPC failure')
+    # The message has to name the way to run without sharing, or a MIG user
+    # has no path forward: their instances share a PCI bus id, so discovery
+    # groups them as peers and the import necessarily fails.
+    checks['message_names_the_opt_out'] = (
+        raised is not None and 'PSANA_GPU_SHARE_CONSTANTS=0' in raised)
+    if not checks['message_names_the_opt_out']:
+        failures.append(f'the abort does not name the opt-out: {raised}')
 
-    # Values must still be correct, through the private path.
-    for selector in declared:
-        got = np.asarray(shared.get(*selector).get())
-        if not np.array_equal(got, host[selector[0]][selector[1]]):
-            failures.append(f'{selector}: wrong values after degrading')
-    checks['values_correct_after_degrade'] = not failures
-
-    # Every rank owns its own copies now, so each is charged and none imports.
-    checks['charged_after_degrade'] = budget.committed() > 0
-    checks['nothing_imported'] = shared.imported_bytes == 0
-    if not checks['charged_after_degrade']:
-        failures.append('no bytes charged after falling back to private copies')
+    # Nothing may be left mapped or allocated: _settle releases through
+    # _release_shared, whose barriers every peer reaches, before raising.
+    checks['nothing_left_imported'] = shared.imported_bytes == 0
     if shared.imported_bytes:
         failures.append(f'{shared.imported_bytes} bytes still imported after '
-                        'the fallback')
+                        'the abort')
+    checks['nothing_left_charged'] = budget.committed() == 0
+    if budget.committed():
+        failures.append(f'{budget.committed()} bytes still charged after the '
+                        'abort')
 
-    # Teardown must still be clean: the fallback already closed and freed, so
-    # close() must not double-free.
+    # Teardown must still be safe: the release already happened, so close()
+    # must not double-free or barrier again.
     peers.Barrier()
     try:
         shared.close()
-        checks['close_after_degrade_safe'] = True
+        checks['close_after_abort_safe'] = True
     except Exception as exc:                      # noqa: BLE001
-        checks['close_after_degrade_safe'] = False
-        failures.append(f'close() after degrading raised {type(exc).__name__}: {exc}')
+        checks['close_after_abort_safe'] = False
+        failures.append(f'close() after the abort raised '
+                        f'{type(exc).__name__}: {exc}')
+
+    # The abort must leave every peer having made the same calls in the same
+    # order -- a release that ran on some ranks and not others is the hang
+    # this whole case exists to rule out.
+    checks['collective_order_agreed'] = recorder.check_agreement(
+        'failure-paths/driver-end')
+    if not checks['collective_order_agreed']:
+        failures.append('peers made different collectives on the abort path; '
+                        'see the "collective order diverged" line above')
+    info['collectives'] = recorder.calls
 
     info['checks'] = checks
     info['failures'] = failures
@@ -237,10 +279,15 @@ def case_follower_import(rank, eb_ranks):
             'peers': len(members),
             'all_pass': all(m['PASS'] for m in members),
             'failures': [f for m in members for f in m.get('failures', [])],
-            'shared_counts': counts,
+            'raised_by_peer': verdicts,
             'checks_by_device_rank': {m['device_rank']: m['checks']
                                       for m in members},
         })
+    # Hold every peer until the summary is complete. A rank with failures
+    # calls MPI_Abort as soon as main() returns, which would otherwise kill
+    # the summarising rank mid-emit and leave the launcher parsing a
+    # truncated record.
+    peers.Barrier()
     return 0 if not failures else 1
 
 

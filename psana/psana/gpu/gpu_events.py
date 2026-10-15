@@ -303,31 +303,23 @@ class GpuEventManager:
         )
 
     def _resize_budget_for_shared(self, shared_bytes):
-        """Account for the shared intersection before it is allocated.
+        """Account for the shared constants before they are allocated.
 
-        Called by SharedRequestedConstants once the intersection is known and
-        before anything is allocated. Shared constants are device overhead
+        Called by SharedRequestedConstants once the group has agreed to share
+        and before anything is allocated. Shared constants are device overhead
         counted once, so every rank's share is computed net of them while the
         owner -- which actually holds the allocation -- gets those bytes added
         back.
 
         Doing this after refresh() meant the owner allocated against
-        usable/peers: a 12 GiB intersection on a 40 GiB four-peer device fits
-        the documented accounting (7 + 12 = 19 GiB) but was charged against
-        10 GiB, so the shared copy was refused, the group degraded, and the
-        private copy was refused by the same limit.
+        usable/peers: a 12 GiB set on a 40 GiB four-peer device fits the
+        documented accounting (7 + 12 = 19 GiB) but was charged against
+        10 GiB, so the shared copy was refused.
         """
         placement = self._placement
         shared = int(shared_bytes or 0)
         if placement is None:
             return
-        # shared == 0 is a RESET, not a no-op: the fallback calls it after
-        # releasing the shared blocks so private copies are checked against
-        # usable/peers again. Returning early here left followers holding
-        # (usable - shared)/peers while each uploaded its own full copy, so a
-        # group that used to degrade cleanly aborted instead -- measured on a
-        # 40 GiB four-peer device for a 9-10 GiB intersection, which fits
-        # 10 GiB but not 7.
         placement.shared_bytes = shared
         if float(getattr(self.dsparms, "gpu_memory_budget_gb", 0) or 0):
             # An explicit budget is the user's ceiling and discover_peers has
@@ -474,9 +466,15 @@ class GpuEventManager:
                 preparer.configure_gather(self.gpu_xtc_parser.handle_indices)
             placement = self._placement
             if placement is not None and placement.can_share:
-                # One device copy for every BD rank on this GPU. Peers that
-                # declared different selectors share the intersection and
-                # privately upload the remainder.
+                # One device copy for every BD rank on this GPU. Sharing is
+                # all-or-nothing: peers that declared different selector sets
+                # each upload their own copy instead.
+                #
+                # can_share folds in the group's agreed answer to
+                # PSANA_GPU_SHARE_CONSTANTS. Reading the variable here instead
+                # would let one rank opt out while its peers did not, and the
+                # peers would then wait in an establishment allgather this
+                # rank never enters.
                 from .gpu_shared_constants import SharedRequestedConstants
                 self._task_constants = SharedRequestedConstants(
                     self._gpu_task.calibconst, self._gpu_budget, placement,

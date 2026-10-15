@@ -3,7 +3,7 @@
 Selection needs only a communicator and CuPy, both injected here, so these run
 without a GPU. What they cover is the assignment rule and the failure
 reporting; that the assignment actually reaches a running job is covered by
-``integration/mpi_real_path_placement.py``, which goes through a real
+``integration/mpi_calib_pixel_exact.py``, which goes through a real
 DataSource.
 """
 import sys
@@ -397,13 +397,17 @@ def test_non_gpu_role_joins_every_collective_in_order():
     assert placement.n_device_peers == 1
 
 
-def test_non_gpu_role_never_touches_cupy():
+def test_non_gpu_role_never_touches_cupy(monkeypatch):
     """On a shared node importing CuPy would allocate a context on a device
-    that belongs to someone else."""
-    def explode():
-        raise AssertionError('CuPy must not be used on a CPU-role rank')
+    that belongs to someone else.
 
-    discover_peers(Comm(), is_gpu_worker=False, cp=NS(boom=explode))
+    cp is left None so the code reaches its own `import cupy`, and the module
+    is poisoned so that import FAILS. Passing a stand-in instead -- as this
+    test used to -- means no import is attempted and the test passes however
+    the code behaves.
+    """
+    monkeypatch.setitem(sys.modules, 'cupy', None)
+    discover_peers(Comm(), is_gpu_worker=False)
 
 
 def test_non_gpu_role_raises_when_a_gpu_worker_failed():

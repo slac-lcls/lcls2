@@ -274,7 +274,7 @@ class _GpuBudget:
         """Replace the limit, rejecting one the current state already exceeds.
 
         Setup learns some costs only after the budget exists -- shared
-        constants are sized once their intersection has been negotiated -- so
+        constants are sized once the group has agreed to share them -- so
         the limit can move. It moves *before* those bytes are allocated;
         lowering it below what is already committed would defer the failure to
         an unrelated allocation later, so refuse instead.

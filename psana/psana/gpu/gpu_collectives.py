@@ -1,38 +1,34 @@
-"""Bounded collectives for GPU setup, and an optional order checker.
+"""Bounded collectives for GPU setup.
 
-Two problems these address, both learned the hard way on this branch.
-
-**A setup collective that blocks forever costs an allocation.** Eight bugs in
-this work came from ranks taking different collective paths; every one hung
-rather than erroring, and a hung job holds its nodes until the wall clock
-expires with no diagnostic. ``bounded_barrier`` and ``bounded_allreduce`` poll
-a non-blocking request to a deadline and then abort, naming the step -- turning
-a lost allocation into a sixty-second message.
+A setup collective that blocks forever costs an allocation. Ranks taking
+different collective paths was the dominant failure mode in this work; every
+instance hung rather than erroring, and a hung job holds its nodes until the
+wall clock expires with no diagnostic. ``bounded_barrier`` and
+``bounded_allreduce`` poll a non-blocking request to a deadline and then
+abort, naming the step -- turning a lost allocation into a sixty-second
+message.
 
 Only setup and transitions use these. The event loop does not: its collectives
 are on the critical path, and a deadline there would trade a hang for a flaky
 job.
 
-**Not covered:** three calls carry Python objects, which mpi4py can only send
-non-blocking through a two-step size-then-data ``Ibcast``, so they remain
-unbounded:
+**Not covered:** calls that carry Python objects, which mpi4py can only send
+non-blocking through a two-step size-then-data ``Ibcast``. In shared
+constants: the manifest ``bcast`` in ``_publish``/``_subscribe`` and
+``_agree_on_set``'s ``allgather`` of declared selector sets. In discovery:
+the ``allgather`` of hostnames, of visible PCI sets and of device keys, plus
+the ``Split`` calls themselves.
 
-* the manifest ``bcast`` in ``_publish``/``_subscribe``
-* ``_intersect``'s ``allgather`` of declared selector sets
+What IS bounded is everything expressible as a NumPy buffer: the barriers,
+the discovery *reductions* (node and job agreement, the budget MIN, the
+peer-count MAX, the sharing-permitted MIN) and the agreement vector. So a
+hang in an object-carrying allgather still hangs; the reductions that follow
+it are what report a divergence.
 
-Everything expressible as a NumPy buffer -- barriers, the discovery
-reductions and the agreement vector -- is bounded.
-
-**Unit tests cannot see path divergence.** The test fake drives peers
-sequentially, so it has no notion of two ranks blocked in different calls --
-exactly the failure mode. ``RecordingComm`` wraps a communicator and records
-the sequence of collective names; comparing those sequences across ranks
-catches a path that skips or reorders a step. Enable with
-``PSANA_GPU_CHECK_COLLECTIVES=1``.
-
-The recorder raises confidence rather than proving correctness: a sequential
-fake still cannot model true concurrency, so the hardware failure cases remain
-the only real proof.
+Collective-order checking lives in the tests, in
+``psana/psana/tests/gpu/collective_recorder.py``: it is a debugging aid rather
+than something production needs, and keeping it there means production holds
+no communicator wrapper.
 """
 import os
 import time
@@ -75,10 +71,6 @@ def warn_seconds():
         return float(raw) if raw else DEFAULT_WARN_S
     except ValueError:
         return DEFAULT_WARN_S
-
-
-def checking_enabled():
-    return os.environ.get('PSANA_GPU_CHECK_COLLECTIVES', '') not in ('', '0')
 
 
 class CollectiveTimeout(RuntimeError):
@@ -196,57 +188,3 @@ def bounded_allreduce_buffer(comm, send, recv, op, step, *, timeout=None,
         return recv
     _wait(comm.Iallreduce(send, recv, op=op), step, comm, timeout, logger, warn)
     return recv
-
-
-class RecordingComm:
-    """Communicator wrapper that records the order of collective calls.
-
-    Delegates everything to the wrapped communicator and appends a label per
-    call. ``sequence_digest`` summarises the calls made so far; comparing that
-    across ranks detects a path that skipped or reordered a step -- which is
-    what every hang on this branch turned out to be.
-    """
-
-    _COLLECTIVES = ('bcast', 'allgather', 'allreduce', 'Allreduce', 'Barrier',
-                    'Ibarrier', 'Iallreduce', 'gather', 'Split', 'Free')
-
-    def __init__(self, comm, label=''):
-        self._comm = comm
-        self._label = label
-        self.calls = []
-
-    def __getattr__(self, name):
-        attribute = getattr(self._comm, name)
-        if name not in self._COLLECTIVES or not callable(attribute):
-            return attribute
-
-        def recorded(*args, **kwargs):
-            self.calls.append(name)
-            return attribute(*args, **kwargs)
-
-        return recorded
-
-    def sequence_digest(self):
-        """Stable summary of the calls made so far."""
-        from hashlib import blake2b
-        hasher = blake2b(digest_size=8)
-        hasher.update('|'.join(self.calls).encode())
-        return hasher.hexdigest()
-
-    def check_agreement(self, step, logger=None):
-        """Confirm every rank made the same calls in the same order.
-
-        Called at a point all ranks reach. Uses the wrapped communicator
-        directly so the check does not record itself.
-        """
-        digest = self.sequence_digest()
-        everyone = self._comm.allgather((digest, len(self.calls)))
-        if len(set(everyone)) == 1:
-            return True
-        message = (f'collective order diverged at {step!r}: '
-                   f'{sorted(set(everyone))}. This rank made {self.calls}.')
-        if logger is not None:
-            logger.error(message)
-        else:
-            print(f'[PSANA-GPU-ERROR] {message}', flush=True)
-        return False

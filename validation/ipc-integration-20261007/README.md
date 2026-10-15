@@ -10,13 +10,14 @@ launches share session state and an aborting case can block the next. Each case
 is hard-bounded by a timeout and its outcome parsed from its log, since `mpirun`
 exits 0 even when ranks report failures.
 
-`PSANA_GPU_CHECK_COLLECTIVES=1` is set throughout. Every hang in this work was
-a collective-path divergence, and nothing else detects one; `collective_order_
-diverged` must be 0 in every case.
+Every hang in this work was a collective-path divergence, and nothing else
+detects one. A driver that wraps `device_comm` in the test recorder
+(`psana/psana/tests/gpu/collective_recorder.py`) has each peer compare its
+sequence with the others; `collective_order_diverged` must be 0 in every case.
 
 Run from the repository root after building:
 
-    sbatch validation/ipc-integration-20261007/run.sbatch    # 12 cases, 1 node, 2 GPUs
+    sbatch validation/ipc-integration-20261007/run.sbatch    # 11 cases, 1 node, 2 GPUs
     sbatch validation/ipc-multinode-20261007/run.sbatch      # 4 cases, 2 nodes
 
 ## Cases
@@ -35,13 +36,12 @@ counts.
 | `discovery-eb2-contig` | 9 | same, contiguous rank assignment |
 | `discovery-eb3` | 9 | same, 3 EB groups (the 3.0x case) |
 | `discovery-uneven` | 8 | 3 and 4 peers, both claim 1.0 |
-| `sharing-2-peers` | 3 | owner charged, follower imports, values read back |
-| `sharing-4-peers` | 5 | as above at 4 peers |
-| `realpath-2-gpus` | 5 | placement through the real DataSource -> Run -> manager wiring |
-| `realpath-1-gpu` | 6 | the same with every worker on one device, so all are peers |
-| `shared-calibration` | 4 | real Jungfrau calibration while the constants are shared |
+| `calib-shared` | 4 | **the value check**: GPU calibration pixel-exact against `det.raw.calib()`, constants shared over IPC |
+| `calib-2-gpus-eb2` | 9 | the same across 2 devices at `PS_EB_NODES=2`, so most groups are solo |
+| `calib-reversed-mask` | 6 | the same under `CUDA_VISIBLE_DEVICES=1,0`, where ordinals and physical cards disagree |
 | `fail-select-device` | 5 | a rank that cannot select a device aborts the **job** |
-| `fail-follower-import` | 4 | a failed IPC import degrades the group **uniformly** |
+| `multirun-3-runs` | 6 | per-run rediscovery — reproduces a known pre-existing hang |
+| `fail-follower-import` | 4 | a failed IPC import aborts **every** peer, not just the one that failed |
 
 The two-node suite (`../ipc-multinode-20261007/run.sbatch`) adds four cases at
 10 ranks across 2 hosts:
@@ -69,18 +69,23 @@ The two failure cases are what unit tests structurally cannot cover: `FakeComm`
 drives peers sequentially, so it has no notion of two ranks blocked in
 *different* collectives.
 
-The `realpath-*` cases go through `DataSource` -> `Run` ->
-`GpuEventManager` and touch none of the placement helpers, so they cover
-whether a correct selection actually reaches a running job. Their decisive
-assertion is cross-rank: a wrongly placed rank is still self-consistent --
-it reports a device, allocates on it, and its current device matches -- so
-only comparing the devices used against the number CUDA offers catches
-workers crowded onto one of several GPUs.
+The `calib-*` cases are the same program in three layouts, and they are what
+covers the branch's machinery. A real psana job -- smd0, EBs and BD workers as
+psana assigns them -- calibrates real Jungfrau data on the GPU through
+`GpuTask` and compares every event against `det.raw.calib()` on the CPU in the
+same loop.
 
-`shared-calibration` runs the real Jungfrau kernel while the constants are
-shared, with every panel compared to a CPU reference. A follower calibrates
-from the owner's imported mapping, so a shared view with a wrong offset or
-truncated length shows up as mismatched pixels rather than as nothing at all.
+They assert on PIXELS, not on internals. Device discovery, budget sizing,
+constant sharing over IPC and batch routing have all happened by the time a
+pixel exists, so if any of them were wrong the values would be wrong. A
+follower calibrates from the owner's imported mapping, so a shared view with a
+wrong offset or truncated length shows up as mismatched pixels rather than as
+nothing at all; a rank that followed the CUDA ordinal instead of the device
+would read the wrong card's memory under `calib-reversed-mask`.
+
+This replaced five white-box drivers that probed `_task_constants`, placement
+records and peer counts -- 1,828 lines for 196. The earlier `realpath-*` and
+`shared-calibration` cases were among them.
 
 `fail-select-device` is the only test of an abort reaching EB and smd0 ranks. The
 `allreduce` inside `discover_peers` covers only GPU workers on the node, so
@@ -90,15 +95,24 @@ deadlock produce near-identical logs, so `judge_abort` requires a nonzero exit
 *and* completion well inside the timeout. Without the timing clause a hang
 would pass.
 
-`fail-follower-import` requires the degrade to be uniform. If the owner falls
-back to private copies and a follower does not, the follower reads memory the
-owner has freed — silent corruption rather than a hang, which is why the
-assertion is on `allgather`ed shared-selector counts rather than on each rank
-alone.
+`fail-follower-import` requires the abort to be uniform. The capability flag
+is reduced over the group, so a rank that carried on would read an allocation
+its peers have already freed — silent corruption rather than a hang. The
+assertion is therefore on `allgather`ed raise-or-not verdicts rather than on
+each rank alone, and the case stays `expect='clean'` because the driver catches
+the `SharedConstantsError` to check things an exit status cannot show: that
+every peer raised, that the message names `PSANA_GPU_SHARE_CONSTANTS=0`, and
+that nothing was left mapped or charged.
+
+`multirun-3-runs` is `expect='hang-known'`: psana2 hangs at the second run of
+any multi-run MPI job, which is pre-existing on the base branch. The case
+passes while the bug is present and **fails if the job completes**, so the
+suite says when to promote it. See
+[docs/multirun_hang.md](../../psana/psana/gpu/docs/multirun_hang.md).
 
 ## Results
 
-Single node, job 40800404 on an A100 pair: **12/12 PASS**,
+Single node, jobs 40888078 and 40889090 on an A100 pair: **13/13 PASS**,
 `collective_order_diverged: 0` in every case.
 
 Discovery: two devices, `aggregate_claim` 1.0 on each, with `discovery-uneven`
@@ -106,28 +120,36 @@ giving groups of 3 and 4. Every record also reports what EB-group rank
 arithmetic would have produced, which reaches 2.0x the device at
 `PS_EB_NODES=2`.
 
-Sharing at 4 peers, 12 MiB intersection plus a 3 MiB owner-private selector:
+The value check, 13 events per case, every pixel equal to `det.raw.calib()`:
 
-    charged   {owner: 15728640, 2: 0, 3: 0, 4: 0}
-    imported  {owner: 0, 2: 12582912, 3: 12582912, 4: 12582912}
+    calib-shared      4 ranks, 1 GPU   13 events   191s   work split 8/5
+    calib-2-gpus-eb2  9 ranks, 2 GPUs  13 events   199s   work split 5/3/5
 
-The owner carries the shared bytes plus its private selector; followers are
-charged nothing, because their views are non-owning and charging them would
-shrink their real budget by memory they do not own.
+`calib-shared` narrows the mask to one card, so all four BD workers are peers
+and the pedestals and pixel_gain -- 384 MiB for this detector -- come from a
+single device allocation over IPC. `calib-2-gpus-eb2` leaves the mask wide, so
+the workers split across cards and most groups are solo. Both produce the same
+pixels, which is the point: the sharing path and the private path have to
+agree with the CPU and with each other.
 
-`shared-calibration` ran the real Jungfrau kernel on 13 events with pedestals
-and pixel_gain shared: **384 MiB shared, 384 MiB saved**, every panel equal to
-the CPU reference, and a constant held across events still valid at the end.
+Those timings are why the `calib-*` cases carry a 420s timeout rather than the
+180s default -- `hybrid_det` mirrors the bigdata streams through both the CPU
+and GPU paths, which is what makes `det.raw.calib()` available for the
+comparison, so the I/O is done twice.
 
 `fail-select-device` aborted in 7.2s against a 90s budget, exit 1, `survived:
-false`. `fail-follower-import` degraded uniformly and values stayed correct
-through the private path.
+false`.
 
-Two nodes, job 40801805: **PASS** for both EB topologies. One device group per
+Two nodes, job 40889879: **PASS** for both EB topologies. One device group per
 host, one owner each, and each follower importing 384 MiB:
 
-    0:01:00.0  sdfampere014  ranks [2,3,4]      owners 1
-    0:41:00.0  sdfampere015  ranks [5,6,7,8,9]  owners 1
+    sdfampere034:0:01:00.0  peers 3  owners 1
+    sdfampere038:0:01:00.0  peers 5  owners 1
+
+Note the grouping key. Both nodes' cards sit at bus address `0:01:00.0`, so a
+summary keyed on the PCI id alone merges the two groups and then reports the
+merge as a cross-host group with two owners. Production groups on
+`(hostname, pci)`; the driver's summary now does too.
     imported   {2: 0, 3: 384MiB, 4: 384MiB, 5: 0, 6..9: 384MiB}
 
 That is the property only a multi-node run can show: CUDA IPC cannot cross
@@ -137,11 +159,12 @@ is the point — EB topology does not reach device grouping.
 
 ## Not covered
 
-MIG, which is neither supported nor tested: no MIG hardware is advertised on
-S3DF, and IPC cannot span instances in any case. With every device visible
-instances of one card share a PCI bus id, so they group together and the IPC
-import fails; the group degrades, but with a peer count inflated by the merged
-instances, so a large constant set can be refused outright. See
+MIG, which is untested: no MIG hardware is advertised on S3DF, and IPC cannot
+span instances in any case. Instances of one card share a PCI bus id, so they
+group together and the IPC import fails, which now aborts with a message
+naming `PSANA_GPU_SHARE_CONSTANTS=0`. With sharing disabled the job runs,
+though the peer count is still inflated by the merged instances, so a large
+constant set can exhaust the per-rank limit. See
 [docs/device_placement_and_shared_constants.md](../../psana/psana/gpu/docs/device_placement_and_shared_constants.md).
 
 No throughput claim. What is measured is device memory, not events/s.

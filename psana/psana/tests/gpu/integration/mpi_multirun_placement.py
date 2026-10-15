@@ -229,6 +229,12 @@ def main():
         last_run.close_shared_memory()
     if rank == 0:
         summarise(rows, runs)
+    # Hold every rank until rank 0 has finished writing the summary. A rank
+    # with failures calls MPI_Abort as soon as main() returns, which would
+    # otherwise kill rank 0 mid-emit and leave the launcher parsing a
+    # truncated record -- reported as "no rank records emitted" rather than
+    # as the real failure.
+    comm.Barrier()
     return 0 if not failures else 1
 
 

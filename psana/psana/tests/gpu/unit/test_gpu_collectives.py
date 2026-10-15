@@ -1,20 +1,27 @@
 """Setup collectives abort with a named step instead of hanging.
 
-Eight bugs on this branch came from ranks taking different collective paths,
-and every one hung rather than erroring -- holding its nodes until the job
-wall clock expired, with no diagnostic. These cover the two mechanisms that
-change that: a deadline on setup collectives, and a recorded call order that
-unit tests can compare across simulated ranks.
+Ranks taking different collective paths was the dominant failure mode in this
+work, and every instance hung rather than erroring -- holding its nodes until
+the job wall clock expired, with no diagnostic. These cover the two mechanisms
+that change that: a deadline on setup collectives, and a recorded call order
+that unit tests can compare across simulated ranks.
+
+The recorder is a test aid and lives in the test tree, so it is imported from
+there rather than from psana.gpu.
 """
+import pathlib
+import sys
 from types import SimpleNamespace as NS
 
 import numpy as np
 import pytest
 
-from psana.gpu import gpu_collectives as gc
-from psana.gpu.gpu_collectives import (
-    CollectiveTimeout, RecordingComm, bounded_allreduce, bounded_barrier,
-    checking_enabled, timeout_seconds,
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from collective_recorder import RecordingComm             # noqa: E402
+from psana.gpu import gpu_collectives as gc               # noqa: E402
+from psana.gpu.gpu_collectives import (                   # noqa: E402
+    CollectiveTimeout, bounded_allreduce, bounded_barrier, timeout_seconds,
 )
 
 
@@ -183,15 +190,6 @@ def test_timeout_is_configurable(monkeypatch):
     assert timeout_seconds() == DEFAULT_TIMEOUT_S   # falls back, never raises
     monkeypatch.delenv('PSANA_GPU_COLLECTIVE_TIMEOUT')
     assert timeout_seconds() == DEFAULT_TIMEOUT_S
-
-
-def test_checking_is_opt_in(monkeypatch):
-    monkeypatch.delenv('PSANA_GPU_CHECK_COLLECTIVES', raising=False)
-    assert not checking_enabled()
-    monkeypatch.setenv('PSANA_GPU_CHECK_COLLECTIVES', '0')
-    assert not checking_enabled()
-    monkeypatch.setenv('PSANA_GPU_CHECK_COLLECTIVES', '1')
-    assert checking_enabled()
 
 
 # ---------------------------------------------------------------------------

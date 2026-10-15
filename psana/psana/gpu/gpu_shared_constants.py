@@ -11,13 +11,13 @@ publishes CUDA IPC handles; its peers import non-owning views.
 
 Three properties the design turns on:
 
-**Intersection, not all-or-nothing.** Peers declaring different selector sets
-share what they have in common and privately upload the remainder. A selector
-one peer did not request must not fail the job.
+**All or nothing.** Every peer must declare the same selector set. Peers on one
+device run the same ``GpuTask``, so they normally do; a group that disagrees
+shares nothing and each rank uploads its own copy.
 
-**Content disagreement is fatal.** Differing shape, dtype or digest for a
-*shared* selector aborts, because sharing there would hand a follower the
-owner's array under the follower's own name -- wrong results with no error.
+**Content disagreement is fatal.** Differing shape, dtype or digest aborts,
+because sharing there would hand a follower the owner's array under the
+follower's own name -- wrong results with no error.
 
 **Un-pooled owner allocation.** ``cudaIpcGetMemHandle`` needs a pointer from
 ``cudaMalloc``. CuPy's default pool returns sub-blocks of a larger segment, so
@@ -25,13 +25,24 @@ exporting ``array.data.ptr`` either fails or -- worse, as measured -- succeeds
 while referring to the segment base, exposing neighbouring blocks to peers and
 giving the importer a pointer to the wrong data. The owner therefore allocates
 outside the pool and charges the budget explicitly.
+
+An IPC failure aborts the job. Set ``PSANA_GPU_SHARE_CONSTANTS=0`` to run
+without sharing on a system where IPC is unavailable -- MIG, chiefly. See
+docs/device_placement_and_shared_constants.md.
 """
 import logging
 from hashlib import blake2b
 
 import numpy as np
 
+from .gpu_placement import sharing_enabled
 from .gpu_task import RequestedConstants, _selectors
+
+# sharing_enabled lives in gpu_placement, which is where it is read and
+# reduced over the device group. Re-exported here because that is where
+# callers and tests look for it.
+__all__ = ['SharedConstantsError', 'SharedRequestedConstants', 'digest_of',
+           'sharing_enabled']
 
 
 logger = logging.getLogger(__name__)
@@ -40,12 +51,7 @@ DIGEST_BYTES = 16
 
 
 def digest_of(array):
-    """Content digest of a C-contiguous host array.
-
-    Computed from the host copy ``refresh`` already retains for change
-    detection, so it costs one pass over host memory per constant per
-    transition -- negligible beside the ``array_equal`` already performed.
-    """
+    """Content digest of a C-contiguous host array."""
     source = np.ascontiguousarray(array)
     hasher = blake2b(digest_size=DIGEST_BYTES)
     hasher.update(source.view(np.uint8).reshape(-1).data)
@@ -53,7 +59,7 @@ def digest_of(array):
 
 
 class SharedConstantsError(RuntimeError):
-    """Peers disagree about a shared constant, or IPC lifetime was violated."""
+    """Peers disagree about a shared constant, or CUDA IPC is unusable."""
 
 
 class _OwnedBlock:
@@ -149,17 +155,11 @@ class _ImportedBlock:
 class SharedRequestedConstants(RequestedConstants):
     """Device constants shared by every BD rank on one physical GPU.
 
-    Falls back to ``RequestedConstants`` behaviour -- a private copy per rank --
-    whenever sharing is unavailable: a single peer, no communicator, or an IPC
-    call that fails. Capability failures degrade; only content disagreement
-    aborts.
-
-    MIG reaches the last of those rather than being detected: instances of one
-    card share a PCI bus id, so discovery groups ranks on different instances
-    as peers, and the import fails because CUDA IPC cannot span them. The
-    degrade is uniform but the peer count is inflated, so for large constants
-    the private upload can itself be refused -- see the grouping comment in
-    :func:`psana.gpu.gpu_placement.discover_peers`.
+    Inherits ``RequestedConstants`` behaviour -- a private copy per rank --
+    whenever sharing is unavailable: a single peer, no communicator, peers
+    that declared different selector sets, or ``PSANA_GPU_SHARE_CONSTANTS=0``
+    (reduced over the group into ``GpuPlacement.sharing_permitted``, so the
+    whole group agrees).
 
     **An array returned by ``get`` is valid for the whole run.** One constant
     set per run is the supported model, so the shared allocation is written
@@ -174,49 +174,28 @@ class SharedRequestedConstants(RequestedConstants):
 
     def __init__(self, requests, budget, placement=None, *, cp=None,
                  sizing=None):
-        # ``sizing(shared_bytes)`` is called once, after the intersection is
-        # known and before anything is allocated, so the caller can set this
-        # rank's budget limit with the shared bytes counted once. Optional:
-        # without it the limit is whatever the caller already set, which is
-        # correct whenever an explicit gpu_memory_budget_gb is in force.
+        # ``sizing(shared_bytes)`` is called once, before anything is
+        # allocated, so the caller can set this rank's budget limit with the
+        # shared bytes counted once. Optional: without it the limit is whatever
+        # the caller already set, which is correct whenever an explicit
+        # gpu_memory_budget_gb is in force.
         self._sizing = sizing
         self.requests = _selectors(requests, constants=True)
         self.budget = budget
-        self._host = {}
+        self._host = {}         # unused here; see _upload_private
         self._device = {}
         self._placement = placement
         self._cp = cp
         self._owned = {}        # selector -> _OwnedBlock
         self._imported = {}     # selector -> _ImportedBlock
         self._shared = ()       # selectors backed by one device copy
-        self._private = ()      # selectors uploaded by this rank alone
-        # Whether the shared/private split has been negotiated, tracked
-        # separately from whether it is non-empty. A task declaring no
-        # constants leaves both tuples empty forever, so deriving "not yet
-        # established" from them re-ran establish on every transition --
-        # collectives and a cache trim per step for a task that asked for
-        # nothing, reported as work done.
+        # Whether establishment has been negotiated, tracked separately from
+        # whether anything was shared. A task declaring no constants leaves
+        # _shared empty forever, so deriving "not yet established" from it
+        # re-ran establish on every transition.
         self._established = False
-        self._generation = 0
         self._closed = False
         self._ipc_error = None
-        self._digests = {}      # selector -> digest of the retained snapshot
-        self._recorder = None
-        if placement is not None and placement.device_comm is not None:
-            from .gpu_collectives import RecordingComm, checking_enabled
-            if checking_enabled():
-                # Wrap the device communicator so every collective this class
-                # makes is recorded, then compare the sequences across ranks
-                # at the end of refresh and close. Path divergence is what
-                # every hang on this branch turned out to be, and nothing
-                # else detects it.
-                self._recorder = RecordingComm(placement.device_comm,
-                                               'shared-constants')
-                # Side effect: the placement's communicator is replaced by the
-                # wrapper, so every later user of placement.device_comm --
-                # including self._comm, which reads through it -- is recorded
-                # too. Intended, and only when checking is enabled.
-                placement.device_comm = self._recorder
 
     def _sync_device(self):
         """Wait for this rank's submitted work.
@@ -233,12 +212,8 @@ class SharedRequestedConstants(RequestedConstants):
         return self._shared
 
     @property
-    def private_selectors(self):
-        return self._private
-
-    @property
     def shared_bytes(self):
-        """Intersection bytes resident on the device, counted once."""
+        """Bytes resident on the device for shared constants, counted once."""
         if self._is_owner:
             return sum(b.nbytes for b in self._owned.values())
         return sum(b.nbytes for b in self._imported.values())
@@ -266,9 +241,9 @@ class SharedRequestedConstants(RequestedConstants):
         """Upload the declared constants once. Returns True if anything moved.
 
         One constant set per run is the supported model, so this establishes
-        the shared intersection on the first call and does nothing on any
-        later one. A BeginStep does not reload the calibration DB, so there is
-        nothing for a second call to pick up.
+        the shared copies on the first call and does nothing on any later one.
+        A BeginStep does not reload the calibration DB, so there is nothing for
+        a second call to pick up.
 
         That is also what makes a shared array safe to hold: the allocation is
         never rewritten in place and never replaced while the run is live, so
@@ -279,24 +254,20 @@ class SharedRequestedConstants(RequestedConstants):
         """
         if self._closed:
             raise SharedConstantsError('shared constants are closed')
-        hosts = self._scan(source)
         if not self._sharing:
-            # No peers: every selector is private, which is the inherited
-            # behaviour. Routed through here so an injected CuPy stand-in is
-            # honoured and the snapshot bookkeeping has one code path.
+            # No peers, so nothing to share: a private copy per rank, which is
+            # the inherited behaviour. Not delegated to super().refresh()
+            # because that imports cupy directly, bypassing an injected
+            # stand-in and leaving the unit tests unable to exercise this
+            # path at all.
             self._note_sharing('off')
-            if not self._private and self.requests:
-                self._private = self.requests
-            if self._cp is None:
-                import cupy as cp
-                self._cp = cp
-            moved = self._changed_private(hosts)
-            if not moved:
+            if self._established:
                 return False
+            self._established = True
+            hosts = self._scan(source)
             if before_upload is not None:
                 before_upload()
-            self._upload_private(hosts, moved)
-            return True
+            return self._upload_private(hosts, self.requests)
 
         if self._established:
             # Already uploaded for this run. No collective here: every peer
@@ -304,17 +275,15 @@ class SharedRequestedConstants(RequestedConstants):
             # call on all of them.
             return False
 
-        # Establish runs even for an empty declaration, because peers may
-        # declare different sets by design and _intersect's allgather needs
-        # every rank.
+        # Establish runs even for an empty declaration, because _agree_on_set's
+        # allgather needs every rank.
         self._established = True
+        hosts = self._scan(source)
         if before_upload is not None:
             before_upload()
-        self._establish(hosts)
+        moved = self._establish(hosts)
         self._check_order('establish')
-        # Nothing declared means nothing moved; saying otherwise makes the
-        # caller recompute its subbatch budget for no reason.
-        return bool(self._shared or self._private)
+        return moved
 
     def _scan(self, source):
         """Resolve declared selectors to validated host arrays."""
@@ -336,19 +305,18 @@ class SharedRequestedConstants(RequestedConstants):
             hosts[selector] = np.ascontiguousarray(value)
         return hosts
 
-    def _intersect(self):
-        """Selectors every peer declared, and this rank's remainder.
+    def _agree_on_set(self):
+        """This rank's selectors if every peer declared the same set, else ().
 
-        Computed by allgather rather than by the owner alone, so each rank
-        derives the same shared set independently and cannot be surprised by a
-        manifest entry it did not expect.
+        Sharing is all-or-nothing, so the group needs one answer rather than
+        a per-selector split. Decided by allgather rather than by the owner
+        alone, so each rank reaches the same verdict independently.
         """
         declared = set(self.requests)
         everyone = self._comm.allgather(declared)
-        shared = set.intersection(*everyone) if everyone else set()
-        order = {selector: i for i, selector in enumerate(self.requests)}
-        return (tuple(sorted(shared, key=order.__getitem__)),
-                tuple(s for s in self.requests if s not in shared))
+        if any(peer != declared for peer in everyone):
+            return ()
+        return self.requests
 
     # -- agreement -----------------------------------------------------
     # Every rank in the group must execute the SAME collectives in the SAME
@@ -359,16 +327,13 @@ class SharedRequestedConstants(RequestedConstants):
     #
     # So the protocol is fixed: bcast the manifest (or a failure marker),
     # then exactly one agreement step carrying both failure kinds. Nothing
-    # between them may raise.
+    # between them may raise. This holds even though both kinds now abort:
+    # the abort must happen on every rank, after the same calls.
 
     CONTENT, CAPABILITY = 0, 1          # agreement vector slots
 
     def _reduce_flags(self, content, capability):
-        """One collective carrying both failure kinds, MAX over the group.
-
-        Bounded: this is the agreement step, which is exactly where a rank
-        taking a different path leaves its peers waiting.
-        """
+        """One collective carrying both failure kinds, MAX over the group."""
         from mpi4py import MPI
         import numpy as _np
 
@@ -380,36 +345,55 @@ class SharedRequestedConstants(RequestedConstants):
                                  'shared-constants/settle')
         return bool(total[self.CONTENT]), bool(total[self.CAPABILITY])
 
-    def _settle(self, content_errors, capability_error, *, hosts):
-        """Decide the group's outcome from one agreement step.
+    def _settle(self, content_errors, capability_error):
+        """Raise on the group's behalf if any peer failed.
 
-        Content disagreement is fatal everywhere; a capability failure
-        degrades the whole group to private copies. Both are decided
-        collectively so no rank acts on its own view.
+        Both failure kinds are fatal, and both are decided collectively so no
+        rank acts on its own view -- a rank that raised alone would leave its
+        peers in the next collective.
+
+        Both also release first, through the one path whose barriers every peer
+        reaches. ``any_content`` and ``any_capability`` come from the same
+        reduction on every rank, so the branch taken here is identical across
+        the group and the release is collectively safe.
         """
         any_content, any_capability = self._reduce_flags(
             bool(content_errors), bool(capability_error))
+        if not (any_content or any_capability):
+            return
+
+        # Release whatever this rank built before anyone raises. Also clears
+        # _shared, so the close() that follows an abort takes its early return
+        # instead of running the release barriers a second time -- those would
+        # be matched only if every peer happened to call close(), which is a
+        # property of the caller rather than of this class.
+        self._release_shared()
+        self._shared = ()
+        self._device.clear()
+        if self._placement is not None:
+            self._placement.imported_bytes = 0
+
         if any_content:
             if content_errors:
                 raise SharedConstantsError('; '.join(content_errors))
             raise SharedConstantsError(
                 'a peer rank rejected the shared constants; aborting this '
                 'rank so the job does not hang')
-        if any_capability:
-            self._fall_back_to_private(hosts)
-            return False
-        return True
+        detail = self._ipc_error or 'a peer could not use CUDA IPC'
+        raise SharedConstantsError(
+            f'CUDA IPC is unusable on this device group: {detail}. '
+            'Constant sharing cannot be established. Re-run with '
+            'PSANA_GPU_SHARE_CONSTANTS=0 to use a private copy per rank '
+            '(n times the device memory for constants), which is the '
+            'supported configuration on MIG instances.')
 
     def _exchange(self, hosts):
-        """Publish or import the shared intersection. Never raises.
+        """Publish or import the shared constants. Never raises.
 
         One entry point for both roles, so a caller cannot reach agreement
-        through only one of them: calling the role methods directly and
-        forgetting ``_settle`` leaves a follower with no device array for a
-        shared selector, and the next ``get`` fails far from the cause.
-
-        Always returns ``(content_errors, capability_error)`` and must always
-        be followed by ``_settle``.
+        through only one of them. Always returns
+        ``(content_errors, capability_error)`` and must always be followed by
+        ``_settle``.
         """
         if self._is_owner:
             return self._publish(hosts)
@@ -419,18 +403,16 @@ class SharedRequestedConstants(RequestedConstants):
         """Importers close, barrier, then the owner frees.
 
         CUDA requires imported mappings to be closed before the exporter
-        deallocates. Both callers -- ``close`` and ``_fall_back_to_private``
-        -- go through here, so neither can get the order wrong.
+        deallocates. Both callers -- ``close`` and the capability abort in
+        ``_settle`` -- go through here, so neither can get the order wrong.
 
         Synchronises first. Callers are expected to have drained their own
         work, but this frees memory a *peer's* kernels may still be reading,
         and a closed mapping or freed allocation under a running kernel is
-        undefined rather than merely late. One device sync per run is not
-        worth economising on.
+        undefined rather than merely late.
         """
         if self._cp is not None:
-            # None when the object was constructed but never refreshed, so
-            # there is no device work to wait for and no CuPy to ask.
+            # None when the object was constructed but never refreshed.
             self._sync_device()
         if not self._is_owner:
             self._close_imported()
@@ -446,49 +428,53 @@ class SharedRequestedConstants(RequestedConstants):
 
     def _check_order(self, step):
         """Confirm every peer made the same collectives, when enabled."""
-        if self._recorder is not None:
-            self._recorder.check_agreement(f'shared-constants/{step}',
-                                           logger=logger)
+        checker = getattr(self._comm, 'check_agreement', None)
+        if checker is not None:
+            checker(f'shared-constants/{step}', logger=logger)
 
     def _establish(self, hosts):
-        from .gpu_allocation import upload_owned
         if self._cp is None:
             import cupy as cp
             self._cp = cp
 
-        self._shared, self._private = self._intersect()
-
-        # Resize the budget BEFORE anything is allocated. The intersection is
-        # device overhead counted once, so the owner's limit has to include it
-        # and every rank's share is computed net of it -- but both were applied
-        # only after refresh() returned, by which time the owner had already
-        # tried to allocate against limit = usable/peers. A 12 GiB intersection
-        # on a 40 GiB four-peer device fits the documented accounting (owner
-        # 7 + 12 = 19 GiB) yet was charged against 10 GiB: the shared copy was
-        # refused, the group degraded, and the private copy was then refused
-        # by the same limit. The size is knowable here -- the selectors come
-        # from _intersect and the arrays from `hosts` -- so no allocation is
-        # needed to learn it.
-        #
-        # Sizes are taken from this rank's own `hosts`. The shared SET is
-        # identical on every rank by construction; a shape or dtype
-        # disagreement aborts the whole group in _settle moments later.
-        if self._sizing is not None:
-            self._sizing(sum(int(np.ascontiguousarray(hosts[s]).nbytes)
-                             for s in self._shared if s in hosts))
-
-        if self._private:
-            arrays = upload_owned(self._cp, [hosts[s] for s in self._private],
-                                  self.budget, category='task-constants')
-            self._device.update(zip(self._private, arrays))
-        for selector in self._private:
-            self._remember(selector, hosts[selector])
-
+        self._shared = self._agree_on_set()
         if not self._shared:
+            # Either nothing was declared, or the peers disagree about what
+            # they declared. Every rank uploads its own copy. No sizing call:
+            # the budget is already usable/peers, which is correct when
+            # nothing is shared.
             self._note_sharing('off')
-            return
-        if self._settle(*self._exchange(hosts), hosts=hosts):
-            self._note_sharing('on')
+            if self.requests:
+                # Say so, and say what it costs. The removed fallback logged
+                # this; without it a group that quietly holds n copies of its
+                # constants looks identical to one that is sharing, and the
+                # only trace is shared_bytes sitting at zero.
+                self._warn_not_shared(hosts)
+            return self._upload_private(hosts, self.requests)
+
+        # Resize the budget BEFORE anything is allocated. The shared copy is
+        # device overhead counted once, so the owner's limit has to include it
+        # and every rank's share is computed net of it. Applying this after
+        # refresh() returned meant the owner allocated against
+        # limit = usable/peers: a 12 GiB set on a 40 GiB four-peer device fits
+        # the documented accounting (owner 7 + 12 = 19 GiB) yet was charged
+        # against 10 GiB, so the copy was refused.
+        #
+        # Sizes come from this rank's own `hosts`. The shared SET is identical
+        # on every rank by construction; a shape or dtype disagreement aborts
+        # the whole group in _settle moments later.
+        if self._sizing is not None:
+            self._sizing(sum(int(hosts[s].nbytes) for s in self._shared
+                             if s in hosts))
+
+        self._settle(*self._exchange(hosts))
+        self._note_sharing('on')
+        # Mirror onto the placement, which is what the log line and the
+        # harnesses read. The field was declared and documented but never
+        # written, so a follower's imported bytes always reported as zero.
+        if self._placement is not None:
+            self._placement.imported_bytes = int(self.imported_bytes)
+        return True
 
     def _publish(self, hosts):
         """Owner: allocate un-pooled, upload, export handles.
@@ -514,9 +500,8 @@ class SharedRequestedConstants(RequestedConstants):
             except Exception as exc:                      # noqa: BLE001
                 capability = f'{type(exc).__name__}: {exc}'
                 # The block never reached self._owned, so nothing else would
-                # free it or return its budget charge -- and the fallback then
-                # uploads privately, making the owner pay twice. `block` is
-                # None when the constructor itself raised.
+                # free it or return its budget charge. `block` is None when
+                # the constructor itself raised.
                 if block is not None:
                     block.release()
                 break
@@ -526,7 +511,6 @@ class SharedRequestedConstants(RequestedConstants):
                 'selector': selector, 'handle': handle,
                 'shape': tuple(source.shape), 'dtype': source.dtype.str,
                 'nbytes': int(source.nbytes), 'offset': 0,
-                'generation': self._generation,
                 'digest': digest_of(source)})
 
         # Publish unconditionally. An empty manifest tells followers that the
@@ -535,11 +519,7 @@ class SharedRequestedConstants(RequestedConstants):
         if capability:
             self._ipc_error = capability
             return [], capability
-        for selector, array in prepared.items():
-            self._device[selector] = array
-            # Snapshot, not alias: an in-place edit of the caller's array must
-            # remain detectable at the next transition.
-            self._remember(selector, hosts[selector])
+        self._device.update(prepared)
         return [], None
 
     def _subscribe(self, hosts):
@@ -550,7 +530,7 @@ class SharedRequestedConstants(RequestedConstants):
         """
         manifest = self._comm.bcast(None, root=0)
         if not manifest:
-            # The owner failed before publishing. Agree, then fall back.
+            # The owner failed before publishing. Agree, then abort together.
             return [], 'owner published no manifest'
 
         errors = []
@@ -582,98 +562,63 @@ class SharedRequestedConstants(RequestedConstants):
                 # The block never reached self._imported, so _release_shared
                 # would not close it -- and the owner frees its allocation
                 # after that barrier, while this mapping is still open, which
-                # CUDA forbids. `block` is None when the constructor itself
-                # raised, meaning no mapping was opened. Same shape as the
-                # owner's half in _publish.
+                # CUDA forbids. Same shape as the owner's half in _publish.
                 if block is not None:
                     block.close()
                 break
             self._imported[selector] = block
             self._device[selector] = view
-            self._remember(selector, mine)
         if capability:
             self._ipc_error = capability
         return errors, capability
+
+    def _warn_not_shared(self, hosts):
+        """Report that the group declared different sets, and the cost.
+
+        Reached only when every peer wanted constants but not the same ones,
+        which is a misconfiguration rather than a design case: peers on one
+        device run the same GpuTask. The job keeps running on a copy per rank,
+        so without a line here the extra memory is invisible.
+        """
+        peers = getattr(self._placement, 'n_device_peers', 1)
+        wanted = sum(int(hosts[s].nbytes) for s in self.requests if s in hosts)
+        logger.warning(
+            'GPU constants are NOT shared on this device: peers declared '
+            'different sets, so each of %d ranks holds its own copy. '
+            '%d bytes (%.1f MiB) per rank, %d bytes resident instead of %d. '
+            'Peers on one device normally run the same GpuTask; check the '
+            'calibconst declarations if this is unexpected.',
+            peers, wanted, wanted / 1024 ** 2, wanted * peers, wanted)
 
     def _note_sharing(self, state):
         """Record the sharing state on the placement, for the log line."""
         if self._placement is not None:
             self._placement.sharing = state
 
-    def _fall_back_to_private(self, hosts):
-        """Abandon sharing and upload every selector privately.
-
-        Reached when an IPC call failed on any peer. Importers close first and
-        the owner frees only after a barrier: CUDA requires imported mappings
-        to be closed before the exporter deallocates, and a follower may have
-        opened some handles before the failure.
-
-        Reported at WARNING: the job keeps running, but every peer now holds
-        its own copy of the constants, so a device that held one copy holds n.
-        Without this the only trace is shared_bytes dropping to zero.
-        """
-        reason = self._ipc_error or 'a peer could not use CUDA IPC'
-        peers = getattr(self._placement, 'n_device_peers', 1)
-        wanted = sum(int(np.ascontiguousarray(hosts[s]).nbytes)
-                     for s in self._shared if s in hosts)
-        logger.warning(
-            'GPU constant sharing fell back to private copies: %s. '
-            '%d peers on this device will each hold %d bytes (%.1f MiB) '
-            'of constants: %d bytes resident instead of %d.',
-            reason, peers, wanted, wanted / 1024 ** 2,
-            wanted * peers, wanted)
-        self._note_sharing(f'fallback({reason})')
-        self._release_shared()
-        if self._sizing is not None:
-            # Give back the sharing budget before uploading privately. The
-            # limits were set for one device copy -- followers at
-            # (usable - shared)/peers -- but every rank is about to hold a
-            # full copy, so they must be checked against usable/peers again.
-            # Measured on a 40 GiB four-peer device, a 9-10 GiB intersection
-            # fits 10 GiB but not 7, so the group aborted here instead of
-            # degrading. Ordered after _release_shared because set_limit
-            # refuses to drop the owner's limit below what it still holds.
-            self._sizing(0)
-        self._private = self.requests
-        self._shared = ()
-        for selector in self.requests:
-            self._device.pop(selector, None)
-            self._host.pop(selector, None)
-            self._digests.pop(selector, None)
-        self._upload_private(hosts, list(self._private))
-
-    def _snapshot_digest(self, selector, array):
-        """Digest of the retained snapshot, hashed once per replacement.
-
-        Re-hashing both sides each transition costs about a second per GiB;
-        the snapshot only changes when this class replaces it.
-        """
-        cached = self._digests.get(selector)
-        if cached is None:
-            cached = digest_of(array)
-            self._digests[selector] = cached
-        return cached
-
-    def _remember(self, selector, array):
-        """Retain a snapshot and invalidate its cached digest."""
-        self._host[selector] = array.copy(order='C')
-        self._digests.pop(selector, None)
-
-    def _changed_private(self, hosts):
-        """Private selectors whose host value differs from the snapshot."""
-        return [s for s in self._private
-                if self._host.get(s) is None
-                or self._host[s].shape != hosts[s].shape
-                or self._host[s].dtype != hosts[s].dtype
-                or self._snapshot_digest(s, self._host[s]) != digest_of(hosts[s])]
-
-    def _upload_private(self, hosts, moved):
+    def _upload_private(self, hosts, selectors):
+        """One copy per rank. Returns whether anything moved."""
+        if not selectors:
+            return False
+        if self._cp is None:
+            import cupy as cp
+            self._cp = cp
         from .gpu_allocation import upload_owned
-        arrays = upload_owned(self._cp, [hosts[s] for s in moved],
+        arrays = upload_owned(self._cp, [hosts[s] for s in selectors],
                               self.budget, category='task-constants')
-        self._device.update(zip(moved, arrays))
-        for selector in moved:
-            self._remember(selector, hosts[selector])
+        self._device.update(zip(selectors, arrays))
+        # _host is deliberately NOT populated. RequestedConstants keeps host
+        # snapshots to detect a changed source between transitions; under one
+        # constant set per run there is no second upload to detect anything
+        # for, and retaining them would pin a full copy of every constant in
+        # host memory for the life of the run. The attribute itself stays,
+        # because the inherited get/close still reference it.
+        #
+        # This makes super().refresh() UNSAFE to call from this class: it
+        # reads _host for change detection, would find it empty, and would
+        # treat every constant as changed -- uploading a second full copy
+        # against the same budget. refresh() below overrides it completely and
+        # must keep doing so.
+        return True
 
     # -- teardown ------------------------------------------------------
     def _close_imported(self):
@@ -701,7 +646,9 @@ class SharedRequestedConstants(RequestedConstants):
         if self._closed:
             return
         self._closed = True
-        if not self._sharing:
+        if not self._sharing or not self._shared:
+            # Nothing was shared, so there are no mappings to close in order
+            # and no barriers to match.
             self._device.clear()
             self._host.clear()
             return
@@ -709,3 +656,5 @@ class SharedRequestedConstants(RequestedConstants):
         self._check_order('close')
         self._device.clear()
         self._host.clear()
+        if self._placement is not None:
+            self._placement.imported_bytes = 0

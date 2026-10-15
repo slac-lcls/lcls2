@@ -15,6 +15,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -24,19 +25,23 @@ HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 TESTS = REPO / 'psana/psana/tests/gpu/integration'
 LOGS = HERE / f'cases-{time.strftime("%Y%m%d-%H%M%S")}'
+# MPI session directories, which are large and transient, go somewhere
+# without a quota. SCRATCH if the site sets it, else /tmp.
+SESSIONS = pathlib.Path(
+    os.environ.get('SCRATCH') or f'/tmp/{os.environ.get("USER", "psana")}'
+) / f'ipc-sessions-{time.strftime("%Y%m%d-%H%M%S")}'
 
 DISCOVERY = TESTS / 'mpi_placement_discovery.py'
-SHARING = TESTS / 'mpi_shared_constants.py'
 FAILURES = TESTS / 'mpi_failure_paths.py'
-REALPATH = TESTS / 'mpi_real_path_placement.py'
-SHAREDCALIB = TESTS / 'mpi_shared_calibration.py'
 MULTIRUN = TESTS / 'mpi_multirun_placement.py'
-EXAMPLES = REPO / 'psana/psana/gpu/examples'
+CALIB = TESTS / 'mpi_calib_pixel_exact.py'
 
 # (tag, ranks, script, extra argv, one_gpu, expect[, timeout])
 #
 # one_gpu restricts the mask so every worker is a peer, which is what sharing
-# needs; discovery deliberately spans whatever the launcher provided.
+# needs; discovery deliberately spans whatever the launcher provided. It may
+# also be a mask STRING, used verbatim -- that is how the reversed-mask case
+# is expressed.
 #
 # expect='clean'  every rank reports PASS and no failures
 # expect='abort'  the job must DIE, promptly -- nonzero exit, the expected
@@ -66,25 +71,42 @@ CASES = (
      ['--n-eb', '3', '--expect-hosts', '1'], False, 'clean'),
     ('discovery-uneven',     8, DISCOVERY,
      ['--n-eb', '2', '--contiguous', '--expect-hosts', '1'], False, 'clean'),
-    ('sharing-2-peers',      3, SHARING,   [], True, 'clean'),
-    ('sharing-4-peers',      5, SHARING,   [], True, 'clean'),
+    # THE value check, in two layouts. A real psana job -- smd0, EBs and BD
+    # workers as psana assigns them -- calibrates real Jungfrau data on the
+    # GPU and compares every event against det.raw.calib() on the CPU.
+    #
+    # It asserts on PIXELS, not on internals. Device discovery, budget
+    # sizing, constant sharing over IPC and batch routing have all already
+    # happened by the time a pixel exists, so if any of them were wrong the
+    # values would be wrong. That is why the white-box drivers this replaced
+    # -- which probed _task_constants, placement records and peer counts --
+    # are gone.
+    #
+    # one_gpu=True makes every BD worker a peer, so constants are shared from
+    # a single device allocation; the 9-rank case leaves the mask wide, so the
+    # workers split across cards and most groups are solo.
+    #
+    # 420s, not the 180s default. hybrid_det mirrors the bigdata streams
+    # through BOTH the CPU and GPU paths -- that is what makes
+    # det.raw.calib() available for the comparison -- so the I/O is done
+    # twice. Measured standalone at ~175s per case on an idle A100, which the
+    # default timeout clipped.
+    ('calib-shared',         4, CALIB, ['--expect-events', '13'], True,
+     'clean', 420),
+    ('calib-2-gpus-eb2',     9, CALIB, ['--expect-events', '13'], False,
+     'clean', 420),
     # Failure paths. The select-device case is the only test of the abort
     # reaching EB and smd0, which the device-group allreduce cannot touch.
-    # Through the real DataSource -> Run -> GpuEventManager wiring. The other
-    # placement cases call discover_peers directly, so they cover the
-    # algorithm but not whether its result reaches a running job.
-    ('realpath-2-gpus',      5, REALPATH, ['--expect-devices', '2'], False, 'clean'),
-    # 6 ranks with PS_EB_NODES=1 is 1 smd0 + 1 eb + 4 bd; one visible GPU
-    # makes all four peers, which is the sharing-relevant layout.
-    ('realpath-1-gpu',       6, REALPATH,
-     ['--expect-devices', '1', '--expect-peers', '4'], True, 'clean'),
-    # Real Jungfrau calibration while the constants are shared over IPC, with
-    # every panel still compared to a CPU reference. A follower calibrates
-    # from the owner's imported mapping, so a shared view with a wrong offset
-    # or a stale generation shows up as mismatched pixels.
-    ('shared-calibration',   4, SHAREDCALIB,
-     ['--user-dir', str(EXAMPLES), '--expect-peers', '2', '--require-sharing'],
-     True, 'clean'),
+    # A REVERSED mask. CUDA numbers visible devices in the order the mask
+    # lists them, so with '1,0' the card that was physical 1 becomes ordinal
+    # 0 and vice versa. Assignment keys on the PCI bus id the driver reports,
+    # not on the ordinal, so the pixels must still come out right -- a rank
+    # whose constants or batches followed the ordinal rather than the device
+    # would calibrate from the wrong card's memory.
+    #
+    # Replaces masked_device.sbatch, which tested this as a standalone job.
+    ('calib-reversed-mask',  6, CALIB, ['--expect-events', '13'], '1,0',
+     'clean', 420),
     # Per-run rediscovery: run N+1 must not be sized against a card that
     # still holds run N's memory. This is the coverage review findings N1, N2
     # and finding 1 asked for -- and it cannot pass yet, because psana2 hangs
@@ -104,6 +126,12 @@ CASES = (
     ('multirun-3-runs',      6, MULTIRUN,
      ['--exp', 'mfx101629726', '--runs', '15,16,17'], True, 'hang-known', 150),
     ('fail-select-device',   5, FAILURES, ['--inject', 'select-device'], False, 'abort'),
+    # An IPC failure now aborts rather than degrading to private copies. Still
+    # expect='clean': the driver CATCHES the SharedConstantsError and asserts
+    # the things an exit status cannot show -- that every peer raised and not
+    # just the rank whose import failed, that the message names the opt-out,
+    # and that nothing was left mapped or charged. A nonzero exit would only
+    # say some rank died.
     ('fail-follower-import', 4, FAILURES, ['--inject', 'follower-import'], True, 'clean'),
 )
 
@@ -114,12 +142,27 @@ def run_case(tag, ranks, script, extra, one_gpu, expect='clean',
     env = os.environ.copy()
     # A private PRRTE session per case: without this, a case that aborts can
     # leave state that prevents the next `mpirun` from starting.
-    session = LOGS / f'session-{tag}'
+    #
+    # Placed on scratch, NOT beside the logs. Open MPI's shared-memory BTL
+    # wants a 128 MiB backing file per rank here, and $HOME is quota'd: when
+    # it filled, every case died with "create_and_attach: unable to create
+    # shared memory BTL coordinating structure" before reaching psana, which
+    # reads as a hang rather than as a full disk. $SCRATCH or /tmp both have
+    # room; the logs stay on home where they are small and wanted.
+    session = SESSIONS / f'session-{tag}'
     session.mkdir(parents=True, exist_ok=True)
     env['TMPDIR'] = str(session)
     env['OMPI_MCA_orte_tmpdir_base'] = str(session)
     env['PMIX_MCA_ptl_tcp_if_include'] = env.get('PMIX_MCA_ptl_tcp_if_include', 'lo')
-    if one_gpu:
+    # one_gpu is either a bool -- True narrows to the first card, so every
+    # worker is a peer and sharing engages -- or a mask string used verbatim.
+    # A string is how a REVERSED mask is expressed: CUDA numbers visible
+    # devices in the order the mask lists them, so '1,0' makes ordinal 0 the
+    # card that was physical 1. Narrowing to one card proves nothing about
+    # that mapping, because every wrong implementation also lands on ordinal 0.
+    if isinstance(one_gpu, str):
+        env['CUDA_VISIBLE_DEVICES'] = one_gpu
+    elif one_gpu:
         env['CUDA_VISIBLE_DEVICES'] = '0'
 
     command = ['mpirun', '-n', str(ranks), 'python', '-u', str(script), *extra]
@@ -172,14 +215,31 @@ def judge_known_hang(text, timed_out):
     suite tells you when the case should be promoted to 'clean' instead of
     quietly carrying a test that proves nothing.
 
-    The hang must also look like the KNOWN one -- the first run processed,
-    the second starting and not finishing. A job that hung before delivering
-    anything is a different failure and is reported as such.
+    Timing out is not enough on its own -- the timeout is deliberately short,
+    so an unrelated stall (a slow filesystem, a loaded node) would otherwise
+    be reported as the known failure. The log must show the KNOWN SHAPE:
+
+    * the first run delivered events,
+    * the last run reached delivered none,
+    * and no rank emitted its post-loop record, which would mean the run loop
+      finished and the hang is somewhere else.
     """
     detail = {'expected': 'hang-known', 'timed_out': timed_out,
               'doc': 'psana/psana/gpu/docs/multirun_hang.md'}
-    runs = sorted(set(re.findall(r'MULTIRUN_RANK\d+_RUN(\d+)', text)))
+    # (runnum, events) per rank per run. Sorted numerically: a lexicographic
+    # sort reverses runs that cross a digit-width boundary, e.g. 9 and 10.
+    seen = {}
+    for block in re.findall(r'MULTIRUN_RANK\d+_RUN\d+ (\{.*?\n\})', text, re.S):
+        try:
+            record = json.loads(block)
+        except ValueError:
+            continue
+        seen.setdefault(int(record['runnum']), []).append(
+            int(record.get('events') or 0))
+    runs = sorted(seen)
     detail['runs_reached'] = runs
+    detail['events_by_run'] = {run: sum(seen[run]) for run in runs}
+
     if not timed_out:
         detail['error'] = ('the job COMPLETED. The multi-run hang this case '
                            'reproduces appears to be fixed -- promote the '
@@ -191,8 +251,29 @@ def judge_known_hang(text, timed_out):
                            'processes the first run and stalls in the second, '
                            'so this is a different failure')
         return False, detail
-    detail['note'] = (f'hung in run {runs[-1]} after processing {runs[0]}, '
-                      'which is the known pre-existing failure')
+    # A rank that finished the run loop emits a record with no _RUN suffix.
+    # Its presence means the loop completed and the hang is elsewhere.
+    if re.search(r'MULTIRUN_RANK\d+ \{', text):
+        detail['error'] = ('a rank finished the run loop, so the job did not '
+                           'stall inside a run; this is a different failure '
+                           'from the one documented')
+        return False, detail
+    first, last = runs[0], runs[-1]
+    if not detail['events_by_run'][first]:
+        detail['error'] = (f'run {first} delivered no events, so the job '
+                           'stalled before the documented point rather than '
+                           'between runs')
+        return False, detail
+    if detail['events_by_run'][last]:
+        detail['error'] = (f'run {last} delivered '
+                           f'{detail["events_by_run"][last]} events; the known '
+                           'bug delivers none to the second run, so this is a '
+                           'different failure')
+        return False, detail
+    detail['note'] = (f'processed run {first} '
+                      f'({detail["events_by_run"][first]} events), then hung '
+                      f'in run {last} with none delivered -- the known '
+                      'pre-existing failure')
     return True, detail
 
 
@@ -257,25 +338,14 @@ def parse(text):
     if devices:
         detail['devices'] = devices
 
-    for block in re.findall(r'SHAREDCALIB_SUMMARY (\{.*?\n\})', text, re.S):
-        record = json.loads(block)
-        detail['shared_calibration'] = {
-            'workers': record['gpu_workers'],
-            'devices': record['devices'],
-            'shared_mib': record['shared_mib'],
-            'saved_mib': record['device_memory_saved_mib'],
-            'events': record['events_checked'],
-            'all_pass': record['all_pass']}
-        if not record['all_pass']:
-            detail.setdefault('failures', []).extend(record['failures'][:5])
 
-    for block in re.findall(r'REALPATH_SUMMARY (\{.*?\n\})', text, re.S):
+
+    for block in re.findall(r'CALIB_SUMMARY (\{.*?\n\})', text, re.S):
         record = json.loads(block)
-        detail['realpath'] = {'gpu_workers': record['gpu_workers'],
-                              'devices': record['distinct_devices'],
-                              'peers_by_device': record['peers_by_device'],
-                              'claims': record['aggregate_claims'],
-                              'all_pass': record['all_pass']}
+        detail['calib'] = {'gpu_workers': record['gpu_workers'],
+                           'events': record['events_total'],
+                           'by_rank': record['events_by_rank'],
+                           'all_pass': record['all_pass']}
         if not record['all_pass']:
             detail.setdefault('failures', []).extend(record['failures'][:5])
 
@@ -289,16 +359,13 @@ def parse(text):
         if not record['all_pass']:
             detail.setdefault('failures', []).extend(record['failures'][:5])
 
-    for block in re.findall(r'SHARED_SUMMARY (\{.*?\n\})', text, re.S):
-        record = json.loads(block)
-        detail['sharing'] = {'peers': record['peers'],
-                             'all_pass': record['all_pass'],
-                             'charged': record['charged_by_rank'],
-                             'imported': record['imported_by_rank']}
 
-    # PSANA_GPU_CHECK_COLLECTIVES=1 makes each peer compare its collective
-    # sequence with the others. A divergence is reported rather than raised,
-    # so the launcher has to fail the case on it or the check is advisory.
+    # A driver that wraps device_comm in the test recorder (see
+    # psana/psana/tests/gpu/collective_recorder.py) has each peer compare its
+    # collective sequence with the others. A divergence is reported rather
+    # than raised, so the launcher has to fail the case on it or the check is
+    # advisory. Kept here because the drivers may enable it even though
+    # production no longer reads an environment variable for it.
     diverged = text.count('collective order diverged')
     detail['collective_order_diverged'] = diverged
     if diverged:
@@ -311,12 +378,8 @@ def parse(text):
     ok = ranks_fail == 0 and not detail['failures']
     if devices:
         ok = ok and all(d['pass'] for d in devices)
-    if 'sharing' in detail:
-        ok = ok and detail['sharing']['all_pass']
-    if 'realpath' in detail:
-        ok = ok and detail['realpath']['all_pass']
-    if 'shared_calibration' in detail:
-        ok = ok and detail['shared_calibration']['all_pass']
+    if 'calib' in detail:
+        ok = ok and detail['calib']['all_pass']
     if 'multirun' in detail:
         ok = ok and detail['multirun']['all_pass']
     return ok, detail
@@ -325,13 +388,20 @@ def parse(text):
 def main():
     LOGS.mkdir(parents=True, exist_ok=True)
     print(f'LOG_DIRECTORY {LOGS}', flush=True)
+    print(f'SESSION_DIRECTORY {SESSIONS}', flush=True)
     results = {}
-    for case in CASES:
-        tag, ranks, script, extra, one_gpu, expect = case[:6]
-        timeout = case[6] if len(case) > 6 else DEFAULT_TIMEOUT
-        ok, _ = run_case(tag, ranks, script, extra, one_gpu, expect=expect,
-                         timeout=timeout)
-        results[tag] = ok
+    try:
+        for case in CASES:
+            tag, ranks, script, extra, one_gpu, expect = case[:6]
+            timeout = case[6] if len(case) > 6 else DEFAULT_TIMEOUT
+            ok, _ = run_case(tag, ranks, script, extra, one_gpu,
+                             expect=expect, timeout=timeout)
+            results[tag] = ok
+    finally:
+        # Each case's session holds a 128 MiB shared-memory file per rank, so
+        # a full suite leaves gigabytes behind. Removed whatever the outcome:
+        # an aborted run is exactly when they are largest.
+        shutil.rmtree(SESSIONS, ignore_errors=True)
 
     print('\n=============================== VERDICT ===============================',
           flush=True)

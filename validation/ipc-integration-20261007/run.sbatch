@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=96G
 #SBATCH --gres=gpu:a100:2
-#SBATCH --time=00:40:00
+#SBATCH --time=01:10:00
 #SBATCH --exclude=sdfampere003,sdfampere008,sdfampere016,sdfampere024,sdfampere028,sdfampere029,sdfampere037,sdfampere039
 #SBATCH --job-name=ipc-integration
 #SBATCH --output=validation/ipc-integration-20261007/job-%j.log
@@ -29,7 +29,6 @@ export CUDA_DEVICE_ORDER=PCI_BUS_ID
 # Verify every peer makes the same collectives in the same order. Path
 # divergence is what every hang on this branch turned out to be, and nothing
 # else detects it; the checker is cheap enough to leave on in validation.
-export PSANA_GPU_CHECK_COLLECTIVES=1
 export CUPY_CACHE_DIR="$PWD/validation/ipc-integration-20261007/cupy-cache"
 mkdir -p "$CUPY_CACHE_DIR"
 

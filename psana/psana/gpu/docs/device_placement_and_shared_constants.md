@@ -305,8 +305,8 @@ containing a zero byte yields a short, wrong value — measured on sdfampere014,
 where `c9ef90546100fd2e...` arrived as five bytes.
 
 MIG instances of one card share a bus id, so they group together here; sharing
-across them then fails at the IPC import and the group degrades to private
-copies. See [Limits](#limits).
+across them then fails at the IPC import, which aborts the job with a message
+naming `PSANA_GPU_SHARE_CONSTANTS=0`. See [Limits](#limits).
 
 ### Non-GPU roles participate
 
@@ -315,6 +315,50 @@ reaches, in the same order. They contribute neutral values and receive
 `COMM_NULL`. Skipping a call does not raise — it hangs the others, and a
 CPU-only rank that returned early was measured racing a peer's `MPI_ABORT`
 rather than participating in the failure.
+
+### The collectives discovery makes
+
+What matters is the sequence on `psana_comm`, because that is the
+communicator every role holds and MPI pairs calls by order rather than by
+operation. It is identical for both roles:
+
+| On `psana_comm` | Both roles |
+| --- | --- |
+| `allgather` | hostnames, to colour the node split |
+| `Split` | node communicator |
+| `allreduce` SUM | `discovery/job-agreement` — a selection failure anywhere |
+| `allreduce` MIN | `discovery/budget` — free memory, job-wide |
+| `allreduce` MAX | `discovery/max-peers` — the busiest device |
+
+Every role also splits the node communicator, which is not a `psana_comm`
+call and so pairs only with itself:
+
+| On `node_comm` | Both roles |
+| --- | --- |
+| `Split` | GPU-worker communicator; non-GPU roles pass `MPI.UNDEFINED` and get `COMM_NULL` |
+| `Free` | released immediately, in a `finally` |
+
+GPU workers additionally make calls on communicators the CPU roles do not
+hold, which therefore cannot pair with anything of theirs:
+
+| Communicator | Call |
+| --- | --- |
+| `node_gpu_comm` | `allgather` of visible PCI sets, for the assignment |
+| `node_gpu_comm` | `allreduce` SUM, `discovery/node-agreement` |
+| `node_gpu_comm` | `allgather` of `(host, pci)` keys, then `Split` |
+| `device_comm` | `allreduce` MIN, `discovery/sharing-permitted` |
+
+The last one agrees `PSANA_GPU_SHARE_CONSTANTS` across the device group. It
+is read from each rank's own environment, so one rank acting on its own
+reading would skip the establishment `allgather` its peers enter — an
+unbounded call, so the job would hang with no diagnostic. `MIN` means one
+rank's opt-out disables sharing for the whole group. The agreed answer is
+`GpuPlacement.sharing_permitted`, which `can_share` folds in; callers should
+use that rather than reading the variable themselves.
+
+There is a measured precedent for peers disagreeing about an environment
+variable: the multi-node harness set `CUDA_VISIBLE_DEVICES` without
+`mpirun -x`, and the two nodes' ranks ended up with different masks.
 
 ### Budgets
 
@@ -333,13 +377,13 @@ this: `MPISharedMemory` is host memory, not device.)
 limit adds it back, because `_OwnedBlock` already charges it to the owner's
 budget and subtracting it from the owner's share too would charge it twice.
 
-Both adjustments are applied **before** the intersection is allocated,
-through a `sizing` callback that `SharedRequestedConstants` invokes once the
-intersection is known. The ordering matters: a 12 GiB intersection on a 40 GiB
-four-peer device fits this accounting (owner 7 + 12 = 19 GiB) but not the
-unadjusted `usable / peers` of 10 GiB, so allocating first would refuse the
-shared copy, degrade the group, and then refuse the private copy by the same
-limit.
+Both adjustments are applied **before** the shared copy is allocated, through
+a `sizing` callback that `SharedRequestedConstants` invokes once the group has
+agreed to share. The ordering matters: a 12 GiB set on a 40 GiB four-peer
+device fits this accounting (owner 7 + 12 = 19 GiB) but not the unadjusted
+`usable / peers` of 10 GiB, so allocating first would refuse the shared copy.
+The callback is not invoked at all when the group shares nothing: the budget is
+already `usable / peers`, which is correct for a private copy per rank.
 
 An explicit `gpu_memory_budget_gb` is validated against the group total,
 since `N` ranks each claiming the whole device must not pass silently. The
@@ -359,23 +403,29 @@ reach the same verdict instead of continuing while their peers abort.
 `RequestedConstants`' surface — `get`, `refresh`, `close` — so
 `batch.calibconst()` and the task contract are unchanged.
 
-### Intersection, not all-or-nothing
+### All or nothing
 
-Peers declaring different selector sets share what they have in common and
-privately upload the remainder. The intersection is computed by `allgather`
-rather than dictated by the owner, so every rank derives the same shared set
-and none is surprised by a manifest entry it did not request.
+Every peer must declare the same selector set. Peers on one device run the same
+`GpuTask`, so they normally do; a group that disagrees shares nothing and each
+rank uploads its own copy. The verdict comes from one `allgather` that every
+rank makes, so all of them reach it independently and none is surprised by a
+manifest entry it did not request.
 
 | Disagreement | Outcome |
 | --- | --- |
-| Selector **sets** differ | Degrade: share the intersection, privately copy the rest |
-| **Shape or dtype** differs for a shared selector | Abort on every rank |
-| **Content** differs for a shared selector | Abort on every rank |
+| Selector **sets** differ | No sharing: a private copy per rank |
+| **Shape or dtype** differs | Abort on every rank |
+| **Content** differs | Abort on every rank |
+| `ipcGetMemHandle` / `ipcOpenMemHandle` fails | Abort on every rank |
 
 Content disagreement is fatal because sharing there would hand a follower the
 owner's array under the follower's own name — wrong results with no error.
-Set difference is benign: a selector outside the intersection is simply not
-shared.
+
+Sharing the intersection of unequal sets was supported earlier and removed: it
+cost four code paths and their tests for a case that does not arise in
+practice, since peers on one device run one task. Set difference is still
+benign — it costs memory, not correctness — so it disables sharing rather than
+aborting.
 
 ### Un-pooled owner allocation
 
@@ -401,8 +451,8 @@ Every path goes through `_exchange` and ends in `_settle`:
                        failure marker, so followers do not wait in bcast
         |
    _settle(...)        one Allreduce(MAX) over [content, capability]
-                       content  -> raise on every rank
-                       capability -> degrade the whole group
+                       content    -> raise on every rank
+                       capability -> release, then raise on every rank
 ```
 
 Nothing between the broadcast and the agreement may raise. An exception that
@@ -411,16 +461,18 @@ call order rather than by operation, a rank reaching a different one gives
 undefined results before hanging.
 
 `_release_shared()` holds the one ordering CUDA requires: importers close, a
-barrier, then the owner frees. Both callers — `close` and the fallback — go
-through it, so neither can get the order wrong. **`close()` is collective** —
-every peer must call it; a second call performs no collective.
+barrier, then the owner frees. Both callers — `close` and the capability abort
+in `_settle` — go through it, so neither can get the order wrong, and the abort
+releases through barriers every peer reaches rather than raising on whichever
+rank noticed first. **`close()` is collective** — every peer must call it; a
+second call performs no collective.
 
 ### One upload per run
 
 One calibration-constant set per run is the supported model, and BeginStep does
-not fetch the calibration DB, so `refresh` establishes the intersection on its
-first call and returns `False` on every later one. No collective, no scan, no
-reupload.
+not fetch the calibration DB, so `refresh` establishes the shared copies on
+its first call and returns `False` on every later one. No collective, no scan,
+no reupload.
 
 That is a correctness property, not only an efficiency one. Replacing a shared
 allocation mid-run means freeing memory that backs every peer on the device,
@@ -428,10 +480,9 @@ and no rank can know when another has stopped reading it — the agreement
 protocol can make peers decide *together*, but it cannot tell them *when it is
 safe*. Not replacing at all removes the question.
 
-Private selectors are uploaded in the same first call, by the same
-establishment path. A later call returns before reaching them, which is
-consistent: under one constant set per run there is nothing new to upload,
-private or shared.
+A group that shares nothing uploads privately in that same first call, by the
+same establishment path, and a later call returns before reaching it — under
+one constant set per run there is nothing new to upload either way.
 
 ### Accounting
 
@@ -444,9 +495,8 @@ A follower's views are non-owning, so charging them would shrink its real
 budget by memory it does not own — the opposite of what sharing achieves. The
 bytes are recorded separately so a memory report stays complete.
 
-Measured at 4 peers with a 12 MiB intersection and a 3 MiB owner-private
-selector: owner charged 15 MiB, three followers charged 0 while each importing
-12 MiB.
+Measured at 4 peers with a 12 MiB constant set: owner charged 12 MiB, three
+followers charged 0 while each importing 12 MiB.
 
 ### Lifetime: valid for the whole run
 
@@ -469,22 +519,30 @@ rather than that it is forbidden.
 
 ### When sharing does not happen
 
-Capability failures degrade; agreement failures abort. A rank that cannot share
-loses memory, a rank that shares the wrong array loses correctness.
+Conditions known before any IPC call disable sharing silently; an IPC call that
+fails aborts.
 
 | Condition | Behaviour |
 | --- | --- |
 | One peer on the device, or no communicator | Private copies |
-| MIG instance | Private copies — IPC does not span MIG instances |
-| `ipcGetMemHandle` / `ipcOpenMemHandle` fails | Whole group degrades to private copies |
-| Empty intersection | Private copies, no error |
-| Shape, dtype or digest mismatch on a shared selector | `SharedConstantsError` on every rank |
+| Peers declared different selector sets | Private copies, logged at WARNING with the memory cost |
+| `PSANA_GPU_SHARE_CONSTANTS=0` on **any** peer | Private copies on the whole device group — the variable is reduced with `MIN` into `sharing_permitted`, so one opt-out disables sharing for every peer sharing that card |
+| `ipcGetMemHandle` / `ipcOpenMemHandle` fails | `SharedConstantsError` on every rank |
+| Shape, dtype or digest mismatch | `SharedConstantsError` on every rank |
 | Explicit budget x peers exceeds the device | `GpuPlacementError` |
 
-A fallback is reported at WARNING with the reason and the memory it now costs,
-and `placement.describe()` carries `sharing=on|off|fallback(<reason>)`. Without
-that the only trace is `shared_bytes` dropping to zero while the device quietly
-holds n copies.
+`placement.describe()` carries `sharing=on|off`.
+
+An IPC failure used to degrade the whole group to private copies. It now
+aborts, for two reasons: degrading hid a misconfiguration behind an n-times
+memory cost that only `shared_bytes` dropping to zero revealed, and its budget
+reset — the limits are set for one device copy, so every rank holding a full
+copy needs them returned — was the source of two separate defects.
+
+The abort names `PSANA_GPU_SHARE_CONSTANTS=0`, which is the deliberate way to
+run where IPC cannot work. **MIG needs it:** instances of one card share a PCI
+bus id, so discovery groups ranks on different instances as peers and the
+import necessarily fails.
 
 ## Bounded collectives
 
@@ -508,28 +566,32 @@ The abort targets `MPI.COMM_WORLD`: the standard only promises a best effort on
 the given communicator's group, and the communicator here is often
 `device_comm`. Tests intercept it through `_abort_hook`.
 
-Not bounded — three calls carry Python objects, which mpi4py can only send
+Not bounded — two calls carry Python objects, which mpi4py can only send
 non-blocking through a two-step size-then-data `Ibcast`: the manifest `bcast`,
-and `_intersect`'s `allgather`.
+and `_agree_on_set`'s `allgather`.
 
-`PSANA_GPU_CHECK_COLLECTIVES=1` wraps `device_comm` in `RecordingComm` and
-compares each rank's call sequence at the end of establish, each refresh path
-and close. Path divergence is what every hang in this work turned out to be,
-and nothing else detects it. Enabled in the validation harnesses.
+The test recorder (`psana/psana/tests/gpu/collective_recorder.py`) wraps a
+communicator and compares each rank's call sequence at the end of establish and
+close. Path divergence is what every hang in this work turned out to be, and
+nothing else detects it. It lives in the test tree rather than in
+`gpu_collectives.py`: it is a debugging aid, and keeping it there means
+production holds no communicator wrapper and reads no environment variable to
+decide whether to use one. `SharedRequestedConstants` calls `check_agreement`
+on its communicator when the method is present, so wrapping is all a driver has
+to do.
 
 ## Limits
 
-- **MIG: not supported, untested.** No MIG hardware is advertised on S3DF.
-  Grouping keys on the PCI bus id, which instances of one card share, so ranks
-  on different instances look like peers. Sharing is then attempted and the
-  IPC import fails — CUDA IPC cannot span instances, which have separate
-  memory — so the group degrades to private copies together and
-  `placement.describe()` reports `sharing=fallback(<reason>)`.
+- **MIG: needs `PSANA_GPU_SHARE_CONSTANTS=0`, untested.** No MIG hardware is
+  advertised on S3DF. Grouping keys on the PCI bus id, which instances of one
+  card share, so ranks on different instances look like peers. Sharing is then
+  attempted, the IPC import fails — CUDA IPC cannot span instances, which have
+  separate memory — and the job aborts with a message naming the opt-out.
 
-  The peer count stays inflated by however many instances were merged, and
-  each rank's limit becomes `usable / inflated_peers`. For constants larger
-  than that share the private upload is refused and the job aborts. MIG is
-  therefore listed as unsupported rather than as a degraded mode.
+  With sharing disabled the job runs: every rank holds its own copy. The peer
+  count is still inflated by however many instances were merged, so each
+  rank's limit is `usable / inflated_peers` and a large constant set can
+  exhaust it, which is why MIG is listed as untested rather than supported.
 
   Separating instances needs an identity neither CUDA nor plain NVML
   enumeration provides: `getDeviceProperties()['uuid']` is truncated at the
@@ -555,7 +617,8 @@ and nothing else detects it. Enabled in the validation harnesses.
 | --- | --- |
 | Device choice and peer discovery | [gpu_placement.py](../gpu_placement.py) |
 | Shared constants | [gpu_shared_constants.py](../gpu_shared_constants.py) |
-| Bounded collectives, order checker | [gpu_collectives.py](../gpu_collectives.py) |
+| Bounded collectives | [gpu_collectives.py](../gpu_collectives.py) |
+| Collective-order recorder (tests) | [collective_recorder.py](../../tests/gpu/collective_recorder.py) |
 | Budget | [gpu_budget.py](../gpu_budget.py) |
 | Manager wiring | [gpu_events.py](../gpu_events.py) |
 | Discovery call site | [mpi_ds.py](../../psexp/mpi_ds.py) |
@@ -571,17 +634,18 @@ python -m pytest psana/psana/tests/gpu/unit/test_gpu_placement.py \
                  psana/psana/tests/gpu/unit/test_gpu_placement_wiring.py \
                  psana/psana/tests/gpu/unit/test_gpu_collectives.py
 
-sbatch validation/ipc-integration-20261007/run.sbatch    # 12 cases, 1 node
+sbatch validation/ipc-integration-20261007/run.sbatch    # 13 cases, 1 node
 sbatch validation/ipc-multinode-20261007/run.sbatch      # 4 cases, 2 nodes
 ```
 
 Integration coverage, single node: five EB topologies (1, 2 and 3 groups, even
 and uneven), sharing at 2 and 4 peers, two cases through the real
 `DataSource` -> `Run` -> `GpuEventManager` wiring, one running the real
-Jungfrau calibration while the constants are shared, and two failure
-injections — a rank whose `Device.use()` fails, which must abort the job
-rather than hang, and a follower whose IPC import fails, which must degrade
-the group uniformly.
+Jungfrau calibration while the constants are shared, one reproducing the
+pre-existing multi-run hang, and two failure injections — a rank whose
+`Device.use()` fails, which must abort the job rather than hang, and a
+follower whose IPC import fails, which must abort every peer rather than
+only the one that failed.
 
 Across two nodes: the same discovery checks plus the event loop with
 `batch.calibconst()` read inside a real callback, at `PS_EB_NODES` 1 and 2.
@@ -589,5 +653,16 @@ This is where the single-node suite cannot reach — CUDA IPC does not cross
 hosts, so the job must produce one device group and one shared copy *per
 node*, with the groups identical under both EB topologies.
 
-Measured: 636 unit tests, 12/12 single-node cases (job 40800404), and both
-multi-node cases (job 40801805), with zero collective-order divergence.
+Measured after the all-or-nothing and abort-on-IPC-failure changes: 632 unit
+tests; 13/13 single-node cases (jobs 40888078 and 40889090) and all four
+multi-node cases (job 40889879), with zero collective-order divergence.
+
+Across two nodes, both EB topologies gave one device group and one owner per
+host, each follower importing the full 384 MiB:
+
+    sdfampere034:0:01:00.0  peers 3  owners 1
+    sdfampere038:0:01:00.0  peers 5  owners 1
+
+`multirun-3-runs` is expected to hang and does: it reaches run 16 after
+processing run 15, which is the known pre-existing failure recorded in
+[multirun_hang.md](multirun_hang.md).

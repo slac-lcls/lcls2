@@ -31,10 +31,6 @@ source setup_env.sh >/dev/null
 
 export PYTHONUNBUFFERED=1
 export CUDA_DEVICE_ORDER=PCI_BUS_ID
-# Verify every peer makes the same collectives in the same order. Path
-# divergence is what every hang on this branch turned out to be, and nothing
-# else detects it; the checker is cheap enough to leave on in validation.
-export PSANA_GPU_CHECK_COLLECTIVES=1
 export CUPY_CACHE_DIR="$PWD/validation/ipc-multinode-20261007/cupy-cache"
 mkdir -p "$CUPY_CACHE_DIR"
 
@@ -79,9 +75,9 @@ echo "========== multi-node event loop : 2 EB groups, shared constants =========
 export PS_EB_NODES=2
 export CUDA_VISIBLE_DEVICES=0
 timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
-    -x PSANA_GPU_CHECK_COLLECTIVES -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
-    python -u "$D/mpi_multinode_event_loop.py" \
-    --expect-hosts 2 --expect-devices 2 --max-events 200 || rc=$?
+    -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
+    python -u "$D/mpi_calib_pixel_exact.py" \
+    --expect-events 13 || rc=$?
 
 # Same again with one EB group spanning both nodes: the EB topology must not
 # reach the device grouping at all, so the device groups should be identical.
@@ -89,9 +85,9 @@ echo
 echo "========== multi-node event loop : 1 EB spanning 2 nodes =========="
 export PS_EB_NODES=1
 timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
-    -x PSANA_GPU_CHECK_COLLECTIVES -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
-    python -u "$D/mpi_multinode_event_loop.py" \
-    --expect-hosts 2 --expect-devices 2 --max-events 200 || rc=$?
+    -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
+    python -u "$D/mpi_calib_pixel_exact.py" \
+    --expect-events 13 || rc=$?
 
 # mpirun's exit status is not sufficient: it returns 0 even when ranks report
 # failures, and job 40801452 printed OVERALL: PASS while both summaries said

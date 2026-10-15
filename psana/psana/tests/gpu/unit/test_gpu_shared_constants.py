@@ -1,25 +1,46 @@
-"""Shared constants degrade on set difference and abort on content difference.
+"""Shared constants are all-or-nothing, and any failure aborts the group.
 
 The protocol is exercised against a fake device_comm that runs every peer in
 one process, and a NumPy-backed CuPy stand-in, so no GPU is required. Device
 behaviour that cannot be faithfully faked -- real IPC handles, real kernels --
 is covered by the integration tests instead.
+
+Two contracts these turn on:
+
+* **one constant set per run** -- ``refresh`` establishes on the first call and
+  is a no-op thereafter, which is what makes a returned array safe to hold for
+  the whole run;
+* **all-or-nothing sharing** -- every peer must declare the same selector set,
+  and an IPC failure aborts rather than degrading to private copies. The
+  escape hatch for a system where IPC cannot work is
+  ``PSANA_GPU_SHARE_CONSTANTS=0``.
 """
+import pathlib
+import sys
 from types import SimpleNamespace as NS
 
 import numpy as np
 import pytest
 
-from psana.gpu.gpu_budget import _GpuBudget
-from psana.gpu.gpu_placement import GpuPlacement
-from psana.gpu.gpu_shared_constants import (
-    SharedConstantsError, SharedRequestedConstants, digest_of,
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[1]))
+
+from collective_recorder import RecordingComm                    # noqa: E402
+from psana.gpu.gpu_budget import _GpuBudget                      # noqa: E402
+from psana.gpu.gpu_placement import GpuPlacement                 # noqa: E402
+from psana.gpu.gpu_shared_constants import (                     # noqa: E402
+    SharedConstantsError, SharedRequestedConstants, digest_of, sharing_enabled,
 )
 
 
 PEDS = np.arange(24, dtype=np.float32).reshape(3, 2, 2, 2)
 GAIN = (PEDS * 0.5 + 1).astype(np.float32)
 STATUS = np.ones((3, 2, 2, 2), dtype=np.uint16)
+
+
+def placement_with_peers(peers):
+    """A bare placement with a device communicator, for can_share checks."""
+    return GpuPlacement(device_pci='0:01:00.0', device_comm=NS(),
+                        n_device_peers=peers)
 
 
 def host(**overrides):
@@ -34,9 +55,8 @@ class FakeComm:
     Real collectives block until every peer contributes. Peers here are driven
     sequentially, so instead of blocking, each collective records this rank's
     contribution and returns the full set assembled from values the harness
-    already knows -- `group['declared']` for allgather, and a last-writer
-    broadcast slot. Sufficient for intersection, manifest validation and case
-    selection; real MPI ordering is covered by the integration tests.
+    already knows -- `group['declared']` for allgather, and a position-matched
+    broadcast slot. Real MPI ordering is covered by the integration tests.
     """
 
     def __init__(self, group, rank):
@@ -53,10 +73,10 @@ class FakeComm:
         """Gather over peers driven sequentially in one process.
 
         Declaration sets are answered from the harness's own record, so the
-        intersection does not depend on the order peers are driven in.
-        Anything else -- the case letter, device identity -- is answered with
-        this rank's own value repeated, which is exact whenever peers agree.
-        Disagreement between peers is covered by the MPI integration test.
+        set-agreement verdict does not depend on the order peers are driven
+        in. Anything else is answered with this rank's own value repeated,
+        which is exact whenever peers agree; disagreement is covered by the
+        MPI integration test.
         """
         self.group['contrib'][self._rank] = value
         if isinstance(value, (set, frozenset)):
@@ -66,10 +86,9 @@ class FakeComm:
     def bcast(self, value, root=0):
         """Round-aware broadcast.
 
-        Peers are driven sequentially and there are now several broadcasts per
-        transition (case letter, digests, manifest), so a single last-writer
-        slot would hand a follower whichever value the owner wrote most
-        recently. Count each rank's calls and match by position instead.
+        Peers are driven sequentially, so a single last-writer slot would hand
+        a follower whichever value the owner wrote most recently. Count each
+        rank's calls and match by position instead.
         """
         counts = self.group.setdefault('bcast_n', {})
         index = counts.get(self._rank, 0)
@@ -83,28 +102,14 @@ class FakeComm:
     def allreduce(self, value, op=None):
         """Reduction over peers driven sequentially in one process.
 
-        ``force_cases`` makes the MIN/MAX case agreement disagree: the helper
-        reduces an ordinal twice, so returning the lower bound for MIN and the
-        upper for MAX simulates peers proposing different cases.
-
         A real allreduce blocks until every peer contributes. Here the first
         caller cannot see the others, so returning a partial reduction would
-        make the owner act on an incomplete vote -- it would see "1 of 1
-        succeeded" and then diverge from a follower that failed.
-
-        Instead, treat this rank's own contribution as the result. That is
-        exact whenever all peers contribute the same value, which is the case
-        for both uses: the IPC-capability vote (all succeed or all fail
-        together under the fake CuPy) and the error count (the fake never
-        produces per-rank IPC errors). Genuine per-rank divergence is covered
-        by the MPI integration test, which this fake cannot model.
+        make the owner act on an incomplete vote. Treat this rank's own
+        contribution as the result instead: exact whenever all peers
+        contribute the same value, which is the case under the fake CuPy.
         """
         self.group.setdefault('reduce', []).append((self._rank, value))
         name = getattr(op, 'name', str(op)).upper()
-        forced = self.group.get('force_cases')
-        if forced is not None and value in (0, 1, 2):
-            codes = ['ABC'.index(c) for c in forced]
-            return min(codes) if 'MIN' in name else max(codes)
         if 'MIN' in name:
             return value
         return value * self.Get_size() if value else 0
@@ -113,10 +118,10 @@ class FakeComm:
         """Buffer-form reduction, used for the single agreement step.
 
         Peers run sequentially here, so this rank's own vector is the result.
-        That is exact for the agreement step's purpose in these tests: the
-        fake CuPy either works for every peer or for none, and content
-        disagreement is injected on the rank being asserted. Genuine per-rank
-        divergence is covered by the MPI integration test.
+        That is exact for these tests: the fake CuPy either works for every
+        peer or for none, and content disagreement is injected on the rank
+        being asserted. Genuine per-rank divergence is covered by the MPI
+        integration test.
         """
         self.group.setdefault('allreduce', []).append(
             (self._rank, list(sendbuf)))
@@ -148,19 +153,23 @@ class FakeComm:
         return None
 
 
-class FakeOp:
-    def __init__(self, name):
-        self.name = name
+def make_peers(declarations, *, budgets=None, uuid='abcd' * 8, record=False):
+    """One SharedRequestedConstants per peer, sharing a fake device_comm.
 
-
-def make_peers(declarations, *, budgets=None, uuid='abcd' * 8):
-    """One SharedRequestedConstants per peer, sharing a fake device_comm."""
+    ``record=True`` wraps each communicator in the test recorder, which is
+    also how the integration drivers enable order checking -- production holds
+    no reference to it.
+    """
     group = {'declared': [list(d) for d in declarations],
              'contrib': {}, 'bcast': None}
     cp = FakeCupy()
     peers = []
+    recorders = []
     for rank, declared in enumerate(declarations):
         comm = FakeComm(group, rank)
+        if record:
+            comm = RecordingComm(comm, 'shared-constants')
+            recorders.append(comm)
         placement = GpuPlacement(
             device_pci=uuid, device_comm=comm,
             is_owner=(rank == 0), n_device_peers=len(declarations),
@@ -168,6 +177,8 @@ def make_peers(declarations, *, budgets=None, uuid='abcd' * 8):
         budget = (budgets[rank] if budgets else _GpuBudget(1 << 30))
         peers.append(SharedRequestedConstants(declared, budget, placement,
                                               cp=cp))
+    if record:
+        return peers, cp, recorders
     return peers, cp
 
 
@@ -255,7 +266,6 @@ class FakeCupy:
     # -- arrays --
     def ndarray(self, shape, dtype=None, memptr=None):
         count = int(np.prod(shape)) if shape else 1
-        itemsize = np.dtype(dtype).itemsize
         offset = int(memptr.ptr)
         view = np.frombuffer(self.heap, dtype=dtype, count=count,
                              offset=offset).reshape(shape)
@@ -268,10 +278,8 @@ class FakeCupy:
         return np.asarray(a).view(FakeArray)
 
 
-
-
 # ---------------------------------------------------------------------------
-# Intersection: differing selector sets degrade
+# All-or-nothing: identical sets share, any difference shares nothing
 # ---------------------------------------------------------------------------
 
 def test_identical_declarations_share_everything():
@@ -281,28 +289,29 @@ def test_identical_declarations_share_everything():
         peer.refresh(host())
     for peer in peers:
         assert peer.shared_selectors == tuple(decl)
-        assert peer.private_selectors == ()
     # One device copy, not two.
     assert len(cp.live) == 2          # pedestals + gain, owned once each
 
 
-def test_differing_sets_share_the_intersection():
-    """#168 lists differing selectors as a supported case, so a selector a
-    peer did not request must not fail the job."""
+def test_differing_sets_share_nothing():
+    """Sharing is all-or-nothing. Peers on one device run the same GpuTask so
+    they normally declare the same set; a group that disagrees gets a private
+    copy per rank rather than a partial share."""
     owner = [('jf', 'pedestals'), ('jf', 'pixel_gain'), ('jf', 'pixel_status')]
     follower = [('jf', 'pedestals'), ('jf', 'pixel_gain')]
-    peers, _ = make_peers([owner, follower])
+    peers, cp = make_peers([owner, follower])
     for peer in peers:
         peer.refresh(host())
 
-    shared = (('jf', 'pedestals'), ('jf', 'pixel_gain'))
-    assert peers[0].shared_selectors == shared
-    assert peers[1].shared_selectors == shared
-    assert peers[0].private_selectors == (('jf', 'pixel_status'),)
-    assert peers[1].private_selectors == ()
+    for peer in peers:
+        assert peer.shared_selectors == ()
+        assert peer.shared_bytes == 0
+        assert peer._placement.sharing == 'off'
+    # No un-pooled owner allocation: the private path uses the pool.
+    assert cp.live == {}
 
 
-def test_every_declared_constant_is_readable_through_either_path():
+def test_every_declared_constant_is_readable_when_sets_differ():
     owner = [('jf', 'pedestals'), ('jf', 'pixel_status')]
     follower = [('jf', 'pedestals')]
     peers, _ = make_peers([owner, follower])
@@ -313,14 +322,29 @@ def test_every_declared_constant_is_readable_through_either_path():
     np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS)
 
 
-def test_empty_intersection_shares_nothing_without_error():
-    peers, cp = make_peers([[('jf', 'pedestals')], [('jf', 'pixel_gain')]])
+def test_disjoint_sets_share_nothing_without_error():
+    peers, _ = make_peers([[('jf', 'pedestals')], [('jf', 'pixel_gain')]])
     for peer in peers:
         peer.refresh(host())
     for peer in peers:
         assert peer.shared_selectors == ()
         assert peer.shared_bytes == 0
     np.testing.assert_array_equal(peers[1].get('jf', 'pixel_gain'), GAIN)
+
+
+def test_order_does_not_count_as_disagreement():
+    """The set is what matters, not the order a task happened to list it in:
+    two peers running the same task with the selectors written differently
+    must still share."""
+    first = [('jf', 'pedestals'), ('jf', 'pixel_gain')]
+    second = [('jf', 'pixel_gain'), ('jf', 'pedestals')]
+    peers, cp = make_peers([first, second])
+    for peer in peers:
+        peer.refresh(host())
+    for peer in peers:
+        assert set(peer.shared_selectors) == set(first)
+        assert peer._placement.sharing == 'on'
+    assert len(cp.live) == 2
 
 
 def test_undeclared_access_still_fails():
@@ -363,6 +387,15 @@ def test_dtype_mismatch_aborts():
         peers[1].refresh(host(pedestals=PEDS.astype(np.float64)))
 
 
+def test_digest_detects_content_and_ignores_identity():
+    a = np.arange(8, dtype=np.float32)
+    assert digest_of(a) == digest_of(a.copy())
+    assert digest_of(a) != digest_of(a + 1)
+    # Non-contiguous input must still digest its logical content.
+    assert digest_of(a.reshape(2, 4)[:, ::2]) == digest_of(
+        np.ascontiguousarray(a.reshape(2, 4)[:, ::2]))
+
+
 # ---------------------------------------------------------------------------
 # Accounting: charge once, report imports
 # ---------------------------------------------------------------------------
@@ -383,16 +416,28 @@ def test_owner_charges_shared_bytes_and_followers_charge_nothing():
     assert peers[0].imported_bytes == 0
 
 
-def test_owner_also_charges_its_private_remainder():
-    owner = [('jf', 'pedestals'), ('jf', 'pixel_status')]
-    follower = [('jf', 'pedestals')]
-    budgets = [_GpuBudget(1 << 30), _GpuBudget(1 << 30)]
-    peers, _ = make_peers([owner, follower], budgets=budgets)
+def test_the_placement_records_a_followers_imported_bytes():
+    """The field was declared and documented but never written, so a
+    follower's imported bytes always read zero.
+
+    It is the one figure that shows sharing worked from the follower's side:
+    memory it reads and is not charged for. Cleared again at teardown, so a
+    reading taken after close() does not describe a mapping that is gone.
+    """
+    decl = [('jf', 'pedestals')]
+    peers, _ = make_peers([decl, decl])
     for peer in peers:
         peer.refresh(host())
-    # Shared bytes plus the private selector nobody else wanted.
-    assert budgets[0].committed() >= PEDS.nbytes + STATUS.nbytes
-    assert budgets[1].committed() == 0
+
+    owner, follower = peers
+    assert follower._placement.imported_bytes == PEDS.nbytes
+    assert owner._placement.imported_bytes == 0, \
+        'the owner holds the allocation; it imports nothing'
+
+    for peer in reversed(peers):
+        peer.close()
+    assert follower._placement.imported_bytes == 0, \
+        'the figure outlived the mapping it describes'
 
 
 def test_shared_bytes_are_reported_by_both_roles():
@@ -405,11 +450,11 @@ def test_shared_bytes_are_reported_by_both_roles():
 
 
 # ---------------------------------------------------------------------------
-# BeginStep: three cases, decided by the owner
+# One constant set per run
 # ---------------------------------------------------------------------------
 
 def test_a_second_refresh_does_nothing():
-    """One constant set per run: establish once, then no-op.
+    """Establish once, then no-op.
 
     BeginStep does not fetch the calibration DB, so a second refresh could
     only find the values already uploaded. It must not upload, synchronise or
@@ -474,8 +519,11 @@ def test_a_shared_array_stays_valid_for_the_whole_run():
         peer.refresh(host(pedestals=PEDS + 7))
 
     np.testing.assert_array_equal(np.asarray(kept), before)
-    assert np.asarray(kept) is not None
 
+
+# ---------------------------------------------------------------------------
+# Teardown
+# ---------------------------------------------------------------------------
 
 def test_importers_close_before_the_owner_frees():
     decl = [('jf', 'pedestals')]
@@ -512,8 +560,22 @@ def test_refresh_after_close_is_refused():
         peers[1].refresh(host())
 
 
+def test_close_without_sharing_makes_no_collective():
+    """A group that shared nothing has no mappings to close in order, so
+    close() must not barrier -- a barrier there would have to be matched by
+    every peer, and a rank that never established would not reach it."""
+    peers, _, recorders = make_peers(
+        [[('jf', 'pedestals')], [('jf', 'pixel_gain')]], record=True)
+    for peer in peers:
+        peer.refresh(host())
+    before = [len(r.calls) for r in recorders]
+    for peer in peers:
+        peer.close()
+    assert [len(r.calls) for r in recorders] == before
+
+
 # ---------------------------------------------------------------------------
-# Fallbacks: degrade to a private copy, never to a wrong device
+# No sharing available
 # ---------------------------------------------------------------------------
 
 def test_single_peer_uses_the_inherited_private_path():
@@ -531,144 +593,11 @@ def test_no_placement_uses_the_inherited_private_path():
     assert not peer._sharing
 
 
-def test_mig_peers_degrade_rather_than_being_detected():
-    """MIG is handled by the capability path, not by detection.
-
-    Grouping is by PCI bus id, which MIG instances of one card share, so two
-    ranks on different instances look like peers and sharing is attempted.
-    The IPC import then fails -- CUDA IPC cannot span instances, which have
-    separate memory -- and the group degrades to private copies together.
-
-    Detecting MIG up front would need an instance UUID, which neither CUDA nor
-    plain NVML enumeration provides; the grouping comment in
-    gpu_placement.discover_peers records what that would take. The capability
-    path has to exist regardless, for IPC failures unrelated to MIG, so this
-    test drives MIG through it.
-    """
-    import psana.gpu.gpu_shared_constants as module
-
-    declared = [('jf', 'pedestals')]
-    peers, _ = make_peers([declared, declared])
-    original = module._ImportedBlock
-
-    class CannotSpanInstances(original):
-        def __init__(self, *args, **kwargs):
-            raise RuntimeError('cudaIpcOpenMemHandle: invalid device context')
-
-    module._ImportedBlock = CannotSpanInstances
-    try:
-        for peer in peers:
-            peer.refresh(host())           # must not raise
-    finally:
-        module._ImportedBlock = original
-
-    follower = peers[1]
-    assert follower.shared_selectors == ()
-    assert follower.private_selectors == tuple(declared)
-    assert 'fallback' in follower._placement.sharing
-
-
-def test_digest_detects_content_and_ignores_identity():
-    a = np.arange(8, dtype=np.float32)
-    assert digest_of(a) == digest_of(a.copy())
-    assert digest_of(a) != digest_of(a + 1)
-    # Non-contiguous input must still digest its logical content.
-    assert digest_of(a.reshape(2, 4)[:, ::2]) == digest_of(
-        np.ascontiguousarray(a.reshape(2, 4)[:, ::2]))
-
-
-# ---------------------------------------------------------------------------
-# Failure paths: no exception may skip a collective
-# ---------------------------------------------------------------------------
-# The follow-up review found that an exception could leave peers in different
-# collectives: MPI pairs them by call order, not by operation, so a rank that
-# reaches a different one gives undefined results and then hangs. These
-# assert that each failure still produces the same sequence of calls.
-
-def collective_trace(group):
-    """Calls recorded by FakeComm, as (kind, rank) pairs."""
-    trace = []
-    for rank, _ in group.get('allreduce', []):
-        trace.append(('Allreduce', rank))
-    return trace
-
-
-def test_owner_failing_before_bcast_still_publishes_a_marker():
-    """If the owner's allocation or upload raises it must still broadcast,
-    or followers wait in bcast forever."""
-    decl = [('jf', 'pedestals')]
-    peers, cp = make_peers([decl, decl])
-    cp.fail_malloc = True                      # owner's _OwnedBlock raises
+def test_solo_rank_reports_sharing_off():
+    peers, _ = make_peers([[('jf', 'pedestals')]])
     peers[0].refresh(host())
-    # An empty manifest was published rather than nothing at all.
-    assert peers[0].shared_selectors == ()     # degraded to private
-    assert peers[0]._ipc_error is not None
-    cp.fail_malloc = False
-    peers[1].refresh(host())
-    assert peers[1].shared_selectors == ()
-    # Values are still correct through the private path.
-    np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS)
+    assert peers[0]._placement.sharing == 'off'
 
-
-def test_follower_import_failure_degrades_the_group():
-    """A follower's ipcOpenMemHandle failing must not leave it in a different
-    collective from its peers."""
-    decl = [('jf', 'pedestals')]
-    peers, cp = make_peers([decl, decl])
-    peers[0].refresh(host())
-    cp.fail_open = True
-    peers[1].refresh(host())
-    assert peers[1]._ipc_error is not None
-    assert peers[1].shared_selectors == ()     # fell back, did not hang
-    np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS)
-
-
-def test_fallback_closes_importers_before_the_owner_frees():
-    """CUDA requires imported mappings closed before the exporter frees, and
-    a follower may have opened some handles before the failure.
-
-    Asserted on the follower only: peers are driven sequentially here, so the
-    owner has already returned from refresh() and cannot re-enter the
-    fallback. The owner's half of the ordering -- Barrier, then free -- is
-    covered by the MPI integration test.
-    """
-    decl = [('jf', 'pedestals'), ('jf', 'pixel_gain')]
-    peers, cp = make_peers([decl, decl])
-    peers[0].refresh(host())
-    cp.fail_open = True
-    peers[1].refresh(host())
-    # The follower released every mapping it had opened before failing, and
-    # holds no shared state afterwards.
-    assert peers[1]._imported == {}
-    assert peers[1].shared_selectors == ()
-    assert peers[1].imported_bytes == 0
-
-
-def test_failed_publish_releases_its_budget_charge():
-    """A block whose upload raises must not keep its charge.
-
-    _OwnedBlock reserves budget and allocates in its constructor, so a later
-    failure in view/set/handle left it unreferenced and uncharged-for -- and
-    the fallback then uploaded privately, making the owner pay twice.
-    """
-    decl = [('jf', 'pedestals')]
-    budgets = [_GpuBudget(1 << 30), _GpuBudget(1 << 30)]
-    peers, cp = make_peers([decl, decl], budgets=budgets)
-    cp.fail_handle = True                  # ipcGetMemHandle raises after alloc
-    peers[0].refresh(host())
-    cp.fail_handle = False
-    peers[1].refresh(host())
-
-    # Charged exactly once: for the private copy it fell back to.
-    assert budgets[0].committed() == PEDS.nbytes
-
-
-# ---------------------------------------------------------------------------
-# A fallback must be visible
-# ---------------------------------------------------------------------------
-# Degrading keeps the job running while every peer holds its own copy of the
-# constants, so a device that held one copy holds n. Previously the only trace
-# was shared_bytes dropping to zero.
 
 def test_successful_sharing_is_reported_as_on():
     decl = [('jf', 'pedestals')]
@@ -680,95 +609,282 @@ def test_successful_sharing_is_reported_as_on():
         assert 'sharing=on' in peer._placement.describe()
 
 
-def test_fallback_is_logged_with_its_reason_and_cost(caplog):
+def test_sharing_can_be_disabled_by_environment(monkeypatch):
+    """The escape hatch the IPC abort points users at.
+
+    A system where CUDA IPC cannot work between ranks discovery grouped as
+    peers -- MIG, chiefly, whose instances share a PCI bus id -- would
+    otherwise abort with no way to proceed.
+    """
+    monkeypatch.delenv('PSANA_GPU_SHARE_CONSTANTS', raising=False)
+    assert sharing_enabled()
+    monkeypatch.setenv('PSANA_GPU_SHARE_CONSTANTS', '1')
+    assert sharing_enabled()
+    monkeypatch.setenv('PSANA_GPU_SHARE_CONSTANTS', '0')
+    assert not sharing_enabled()
+    monkeypatch.setenv('PSANA_GPU_SHARE_CONSTANTS', 'no')
+    assert not sharing_enabled()
+
+
+def test_an_opted_out_placement_takes_the_private_path():
+    """The group's agreed verdict, not this rank's environment.
+
+    can_share folds in sharing_permitted, which discovery reduces with MIN
+    over the device group. A rank acting on its own reading of the variable
+    would skip the establishment allgather its peers enter -- one of the two
+    unbounded collectives, so the job would hang with no diagnostic.
+    """
     decl = [('jf', 'pedestals')]
     peers, cp = make_peers([decl, decl])
-    peers[0].refresh(host())
-    cp.fail_open = True
-    with caplog.at_level('WARNING'):
+    for peer in peers:
+        peer._placement.sharing_permitted = False
+        assert not peer._placement.can_share
+    for peer in peers:
+        peer.refresh(host())
+    for peer in peers:
+        assert peer.shared_selectors == ()
+        assert peer._placement.sharing == 'off'
+    assert cp.live == {}          # no un-pooled owner allocation
+    np.testing.assert_array_equal(peers[1].get('jf', 'pedestals'), PEDS)
+
+
+def test_sharing_permitted_defaults_true_without_discovery():
+    """A placement built by hand -- the serial path, the unit tests -- must
+    behave as it did before the field existed."""
+    assert GpuPlacement().sharing_permitted is True
+    assert placement_with_peers(2).can_share
+
+
+# ---------------------------------------------------------------------------
+# IPC failure aborts the group
+# ---------------------------------------------------------------------------
+# The automatic degrade to private copies was removed: it hid a
+# misconfiguration behind an n-times memory cost, and its reset path was the
+# source of two separate budget defects. A failure now aborts with a message
+# naming PSANA_GPU_SHARE_CONSTANTS=0 as the deliberate way to run without it.
+
+def test_owner_failing_before_bcast_still_publishes_a_marker():
+    """If the owner's allocation or upload raises it must still broadcast,
+    or followers wait in bcast forever -- then both abort together."""
+    decl = [('jf', 'pedestals')]
+    peers, cp = make_peers([decl, decl])
+    cp.fail_malloc = True                      # owner's _OwnedBlock raises
+    with pytest.raises(SharedConstantsError, match='CUDA IPC is unusable'):
+        peers[0].refresh(host())
+    assert peers[0]._ipc_error is not None
+    # The empty manifest reached the follower, which aborts rather than
+    # blocking in bcast.
+    cp.fail_malloc = False
+    with pytest.raises(SharedConstantsError, match='CUDA IPC is unusable'):
         peers[1].refresh(host())
 
-    messages = [r.getMessage() for r in caplog.records]
-    assert any('fell back to private copies' in m for m in messages)
-    # The reason, and the memory it now costs, must both be in the line.
-    assert any('ipcOpenMemHandle' in m for m in messages)
-    assert any('each hold' in m for m in messages)
-    # Bytes as well as MiB: a small constant set would otherwise log as
-    # "0.0 MiB" and read like a broken calculation.
-    assert any('bytes' in m for m in messages)
 
-
-def test_fallback_is_recorded_on_the_placement():
+def test_follower_import_failure_aborts_the_group():
     decl = [('jf', 'pedestals')]
     peers, cp = make_peers([decl, decl])
     peers[0].refresh(host())
     cp.fail_open = True
-    peers[1].refresh(host())
-    state = peers[1]._placement.sharing
-    assert state.startswith('fallback(')
-    assert 'ipcOpenMemHandle' in state
-    # And it shows in the placement line, where a regression would be noticed.
-    assert 'sharing=fallback(' in peers[1]._placement.describe()
+    with pytest.raises(SharedConstantsError, match='CUDA IPC is unusable'):
+        peers[1].refresh(host())
+    assert peers[1]._ipc_error is not None
 
 
-def test_solo_rank_reports_sharing_off():
-    peers, _ = make_peers([[('jf', 'pedestals')]])
+def test_the_abort_names_the_way_to_run_without_sharing():
+    """An abort with no remedy would strand MIG users, who have no other way
+    to run: discovery groups their instances as peers because they share a
+    PCI bus id, and the import then necessarily fails."""
+    decl = [('jf', 'pedestals')]
+    peers, cp = make_peers([decl, decl])
     peers[0].refresh(host())
-    assert peers[0]._placement.sharing == 'off'
+    cp.fail_open = True
+    with pytest.raises(SharedConstantsError) as caught:
+        peers[1].refresh(host())
+    message = str(caught.value)
+    assert 'PSANA_GPU_SHARE_CONSTANTS=0' in message
+    assert 'ipcOpenMemHandle' in message, 'the cause is not in the message'
+
+
+def test_an_ipc_failure_releases_what_was_built_before_aborting():
+    """The abort must not leak the owner's allocation or a follower's mapping.
+
+    Release goes through _release_shared, whose barriers every peer reaches,
+    rather than happening on whichever rank noticed first.
+    """
+    decl = [('jf', 'pedestals'), ('jf', 'pixel_gain')]
+    peers, cp = make_peers([decl, decl])
+    peers[0].refresh(host())
+    cp.fail_open = True
+    with pytest.raises(SharedConstantsError):
+        peers[1].refresh(host())
+    assert peers[1]._imported == {}, 'a mapping was left open'
+    assert peers[1].imported_bytes == 0
+
+
+def test_close_after_an_abort_makes_no_collective():
+    """The abort already released, so close() must not do it again.
+
+    _settle releases through _release_shared, whose two barriers every peer
+    reaches, and then raises. If it left _shared set, the close() that follows
+    would take the sharing path and repeat the device sync and both barriers --
+    matched only if every peer happens to call close(), which is the caller's
+    property and not this class's to assume.
+    """
+    decl = [('jf', 'pedestals')]
+    peers, cp, recorders = make_peers([decl, decl], record=True)
+    peers[0].refresh(host())
+    cp.fail_open = True
+    with pytest.raises(SharedConstantsError):
+        peers[1].refresh(host())
+
+    # Scoped to the follower that aborted. Peers run sequentially here and
+    # FakeComm's Iallreduce answers each rank with its own contribution, so
+    # the owner cannot learn of the follower's failure: it returned from
+    # refresh() believing sharing succeeded, and its close() then releases for
+    # real. On MPI the reduction carries the flag and both ranks abort, which
+    # the follower-import integration case covers.
+    follower, recorder = peers[1], recorders[1]
+    calls_after_abort = len(recorder.calls)
+    syncs_after_abort = cp.syncs
+    follower.close()
+    assert len(recorder.calls) == calls_after_abort, \
+        'close() after an abort made a collective'
+    assert cp.syncs == syncs_after_abort, \
+        'close() after an abort synchronised the device again'
+    follower.close()                    # and still idempotent
+    assert len(recorder.calls) == calls_after_abort
+
+
+def test_an_abort_leaves_no_device_arrays_reachable():
+    """get() must not hand back a view of memory the abort released."""
+    decl = [('jf', 'pedestals')]
+    peers, cp = make_peers([decl, decl])
+    peers[0].refresh(host())
+    cp.fail_open = True
+    with pytest.raises(SharedConstantsError):
+        peers[1].refresh(host())
+    assert peers[1].shared_selectors == ()
+    with pytest.raises(KeyError):
+        peers[1].get('jf', 'pedestals')
+
+
+def test_a_content_abort_releases_the_owners_allocation():
+    """The content branch used to raise without releasing.
+
+    At HEAD, `_settle`'s content branch raised immediately: the owner had
+    already allocated and uploaded its un-pooled block by then, so every
+    content abort leaked a full copy of the constants plus its budget
+    reservation. Both branches now release through `_release_shared` before
+    raising, which is also what keeps the two barriers matched across peers.
+
+    Asserted on the OWNER, driven into the abort itself. The sequential fake
+    cannot propagate the follower's verdict -- ``Allreduce`` answers each rank
+    with its own vector -- so a follower-detected mismatch leaves the owner
+    believing it succeeded. Injecting the error on the owner's own side is
+    what makes it traverse the branch under test. That the whole group aborts
+    together is covered on real MPI by the shared-constants driver's guard
+    block.
+    """
+    decl = [('jf', 'pedestals')]
+    budgets = [_GpuBudget(1 << 30), _GpuBudget(1 << 30)]
+    peers, cp = make_peers([decl, decl], budgets=budgets)
+
+    # Make the owner itself report a content error, so it reaches _settle's
+    # content branch with its block already allocated and uploaded.
+    owner = peers[0]
+    real_publish = owner._publish
+
+    def publish_then_reject(hosts):
+        real_publish(hosts)
+        return (['injected: a peer rejected the shared constants'], None)
+
+    owner._publish = publish_then_reject
+
+    with pytest.raises(SharedConstantsError, match='injected'):
+        owner.refresh(host())
+
+    # The block was allocated before the abort, and releasing is what returns
+    # it. At HEAD this branch raised immediately and leaked both.
+    assert cp.live == {}, "the owner's un-pooled block was leaked"
+    assert budgets[0].committed() == 0, 'the budget charge was never returned'
+    assert owner.shared_selectors == ()
+
+
+def test_failed_publish_releases_its_budget_charge():
+    """A block whose upload raises must not keep its charge.
+
+    _OwnedBlock reserves budget and allocates in its constructor, so a later
+    failure in view/set/handle left it unreferenced and uncharged-for.
+    """
+    decl = [('jf', 'pedestals')]
+    budgets = [_GpuBudget(1 << 30), _GpuBudget(1 << 30)]
+    peers, cp = make_peers([decl, decl], budgets=budgets)
+    cp.fail_handle = True                  # ipcGetMemHandle raises after alloc
+    with pytest.raises(SharedConstantsError):
+        peers[0].refresh(host())
+    assert budgets[0].committed() == 0, 'the failed block kept its charge'
+
+
+def test_failed_import_closes_a_partly_built_block():
+    """ipcOpenMemHandle can succeed while view() then raises.
+
+    The block never reaches self._imported, so _release_shared would not
+    close it -- and the owner frees its allocation after that barrier, with
+    this rank's mapping still open, which CUDA forbids. The owner's half in
+    _publish already handled the same window.
+    """
+    import psana.gpu.gpu_shared_constants as module
+
+    original = module._ImportedBlock
+    opened, closed = [], []
+
+    class OpensThenFailsToView(original):
+        def __init__(self, cp, handle, nbytes):
+            super().__init__(cp, handle, nbytes)
+            opened.append(id(self))          # the mapping is now open
+
+        def view(self, *args, **kwargs):
+            raise RuntimeError('injected: view fails after the mapping opened')
+
+        def close(self):
+            closed.append(id(self))
+            return super().close()
+
+    declared = [('jf', 'pedestals')]
+    peers, _ = make_peers([declared, declared])
+    module._ImportedBlock = OpensThenFailsToView
+    try:
+        peers[0].refresh(host())
+        with pytest.raises(SharedConstantsError):
+            peers[1].refresh(host())
+    finally:
+        module._ImportedBlock = original
+
+    assert opened, 'the test did not reach the import'
+    assert len(closed) == len(opened), (
+        f'{len(opened) - len(closed)} mapping(s) left open; the owner frees '
+        'its allocation underneath them')
 
 
 # ---------------------------------------------------------------------------
 # Collective order: every peer must make the same calls, in the same order
 # ---------------------------------------------------------------------------
-# Path divergence is what every hang on this branch turned out to be, and the
-# sequential fake cannot see two ranks blocked in different calls. The order
-# checker is the only thing that detects it, so these assert it is actually
-# wired in and that each path records a consistent sequence.
+# Path divergence is what every hang in this work turned out to be, and the
+# sequential fake cannot see two ranks blocked in different calls. The
+# recorder is the only thing that detects it here.
 
-def peers_with_checking(declarations, monkeypatch, **kwargs):
-    monkeypatch.setenv('PSANA_GPU_CHECK_COLLECTIVES', '1')
-    return make_peers(declarations, **kwargs)
-
-
-def test_checker_is_wired_in_when_enabled(monkeypatch):
-    """Previously the recorder existed but nothing turned it on, so it had
-    never run."""
+def test_establishment_records_one_sequence_on_every_peer():
+    """MPI pairs collectives by call order rather than by operation, so a rank
+    that takes a different route does not raise -- it hangs the others."""
     decl = [('jf', 'pedestals')]
-    peers, _ = peers_with_checking([decl, decl], monkeypatch)
-    for peer in peers:
-        peer.refresh(host())
-    for peer in peers:
-        assert peer._recorder is not None
-        assert peer._recorder.calls, 'no collectives recorded'
-
-
-def test_checker_is_absent_when_disabled(monkeypatch):
-    monkeypatch.delenv('PSANA_GPU_CHECK_COLLECTIVES', raising=False)
-    decl = [('jf', 'pedestals')]
-    peers, _ = make_peers([decl, decl])
-    for peer in peers:
-        peer.refresh(host())
-    assert all(peer._recorder is None for peer in peers)
-
-
-def test_establishment_records_one_sequence_on_every_peer(monkeypatch):
-    """Peers must make the same collectives in the same order.
-
-    Establishment is now the only path that collectives at all, so this is
-    where divergence could hide. MPI pairs collectives by call order rather
-    than by operation, so a rank that takes a different route does not raise
-    -- it hangs the others.
-    """
-    decl = [('jf', 'pedestals')]
-    peers, _ = peers_with_checking([decl, decl], monkeypatch)
+    peers, _, recorders = make_peers([decl, decl], record=True)
     for peer in peers:
         peer.refresh(host())
 
-    sequences = {peer._recorder.sequence_digest() for peer in peers}
+    sequences = {r.sequence_digest() for r in recorders}
     assert len(sequences) == 1, f'peers diverged at establishment: {sequences}'
 
 
-def test_later_refreshes_make_no_collectives(monkeypatch):
+def test_later_refreshes_make_no_collectives():
     """A second refresh must not collective at all.
 
     Under the one-set-per-run contract there is nothing to agree, and a
@@ -776,56 +892,54 @@ def test_later_refreshes_make_no_collectives(monkeypatch):
     so any rank that skipped a transition would hang the rest.
     """
     decl = [('jf', 'pedestals')]
-    peers, _ = peers_with_checking([decl, decl], monkeypatch)
+    peers, _, recorders = make_peers([decl, decl], record=True)
     for peer in peers:
         peer.refresh(host())
-    after_establish = [len(peer._recorder.calls) for peer in peers]
+    after_establish = [len(r.calls) for r in recorders]
 
     for _ in range(3):
         for peer in peers:
             peer.refresh(host(pedestals=PEDS + 5))
 
-    assert [len(p._recorder.calls) for p in peers] == after_establish, \
+    assert [len(r.calls) for r in recorders] == after_establish, \
         'a later refresh made a collective'
 
 
-def test_fallback_path_is_recorded(monkeypatch):
-    """The degrade path closes, barriers and re-uploads, and each of those is
-    recorded.
-
-    Sequence *equality* is deliberately not asserted: peers run sequentially
-    in this fake, so the owner has already returned from refresh() and never
-    re-enters the degrade path. Agreement on the fallback needs real
-    concurrency, which the fail-follower-import integration case provides.
-    """
+def test_close_records_one_sequence():
     decl = [('jf', 'pedestals')]
-    peers, cp = peers_with_checking([decl, decl], monkeypatch)
-    peers[0].refresh(host())
-    cp.fail_open = True
-    peers[1].refresh(host())
-    # The follower recorded the extra collectives the degrade performs.
-    assert len(peers[1]._recorder.calls) > len(peers[0]._recorder.calls)
-    assert 'Ibarrier' in peers[1]._recorder.calls
-
-
-def test_close_records_one_sequence(monkeypatch):
-    decl = [('jf', 'pedestals')]
-    peers, _ = peers_with_checking([decl, decl], monkeypatch)
+    peers, _, recorders = make_peers([decl, decl], record=True)
     for peer in peers:
         peer.refresh(host())
     for peer in peers:
         peer.close()
-    sequences = {peer._recorder.sequence_digest() for peer in peers}
+    sequences = {r.sequence_digest() for r in recorders}
     assert len(sequences) == 1
 
 
+def test_disagreeing_peers_stay_on_one_path():
+    """A group whose sets differ shares nothing, and both ranks must reach the
+    same collectives getting there: the verdict comes from one allgather that
+    every rank makes."""
+    peers, _, recorders = make_peers(
+        [[], [('jf', 'pedestals')]], record=True)
+    sources = [{}, host()]
+    for _ in range(3):
+        for peer, source in zip(peers, sources):
+            peer.refresh(source)
+
+    sequences = {r.sequence_digest() for r in recorders}
+    assert len(sequences) == 1, (
+        'a rank declaring nothing diverged from one declaring a selector: '
+        f'{[r.calls for r in recorders]}')
+
+
 # ---------------------------------------------------------------------------
-# A task that declares no constants (PR 175 review)
+# A task that declares no constants
 # ---------------------------------------------------------------------------
 
 def test_empty_declaration_establishes_once():
-    """Establishment is tracked by a flag, not by whether the selector tuples
-    are non-empty: those two states are indistinguishable for a task that
+    """Establishment is tracked by a flag, not by whether the selector tuple
+    is non-empty: those two states are indistinguishable for a task that
     declared no constants, and conflating them re-runs establish on every
     transition -- collectives and a cache trim per step for a task that asked
     for nothing."""
@@ -855,36 +969,20 @@ def test_empty_declaration_reports_that_nothing_moved():
     assert later == [False, False]
 
 
-def test_empty_declaration_keeps_peers_on_one_path(monkeypatch):
-    """Establish still runs once even with nothing declared, because peers may
-    declare different sets by design and _intersect's allgather needs every
-    rank. Skipping it on one rank would hang the others."""
-    peers = peers_with_checking([[], []], monkeypatch)[0]
+def test_empty_declaration_keeps_peers_on_one_path():
+    """Establish still runs once even with nothing declared, because
+    _agree_on_set's allgather needs every rank. Skipping it on one rank would
+    hang the others."""
+    peers, _, recorders = make_peers([[], []], record=True)
     for _ in range(3):
         for peer in peers:
             peer.refresh({})
-    sequences = {peer._recorder.sequence_digest() for peer in peers}
+    sequences = {r.sequence_digest() for r in recorders}
     assert len(sequences) == 1, f'peers diverged: {sequences}'
 
 
-def test_one_peer_declaring_nothing_still_agrees():
-    """The degrade design permits unequal declarations. The rank that declared
-    nothing must still take part in the intersection, and neither rank may
-    end up sharing a selector the other never asked for."""
-    declared = [('jf', 'pedestals')]
-    peers, _ = make_peers([[], declared])
-    sources = [{}, host()]
-    for peer, source in zip(peers, sources):
-        peer.refresh(source)
-
-    assert peers[0].shared_selectors == ()
-    assert peers[1].shared_selectors == (), \
-        'a selector only one peer declared must not be shared'
-    assert peers[1].private_selectors == tuple(declared)
-
-
 # ---------------------------------------------------------------------------
-# The budget must be sized before the intersection is allocated (PR 175)
+# The budget must be sized before the shared copy is allocated (PR 175)
 # ---------------------------------------------------------------------------
 
 class WatchingBudget(_GpuBudget):
@@ -919,13 +1017,12 @@ def _wire_sizing(peer, budget, usable):
     peer._sizing = resize
 
 
-def test_budget_is_resized_before_the_intersection_is_allocated():
-    """The limits must be in place before the intersection is allocated.
+def test_budget_is_resized_before_the_shared_copy_is_allocated():
+    """The limits must be in place before the shared copy is allocated.
 
-    A 12 GiB intersection on a 40 GiB four-peer device fits the documented
-    accounting -- owner 7 + 12 = 19 GiB -- but charged against usable/peers
-    (10 GiB) the shared copy is refused, the group degrades, and the private
-    copy is refused by the same limit. Scaled down here to the fixture's heap.
+    A 12 GiB set on a 40 GiB four-peer device fits the documented accounting
+    -- owner 7 + 12 = 19 GiB -- but charged against usable/peers (10 GiB) the
+    shared copy is refused. Scaled down here to the fixture's heap.
     """
     usable, peer_count = 400 * 1024, 4
     shared = np.zeros((16 * 1024,), dtype=np.float32)     # 64 KiB
@@ -956,9 +1053,10 @@ def test_budget_is_resized_before_the_intersection_is_allocated():
     assert budgets[1].limit() == expected_share
 
 
-def test_sizing_is_not_called_before_the_intersection_is_known():
-    """Sizing must see the negotiated intersection, not this rank's
-    declaration: a selector only one peer declared is private, not shared."""
+def test_sizing_is_not_called_when_nothing_is_shared():
+    """A group whose sets disagree shares nothing, so the budget must stay at
+    usable/peers: calling sizing with this rank's own declaration would
+    reserve device memory for a copy that is never made."""
     seen = []
     declared = [('jf', 'pedestals')]
     peers, _ = make_peers([[], declared])
@@ -969,8 +1067,7 @@ def test_sizing_is_not_called_before_the_intersection_is_known():
     for peer, source in zip(peers, sources):
         peer.refresh(source)
 
-    # The intersection is empty, so no shared bytes on either rank.
-    assert seen == [0, 0], f'sizing saw {seen}, expected no shared bytes'
+    assert seen == [], f'sizing was called with {seen} though nothing is shared'
 
 
 def test_explicit_budget_is_not_moved_by_sizing():
@@ -984,129 +1081,3 @@ def test_explicit_budget_is_not_moved_by_sizing():
     for peer in peers:
         peer.refresh(host())
     assert [peer.budget.limit() for peer in peers] == before
-
-
-def test_mixed_declarations_do_not_diverge_across_transitions(monkeypatch):
-    """Unequal declarations must not split the collective path.
-
-    A rank that re-enters _establish begins with _intersect's allgather while
-    a peer on the case path begins with the case allreduce -- measured as
-    ['allgather', 'allgather'] against ['allgather', 'Iallreduce',
-    'Iallreduce']. MPI pairs collectives by call order, so that is a hang
-    rather than wasted work.
-    """
-    peers = peers_with_checking([[], [('jf', 'pedestals')]], monkeypatch)[0]
-    sources = [{}, host()]
-    for _ in range(3):
-        for peer, source in zip(peers, sources):
-            peer.refresh(source)
-
-    sequences = {peer._recorder.sequence_digest() for peer in peers}
-    assert len(sequences) == 1, (
-        'a rank declaring nothing diverged from one declaring a selector: '
-        f'{[peer._recorder.calls for peer in peers]}')
-
-
-def test_failed_import_closes_a_partly_built_block():
-    """ipcOpenMemHandle can succeed while view() then raises.
-
-    The block never reaches self._imported, so _release_shared would not
-    close it -- and the owner frees its allocation after that barrier, with
-    this rank's mapping still open, which CUDA forbids. The owner's half in
-    _publish already handled the same window.
-    """
-    import psana.gpu.gpu_shared_constants as module
-
-    original = module._ImportedBlock
-    opened, closed = [], []
-
-    class OpensThenFailsToView(original):
-        def __init__(self, cp, handle, nbytes):
-            super().__init__(cp, handle, nbytes)
-            opened.append(id(self))          # the mapping is now open
-
-        def view(self, *args, **kwargs):
-            raise RuntimeError('injected: view fails after the mapping opened')
-
-        def close(self):
-            closed.append(id(self))
-            return super().close()
-
-    declared = [('jf', 'pedestals')]
-    peers, _ = make_peers([declared, declared])
-    module._ImportedBlock = OpensThenFailsToView
-    try:
-        for peer in peers:
-            peer.refresh(host())
-    finally:
-        module._ImportedBlock = original
-
-    assert opened, 'the test did not reach the import'
-    assert len(closed) == len(opened), (
-        f'{len(opened) - len(closed)} mapping(s) left open; the owner frees '
-        'its allocation underneath them')
-    # Scoped to the follower that failed. FakeComm's Iallreduce answers each
-    # rank with its own contribution, so a capability flag cannot propagate
-    # here and the owner still reports sharing. Whether the whole group
-    # degrades together is asserted on real MPI by the follower-import case
-    # in mpi_failure_paths.py, which is where it is observable.
-    follower = peers[1]
-    assert follower.shared_selectors == ()
-    assert follower.private_selectors == tuple(declared)
-
-
-def test_fallback_returns_the_sharing_budget_before_uploading_privately():
-    """Sizing the budget before the exchange made the fallback abort.
-
-    The limits are set for ONE device copy -- followers at
-    (usable - shared)/peers -- but a capability failure means every rank
-    uploads its own full copy. Leaving the sharing limits in place makes that
-    upload fail with GpuMemoryPressureError, turning a clean degrade into an
-    abort: on a 40 GiB four-peer device a 9-10 GiB intersection fits
-    usable/peers (10 GiB) but not (usable - shared)/peers (7 GiB).
-
-    Scaled to the fixture heap: usable 400 KiB, 4 peers, shared 100 KiB, so
-    usable/peers == 100 KiB fits and (usable - shared)/peers == 75 KiB does
-    not.
-    """
-    import psana.gpu.gpu_shared_constants as module
-    from psana.gpu.gpu_placement import per_rank_limit
-
-    usable, peer_count = 400 * 1024, 4
-    shared = np.zeros((25 * 1024,), dtype=np.float32)        # 100 KiB
-    assert shared.nbytes <= usable // peer_count
-    assert shared.nbytes > (usable - shared.nbytes) // peer_count
-
-    declared = [('jf', 'pedestals')]
-    budgets = [_GpuBudget(limit_bytes=usable // peer_count)
-               for _ in range(peer_count)]
-    peers, _ = make_peers([declared] * peer_count, budgets=budgets)
-    for peer, budget in zip(peers, budgets):
-        _wire_sizing(peer, budget, usable)
-
-    # Fail the owner's export, so the owner takes the fallback itself rather
-    # than learning about it through an allreduce the fake cannot propagate.
-    original = module._OwnedBlock
-
-    class FailsToExport(original):
-        def handle(self):
-            raise RuntimeError('injected: ipcGetMemHandle failed')
-
-    module._OwnedBlock = FailsToExport
-    try:
-        for peer in peers:
-            # Must not raise: the whole point of the fallback is to keep the
-            # job running on private copies.
-            peer.refresh({'jf': {'pedestals': shared}})
-    finally:
-        module._OwnedBlock = original
-
-    expected = usable // peer_count
-    for index, budget in enumerate(budgets):
-        assert budget.limit() == expected, (
-            f'peer {index} kept the sharing limit {budget.limit()} instead of '
-            f'returning to {expected}; its private copy would be refused')
-    assert peers[0]._placement.shared_bytes == 0
-    assert all(peer.shared_selectors == () for peer in peers)
-
-

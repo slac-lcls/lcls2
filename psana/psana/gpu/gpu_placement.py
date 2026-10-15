@@ -3,38 +3,22 @@
 ``discover_peers()`` makes this rank's device current and groups ranks that
 share a physical GPU, collective over psana's ``psana_comm``.
 
-Selection happens here, inside discovery, where the node's GPU-worker
-communicator already exists. The device is made current with ``Device.use()``
-under whatever mask the launcher set; narrowing
-``CUDA_VISIBLE_DEVICES`` from Python would have no effect, because ``import
-psana`` loads mpi4py and its CUDA-aware MPI calls ``cuInit`` at library load,
-after which the variable is ignored (measured on sdfampere002).
-
-``use()`` under a wide mask is sufficient: measured on sdfampere014 with
-4 ranks over 2 GPUs (job 40151108), every rank's allocations landed on the
-device it selected and the driver reported each PID resident on exactly one
-GPU.
+Selection happens here rather than in the caller, because this is where the
+node's GPU-worker communicator exists -- a device chosen elsewhere has to
+survive the trip, and a choice that fails to arrive leaves every BD worker on
+CUDA's default device. The device is made current with ``Device.use()`` under
+whatever mask the launcher set; narrowing ``CUDA_VISIBLE_DEVICES`` from Python
+has no effect, because ``import psana`` loads mpi4py whose CUDA-aware MPI
+calls ``cuInit`` at library load (measured on sdfampere002).
 
 Assignment is a deterministic least-loaded pass over every node worker's
-visible PCI ids, gathered once on the node's GPU-worker communicator. Each rank
-runs the identical loop over the identical data, so they agree without further
-communication.
+visible PCI ids, gathered once on the node's GPU-worker communicator, keyed on
+PCI bus id rather than CUDA ordinal. Devices are identified by
+``deviceGetPCIBusId`` and never by ``getDeviceProperties()['uuid']``, which
+CuPy truncates at the first NUL.
 
-Two reasons it is not a simple index. CUDA numbers visible devices in the order
-the mask lists them, so indexing ordinals puts masks ``2,3`` and ``3,2`` on the
-same physical GPU. And indexing only this rank's own sorted set is not enough
-either: with ``{A,B}`` on two ranks and ``{C,D}`` on two others, each indexes
-its own list and they land A, D, A, D with B and C idle. Only a view of what
-every worker can see produces a balanced assignment.
-
-Using the communicator rank rather than a launcher local rank also removes the
-gaps smd0 and EB ranks leave in a node-local numbering.
-
-Devices are identified by PCI bus id from ``deviceGetPCIBusId``. Never by
-``getDeviceProperties()['uuid']``: that is a 16-byte array which CuPy surfaces
-truncated at the first NUL, so a UUID containing a zero byte yields a short,
-wrong key -- measured on sdfampere014, where ``c9ef90546100fd2e...`` arrived as
-five bytes.
+docs/device_placement_and_shared_constants.md has the reasoning, the worked
+rank layouts and the measurements.
 """
 import os
 from dataclasses import dataclass
@@ -42,6 +26,29 @@ from dataclasses import dataclass
 
 class GpuPlacementError(RuntimeError):
     """Device selection or peer discovery could not be completed safely."""
+
+
+def sharing_enabled():
+    """Whether constant sharing may be attempted, per this rank's environment.
+
+    The escape hatch for a system where CUDA IPC does not work between peers
+    that discovery grouped together -- MIG instances of one card share a PCI
+    bus id, so they are grouped as peers and the import then fails, which
+    aborts. Opting out costs n times the device memory for constants but keeps
+    the job running, which is what the removed automatic fallback used to do
+    silently.
+
+    Read once, in ``discover_peers``, and reduced over the device group into
+    ``GpuPlacement.sharing_permitted``. Callers should use that rather than
+    this: a rank acting on its own reading would take a collective path its
+    peers do not.
+
+    Off for ``0``, ``no``, ``false`` and ``off``, case-insensitively, because
+    a user who writes ``false`` and silently keeps sharing has been misled.
+    Anything else -- including an empty value -- leaves sharing on.
+    """
+    value = os.environ.get('PSANA_GPU_SHARE_CONSTANTS', '').strip().lower()
+    return value not in ('0', 'no', 'false', 'off')
 
 
 def _pci_norm(value):
@@ -70,26 +77,34 @@ class GpuPlacement:
     is_owner: bool = False
     n_device_peers: int = 1
     usable_bytes: int = 0
-    shared_bytes: int = 0         # intersection bytes, filled in by sharing
+    shared_bytes: int = 0         # shared bytes, filled in by sharing
     imported_bytes: int = 0       # non-owning bytes this rank reads
+    # Whether the GROUP permits IPC sharing: PSANA_GPU_SHARE_CONSTANTS reduced
+    # with MIN over device_comm, so one rank's opt-out disables it for all of
+    # them and no peer can take a different collective path. True by default
+    # so a placement built without discovery -- the unit tests, the serial
+    # path -- behaves as before.
+    sharing_permitted: bool = True
     # 'on'   sharing established
-    # 'off'  not attempted (solo rank, no communicator)
-    # 'fallback(<reason>)'  an IPC failure degraded the group to private
-    #        copies, which keeps the job running while using n times the
-    #        memory for constants -- otherwise invisible.
+    # 'off'  not attempted: a solo rank, no communicator, peers that declared
+    #        different selector sets, or PSANA_GPU_SHARE_CONSTANTS=0
     sharing: str = 'off'
 
     @property
     def can_share(self):
         """IPC sharing is possible only between real peers on one device.
 
-        A necessary condition, not a sufficient one: on a MIG-partitioned
-        card this returns True for ranks that are not really peers, because
-        instances share a PCI bus id. The IPC import then fails and the group
-        degrades to private copies. See the grouping comment in
+        Necessary, not sufficient: on a MIG-partitioned card this is True for
+        ranks that are not really peers, because instances share a PCI bus id.
+        The IPC import then fails and the job aborts, naming
+        PSANA_GPU_SHARE_CONSTANTS=0. See the grouping comment in
         ``discover_peers``.
+
+        ``sharing_permitted`` is the group's agreed answer to that variable,
+        not this rank's reading of it, so every peer decides alike.
         """
-        return self.device_comm is not None and self.n_device_peers > 1
+        return (self.device_comm is not None and self.n_device_peers > 1
+                and self.sharing_permitted)
 
     def describe(self):
         """One-line placement record. The only practical way to confirm
@@ -103,16 +118,21 @@ class GpuPlacement:
             f'limit={self.usable_bytes / 1024 ** 3:.2f}GiB '
             f'sharing={self.sharing}'
         )
+        # imported_bytes is deliberately absent. The only production caller
+        # logs this at the end of discover_peers, before sharing has been
+        # established, so the figure would always be zero here -- measured as
+        # zero occurrences across a full multi-node run. It is written onto
+        # the placement by SharedRequestedConstants for callers that read it
+        # after setup, which the validation harnesses do.
 
 
 def device_pci(cp, ordinal):
     """PCI bus id of a visible device, normalised for comparison.
 
-    Used in preference to ``getDeviceProperties()['uuid']``: that is a 16-byte
-    array which CuPy surfaces as Python bytes truncated at the first NUL, so
-    any GPU whose UUID contains a zero byte produces a short, wrong value.
-    Measured on sdfampere014: ``c9ef90546100fd2e...`` arrived as
-    ``b'\xc9\xef\x90Ta'``. deviceGetPCIBusId is a NUL-terminated string.
+    Used in preference to ``getDeviceProperties()['uuid']``, which CuPy
+    surfaces truncated at the first NUL: measured on sdfampere014, a 16-byte
+    UUID arrived as 5 bytes, which can collide with another card's.
+    deviceGetPCIBusId is a NUL-terminated string.
     """
     value = cp.cuda.runtime.deviceGetPCIBusId(int(ordinal))
     return _pci_norm(value.decode() if isinstance(value, bytes) else value)
@@ -199,16 +219,9 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
     if cp is None:
         import cupy as cp                                 # noqa: PLC0415
 
-    # Assign by index within this node's GPU workers, which removes the gaps
-    # a launcher local rank leaves where smd0 and EB ranks sit.
-    #
-    # The index is into the visible PCI ids SORTED, not into CUDA's own
-    # ordinals. CUDA numbers visible devices in the order the mask lists them,
-    # so indexing ordinals directly inherits the mask's order: with `2,3` on
-    # one rank and `3,2` on another, ordinal 0 and ordinal 1 are both physical
-    # GPU 2, and the other card sits idle. Sorting first gives every rank that
-    # can see the same set the same sequence to index, whatever order its own
-    # mask used, and needs no collective to agree on.
+    # Assignment works on sorted PCI ids rather than CUDA ordinals, because
+    # ordinals follow the mask's order -- see "Why not a simple index" in
+    # docs/device_placement_and_shared_constants.md.
     errors = []
     ordinal, actual_pci, visible = -1, '', 0
     try:
@@ -223,12 +236,10 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
             f'(CUDA_VISIBLE_DEVICES={os.environ.get("CUDA_VISIBLE_DEVICES")!r}), '
             'so it cannot do GPU work; give it a device or run it as a CPU '
             'role')
-    # Assignment needs every node worker's visible set, because indexing only
-    # this rank's own set is not enough: with masks that expose DIFFERENT sets
-    # -- {A,B} on two ranks and {C,D} on two others -- each rank indexes its
-    # own list and they land A, D, A, D, leaving B and C idle. The allgather
-    # is the one extra collective, and it runs on every GPU worker whether or
-    # not selection succeeded, so the sequence stays identical across ranks.
+    # Every node worker's visible set is needed, not just this rank's: masks
+    # exposing different sets collide otherwise. The allgather runs whether or
+    # not selection succeeded, so the collective sequence stays identical
+    # across ranks.
     my_pcis = []
     if not errors:
         try:
@@ -240,11 +251,10 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
 
     if not errors:
         try:
-            # Deterministic least-loaded assignment. Every rank runs this
-            # identical loop over the identical gathered data, so all of them
-            # reach the same answer without further communication. Ranks are
-            # visited in communicator order and ties break on the PCI id, so
-            # there is nothing order-dependent left.
+            # Deterministic least-loaded assignment: every rank runs this
+            # identical loop over the identical gathered data, visiting ranks
+            # in communicator order with ties broken on the PCI id, so they
+            # agree without further communication.
             load = {}
             target = None
             for peer, peer_pcis in enumerate(node_sets):
@@ -255,12 +265,11 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
                 if peer == node_gpu_comm.Get_rank():
                     target = pick
             ordinal = my_pcis.index(target)
-            # use() binds the device for THIS thread only. Nothing in the
-            # pipeline currently needs that elsewhere -- the reader's thread
-            # pool is inside KvikIO and runs on the calling thread's context,
-            # and no Python thread here issues CUDA work of its own. The
-            # ordinal is recorded for the placement log, and is what a future
-            # worker thread would need to call use() itself.
+            # use() binds the device for THIS thread only. No Python thread
+            # in the pipeline issues CUDA work of its own -- KvikIO's pool
+            # runs on the calling thread's context -- so one call suffices.
+            # The ordinal is recorded for the log, and is what a future worker
+            # thread would need to call use() itself.
             cp.cuda.Device(ordinal).use()
             actual_pci = device_pci(cp, ordinal)
         except Exception as exc:                          # noqa: BLE001
@@ -269,20 +278,15 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
 
     if not errors:
         # Return the previous run's cached blocks before anyone samples free
-        # memory. Discovery runs per run, and CuPy's pool holds what run N
-        # allocated until asked to release it -- so run N+1 would size itself
-        # against a card that still looks full. Because `usable` is a job-wide
-        # MIN, one rank's stale pool lowers every rank's limit, not just its
-        # own.
+        # memory: discovery runs per run, and a stale pool makes the card look
+        # full. Because `usable` is a job-wide MIN, one rank's stale pool
+        # lowers every rank's limit. Placed here because the node agreement
+        # and the device-group Split both come later, so every peer has freed
+        # before any of them samples memGetInfo.
         #
-        # Here rather than in the caller: the node agreement and the
-        # device-group Split both come after this point, so every peer on the
-        # node has freed before any of them samples memGetInfo.
-        #
-        # Its own try, because this only improves the NEXT run's sizing. A
-        # CuPy build without the pool API, or a release that raises, is no
-        # reason to fail a run whose device is already selected -- so it logs
-        # and carries on rather than joining `errors`.
+        # Its own try: this only improves the NEXT run's sizing, so a failure
+        # logs rather than joining `errors` and failing a run whose device is
+        # already selected.
         try:
             import gc
             gc.collect()
@@ -314,44 +318,24 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
         node_gpu_comm.Free()
         if errors:
             raise GpuPlacementError('; '.join(errors))
-        # job_failed is a count of contributions, not of failing ranks: every
-        # GPU worker on a node contributes its node's n_failed, so the figure
-        # is inflated by the node's worker count. Reported as a boolean rather
-        # than a misleading number.
+        # job_failed counts contributions, not failing ranks -- every worker
+        # on a node contributes its node's n_failed -- so it is reported as a
+        # boolean rather than a misleading number.
         raise GpuPlacementError(
             'a peer rank failed device selection; aborting this rank so the '
             'job does not hang. The failing rank reports the reason.')
 
     # Group by (hostname, PCI bus id) as the driver reports it, so peer counts
-    # never depend on rank arithmetic.
+    # never depend on rank arithmetic. The bus id rather than a UUID because
+    # CuPy truncates getDeviceProperties()['uuid'] at the first NUL -- see
+    # the device_pci() docstring.
     #
-    # The bus id, not a UUID, because the UUID is not obtainable here:
-    # getDeviceProperties()['uuid'] is 16 raw bytes that CuPy surfaces
-    # truncated at the first NUL, so a UUID containing a zero byte yields a
-    # short key that can collide with another card's. deviceGetPCIBusId is
-    # NUL-terminated and describes the device this rank actually holds, having
-    # been read back after use().
-    #
-    # MIG LIMITATION. Instances of one card share a bus id, so ranks on
-    # *different* instances group together here. They are not really peers:
-    # instances have separate memory and CUDA IPC cannot span them, so
-    # sharing is attempted and the import fails.
-    #
-    # The group then degrades to private copies with a peer count inflated by
-    # however many instances were merged, and each rank's limit becomes
-    # usable/inflated_peers. For constants larger than that share the private
-    # upload is refused and the job aborts, so MIG is not merely wasteful --
-    # it can fail outright. This is why MIG is listed as unsupported rather
-    # than as a degraded mode.
-    #
-    # Separating them needs an identity CUDA will not give us. NVML would,
-    # via nvmlDeviceGetMigDeviceHandleByIndex: plain nvmlDeviceGetUUID and
-    # `nvidia-smi --query-gpu=uuid` enumerate parent GPUs only, so an
-    # instance UUID is absent from either. Since CUDA is already initialised
-    # by the time we run, querying NVML here would be cheap -- the reason it
-    # is not done is that no MIG node is advertised on S3DF, so the code
-    # would be untestable. Revisit if that changes; until then MIG is
-    # documented as unsupported in docs/limitations.md.
+    # MIG LIMITATION: instances of one card share a bus id, so ranks on
+    # different instances group here as peers though IPC cannot span them.
+    # Separating them needs nvmlDeviceGetMigDeviceHandleByIndex, which is not
+    # used because no MIG node is advertised on S3DF and the code would be
+    # untestable. docs/limitations.md records the consequences;
+    # PSANA_GPU_SHARE_CONSTANTS=0 is the supported way to run on MIG.
     keys = node_gpu_comm.allgather((hostname, actual_pci))
     distinct = sorted(set(keys))
     placement.device_comm = node_gpu_comm.Split(
@@ -361,50 +345,47 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
     placement.n_device_peers = placement.device_comm.Get_size()
     placement.is_owner = placement.device_comm.Get_rank() == 0
 
-    free_bytes, total_bytes = cp.cuda.runtime.memGetInfo()
-    # Base the budget on what is actually free, not on the device total: the
-    # CUDA context is allocated before discovery runs, and counting it as
-    # available over-commits the device. (The Jungfrau shared caches are host
-    # MPISharedMemory, not device memory, so they do not appear here.)
+    # Whether constant sharing may be attempted, agreed across the group
+    # rather than read per rank. PSANA_GPU_SHARE_CONSTANTS comes from each
+    # rank's own environment, and a rank that opted out while its peers did
+    # not would skip the establishment allgather the others enter -- one of
+    # the two unbounded collectives, so the job hangs with no diagnostic.
+    # Measured precedent: the multinode harness set CUDA_VISIBLE_DEVICES
+    # without `mpirun -x`, and the two nodes' ranks ended up with different
+    # masks. MIN, so one opt-out disables sharing for the whole group.
+    placement.sharing_permitted = bool(bounded_allreduce(
+        placement.device_comm, 1 if sharing_enabled() else 0, MPI.MIN,
+        'discovery/sharing-permitted',
+        timeout=SETUP_TIMEOUT_S, logger=logger))
+
+    free_bytes, _total_bytes = cp.cuda.runtime.memGetInfo()
+    # What is actually free, not the device total: the CUDA context is already
+    # allocated, and counting it as available over-commits the device.
     #
-    # memGetInfo is device-wide but not time-invariant: peers sample it at
-    # slightly different moments while each other's contexts are still
-    # settling, so the raw values differ by a few MiB and per-rank limits
-    # derived from them sum to marginally more than the device. Take the
-    # minimum across the group so every peer uses one figure.
-    # Reduced over every rank in `comm`, not per device and not per node: the
-    # explicit budget is validated against this figure, so a per-group minimum
-    # would let one group raise while another continues. Non-GPU roles
-    # contribute the neutral value below, in the branch they return from.
+    # memGetInfo is not time-invariant -- peers sample it while each other's
+    # contexts settle, so raw values differ by a few MiB -- hence the MIN, so
+    # every peer uses one figure. Reduced over all of `comm` rather than per
+    # device: the explicit budget is validated against it, and a per-group
+    # minimum would let one group raise while another continued.
     observed = int(free_bytes * (1.0 - headroom))
     placement.usable_bytes = bounded_allreduce(
         comm, observed, MPI.MIN, 'discovery/budget',
         timeout=SETUP_TIMEOUT_S, logger=logger)
 
-    # Busiest device in the job. Needed so the explicit-budget check below
-    # reaches the same verdict on every rank: `usable_bytes` is already
-    # job-wide, but the claim is per-device, and peer counts differ between
-    # devices in an uneven layout. Validating against the local count would
-    # make a budget that is too large for a 4-peer device raise there while
-    # a 3-peer device carried on -- ranks on different paths, racing the
-    # abort rather than agreeing on it.
+    # Busiest device in the job, so the explicit-budget check below reaches
+    # the same verdict everywhere: the claim is per-device and peer counts
+    # differ in an uneven layout, so validating against the local count would
+    # make one device raise while another carried on. Rejecting job-wide is
+    # also correct on its own terms -- if any device cannot honour the budget,
+    # the job cannot run with it.
     #
-    # Rejecting job-wide is also the correct answer, not merely the uniform
-    # one: if any device cannot honour the per-rank budget, the job cannot
-    # run with it.
-    #
-    # Unconditional, because it is a collective; the check that uses it is
-    # not. Non-GPU roles contribute 0 in the branch they return from, which
-    # is neutral for MAX since a real count is always >= 1.
+    # Unconditional because it is a collective; the check that uses it is not.
     max_peers = bounded_allreduce(
         comm, placement.n_device_peers, MPI.MAX, 'discovery/max-peers',
         timeout=SETUP_TIMEOUT_S, logger=logger)
 
     if explicit_limit_bytes:
-        # An explicit per-rank budget must be honourable by the whole group:
-        # Validated against the busiest device in the job, so every rank
-        # reaches the same verdict; N ranks each claiming the whole device
-        # must not be accepted silently.
+        # N ranks each claiming the whole device must not pass silently.
         total_claim = int(explicit_limit_bytes) * max_peers
         if total_claim > placement.usable_bytes:
             placement.device_comm.Free()
