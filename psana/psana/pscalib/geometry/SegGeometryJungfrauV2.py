@@ -141,8 +141,8 @@ class SegGeometryJungfrauV2(SegGeometryJungfrauV1):
         """Makes [512,1024] maps of x, y, and z pixel size and pix_area_arr"""
         if sp.pix_area_arr is not None: return
 
-        sp.x_psize_um = np.arange(sp._cols)*sp._pixs
-        sp.y_psize_um = np.arange(sp._rows)*sp._pixs
+        sp.x_psize_um = np.ones(sp._cols)*sp._pixs
+        sp.y_psize_um = np.ones(sp._rows)*sp._pixs
 
         if sp.use_wide_pix_center:
             sp.correct_wide_pixel_size()
