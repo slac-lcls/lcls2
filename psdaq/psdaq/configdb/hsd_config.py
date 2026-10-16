@@ -217,8 +217,11 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     partitionDelay = monTiming.l0delay
     print('partitionDelay {:}'.format(partitionDelay))
 
-    # fetch the freesz
-    rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
+    # fetch the freesz (wait for a non-zero update)
+    while True:
+        rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
+        if rawBuffSize>0:
+            break
     fexBuffSize = ctxt.get(epics_prefix+':MONFEXBUF').freesz
     print(f'rawBuffSize {rawBuffSize}  fexBuffSize {fexBuffSize}')
     

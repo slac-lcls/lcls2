@@ -1408,6 +1408,20 @@ def issue_2026_10_07(args):
             gr.show(mode='DO NOT HOLD')
         #gr.show()
 
+def issue_2026_10_15(args):
+    """ISSUE: Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
+       PROBLEM: it was sp.x_psize_um = np.arange(sp._cols)*sp._pixs
+                       sp.y_psize_um = np.arange(sp._rows)*sp._pixs
+       FIX: fixed as   sp.x_psize_um = np.ones(sp._cols)*sp._pixs
+                       sp.y_psize_um = np.ones(sp._rows)*sp._pixs
+    """
+    from psana.pscalib.geometry.SegGeometryJungfrauV2 import SegGeometryJungfrauV2
+    s = SegGeometryJungfrauV2(use_wide_pix_center=True)
+    s.make_pixel_size_arrs()
+    print(s.x_psize_um[:6])          # [0 75 150 225 300 375]
+    print(s.pix_area_arr.min(), s.pix_area_arr.max())
+    print((s.pix_area_arr == 1.0).sum(), s.pix_area_arr.size)
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1477,6 +1491,7 @@ def selector():
     elif TNAME in ('21',):issue_2026_09_21(args) # Philip, calib for epixuhr3x2
     elif TNAME in ('22',):issue_2026_10_05(args) # Mona, jungfrau common mode does not work in raw.calib(evt, cversion=3, cmpars=CM)
     elif TNAME in ('23',):issue_2026_10_07(args) # config and event loop for epixm
+    elif TNAME in ('24',):issue_2026_10_15(args) # Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
 
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
