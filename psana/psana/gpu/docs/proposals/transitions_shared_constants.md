@@ -1,14 +1,24 @@
-# Draft GPU transitions and shared calibration state
+# Design 1: GPU step scopes and run-scoped shared constants
 
-Design for Mona and Seema, 2026-10-07. Covers [#153](https://github.com/slac-lcls/lcls2/issues/153) and [#168](https://github.com/slac-lcls/lcls2/issues/168) together. Implementation and assignment await design review. This documentation is separate from Amanda’s reconstruction stack and should merge after [#151](https://github.com/slac-lcls/lcls2/pull/151).
+Design for Mona and Seema, originally 2026-10-07; direction revised 2026-10-15 after the meeting. Covers [#153](https://github.com/slac-lcls/lcls2/issues/153) and [#168](https://github.com/slac-lcls/lcls2/issues/168). This is a design document, not runtime implementation. Implementation tasks and the remaining API/IPC deployment details are not assigned or approved by this update.
 
-Keep the current SMD0 → EB → BD workflow and external `GpuTask` API. Introduce one ordered controller per BD, immutable requested-constant snapshots, and an optional CUDA-IPC storage backend shared by workers on the same node and actual GPU. BeginStep advances a BD’s state only after its preceding event range and dependent consumers finish. Other BDs may still use an older snapshot. IPC shares storage; explicit protocols establish ordering, ownership, coordination, and retirement.
+## Meeting decision and scope
 
-The recommended first implementation drains locally at step boundaries and allows different versions across BDs. It does not require all GPU peers to reach a transition together. Independent progress for the shared allocation owner is essential; this proposal recommends a small per-GPU constant service, subject to Mona and Seema approving its process and deployment cost. Transition correctness can ship with local constants before that choice is implemented.
+**Use Design 1: attach immutable step/scope identity to each execution subbatch and permit different steps in different in-flight slots of one BD.** BDs sharing a GPU also advance independently. The October 7 recommendation for local step-boundary drains and the October 9 preference for Design 2 are superseded. BeginStep/EndStep alone do not require a slot-pool flush, device-wide synchronization, or peer barrier.
+
+**GPU EnvStore is deferred. SlowUpdate values and step payload values are both ignored on GPU; CPU handling still retains and interprets them.** GPU steps are indices/scopes, not copies of scan/configuration/environment values. Do not extract, retain, upload, or expose those values as GPU task context. Original dgrams and packet backing may remain owned for ordered CPU delivery; this is not GPU EnvStore storage. GPU kernels requiring changing detector configuration or environment inputs are outside this phase.
+
+Among ordinary in-run controls, Enable carrying new `chunkinfo` is the payload the GPU reader must interpret to resolve the next chunk/file. Configure still supplies initial decoding metadata, and BeginRun/EndRun govern run resources. `calibconst` is initialized once per run, reused unchanged across all steps, and never refreshed/versioned at BeginStep. Sharing identical requested constants remains separate run-scoped work under #168.
+
+Keep the current SMD0 → EB → BD transport and external `GpuTask` API. An ordered controller per BD separates GPU scheduling look-ahead from CPU-visible transition application. Each submission keeps its scope identity, file mappings, and resource leases until its consumers complete. Public CPU events and steps remain ordered even while different scopes execute concurrently.
+
+CPU BDs can be at different steps because each process has its own mutable host state and advances its own iterator. GPU slots are streams inside one BD, not separate processes. Immutable per-submission scope identity provides the intended independence without pretending slots have private EnvStores. Both designs already allow different BDs to advance independently; Design 1 adds overlap across steps within a BD.
+
+The original reconstruction stack through #151 has merged into `features/psana2-gpu`; this proposal remains a separate documentation PR. Transition correctness can ship with local run constants before the shared backend. The earlier per-GPU constant-helper proposal remains an option for review, not a consequence of selecting Design 1.
 
 ## Current workflow and API
 
-The source baseline is `features/psana2-gpu` at `9b32dda19b46807f7a4db62fb2351ba87b359e47`. The issue bodies were checked on October 7. The review findings linked in [#153](https://github.com/slac-lcls/lcls2/issues/153) and [#168](https://github.com/slac-lcls/lcls2/issues/168) also reference reviewed stack commit `e2cdad6e18fd9263d7adfeed0ce58d5ad074e070`. These snapshots identify evidence, not an instruction to rebase or modify the stack.
+The October 15 source inspection used `features/psana2-gpu` at `410ebba1c`; the original October 7 baseline was `9b32dda19b46807f7a4db62fb2351ba87b359e47`. Issue #153 and this design now record the revised meeting scope. The review findings linked in [#153](https://github.com/slac-lcls/lcls2/issues/153) and [#168](https://github.com/slac-lcls/lcls2/issues/168) also reference reviewed stack commit `e2cdad6e18fd9263d7adfeed0ce58d5ad074e070`. These snapshots identify evidence, not an instruction to rebase or modify the stack.
 
 ```mermaid
 flowchart LR
@@ -47,122 +57,127 @@ task = GpuTask(function=analysis,
 
 The declaration is host-only. A callback handles one nonempty selected execution subbatch. `batch.run`, `batch.batch_id`, `batch.step_generation`, timestamps, and original event indices describe that invocation. Borrowed inputs and constants are read-only and must not be cached for later execution. All callback work uses the supplied stream; public parsed-input consumers have their existing completion-registration API. Publication storage remains alive through terminal D2H. Retained `.on_cpu` results are independent of slot reuse.
 
-`RequestedConstants` currently validates requested native numeric NumPy arrays, unwraps `(array, metadata)` values, snapshots host bytes, and uploads one admitted copy per BD. It preserves shape, dtype, and values, including scalar and empty arrays. BeginStep refresh compares bytes after host transition handling; it does not query the calibration database. Sharing must preserve that behavior and must not reintroduce built-in calibration, gain inversion, or fixed Jungfrau array formats. Current dense segment bindings are sorted Configure IDs; this design preserves the current `segment_ids` API and original constant axes, without introducing a new segment-order convention.
+`RequestedConstants` currently validates requested native numeric NumPy arrays, unwraps `(array, metadata)` values, snapshots host bytes, and uploads one admitted copy per BD. It preserves shape, dtype, and values, including scalar and empty arrays. The current manager also invokes a BeginStep refresh comparison; the revised design removes that per-step action. Resolve requested constants once during run setup and retain them for the run. Sharing must preserve array fidelity and must not reintroduce built-in calibration, gain inversion, or fixed Jungfrau array formats. Current dense segment bindings are sorted Configure IDs; this design preserves the current `segment_ids` API and original constant axes, without introducing a new segment-order convention.
 
 The relevant defects and gaps are:
 
 - The fast GPU EB appends BeginStep and then stops. A real packet is `[L1 A, L1 B, BeginStep 2]`; later step-2 L1 events are in a subsequent packet. `_handle_steps()` runs before this packet’s L1 submission, so A/B can get step 2’s state. Draining previously submitted work does not fix unsubmitted A/B.
 - Serial GPU processing consumes transitions internally; MPI GPU `steps()` returns immediately. Both need a common stream that can support event and step views.
 - `_iter_step_events()` uses service zero for empty records, colliding with ClearReadout. Filtering and `first_service()` compound the loss; file-read coalescing also drops its fence.
-- SlowUpdate already reaches the host environment store. The missing evidence is correct event-associated values across updates, not absence of a dispatcher.
+- SlowUpdate already reaches the host environment store. Preserve that ordered CPU path; GPU EnvStore and GPU interpretation of SlowUpdate/step values are deferred. The independent CPU timestamp-lookup concern recorded in #153 is separate follow-up work, not a GPU implementation gate.
 - The removed calibration IPC path was specialized to prepared Jungfrau arrays. Restoring its old leader formula or float32 assumptions would conflict with the current generic requested-constant API.
 
 ## Review findings as acceptance criteria
 
-The source inspections and isolated probes recorded in the issues establish the design requirements. They are not end-to-end validation of this proposal.
+Source inspection and isolated probes establish the problems; they are not end-to-end validation of this design. Narrowing GPU payload support does not resolve the ordering, iteration, framing, or ownership defects.
 
 | Finding | Required behavior | Acceptance evidence |
 | --- | --- | --- |
-| [GPU-148-01](https://github.com/slac-lcls/lcls2/pull/148#discussion_r4200896653), #153 P1 | Submit preceding L1 ranges with old state; dispatch leading history before its events; drain required consumers before changing local step state | Real EB split → manager → callback tests with changed and unchanged constants, trailing/leading BeginStep, repeated history, multiple transitions, and byte-split executions |
-| [GPU-140-03](https://github.com/slac-lcls/lcls2/pull/140#discussion_r4159309391), #153 | Working serial/MPI `run.steps()` and `step.events()` with scan metadata and results | Two or more steps, empty steps, GPU-only and mixed events, ordinary MPI distribution and history catch-up; CPU-compatible boundaries |
-| [GPU-141-02](https://github.com/slac-lcls/lcls2/pull/141#discussion_r4160862286), #153 | ClearReadout survives decoding, validation, dispatch, and bulk-read fencing | All-empty and missing-stream packets; malformed sizes still fail; actual service zero reaches `Run._handle_transition`; Enable file switching stays correct |
-| SlowUpdate requirement in #153 | Event-associated EPICS values remain correct on either side of an update | CPU/GPU expected-value comparison, including an update inside a packet; no unconditional device/peer barrier |
-| [GPU-149-04](https://github.com/slac-lcls/lcls2/pull/149#discussion_r4201235524), #153 | One stream owner; step completion differs from run close; deterministic early-exit API | Retained child/outer iterators, explicit close, normal next step, exceptions, terminate, repeated cleanup, bounded MPI shutdown |
-| [GPU-147-01](https://github.com/slac-lcls/lcls2/pull/147#discussion_r4199547812), #168 P2 | Share identical requested constant storage behind the existing API | Two/four BDs per GPU allocate approximately one copy per live identical object; followers never first upload duplicates; equal results |
-| #168 topology and lifetime requirements | Correct device peers, immutable versions, all imports closed before export free | Multiple nodes/GPUs/EB groups, differing selectors/values, delayed peers/consumers, version overlap, failed upload/import, early exit, repeated close |
+| [GPU-148-01](https://github.com/slac-lcls/lcls2/pull/148#discussion_r4200896653), #153 P1 | Assign preceding events to the old scope; preserve CPU-visible transition order while scheduling ahead | Real EB trailing BeginStep → planner → callback; delayed old-scope work overlaps new scope without mislabeling events/results |
+| [GPU-140-03](https://github.com/slac-lcls/lcls2/pull/140#discussion_r4159309391), #153 | Serial/MPI event and step iteration with CPU metadata handling and GPU results | Two or more steps, empty steps, GPU-only/mixed events, ordinary MPI distribution and history catch-up |
+| [GPU-141-02](https://github.com/slac-lcls/lcls2/pull/141#discussion_r4160862286), #153 | Distinguish ClearReadout from empty GPU-only placeholders; preserve CPU dispatch and coalescing fences | Service zero survives; malformed framing and sentinel 13 fail; no fake transition from an empty record |
+| [GPU-149-04](https://github.com/slac-lcls/lcls2/pull/149#discussion_r4201235524), #153 | One stream owner; step completion differs from terminal run cleanup | Retained iterators, explicit close, next step, exceptions, terminate, repeated cleanup, bounded MPI shutdown |
+| Enable/chunk handling, #153 | Bind every pending read to the correct immutable per-stream file identity and descriptor offset | Rollover inside a step, old reads delayed, replayed/trailing Enable, multiple streams, bulk and non-bulk paths |
+| Deferred GPU EnvStore scope | No GPU extraction/storage/upload/API for SlowUpdate or step values; CPU retains its functionality | CPU dispatch once in order; GPU look-ahead does not advance public CPU configuration early; no GPU payload dependency |
+| [GPU-147-01](https://github.com/slac-lcls/lcls2/pull/147#discussion_r4199547812), #168 P2 | Share identical requested run constants behind the existing API | Two/four BDs per GPU allocate approximately one copy per identical object; no follower upload; exact values |
+| #168 topology and lifetime | Correct actual GPU peers; all imports close before export free | Multiple nodes/GPUs/EB groups, different selectors/content, delayed peers/consumers, failed setup, early exit and repeated close |
 
-The overall P1 on #153 comes from ordering, not a new P1 classification for every row. #156 was superseded by #153, not fixed. Coordinate packet-decoding work with [#154](https://github.com/slac-lcls/lcls2/issues/154), peer discovery with [#155](https://github.com/slac-lcls/lcls2/issues/155), and partial-setup rollback with [#169](https://github.com/slac-lcls/lcls2/issues/169).
+The P1 on #153 comes from ordering, not a new P1 classification for every row. #156 was consolidated into #153, not fixed. Coordinate decoding work with [#154](https://github.com/slac-lcls/lcls2/issues/154), peer discovery with [#155](https://github.com/slac-lcls/lcls2/issues/155), and partial-setup rollback with [#169](https://github.com/slac-lcls/lcls2/issues/169).
 
 ## Proposed responsibilities
 
 | Component | Responsibility | Owns |
 | --- | --- | --- |
-| SMD0 and EB transport | Existing event order, recipient history, coherent CPU/GPU packets | Send buffers and history until transport completion |
-| Ordered packet planner in BD | Turn coherent packets into `L1Range` and `TransitionRecord` items without mutating live run state | Packet backing, decoded transition dgrams, stable event identities |
-| Run stream controller in BD | Apply transitions once, bind a state snapshot to each execution, adapt one stream to events/steps | Local state cursor, iterator lifecycle, execution/input/result leases |
-| `RequestedConstants` facade | Resolve exact requested arrays and atomically select a snapshot | Active snapshot reference and backend leases |
-| Local backend | Serial/single-worker storage and reference semantics | Local allocations and charges |
-| Shared constant service | Match immutable content, admit physical storage, upload/export, track reservations/imports, retire | Shared allocations, upload sources, catalog, physical budget |
-| Import owner in BD | Create local array views, retain mapping across aliases and submitted work | One mapping reference, alias ownership, completion tokens |
+| SMD0/EB transport | Existing ordered records, recipient history, coherent SMD/GPUBAT1 packets | Send buffers and history until completion |
+| Ordered packet planner in BD | Produce L1 ranges, scope markers and file mappings without mutating public CPU state | Packet backing, stable event/scope identities and CPU transition references |
+| GPU scheduler | Submit byte-bounded subbatches carrying immutable scope/file identity; overlap scopes | Execution/input/result leases and per-scope completion accounting |
+| CPU delivery controller | Apply CPU transitions exactly once at delivery order; expose events/steps | Public cursor, CPU transition dgrams, iterator lifecycle |
+| RequestedConstants facade/local backend | Resolve declared arrays during run setup; retain immutable run constants | Run manifest, local allocation or shared backend leases |
+| Shared constant owner/backend | Deduplicate identical run content, admit/upload/export storage, coordinate release | Physical allocations, catalog, budget and readiness |
+| Import owner in BD | Retain local mappings through aliases and submitted work | Mapping leases, aliases and completion tokens |
 
-Names for new components and protocol records are proposed interfaces, not existing classes. The service owns constants only; event reading, science kernels, and result delivery remain in BDs.
+These are logical responsibilities, not a requirement for separate threads or new classes with these names. The controller must establish independent scheduling and delivery cursors even if one class implements both. Shared storage owns constants only; BDs retain event reads, science kernels and delivery.
 
-## Ordering and transition semantics
+## Ordered planning and Design 1 execution
 
-### Build an ordered plan from existing packets
+### Preserve the coherent packet order
 
-Use the accompanying SMD packet as the ordering authority. Decode its framing once, retaining packet positions even when an L1 has no CPU dgrams. For each real non-L1 record emit a transition. For each L1 or validated all-empty GPU-only placeholder, consume the next GPUBAT1 L1 row. Preserve `(packet identity, original batch_event_index, timestamp)` through every slice. Validate counts, timestamp agreement where CPU dgrams exist, and descriptor ranges. Do not reconstruct order by sorting all transitions ahead of events.
+Use SMD record order as the authority: missing history → L1 range → transition → next L1 range. For each L1 or validated all-empty GPU-only placeholder, consume the corresponding GPUBAT1 event-table row. Preserve `(packet identity, original batch_event_index, timestamp)` through every slice. Validate counts, timestamp agreement where real CPU dgrams exist, and descriptor bounds. Never move all transitions before all events.
 
-Every L1 has a GPUBAT1 event-table row in the current split path, including zero-GPU-contribution rows. Such an event must remain deliverable even when no task callback is selected for it. An all-empty record is never a transition; its L1 meaning comes from the coherent event table. If this correspondence cannot be established, reject the packet instead of guessing. CPU-only batches without GPUBAT1 use their real dgrams.
+Every L1 in the current split path has a GPUBAT1 event row, including zero-GPU-contribution rows. Such events remain deliverable even if no task callback is selected. An all-empty record is not itself evidence of either a transition or an L1: establish its event meaning from the coherent packet/table correspondence or reject the packet. CPU-only batches without GPUBAT1 use their real dgrams.
 
-The transition-only decoder can satisfy #153 by counting dgrams during construction, capturing the first present service, checking sizes before skipping `n_dgrams == 0`, and yielding service zero. The richer planner must additionally preserve empty-record positions for L1 correlation. It must not use that decoder’s omitted empty records as its L1 index. This separates decoder correctness from #154’s eventual decoding optimization.
+The transition-only decoder counts present dgrams, takes the first present service, validates packet sizes before skipping all-empty records, and yields service zero. The ordered planner must additionally preserve original empty-record positions for L1 correlation; it cannot use the transition decoder's filtered positions as event indices. Remove service truth-value filtering from the manager, bulk-read selection, file resolver and shared service validation.
 
-Consecutive L1 rows form an `L1Range` bounded by every intervening transition. Byte-budget splitting then operates **within** that range. A submission captures immutable run/configuration/step identity, a requested-constant snapshot, and resolved file identities. It never consults a mutable “latest constants” pointer after submission. Batch indices remain the original EB indices rather than restarting in each range.
+Retain conservative L1-range boundaries at controls, then split by the byte budget within each range. An execution subbatch must not cross a BeginStep/EndStep boundary. It carries immutable run/step identity, original event indices and resolved read-file mappings. No scan/step/SlowUpdate payload values are captured for GPU work. Initial decoder tables and unchanged run constants are retained independently of scope.
 
-Compute read-file mappings with the same ordered controls. Keep the existing rule that all non-L1 records fence read coalescing, including ClearReadout; only Enable/chunkinfo changes files. Resolve immutable file identities for pending reads and retain file references through read completion. Metadata planning may run ahead; live transition application and callback admission may not. Initial implementation limits read-ahead to the current range to simplify boundary cleanup. Later read-ahead across a boundary needs an explicit proof for file/configuration and input lifetimes.
+### Separate scheduling from CPU-visible delivery
 
-### Apply transitions once at the correct cursor
+The scheduling cursor may read ahead across steps and admit new-scope work while old-scope kernels/results are in flight. Before advancing its scope, it must assign all preceding L1 rows to the previous scope. It must not mutate a submitted scope label or read a mutable current-step value later during execution.
 
-The controller produces ordered internal L1 deliveries and applied-transition markers. It alone calls `Run._handle_transition()` and performs GPU state actions. GPU `run.events()` hides markers; GPU `run.steps()` uses BeginStep/EndStep markers. Neither adapter updates the environment a second time. CPU-only adapters retain their current behavior.
+The CPU delivery cursor processes the original records in order and alone dispatches their CPU state updates through `Run._handle_transition()` (or an equivalent single owner). It offers preceding public events before applying the following CPU transition. `run.events()` hides controls; `run.steps()` uses ordered scope boundaries. Neither adapter repeats the CPU EnvStore update. Scheduling read-ahead must not call the live CPU handler early, and must not rely on that handler to resolve GPU chunk files.
 
-Use a run-instance identity plus transition service/timestamp and validated payload identity to recognize an already-applied replay. Exact replay is idempotent locally; conflicting payloads for one identity fail. New catch-up history is applied in received order, including unseen empty steps. Do not use a process-local step counter as a cross-rank content version. Existing `batch.step_generation` remains a local progression value, incremented once per newly applied BeginStep; an internal logical step key identifies the source BeginStep independently of which BD first saw it. Unexpected backward state changes outside validated replay fail rather than rewind live state. Confirm this identity contract against fake-step and timestamp-jump fixtures before freezing it.
+Store only the identity/lifecycle metadata needed for GPU scopes: run identity, logical source-step identity, and a local generation where useful. Existing `batch.step_generation` can remain a local progression value; it is not automatically a cross-BD step key. Define replay handling from source transition identity/order and header metadata, without reading step payload values. Preserve unseen empty steps, make known history replay idempotent, and validate fake-step/timestamp-jump cases before freezing the identity encoding. Enable replay additionally validates its required chunkinfo. Original payload dgrams belong to CPU delivery, not a GPU state snapshot.
 
-Before applying a transition, preceding events must have been submitted under their old snapshot and offered to the appropriate public iterator in order. At a required drain, retire producer work, terminal result copies, and registered external input consumers; finish deferred input-window uses and pending reads whose storage/state will change. An empty execution pool alone is insufficient. Delivery waits already required by the current producer path are distinct from an added transition fence.
+### Overlap and completion
 
-| Transition or boundary | Host and logical effect | GPU and storage policy |
+Different BDs and different execution slots within a BD may process different scopes concurrently. BeginStep/EndStep alone cause no blanket drain. Scheduling remains bounded by byte budgets, slot availability and actual resource dependencies; the design permits overlap but does not promise simultaneous hardware execution or a speedup.
+
+Track pending events, results and registered consumers by scope. Public child-step completion finishes its relevant work and preserves ordered delivery, while later-scope work may already be admitted. It must not flush unrelated later slots as a side effect. A shared mutable accumulator/workspace requires scope-specific storage or explicit dependencies. No new implicit cross-step accumulator behavior is promised.
+
+Retain input windows, execution buffers, publication/D2H storage, scope bookkeeping and file owners until their consumers finish. Callback return, advancing a generator, and changing the current scope are not release signals. EndRun and terminal cleanup drain all owned work; ordinary step boundaries only coordinate the work needed for that scope's completion.
+
+### Transition responsibilities
+
+| Transition or boundary | GPU responsibility | CPU behavior / limits |
 | --- | --- | --- |
-| Configure / BeginRun setup | Establish configuration, run identity, host calibration source, envstore | Build parser/bindings and initial requested snapshot before first callback; startup readiness required |
-| BeginStep | Apply host transition, advance step identity, inspect requested host values | Submit/deliver preceding range; drain local dependent consumers; resolve/pin changed or unchanged snapshot; then admit later range. No peer barrier and no implicit DB fetch |
-| EndStep | Apply host transition and finish the child step | Initial policy drains the completed step’s local consumers before exposing step completion; pipeline remains open |
-| SlowUpdate | Apply existing EPICS/envstore update in order | Split logical ranges; no constant refresh or unconditional GPU drain. Event-associated lookup must retain correct before/after values |
-| Enable | Apply host transition and chunkinfo file change | Coalescing fence; old reads keep old file references. No unrelated constant or device fence |
-| Disable | Preserve existing host transition | Coalescing fence; no invented constant refresh |
-| ClearReadout, service 0 | Dispatch real dgrams through normal host handler | Coalescing fence; no invented file switch, event deletion, or constant change |
-| EndRun | Apply after all prior admitted events are delivered/drained | Stop admission and finish once; release local resources and shared references; owner may retain exports used by peers |
-| End of input, event limit, explicit terminal close | Finish or discard pending delivery according to API | Same idempotent finish path, without inventing an EndRun dgram; admit no events beyond limit |
-| Reset / Unconfigure / unexpected Configure in active run | Preserve and validate record; configuration cannot change behind active parser pointers | Conservatively drain locally. Normal DataSource lifecycle must establish a new configured run before further L1; reject unsupported mid-run reconfiguration clearly |
+| Configure / BeginRun setup | Build initial parser metadata/bindings and initialize immutable run constants before callbacks | Preserve existing host configuration/calibration setup |
+| BeginStep | Start a scope for subsequent subbatches; ignore payload values; no constant refresh or mandatory slot drain | Apply existing scan/configuration updates at the CPU delivery cursor |
+| EndStep | Close scope admission, track completion and finish its public iterator; keep pipeline available | Preserve ordered step boundaries |
+| SlowUpdate | Ignore payload values on GPU; no GPU EnvStore, upload or mandatory drain | Existing CPU EPICS/EnvStore handling remains |
+| Enable with new chunkinfo | Resolve affected streams' new files and retain old handles for old reads | Preserve CPU file-switch behavior at its own cursor |
+| Disable | Recognize boundary; no inferred EndStep or constant change | May surround a chunk rollover within one step |
+| ClearReadout (0) / Reset (1) | Recognize nonempty records; no invented file switch, payload interpretation or event deletion | Preserve CPU dispatch; additional GPU reset semantics need an explicit contract |
+| EndRun | Stop admission; finish outstanding reads, producers, copies and consumers before release | Apply ordered terminal host handling |
+| EOF / event limit / explicit close | Same idempotent terminal cleanup without inventing an EndRun dgram | Preserve documented local/global stop distinction |
+| Unconfigure / unexpected Configure | Retire configuration resources after users finish; reject unsupported active-run decoder/layout changes | Normal DataSource setup must establish the next configured run |
 
-The last row is a proposed explicit limitation, not a claim that arbitrary dynamic reconfiguration currently works. The initial scope is the existing experiment/run serial and MPI GPU path. Expanding GPU support to shmem/DRP or new input modes is separate.
+ClearReadout is 0; `L1Accept_EndOfBatch` is 11 and L1Accept is 12. Both events satisfy `TransitionId.isEvent()`; end-of-batch is not EndStep. `NumberOf == 13` is an invalid record sentinel. Missing dgrams remain distinct from valid service zero. Preserve the existing conservative coalescing fence at real non-L1 controls; that is not a CUDA fence or a GPU EnvStore operation. Relaxing coalescing fences is separate work.
 
-Service validation must use the Python psana transition definitions: ClearReadout is 0, `L1Accept_EndOfBatch` is 11, L1Accept is 12, and `NumberOf == 13` is a sentinel, not a valid record. Use `TransitionId.isEvent()` rather than treating every non-12 value as a transition. Missing dgrams and out-of-range IDs still fail. Cover the shared `utils.first_service()` change with CPU tests.
+Initial scope is the existing experiment/run serial and MPI GPU path. New shmem/DRP modes and GPU support for changing detector layouts/configuration values are separate. GPU EnvStore and GPU SlowUpdate/step-value APIs are explicitly deferred. The CPU timestamp-lookup concern documented in #153 should be addressed separately; this work must preserve CPU dispatch order without claiming that defect is fixed.
 
-## Constant versions and ownership
+### Enable, file identity and offsets
 
-Keep three identities separate:
+Use Enable/chunkinfo to resolve immutable per-stream `(filename, chunk identity)` mappings in record order, including leading history and trailing controls in transition-only packets. Only new chunkinfo changes the mapping; an Enable without a file change does not reset the step. No subbatch/read may consult a mutable latest-file handle after its file identity has been bound. Apply this guarantee to both bulk and non-bulk paths. Current `GpuFileEpochs` is a useful starting point; the non-bulk path currently derives identity from mutable CPU `DgramManager` state and needs equivalent ordered resolution.
 
-| Identity | Definition and authority |
-| --- | --- |
-| Logical state | Run instance, configuration identity, source BeginStep identity, and local generation; assigned by ordered transition processing |
-| Snapshot manifest | Immutable mapping from each declared `(detector, key)` to exact content identity; built from that BD’s post-transition host source |
-| Physical object | Immutable device storage for one selector/content/layout in a device peer group; catalog assigns allocation generation and owner |
+KvikIO performs explicit `pread(..., file_offset=...)` calls. Descriptor offsets are offsets within the selected chunk file. “Reset the counting offset” does not mean replace offsets with zero: start a new file/coalescing interval and use the new chunk's supplied offsets, without accumulating the previous file's length. Preserve event/step indices and old pending reads. Open the new file on demand, retain each old handle through its pending reads, and retire it only when safe. File rollover and step rollover are independent.
 
-One snapshot can reuse every object from the preceding step. Two peers at different steps can use the same bytes; peers at the same step with different host values must get different objects or an explicit application-policy error. They must never receive another peer’s values merely because their generation numbers match.
+## Run-scoped constants and ownership
 
-Canonical host snapshots preserve shape, native dtype, and C-order bytes, including bytewise distinctions such as NaN payloads and signed zero. Validate all selectors/values before starting allocation. Use a content digest for lookup, with exact metadata/byte comparison before deduplication, or an equivalent trusted immutable host-source identity. A hash alone is not a substitute for the agreed equality contract. Host snapshot copying must happen at a defined transition boundary; concurrent user mutation during resolution is unsupported.
+Initialize host `calibconst` once during BeginRun setup. Resolve declared requested arrays for GPU use during run setup, then reuse the same immutable run manifest across every step. BeginStep, EndStep, SlowUpdate, Enable and Disable do not refresh, replace or version constants. Remove the manager's existing BeginStep refresh action. A new run initializes its own constants; do not introduce per-step IPC acquisition/barriers.
 
-Share per selector/content object, so overlapping declarations can reuse their intersection without uploading unrequested constants. Preserve physical constant axes and let user kernels map detector segments as today. Scalar arrays remain shape `()`; zero-byte arrays have metadata but need no exported device allocation. Empty declarations create no constant CUDA state or service dependency.
+Keep scope identity, run constant content identity and physical allocation generation separate. Equal run constants can share storage even when BDs are at different steps. Different selectors/content must receive distinct objects or an explicit application-policy error; step counters never authorize substituting another BD's values. Allocation generations remain necessary for stale-handle/release protection, not as calibration versions per step.
 
-Refresh is a transaction: prepare the complete new manifest, acquire all its objects, then atomically replace the facade’s active snapshot. Failed acquisition leaves the old snapshot owned, rolls back newly acquired references, and stops further event admission. Since the host transition may already have occurred, the run fails rather than silently continuing with old values. Unchanged objects need no upload. Never overwrite a shared allocation in place.
+Canonical requested host snapshots preserve shape, native dtype and C-order bytes, including NaN payloads and signed zero. Validate all selectors before allocation. Use a digest for lookup plus exact metadata/byte comparison, or an equivalent trusted immutable source identity. Host snapshots are taken during run setup; concurrent mutation and per-step changes are outside the run-constant contract.
 
-Each execution owns its captured snapshot through its terminal consumers. Conservatively retain constants through publication D2H too: an output may alias input constant storage. The import wrapper’s allocation owner must also survive ordinary CuPy views and aliases. Callback return, generator advancement, dropping the facade, and `keepalive` are not completion signals.
+Deduplicate per selector/content object so overlapping declarations share their intersection without uploading unrequested constants. Preserve original constant axes and the current segment-binding API. Scalars remain shape `()`; zero-byte arrays need metadata but no exported allocation. Empty declarations create no constant CUDA state or service dependency.
 
-For object `o`, freeing requires all of the following:
+Run setup is transactional: acquire the entire manifest before first event admission. On partial failure, roll back completed grants and retain pending owners until their completion is known; do not start processing with a partial manifest. Never overwrite a shared allocation in place. Local storage and shared storage obey the same run lifetime.
+
+Each execution retains the run constants through terminal consumers, including publication D2H when an output aliases them. Imported CuPy views retain their mapping owner. Freeing requires:
 
 ```text
-no pending acquire/import grants for o
-no active manifest or execution references to o
-no local array aliases retaining o's mapping or exporter storage
-all submitted users of o have completed successfully
-every granted importer has acknowledged its mapping closed
+no pending acquire/import grants
+no active run-manifest or execution references
+no array aliases retaining the mapping/exported storage
+all submitted consumers completed successfully
+every importer acknowledged its mapping closed
 ```
 
-Only the exporting owner frees physical storage and releases its physical charge. BDs close imports and release logical references; they never free the exporter allocation. Logical content identity can be reused after eviction, but a recreated allocation gets a fresh generation. Delayed releases cannot apply to a replacement object with the same content.
-
-The public borrowed-array contract still forbids caching constants for later work. Defensive alias retention nevertheless prevents freeing live Python array storage after refresh/close. It cannot make arbitrary saved raw pointers or unregistered streams safe. A retained alias may keep storage charged and delay service teardown; report that retention explicitly. Normal supported use requires deterministic cleanup without garbage collection. Exceptional aliases must never be reclaimed merely because a timeout elapsed.
+Only the exporting owner frees storage and releases the physical charge. BDs close imports and release references. A recreated physical allocation gets a fresh generation even if content is identical; delayed releases cannot affect its replacement. Defensive alias retention prevents premature free, but does not authorize caching borrowed arrays for later work or unregistered streams/raw pointers. Report retained aliases and budget charges; timeouts never authorize unsafe reclamation.
 
 ## CUDA IPC storage backend
 
-CUDA IPC is useful for large, identical, read-only requested arrays shared by processes using one physical GPU. It can later carry other explicitly versioned immutable state, such as a prepared lookup table, if its ownership contract is equally clear. This proposal limits the first backend to requested constants. It does not share Python dictionaries, envstore mutation, scan callbacks, parser slot state, task outputs, MPI order, or mutable user scratch. Host shared calibration and geometry caches remain separate mechanisms.
+CUDA IPC is useful for large, identical, read-only requested arrays shared by processes using one physical GPU. This proposal limits the backend to immutable requested run constants. Sharing other state would require a separate design. It does not share Python dictionaries, envstore mutation, scan callbacks, parser slot state, task outputs, MPI order, or mutable user scratch. Host shared calibration and geometry caches remain separate mechanisms.
 
 Use dedicated IPC-compatible allocations for shared objects, with metadata containing base allocation size, array byte offset, shape, dtype, and byte length. Initial allocations use offset zero and contiguous arrays; validate `offset + length <= allocation size` and alignment before constructing a view. Do not export arbitrary CuPy pool suballocations or assume the current `owned_empty()` allocator is an IPC allocator.
 
@@ -182,11 +197,11 @@ Cache group membership, capacities, protocol version, and run-instance namespace
 
 ### Give the storage owner independent progress
 
-Recommended shared-backend topology: one job-scoped helper per active shared GPU, elected/launched during coordinated startup and reachable through node-local control sockets. It owns only requested constant allocations and their catalog. BDs keep MPI transport and event work. The helper has an explicit CUDA context and no MPI membership; launch via a fresh executable/process environment, never fork an initialized CUDA process. Account for its host process and device-context overhead. Its lifetime belongs to the job/service supervisor, not the lifetime of the BD that launched it.
+Earlier shared-backend proposal, still subject to review: one job-scoped helper per active shared GPU, elected/launched during coordinated startup and reachable through node-local control sockets. With run-only constants, evaluate its process/context cost against a simpler run-scoped exporter with safe readiness and shutdown; Design 1 does not select a helper deployment. It owns only requested constant allocations and their catalog. BDs keep MPI transport and event work. The helper has an explicit CUDA context and no MPI membership; launch via a fresh executable/process environment, never fork an initialized CUDA process. Account for its host process and device-context overhead. Its lifetime belongs to the job/service supervisor, not the lifetime of the BD that launched it.
 
-This choice ensures a BD blocked in arbitrary user analysis or waiting on its EB cannot stall another BD’s constant acquire/release. Requests do not require the helper to enter the data-processing loop. Deployment must provide a supported launch/supervision method within the Slurm allocation; agree that method before assigning the shared backend. If helpers are unacceptable, an elected BD owner is an alternative only after proving independent progress, including GIL, MPI-thread support if used, blocking receive, user-code stalls, and early BD exit. Merely adding polling at BeginStep does not meet the requirement.
+This choice ensures a BD blocked in arbitrary user analysis or waiting on its EB cannot stall another BD’s constant acquire/release. Requests do not require the helper to enter the data-processing loop. Deployment must provide a supported launch/supervision method within the Slurm allocation; agree that method before assigning the shared backend. If helpers are unacceptable, an elected BD owner is an alternative only after proving independent progress, including GIL, MPI-thread support if used, blocking receive, user-code stalls, and early BD exit. Polling only at step boundaries does not establish safe startup/release progress. No per-step constant acquire/refresh protocol is required.
 
-Use bounded, versioned node-local control messages. No new Python object transport is needed on the GPUBAT1 hot path. Transfer canonical host bytes to the service through bounded staging/shared host storage during snapshot acquisition; do not assume a raw pointer in one BD is valid in the helper. Keep that storage alive through comparison/upload and include its host-memory cost in diagnostics.
+Use bounded, versioned node-local control messages. No new Python object transport is needed on the GPUBAT1 hot path. Transfer canonical host bytes to the service through bounded staging/shared host storage during run-manifest acquisition; do not assume a raw pointer in one BD is valid in the helper. Keep that storage alive through comparison/upload and include its host-memory cost in diagnostics.
 
 | Message or state | Required meaning |
 | --- | --- |
@@ -200,7 +215,7 @@ Use bounded, versioned node-local control messages. No new Python object transpo
 
 Messages are idempotent using request/grant/allocation generations. Closing and acquiring race through the owner catalog: a new grant either pins existing storage before retirement or waits for a new allocation; it never receives a handle being freed. Do not free based on a disconnected socket, a step watermark, a timeout, or a count of currently executing kernels. Pending imports count too.
 
-No all-peer BeginStep handshake is needed. Each BD presents the exact snapshot it needs. Old objects can retire after their last grant closes even if a slow peer might later request the same content: that peer supplies its own immutable host snapshot and the service can recreate it. Avoid retaining every historical GPU version until all BDs reach EndRun. A bounded optional host cache may accelerate recreation but must not become an unbounded scan-history cache.
+No all-peer BeginStep handshake is needed. Each BD acquires its run manifest before processing and retains it across steps. A BD finishing early releases its own grants; storage remains alive for slower peers and retained consumers. Run startup/shutdown coordination is distinct from step synchronization. Content deduplication and fresh allocation generations remain useful, but there is no history of per-step calibration versions to retain.
 
 ### Budget physical storage once
 
@@ -212,11 +227,11 @@ shared_live_bytes + shared_pending_bytes <= C
 local_working_live_i + local_working_pending_i <= W_i
 ```
 
-Charge shared allocation capacity once to the group ledger, including replacement overlap and quarantined objects. Imported bytes are observability (`borrowed`), not physical bytes added again to each BD’s committed total. Exporter ownership does not consume an arbitrary extra chunk of that BD’s work quota. Local fallback copies remain physical allocations and are fully charged. Pinned/host snapshots, retained host results, and user scratch need separate reporting; this policy cannot enforce a limit on arbitrary user allocations.
+Charge shared allocation capacity once to the group ledger, including all distinct live run objects and quarantined objects. Imported bytes are observability (`borrowed`), not physical bytes added again to each BD’s committed total. Exporter ownership does not consume an arbitrary extra chunk of that BD’s work quota. Local fallback copies remain physical allocations and are fully charged. Pinned/host snapshots, retained host results, and user scratch need separate reporting; this policy cannot enforce a limit on arbitrary user allocations.
 
-Use a fixed shared allowance first, with a minimum viable working allocation for every BD. Reserve changed objects for a snapshot transaction before creating them. Reduce execution overlap and trim only unreferenced caches under pressure. If active old versions plus one required new snapshot cannot fit, return a clear budget error after safe rollback; do not wait indefinitely for a slow peer, require a global transition barrier, or free old versions. An optional bounded retry may retire already-completed references, but pressure cannot create a wait cycle.
+Use a fixed shared allowance first, with a minimum viable working allocation for every BD. Reserve requested objects for run setup before creating them. Reduce execution overlap and trim only unreferenced caches under pressure. If required constants and minimum working allocations cannot fit, return a clear budget error after safe rollback; do not wait indefinitely for a slow peer, invent a step barrier, or free live objects. An optional bounded retry may retire already-completed references, but pressure cannot create a wait cycle.
 
-Example only: four BDs requesting the same 1 GiB need roughly 1 GiB of shared constant payload instead of 4 GiB. If an entire new version overlaps the old one, the shared payload reaches 2 GiB until retirement. Different values require distinct storage; partial changes can reuse unchanged objects. Allocation overhead and helper contexts are additional. These are capacity calculations, not measured throughput claims.
+Example only: four BDs requesting the same 1 GiB need roughly 1 GiB of shared constant payload instead of 4 GiB. Different requested values require distinct storage; partially overlapping declarations share only identical objects. There is no second copy solely because a BD advances to another step. Allocation overhead and helper contexts are additional. These are capacity calculations, not measured throughput claims.
 
 ## Iterator ownership and cleanup
 
@@ -224,7 +239,7 @@ One run stream controller owns the manager, transport adapter, pending deliverie
 
 | User action | Proposed semantics |
 | --- | --- |
-| Exhaust a step normally | Deliver its local events, apply EndStep, retire required consumers, invalidate the child; keep run open |
+| Exhaust a step normally | Deliver its local events, apply CPU EndStep in order, finish relevant scope consumers, invalidate the child; keep the run and later in-flight scopes open |
 | Close a child early, or advance outer iterator with an unfinished child | Invalidate that child, consume the remainder to its boundary, process transitions and retire results, discard public delivery; then allow next step |
 | Remainder includes unsubmitted L1 work | Initially run normal task submission and discard its delivery, preserving callback side effects and one scheduling rule. Skipping computation is a later opt-in contract |
 | Bare `break` with retained iterator | No implicit close. Advancing the outer iterator invokes remainder handling; otherwise use explicit close/terminate |
@@ -234,7 +249,7 @@ One run stream controller owns the manager, transport adapter, pending deliverie
 | Fatal callback/pipeline error | Preserve existing MPI global error protection; attempt bounded safe rollback, then abort rather than leave peers waiting |
 | Use a retained iterator after child/owner close | Clear closed/stale-iterator error; no access to released storage |
 
-The outer iterator keeps one lookahead marker so an unexpected next BeginStep or EndRun cannot be swallowed by child remainder processing. Empty BeginStep/EndStep pairs produce an empty Step. Do not synthesize a science step for L1 records outside explicit step boundaries; preserve CPU event/step behavior. MPI steps describe locally assigned events plus the transition history each rank receives, not a promise that every rank handles every L1. End-of-stream history delivery must preserve empty steps under normal routing.
+The CPU delivery iterator retains the next boundary marker so a next BeginStep or EndRun cannot be swallowed by child remainder processing. This delivery lookahead is separate from GPU scheduling, which may already have admitted later scopes within the memory budget. Empty BeginStep/EndStep pairs produce an empty Step. Do not synthesize a science step for L1 records outside explicit step boundaries; preserve CPU event/step behavior. MPI steps describe locally assigned events plus the transition history each rank receives, not a promise that every rank handles every L1. End-of-stream history delivery must preserve empty steps under normal routing.
 
 Proposed usage after implementation:
 
@@ -253,7 +268,7 @@ with closing(run.steps()) as steps:
             break           # outer close performs local cleanup
 ```
 
-Normal terminal cleanup follows this order: stop admission; unwind active delivery scopes; finish submitted reads and retain file/input owners; complete producer, D2H, and registered input consumers; preserve retained host result rows; release parser/input/slot resources; drop snapshot references; close eligible IPC mappings and acknowledge releases; release pinned staging; finish outstanding EB communication. The service frees exports only after the ownership predicate is true and stops after all clients have left. Repeating any phase is safe.
+Normal terminal cleanup follows this order: stop admission; unwind active delivery scopes; finish submitted reads and retain file/input owners; complete producer, D2H, and registered input consumers; preserve retained host result rows; release parser/input/slot resources; drop run-manifest references; close eligible IPC mappings and acknowledge releases; release pinned staging; finish outstanding EB communication. The service frees exports only after the ownership predicate is true and stops after all clients have left. Repeating any phase is safe.
 
 Partial initialization uses staged rollback records from the first reservation onward. Upload failure retains source/destination until completion is known. Import failure closes every successful partial import and acknowledges each grant; it must not call a full manager close on a half-built object. If CUDA completion or a peer’s import closure cannot be proven, quarantine storage and its charge, report phase/rank/object, and use bounded job failure. No graceful owner failover is proposed: a lost exporter invalidates the shared group and triggers MPI/job abort. Timeout means failed coordination, never permission to free potentially live memory.
 
@@ -261,144 +276,118 @@ Escaped aliases are an exceptional retention case: local run close can become lo
 
 ## Execution timelines
 
-### Trailing BeginStep with changed constants
+### Trailing BeginStep and overlapping slots
 
 ```text
-EB packet 1: [L1 A, L1 B, BeginStep 2]    EB packet 2: [L1 C, ...]
-BD state:    step 1, snapshot V1
+EB packet 1: [L1 A, L1 B, BeginStep 2]    packet 2: [L1 C, L1 D, ...]
 
-plan           L1Range(A,B)              BeginStep 2             L1Range(C,...)
-read/execute   admit A/B under V1 -----> producer done
-delivery       yield A/B under step 1 -> finish result/input consumers
-host state                              apply BeginStep 2
-constants                               resolve host bytes -> acquire V2
-callback                                                        C uses V2
-IPC lifetime   V1 pinned ----------------commit V2, then release V1 locally
+GPU planner: bind A/B to scope 1 -> discover scope 2 -> bind C/D to scope 2
+slot 0:      A/B execute under scope 1 ----------------------> done
+slot 1:                                C/D under scope 2 ----------> done
+CPU delivery: yield A, B -> apply CPU BeginStep 2 -> yield C, D
+constants:   same run manifest throughout ------------------------------>
 ```
 
-With unchanged requested bytes, step identity advances but the manifest reuses V1 and causes no new upload. A leading catch-up BeginStep follows the same state action before its first L1. Exact replay does not increment the local generation again.
+The planner never applies step-2 payload values to CPU state ahead of A/B delivery. GPU kernels consume no step payload values. Scope bookkeeping and buffer leases outlive their consumers. A leading catch-up BeginStep establishes scope before its first event; known replay does not increment the generation twice. Empty steps remain visible to the public step iterator.
 
-### Uneven peers on one GPU
-
-```mermaid
-sequenceDiagram
-    participant A as BD A
-    participant O as Constant service
-    participant B as BD B
-    A->>O: Acquire V1
-    O-->>A: Ready and grant
-    B->>O: Acquire identical V1
-    O-->>B: Same allocation, separate grant
-    A->>A: Finish step 1 and local consumers
-    A->>O: Acquire V2 for step 2
-    O-->>A: Upload V2 once and grant
-    A->>A: Commit complete V2 snapshot
-    A->>O: Close import and release A V1 grant
-    Note over O,B: V1 remains allocated for slow BD B
-    B->>B: Complete V1 work and aliases
-    B->>O: Close import and release B V1 grant
-    O->>O: Free V1 if no other grants
-    B->>O: Acquire V2
-    O-->>B: Import existing V2
-```
-
-If V2 cannot fit alongside V1, A gets a bounded admission error, preserves the old snapshot, and rolls back its pending reservation; it cannot overwrite V1. B can finish without reaching A’s step. The helper continues servicing releases while A is in user code or has left event processing.
-
-### SlowUpdate and file boundaries
+### Uneven BDs sharing a GPU
 
 ```text
-packet:     [L1 A, SlowUpdate U, L1 B, ClearReadout, Enable(chunk 2), L1 C]
-state:       EPICS old  | EPICS new ---------------------------------->
-delivery:    A          | B                                 | C
-read file:   chunk 1 -------- chunk 1 -------- fence -------- chunk 2
-constants:   V1 ----------------------------------------------------->
+BD A slot 0: scope 1 --------------------> done
+BD A slot 1:         scope 2 ----------------------> done
+BD B slot 0: scope 1 --------------------------------------> done
+constants:  one shared immutable run object; independent BD grants
 ```
 
-All controls remain ordered; ClearReadout creates a coalescing boundary without changing the file. C’s read has immutable chunk-2 identity. SlowUpdate changes event-associated host metadata without a group barrier or constant refresh. Older asynchronous copies/input consumers may finish under their existing owners.
+Neither BD waits for a peer to reach a step boundary. A faster BD can finish its run locally while the shared owner retains allocations for the slower BD. Final export free follows all import-close acknowledgements and consumer completions, not a step watermark.
 
-### Child close followed by run termination
+### Ignored GPU values and independent chunk rollover
 
 ```text
-step 1: yield A -> child close -> invalidate child -> process/discard rest
-        -> apply EndStep -> retire step consumers -> outer yields step 2
-step 2: yield C -> run.terminate -> outer close -> no new submissions
-        -> drain reads/executions/D2H/input users -> close imports -> release
-service: retain any peer grants -> final releases -> free exports -> stop
+records:      [A, SlowUpdate U, B, ClearReadout, Enable(chunk 2), C]
+GPU scope:    scope 1 ------------------------------------------>
+GPU values:   no SlowUpdate/step payload extraction or retention
+CPU delivery: A -> apply U -> B -> controls -> C
+read file:    chunk 1 --------------------------| chunk 2
+read offsets: descriptor offsets in chunk 1     | offsets in chunk 2
+constants:    same run manifest -------------------------------->
 ```
 
-On import failure after some handles opened, close those mappings before grant rollback. On a failed CUDA join, keep owners quarantined and invoke the coordinated failure path; no timeline step assumes Python object destruction proves device completion.
+ClearReadout remains a valid control and conservative coalescing fence without changing files. SlowUpdate remains available through existing CPU handling; this diagram does not claim to repair its independent timestamp-lookup issue. Pending chunk-1 reads retain their original handles even after chunk-2 reads are admitted.
+
+### Child close and terminal cleanup
+
+Closing a child consumes/discards its remainder through the proper boundary and finishes relevant scope work; later scopes may already be running. Closing the outer owner stops further admission and drains all owned reads, producers, D2H and registered consumers, then releases local buffers and run-constant imports. `run.terminate()` requests the existing coordinated MPI stop. The shared owner retains exports until every peer grant closes. None of these releases is inferred solely from a Python generator advancing or being collected.
 
 ## Alternatives and tradeoffs
 
-| Choice | Benefit | Cost or failure mode | Recommendation |
-| --- | --- | --- | --- |
-| Ordered BD plan over current SMD plus GPUBAT1 | Preserves transport and fixes leading/trailing order in one place | Must validate GPU-only placeholders and avoid duplicate dispatch | First implementation |
-| Separate EB transition-only packets | Makes boundaries explicit on the wire | Requires pending-transition storage, history coherence, empty-packet and end-of-input changes across EB calls | Reconsider only if planning cannot preserve current ABI clearly |
-| New GPUBAT ABI with explicit transition indices | Less BD reconstruction and potential decode savings | Version negotiation, EB/history integration, broader review | Defer; coordinate with #154 |
-| Local drain at step boundaries plus immutable shared objects | Simple local correctness; peers progress independently | Step latency and overlapping device versions | Recommended baseline |
-| Fully versioned overlapping steps within one BD | Can hide transition latency | Requires immutable host scan/configuration views, step delivery queues, and more memory | Later optimization after measured need |
-| One mutable shared array plus all-peer barrier | One allocation and simple overwrite point | Rank skew, skipped steps, user stalls and early exit can deadlock; couples EB groups | Reject for event-loop use |
-| Independent constant service | Progress survives arbitrary BD/user stalls and BD departure | Extra helper lifecycle, CUDA context, launch and monitoring work | Preferred shared backend, pending deployment review |
-| Elected BD exporter with independent progress worker | Reuses an existing process/context | Must prove thread/GIL/transport progress and retain exporter after local close | Accept only with adversarial progress tests |
-| Per-BD local snapshots | Minimal coordination and useful correctness baseline | Duplicates VRAM; does not complete #168 for supported peer groups | Stage 1 and explicit fallback |
-| Restore old Jungfrau IPC helper unchanged | Existing prototype history | Wrong generic types/selectors, ownership and topology assumptions | Reject |
-| Share across GPUs or nodes | Potentially fewer copies in other architectures | Remote-access cost, topology constraints, different sharing transport | Out of initial scope; one shared copy per GPU group |
+| Choice | Benefit | Cost / status |
+| --- | --- | --- |
+| Design 1: immutable scope per subbatch | Cross-step overlap within a BD and independent BDs | Current direction; needs separate scheduling/delivery cursors and bounded per-scope ownership |
+| Design 2: local step-boundary drains | Simpler scope completion | Superseded baseline; blocks next-step admission in that BD; still permits independent BDs |
+| Full GPU scan/configuration/EnvStore snapshots | Could support kernels consuming changing payload values | Deferred; SlowUpdate and step values remain CPU-side |
+| Ordered planner over SMD + GPUBAT1 | Preserve current transport | Must validate placeholder/event correspondence and avoid duplicate CPU dispatch |
+| Separate transition-only EB packets / new ABI | More explicit wire boundaries | Defer; broader history/framing work is unnecessary for current design |
+| Run-scoped local constants | Simple baseline and serial/single-BD backend | Duplicates VRAM; does not complete #168 for shared groups |
+| Run-scoped IPC with independent helper | Owner survives a client stall/exit | Extra process/context; deployment choice remains open |
+| Elected BD exporter | Potentially simpler run-scoped deployment | Must retain exports and prove startup/shutdown progress after local event completion |
+| Mutable shared constants plus all-peer step barrier | No benefit under fixed run constants | Reject; unnecessary step coupling and deadlock risk |
+| Restore old Jungfrau IPC unchanged | Prototype history | Reject generic dtype/selector/topology/ownership assumptions |
 
 ## Staged implementation tasks
 
-These are proposed task boundaries and dependencies, with no assignees. Stages describe exit criteria rather than calendar estimates.
+The selected direction is Design 1 with GPU EnvStore deferred. Remaining interfaces and IPC deployment details still need review; tasks have no assignees.
 
-| Stage | Work and likely touch points | Exit criterion |
+| Stage | Work | Exit criterion |
 | --- | --- | --- |
-| 0 Review contracts | Mona/Seema decisions below; agree CPU step oracle, state identities, remainder semantics, helper deployment and budget policy | Approved interfaces and acceptance matrix before implementation assignment |
-| 1 Ordered local controller | Planner and ClearReadout path in `gpu_events.py`, `gpu_file_epochs.py`, `utils.py`; immutable local snapshot capture in `gpu_task.py`/`gpu_task_batch.py`; preserve EB wire ABI | Real EB trailing BeginStep regression passes; ClearReadout reaches host/fence; changed/unchanged state correct through byte splits; no shared backend yet |
-| 2 Event and step adapters | `run.py`, `mpi_ds.py`, `step.py`, manager/transport lifecycle; one GPU stream owner and applied markers | Serial/MPI steps work, empty/history steps preserved, no duplicate envstore updates; early exit/exception/terminate matrix passes |
-| 3 Actual peer discovery and budget partition | Coordinate #155 in MPI initialization and budget setup; backend interface behind `RequestedConstants` | Correct membership across EB groups/nodes/masks; CPU roles avoid CUDA; explicit budgets checked; local backend obeys same snapshot contract |
-| 4 IPC storage prototype | Shared allocator/import owner, service/progress mechanism, bounded host staging, acquisition transaction, physical-once ledger | Two/four BDs share synthetic arbitrary numeric arrays with no follower upload; differing values isolated; accounting and aliases verified |
-| 5 Joint refresh and shutdown | Integrate stages 1–4; changed/unchanged BeginStep, grant generations, rollback, quarantine and service teardown; coordinate #169 | Delayed peer/consumer, failed upload/import, owner/client exit and pressure tests complete within harness timeout; no premature free |
-| 6 Acceptance and rollout | User docs/examples, debug metrics, synthetic then available real-data CPU/GPU comparisons, supported-topology opt-in and fallback policy | All criteria below pass; Mona/Seema review evidence before default enablement |
+| 0 Refine contracts | Scope identity/replay, scheduling versus delivery cursors, step completion/close semantics | Concrete API and acceptance cases; no reopening of deferred GPU payload-value scope |
+| 1 Ordered planning and files | Planner, ClearReadout decoder/filter/validation, per-scope ranges, immutable file resolution for bulk/non-bulk reads | Real EB trailing BeginStep labels correctly; Enable rollover and service zero tests pass; CPU state not advanced by planning |
+| 2 Design 1 scheduler and public steps | Per-submission scope, bounded cross-step look-ahead, completion accounting, event/step adapters and close ownership | Multiple scopes demonstrably in flight within one BD; serial/MPI steps and ordered CPU delivery work; early-exit matrix passes |
+| 3 Run constants and peer/budget contract | Remove BeginStep refresh, retain run manifest, coordinate #155 topology and aggregate budgets | Same constants across all steps; actual GPU groups and fully charged local fallback |
+| 4 IPC backend | Choose exporter/progress mechanism, implement readiness, import leases, physical-once ledger and partial rollback | Two/four BDs share generic numeric arrays without follower uploads; differing content isolated |
+| 5 Integrated lifecycle | Connect run constants, overlapping scopes and teardown; coordinate #169 | Delayed BD/consumer, partial failure, owner/client exit, pressure and retained aliases handled safely within bounded tests |
+| 6 Acceptance and rollout | Documentation, diagnostics, synthetic and available real-data checks | Required correctness/core checks pass; evidence reviewed before default enablement |
 
-Stages 1–2 do not depend on a shared service. Stages 3–4 depend on agreement about topology, budgets, and owner progress. Stage 5 joins them; do not claim #168 complete from a standalone handle-sharing demo. Follow-up PRs should be independently reviewable after this design is accepted, without rewriting Amanda’s stack during design work.
+Stages 1–2 can ship with local constants; IPC must not block #153's step/transition correctness. Run-only constants simplify #168 but do not eliminate topology, readiness, ownership, budgeting or teardown requirements. Separate implementation PRs should remain independently reviewable.
 
 ### Verification matrix
 
 | Area | Required cases and assertions |
 | --- | --- |
-| Ordered planning | Real fast EB append/break; leading and trailing history; exact repeated records; multiple controls; all-empty CPU slots; zero-GPU rows; transition-only packets; packet backing retained; malformed framing rejected |
-| State and values | Expected constants/config/scan values before and after BeginStep; unchanged snapshots; in-place host changes; old/new consumers spanning slots; byte-split ranges; event indices and timestamps preserved |
-| Host metadata | Explicit expected EPICS values before/after SlowUpdate in one packet, plus CPU comparison; retained events queried after later updates; no unconditional GPU/peer fence |
-| ClearReadout | 0 present, empty absent, leading/trailing missing streams, multiple dgrams; malformed empty-looking sizes rejected; complete host path; bulk off/on; Enable chunkinfo unchanged; sentinel 13 rejected |
-| Public delivery | Serial and MPI, event/step APIs, two/empty steps, GPU-only/hybrid/mixed CPU events, no task, empty task declarations, sparse publication names/results; retained CPU results survive cleanup |
-| Iterator lifecycle | Normal step progression; bare break with retained child; explicit child/outer close; next outer step; user exceptions; terminate; repeated close; stale iterator use; EndRun/EOF/max-events; outstanding EB receive |
-| Shared storage | 2 and 4 BDs per GPU; one/multiple nodes, GPUs and EB groups; uneven rank counts; serial/single BD; supported visibility masks/MIG or explicit rejection; same/different selectors and contents |
-| Array fidelity | Numeric dtype matrix, complex values, scalar/zero-length arrays, noncontiguous host input normalized, shape changes, exact byte comparisons, original segment axis; no implicit calibration preparation |
-| Ownership and failures | Delayed producer/D2H/input consumer; aliases surviving refresh; partial upload/import; acquire racing final release; duplicate/delayed messages; lost helper/client; insufficient overlap budget; no use-after-free or double charge |
-| Progress | One BD stalled in user code, another acquiring/releasing; one BD finishes earlier; empty-step peers and cross-EB peers; no transition collective; failures terminate within a declared harness timeout |
+| Ordered planning | Real fast EB append/break; leading/trailing/repeated history; empty steps; transition-only packets; GPU-only placeholders and zero-GPU rows; malformed framing rejected |
+| Scope overlap | Two or more slots in one BD simultaneously retain different scopes; two BDs on one GPU progress independently; delayed old scope; byte splits preserve event/result identity; no blanket step flush |
+| CPU/GPU division | GPU ignores SlowUpdate and step payload values; no GPU EnvStore/upload/context API; CPU dispatch once in order; GPU look-ahead does not mutate public CPU configuration early |
+| File rollover | Bulk/non-bulk; new chunk offsets; multiple streams; Enable without change; leading/trailing/replayed chunkinfo; old handle retained until pending reads complete; rollover independent of step |
+| Constants | Run setup once; unchanged manifest across steps/controls; next run setup; no per-step refresh or acquisition barrier |
+| ClearReadout | Service 0 present, empty record absent; leading/trailing missing streams; malformed sizes fail; CPU dispatch and coalescing fence; Enable behavior unchanged; sentinel 13 rejected |
+| Public delivery | Serial/MPI events/steps, empty steps, GPU-only/hybrid/mixed events, no task, sparse results, retained CPU results; step completion does not flush later scopes |
+| Iterator lifecycle | Child/outer close, outer advance, retained stale iterators, bare break, user exception, terminate, repeated close, EndRun/EOF/max-events, outstanding EB receive |
+| Sharing | 2/4 BDs per GPU, actual devices across nodes/EB groups, visibility/MIG capability or explicit fallback, same/different selectors/content, no duplicate uploads |
+| Array fidelity | Numeric/complex dtype matrix, scalar/empty arrays, noncontiguous host normalization, shape and exact-byte identity, unchanged constant axes |
+| Ownership/failure | Delayed reads/producers/D2H/input consumers, early peer exit, aliases through close, failed upload/import, stale grant messages, lost exporter, insufficient budgets; no premature free/double charge |
+| Progress | One BD stalled in user code while another progresses or finishes; owner stays available through final release; no step collective; bounded failure handling |
 
-Instrument allocation/upload/import/open/close/free counts by group, selector, content and allocation generation. Assert that every free follows all close acknowledgements and CUDA completions, and that followers never transiently allocate their own constant payload. Report group physical live/pending/retained/quarantined bytes separately from per-rank imported bytes and working bytes. Device free-memory measurements include context/allocator overhead; do not use them alone to infer one-copy sharing.
+Instrument scope identity/admission/completion and allocation/upload/import/open/close/free counts. Demonstrate actual overlap by holding old-scope work pending while later-scope work is admitted, rather than inferring it from labels. Verify every export free follows close acknowledgements and CUDA completions; distinguish shared physical bytes from imported borrowed bytes and per-BD working bytes. Include retained/quarantined and host/pinned memory in diagnostics.
 
-Implementation validation must run focused CPU, device, serial and MPI tests, then the required psana core groups in the built environment:
+Implementation validation must run focused CPU, GPU, serial and MPI tests, then both core groups in the built environment:
 
 ```bash
 pytest psana/psana/tests/
 pytest psana/psana/tests/byhand_*
 ```
 
-Use synthetic arrays/dgrams first so correctness work does not depend on unavailable SDFDATA. Device tests require real IPC-capable hardware and deployment versions. Performance comparisons come after correctness: record GPU/BD placement, batch size, slot depth, backend, shared/working budgets, version-change frequency, GDS versus fallback, memory high water, transition wait time, and throughput. No throughput gain is an acceptance assumption.
+Use synthetic arrays/dgrams first; real IPC tests need supported hardware and deployment versions. Performance follows correctness: record topology, batch size, slot depth, scope overlap, backend/budgets, GDS/fallback, memory high water, transition/delivery waits and throughput. No throughput improvement is assumed. This documentation update needs link, Markdown/whitespace and applicable pre-commit checks, not runtime tests.
 
-## Decisions for Mona and Seema
+## Remaining decisions for Mona and Seema
 
-| Decision | Proposed starting point | Why it must be settled before assignment |
-| --- | --- | --- |
-| Boundary policy | Local BeginStep/EndStep drain; ordered SlowUpdate with no blanket fence; immutable versions across peers | Defines controller versus backend responsibilities and acceptable latency |
-| Constant refresh authority | Only declared arrays from post-host-transition source; byte equality; no DB fetch | Establishes who may change scan-dependent state and which fixture is the expected-value oracle |
-| Identity and replay | Internal run/config/BeginStep identity; local public generation; no deduplication by generation alone | Needs agreement on timestamp jumps, fake steps, history replay, and future public cross-rank IDs |
-| Iterator semantics | One owner; child close/outer advance consumes and discards remainder while preserving task execution; outer close terminal locally | User-visible behavior, callback side effects, and MPI termination documentation depend on it |
-| IPC exporter and progress | Per-GPU constant helper supervised for the job; elected BD only with proven independent progress | Choose deployment model, process/context cost, launch ownership, and failure escalation |
-| Sharing granularity and mismatch | Deduplicate exact selector/content objects; differing values remain distinct and observable | Prevents semantic substitution while supporting partial selector overlap |
-| Capacity policy | Fixed group constant reserve plus validated BD work quotas; explicit error if overlapping live versions cannot fit | Determines configuration surface and pressure/failure behavior; depends on #155 |
-| Fallback and support | Local serial/single-BD backend; capability-tested shared groups; explicit unsupported fallback/required mode | Need initial supported CUDA/CuPy/Slurm/MIG configurations and rollout default |
-| Exceptional retention | Preserve alias owners and charges; report incomplete reclamation; no exporter failover | Defines cleanup guarantees and tests without promising safety for arbitrary raw pointers |
-| Delivery plan | Approve separate follow-up stages after agreeing these contracts | Allows #153 correctness work to proceed independently while keeping #168’s end-to-end acceptance intact |
+| Decision | Starting point |
+| --- | --- |
+| Scope identity and public API | Existing local `batch.step_generation` plus replay-safe source scope identity; validate fake steps/timestamp jumps; no step payload parsing |
+| Scheduling/delivery implementation | Independent cursors and bounded look-ahead; ordered CPU state updates and per-scope result completion |
+| Iterator remainder semantics | Child close/outer advance consumes and discards remainder while preserving callbacks; outer close terminal locally; explicit global terminate |
+| Stateful user work | Scope-specific accumulators/storage or declared dependencies; do not assume mutable shared scratch is safe |
+| IPC exporter/progress | Reassess helper versus elected exporter for run-only acquisition and safe peer cleanup; no step refresh service |
+| Capacity/support policy | Fixed shared reserve plus validated BD quotas; capability-tested sharing, explicit required mode/fallback and diagnostics |
+| Exceptional retention | Retain aliases and charges, report incomplete reclamation; no unsafe exporter failover/free |
 
-The design baseline is ready for this review. Proposed tasks remain unassigned; this documentation does not implement either issue or resolve the review findings.
+Design 1, fixed run constants, and deferred GPU EnvStore are the current direction. GPU ignores both SlowUpdate values and step payload values; CPU retains them. Remaining implementation/API choices do not reinstate those deferred features. This document does not close #153 or #168.
