@@ -88,11 +88,18 @@ diverge silently -- that has happened once already.
 
 ## Event building
 
-- **ONE CONTRIBUTOR RUNS ~1.6 ms LATE, AND THE ROLE MOVES BETWEEN DRPs.  This is
-  what bounds the rate at 31.4 kHz instead of 33, and it is ours.**  Found
-  2026-10-14 on gpu008, `verbs`, six DRPs; Ric spotted it in `EB_arrTimeN`.
+- **ONE CONTRIBUTOR RUNS ~1.6 ms LATE, AND THE ROLE MOVES BETWEEN DRPs.  SUPERSEDED
+  2026-10-15 -- see "The rate regression and the staging-buffer leak" near the end of
+  this file.**  Same phenomenon, caught two orders of magnitude larger (60-70 ms) with
+  a named mechanism: one DRP's staging pool fills at ~76 buffers/s from uncollected
+  reducer completions (`DRP_redStarts - DRP_redRcvs`).  **Test 1 below was run and is
+  NEGATIVE** -- `TCtbO_BtAge` spans 25-96 us across all six with no correspondence to
+  lateness, so batch accumulation is excluded and `batching`/`maxEntries` is not where
+  to look.  The rest is kept for the `EB_arrTime` numbers and the handoff observation.
+  Found 2026-10-14 on gpu008, `verbs`, six DRPs; Ric spotted it in `EB_arrTimeN`.
 
-      EB_arrTimeN (us, ns in the metric), 16:55 - 17:10, one sample per minute
+      EB_arrTime<N> (us; ns in the metric -- it is one series per contributor
+      index, not a single EB_arrTimeN), 16:55 - 17:10, one sample per minute
       tstcam1_2   1612 1582 1596 1576 1592 1606 1596 |   60   27   12   13   48   10
       tstcam1_5     32   35   49   48    0   20   37 | 1592 1633 1567 1616 1611 1607
       others      7 - 13 throughout                 ^ 17:02, a clean handoff
@@ -812,31 +819,9 @@ diverge silently -- that has happened once already.
   address at `LOG_INFO`, which is the default without `-v` in both the DRP
   (`drpGpu/PGPDetectorApp.cc:781`) and the TEB (`teb.cc:1446`), so it lands in every log.
 
-- **An L1Accept rate is a deadtime measurement, not a throughput measurement.**  Measured
-  twice on gpu008 on 2026-10-12, four minutes apart, same code and trigger cadence:
-
-      provider   DeadFrac   predicted            measured    agreement
-      sockets     0.705     71428*(1-0.705)      19.25 kHz   ~91%
-      verbs       0.558     31535 Hz             31.53 kHz   99.97%
-
-  where the XPM reports `L0InpRate{partition=N}` = **71428 Hz** (13 ticks, the real
-  trigger cadence) and `DeadFrac` per partition.  **`measured = L0InpRate * (1 -
-  DeadFrac)`**, so in both runs the DAQ took everything the XPM offered it and no rate
-  ceiling was reached.
-
-  Consequences, because this is easy to misread:
-
-  - **Comparing raw rates across runs compares deadtime.**  The historical "33 kHz" is
-    itself a deadtime-limited figure; reaching it needs `DeadFrac` 0.538 against the
-    0.558 measured, so a 1.5 kHz shortfall is a 2-point deadtime difference and not a
-    regression.  Quote `L0InpRate` and `DeadFrac` beside any rate, or the number means
-    little.
-  - **The provider's cost shows up here, not as lost throughput.**  `sockets` runs 8
-    progress and CM threads inside the DRP's cpuset where `verbs` offloads to the HCA,
-    and the dead fraction fell from 70% to 56% when that changed.  That is the measured
-    form of the `cores:` pressure above.
-  - A CPU-starvation reading of a low rate is therefore not supportable from the rate
-    alone -- an earlier version of this file argued one and it was wrong.
+- **An L1Accept rate is a deadtime measurement -> MOVED to `RULES.md`, 2026-10-15**, under
+  "Reading measurements", with the two other measurement traps.  Nothing is owed; it was
+  only ever a rule about not misreading a rate, and it sat here looking like a task.
 
 - **Log the libfabric configuration: DONE 2026-10-13.**  `Pds::Eb::logFabricInfo()`
   (`eb/src/utilities.cc`) is called from both `linksConnect()`s, guards itself with a
@@ -898,14 +883,22 @@ diverge silently -- that has happened once already.
   default should have been mistakable for a ceiling for years is the argument for logging
   the negotiated values: it makes this checkable instead of folkloric.
 
-- **Close the three transport error-reporting gaps.**  The Tx side is now covered:
-  `EbLfLink::_reapTx()` drains the Tx CQ from `post()`, counts `posted`/`completed`/
-  `errors` per link and dumps `fi_cq_err_entry` on `-FI_EAVAIL`.  Because
-  `EbLfClient::connect` creates a **separate CQ per link** (`EbLfClient.cc:65`), a Tx
-  error is unambiguously attributable to one peer.  Three gaps remain, in the order
-  they matter:
+- **`_process` can swallow a non-fatal `pend()` error -- the one transport
+  error-reporting gap still open.**  It logs and returns `rc`; `receiver()` escalates only
+  on `-FI_ENOTCONN` or when `rc == rcPrv` (`EbCtrbInBase.cc:446-459`), so an error that
+  *alternates* with success is logged for ever and never becomes fatal.  **Decide
+  deliberately which errors are fatal** rather than letting repetition be the test.  Needs
+  no run; it is a decision plus a few lines.
 
-  1. **The Rx CQ is shared across all links, so a receive *error* cannot name one.**
+  **The other two of the original three are settled** (2026-10-12/13) and kept below for
+  the reasoning: the Tx side is covered by `EbLfLink::_reapTx()` draining the Tx CQ from
+  `post()`, counting `posted`/`completed`/`errors` per link and dumping `fi_cq_err_entry`
+  on `-FI_EAVAIL`, with attribution genuine because `EbLfClient::connect` creates a
+  **separate CQ per link** (`EbLfClient.cc:65`).  And the shared Rx CQ is **a decision to
+  keep it, not a gap**.
+
+  1. **SETTLED -- KEEP THE SHARED Rx CQ.**  It is shared across all links, so a receive
+     *error* cannot name one.
      `EbLfServer::_linksConnect` creates one CQ for every peer (`EbLfServer.cc:131`,
      "All links share the same rxCQ"), and `dumpCqError` prints `op_context`, which is
      NULL for a remote write -- the same fact that refuted the credit-leak theory.  So a
@@ -973,11 +966,8 @@ diverge silently -- that has happened once already.
      gpu008's TEB sustained **8162 batches/s x 6 links ~ 49000 reads/s for 15000 s** with
      no attributable slowdown.  A DRP does ~8162/s against one TEB, an order of magnitude
      less.
-  3. **`_process` can swallow a non-fatal `pend()` error.**  It logs and returns `rc`;
-     `receiver()` escalates only on `-FI_ENOTCONN` or when `rc == rcPrv`
-     (`EbCtrbInBase.cc:446-459`), so an error that *alternates* with success is logged
-     for ever and never becomes fatal.  Decide deliberately which errors are fatal
-     rather than letting repetition be the test.
+  3. **`_process` swallowing a non-fatal `pend()` error** -- this is the open item, stated
+     at the head of this entry.
 
 - **Sweep out a missing Result rather than aborting on it.  DEFERRED, 2026-10-13: leave a
   missing Result blocking so that it stays easy to see.**  Ric's call -- the abort is the
@@ -1043,12 +1033,19 @@ diverge silently -- that has happened once already.
   assumes no ordering would be needed.  A related pre-existing leak is already noted in the
   source at `:292`.
 
-- **Two MEB sizing questions that prescaling makes reachable**, neither a GPU DRP bug:
-  the MEB path copies the raw block into the **pebble** buffer, which the recording
-  path deliberately never does (`PGPDetector.cc:467`), so confirm the `pblReach` check
-  at `:471` covers a payload copy and not just the descriptors' reach; and
-  `MebContributor::post` memcpy's at `MebContributor.cc:207` before testing against
-  `_maxEvSize` at `:209`, so an oversized event overruns before the abort reports it.
+- **`MebContributor::post` overruns its target buffer before the abort can report it.**
+  Not a GPU DRP bug and not ours: `MebContributor.cc:207` does
+  `memcpy(buffer, ddg, sz)` into a slot of `_maxEvSize`, and only *then* does `:209` test
+  `sz > _maxEvSize` and abort.  So an oversized L1Accept has already written past the slot
+  by the time it is diagnosed, and the critical message describes damage already done.
+  Swap the two.  Re-verified 2026-10-15 against the source.
+
+  **The companion question about the pebble is CLOSED by Gabriel's `58686d7f`**, which
+  made the MEB path copy only the payload regions -- respecting the prescale layout
+  `[Dgram][raw shapes][raw][reduced shapes][reduced]` -- instead of a blanket
+  `sizeofPayload()` from `buffer + cpSize`.  `PGPDetector.cc`'s `pblReach` check now
+  computes `hdrSplit + rawBytes + prescaleBufsDscr()` explicitly and its comment records
+  that the raw block is never written on the host, so there is nothing left to confirm.
 
 - **The 2026-10-07..11 debugging changes have been classified and applied, 2026-10-12.**
   What survives is ~348 added lines of the ~1322 that existed, in seven files.  Kept:
@@ -1125,15 +1122,35 @@ diverge silently -- that has happened once already.
 
   Both report `EPICS R7.0.7` / `EPICS 7.0.7.0` and **both define
   `fileDescriptorManager`**.  So a process that links one and imports anything bringing
-  the other -- `p4p`, hence `psdaq.configdb`, hence every DRP -- ends up with two
-  `fdManager` objects and two static destructors over the same symbol.  At `_dl_fini` the
-  second frees what the first already freed:
+  the other ends up with two `fdManager` objects and two static destructors over the same
+  symbol.  At `_dl_fini` the second frees what the first already freed:
 
       #6  free ()
       #7  fdManager::~fdManager (this=0x... <fileDescriptorManager>) at ../fdmgr/fdManager.cpp:73
       #8  __cxa_finalize ()
       #9  __do_global_dtors_aux () from .../epics/lib/linux-x86_64/libCom.so.3.22.0
       #10 _dl_fini ()
+
+  **WHAT BRINGS IN THE SECOND COPY IS `p4p`, AND THAT NAMES THE EXPOSED SET**
+  (established 2026-10-15, from lcls2 issue #134).  Seven config modules import it --
+  `epix100_config`, `hsd_connect`, `hsd_config`, `ts_connect`, `ts_config`, `xpmmini`,
+  `tb_config` -- so the set is **any DRP whose detector config touches `p4p`**, not
+  every DRP as this entry used to say.  The CPU `drp` links the same
+  `libCom.so.3.22.0` and embeds the same `libpython3.9` as `drp_gpu` (`ldd`), so
+  nothing about the mechanism is GPU- or hutch-specific.
+
+  **It explains a report that looked like three separate faults.**  Issue #134 filed
+  this as an MFX `epix100` shutdown bug, with occurrences on `epix100_0_0`,
+  `epix100_1_0` and `timing_1`.  All three import `p4p`:
+  `configdb/epix100_config.py:191` and `configdb/ts_config.py:5`, the latter being what
+  a `TimingSystem` detector goes through.  **The common factor is `p4p`, not the
+  device** -- and "only on the TERM path" is not a property of the shutdown code but of
+  static destructors running only at `_dl_fini`.
+
+  **Not measured: whether an MFX DRP maps both copies.**  The `/proc/<pid>/maps` check
+  was done on a GPU DRP here.  For MFX it is inference from identical binaries, an
+  identical environment and a `p4p`-importing config module.  One
+  `grep libCom /proc/<pid>/maps` on a live MFX DRP settles it and needs their `sudo`.
 
   **The fix that works: link the copy `p4p` already loads.**  Same source, only the
   `-I`/`-L` changed, plus an explicit `-lpthread` (that build does not carry
@@ -1151,8 +1168,8 @@ diverge silently -- that has happened once already.
 
   **What is NOT established, and is the work:**
 
-  - **Ten `meson.build` files reference EPICS**, and only two standalone programs have
-    been tried.  A real change means rebuilding everything that links it -- `epicsArch`,
+  - **Twelve `meson.build` files reference EPICS** (recounted 2026-10-15; this said ten),
+    and only two standalone programs have been tried.  A real change means rebuilding everything that links it -- `epicsArch`,
     `PvaDetector`, `xpm`, `hsd`, `epicstools`, `app` -- and showing nothing regresses.
   - ~~**The two builds may not be interchangeable**~~ **NO SYMBOL IS MISSING, measured
     2026-10-14.**  `nm -D --undefined-only` over all 18 installed targets that link EPICS
@@ -1185,8 +1202,24 @@ diverge silently -- that has happened once already.
   importing EPICS resolve to **one** set of shared objects -- either by not shipping the
   second copy, or by having `epics/` be a link to `epicscorelibs`, or by building
   `epicscorelibs` against the environment's EPICS rather than vendoring its own.  Which of
-  those is practical is his call; the demonstration is what makes the request concrete, so
-  do it before asking.
+  those is practical is his call.
+
+  **ORDERING DECIDED 2026-10-15: ask him WITHOUT rebuilding the tree first.**  This entry
+  used to say the tree rebuild came first, "the demonstration being what makes the request
+  concrete".  The demonstration is already concrete -- named cause, live-process
+  confirmation, a 9-line reproducer, and 0 missing symbols -- and the rebuild is a *port*
+  that this same entry calls deliberately not ours.  Doing it first would mean doing his
+  job to prove he should do his.  Route: **a note on issue #134, then a heads-up to him**;
+  the issue is the durable record Seshu's tooling and other hutches will find, the message
+  is what gets a human to act.  Drafts of both are in
+  `~/claude-sessions/2026-09-11-gpu-drp/` (`issue-134-comment.md`,
+  `valerio-message.md`).
+
+  **DONE 2026-10-15: both posted and sent, and Valerio has replied that he is on it.**
+  So the environment fix is with its owner and **nothing here is owed** -- do not start
+  the `epicscorelibs` port.  What may still come back to us is a question about what the
+  DAQ needs from the environment, or a request to test a candidate environment; the
+  symbol comparison and the reproducer are the things to hand over if asked.
 
   **Scope of our help, Ric 2026-10-14: the environment and the build are Valerio's to
   sort out; help where we cheaply can, but do not bend over backwards.**  So what we
@@ -1418,46 +1451,54 @@ diverge silently -- that has happened once already.
 
 ## Runtime behaviour
 
-- **`drp_dma_in_use` reads 56 against a `drp_dma_in_use_max` of 8 on a GPU DRP, and
-  one of the two is wrong.**  Found 2026-10-14; Ric: "we should fix that", but not
-  tonight.  The only consumer is `psalg/psalg/daqPipes/daqPipes.py:610`, which
-  computes `%DMA` as `100.0*drp_dma_in_use/drp_dma_in_use_max` and therefore reports
-  **700%** on those nodes.  daqPipes is not in regular use and knows nothing about
-  the GPU work, so this is cosmetic for now.
+- **`drp_dma_in_use_max` was the wrong constant, and is now `pool.pgpEvents.size()`.**
+  Found 2026-10-14, settled 2026-10-15 by Ric's own trace.  The gauge read 56 against
+  a `_max` of 8 on a GPU DRP, making `psalg/psalg/daqPipes/daqPipes.py:610` compute
+  `%DMA` as **700%**.  Cosmetic -- daqPipes is not in regular use -- but the constant
+  was simply wrong.
 
   **THERE ARE TWO TIERS OF "DMA BUFFER" AND THE NAMING IS GENUINELY AMBIGUOUS**
-  (Ric, 10-14).  The firmware tier *is* DMA: 8 buffers, `dmaBufCount`, filled by the
-  f/w, which `Reader` copies out of and calibrates from.  The host tier is sized by
-  `pebbleBufCount` (2048 here) and is named to **mirror the CPU DRP's accounting**,
-  which is what forced the collision.
+  (Ric, 10-14).  The f/w tier *is* DMA: 8 buffers, `dmaBufCount`, shared between the
+  f/w and the GPU.  They are **very short lived** -- the f/w fills one, the `Reader`
+  copies it out, and it is recycled -- and their contents land in the host staging
+  buffers (`hostWrtBufs` plus `calibBuffers`), which live longer than a DMA buffer but
+  not as long as a pebble.  Ric has called these "intermediate buffers"; **"staging
+  buffers"** is the better term and is what the code comments now use.
 
-      m_dmaCount / m_nDmaBuffers   8      firmware; nDmaBuffers() = nextPowerOf2()
-      m_nbuffers                   2048   host, = pebbleBufCount
+      m_dmaCount / m_nDmaBuffers   8      f/w; nDmaBuffers() = nextPowerOf2()
+      m_nbuffers                   2048   staging, = pebbleBufCount
 
-  **The mismatch is not GPU-specific and predates all of this work** (`1d1e6dec`,
-  Jan 2025): `DrpBase.cc:158` defaults `m_nbuffers` to `m_nDmaBuffers`, so the two
-  agree *unless* `pebbleBufCount` is given -- and 39 config entries give it.
-  `timing_2`, a **CPU** DRP, reports `_max` 1024 against a real 1048576.
+  **The counters track the staging tier, not the f/w tier** -- Ric, 10-15, correcting
+  a misreading of mine.  `allocateDma()` counts when a f/w buffer's *arrival is
+  detected*, so its count matches f/w allocations that are never visible to the host;
+  `Reader::freeDma`'s `// Count freed 'DMA' (host) buffers` is accurate, those being
+  `hostWrtBufs`.  The decisive line is `TrgInpGen.cu:413`, which masks `evtCounter`
+  with **`nbuffers()-1`**, not `nDmaBuffers()-1` as all six CPU call sites do.
 
-  **FOUR DEAD ENDS, all mine, recorded so nobody walks them again:**
+  **The CPU path was always right**: `timing_2`'s `_max` of 1024 is correct, its
+  `allocateDma()`/`freeDma()` counting buffers out of and back into the datadev
+  driver.  So this is not a CPU-side bug and `pebbleBufCount` is not implicated.
+
+  **Why `pgpEvents.size()` and not `nbuffers()`**: it is the in-flight slot count,
+  which is the quantity the alloc/free pair brackets on *both* paths -- it evaluates
+  to `nDmaBuffers` on the CPU path (`DrpBase.cc:171`) and to `nbuffers` on the GPU one
+  (`MemPool.cc:446`), with no virtual and no GPU-specific branch in shared code.
+
+  **The f/w tier's in-use count is deliberately NOT exported** (Ric's call, and the
+  code agrees -- `MemPoolGpu::_freeDma` is `{ return 0; }`, the host taking no part in
+  f/w buffer reuse, which is the `writeEnable`/freelist handshake).  Getting it would
+  mean a device-to-host copy per event for a number that stays in [0,8] and only
+  matters when pinned at 8.  A saturation flag on the existing metrics copy would be
+  the cheap version if anyone ever wants it.
+
+  **Three dead ends of mine, recorded so nobody walks them again:**
 
   1. "Nothing in `drpGpu` increments the counters" -- **wrong**, `Reader.cu:706`
      calls `freeDma`.  I grepped for `m_dmaAllocs` instead of for the methods.
   2. "56 > 8 is impossible, so the gauge is broken" -- **wrong**, it is 56 of the
-     2048-deep host tier, nowhere near its rail.
-  3. "`_max` should be `pool.nbuffers()`" -- **contradicted** by `allocateDma()`'s own
-     comment, "the DMA buffer is allocated by the f/w and we only account for it
-     here", which says the gauge tracks the *firmware* tier.  Reverted.
-  4. "The GPU path never allocates, only frees" -- **wrong**, `TrgInpGen.cu:516`
+     2048-deep staging tier, nowhere near its rail.
+  3. "The GPU path never allocates, only frees" -- **wrong**, `TrgInpGen.cu:516`
      calls `allocateDma()`.
-
-  **THE QUESTION THAT SETTLES IT, for someone who knows the hand-off:** on the GPU
-  path, is `allocateDma()` (`TrgInpGen.cu:516`) called once per *firmware* buffer and
-  `freeDma()` (`Reader.cu:706`) once per the *same* buffer?  `Reader::freeDma`'s
-  comment says `// Count freed 'DMA' (host) buffers`, i.e. the other tier, and an
-  alloc/free pair counting different tiers would drift -- which 56-against-8 fits.
-  If they are genuinely paired, the gauge should stay within 8 and something
-  double-counts; if not, the fix is at a call site, not in the `_max` constant.
 
 
 - **Is the spin-loop the right idea?**  `_waitForDMA` polls the DMA doorbell with a
@@ -1493,3 +1534,105 @@ diverge silently -- that has happened once already.
   spell is established -- costs latency only on the first event after the quiet spell.
   Check whether the host threads also poll, and that `__nanosleep` holds at longer
   intervals.  Measure against 33035 Hz: the point is power, not throughput.
+
+## The rate regression and the staging-buffer leak: 2026-10-15
+
+- **ONE DRP AT A TIME FILLS ITS STAGING POOL AND RUNS ~60-70 ms LATE; THE ROLE MOVES.
+  AND THE RATE HAS COME DOWN FROM 33 kHz.  Ric: "This is bothersome."**  Measured on
+  gpu008, `verbs`, five GPU DRPs + `timing_2`, pinning ON (verified per thread, not
+  from the kwarg).  This supersedes the "1.6 ms contributor lag" item above: same
+  phenomenon, two orders of magnitude more visible, with a mechanism.
+
+  **The headline numbers:**
+
+      dmaBufCount   L0AccRate   healthy lat   sick DRP        at the wall
+      8             28.4 kHz    0.9 ms        ~2040 deep      pinned, permanent
+      32            30.6 kHz    2.0-2.5 ms    excursions      fills, then RECOVERS
+
+      PCIe Gen4 x8 on every datadev (x8 @ 16 GT/s, at max, read from sysfs)
+      386 kB/event x 39.3 kHz = practical ceiling;  30.6 kHz = 78% of it
+      Ric: 33 kHz ran for extended periods with 6 GPUs, regularly with 5, and he
+      believes dmaBufCount was 8 nearly always.  So 30.6 is a REGRESSION, not a
+      ceiling, and 8 buffers is not the explanation for it.
+
+  **THE MECHANISM: `redStarts - redRcvs` IS THE WHOLE STORY.**  `DRP_redStarts` minus
+  `DRP_redRcvs` is the count of reducers started whose results were never collected.
+  On the sick DRP it equals `DRP_recordQueue` and `DRP_inputQueue0` exactly, and
+  `DRP_pblQueOcc` is its complement -- one full pool lap held by uncollected reducer
+  completions.  The recorder sits in `recordState` **3**, the blocking spin at
+  `PGPDetector.cc:309-316` (`while (!drp.reducerReceive(worker, &rt))`).
+
+  **It is a slow leak, not a throughput deficit** -- this is the key measurement and
+  it took the fill slope to see:
+
+      resume 17:38:56   73 buffers    DeadFrac 0.605   L0AccRate 28182
+      full   17:39:41 2038 buffers    DeadFrac 0.602   L0AccRate 28398
+                       45 s at ~76-81 buffers/s
+
+  76/s against 28.4 kHz is a **0.27% shortfall -- about 1 buffer lost per 374 events**.
+  And `DeadFrac` is **already 0.60 in the first sample after resume**, before the pool
+  is anywhere near full.
+
+  **SO THERE ARE TWO SEPARATE FAULTS AND THEY MUST NOT BE CONFLATED:**
+
+  1. **Whatever sets `DeadFrac` 0.60 immediately**, i.e. the 28-31 kHz against 39 kHz
+     of PCIe and against Ric's remembered 33 kHz.  Raising `dmaBufCount` 8 -> 32 bought
+     **+2.2 kHz (8%)**, so the f/w tier is implicated in this half -- but it does not
+     explain a regression from 33 kHz at a `dmaBufCount` that was 8 then too.
+  2. **The ~76/s staging-buffer leak**, which depth only mitigates: with 8 buffers a
+     DRP reached the wall and stayed pinned; with 32 it fills and recovers, and the
+     role moves between DRPs.  A race whose window shallow DMA depth widens.
+
+  **WHAT IS EXCLUDED, each by measurement rather than argument:**
+
+      our 10-15 commits   only functional change is an exported Prometheus constant
+      CPU allocation      all six cpusets byte-identical to 10-14's
+      thread pinning      verified pinned 1:1 per thread with taskset -pc; ON
+      WEKA cores          busy on 1,2,28,32; EMPTY intersection with every cpuset
+      output filesystem   recording OFF; fileWriting/smdWriting/RecordSize all 0
+      cmd line / sizing   byte-identical to 10-14 for the same alias
+      lost completions    PAUSED drains every queue to gap 0 on all five
+      GPU health          all five 4483 MiB, no throttle flags
+      code at its limit   peers idle at 2 ms with 1966 free buffers, same code
+      per-DRP hardware    the role MOVED from tstcam1_1 to tstcam1_0 and back
+
+  **`MAX_BUFFERS 8` in `GpuAsyncOffsets.h:49` is a STALE COMMENT.**  It says "must
+  match firmware value"; the f/w does 1024 now and 32 has been run before (Ric).  It is
+  used **only** in `pgpread.cc`, never in `drp_gpu` -- the real arrays are
+  `std::vector`s sized by `dmaCount` -- so raising `dmaBufCount` needs no code change.
+  Constraints that do apply: a power of 2 (`MemPool.cc:240`), `<= EvtCtrMask+1`, and
+  `<= pebbleBufCount`.
+
+  **NEXT, in order:**
+
+  1. **Run `~/git/lcls2-new` and compare** (Ric's call).  Its HEAD is `a681fc18`,
+     2026-09-04, and **it is an ancestor of our master**, so it is a clean baseline:
+     277 commits behind, 131 of them touching `psdaq/{drpGpu,drp,eb}`.  If 33 kHz
+     comes back there, bisect that range; if it does not, the cause is outside the
+     tree (f/w, driver, CUDA, the node).  **Do not write in `lcls2-new`.**
+  2. **Depth sweep, 64 and 128.**  32 bought 8% for one kwarg and the f/w allows 1024.
+     Cheap, and it bounds how much of fault 1 is DMA depth.
+  3. **Read the reducer worker round-robin**, `PGPDetector.cc:322`
+     (`worker = (worker + 1) % m_para.nworkers`) against `reducerReceive`'s per-worker
+     queues.  A completion delivered to the wrong worker's queue is exactly a lost
+     `redRcvs` with the reducer having run -- which is the leak's signature.  The
+     `rt.index != index` check at `:323` has never fired, so indices still pair; it is
+     the depth that drifts.
+  4. **Raising pebble/staging to 32768 is NOT the fix** (Ric, and the slope confirms
+     it): at 76/s a 16x pool buys 16x the time and the same wall, with ~1.2 s of
+     latency instead of 73 ms.  Worse for the MEB and for diagnosis.
+
+  **Traps this cost time on, so they do not again:**
+
+  - **Prometheus ports are reassigned per launch.**  `tstcam1_0` moved 9233 -> 9234
+    across a restart, 9234 having been `timing_2`'s.  A stale map made a running DRP
+    look dead (all counters 0) and mislabelled another's rows.  **Re-derive the map
+    from the logs after every restart.**
+  - **`avg_over_time(...[10m])` over a window containing startup is worthless.**  It
+    made all six DRPs look 20-40x worse than they were; the instantaneous healthy
+    value was 0.7 ms.  Use a window inside steady state, or instantaneous samples.
+  - **`drp_deadtime` reads NEGATIVE** on some DRPs (-4.8, -11.6), which is nonsense
+    for a fraction.  Do not quote per-DRP deadtime until that is understood; the
+    per-DRP number that *is* trustworthy is the sick DRP's 0.362 vs peers' 0.000.
+  - **A pinned-at-the-pool-size gap is saturation, not divergence.**  2040 of 2048 held
+    steady for minutes reads as "falling further behind" and is not.

@@ -91,3 +91,49 @@ reading a source file.
   answers in one file what otherwise takes a reconstruction from the xtc.  Note `DrpBase` probes
   `create_producer_<detName>` before the generic `create_producer`, so one "undefined symbol"
   line per Configure is expected rather than a fault.
+
+## Reading measurements
+
+Not rules about editing the code, but about not drawing the wrong conclusion from what it
+reports.  These have cost time twice each.
+
+- **AN L1ACCEPT RATE IS A DEADTIME MEASUREMENT, NOT A THROUGHPUT MEASUREMENT.**  Measured
+  twice on gpu008 on 2026-10-12, four minutes apart, same code and trigger cadence:
+
+      provider   DeadFrac   predicted            measured    agreement
+      sockets     0.705     71428*(1-0.705)      19.25 kHz   ~91%
+      verbs       0.558     31535 Hz             31.53 kHz   99.97%
+
+  With `L0InpRate{partition=N}` = 71428 Hz (13 ticks, the real trigger cadence),
+  **`measured = L0InpRate * (1 - DeadFrac)`** -- so in both runs the DAQ took everything
+  the XPM offered and neither reached a rate ceiling.
+
+  - **Comparing raw rates across runs compares deadtime.**  The historical "33 kHz" is
+    itself deadtime-limited; reaching it needs `DeadFrac` 0.538 against the 0.558
+    measured, so a 1.5 kHz shortfall is a 2-point deadtime difference, not a regression.
+    **Quote `L0InpRate` and `DeadFrac` beside any rate**, or the number means little.
+  - **A provider's cost appears here, not as lost throughput.**  `sockets` runs 8 progress
+    and CM threads inside the DRP's cpuset where `verbs` offloads to the HCA; the dead
+    fraction fell 70% -> 56% when that changed.
+  - **A CPU-starvation reading of a low rate is not supportable from the rate alone.**  One
+    was argued here and was wrong.
+- **Deadtime and latency are different questions.**  `tstcam1_3`'s thread wrap was called
+  harmless from `drp_deadtime 0.0000` while it ran ~1000x its peers' latency.
+- **`DRP_evtLatency` on `sockets` cannot resolve a small effect**: uniform 85-94 ms across
+  six DRPs, with individual ones swinging 61% between two samples of one run.  Use `verbs`
+  (floor ~250x lower, 0.1-0.2 ms) and windowed averages, not instantaneous samples.
+- **A Prometheus port is reassigned on every launch, so a port->alias map goes stale.**
+  `tstcam1_0` moved 9233 -> 9234 across one restart, onto what had been `timing_2`'s port.
+  Reusing the old map showed a running DRP with every counter at zero and mislabelled
+  another's rows.  Re-derive it from the logs after each restart.
+- **Never average a window that contains startup.**  `avg_over_time(...[10m])` across a
+  resume made all six DRPs look 20-40x worse than steady state, where the real figure was
+  0.7 ms.  Average inside steady state or sample instantaneously -- and note this pulls
+  against the rule above, which wants windows rather than instants.  Both are satisfied by
+  a window placed deliberately, which is the actual rule.
+- **A gauge pinned at its pool size is saturated, not diverging.**  A queue holding 2040 of
+  2048 for minutes looks like "falling further behind" and is not: the difference is flat
+  and the pool is simply the ceiling.  Check the slope before calling something a runaway.
+- **`drp_deadtime` can read negative** (-4.8, -11.6 seen on gpu008, 2026-10-15), which is
+  meaningless for a fraction.  Treat per-DRP deadtime as unreliable until that is chased;
+  a sick DRP reading 0.362 against peers' 0.000 is still a usable discriminator.
