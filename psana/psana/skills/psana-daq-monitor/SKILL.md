@@ -1,6 +1,6 @@
 ---
 name: psana-daq-monitor
-description: Query Grafana/Prometheus DAQ metrics for LCLS-II over a hutch, platform, and time window (DRP event rates, deadtime, damage, DRP errors, buffers, file writing, event builder, timing/hardware links, MEB monitoring). Use when the user's question already targets Grafana/Prometheus metrics specifically, or after psana-daq has narrowed a general DAQ issue down to a metrics investigation. Every query is a range query over the handed-off window — there is no separate live-value mode.
+description: Query Grafana/Prometheus DAQ metrics for LCLS-II over a hutch, platform, and time window (DRP event rates, deadtime, damage, DRP errors, buffers, file writing, event builder, timing/hardware links, MEB monitoring). Use when the user's question already targets Grafana/Prometheus metrics specifically, or after psana-daq has narrowed a general DAQ issue down to a metrics investigation. Every query covers the full handed-off window — range queries, plus whole-window increase() totals; there is no separate live-value mode.
 ---
 
 # Skill: psana-daq-monitor — LCLS-II DAQ Performance Monitor
@@ -60,26 +60,52 @@ use them directly — don't re-ask or re-derive. If invoked standalone, ask
 for all three; don't guess, even if only one hutch currently shows active
 metrics.
 
-**`hutch` ≡ Prometheus's `instrument` label** — set directly from a
-component's `--hutch` argument (`psdaq/psdaq/cas/epics_exporter.py:29-51`).
+**`hutch` ≡ Prometheus's `instrument` label, but the source differs by
+process family:**
+- DAQ processes (`drp`, `teb`, `monReqServer`) set it directly from their
+  own `-P {hutch}` flag (`drp.cc:51`, `teb.cc:1404`,
+  `monReqServer.cc:1121`; e.g. the cnf's `std_opts = f'-P {hutch} -C
+  {collect_host} -M {prom_dir}'` in `psdaq/psdaq/cnf/rix.cnf:35`).
+- `epics_exporter.py`-bridged metrics (XPM `L0InpRate`/`DeadFrac`/etc.,
+  `Us:`/`Cu:` link metrics) get it from the exporter's `-H` flag or the
+  first field of a `-D hutch/id/PV` spec (`epics_exporter.py:98,103`) — a
+  **static XPM→hutch table hardcoded in the base cnf file** (e.g.
+  `psdaq/psdaq/cnf/neh-base.py:80`, `-D rix/xpm-3/..., rix/xpm-1/...,
+  rix/xpm-5/...`), not read from the running DAQ.
+  *(inferred-from-code-only, not verified live)* — this means a DAQ
+  running as hutch `tst` on an XPM the cnf table assigns to `rix` would
+  show `instrument="tst"` on its DRP metrics but `instrument="rix"` on
+  its `DeadFrac`/`L0InpRate`/etc. Don't assume these always agree.
+- None of these processes take a `--hutch` flag. AMI (`ami-node --hutch
+  {hutch}`, sometimes `{hutch}_{instance}`, see
+  `psdaq/psdaq/cnf/srcf-rix.cnf:148`) and the scan scripts
+  (`psdaq/psdaq/cas/config_scan_base.py:43`) do — unrelated to any
+  Prometheus label here.
 
-**`platform` ≡ Prometheus's `partition` label** —
-`psdaq/psdaq/control/control.py:189-190` sets `params['partition'] =
-self.platform` directly, and the DRP/EB/MEB exporters label their series
-with it (`psdaq/drp/DrpBase.cc:813`, `psdaq/drp/PGPDetector.cc:471`,
-`psdaq/psdaq/eb/src/EbAppBase.cc:132`, `psdaq/psdaq/monreq/
-monReqServer.cc:450-454`). Add `partition="<platform>"` to every query
-whose catalog entry in `reference/metric-catalog.md` lists `partition` as
-a label — without it, multiple partitions running for the same instrument
-get silently merged (`sum(rate(TEB_EvtCt{instrument="xpp"}[1m]))` sums
-across partitions) or mixed.
+**`platform` ≡ Prometheus's `partition` label — but only for DAQ-process
+metrics.** This label means different things on different metric
+families; see the table below before adding a `partition=` filter to any
+query:
 
-**Scope of this equivalence — do not over-apply it:** this is specifically
-the DAQ-process Prometheus `partition` label. It does **not** generalize
-to Slurm partitions (unrelated concept, same word) or readout groups
-(`det_info.readout` in `activedet.json`, see `psana-daq-control/
-SKILL.md` Section 4, commonly *defaults* to platform but can be assigned
-differently).
+| Metric family | What `partition` means | How to filter |
+|---|---|---|
+| DAQ-process metrics (`drp_*`, `DRP_*`, `TEB_*`, `MEB_*`, `MRQ_*`, `EB_*`, `*Ctb*`) | the process's `-p` argument = platform (`control.py:189-190` sets `params['partition'] = self.platform`; `DrpBase.cc:813,1266`, `PGPDetector.cc:471`, `EbAppBase.cc:132`, `teb.cc:280`, `monReqServer.cc:451`) | `partition="<platform>"` — normal filtering; omitting it on a `sum(rate(...))` silently merges partitions |
+| XPM per-group metrics (`L0InpRate`, `L0AccRate`, `DeadFrac`, `NumL0Acc`, `NumL0Inp`, `RunTime`, `Run`) | the XPM readout-group index 0–7 (`epics_exporter.py` loops `for i in range(8)` over `PART:%d` PVs, lines 56–62) — equals the platform only for the common readout group | `<platform>` selects only the common group; other groups need `partition="<rog>"`; all 8 groups are **always** exported, whether or not a DAQ is running on them |
+| XPM link metrics (`Us:RxLinkUp`, `Cu:RxLinkUp`, `Us:RxDspErrs`, `Cu:RxDspErrs`) | **no `partition` label at all** — registered via `-G` → `registerGlobalPV()`, labels `['instrument','id']` only (`epics_exporter.py:47`) | never add `partition=` to these; a query that does returns zero series (verified live) |
+| `drp_deadtime` | label is the platform (same labeling as other DRP metrics), but the *value* is read from an XPM PV path `<pv_base>:XPM:<xpm_id>:PART:<det_info.readout>:DeadFLnk` (`DrpBase.cc:1637-1648`) — the detector's own readout group, which can differ from the platform | `partition="<platform>"` for the label, but don't assume the value tracks the platform's own readout group |
+
+Verified live: `DeadFrac{instrument="rix"}` returns `partition` values
+0..7, all with `id="xpm-3"`; `Us:RxLinkUp{instrument="rix"}` returns 3
+series (`id=xpm-1,xpm-3,xpm-5`) with labels
+`__name__,id,instance,instrument,job` — no `partition` — and adding
+`partition="2"` to that query returns zero series.
+
+**Scope — do not over-apply any of this:** these are all specifically
+Prometheus `partition`-label meanings. None of them generalize to Slurm
+partitions (unrelated concept, same word) or to `det_info.readout` in
+`activedet.json` (see `psana-daq-control/SKILL.md` Section 4) — that's a
+DAQ-config concept, not a Prometheus label, even though it's closely
+related to the XPM readout-group meaning above.
 
 If `platform` wasn't handed off and the instrument has only one active
 partition, proceeding without the filter is low-risk — but say so
@@ -99,19 +125,30 @@ grafana_query_prometheus(
 )
 ```
 
-**Never use `queryType="instant"` for a window-scoped query** —
-`startTime` is silently ignored for an instant query (verified live via
-the Grafana MCP tools); it evaluates only at `endTime`, so a deadtime
-spike, transient damage burst, buffer exhaustion that recovered, or an EB
-timeout cluster anywhere else in the window is invisible no matter what
-`endTime` you pick. This holds whether the window ends five minutes ago
-or last month — there is no separate "live" instant-query path to choose
-instead.
+**Never use `queryType="instant"` for a plain selector or a short-range
+expression meant to answer a window question** — `startTime` is silently
+ignored for an instant query (verified live via the Grafana MCP tools);
+it evaluates only at `endTime`, so a deadtime spike, transient damage
+burst, buffer exhaustion that recovered, or an EB timeout cluster
+anywhere else in the window is invisible no matter what `endTime` you
+pick. This holds whether the window ends five minutes ago or last month
+— there is no separate "live" instant-query path to choose instead.
+
+**One exception:** a whole-window `increase()` evaluated with
+`queryType="instant", endTime="<window.end>"` *does* correctly answer a
+window question, because its range vector (`[<window-duration>]`) already
+spans the entire window before `endTime` — the single returned value
+already covers it. See `reference/metric-groups.md`'s "Summarizing a
+range result by metric type" section for the worked examples. This is the
+only case where instant is correct; a plain selector or a short-range
+expression (e.g. `irate(metric[5s])`) under `queryType="instant"` is not.
 
 `stepSeconds`: pick so the returned point count stays manageable for the
 window's actual length — 15s for a window under ~30 minutes, 30–60s for a
 multi-hour window. Don't default to 15s for an hours-long window; that can
-return thousands of points.
+return thousands of points. Any `rate()`/`increase()`/`irate()` range
+vector used inside a *range* query must be `>= stepSeconds`, or samples
+between consecutive points are skipped.
 
 **`timeRange={"from":…,"to":…}` is a panel-rendering parameter** — used
 only by `get_panel_image` and `generate_deeplink`. Passing it to
@@ -153,6 +190,7 @@ running":
 | Outside Prometheus retention | An oldest-available-sample timestamp or a retention setting you've actually checked — not merely the absence of a result |
 | Scrape gap (brief exporter restart/outage) | A nonzero result immediately before and after the empty stretch, and the gap is short relative to the window |
 | Genuinely not flowing (DAQ down, detector disconnected, exporter renamed) | Corroborating evidence from `psana-daq-control` (no session covering the window) or `psana-daq-logs` (no process writing logs in the window) |
+| Wrong label for this metric (e.g. `partition=` on a metric that doesn't carry that label, like `Us:RxLinkUp`) | Check the metric's actual label set with `grafana_list_prometheus_label_names` before concluding the series doesn't exist |
 | Indeterminate | None of the above confirmed — report "no samples returned for the requested window," not a specific cause |
 
 A **measured** zero (a real sample whose value is 0) is different from an
@@ -193,8 +231,10 @@ row's PromQL and interpretation rules are in `reference/metric-groups.md`.
 | H. Timing/hardware links | Are XPM/HSD timing and hardware links up? | `metric-groups.md` §H |
 | I. Online monitoring (MEB) | Is monitoring (AMI/psplot/psana-live) receiving events? | `metric-groups.md` §I |
 
-**Partition-filter every query that has the label** (see above) — the
-common failure is forgetting it on a `sum(rate(...))` aggregate, which
+**Filter `partition` by what it means for that specific metric family**
+(see the table above) — never put `partition=` on `Us:`/`Cu:` link
+metrics (no such label exists; the query returns empty); still never
+omit it from a DAQ-process `sum(rate(...))` aggregate, where omitting it
 silently merges partitions instead of erroring.
 
 For recommendations keyed off a specific finding, see

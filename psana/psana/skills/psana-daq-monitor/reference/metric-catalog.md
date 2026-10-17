@@ -17,8 +17,8 @@ queries, substitute these as label selectors:
 | Variable | Label | Values | Usage |
 |---|---|---|---|
 | `$instrument` | `instrument` | asc, mfx, rix, tmo, tst, txi, ued, xpp | Filter all DRP/EB metrics |
-| `$partition` | `partition` | 0–7 | Filter TEB/MEB and per-partition views; **equals the DAQ-process `platform`** — see `SKILL.md`'s "Establish instrument, partition, and window" section for the exact scope of this equivalence and what it does NOT extend to |
-| `$group` | `partition` | 0–7 | Filter readout group stats (single group) |
+| `$partition` | `partition` | 0–7 | Filter TEB/MEB and other DAQ-process metrics by `platform` — see `SKILL.md`'s "Establish instrument, partition, and window" section for the exact scope |
+| `$group` | `partition` | 0–7 | Filter XPM readout-group stats by readout group — same underlying `partition` label as `$partition`, different meaning (see `SKILL.md`) |
 | `$detname` | `detname` | e.g. hsd, epixquad1kfps, jungfrau1M, ... | Filter per-detector views |
 | `$prom` | — | datasource selector | Selects which Prometheus instance to query |
 
@@ -33,7 +33,7 @@ same number as the partition — all detectors in the partition belong to it.
 | Metric | Type | Key Labels | Description |
 |--------|------|------------|-------------|
 | `drp_event_rate` | Rate | instrument, detname, partition | Events/sec per detector (computed from counter) |
-| `drp_deadtime` | Float | instrument, detname, partition | Dead fraction per detector (0–1), read from XPM PV |
+| `drp_deadtime` | Float | instrument, detname, partition | Dead fraction per detector (0–1), read from XPM PV. The value is read from the detector's own readout group PV, which can differ from the platform (see `DrpBase.cc:1637-1648`) |
 | `drp_event_age` | Gauge | instrument, detname | Age of current event |
 | `drp_dma_in_use` | Gauge | instrument, detname | DMA buffers currently in use |
 | `drp_dma_in_use_max` | Constant | instrument, detname | DMA buffer pool size (set at configure) |
@@ -126,21 +126,21 @@ same number as the partition — all detectors in the partition belong to it.
 
 ## Readout Group & Timing Metrics
 
-| Metric | Datasource | Type | Description |
-|--------|------------|------|-------------|
-| `L0InpRate` | prom_psdm | Gauge | L0 trigger input rate (from XPM EPICS PV) |
-| `L0AccRate` | prom_psdm | Gauge | L0 trigger accept rate |
-| `DeadFrac` | prom_psdm | Gauge | Dead fraction (0–1): Δ(numl0Inh) / Δ(numl0) |
-| `RunTime` | prom_psdm | Gauge | Current run elapsed time (seconds) |
-| `NumL0Acc` | prom_psdm | Gauge | Total L0 accepts in current run |
-| `Us:RxLinkUp` | prom_psdm | Gauge | Ultrafast XPM receive link status — labeled `instrument`, `partition`, `id` (XPM instance); **always scope by these**, see `metric-groups.md` §H |
-| `Cu:RxLinkUp` | prom_psdm | Gauge | Copper XPM receive link status — same labeling caveat |
-| `Us:RxDspErrs` | prom_psdm | Gauge* | Ultrafast XPM dispatch errors — same labeling caveat |
-| `Cu:RxDspErrs` | prom_psdm | Gauge* | Copper XPM dispatch errors — same labeling caveat |
-| `loclinkrdy` | prom_psdm_1s | Gauge | HSD PGP local link ready (bitmask) |
-| `remlinkrdy` | prom_psdm_1s | Gauge | HSD PGP remote link ready (bitmask) |
-| `RxDataNAlign` | prom_psdm_1s | Gauge | HSD JESD link alignment status |
-| `fexoor` | prom_psdm_1s | Gauge* | HSD feature extraction out-of-range |
+| Metric | Datasource | Type | Labels | Description |
+|--------|------------|------|--------|-------------|
+| `L0InpRate` | prom_psdm | Gauge | instrument, partition (= readout group; all 8 always exported), id | L0 trigger input rate (from XPM EPICS PV) |
+| `L0AccRate` | prom_psdm | Gauge | instrument, partition (= readout group; all 8 always exported), id | L0 trigger accept rate |
+| `DeadFrac` | prom_psdm | Gauge | instrument, partition (= readout group; all 8 always exported), id | Dead fraction (0–1): Δ(numl0Inh) / Δ(numl0) |
+| `RunTime` | prom_psdm | Gauge | instrument, partition (= readout group; all 8 always exported), id | Current run elapsed time (seconds) |
+| `NumL0Acc` | prom_psdm | Gauge | instrument, partition (= readout group; all 8 always exported), id | Total L0 accepts in current run |
+| `Us:RxLinkUp` | prom_psdm | Gauge | instrument, id — **no `partition` label**; see `metric-groups.md` §H | Ultrafast XPM receive link status |
+| `Cu:RxLinkUp` | prom_psdm | Gauge | instrument, id — **no `partition` label**; see `metric-groups.md` §H | Copper XPM receive link status |
+| `Us:RxDspErrs` | prom_psdm | Gauge* | instrument, id — **no `partition` label**; see `metric-groups.md` §H | Ultrafast XPM dispatch errors |
+| `Cu:RxDspErrs` | prom_psdm | Gauge* | instrument, id — **no `partition` label**; see `metric-groups.md` §H | Copper XPM dispatch errors |
+| `loclinkrdy` | prom_psdm_1s | Gauge | labels not verified | HSD PGP local link ready (bitmask) |
+| `remlinkrdy` | prom_psdm_1s | Gauge | labels not verified | HSD PGP remote link ready (bitmask) |
+| `RxDataNAlign` | prom_psdm_1s | Gauge | labels not verified | HSD JESD link alignment status |
+| `fexoor` | prom_psdm_1s | Gauge* | labels not verified | HSD feature extraction out-of-range |
 
 ---
 
@@ -172,7 +172,10 @@ Accelerator Timing (929 kHz)
 - **XPM**: FPGA timing master. Distributes pulse IDs and timestamps at
   ~929 kHz, generates L0 triggers, enforces flow control via inhibits.
   Publishes `L0InpRate`, `L0AccRate`, `DeadFrac`, `RunTime`, `NumL0Acc` as
-  EPICS PVs bridged to Prometheus via `epics_exporter.py`.
+  EPICS PVs bridged to Prometheus via `epics_exporter.py`. The
+  `instrument` label on these comes from `epics_exporter.py`'s static
+  XPM→hutch mapping in the base cnf file, not from the running DAQ — see
+  `SKILL.md`'s "Establish instrument, partition, and window" section.
 
 - **DRP**: Data Readout Processor — one per detector. Three thread types:
   Reader (PGP DMA), Worker (format XTC, compute trigger primitives),

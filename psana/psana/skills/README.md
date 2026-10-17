@@ -30,13 +30,17 @@ when to load it — the purposes above are a paraphrase, not a substitute.
 
 ## How they compose
 
-`psana-daq` establishes `hutch`, `platform` (also the metrics `partition`
-label and the active ConfigDB configuration alias), and a `[start, end]`
-UTC window once, and hands all three off explicitly to whichever leaf it
-routes to. **"Live" is simply a window ending at "now," scoped to the
-newest launch — not a separate code path any leaf needs to branch on.**
-This collapsed what used to be duplicated live-vs-past logic across every
-leaf into one model, stated once.
+`psana-daq` establishes `hutch`, `platform`, and a `[start, end]` UTC
+window once, and hands them off explicitly to whichever leaf it routes
+to. It also establishes the active ConfigDB configuration alias when a
+ConfigDB handoff is possible — a separate fact from `platform`, not
+implied by it. `platform` lets `psana-daq-monitor` filter DAQ-process
+metrics by the Prometheus `partition` label, but that label means
+something different on XPM metrics than on DAQ-process metrics — see
+`psana-daq-monitor/SKILL.md` for the detail. **"Live" is simply a window
+ending at "now," scoped to the newest launch — not a separate code path
+any leaf needs to branch on.** This collapsed what used to be duplicated
+live-vs-past logic across every leaf into one model, stated once.
 
 `psana-daq`'s autonomous sweep (for vague reports) is not a fifth
 diagnostic technique — it's entirely composed of the four leaves' existing

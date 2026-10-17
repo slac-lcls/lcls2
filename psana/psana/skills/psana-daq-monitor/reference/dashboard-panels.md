@@ -13,7 +13,7 @@ Panel IDs, deeplink examples, and the finding→recommendation table for
         dashboardUid="wihghwb",
         panelId=<id>,
         timeRange={"from": "<window.start>", "to": "<window.end>"},
-        variables={"var-instrument": "<instrument>", "var-partition": "<platform>"}
+        variables={"var-instrument": "<instrument>", "var-partition": "<platform>", "var-group": "<platform>"}
     )
 
 **Key panel IDs:**

@@ -126,16 +126,15 @@ window=2026-09-17T20:00Z..2026-09-18T08:00Z" — rather than letting it
 re-derive or re-ask for any of them. Hand off the configuration alias too
 when established.
 
-`hutch` ≡ Prometheus's `instrument` label (`psdaq/psdaq/cas/
-epics_exporter.py:29-51` sets it directly from `--hutch`). `platform` ≡
-the metrics `partition` label (`control.py:189-190`,
-`DrpBase.cc:813`, `PGPDetector.cc:471`, `EbAppBase.cc:132`,
-`monReqServer.cc:450-454`) — hand it off explicitly for
-`psana-daq-monitor`'s `partition="<platform>"` filter. This equivalence is
-specifically the DAQ-process Prometheus label — it does not generalize to
-Slurm partitions (different concept, same word) or readout groups
-(`det_info.readout` in `activedet.json` often defaults to platform, but can
-be assigned differently).
+`hutch` ≡ Prometheus's `instrument` label, and `platform` ≡ its
+`partition` label — but both equivalences are more specific than that,
+and the `partition` label means something different on XPM metrics than
+on DAQ-process metrics. See `psana-daq-monitor/SKILL.md`'s "Establish
+instrument, partition, and window" section for the full table (DAQ-
+process metrics, XPM per-group metrics, XPM link metrics, `drp_deadtime`)
+rather than restating it here. Hand off `hutch` and `platform` as
+established; `psana-daq-monitor` applies the right filter per metric
+family itself.
 
 ### Which config is running
 
@@ -199,10 +198,10 @@ Steps:
      past-session fallback — there is no live/past split left to degrade
      from). If the window includes "now" and a live `daqstate` happens to
      be reachable, use it as corroboration only.
-   - **Metrics**: always a `queryType=range` query over `[start, end]` —
-     `psana-daq-monitor`'s instant-query mode is for its own live-value
-     convenience, not for sweep legs. Cite its diagnosis-order table, don't
-     re-paste PromQL.
+   - **Metrics**: queries cover the full `[start, end]` window per
+     `psana-daq-monitor`'s query-shape rules (range, plus whole-window
+     `increase()` totals). Cite its diagnosis-order table, don't re-paste
+     PromQL.
    - **ConfigDB**: gated by the implicated-detector rule — only query for a
      detector named in a control/log error, a `<C>`/`<E>` line, or the
      `detname` label on a breached metric. No detector implicated →

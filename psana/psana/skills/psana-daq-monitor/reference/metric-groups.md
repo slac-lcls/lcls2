@@ -2,10 +2,11 @@
 
 The ordered diagnostic workflow for `psana-daq-monitor`. `SKILL.md`
 establishes `<instrument>`, `<platform>`, and the `[start, end]` window,
-and the one query shape (`queryType="range"`, always) — read it first.
-Every PromQL example below omits `queryType`/`startTime`/`endTime`/
-`stepSeconds` for brevity; fill them in per `SKILL.md`'s "The one query
-shape" section.
+and the query shape rules (`queryType="range"` for anything time-
+sensitive, plus the one whole-window `increase()` exception) — read it
+first. Every PromQL example below omits `queryType`/`startTime`/
+`endTime`/`stepSeconds` for brevity; fill them in per `SKILL.md`'s "The
+one query shape" section.
 
 Work top-to-bottom. Start with event rate (A) — it is the primary
 liveness signal.
@@ -73,6 +74,13 @@ requires computing the duration string to exactly match the window.
 via `epics_exporter.py`. `L0InpRate` = L0 triggers input / time.
 `L0AccRate` = L0 triggers accepted / time.
 
+On `L0InpRate`/`L0AccRate`, `partition` is the XPM readout group, not
+necessarily the platform — `<platform>` selects only the common group;
+other groups need `partition="<rog>"`. A series existing for a group
+doesn't by itself mean a DAQ is running there, since all 8 groups are
+always exported (see `SKILL.md`'s "Establish instrument, partition, and
+window" table).
+
 **Interpretation:**
 - `drp_event_rate` > 0 across all expected detectors = DAQ running in that
   window
@@ -92,7 +100,9 @@ via `epics_exporter.py`. `L0InpRate` = L0 triggers input / time.
 Deadtime is the fraction of L0 triggers rejected because the readout
 system is busy. Computed by the XPM as `Δ(numl0Inh) / Δ(numl0)` per
 measurement interval. The DRP-side `drp_deadtime` reads the XPM's
-per-link `DeadFLnk` EPICS PV — it is NOT computed by the DRP itself.
+per-link `DeadFLnk` EPICS PV — it is NOT computed by the DRP itself, and
+it reads the **detector's own readout group** PV (`det_info.readout`),
+which is not necessarily the platform.
 
 **Metric check:**
 
@@ -107,6 +117,12 @@ per-link `DeadFLnk` EPICS PV — it is NOT computed by the DRP itself.
         datasourceUid="afjrx1j1815vkf",
         expr='100.*drp_deadtime{instrument="<instrument>",partition="<platform>"}'
     )
+
+On `DeadFrac`, `partition` is the XPM readout group, not necessarily the
+platform — `<platform>` selects only the common group; other groups need
+`partition="<rog>"`. A series existing for a group doesn't by itself mean
+a DAQ is running there, since all 8 groups are always exported (see
+`SKILL.md`'s "Establish instrument, partition, and window" table).
 
 Report the **peak** value plus the duration of any interval sustained
 above the thresholds below over the window — a brief spike and a
@@ -156,11 +172,16 @@ for a total, or `irate()`/range-`rate()` to see timing):
         queryType="instant", endTime="<window.end>"
     )
 
-    # Damage rate, to see when it happened
+    # Damage per step interval, to see when it happened
     grafana_query_prometheus(
         datasourceUid="afjrx1j1815vkf",
-        expr='irate(DRP_Damage{instrument="<instrument>",partition="<platform>"}[5s])'
+        expr='increase(DRP_Damage{instrument="<instrument>",partition="<platform>"}[<stepSeconds>s])'
     )
+
+The range vector's duration must equal `stepSeconds` so consecutive
+points tile the window with no gaps — unlike the previous
+`irate(...[5s])` form, which only reflected the last few seconds before
+each point and left most of the interval between points invisible.
 
 **Interpretation:**
 - Zero damage over the window means no damage measured — not an
@@ -345,10 +366,10 @@ identifies the offending source ID.
 
 ## H. Are timing and hardware links healthy?
 
-**XPM link metrics have no `instrument` label of their own** — `Us:*`/
-`Cu:*` series come from the XPM's own EPICS PV bridge
-(`psdaq/psdaq/cas/epics_exporter.py:57`, labels `['instrument',
-'partition','id']`), and **one instrument can have several XPM
+**XPM link metrics have no `partition` label** — `Us:*`/`Cu:*` series come
+from the XPM's own EPICS PV bridge, registered via the exporter's `-G`
+flag → `registerGlobalPV()` (`psdaq/psdaq/cas/epics_exporter.py:47`,
+labels `['instrument','id']`), and **one instrument can have several XPM
 exporters** registered (`psdaq/psdaq/cnf/neh-base.py` registers multiple
 `-D <hutch>/xpm-N/...` exporters per hutch). Querying `Us:RxLinkUp{}` with
 no selector at all mixes every exported XPM across every hutch into one
@@ -369,13 +390,13 @@ than summing or averaging across them silently:
 **XPM link status (fire in parallel, scoped):**
 
     grafana_query_prometheus(datasourceUid="afjrx1j1815vkf",
-        expr='Us:RxLinkUp{instrument="<instrument>",partition="<platform>"}')
+        expr='Us:RxLinkUp{instrument="<instrument>"}')
     grafana_query_prometheus(datasourceUid="afjrx1j1815vkf",
-        expr='Cu:RxLinkUp{instrument="<instrument>",partition="<platform>"}')
+        expr='Cu:RxLinkUp{instrument="<instrument>"}')
     grafana_query_prometheus(datasourceUid="afjrx1j1815vkf",
-        expr='rate(Us:RxDspErrs{instrument="<instrument>",partition="<platform>"}[1m])')
+        expr='rate(Us:RxDspErrs{instrument="<instrument>"}[1m])')
     grafana_query_prometheus(datasourceUid="afjrx1j1815vkf",
-        expr='rate(Cu:RxDspErrs{instrument="<instrument>",partition="<platform>"}[1m])')
+        expr='rate(Cu:RxDspErrs{instrument="<instrument>"}[1m])')
 
 If more than one `id` is returned for the instrument, **inspect each
 `id`'s result individually** rather than aggregating with `sum()`/`avg()`
