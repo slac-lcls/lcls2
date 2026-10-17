@@ -1,6 +1,6 @@
 # Design 1: GPU step scopes and run-scoped shared constants
 
-Design for Mona and Seema, originally 2026-10-07; direction revised 2026-10-15 after the meeting. Covers [#153](https://github.com/slac-lcls/lcls2/issues/153) and [#168](https://github.com/slac-lcls/lcls2/issues/168). This is a design document, not runtime implementation. Implementation tasks and the remaining API/IPC deployment details are not assigned or approved by this update.
+Design for Mona and Seema, originally 2026-10-07; direction revised 2026-10-15 after the meeting; subbatch/reduction contract clarified 2026-10-16. Covers [#153](https://github.com/slac-lcls/lcls2/issues/153) and [#168](https://github.com/slac-lcls/lcls2/issues/168). This is a design document, not runtime implementation. Implementation tasks and the remaining API/IPC deployment details are not assigned or approved by this update.
 
 ## Meeting decision and scope
 
@@ -15,6 +15,8 @@ Keep the current SMD0 → EB → BD transport and external `GpuTask` API. An ord
 CPU BDs can be at different steps because each process has its own mutable host state and advances its own iterator. GPU slots are streams inside one BD, not separate processes. Immutable per-submission scope identity provides the intended independence without pretending slots have private EnvStores. Both designs already allow different BDs to advance independently; Design 1 adds overlap across steps within a BD.
 
 The original reconstruction stack through #151 has merged into `features/psana2-gpu`; this proposal remains a separate documentation PR. Transition correctness can ship with local run constants before the shared backend. The earlier per-GPU constant-helper proposal remains an option for review, not a consequence of selecting Design 1.
+
+The October 16 discussion confirms **one step per execution subbatch and per occupied slot**, while different slots may hold different steps. Mixed-step subbatches were considered and are not the baseline: they preserve execution boundaries but complicate per-step/bin reductions and can increase live accumulator storage. Scheduling stays at subbatch granularity. A physical slot is reusable across steps after its consumers finish; it is not permanently assigned to a step.
 
 ## Current workflow and API
 
@@ -108,7 +110,7 @@ Every L1 in the current split path has a GPUBAT1 event row, including zero-GPU-c
 
 The transition-only decoder counts present dgrams, takes the first present service, validates packet sizes before skipping all-empty records, and yields service zero. The ordered planner must additionally preserve original empty-record positions for L1 correlation; it cannot use the transition decoder's filtered positions as event indices. Remove service truth-value filtering from the manager, bulk-read selection, file resolver and shared service validation.
 
-Retain conservative L1-range boundaries at controls, then split by the byte budget within each range. An execution subbatch must not cross a BeginStep/EndStep boundary. It carries immutable run/step identity, original event indices and resolved read-file mappings. No scan/step/SlowUpdate payload values are captured for GPU work. Initial decoder tables and unchanged run constants are retained independently of scope.
+Preserve control positions in the ordered plan. Execution splitting combines the existing byte-budget ranges with required BeginStep/EndStep boundaries: a subbatch must not cross a step boundary. It carries one immutable run/step identity, original event indices and resolved read-file mappings. Read-group/coalescing fences are separate from execution boundaries; a CPU-only SlowUpdate does not by itself require another GPU execution submission. Preserve read correctness and ownership when composing these plans. No scan/step/SlowUpdate payload values are captured for GPU work. Initial decoder tables and unchanged run constants are retained independently of scope.
 
 ### Separate scheduling from CPU-visible delivery
 
@@ -125,6 +127,31 @@ Different BDs and different execution slots within a BD may process different sc
 Track pending events, results and registered consumers by scope. Public child-step completion finishes its relevant work and preserves ordered delivery, while later-scope work may already be admitted. It must not flush unrelated later slots as a side effect. A shared mutable accumulator/workspace requires scope-specific storage or explicit dependencies. No new implicit cross-step accumulator behavior is promised.
 
 Retain input windows, execution buffers, publication/D2H storage, scope bookkeeping and file owners until their consumers finish. Callback return, advancing a generator, and changing the current scope are not release signals. EndRun and terminal cleanup drain all owned work; ordinary step boundaries only coordinate the work needed for that scope's completion.
+
+### One step per subbatch: reductions and memory
+
+For an XPP-style scan where each step is one output bin, a homogeneous subbatch lets a reduction task produce one partial sum for one bin. A step may span many subbatches and BDs; its final sum still combines those partials. Public `step.events()` yields only that step's assigned events. An all-BD step sum requires an explicit reduction, separate from local iteration. This is a task use case, not a new framework reduction API or GPU extraction of scan values: the GPU uses scope identity, while CPU retains the physical bin/scan values.
+
+```text
+slot 0: [A, B, C]  scope 1 -> one partial sum for bin 1
+slot 1: [D, E]     scope 2 -> one partial sum for bin 2
+```
+
+Different slots may overlap different steps; splitting at a step boundary does not drain the other slots. Several slots may also contribute to the same step. Track completion by scope so a bin is final only after its boundary is known and all relevant contributions complete. Do not reset a single mutable accumulator while earlier kernels can still write to it; use isolated partials/scope storage or explicit dependencies.
+
+The alternative considered was one mixed-step execution such as `[A, B, C, D, E]` with event step IDs `[1, 1, 1, 2, 2]`. Event metadata alone does not require per-event scheduling, so this alternative can preserve the original byte-budget subbatch boundaries. However, a step/bin reduction must distinguish its contributions: one undifferentiated sum cannot be separated afterward. It needs grouped partial sums or additional processing, event-aligned scope metadata, and completion/ownership across several scopes in one execution. The current scalar `batch.step_generation` would also need a mixed-scope API contract.
+
+If one bin's accumulator occupies `B` bytes and a mixed subbatch represents `K` bins, retaining all its bin partials can require about `K * B` bytes rather than `B`, plus reduction scratch and metadata. This is a conditional capacity estimate, not an inevitable allocation or a measured result: implementations can trade additional passes or staged output for lower simultaneous storage. The concern is strongest for image-sized sums; scalar sums have a much smaller payload cost. Fixed run constants do not multiply with the number of bins.
+
+One-step subbatches simplify each execution, but do not imply one accumulator for the entire BD. Multiple slots, active steps, pending partials and retained outputs may still keep several sums alive. Account for task scratch and retained reduction outputs in the applicable memory budget and lifetime contract; slot count alone is not the memory bound. This design does not claim to police arbitrary unregistered user allocations. The tradeoff is potentially smaller subbatches and extra submissions at step boundaries, especially for short steps. Measure that cost before considering mixed-step execution as a later optimization.
+
+### Scheduling cost contract
+
+- Discover step boundaries during the existing ordered packet traversal; attach one scope reference per execution subbatch. No per-event or per-field scheduling is introduced for step assignment.
+- Combine scope boundaries with existing admission ranges once per coherent batch. Reuse decoded descriptors and read-plan metadata; do not rebuild the full read plan for each step/subbatch or rescan field descriptors to determine scope.
+- Submit and register execution completion at subbatch granularity. Associate its existing completion/consumer tokens with the scope; do not add per-event polling. Existing per-event delivery and input/result ownership remain necessary and are not additional scope scheduling.
+- Keep physical read-group planning separate from execution grouping. Enable/file fences still control read identity/coalescing; CPU-only value updates add no GPU value-processing task or mandatory execution split.
+- Measure additional submissions, CPU planning/dispatch time and accumulator high-water memory for long and short steps. Scope bookkeeping must not scale with the number of requested fields. Existing budget/admission costs are not claimed to disappear.
 
 ### Transition responsibilities
 
@@ -323,7 +350,8 @@ Closing a child consumes/discards its remainder through the proper boundary and 
 
 | Choice | Benefit | Cost / status |
 | --- | --- | --- |
-| Design 1: immutable scope per subbatch | Cross-step overlap within a BD and independent BDs | Current direction; needs separate scheduling/delivery cursors and bounded per-scope ownership |
+| Design 1: one step per execution subbatch | One bin partial per reduction invocation; cross-step overlap across slots/BDs | Current direction; step boundaries can create smaller subbatches; retain bounded per-scope ownership |
+| Mixed-step subbatch with per-event scope | Preserve original execution boundaries; still permits subbatch-level scheduling | Not the baseline; grouped reductions and multi-scope completion/API; potentially multiple image-sized bin partials per execution, or extra passes to limit storage |
 | Design 2: local step-boundary drains | Simpler scope completion | Superseded baseline; blocks next-step admission in that BD; still permits independent BDs |
 | Full GPU scan/configuration/EnvStore snapshots | Could support kernels consuming changing payload values | Deferred; SlowUpdate and step values remain CPU-side |
 | Ordered planner over SMD + GPUBAT1 | Preserve current transport | Must validate placeholder/event correspondence and avoid duplicate CPU dispatch |
@@ -355,7 +383,9 @@ Stages 1–2 can ship with local constants; IPC must not block #153's step/trans
 | Area | Required cases and assertions |
 | --- | --- |
 | Ordered planning | Real fast EB append/break; leading/trailing/repeated history; empty steps; transition-only packets; GPU-only placeholders and zero-GPU rows; malformed framing rejected |
-| Scope overlap | Two or more slots in one BD simultaneously retain different scopes; two BDs on one GPU progress independently; delayed old scope; byte splits preserve event/result identity; no blanket step flush |
+| Scope overlap | Every execution subbatch has one scope; two or more occupied slots may retain different scopes; two BDs progress independently; delayed old scope; byte splits preserve identity; no blanket step flush |
+| Step/bin reductions | Compare per-step sums with explicit expected values for several subbatches per step, concurrent same/different-step slots, short/empty steps and retained partials; no cross-bin contamination or premature accumulator reset/free; account for scratch/output storage |
+| Scheduling cost | Scope discovery reuses packet traversal; no per-field scheduling or repeated full-plan construction per scope/subbatch; submissions change only for required execution boundaries; measure short-step fragmentation and memory high water |
 | CPU/GPU division | GPU ignores SlowUpdate and step payload values; no GPU EnvStore/upload/context API; CPU dispatch once in order; GPU look-ahead does not mutate public CPU configuration early |
 | File rollover | Bulk/non-bulk; new chunk offsets; multiple streams; Enable without change; leading/trailing/replayed chunkinfo; old handle retained until pending reads complete; rollover independent of step |
 | Constants | Run setup once; unchanged manifest across steps/controls; next run setup; no per-step refresh or acquisition barrier |
@@ -385,7 +415,7 @@ Use synthetic arrays/dgrams first; real IPC tests need supported hardware and de
 | Scope identity and public API | Existing local `batch.step_generation` plus replay-safe source scope identity; validate fake steps/timestamp jumps; no step payload parsing |
 | Scheduling/delivery implementation | Independent cursors and bounded look-ahead; ordered CPU state updates and per-scope result completion |
 | Iterator remainder semantics | Child close/outer advance consumes and discards remainder while preserving callbacks; outer close terminal locally; explicit global terminate |
-| Stateful user work | Scope-specific accumulators/storage or declared dependencies; do not assume mutable shared scratch is safe |
+| Stateful user work | One step per execution; isolated partial sums/scope storage or declared dependencies; define combining and retaining multiple subbatch contributions without assuming one accumulator per BD |
 | IPC exporter/progress | Reassess helper versus elected exporter for run-only acquisition and safe peer cleanup; no step refresh service |
 | Capacity/support policy | Fixed shared reserve plus validated BD quotas; capability-tested sharing, explicit required mode/fallback and diagnostics |
 | Exceptional retention | Retain aliases and charges, report incomplete reclamation; no unsafe exporter failover/free |
