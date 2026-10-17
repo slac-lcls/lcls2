@@ -364,9 +364,9 @@ int Reader::_setupGraph(unsigned reader)
 
 static __device__ __forceinline__ uint64_t _globalTimer()
 {
-  uint64_t t;
-  asm volatile("mov.u64 %0, %globaltimer;" : "=l"(t));
-  return t;
+  uint64_t ns;
+  asm volatile("mov.u64 %0, %globaltimer;" : "=l"(ns));
+  return ns;
 }
 
 static __device__ __forceinline__ void _histLog2(uint64_t* const hist, uint64_t& sum, uint64_t const ns)
@@ -401,6 +401,7 @@ void _waitForDMA(unsigned  const                            reader,
 
     uint64_t tEntry{0};
     if (hist) {
+      _markSm(hist->smWait);
       tEntry = _globalTimer();
       if (hist->idle)  _histLog2(hist->relaunch, hist->sum[0], tEntry - hist->tEntry);
       hist->tEntry = tEntry;
@@ -427,17 +428,22 @@ void _waitForDMA(unsigned  const                            reader,
       if (hist->tPrevDetect)  _histLog2(hist->interval, hist->sum[1], tDetect - hist->tPrevDetect);
       hist->tPrevDetect = tDetect;
       hist->tDetect     = tDetect;
+      if (!hist->t0)  hist->t0 = tDetect;
+      auto const slice{(tDetect - hist->t0) >> ReaderHist::sliceShift};
+      hist->slice = slice < ReaderHist::nSlice ? slice : ReaderHist::nSlice - 1;
 
       // Sampled 1 in 16, since a deep backlog makes this walk long
       if ((hist->nSample++ & 0xf) == 0) {
-        unsigned n{0};
+        unsigned landed{0};
         auto idx{*dmaBufferIdx};
         for (unsigned k = 1; k < dmaCount / nReaders; ++k) {
           idx = (idx + nReaders) & (dmaCount - 1);
           if (*(const volatile uint32_t*)(dmaBuffers[idx] + 4) == 0)  break;
-          ++n;
+          ++landed;
         }
-        ++hist->backlog[n < ReaderHist::nBacklog ? n : ReaderHist::nBacklog - 1];
+        ++hist->backlog[landed < ReaderHist::nBacklog ? landed : ReaderHist::nBacklog - 1];
+        auto& slc{hist->slices[hist->slice]};
+        if (landed > slc.maxBacklog)  slc.maxBacklog = landed;
       }
     }
 
@@ -480,6 +486,10 @@ void _waitForDMA(unsigned  const                            reader,
       if (ns < 256)  ns *= 2;
       else {
         DBG(*stateMon = 4;)
+        if (hist) {
+          ++hist->popTimeouts;
+          ++hist->slices[hist->slice].popTimeouts;
+        }
         return;
       }
     }
@@ -535,6 +545,10 @@ void _readerLoop(unsigned  const                            reader,
         break;
       }
     }
+    if (rc && hist) {
+      ++hist->pushFulls;
+      ++hist->slices[hist->slice].pushFulls;
+    }
     if (!rc) {
       // Once the pebble buffer index has been passed on to the next link in the
       // processing chain, we can release the DMA buffer and prepare for another
@@ -559,10 +573,14 @@ void _readerLoop(unsigned  const                            reader,
       DBG(*stateMon = 15; ++(*evtCtr);)
 
       if (hist) {
-        auto const t{_globalTimer()};
-        _histLog2(hist->service, hist->sum[2], t - hist->tDetect);
-        _histLog2(hist->push,    hist->sum[5], t - hist->tLoop);
+        auto const tPush{_globalTimer()};
+        _markSm(hist->smLoop);
+        _histLog2(hist->service, hist->sum[2], tPush - hist->tDetect);
+        _histLog2(hist->push,    hist->sum[5], tPush - hist->tLoop);
         hist->tLoop = 0;
+        auto& slc{hist->slices[hist->slice]};
+        ++slc.nEvents;
+        slc.service += tPush - hist->tDetect;
       }
     }
   }
@@ -693,7 +711,8 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                              m_pool.rawReleased(),
                              m_subFrames[reader].d,
                              m_evtStatus_d[reader],
-                             m_metrics.states[reader]};
+                             m_metrics.states[reader],
+                             m_hist_d[reader] ? m_hist_d[reader]->smEvent : nullptr};
   // Claim a prescale slot before _event, so that all of its blocks agree on one.
   // Only needed when prescaling; pass-through indexes by pebble and claims nothing.
   if (rawBufCnt) {
@@ -787,16 +806,21 @@ bool Reader::startup()                  // Called during phase 1 of Configure
   return false;
 }
 
-static std::string _log2Line(const uint64_t* hist, unsigned n)
+static __global__ void _readGlobalTimer(uint64_t* ns)
 {
-  unsigned lo{n}, hi{0};
-  for (unsigned i = 0; i < n; ++i) {
+  *ns = _globalTimer();
+}
+
+static std::string _log2Line(const uint64_t* hist, unsigned nBins)
+{
+  unsigned lo{nBins}, hi{0};
+  for (unsigned i = 0; i < nBins; ++i) {
     if (hist[i]) { if (i < lo) lo = i;  hi = i; }
   }
-  std::string s;
-  for (unsigned i = lo; i <= hi && lo < n; ++i)
-    s += " 2^" + std::to_string(i) + ":" + std::to_string(hist[i]);
-  return s;
+  std::string line;
+  for (unsigned i = lo; i <= hi && lo < nBins; ++i)
+    line += " 2^" + std::to_string(i) + ":" + std::to_string(hist[i]);
+  return line;
 }
 
 // A snapshot: the graph may still be finishing its last pass
@@ -804,25 +828,58 @@ void Reader::reportHistograms() const
 {
   for (unsigned i = 0; i < m_nReaders; ++i) {
     if (!m_hist_d[i])  continue;
-    ReaderHist h;
-    if (chkError(cudaMemcpy(&h, m_hist_d[i], sizeof(h), cudaMemcpyDeviceToHost)))  continue;
+    ReaderHist rh;
+    if (chkError(cudaMemcpy(&rh, m_hist_d[i], sizeof(rh), cudaMemcpyDeviceToHost)))  continue;
 
     const char* name[] {"relaunch", "interval", "service", " pop", " event", " push"};
-    const uint64_t* hist[] {h.relaunch, h.interval, h.service, h.pop, h.event, h.push};
+    const uint64_t* hist[] {rh.relaunch, rh.interval, rh.service, rh.pop, rh.event, rh.push};
     for (unsigned j = 0; j < 6; ++j) {
-      uint64_t n{0};
-      for (unsigned k = 0; k < ReaderHist::nLog2; ++k)  n += hist[j][k];
-      logging::info("Reader[%u] %-8s ns: n %lu, mean %.0f |%s", i, name[j], n,
-                    n ? double(h.sum[j]) / n : 0., _log2Line(hist[j], ReaderHist::nLog2).c_str());
+      uint64_t count{0};
+      for (unsigned k = 0; k < ReaderHist::nLog2; ++k)  count += hist[j][k];
+      logging::info("Reader[%u] %-8s ns: n %lu, mean %.0f |%s", i, name[j], count,
+                    count ? double(rh.sum[j]) / count : 0., _log2Line(hist[j], ReaderHist::nLog2).c_str());
     }
-    std::string s;
-    uint64_t n{0}, sum{0};
+    std::string line;
+    uint64_t count{0}, sum{0};
     for (unsigned k = 0; k < ReaderHist::nBacklog; ++k) {
-      if (!h.backlog[k])  continue;
-      s += " " + std::to_string(k) + ":" + std::to_string(h.backlog[k]);
-      n += h.backlog[k];  sum += k * h.backlog[k];
+      if (!rh.backlog[k])  continue;
+      line += " " + std::to_string(k) + ":" + std::to_string(rh.backlog[k]);
+      count += rh.backlog[k];  sum += k * rh.backlog[k];
     }
-    logging::info("Reader[%u] backlog  bufs: n %lu, mean %.1f |%s", i, n, n ? double(sum) / n : 0., s.c_str());
+    logging::info("Reader[%u] backlog  bufs: n %lu, mean %.1f |%s", i, count, count ? double(sum) / count : 0., line.c_str());
+    logging::info("Reader[%u] failed attempts: pop %lu, push %lu", i, rh.popTimeouts, rh.pushFulls);
+    const char* smName[] {"wait", "event", "loop"};
+    const unsigned* smMask[] {rh.smWait, rh.smEvent, rh.smLoop};
+    for (unsigned j = 0; j < 3; ++j) {
+      std::string ids;
+      unsigned nSMs{0};
+      for (unsigned id = 0; id < 256; ++id) {
+        if (smMask[j][id >> 5] & (1u << (id & 31))) { ids += " " + std::to_string(id);  ++nSMs; }
+      }
+      logging::info("Reader[%u] SMs %-5s: %u:%s", i, smName[j], nSMs, ids.c_str());
+    }
+
+    // Map %globaltimer to wall-clock time, so the timeline lines up with Prometheus
+    uint64_t* gpuNow_d;
+    uint64_t  gpuNow{0};
+    timespec  wallNow;
+    if (!chkError(cudaMalloc(&gpuNow_d, sizeof(*gpuNow_d)))) {
+      _readGlobalTimer<<<1, 1>>>(gpuNow_d);
+      chkError(cudaMemcpy(&gpuNow, gpuNow_d, sizeof(gpuNow), cudaMemcpyDeviceToHost));
+      clock_gettime(CLOCK_REALTIME, &wallNow);
+      chkError(cudaFree(gpuNow_d));
+    }
+    if (!gpuNow || !rh.t0)  continue;
+    int64_t const offset = int64_t(wallNow.tv_sec) * 1000000000 + wallNow.tv_nsec - int64_t(gpuNow);
+    for (unsigned k = 0; k < ReaderHist::nSlice; ++k) {
+      auto const& sl{rh.slices[k]};
+      if (!sl.nEvents && !sl.popTimeouts && !sl.pushFulls)  continue;
+      time_t const wall = (int64_t(rh.t0 + (uint64_t(k) << ReaderHist::sliceShift)) + offset) / 1000000000;
+      char tstr[16];
+      strftime(tstr, sizeof(tstr), "%T", localtime(&wall));
+      logging::info("Reader[%u] slice %s n %6u service %5.1f us, failed pop %6u push %6u, backlog max %3u",
+                    i, tstr, sl.nEvents, sl.nEvents ? 1e-3 * sl.service / sl.nEvents : 0., sl.popTimeouts, sl.pushFulls, sl.maxBacklog);
+    }
   }
 }
 

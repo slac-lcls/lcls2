@@ -58,6 +58,30 @@ struct ReaderHist
   uint64_t push    [nLog2];             //   that to the index pushed to TrgInpGen
   uint64_t backlog [nBacklog];          // Later DMA buffers already landed at detection
   uint64_t sum[6];                      // In the order above
+
+  // Failed attempts, each of which costs a graph relaunch
+  uint64_t popTimeouts;                 // No staging buffer index available
+  uint64_t pushFulls;                   // TrgInpGen's queue full
+
+  // Per-second timeline, to see when a Reader starts falling behind
+  static constexpr unsigned sliceShift{30};           // ~1.07 s of %globaltimer
+  static constexpr unsigned nSlice    {2048};
+  struct Slice
+  {
+    uint32_t nEvents;                   // Events serviced
+    uint32_t popTimeouts;
+    uint32_t pushFulls;
+    uint32_t maxBacklog;
+    uint64_t service;                   // Summed service time, ns
+  };
+  uint64_t t0;                          // First DMA detected
+  unsigned slice;                       // The current event's
+  Slice    slices[nSlice];
+
+  // Physical SMs each kernel ran on, as 256-bit masks
+  unsigned smWait [8];
+  unsigned smEvent[8];
+  unsigned smLoop [8];
 };
 
 class Reader
