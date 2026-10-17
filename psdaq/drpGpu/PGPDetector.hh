@@ -106,7 +106,7 @@ private:
 private:
   const Parameters&            m_para;
   Detector&                    m_det;
-  cudaExecutionContext_t       m_green_ctx[3];
+  cudaExecutionContext_t       m_green_ctx[4];  // Reader, TrgInpGen, Reducer, recorder
   std::atomic<bool>            m_terminate;
   cuda::std::atomic<unsigned>* m_terminate_d;
   std::shared_ptr<Reader>      m_reader;

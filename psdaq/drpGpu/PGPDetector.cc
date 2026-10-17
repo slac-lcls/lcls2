@@ -737,7 +737,7 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   DrpBase      (parameters, memPool, detector, zmqContext),
   m_para       (parameters),
   m_det        (detector),
-  m_green_ctx  {{}, {}, {}},
+  m_green_ctx  {{}, {}, {}, {}},
   m_terminate  (false),
   m_terminate_d(nullptr),
   m_nNoTrDgrams(0)
@@ -796,28 +796,37 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   //logging::info("  - WQ sharing scope: %d", initial_WQ_config_resources.wqConfig.sharingScope);
 
   // Split SM resources
-  constexpr int nbGroups {2};
+  // The Reader and TrgInpGen each run a persistent graph, so each gets its own SMs
+  // rather than competing for one set.  The Reader's must match the SM count its
+  // _event grid is sized for in Reader::_recordGraph(); TrgInpGen needs only the minimum.
+  cudaDeviceProp prop;
+  chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
+  const unsigned readerSMs{prop.maxThreadsPerMultiProcessor == 1536 ? 6u : 8u};
+  constexpr int nbGroups {3};
   constexpr unsigned default_split_flags {0};
   cudaDevResource remainder {};
-  cudaDevResource result[nbGroups] {{}, {}};
-  cudaDevSmResourceGroupParams group_params[2] =  {
-    {.smCount=6,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
-    {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
-  if (group_params[0].smCount < initial_SM_resources.sm.minSmPartitionSize) {
-    group_params[0].smCount = initial_SM_resources.sm.minSmPartitionSize;
+  cudaDevResource result[nbGroups] {{}, {}, {}};
+  cudaDevSmResourceGroupParams group_params[nbGroups] =  {
+    {.smCount=readerSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
+    {.smCount=0,         .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
+    {.smCount=40,        .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
+  const unsigned minSMs = initial_SM_resources.sm.minSmPartitionSize;
+  const unsigned align  = initial_SM_resources.sm.smCoscheduledAlignment;
+  for (auto& group : group_params) {
+    if (group.smCount < minSMs)  group.smCount = minSMs;
+    if (align > 1)  group.smCount = ((group.smCount + align - 1) / align) * align;
   }
   chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 
-  // Generate resource descriptors for each resource
-  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}};
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[0], &result[0], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[1], &result[1], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[2], &remainder, 1));
+  // Generate resource descriptors for each resource, the remainder going to the recorder
+  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}, {}};
+  for (unsigned i = 0; i < nbGroups; ++i)
+    chkError(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
 
   // Create green contexts
-  chkError(cudaGreenCtxCreate(&m_green_ctx[0], resource_desc[0], gpu_device_index, 0));
-  chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
-  chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
+  for (unsigned i = 0; i < nbGroups+1; ++i)
+    chkError(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
 
   // Get all available GPU SM resources
   for (unsigned i = 0; i < nbGroups+1; ++i) {
@@ -866,12 +875,12 @@ std::string PGPDrp::configure(const json& msg)
   // Create the Trigger Input Generator, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
+  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[1], m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
-  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
+  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[2], m_terminate, *m_terminate_d);
 
   // Do initial configuration of the reducers
   if (m_reducer->configure(msg["body"], connectMsg(), collectionId())) {
@@ -904,7 +913,7 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
   m_collectorThread = std::thread(&PGPDrp::_collector, this);
 
   // Set up the TebReceiver
-  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
+  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[3]);
 
   // Start the PGP reader before phase 2 is issued
   if (m_reader->startup())
