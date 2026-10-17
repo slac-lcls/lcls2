@@ -211,11 +211,11 @@ void Drp::Gpu::setHostAllocNode(int node)
     hostAllocNode = node;
 }
 
-cudaError_t Drp::Gpu::hostAlloc(void** p, size_t size)
+cudaError_t Drp::Gpu::hostAlloc(void** buf, size_t size)
 {
     const size_t pgSz = sysconf(_SC_PAGESIZE);
     size = ((size ? size : 1) + pgSz - 1) & ~(pgSz - 1);
-    *p = nullptr;
+    *buf = nullptr;
 
     void* ptr = mmap(nullptr, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     if (ptr == MAP_FAILED) {
@@ -250,33 +250,33 @@ cudaError_t Drp::Gpu::hostAlloc(void** p, size_t size)
 
     std::lock_guard<std::mutex> lk(hostAllocMutex);
     hostAllocSizes[ptr] = size;
-    *p = ptr;
+    *buf = ptr;
     return cudaSuccess;
 }
 
-cudaError_t Drp::Gpu::hostFree(void* p)
+cudaError_t Drp::Gpu::hostFree(void* buf)
 {
-    if (!p)  return cudaSuccess;
+    if (!buf)  return cudaSuccess;
     size_t size;
     {
         std::lock_guard<std::mutex> lk(hostAllocMutex);
-        auto it = hostAllocSizes.find(p);
+        auto it = hostAllocSizes.find(buf);
         if (it == hostAllocSizes.end())  return cudaErrorInvalidValue;
         size = it->second;
         hostAllocSizes.erase(it);
     }
-    auto rc = cudaHostUnregister(p);
-    munmap(p, size);
+    auto rc = cudaHostUnregister(buf);
+    munmap(buf, size);
     return rc;
 }
 
-void Drp::Gpu::logHostPlacement(const char* who, const char* what, const void* p, size_t size, int gpuNode)
+void Drp::Gpu::logHostPlacement(const char* who, const char* what, const void* buf, size_t size, int gpuNode)
 {
     const uintptr_t pgSz  = sysconf(_SC_PAGESIZE);
-    const uintptr_t first = uintptr_t(p) & ~(pgSz - 1);
-    const uintptr_t last  = (uintptr_t(p) + (size ? size : 1) - 1) & ~(pgSz - 1);
+    const uintptr_t first = uintptr_t(buf) & ~(pgSz - 1);
+    const uintptr_t last  = (uintptr_t(buf) + (size ? size : 1) - 1) & ~(pgSz - 1);
     std::vector<void*> pages;
-    for (auto a = first; a <= last; a += pgSz)  pages.push_back((void*)a);
+    for (auto addr = first; addr <= last; addr += pgSz)  pages.push_back((void*)addr);
     std::vector<int> status(pages.size(), -1);
 
     // move_pages() with no target nodes only reports where each page is
@@ -285,16 +285,16 @@ void Drp::Gpu::logHostPlacement(const char* who, const char* what, const void* p
         return;
     }
     std::map<int, size_t> count;
-    for (auto s : status)  ++count[s];
-    std::string s;
+    for (auto node : status)  ++count[node];
+    std::string where;
     size_t remote = 0;
-    for (auto& [node, n] : count) {
-        s += (node < 0 ? " err" + std::to_string(-node) : " node" + std::to_string(node)) + ":" + std::to_string(n);
-        if (node != gpuNode)  remote += n;
+    for (auto& [node, nPages] : count) {
+        where += (node < 0 ? " err" + std::to_string(-node) : " node" + std::to_string(node)) + ":" + std::to_string(nPages);
+        if (node != gpuNode)  remote += nPages;
     }
     if (remote)
         logging::warning("%s: %s: %zu of %zu pages are not on the GPU's NUMA node %d:%s",
-                         who, what, remote, pages.size(), gpuNode, s.c_str());
+                         who, what, remote, pages.size(), gpuNode, where.c_str());
     else
         logging::info("%s: %s: all %zu pages on the GPU's NUMA node %d",
                       who, what, pages.size(), gpuNode);

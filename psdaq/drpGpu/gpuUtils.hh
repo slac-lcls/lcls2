@@ -165,7 +165,7 @@ int numaNodeOfGpu(int device);
  * Log which NUMA nodes the pages of a host buffer are on, warning if any are not on
  * the GPU's.  Pinned buffers the GPU polls cost a socket crossing per access otherwise.
  */
-void logHostPlacement(const char* who, const char* what, const void* p, size_t size, int gpuNode);
+void logHostPlacement(const char* who, const char* what, const void* buf, size_t size, int gpuNode);
 
 /**
  * Pinned host memory, mapped for the GPU, with its pages bound to the NUMA node given to
@@ -173,10 +173,10 @@ void logHostPlacement(const char* who, const char* what, const void* p, size_t s
  * time, which can put a GPU's polled buffers on the far socket.  Unbound until set.
  */
 void        setHostAllocNode(int node);
-cudaError_t hostAlloc(void** p, size_t size);
-cudaError_t hostFree(void* p);
+cudaError_t hostAlloc(void** buf, size_t size);
+cudaError_t hostFree(void* buf);
 template <class T>
-cudaError_t hostAlloc(T** p, size_t size) { return hostAlloc(reinterpret_cast<void**>(p), size); }
+cudaError_t hostAlloc(T** buf, size_t size) { return hostAlloc(reinterpret_cast<void**>(buf), size); }
 
 /**
  * Class for timing various things
