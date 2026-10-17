@@ -84,13 +84,13 @@ Every skill follows these; new skills should too:
   recommends; the human executes every remediation. `psana-daq` goes
   further and is read-only *everywhere* — no local file, no GitHub write.
   **Every write in the suite is `psana-daq-history`'s job.**
-- **Confidence and provenance are two separate axes.** `Confidence:
+- **Confidence and evidence tier are two separate axes.** `Confidence:
   high|medium|low` describes how sure a diagnostic *conclusion* is. A
-  separate four-value tag describes how a piece of *evidence* was
-  obtained: `verified-live`, `verified-against-real-logs`,
-  `inferred-from-code-only`, `documented-in-issue`. A finding's confidence
-  may be raised by a matched issue, but the report must name that as the
-  reason — never a silent upgrade.
+  separate evidence-tier tag describes how a piece of *evidence* was
+  obtained. A finding's confidence may be raised by a matched issue, but
+  the report must name that as the reason — never a silent upgrade. Full
+  definitions are in `psana-daq/reference/report-template.md`'s "Two
+  independent label systems" section.
 - **A candidate deduction is not proof.** A state-machine inference, a
   phase-1/phase-2 split, a config-history nearest-match — all are
   candidates until the actual corroborating log line, recorded content,

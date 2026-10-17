@@ -89,6 +89,12 @@ Remedies: <proposed | tried | verified — see "Remedies" below; omit this
   prediction, not proof — require the actual corroborating log line before
   stating a specific failed transition as fact.
 
+  **Prefer a ranked structure over a single confident answer** — a `Most
+  Likely Cause` plus an `Also Possible` list beats forcing one verdict
+  when more than one explanation remains live. **Don't inherit certainty
+  from an old incident** — a pattern that explained a prior fault is a
+  candidate this time, not a given.
+
 - **Evidence tiers** (per evidence item, one per line under `Evidence:`) —
   how that specific piece of evidence was obtained. Exactly these four —
   don't invent a fifth:
@@ -104,7 +110,7 @@ Remedies: <proposed | tried | verified — see "Remedies" below; omit this
   always `verified-against-real-logs`, since that's what the draft's own
   content was grepped from at staging time. The "staged, unfiled" fact is
   already signaled by `## Known Issues`' own line — tracking-status and
-  evidence-provenance are separate axes.
+  evidence tier are separate axes.
 
 ## Remedies
 

@@ -35,17 +35,13 @@ remediation.
 You may — and should — **recommend** a specific command, quoted exactly,
 with a stated reason. The human runs it.
 
-## Provenance and confidence
+## Confidence and evidence tiers
 
-Two different axes — don't conflate them. **Provenance** (`verified-live`,
-`verified-against-real-logs`, `inferred-from-code-only`, `documented-in-
-issue`) labels how a claim was obtained. **Confidence** (`high`/`medium`/
-`low`) labels how sure a *conclusion* is. A conclusion built on
-`verified-live` evidence isn't automatically `high` confidence, and a
-`low`-confidence guess can still cite `verified-live` evidence. Prefer a
-ranked "most likely / also possible" over one confident answer, and
-**don't inherit certainty from an old incident** — a pattern that explained
-a prior fault is a candidate this time, not a given.
+Every conclusion gets a **Confidence** (`high`/`medium`/`low`); every
+piece of evidence gets exactly one of four **evidence tiers**. The two
+are independent axes. Full definitions and rules are in
+`psana-daq/reference/report-template.md`, section "Two independent label
+systems — do not conflate them."
 
 Citations below derive from `lcls2_091826`. Grep anchors are given for
 message strings (stable across releases); line numbers for structural

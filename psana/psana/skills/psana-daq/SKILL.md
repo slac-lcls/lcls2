@@ -233,9 +233,8 @@ Steps:
 6. **Match and condense.** A matched finding renders as a one-line pointer
    plus any new occurrence/session delta under `## Known Issues` — never
    dual-listed under `## New Crashes`, never re-derived in full elsewhere
-   in the report. A match against an unfiled draft keeps its real evidence
-   tier (`verified-against-real-logs`, typically); `documented-in-issue` is
-   for filed GitHub issues only.
+   in the report. See `reference/report-template.md`'s "Two independent
+   label systems" section for which evidence tier a matched finding keeps.
 7. **Account for every leg** — every `## Raw Findings` line is a finding or
    an explicit `skipped — <reason>`; a leg pruned by the ConfigDB gate or
    already covered by a prior report must say so, never simply be absent.
