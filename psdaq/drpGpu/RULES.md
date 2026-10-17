@@ -91,6 +91,12 @@ reading a source file.
   answers in one file what otherwise takes a reconstruction from the xtc.  Note `DrpBase` probes
   `create_producer_<detName>` before the generic `create_producer`, so one "undefined symbol"
   line per Configure is expected rather than a fault.
+- **No single-character variable names; `i`, `j` and `k` as loop indexes are the only
+  exception.**  They cannot be searched for.  Ric's standing rule, which went unrecorded here
+  and was broken again on 2026-10-16.
+- **Pinned host memory comes from `hostAlloc()`/`hostFree()` (`gpuUtils`), never
+  `cudaHostAlloc()`.**  The latter leaves page placement to whatever is free, and on gpu008
+  that put every node-0 DRP's polled buffers on node 1.
 
 ## Reading measurements
 

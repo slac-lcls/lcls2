@@ -1511,6 +1511,17 @@ diverge silently -- that has happened once already.
   f08eacc1 "Relaunch instead of spinning", then 3db054e6 "Revert to separate
   kernels; Time out spin loops".
 
+  **Measured 2026-10-16 on gpu008 (H200), `readerHist=1`:** an idle pass -- spin out,
+  three kernel launches, tail-relaunch -- takes **12.2-12.3 us on every DRP**, tightly
+  in one log2 bin, so relaunching does not differ between DRPs and does not explain
+  the asymmetry.  The spin itself is only ~0.5 us of that; the rest is launch cost.
+  What it does cost: a DMA arriving just after the spin gives up waits up to ~12 us
+  to be seen, against a 30.3 us per-event budget at 33 kHz.  And `pop` blocks the
+  same way -- a failed `pebbleQueue` pop also costs a relaunch, which may be what the
+  laggard's slow pops are (open item in the rate-asymmetry section).  Spinning longer
+  before returning would cut that latency at the price of a longer-held SM; the
+  histograms can measure the trade directly.
+
 - **Idle when trigger rates are low**, as the CPU DRP does.  Related to the spin
   loop: at low rates the present arrangement burns a GPU continuously to wait.
 
@@ -1535,104 +1546,45 @@ diverge silently -- that has happened once already.
   Check whether the host threads also poll, and that `__nanosleep` holds at longer
   intervals.  Measure against 33035 Hz: the point is power, not throughput.
 
-## The rate regression and the staging-buffer leak: 2026-10-15
+## The rate asymmetry: what is still open after 2026-10-16
 
-- **ONE DRP AT A TIME FILLS ITS STAGING POOL AND RUNS ~60-70 ms LATE; THE ROLE MOVES.
-  AND THE RATE HAS COME DOWN FROM 33 kHz.  Ric: "This is bothersome."**  Measured on
-  gpu008, `verbs`, five GPU DRPs + `timing_2`, pinning ON (verified per thread, not
-  from the kwarg).  This supersedes the "1.6 ms contributor lag" item above: same
-  phenomenon, two orders of magnitude more visible, with a mechanism.
+Two causes found and fixed; see the 2026-10-16 entry in `FINDINGS.md`.  What remains:
 
-  **The headline numbers:**
-
-      dmaBufCount   L0AccRate   healthy lat   sick DRP        at the wall
-      8             28.4 kHz    0.9 ms        ~2040 deep      pinned, permanent
-      32            30.6 kHz    2.0-2.5 ms    excursions      fills, then RECOVERS
-
-      PCIe Gen4 x8 on every datadev (x8 @ 16 GT/s, at max, read from sysfs)
-      386 kB/event x 39.3 kHz = practical ceiling;  30.6 kHz = 78% of it
-      Ric: 33 kHz ran for extended periods with 6 GPUs, regularly with 5, and he
-      believes dmaBufCount was 8 nearly always.  So 30.6 is a REGRESSION, not a
-      ceiling, and 8 buffers is not the explanation for it.
-
-  **THE MECHANISM: `redStarts - redRcvs` IS THE WHOLE STORY.**  `DRP_redStarts` minus
-  `DRP_redRcvs` is the count of reducers started whose results were never collected.
-  On the sick DRP it equals `DRP_recordQueue` and `DRP_inputQueue0` exactly, and
-  `DRP_pblQueOcc` is its complement -- one full pool lap held by uncollected reducer
-  completions.  The recorder sits in `recordState` **3**, the blocking spin at
-  `PGPDetector.cc:309-316` (`while (!drp.reducerReceive(worker, &rt))`).
-
-  **It is a slow leak, not a throughput deficit** -- this is the key measurement and
-  it took the fill slope to see:
-
-      resume 17:38:56   73 buffers    DeadFrac 0.605   L0AccRate 28182
-      full   17:39:41 2038 buffers    DeadFrac 0.602   L0AccRate 28398
-                       45 s at ~76-81 buffers/s
-
-  76/s against 28.4 kHz is a **0.27% shortfall -- about 1 buffer lost per 374 events**.
-  And `DeadFrac` is **already 0.60 in the first sample after resume**, before the pool
-  is anywhere near full.
-
-  **SO THERE ARE TWO SEPARATE FAULTS AND THEY MUST NOT BE CONFLATED:**
-
-  1. **Whatever sets `DeadFrac` 0.60 immediately**, i.e. the 28-31 kHz against 39 kHz
-     of PCIe and against Ric's remembered 33 kHz.  Raising `dmaBufCount` 8 -> 32 bought
-     **+2.2 kHz (8%)**, so the f/w tier is implicated in this half -- but it does not
-     explain a regression from 33 kHz at a `dmaBufCount` that was 8 then too.
-  2. **The ~76/s staging-buffer leak**, which depth only mitigates: with 8 buffers a
-     DRP reached the wall and stayed pinned; with 32 it fills and recovers, and the
-     role moves between DRPs.  A race whose window shallow DMA depth widens.
-
-  **WHAT IS EXCLUDED, each by measurement rather than argument:**
-
-      our 10-15 commits   only functional change is an exported Prometheus constant
-      CPU allocation      all six cpusets byte-identical to 10-14's
-      thread pinning      verified pinned 1:1 per thread with taskset -pc; ON
-      WEKA cores          busy on 1,2,28,32; EMPTY intersection with every cpuset
-      output filesystem   recording OFF; fileWriting/smdWriting/RecordSize all 0
-      cmd line / sizing   byte-identical to 10-14 for the same alias
-      lost completions    PAUSED drains every queue to gap 0 on all five
-      GPU health          all five 4483 MiB, no throttle flags
-      code at its limit   peers idle at 2 ms with 1966 free buffers, same code
-      per-DRP hardware    the role MOVED from tstcam1_1 to tstcam1_0 and back
-
-  **`MAX_BUFFERS 8` in `GpuAsyncOffsets.h:49` is a STALE COMMENT.**  It says "must
-  match firmware value"; the f/w does 1024 now and 32 has been run before (Ric).  It is
-  used **only** in `pgpread.cc`, never in `drp_gpu` -- the real arrays are
-  `std::vector`s sized by `dmaCount` -- so raising `dmaBufCount` needs no code change.
-  Constraints that do apply: a power of 2 (`MemPool.cc:240`), `<= EvtCtrMask+1`, and
-  `<= pebbleBufCount`.
-
-  **NEXT, in order:**
-
-  1. **Run `~/git/lcls2-new` and compare** (Ric's call).  Its HEAD is `a681fc18`,
-     2026-09-04, and **it is an ancestor of our master**, so it is a clean baseline:
-     277 commits behind, 131 of them touching `psdaq/{drpGpu,drp,eb}`.  If 33 kHz
-     comes back there, bisect that range; if it does not, the cause is outside the
-     tree (f/w, driver, CUDA, the node).  **Do not write in `lcls2-new`.**
-  2. **Depth sweep, 64 and 128.**  32 bought 8% for one kwarg and the f/w allows 1024.
-     Cheap, and it bounds how much of fault 1 is DMA depth.
-  3. **Read the reducer worker round-robin**, `PGPDetector.cc:322`
-     (`worker = (worker + 1) % m_para.nworkers`) against `reducerReceive`'s per-worker
-     queues.  A completion delivered to the wrong worker's queue is exactly a lost
-     `redRcvs` with the reducer having run -- which is the leak's signature.  The
-     `rt.index != index` check at `:323` has never fired, so indices still pair; it is
-     the depth that drifts.
-  4. **Raising pebble/staging to 32768 is NOT the fix** (Ric, and the slope confirms
-     it): at 76/s a 16x pool buys 16x the time and the same wall, with ~1.2 s of
-     latency instead of 73 ms.  Worse for the MEB and for diagnosis.
-
-  **Traps this cost time on, so they do not again:**
-
-  - **Prometheus ports are reassigned per launch.**  `tstcam1_0` moved 9233 -> 9234
-    across a restart, 9234 having been `timing_2`'s.  A stale map made a running DRP
-    look dead (all counters 0) and mislabelled another's rows.  **Re-derive the map
-    from the logs after every restart.**
-  - **`avg_over_time(...[10m])` over a window containing startup is worthless.**  It
-    made all six DRPs look 20-40x worse than they were; the instantaneous healthy
-    value was 0.7 ms.  Use a window inside steady state, or instantaneous samples.
-  - **`drp_deadtime` reads NEGATIVE** on some DRPs (-4.8, -11.6), which is nonsense
-    for a fraction.  Do not quote per-DRP deadtime until that is understood; the
-    per-DRP number that *is* trustworthy is the sick DRP's 0.362 vs peers' 0.000.
-  - **A pinned-at-the-pool-size gap is saturation, not divergence.**  2040 of 2048 held
-    steady for minutes reads as "falling further behind" and is not.
+- **A DRP whose DMA ring fills becomes ~3 us/event slower and stays saturated.**  Measured
+  2026-10-16 from the per-second `readerHist` slices, same DRP, same run: `tstcam1_1` ran
+  21.0 us with its backlog low and 23.8 us in its 492 seconds with the ring full;
+  `tstcam1_0` 20.9 us in 491 low or partly backlogged seconds (backlog up to 15 costs
+  nothing) and 23.4 us in its 19 full ones.  Peers that never filled stayed at 20.7-21.1.
+  The extra time is in `pop` (+~1 us) and `_event` (+~2 us); no failed pops or pushes, and
+  every Reader runs on the same physical SMs.  Normal is ~21 + ~8 overhead = 29 us, under
+  the 30.3 us budget at 33 kHz; full is ~32 us, over it, so a DRP that fills can never
+  drain.  It is re-chosen at every Enable, without a Configure, and a DRP returns to
+  normal once its ring drains.  **What makes a full ring cost 3 us is not known.**
+  Candidates: the FPGA restarting a DMA the moment a buffer is freed, so the inbound
+  write overlaps the Reader's reads of the same region; contention in L2 or HBM.
+  The 10.2 kHz negative control held: no ring filled, every DRP 20.2-20.7 us in every
+  second.  Load alone adds only ~0.5 us (33 kHz healthy DRPs run 20.7-21.3); a full ring
+  adds ~3.  **Next:** find the mechanism.  Headroom of ~2 us would let even a full DRP
+  keep up.
+- **Only node-0 DRPs have ever been the laggard** -- `tstcam1_0`, `_1`, `_2`, never `_3` or
+  `_5`, over ten runs.  Node 0 also carries the IB NIC (`mlx5_0`, `71:00.0`), WEKA, and
+  `tstcam1_1`'s cross-root DMA (`05` -> `55`) landing on switch 51 beside `tstcam1_2`'s GPU.
+  Speculative; nothing measured yet ties any of these to a slowdown.
+- **The margin is thin.**  ~21 us of service + ~8 us inferred overhead against a 30.3 us
+  budget leaves ~1.5 us.  Anything that buys headroom makes the system more predictable.
+- **More threads for `_event`** (Ric), for headroom.  Its grid already fills the Reader's
+  partition (256 blocks x 64 threads = 8 SMs x 2048 on an H200, ~12 elements per thread), so
+  more threads means a larger Reader context, e.g. 16 SMs from the recorder's 76.  `_event`
+  is ~12 of the ~21 us, so this is the biggest lever if the kernel scales.  Keep the grid
+  sizing in `Reader::_recordGraph()` and the SM count in `_setupGreenContexts()` in step.
+- **`RingIndexDtoD` in device memory** (Ric).  Its head and tail are pinned host memory
+  only so the monitoring can read them; nothing on the host touches them otherwise.  In
+  device memory, with the metric copying out, the Reader's push and TrgInpGen's pop never
+  cross PCIe.  Deferred until the pop counter above has run, so the two are not confounded.
+- **Node memory on gpu008.**  417 GB of `nfs_inode_cache` and 43 GB of `dentry` leave 3-8 GB
+  free per node.  Our allocations are now bound and immune, but other processes are not.
+  Ric's call whether to raise it with whoever runs the node, or try `drop_caches`.
+- **`MAX_BUFFERS 8` in `GpuAsyncOffsets.h:49` is a stale comment.**  It says "must match
+  firmware value"; the firmware does 1024 and only `pgpread.cc` uses it.  Fix the comment.
+- **`drp_deadtime` reads negative on some DRPs** (-4.8, -11.6 seen 10-15).  Not understood.
+- **The A5000 split (6/2/40/16) has not been run on gpu001.**  Only runnability matters there.

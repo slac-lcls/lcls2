@@ -4,6 +4,61 @@ Settled explanations, kept because they were expensive to establish and because 
 reasoning behind several decisions in `TODO.md` lives here.  Nothing here is open
 work.
 
+## The rate asymmetry between GPU DRPs: two causes fixed, the mechanism located, 2026-10-16
+
+On drp-srcf-gpu008 (five GPU DRPs + `timing_2`, `verbs`, `-W 0`), one DRP at a time ran
+1.3-3.5 ms behind its peers, held almost no staging buffers while they held ~80, and
+asserted all the deadtime.  Which DRP varied between runs: 0, 1 and 2 all took the role.
+The rate was 33034 Hz (the PCIe ceiling) when the laggard could keep up and 28-31.7 kHz when
+it could not.
+
+**The laggard is the DRP whose GPU DMA ring is full.**  Measured with `-k readerHist=1`: its
+backlog sits at `dmaBufCount-1`, so its Reader never waits for data, and its per-event service
+time (DMA detection to index pushed to TrgInpGen) sets the rate for the whole partition.  The lag beyond the ring is a constant ~42 events at both
+`dmaBufCount=32` and `=64` (73 and 107 events of total lag), so raising the depth adds
+latency without adding rate.  Budget at 33 kHz is 30.3 us; the inferred fixed overhead per
+cycle is ~7-8 us, so service above ~23 us makes a DRP the laggard.
+
+**Cause 1, fixed in `ddea3c3e`: pinned host memory on the far socket.**  `cudaHostAlloc()`
+placed every polled buffer of all three node-0 DRPs (`hostWrtBufs`, every ring's head and
+tail) on node 1, because node 0 was short of free memory -- 417 GB of `nfs_inode_cache`
+slab on that node -- and `zone_reclaim_mode=0` spills rather than reclaims.  Slurm's cgroup
+allows `cpuset.mems 0-1`, so nothing prevented it.  Cost: 1-4 us of service per event on
+those DRPs and ~1000 stalls of 131-524 us per run.  `hostAlloc()` now binds to the GPU's
+node: service on non-laggard node-0 DRPs fell to node-1 levels, and the stalls to 60-390.
+
+**Cause 2, fixed in `646ee493`: the Reader and TrgInpGen shared one 8-SM green context.**
+The laggard's `_event` time was bimodal, 55% of events in 16-32 us against ~2% on its
+peers.  Separate contexts removed that and dropped every DRP's `_event` mean from 14.4 to
+12.0 us; service fell to 20.9-21.2 us.  (The log2 bins are then identical on all five, but
+that is event types -- transitions and 1 Hz raw copies -- not timing; read the means.)
+
+**What remains, and its mechanism: a full ring costs ~3 us/event, and that is bistable.**
+The per-second slices show service depends on the ring's state, not on which DRP it is.
+Same DRP, same run: `tstcam1_1` 21.0 us with its backlog low, 23.8 us in 492 seconds with
+the ring full; `tstcam1_0` 20.9 us low or partly backlogged, 23.4 us full.  A backlog of up
+to 15 costs nothing.  The extra is in `pop` (+~1 us) and `_event` (+~2 us).  Normal is ~21
++ ~8 overhead = 29 us against the 30.3 us budget at 33 kHz; full is ~32, so a DRP that fills
+can never drain.  Which DRP falls in is re-chosen at every Enable, without a Configure:
+eight Disable/Enable cycles alternated the role between `tstcam1_0` and `tstcam1_1`.  The
+10.2 kHz negative control never filled a ring, and every DRP ran 20.2-20.7 us in every
+second; healthy DRPs at 33 kHz run 20.7-21.3, so load alone costs ~0.5 us.  **Why a full
+ring costs 3 us is not established.**
+
+**Excluded by measurement:** card/firmware (the role moved among cards, and `datadev_04`'s
+different build is a rebuild of the same hash), PCIe topology (Sept 7 ran 33034 Hz with two
+root crossings, and `tstcam1_3` on node 1 has been the laggard), DMA depth, the reducers
+(`-W 0`), relaunch overhead (12.2-12.3 us on every DRP, tight), the TEB and recorder (the lag
+is already present at `TigRcvr`), queue starvation (zero failed pops or pushes in every run),
+and SM placement (every Reader's kernels run on the same physical SMs, 0 1 16 17 32 33 48 49
+on an H200).
+
+**Traps:** `drp_th_latency` carries a per-run clock offset (-40 to -1600 us), so read it
+relative to peers.  The TEB's `EB_arrTime` is relative to the first contributor, usually
+`timing_2`.  `tstcam1_0` shares `datadev_04` with `timing_2`, so its `drp_deadtime` is the
+link's and not its own.  `/proc/<pid>/numa_maps` is unreadable for a capability-bearing
+process; `move_pages()` with no target nodes, from inside, works unprivileged.
+
 ## CALIB mode records raw data end to end, validated 2026-10-01
 
 Run 269 on drp-srcf-gpu001 with `EpixUHRemu` at 10 Hz, the first execution of the CALIB path and
