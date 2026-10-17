@@ -22,9 +22,10 @@ commonly has more than one. **Never pick the first alias returned by
 `get_aliases` as a default.** Use the handed-off alias; if none was given,
 ask which alias is active rather than guessing — the wrong one silently
 inspects configuration that was never active for the session in question.
-See `psana-daq/SKILL.md`'s "Configuration alias" section for where it
-comes from (a reachable `daqstate`'s status line, or the session's
-`control.log` `CMDLINE:` `-C` flag).
+See `psana-daq/SKILL.md`'s "Configuration alias" section for the full
+fallback chain (`control.log`'s `Loaded configDb` line, then `teb0.log`'s
+`Trigger loaded from` line, then `control.log`'s `CMDLINE:` `-C` flag as
+a launch-time-only fallback).
 
 ## No authentication required for reads
 

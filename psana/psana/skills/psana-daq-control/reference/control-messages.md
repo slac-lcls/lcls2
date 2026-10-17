@@ -79,10 +79,14 @@ These fail `alloc` before any other work can happen. Flag them as blocking.
 **Interpretation:** these are usually *configuration/selection* faults, not
 process faults — the wrong set was selected rather than a component being
 broken. Point the user at the activedet file (Section 4 in `SKILL.md`) and
-`showPlatform`'s active-flag column as the first check. But a selected
-component that *also* failed to launch produces the same symptom — don't
-rule that out just because the topology precondition looks like the
-simpler explanation. *(inferred-from-code-only.)*
+`control.log`'s rollcall lines — `rollcall: <alias> selected for data
+collection (readout group N)` (logged at INFO, `control.py:1928`; a
+variant without the group number is at `control.py:1930`) and `rollcall:
+<alias> NOT selected for data collection` (logged as a warning,
+`control.py:1901`) — as the first check. But a selected component that
+*also* failed to launch produces the same symptom — don't rule that out
+just because the topology precondition looks like the simpler
+explanation. *(inferred-from-code-only.)*
 
 ### DRP alias grammar
 
@@ -165,7 +169,7 @@ For platform 0 the concrete set is: 29980 (back_pull), 29990 (back_pub),
 
 **Interpretation:** `back_*` are the control↔component channels (a component
 that never answers a broadcast has a `back_pull`/`back_pub` problem);
-`front_*` are the control↔client channels (`daqstate`/GUI); `fast_rep` serves
+`front_*` are the control↔client channels (GUI and scripts); `fast_rep` serves
 the fast-reply thread; `step_pub` is the step-done publisher.
 *(inferred-from-code-only.)* Note `scan_pull_port` is defined but has no in-tree
 caller — do not assume a listener exists on it.

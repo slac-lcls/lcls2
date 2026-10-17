@@ -1,6 +1,6 @@
 ---
 name: psana-daq-control
-description: Diagnose LCLS-II DAQ run-control state and failed state transitions. Use for "the DAQ won't start", "it's stuck in connected/configured", "alloc/connect/configure failed to change state", "X did not respond to <transition>", "X did not respond to <transition> phase 2", rollcall failures, "why isn't detector X being recorded", readout-group questions, and scan/step (beginstep/endstep) problems. Reconstructs state-machine transitions from control.log — needs no Grafana, no MCP, no ConfigDB reachability, and no reachable DAQ, so it works offline and when everything else is down. A reachable daqstate adds live corroboration only, never a requirement.
+description: Diagnose LCLS-II DAQ run-control state and failed state transitions. Use for "the DAQ won't start", "it's stuck in connected/configured", "alloc/connect/configure failed to change state", "X did not respond to <transition>", "X did not respond to <transition> phase 2", rollcall failures, "why isn't detector X being recorded", readout-group questions, and scan/step (beginstep/endstep) problems. Reconstructs state-machine transitions from control.log — needs no Grafana, no MCP, no ConfigDB reachability, and no reachable DAQ, so it works offline and when everything else is down.
 ---
 
 # Skill: psana-daq-control — LCLS-II DAQ Run Control & State Machine Diagnosis
@@ -19,10 +19,7 @@ localize a startup failure to a state boundary.
 
 **Primary source: `control.log`'s timestamped transition history** — this
 is the normal way this skill works, for a window ending now or any past
-window alike. See "Reading transitions from control.log" below. A
-reachable `daqstate`/`showPlatform` adds live corroboration of *current*
-registration when the window includes "now" and the control port happens
-to be reachable — never a requirement.
+window alike. See "Reading transitions from control.log" below.
 
 ## READ-ONLY POSTURE — NON-NEGOTIABLE
 
@@ -31,11 +28,9 @@ remediation.
 
 | You MAY (read-only) | You MUST NOT (mutating) |
 |---|---|
-| Read `control.log` / `control_gui.log` | Edit any log file |
-| `daqstate -P <hutch>` (bare — prints status), `daqstate --monitor` | `daqstate --state <t>` / `--transition <t>` / `--config`/`--record`/`--bypass`/`-B` |
-| `showPlatform` (incl. `--json`) | `selectPlatform` (any invocation) |
-| `DaqControl.get*()` / `monitorStatus()` | `DaqControl.set*()` / `selectPlatform()` / `storeJsonConfig()` |
-| Reading `~<hutch>opr/.psdaq/*.activedet.json` | Writing/editing `activedet.json` |
+| Read `control.log` / `control_gui.log` | Edit any log file or `activedet.json` |
+| Read `~<hutch>opr/.psdaq/*.activedet.json` | Run `daqstate`, `showPlatform`, or `selectPlatform` with ANY flags, including flags that look read-only |
+| | Call any `DaqControl` method |
 
 You may — and should — **recommend** a specific command, quoted exactly,
 with a stated reason. The human runs it.
@@ -70,17 +65,6 @@ reconstructed directly from it:
 - `# CMDLINE:` in the header shows the actual flags the control process
   was launched with — including its real `-T` phase-2 timeout; don't
   assume a default without checking it (see "Timeouts" below).
-
-## Live corroboration (optional)
-
-If the window includes "now" and the agent is reachable from `<hutch>-daq`
-(the control port is firewalled from analysis nodes) with the DAQ conda
-env on `PATH`, a bare `daqstate -P <hutch> -p <platform> -C <collect_host>`
-or `showPlatform` adds a live snapshot of *current* registration on top of
-what the log already shows. If unreachable — PATH-absent, firewalled, or
-simply not attempted — say so and rely on the log; there is no escalation
-procedure to run through, since the log is already the primary source, not
-a fallback.
 
 ---
 
@@ -161,8 +145,8 @@ Every non-trivial transition runs in two phases:
 
 Neither phase-1 nor phase-2 failure **proves** process-missing vs.
 process-alive on its own — both are candidate predictions. Require the
-corroborating evidence (the process's own log, or its absence from
-`showPlatform` if corroborating live) before stating one as fact. This
+corroborating evidence (the process's own log, or its rollcall lines in
+`control.log` — see Section 3/4 below) before stating one as fact. This
 split is **inferred-from-code-only**, not operationally confirmed as a
 reliable discriminator — treat it as a strong hypothesis guiding where to
 look next, not a verified rule.
@@ -211,9 +195,14 @@ active-detectors-file errors, XPM PV-put failures, state guards) are in
   supported in absence of MEB`) are **configuration/selection faults**
   most of the time, but check: a selected component that also failed to
   launch would produce the same symptom. Point at the activedet file
-  (Section 4) and `showPlatform`'s active-flag column as the first check,
-  not a process log — but don't rule the latter out if the former looks
-  consistent with everything selected.
+  (Section 4) and `control.log`'s rollcall lines — `rollcall: <alias>
+  selected for data collection (readout group N)` (logged at INFO,
+  `control.py:1928`; a variant without the group number is at
+  `control.py:1930`) and `rollcall: <alias> NOT selected for data
+  collection` (logged as a warning, `control.py:1901`) — as the first
+  check, not a process log. These reflect selection as of rollcall time
+  for that session. Don't rule the process log out if the rollcall lines
+  look consistent with everything selected.
 - **XPM PV-put failures** are control-plane reachability to the XPM, not a
   DRP or ConfigDB problem.
 - **Active-detectors-file errors are file-content faults** — expect
@@ -282,31 +271,7 @@ applies it via the control GUI or `selectPlatform`.
 
 ---
 
-## Section 5 — Live Query Tools (optional corroboration only)
-
-These need no Grafana/MCP/ConfigDB, but **do** need a reachable control
-port and the DAQ env on `PATH` — neither is assumed; see "Live
-corroboration" above.
-
-- **`daqstate`** (`daqstate -P <hutch> -p <platform> -C <collect_host>`,
-  no mutating flags): bare invocation prints `last transition:`, `state:`,
-  `configuration alias:`, `recording:`, `bypass_activedet:`. `--monitor`
-  streams `error:`/`warning:`/`progress:`/`step_done:` events live
-  (read-only).
-- **`showPlatform`** (`--json` for the activedet-format view): tabulates
-  registered processes (`alias level/pid/host`, `*` = active) and each
-  active DRP's readout group. **A component absent here is evidence about
-  current registration, not proof of why an earlier reply was missing** —
-  it could be a fresh phase-1 non-response, or it could have deregistered
-  after an earlier, different event. Present-but-unstarred means
-  registered-but-deselected (Section 4 question), not a process question.
-- **`selectPlatform`**, `DaqControl.set*`/`storeJsonConfig`/
-  `selectPlatform()`: mutating, never run. Recommend the exact command for
-  the human.
-
----
-
-## Section 6 — Scan / Step Content
+## Section 5 — Scan / Step Content
 
 Steps are more transitions on the same state machine:
 
@@ -335,14 +300,14 @@ thread watches the XPM's `StepDone` PV, honoring it only in `running`/
 
 ---
 
-## Section 7 — Handoffs
+## Section 6 — Handoffs
 
 State the handoff explicitly; load the sibling skill by name before using
 its techniques.
 
 | Finding | Hand off to | What to ask |
 |---|---|---|
-| Phase-1 non-response, or absent from `showPlatform` | `psana-daq-logs` | Startup header + `<[EC]>` grep for that component, same session |
+| Phase-1 non-response, or missing / NOT selected in `control.log` rollcall lines | `psana-daq-logs` | Startup header + `<[EC]>` grep for that component, same session |
 | `configure` phase-1 failure | `psana-configdb` | Was there a recent config change to the implicated device/alias? **A phase-1 failure alone does not establish that config retrieval/application failed** — check logs first. |
 | Deadtime/damage/buffer symptoms once running | `psana-daq-monitor` | Event rates, `DeadFrac`, damage, buffer occupancy for the implicated detector |
 | Phase-2 non-response | `psana-daq-logs` first, then `psana-daq-monitor` | What the process logged during the transition; if mid-run, whether metrics show it falling behind |
@@ -361,7 +326,7 @@ Full formula table and the XPM `FEH`/`NEH` offset quirk are in
 `reference/control-messages.md`'s appendix. Durable summary: `back_*`
 ports are control↔component channels (a component that never answers a
 broadcast has a `back_pull`/`back_pub` problem); `front_*` are
-control↔client (`daqstate`/GUI); `fast_rep` serves the fast-reply thread;
+control↔client (GUI and scripts); `fast_rep` serves the fast-reply thread;
 `step_pub` is the step-done publisher.
 
 ## File-to-Role Reference
@@ -370,8 +335,8 @@ control↔client (`daqstate`/GUI); `fast_rep` serves the fast-reply thread;
 |---|---|
 | `psdaq/psdaq/control/control.py` | Collection manager: state machine, transition guards, error reporting |
 | `psdaq/psdaq/control/ControlDef.py` | Constants: states, transitions, port bases |
-| `psdaq/psdaq/control/DaqControl.py` | Python API |
-| `psdaq/psdaq/control/daqstate.py` | CLI: read-only state/status |
-| `psdaq/psdaq/control/showPlatform.py` | CLI: tabulate registered processes |
-| `psdaq/psdaq/control/selectPlatform.py` | CLI: platform selection (mutating) |
+| `psdaq/psdaq/control/DaqControl.py` | Python API to the live control process — never call its `set*`/`select*`/`store*` methods, and never call it directly from this skill at all |
+| `psdaq/psdaq/control/daqstate.py` | CLI including state-changing flags (`--state`/`--transition`/`--config`/`--record`/`--bypass`) — never run |
+| `psdaq/psdaq/control/showPlatform.py` | CLI querying the live control process — never run |
+| `psdaq/psdaq/control/selectPlatform.py` | CLI: platform selection — never run, not just "mutating" |
 | `psdaq/psdaq/control/ConfigScan.py` | Scan/step acquisition |

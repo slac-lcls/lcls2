@@ -77,27 +77,42 @@ When `station` is absent, `station = platform` (matches `control.py:808`).
 Ignore `p*.cnf.last` files in the same directory — stale `procmgr`
 leftovers, not current state.
 
-**`-C` is a homograph**: `-C COLLECT_HOST` (`daqstate.py:18`) is the
-collection host; `-C CONFIG_ALIAS` (`control.py:2608`) is the ConfigDB
-alias. Don't copy a log's `CMDLINE: -C BEAM` as the collect host — that's
-the alias (see "Configuration alias" below for where it *is* wanted). Use
-the config's `collect_host` field, or `control.log`'s `# HOST:` line.
-`daqstate -P <hutch> -p <platform> -C <collect_host>` needs the **bare**
-`hutch` (`rix`, not `rix:2` — `control.py:801`/`:1688`).
+**`-C` is a homograph**: `-C COLLECT_HOST` (e.g. the DRP/TEB/MEB command
+line's `std_opts = f'-P {hutch} -C {collect_host} -M {prom_dir}'` in
+`psdaq/psdaq/cnf/rix.cnf:35`) is the collection host; `-C CONFIG_ALIAS`
+(`control.py:2608`) is the ConfigDB alias. Don't copy a log's `CMDLINE:
+-C BEAM` as the collect host — that's the alias (see "Configuration
+alias" below for where it *is* wanted). Use the config's `collect_host`
+field, or `control.log`'s `# HOST:` line.
 
 ### Configuration alias
 
 Every ConfigDB endpoint is scoped by alias (`<hutch>/<alias>/<device>`), and
 a hutch commonly has more than one — `psana-configdb` must never guess by
 taking the first `get_aliases` result. Establish it alongside `hutch`/
-`platform` whenever a ConfigDB handoff is possible:
+`platform` whenever a ConfigDB handoff is possible, via this fallback
+chain, taking the **last** match at or before the window's end time:
 
-- From a reachable `daqstate`, if the window includes "now": the status
-  line's `configuration alias: <c>` field.
-- Otherwise: the target session's `control.log` `CMDLINE:` header — the
-  `-C BEAM`-style flag there **is** the alias (the one place `-C` from a
-  log is the value wanted, not the collect host — mind the homograph
-  above).
+1. `control.log`: the last `Loaded configDb <hutch>/<alias>/<trigger>_0`
+   line, inside `condition_configure` — this is the alias actually
+   applied at that Configure. Logged at INFO as of a recent `control.py`
+   change (`condition_configure()`); only present in logs from releases
+   that include that change, absent in older/already-captured logs.
+2. `teb0.log`: the last `Trigger loaded from <lib> using configDb
+   <hutch>/<alias>/<trigger>_0` line (already logged at INFO today,
+   `teb.cc:1050`; verified-against-real-logs today in real rix, mfx, and
+   tmo logs). This line is only written when control is run with `-t
+   trigger`, which is true of the production `rix`/`tmo`/`mfx`/`txi`/
+   `ued` configs but should not be assumed universal.
+3. `control.log`'s `# CMDLINE:` header, the `-C <alias>` flag — labelled
+   explicitly as the alias **at launch time only**, since an alias change
+   made via the GUI or a scan script before the above `control.py` change
+   was logged only at debug level and may not be reflected here.
+4. If none of the above are found, ask the user which alias was active.
+
+If a `config alias changed: <old> -> <new>` line is present (only in logs
+from releases including the above `control.py` change), use it to
+establish when a switch happened, corroborating steps 1–3.
 
 ### The window
 
@@ -140,8 +155,10 @@ family itself.
 
 Not directly discoverable at runtime. Corroborating signals only, not a
 decision rule: whether the config's selected process set matches
-`showPlatform` output (if reachable); the config file's own content. If
-uncertain, ask — the user knows which config they launched.
+`control.log`'s rollcall selected/NOT-selected lines (same citations as
+`psana-daq-control/SKILL.md`'s rollcall interpretation); the config
+file's own content. If uncertain, ask — the user knows which config they
+launched.
 
 ## Dispatch vs. sweep
 
@@ -196,8 +213,7 @@ Steps:
    - **Control**: `psana-daq-control`'s state-machine reconstruction from
      `control.log` (this is now the skill's normal mode, not a degraded
      past-session fallback — there is no live/past split left to degrade
-     from). If the window includes "now" and a live `daqstate` happens to
-     be reachable, use it as corroboration only.
+     from).
    - **Metrics**: queries cover the full `[start, end]` window per
      `psana-daq-monitor`'s query-shape rules (range, plus whole-window
      `increase()` totals). Cite its diagnosis-order table, don't re-paste
@@ -271,12 +287,8 @@ anyone who declines or never sees the hand-off offer.
 Check before routing or sweeping; tell the user upfront if an angle is
 unavailable rather than discovering it mid-sweep:
 
-- **Control**: no external dependency to *read* `control.log` — it's a
-  file. A live `daqstate`/`showPlatform` corroboration additionally needs
-  reachability from `<hutch>-daq` (the control port is firewalled from
-  analysis nodes) and the DAQ conda env on `PATH` — if either is missing,
-  corroboration is simply unavailable; the control leg itself still runs
-  from the log.
+- **Control**: no external dependency — it's a plain file (`control.log`),
+  with no reachability or `PATH` requirement at all.
 - **Logs**: a readable log directory (`psana-daq-logs`' path convention).
   `test -d` before assuming it exists.
 - **Metrics**: `grafana_*` MCP tools present in the current session.

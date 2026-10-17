@@ -19,7 +19,7 @@ alone, and loads only when a session's question matches it.
 | Skill | Role | Purpose |
 |---|---|---|
 | `psana-daq` | Router + composed sweep | Entry point for any DAQ issue. Dispatches to a single leaf when the report names a specific angle (handing off to a second leaf only when the first's result requires it); runs an autonomous sweep across all leaves for a vague report and returns one ranked report. Establishes `hutch`, `platform`, and a `[start, end]` UTC window once, up front — there is no separate live/past mode, just a window that may or may not end at "now." **Read-only, everywhere** — searches local reports before the sweep's legs run (to decide coverage), then GitHub + local issue drafts after the legs (once there's something concrete to search for) — never writes anything itself. |
-| `psana-daq-control` | Leaf | Run-control state machine and transitions, reconstructed from `control.log` — needs no Grafana, MCP, ConfigDB, or reachable DAQ. A live `daqstate`/`showPlatform` adds optional corroboration only. |
+| `psana-daq-control` | Leaf | Run-control state machine and transitions, reconstructed from `control.log` — needs no Grafana, MCP, ConfigDB, or reachable DAQ. |
 | `psana-daq-monitor` | Leaf | Grafana/Prometheus DAQ metrics — event rate, deadtime, damage, buffers, event builder/MEB. Always a range query over the handed-off window. |
 | `psana-daq-logs` | Leaf | Raw DAQ log files on disk for a session in a given window — live or a specific past date/range, same mechanism either way. |
 | `psana-configdb` | Leaf | Read-only ConfigDB lookups — detector/system configuration, config history (read as candidate database edits, not current state). |
