@@ -246,13 +246,13 @@ namespace Drp {
         chkError(cudaMalloc(&m_scan,    sizeof(*m_scan)));
         // Pinned, so both the device and the host can reach it (UVA), as is
         // done for the Reader's state metrics
-        chkError(cudaHostAlloc(&m_mirror, sizeof(*m_mirror), cudaHostAllocDefault));
+        chkError(hostAlloc(&m_mirror, sizeof(*m_mirror)));
         reset();
       }
 
       __host__ ~EvtBatcherSubFrames()
       {
-        if (m_mirror)  chkError(cudaFreeHost(m_mirror));
+        if (m_mirror)  chkError(hostFree(m_mirror));
         if (m_scan)    chkError(cudaFree(m_scan));
         if (m_sub)     chkError(cudaFree(m_sub));
       }

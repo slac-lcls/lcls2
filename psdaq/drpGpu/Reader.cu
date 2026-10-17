@@ -135,6 +135,16 @@ Reader::Reader(const Parameters&                  para,
   bufSz += 2 * sizeof(uint32_t);
   m_pool.createHostBuffers(bufSz);
 
+  auto const gpuNode = numaNodeOfGpu(m_pool.context().deviceNo());
+  logHostPlacement("Reader", "hostWrtBufs", m_pool.hostWrtBufs(),
+                   m_pool.nbuffers() * m_pool.hostWrtBufsSize(), gpuNode);
+  logHostPlacement("Reader", "pebbleQueue head", m_pebbleQueue.h->headAddr(), sizeof(unsigned), gpuNode);
+  logHostPlacement("Reader", "pebbleQueue tail", m_pebbleQueue.h->tailAddr(), sizeof(unsigned), gpuNode);
+  for (unsigned i = 0; i < m_nReaders; ++i) {
+    logHostPlacement("Reader", "readerQueue head", m_readerQueues[i].h->headAddr(), sizeof(unsigned), gpuNode);
+    logHostPlacement("Reader", "readerQueue tail", m_readerQueues[i].h->tailAddr(), sizeof(unsigned), gpuNode);
+  }
+
   // Per-Reader per-event status, written by _waitForDMA and copied out by _event
   m_evtStatus_d.resize(m_nReaders);
   for (unsigned i = 0; i < m_nReaders; ++i) {
@@ -161,7 +171,7 @@ Reader::Reader(const Parameters&                  para,
   // Prepare a metric for tracking kernel state
   m_metrics.states.resize(m_nReaders, nullptr);
   for (unsigned i = 0; i < m_nReaders; ++i) {
-    chkError(cudaHostAlloc(&m_metrics.states[i], sizeof(*m_metrics.states[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.states[i], sizeof(*m_metrics.states[i])));
     *m_metrics.states[i] = 0;
   }
 
@@ -170,11 +180,11 @@ Reader::Reader(const Parameters&                  para,
   m_metrics.dmaWtCtrs.resize(m_nReaders, nullptr);
   m_metrics.fwdWtCtrs.resize(m_nReaders, nullptr);
   for (unsigned i = 0; i < m_nReaders; ++i) {
-    chkError(cudaHostAlloc(&m_metrics.pblWtCtrs[i], sizeof(*m_metrics.pblWtCtrs[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.pblWtCtrs[i], sizeof(*m_metrics.pblWtCtrs[i])));
     *m_metrics.pblWtCtrs[i] = 0;
-    chkError(cudaHostAlloc(&m_metrics.dmaWtCtrs[i], sizeof(*m_metrics.dmaWtCtrs[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.dmaWtCtrs[i], sizeof(*m_metrics.dmaWtCtrs[i])));
     *m_metrics.dmaWtCtrs[i] = 0;
-    chkError(cudaHostAlloc(&m_metrics.fwdWtCtrs[i], sizeof(*m_metrics.fwdWtCtrs[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.fwdWtCtrs[i], sizeof(*m_metrics.fwdWtCtrs[i])));
     *m_metrics.fwdWtCtrs[i] = 0;
   }
 }
@@ -188,15 +198,15 @@ Reader::~Reader()
 
   for (unsigned i = 0; i < m_nReaders; ++i) {
     if (m_metrics.pblWtCtrs[i]) {
-      chkError(cudaFreeHost(m_metrics.pblWtCtrs[i]));
+      chkError(hostFree(m_metrics.pblWtCtrs[i]));
       m_metrics.pblWtCtrs[i] = nullptr;
     }
     if (m_metrics.dmaWtCtrs[i]) {
-      chkError(cudaFreeHost(m_metrics.dmaWtCtrs[i]));
+      chkError(hostFree(m_metrics.dmaWtCtrs[i]));
       m_metrics.dmaWtCtrs[i] = nullptr;
     }
     if (m_metrics.fwdWtCtrs[i]) {
-      chkError(cudaFreeHost(m_metrics.fwdWtCtrs[i]));
+      chkError(hostFree(m_metrics.fwdWtCtrs[i]));
       m_metrics.fwdWtCtrs[i] = nullptr;
     }
   }
@@ -206,7 +216,7 @@ Reader::~Reader()
 
   for (unsigned i = 0; i < m_nReaders; ++i) {
     if (m_metrics.states[i]) {
-      chkError(cudaFreeHost(m_metrics.states[i]));
+      chkError(hostFree(m_metrics.states[i]));
       m_metrics.states[i] = nullptr;
     }
   }

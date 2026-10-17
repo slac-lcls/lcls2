@@ -64,6 +64,9 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_trgInpGenQueue.h = new RingIndexDtoH(pool.nbuffers());
   chkError(cudaMalloc(&m_trgInpGenQueue.d,                     sizeof(*m_trgInpGenQueue.d)));
   chkError(cudaMemcpy( m_trgInpGenQueue.d, m_trgInpGenQueue.h, sizeof(*m_trgInpGenQueue.d), cudaMemcpyDefault));
+  auto const gpuNode = numaNodeOfGpu(pool.context().deviceNo());
+  logHostPlacement("TrgInpGen", "queue head", m_trgInpGenQueue.h->headAddr(), sizeof(unsigned), gpuNode);
+  logHostPlacement("TrgInpGen", "queue tail", m_trgInpGenQueue.h->tailAddr(), sizeof(unsigned), gpuNode);
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
   int prioLo;
@@ -90,13 +93,13 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
 
   // Prepare a metric for tracking kernel state
-  chkError(cudaHostAlloc(&m_metrics.state, sizeof(*m_metrics.state), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.state, sizeof(*m_metrics.state)));
   *m_metrics.state = 0;
 
   // Prepare counter metrics for tracking execution progress
-  chkError(cudaHostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr)));
   *m_metrics.rcvWtCtr = 0;
-  chkError(cudaHostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr)));
   *m_metrics.fwdWtCtr = 0;
 }
 
@@ -105,16 +108,16 @@ TrgInpGen::~TrgInpGen()
   chkError(cudaGraphExecDestroy(m_graphExec));
 
   if (m_metrics.rcvWtCtr) {
-    chkError(cudaFreeHost(m_metrics.rcvWtCtr));
+    chkError(hostFree(m_metrics.rcvWtCtr));
     m_metrics.rcvWtCtr = nullptr;
   }
   if (m_metrics.fwdWtCtr) {
-    chkError(cudaFreeHost(m_metrics.fwdWtCtr));
+    chkError(hostFree(m_metrics.fwdWtCtr));
     m_metrics.fwdWtCtr = nullptr;
   }
 
   if (m_metrics.state) {
-    chkError(cudaFreeHost(m_metrics.state));
+    chkError(hostFree(m_metrics.state));
     m_metrics.state = nullptr;
   }
 

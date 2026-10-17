@@ -267,6 +267,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   // two being on different nodes costs every event, not just this process's memory
   // accesses.  Worth a warning even when both are local to our CPUs.
   int gpuNuma = numaNodeOfGpu(m_context.deviceNo());
+  setHostAllocNode(gpuNuma);
   int dmaNuma = numaNodeOfDatadev(para.device);
   if (gpuNuma >= 0 && dmaNuma >= 0 && gpuNuma != dmaNuma)
     logging::warning("MemPoolGpu: datadev is on NUMA node %d but its GPU is on %d, "
@@ -396,7 +397,7 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
 
     uint8_t* ptr{nullptr};
     size_t regBlkSize{0x600 * sizeof(uint32_t)};
-    chkError(cudaHostAlloc(&ptr,    regBlkSize, cudaHostAllocDefault));
+    chkError(hostAlloc(&ptr, regBlkSize));
     chkMemory             ( ptr,    regBlkSize, sizeof(*ptr), "fpgaRegs");
     chkError(cudaMemset   ( ptr, 0, regBlkSize));
 
@@ -516,7 +517,7 @@ void MemPoolGpu::createHostBuffers(size_t size)
   // Allocate buffers for the DMA descriptors, TimingHeaders and TEB input data
   // in pinned memory and make them visible on both the CPU and the GPU
   auto nBufs = nbuffers();
-  chkError(cudaHostAlloc(&m_hostWrtBufs,    nBufs * size, cudaHostAllocDefault));
+  chkError(hostAlloc(&m_hostWrtBufs, nBufs * size));
   chkMemory             ( m_hostWrtBufs,    nBufs,  size, "hostWrtBufsVec_h");
   chkError(cudaMemset   ( m_hostWrtBufs, 0, nBufs * size)); // Avoid reading stale data on re-Configure
 
@@ -530,7 +531,7 @@ void MemPoolGpu::createHostBuffers(size_t size)
 void MemPoolGpu::destroyHostBuffers()
 {
   if (m_hostWrtBufsSize) {
-    chkError(cudaFreeHost(m_hostWrtBufs));
+    chkError(hostFree(m_hostWrtBufs));
     m_hostWrtBufs = nullptr;
     m_hostWrtBufsSize = 0;
   }
@@ -706,8 +707,8 @@ void MemPoolGpu::createPrescaleBuffers(size_t nBytes, unsigned nBufs,
   // being atomic is what makes that visibility guaranteed rather than hoped for.
   chkError(cudaMalloc    (&m_rawTicket_d,    sizeof(*m_rawTicket_d)));
   chkError(cudaMemset    ( m_rawTicket_d, 0, sizeof(*m_rawTicket_d)));
-  chkError(cudaHostAlloc (&m_rawOverflow,    sizeof(*m_rawOverflow), cudaHostAllocDefault));
-  chkError(cudaHostAlloc (&m_rawReleased,    sizeof(*m_rawReleased), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_rawOverflow, sizeof(*m_rawOverflow)));
+  chkError(hostAlloc(&m_rawReleased, sizeof(*m_rawReleased)));
   new (m_rawOverflow) cuda::std::atomic<unsigned>{0};
   new (m_rawReleased) cuda::std::atomic<unsigned>{0};
 
@@ -721,8 +722,8 @@ void MemPoolGpu::destroyPrescaleBuffers()
   if (m_prescaleBufsRaw) {
     chkError(cudaFree(m_prescaleBuffers_d));
     if (m_rawTicket_d)  chkError(cudaFree(m_rawTicket_d));
-    if (m_rawOverflow)  chkError(cudaFreeHost(m_rawOverflow));
-    if (m_rawReleased)  chkError(cudaFreeHost(m_rawReleased));
+    if (m_rawOverflow)  chkError(hostFree(m_rawOverflow));
+    if (m_rawReleased)  chkError(hostFree(m_rawReleased));
     m_prescaleBuffers_d = nullptr;
     m_rawTicket_d  = nullptr;
     m_rawOverflow  = nullptr;

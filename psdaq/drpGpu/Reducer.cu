@@ -65,7 +65,7 @@ Reducer::Reducer(const Parameters&                  para,
     chkFatal(cudaExecutionCtxStreamCreate(&m_streams[i], green_ctx, cudaStreamNonBlocking, prio));
 
     // Keep track of the head and tail indices of the Reducer stream
-    chkError(cudaHostAlloc(&m_indices[i], sizeof(*m_indices[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_indices[i], sizeof(*m_indices[i])));
     *m_indices[i] = 0;
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
@@ -163,13 +163,13 @@ Reducer::Reducer(const Parameters&                  para,
     m_metrics.outWtCtr.resize(m_para.nworkers);
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (!m_metrics.state[i]) {
-        chkError(cudaHostAlloc(&m_metrics.state[i], sizeof(*m_metrics.state[i]), cudaHostAllocDefault));
+        chkError(hostAlloc(&m_metrics.state[i], sizeof(*m_metrics.state[i])));
       }
       *m_metrics.state[i] = 0;
 
-      chkError(cudaHostAlloc(&m_metrics.inpWtCtr[i], sizeof(*m_metrics.inpWtCtr[i]), cudaHostAllocDefault));
+      chkError(hostAlloc(&m_metrics.inpWtCtr[i], sizeof(*m_metrics.inpWtCtr[i])));
       *m_metrics.inpWtCtr[i] = 0;
-      chkError(cudaHostAlloc(&m_metrics.outWtCtr[i], sizeof(*m_metrics.outWtCtr[i]), cudaHostAllocDefault));
+      chkError(hostAlloc(&m_metrics.outWtCtr[i], sizeof(*m_metrics.outWtCtr[i])));
       *m_metrics.outWtCtr[i] = 0;
     }
   }
@@ -179,16 +179,16 @@ Reducer::~Reducer()
 {
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_metrics.inpWtCtr[i]) {
-      chkError(cudaFreeHost(m_metrics.inpWtCtr[i]));
+      chkError(hostFree(m_metrics.inpWtCtr[i]));
       m_metrics.inpWtCtr[i] = nullptr;
     }
     if (m_metrics.outWtCtr[i]) {
-      chkError(cudaFreeHost(m_metrics.outWtCtr[i]));
+      chkError(hostFree(m_metrics.outWtCtr[i]));
       m_metrics.outWtCtr[i] = nullptr;
     }
 
     if (m_metrics.state[i]) {
-      cudaFreeHost(m_metrics.state[i]);
+      hostFree(m_metrics.state[i]);
       m_metrics.state[i] = nullptr;
     }
   }
@@ -256,7 +256,7 @@ Reducer::~Reducer()
   m_pool.destroyReduceBuffers();
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    chkError(cudaFreeHost(m_indices[i]));
+    chkError(hostFree(m_indices[i]));
 
     chkError(cudaStreamDestroy(m_streams[i]));
   }

@@ -7,6 +7,8 @@
 #include <cuda_runtime.h>
 #include <cuda/std/atomic>
 
+#include "gpuUtils.hh"                 // hostAlloc
+
 namespace Drp {
   namespace Gpu {
 
@@ -23,17 +25,20 @@ public:
 
     // The ring is empty when head == tail
     // Head refers to the next index to be allocated
-    chkError(cudaHostAlloc(&m_head, sizeof(*m_head), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_head, sizeof(*m_head)));
     *m_head = initEmpty ? 0 : (capacity - 1);
     // Tail refers to the next index after the last freed one
-    chkError(cudaHostAlloc(&m_tail, sizeof(*m_tail), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_tail, sizeof(*m_tail)));
     *m_tail = 0;
   }
 
+  __host__ const void* headAddr() const { return m_head; }
+  __host__ const void* tailAddr() const { return m_tail; }
+
   __host__ ~RingIndexHtoD()
   {
-    if (m_tail)  chkError(cudaFreeHost(m_tail));
-    if (m_head)  chkError(cudaFreeHost(m_head));
+    if (m_tail)  chkError(hostFree(m_tail));
+    if (m_head)  chkError(hostFree(m_head));
   }
 
   __host__ bool push(unsigned index) const             /** Move head forward when not full */
