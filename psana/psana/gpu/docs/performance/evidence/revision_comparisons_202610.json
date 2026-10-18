@@ -1,0 +1,417 @@
+{
+  "recorded_date": "2026-10-18",
+  "workload": "JF dense raw-input staging; no calibration or GpuTask",
+  "time_change_definition": "100 * (B_loop_s / A_loop_s - 1); median across matched pairs",
+  "dependencies": {
+    "kvikio": "26.10.00",
+    "cupy": "14.0.1",
+    "python": "3.11",
+    "compatibility_mode": "ON"
+  },
+  "campaigns": [
+    {
+      "comparison": "pre_post_stack",
+      "job": 41173787,
+      "date_pacific": "2026-10-17",
+      "elapsed_seconds": 2580,
+      "host": "sdfampere033",
+      "commits": {
+        "A": "9b32dda19b46807f7a4db62fb2351ba87b359e47",
+        "B": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8"
+      },
+      "complete": true,
+      "build_layout": "independent native builds",
+      "settings": {
+        "batch": 20,
+        "bds": 4,
+        "compatibility_mode": "ON",
+        "depth": 1,
+        "events": 10000,
+        "gpus_used": 1,
+        "pairs_per_case": 2,
+        "physical_gpu": 0,
+        "task_bytes": 1048576,
+        "workers": 8
+      },
+      "correctness_preflights": 4,
+      "timed_samples": 16,
+      "total_events": 160800,
+      "summary": [
+        {
+          "A_hz": 310.1477267139067,
+          "B_hz": 308.5047366624675,
+          "bulk": "off",
+          "cache": "cold",
+          "median_paired_loop_change_pct": 0.5642597888239675,
+          "paired_change_range": [
+            -0.9146407899264131,
+            2.043160367574348
+          ],
+          "pairs": 2
+        },
+        {
+          "A_hz": 306.8937133711749,
+          "B_hz": 299.6920865454913,
+          "bulk": "on",
+          "cache": "cold",
+          "median_paired_loop_change_pct": 2.4183582121425795,
+          "paired_change_range": [
+            1.733886980768884,
+            3.102829443516275
+          ],
+          "pairs": 2
+        },
+        {
+          "A_hz": 490.42521860550556,
+          "B_hz": 496.36657303202577,
+          "bulk": "off",
+          "cache": "warm",
+          "median_paired_loop_change_pct": -1.170916412849382,
+          "paired_change_range": [
+            -3.246562863524549,
+            0.904730037825785
+          ],
+          "pairs": 2
+        },
+        {
+          "A_hz": 493.77870358868455,
+          "B_hz": 509.27100396574536,
+          "bulk": "on",
+          "cache": "warm",
+          "median_paired_loop_change_pct": -2.823254850822965,
+          "paired_change_range": [
+            -7.86707980600081,
+            2.22057010435488
+          ],
+          "pairs": 2
+        }
+      ],
+      "pairs": [
+        {
+          "A_loop_s": 32.93369048088789,
+          "B_loop_s": 32.63246551412158,
+          "bulk": "off",
+          "cache": "cold",
+          "loop_change_pct": -0.9146407899264131,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 33.315293066902086,
+          "B_loop_s": 33.8929425959941,
+          "bulk": "on",
+          "cache": "cold",
+          "loop_change_pct": 1.733886980768884,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 20.646401444915682,
+          "B_loop_s": 19.976103042950854,
+          "bulk": "off",
+          "cache": "warm",
+          "loop_change_pct": -3.246562863524549,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 19.373462836956605,
+          "B_loop_s": 19.803664160892367,
+          "bulk": "on",
+          "cache": "warm",
+          "loop_change_pct": 2.22057010435488,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 21.130511624971405,
+          "B_loop_s": 19.468157412018627,
+          "bulk": "on",
+          "cache": "warm",
+          "loop_change_pct": -7.86707980600081,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 20.13453567097895,
+          "B_loop_s": 20.31669886317104,
+          "bulk": "off",
+          "cache": "warm",
+          "loop_change_pct": 0.904730037825785,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 31.85384898004122,
+          "B_loop_s": 32.84221958508715,
+          "bulk": "on",
+          "cache": "cold",
+          "loop_change_pct": 3.102829443516275,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 31.551708821905777,
+          "B_loop_s": 32.196360831847414,
+          "bulk": "off",
+          "cache": "cold",
+          "loop_change_pct": 2.043160367574348,
+          "repetition": 2
+        }
+      ],
+      "artifact_directory": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-independent-kvikio2610-20261017-r1/job-41173787"
+    },
+    {
+      "comparison": "september_post_stack",
+      "job": 40882509,
+      "date_pacific": "2026-10-16",
+      "elapsed_seconds": 4402,
+      "host": "sdfampere012",
+      "commits": {
+        "A": "10df4c6e3cad16779797ad017b08690a06c707bb",
+        "B": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8"
+      },
+      "complete": true,
+      "build_layout": "separate Python runtimes; shared native artifacts",
+      "settings": {
+        "batch": 20,
+        "bds": 4,
+        "compatibility_mode": "ON",
+        "depth": 1,
+        "events": 10000,
+        "gpus_used": 1,
+        "pairs_per_case": 4,
+        "physical_gpu": 0,
+        "task_bytes": 1048576,
+        "workers": 8
+      },
+      "correctness_preflights": 4,
+      "timed_samples": 32,
+      "total_events": 320800,
+      "summary": [
+        {
+          "A_hz": 391.3473459871444,
+          "B_hz": 391.3237393918899,
+          "bulk": "off",
+          "cache": "cold",
+          "median_paired_loop_change_pct": -0.5652233640732474,
+          "paired_change_range": [
+            -7.94396433308121,
+            5.682056139273106
+          ],
+          "pairs": 4
+        },
+        {
+          "A_hz": 398.00803070032106,
+          "B_hz": 385.83510673807365,
+          "bulk": "on",
+          "cache": "cold",
+          "median_paired_loop_change_pct": 3.666016007719819,
+          "paired_change_range": [
+            -1.1548819080225092,
+            7.7863810930349775
+          ],
+          "pairs": 4
+        },
+        {
+          "A_hz": 456.86900903612934,
+          "B_hz": 432.30759486141943,
+          "bulk": "off",
+          "cache": "warm",
+          "median_paired_loop_change_pct": 6.00321452503314,
+          "paired_change_range": [
+            0.5426344884839063,
+            9.842354852458012
+          ],
+          "pairs": 4
+        },
+        {
+          "A_hz": 454.75803599652477,
+          "B_hz": 440.30995357023244,
+          "bulk": "on",
+          "cache": "warm",
+          "median_paired_loop_change_pct": 2.552181223241851,
+          "paired_change_range": [
+            -14.119936865274829,
+            11.902290954806682
+          ],
+          "pairs": 4
+        }
+      ],
+      "pairs": [
+        {
+          "A_loop_s": 27.36722221900709,
+          "B_loop_s": 25.19317984697409,
+          "bulk": "off",
+          "cache": "cold",
+          "loop_change_pct": -7.94396433308121,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 24.920874221017584,
+          "B_loop_s": 25.183438809821382,
+          "bulk": "on",
+          "cache": "cold",
+          "loop_change_pct": 1.0535930099208057,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 24.92502552107908,
+          "B_loop_s": 27.378234979929402,
+          "bulk": "off",
+          "cache": "warm",
+          "loop_change_pct": 9.842354852458012,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 25.92629650514573,
+          "B_loop_s": 22.265519807115197,
+          "bulk": "on",
+          "cache": "warm",
+          "loop_change_pct": -14.119936865274829,
+          "repetition": 1
+        },
+        {
+          "A_loop_s": 21.860199980903417,
+          "B_loop_s": 23.157028190791607,
+          "bulk": "on",
+          "cache": "warm",
+          "loop_change_pct": 5.9323712089599745,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 21.504488502861932,
+          "B_loop_s": 21.62117927405052,
+          "bulk": "off",
+          "cache": "warm",
+          "loop_change_pct": 0.5426344884839063,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 26.6679434038233,
+          "B_loop_s": 28.74441110691987,
+          "bulk": "on",
+          "cache": "cold",
+          "loop_change_pct": 7.7863810930349775,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 25.43907983507961,
+          "B_loop_s": 25.91539851599373,
+          "bulk": "off",
+          "cache": "cold",
+          "loop_change_pct": 1.8723895832792437,
+          "repetition": 2
+        },
+        {
+          "A_loop_s": 24.775100236060098,
+          "B_loop_s": 26.182835340034217,
+          "bulk": "off",
+          "cache": "cold",
+          "loop_change_pct": 5.682056139273106,
+          "repetition": 3
+        },
+        {
+          "A_loop_s": 25.07768868212588,
+          "B_loop_s": 26.652176070027053,
+          "bulk": "on",
+          "cache": "cold",
+          "loop_change_pct": 6.278439005518832,
+          "repetition": 3
+        },
+        {
+          "A_loop_s": 22.271735325921327,
+          "B_loop_s": 22.887478256830946,
+          "bulk": "off",
+          "cache": "warm",
+          "loop_change_pct": 2.7646832269642596,
+          "repetition": 3
+        },
+        {
+          "A_loop_s": 21.3511998699978,
+          "B_loop_s": 23.892481800867245,
+          "bulk": "on",
+          "cache": "warm",
+          "loop_change_pct": 11.902290954806682,
+          "repetition": 3
+        },
+        {
+          "A_loop_s": 22.119231753982604,
+          "B_loop_s": 21.936082576867193,
+          "bulk": "on",
+          "cache": "warm",
+          "loop_change_pct": -0.8280087624762733,
+          "repetition": 4
+        },
+        {
+          "A_loop_s": 21.39830079698004,
+          "B_loop_s": 23.375877367099747,
+          "bulk": "off",
+          "cache": "warm",
+          "loop_change_pct": 9.241745823102022,
+          "repetition": 4
+        },
+        {
+          "A_loop_s": 25.17255366803147,
+          "B_loop_s": 24.881840399932116,
+          "bulk": "on",
+          "cache": "cold",
+          "loop_change_pct": -1.1548819080225092,
+          "repetition": 4
+        },
+        {
+          "A_loop_s": 25.666415590094402,
+          "B_loop_s": 24.89569514291361,
+          "bulk": "off",
+          "cache": "cold",
+          "loop_change_pct": -3.0028363114257384,
+          "repetition": 4
+        }
+      ],
+      "artifact_directory": "/sdf/scratch/users/m/monarin/gpu-validation/postmerge-ab-1gpu4bd-kvikio2610-20261015-r1/job-40882509"
+    }
+  ],
+  "code_audit": {
+    "commits": {
+      "A": "10df4c6e3cad16779797ad017b08690a06c707bb",
+      "B": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8"
+    },
+    "changed_files": 169,
+    "core_python_changed": [
+      "psana/psana/gpu/gpu_stream.py",
+      "psana/psana/psexp/ds_base.py"
+    ],
+    "ast_equal_ignoring_docstrings": {
+      "psana/psana/gpu/gpu_stream.py": true,
+      "psana/psana/psexp/ds_base.py": false
+    },
+    "native_or_build_files_changed": [],
+    "frozen_runtime": {
+      "A": {
+        "runtime_python_files_matching_git": 593,
+        "mismatches": []
+      },
+      "B": {
+        "runtime_python_files_matching_git": 593,
+        "mismatches": []
+      }
+    },
+    "identical_harness_files": 48,
+    "shared_native_extension_paths": 18,
+    "batch_size_cases": [
+      {
+        "case": "benchmark",
+        "A": 20,
+        "B": 20
+      },
+      {
+        "case": "GPU omitted",
+        "A": 1000,
+        "B": 20
+      },
+      {
+        "case": "GPU task omitted",
+        "A": 1,
+        "B": 20
+      },
+      {
+        "case": "CPU omitted",
+        "A": 1000,
+        "B": 1000
+      }
+    ]
+  }
+}

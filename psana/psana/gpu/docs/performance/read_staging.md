@@ -1,6 +1,7 @@
 # JF and JF+feespec read/staging performance
 
-Latest accepted staging campaigns: September 28, 2026, runtime `10df4c6e3`.
+Latest revision comparisons: October 16–17, 2026 (summarized below).
+The topology scaling campaigns are from September 28, runtime `10df4c6e3`.
 These measure JF read, GPU XTC parsing and dense raw gathering **without a
 GpuTask or calibration**. A benchmark-only input adapter requests the gather.
 Mixed runs also perform the existing per-event feespec `raw.hproj` GPU int64
@@ -21,6 +22,108 @@ preparation, imports and MPI startup are excluded from loop time. Both sample
 loop durations, setup, cache checks, GPU placement and resource counters are
 retained in [the evidence](evidence/read_staging.json). Two repetitions support
 these descriptive medians, not narrow confidence intervals.
+
+## October revision comparisons
+
+The pre/post review-stack comparison showed **no consistent staging slowdown**.
+The September/post-stack comparison showed a warm, bulk-off slowdown, but the
+code investigation found no changed processing implementation that explains it.
+These are separate experiments; the latter is not evidence that splitting and
+merging the PR stack changed performance.
+
+Both campaigns used JF-only dense raw-input staging: one GPU/four BDs, 10,000
+events per timed sample, batch 20, execution depth 1, eight KvikIO workers and
+1 MiB tasks. Both used official KvikIO 26.10, CuPy 14.0.1, Python 3.11 and CPU
+fallback. Within each campaign, A and B ran in adjacent matched pairs on one
+exclusive A100 node, with reversed ordering on alternate repetitions. Cache
+state, input hashes, timestamps, read counts and correctness preflights gated
+acceptance. Setup and staging time are excluded from the event-loop timing.
+
+Tables report rates in events/s and the median paired **B/A loop-time change**:
+positive means B was slower. Rates use each revision's median loop duration;
+the median paired percentage need not equal the ratio of these rates.
+
+### Pre-stack versus post-stack
+
+Reference: Amanda's revert/review stack, PRs
+[#136](https://github.com/slac-lcls/lcls2/pull/136) through
+[#151](https://github.com/slac-lcls/lcls2/pull/151), merged in order on
+October 14, 2026. The final merge is `410ebba1c`.
+
+A = `9b32dda19b46807f7a4db62fb2351ba87b359e47`; B =
+`410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8`. Their complete repository trees are
+identical: `65b8d582a61a96cafd2e91f03c52b5c910e5e455`.
+Each revision was built independently in separate source/build/install
+directories. Clean A → B → A activation and per-rank import checks verified
+the selected Python and native libraries.
+
+Job **41173787**, `sdfampere033`, completed October 17 in **43m00s**, exit 0,
+under `lcls:data` (Slurm: `lcls:data@ampere`). Four 200-event correctness
+preflights and 16 timed samples passed: **two pairs per condition**, 160,800
+events total. All 1,852 frozen artifact hashes passed at completion.
+
+| Cache | Bulk | Pre-stack rate | Post-stack rate | Paired time change | Pair range |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Cold | Off | 310.15 | 308.50 | +0.56% | −0.91% to +2.04% |
+| Cold | On | 306.89 | 299.69 | +2.42% | +1.73% to +3.10% |
+| Warm | Off | 490.43 | 496.37 | −1.17% | −3.25% to +0.90% |
+| Warm | On | 493.78 | 509.27 | −2.82% | −7.87% to +2.22% |
+
+Direction varies by condition. This supports staging performance preservation
+after the stack merge, but two pairs per condition cannot exclude a small
+regression or establish a speedup. With identical source, build/runtime
+variability must be considered when interpreting the timing differences.
+
+### September versus post-stack
+
+A = `10df4c6e3cad16779797ad017b08690a06c707bb`; B = the same post-stack revision
+above. Job **40882509**, `sdfampere012`, completed October 16 in **1h13m22s**,
+exit 0. Four correctness preflights and 32 timed samples passed: **four pairs
+per condition**, 320,800 events total. All 2,533 frozen-file hashes passed at
+completion, with no recurrence of the earlier KvikIO failure. This campaign
+used separate frozen Python runtimes with shared native build artifacts.
+
+| Cache | Bulk | September rate | Post-stack rate | Paired time change | Pair range |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Cold | Off | 391.35 | 391.32 | −0.57% | −7.94% to +5.68% |
+| Cold | On | 398.01 | 385.84 | +3.67% | −1.15% to +7.79% |
+| Warm | Off | 456.87 | 432.31 | +6.00% | +0.54% to +9.84% |
+| Warm | On | 454.76 | 440.31 | +2.55% | −14.12% to +11.90% |
+
+Warm, bulk-off was slower in B in all four pairs, with a median increase of
+about 1.30 seconds per 10,000-event loop. Other conditions had mixed-sign
+differences. Four pairs do not establish a cause or a precise regression size.
+
+The endpoint code audit found only two changed core Python modules:
+`gpu_stream.py` has a docstring edit; `ds_base.py` changes the GPU batch-size
+default to 20. Both variants explicitly use `batch_size=20`, and the default
+selection executes before timing. Read, gather, parser, MPI scheduling,
+ownership and native implementations are unchanged. All 593 core Python files
+per frozen runtime match their commits, and all 48 benchmark files match
+between A and B. Repository benchmark edits therefore did not change the work
+between these two measured variants.
+
+The slower warm, bulk-off samples also accumulated more read-future wait time.
+This suggests investigating read-completion/scheduling variability; it does
+not identify its cause. No production-code fix is justified by this evidence.
+If further investigation is needed, use a same-build A/B-label control, then
+more balanced September/post-stack pairs with independent builds. The prepared
+independent-build September campaign was canceled before running.
+
+### Scope and saved evidence
+
+Compare A/B changes within each experiment. Different nodes and build layouts
+prevent treating the absolute rates across these campaigns as a controlled
+comparison. Neither campaign measures calibration, external user kernels or
+true GDS, and neither changes the default shared build environment.
+
+[October comparison evidence](evidence/revision_comparisons_202610.json)
+preserves exact revisions, paired measurements, summaries and code-audit
+checks. Full logs and per-sample records remain under
+`/sdf/scratch/users/m/monarin/gpu-validation/`:
+
+- Pre/post stack: `prepost-stack-independent-kvikio2610-20261017-r1/job-41173787/`.
+- September/post stack: `postmerge-ab-1gpu4bd-kvikio2610-20261015-r1/job-40882509/`.
 
 ## Full JF
 
