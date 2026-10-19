@@ -139,8 +139,8 @@ reviewable commits so a measured change can be isolated.
 | Stage | Work and likely files | Exit gate | Status |
 | --- | --- | --- | --- |
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
-| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Partial: A frozen; 15 aligned baseline tests passed and old unaligned fault reproduced; real-input address audit pending |
-| 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Implemented; validation in progress, not accepted |
+| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Complete: A frozen; aligned baseline and old unaligned fault recorded; real-input address audit passed; inherited failures inventoried |
+| 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Implemented; short screen complete; aligned bulk-on +0.98%/+1.30% signal and broad-suite failures remain open; not accepted |
 | 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Pending |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
 | 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
@@ -392,14 +392,17 @@ Also completed: independent pre/post-PR #187 builds and A/B/A import checks,
 campaign, final artifact verification and staging cleanup. See the linked
 report for the exact workload and evidence.
 
-Stage 2 has now started; see its linked record for current tests and timings.
-Focused device and direct-gather sanitizer checks passed for the first candidate.
-Pending acceptance includes final-candidate checks, the staged-input address
-audit and the candidate's four-BD performance screen; the measured kernel
-overhead remains explicit in the stage-2 record. The dependency staging
-campaign does not resolve PR #187 reviews or validate IPC constant-sharing.
+Stage 2 focused device and selected sanitizer checks passed on the optimized
+candidate. The [16-sample four-BD screen](issue159_short_screen_20261019.md)
+and real-input address audits are complete. Aligned bulk-on B0/A0 loop time
+increased **0.98% / 1.30%** in the two balanced pairs; the performance gate
+remains open. Bulk-off showed no regression in this screen, while shifted-input
+comparisons were variable. The measured kernel overhead and unresolved
+broad-suite failures remain explicit in the stage-2 record. These campaigns
+do not resolve PR #187 reviews or validate IPC constant-sharing.
 
-Next action: finish stage 2 correctness and A0/B0/B1 performance checks before
-starting copy-retention or field-view changes. No additional A/A measurement
-is planned. Maintain this status
-as evidence accumulates; keep #187 repairs in Seema's task.
+Next action: investigate the aligned bulk-on signal with focused gather/read-wait
+profiling and continue broad-test triage before copy-retention or field-view
+changes. Validate any optimization by paired A/B against unchanged frozen A.
+No additional A/A measurement is planned. Maintain this status as evidence
+accumulates; keep #187 repairs in Seema's task.
