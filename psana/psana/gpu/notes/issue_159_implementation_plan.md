@@ -1,7 +1,7 @@
 # Issue 159: alignment-safe GPU reads
 
-Updated 2026-10-19. Status: PR #187 integrated locally; alignment implementation
-has not started. This document records the agreed scope, staged implementation,
+Updated 2026-10-19. Status: PR #187 integrated and its staging comparison completed;
+alignment implementation has not started. This document records the agreed scope, staged implementation,
 dependency expectations, and acceptance gates.
 
 ## Goal summary
@@ -126,17 +126,20 @@ selection, and teardown still require integrated validation.
 Each stage keeps its implementation and focused regressions together. Stages
 2-5 can proceed on the pinned dependency while Seema works; final integrated
 acceptance depends on a sufficiently stable dependency and documented baseline.
+Performance checks now accompany the stages; stage 7 is final confirmation,
+not the first opportunity to detect a regression. Keep stages in separate
+reviewable commits so a measured change can be isolated.
 
 | Stage | Work and likely files | Exit gate | Status |
 | --- | --- | --- | --- |
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
-| 1. Establish baseline | Verify installed imports/environment, run existing focused tests, record inherited failures, audit real field addresses, prepare reusable fixtures and frozen benchmark inputs | Exact baseline/source/environment manifest and honest pass/failure/skip inventory; safe data identified for A | Pending |
-| 2. Safe dense gather | `gpu_detector.py`; extend `test_batched_gather.py` / `test_raw_preparation.py` | Bit-exact aligned/unaligned results, unchanged presence/bounds behavior, no extra gather allocations/launches | Pending |
-| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; focused ownership tests | Slow and open child consumers survive retirement; failed joins retain ownership; charges/storage release safely | Pending |
-| 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager event attachment as needed; focused field/device tests | Aligned direct access, lazy cached copies, actual-address checks, cross-stream readiness, scalar/absence semantics, accounting and failure cleanup | Pending |
-| 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution | Copies survive retirement, preserve shape/bits, and have the agreed copy/allocation counts | Pending |
+| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen; measure identical-build A/A variation | Recorded PR #187 comparison plus safe-address evidence, baseline correctness inventory and measurement repeatability | Partial: dependency staging campaign passed; focused alignment baseline/A/A pending |
+| 2. Safe dense gather | `gpu_detector.py`; extend `test_batched_gather.py` / `test_raw_preparation.py`; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Pending |
+| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Pending |
+| 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
+| 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
 | 6. Integrated correctness | Sanitizer, field/gather/raw/ownership/pixel-exact tests, serial and MPI lifecycle coverage on integrated #187, required core groups | Correctness gates pass; inherited dependency/environment blockers are explicitly separated and resolved or accepted by Mona | Pending |
-| 7. Performance | Isolated operation measurements and matched staged-data A/B with one common frozen harness | Complete paired samples, correctness/cache/provenance gates, memory/copy counts, and investigation of repeatable safe-path regressions | Pending |
+| 7. Final performance | Repeat full 32-sample staged campaign against unchanged integrated base; field/API benchmarks separately; incremental comparisons to locate any remaining slowdown | Complete paired samples and correctness/cache/provenance gates; no unexplained repeatable safe-path regression; fallback costs reported separately | Pending |
 | 8. Documentation and review | API copy caveat, concise evidence report, final dependency reconciliation and fix-only review diff | Reviewable #159 change and reproducible validation; no unsubstantiated completion/performance claims | Pending |
 
 ## Regression matrix
@@ -179,6 +182,77 @@ device identity, environment, dependency head, and failures with their provenanc
 
 ## Performance plan
 
+### Measured dependency baseline
+
+The [completed PR #187 comparison](pr187_staging_comparison_20261019.md)
+(job 41310953, `sdfampere030`, exit 0) passed four correctness preflights and
+32 timed samples. Median paired integration time changes were +1.35% cold/off,
+-0.99% cold/on, -1.56% warm/off, and +5.00% warm/on. Warm/on ranged from -8.93%
+to +13.81%; cold/off was slower in all four pairs. Preserve these signals
+without claiming equivalence or assigning a cause. Peak tracked memory was
+1.2518 GiB/BD for both versions at a matched explicit 6 GiB/BD cap.
+
+This campaign compares the dependency with pre-PR #187 code, not the alignment
+fix. It establishes a reproducible harness and runtime baseline. It does not
+complete the focused alignment tests, address audit, sanitizer or IPC-constant
+validation. No numerical regression tolerance has been agreed.
+
+### Performance checks during implementation
+
+1. **Freeze a reference and measure variability.** Use `90c05965c` as the
+   unchanged integrated reference. Before interpreting small differences, run
+   balanced A/A labels using the same frozen build/harness and the same cache
+   preparation. This measures execution variability, not build variation.
+   Keep environment, device, affinity, batch/depth and effective budget fixed.
+2. **Measure gather before touching field ownership.** Keep the typed aligned
+   path and byte fallback inside the existing kernel. Avoid a preliminary
+   scan, repacking of the complete input, extra launch or device-wide barrier.
+   Check actual source alignment before typed access and preserve object bits.
+   Compare kernel latency for safe aligned uint16/float32 data after warmup;
+   measure fallback and mixed-alignment cases separately. If aligned latency
+   worsens repeatably, inspect generated loads, registers and branch behavior
+   before expanding the change. Profiling runs are separate from timed controls.
+3. **Keep field-copy work lazy.** Add only the retention needed for correctness.
+   Creating an event or accessing an aligned field must not eagerly allocate
+   aligned backing or copy-completion events. Preserve existing producer and
+   consumer ordering; use required stream/event dependencies, not a new host
+   or device-wide synchronization. Cache materialization and its readiness
+   state per valid event/field/segment, and retain it through all consumers.
+4. **Measure each field/API path explicitly.** Compare no-field event loops,
+   aligned direct views, first unaligned materialization and cached views.
+   Record host latency separately from CUDA work and retained bytes. A cache
+   hit must not recopy, recharge backing, or re-record materialization readiness;
+   required consumer tracking and cross-stream waits still apply. Test small
+   scalar fields as well as large arrays so Python/event overhead is visible.
+   Keep `.on_cpu` direct byte D2H and retain the agreed independent `.on_gpu`
+   semantics; defer the optional two-copy optimization until measurements
+   justify a separate change.
+5. **Use short screens, then full confirmation.** After stage 2 and stages that
+   affect event processing, run warm/bulk-off and warm/bulk-on with two balanced
+   A/B pairs each (eight 10k-event samples), preceded by correctness preflights.
+   Retain the same staging/hash/residency gates. This is an early diagnostic,
+   not acceptance or proof that cold performance is preserved. The dense-gather
+   workload does not exercise field access, so add the focused field/API timing
+   cases rather than relying on staging rates alone. Run additional cold checks
+   early if read/admission behavior or a measured regression warrants them.
+6. **Attribute changes without resetting away regressions.** Compare each
+   candidate to the preceding accepted stage to locate new overhead, and to
+   the unchanged integrated reference to detect cumulative drift. Rerun both
+   sides together; historical rates from separate allocations are context only.
+   Investigate repeatable positive changes even if smaller than the old
+   warm/on spread. Use more balanced pairs and A/A controls for ambiguous
+   differences. Do not silently accept a blanket 5% slowdown or hide a
+   reproducible regression by increasing the tolerated variance.
+
+The goal for already-aligned data is no measurable repeatable regression at
+the resolution established by these controls. It is not a promise of zero
+instruction overhead. Correctness and lifetime safety remain mandatory; do not
+remove required synchronization or budget accounting to improve a timing.
+Fallback cost is reported separately because the original unaligned typed
+read is not a valid correctness/performance baseline.
+
+### Shared environment and final reference
+
 Use the [current comparison report](../docs/performance/read_staging.md) and
 [staging harness contract](../scripts/jf_scaling/README.md). The October accepted
 environment uses official KvikIO 26.10, CuPy 14.0.1, Python 3.11 and CPU fallback;
@@ -207,7 +281,9 @@ difference to alignment. Hash frozen source/native libraries/harness/input files
   events per timed sample; verified private node-local prefixes.
 - One exclusive A100 node/allocation, same physical GPU, four BDs plus SMD0/EB;
   batch 20, execution depth 1, eight KvikIO workers per BD, 1 MiB task/group
-  targets, CPU fallback. Match placement, affinity and effective budgets.
+  targets, CPU fallback. Use the measured explicit 6 GiB/BD cap on both sides;
+  match placement and affinity. Exercise automatic budgets separately in
+  integrated correctness tests, especially after PR #187 updates.
 - Use the explicit dense-gather benchmark adapter with no calibration or full-image
   D2H in timed controls. This workload measures staging, not IPC constant-sharing
   performance; separate integrated correctness tests exercise shared constants.
@@ -234,11 +310,16 @@ scratch before the allocation ends, and retain concise provenance/results here.
 Completed: pinned-head/status check; backup ref; conflict-free merge; exact parent
 verification; runtime comparison against pinned #187; `git diff --check` for the
 merge; retention of the prior performance documentation.
+Also completed: independent pre/post-PR #187 builds and A/B/A import checks,
+19 harness checks, four real-GPU pixel preflights, the 32-sample 4BD/1GPU staging
+campaign, final artifact verification and staging cleanup. See the linked
+report for the exact workload and evidence.
 
-Not performed: new runtime tests, CUDA/sanitizer execution, field-address audit,
-alignment implementation, or performance runs. Integration success is not runtime
-acceptance and does not resolve PR #187 reviews.
+Not performed: focused alignment regression tests, sanitizer execution,
+field-address audit, alignment implementation, identical-build A/A controls,
+or performance runs of an alignment candidate. The staging campaign does not
+resolve PR #187 reviews or validate its IPC constant-sharing paths.
 
-Next action: stage 1 baseline/environment verification and inherited-failure
-inventory, followed by stage 2 dense-gather implementation. Maintain this status
+Next action: finish stage 1's focused baseline tests, address audit and repeatability
+controls, then implement and measure stage 2 dense gather alone. Maintain this status
 as evidence accumulates; keep #187 repairs in Seema's task.
