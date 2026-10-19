@@ -19,7 +19,7 @@ from psana.psexp.ds_base import DsParms
 from psana.psexp.packet_footer import PacketFooter
 
 
-def test_public_gpu_api_exports_result_types_and_rank_helpers():
+def test_public_gpu_api_exports_result_types():
     import psana.gpu as gpu
 
     # Check supported imports without freezing the API against future additions.
@@ -28,7 +28,6 @@ def test_public_gpu_api_exports_result_types_and_rank_helpers():
         "GpuEventState",
         "GpuFieldData",
         "GpuFieldResult",
-        "init_gpu_rank",
     }
     assert required_exports.issubset(gpu.__all__)
     for name in required_exports:
@@ -758,18 +757,6 @@ def test_mpi_events_stop_before_requesting_another_batch():
         next(events)
 
 
-@pytest.mark.parametrize(
-    "local_rank,n_gpus,expected",
-    [(0, 1, 0), (0, 4, 0), (3, 4, 3), (5, 4, 1), (3, 2, 1)],
-)
-def test_gpu_rank_mapping(monkeypatch, local_rank, n_gpus, expected):
-    from psana.gpu.gpu_mpi import init_gpu_rank
-
-    monkeypatch.delenv("CUDA_VISIBLE_DEVICES", raising=False)
-    assert init_gpu_rank(local_rank=local_rank, n_gpus=n_gpus) == expected
-    assert os.environ["CUDA_VISIBLE_DEVICES"] == str(expected)
-
-
 def test_gpu_io_error_aborts_mpi_job():
     from psana.gpu.gpu_mpi import gpu_error_handler
 
@@ -1116,78 +1103,6 @@ class TestSplitSubbatches:
                 f"subbatch has {sb.n_events} events, "
                 f"estimated {sb_est} bytes > budget {budget}"
             )
-
-
-class TestBdRanksSharingGpu:
-    """Per-GPU BD-worker count that sizes the auto VRAM budget.
-
-    Regression guard: the auto budget previously divided by an env var
-    (``PS_BD_NODES``) that psana never sets, so every BD worker sharing a GPU
-    was allowed to commit the entire device.
-    """
-
-    @staticmethod
-    def _bd_comm(n_bd_workers):
-        # bd_rank 0 is the EB, so size = workers + 1.
-        return SimpleNamespace(Get_size=lambda: n_bd_workers + 1)
-
-    def test_single_worker_single_gpu(self):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        assert bd_ranks_sharing_gpu(self._bd_comm(1), 0, n_gpus=1) == 1
-
-    def test_all_workers_share_one_gpu(self):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        # 4 BD workers, 1 GPU — every worker lands on GPU 0.
-        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0, n_gpus=1) == 4
-
-    def test_round_robin_across_gpus(self):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        # 4 workers over 2 GPUs: bd_local 0,2 -> gpu0 and 1,3 -> gpu1.
-        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0, n_gpus=2) == 2
-        assert bd_ranks_sharing_gpu(self._bd_comm(4), 1, n_gpus=2) == 2
-
-    def test_uneven_split_counts_per_gpu(self):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        # 5 workers over 2 GPUs: bd_local 0,2,4 -> gpu0; 1,3 -> gpu1.
-        assert bd_ranks_sharing_gpu(self._bd_comm(5), 0, n_gpus=2) == 3
-        assert bd_ranks_sharing_gpu(self._bd_comm(5), 1, n_gpus=2) == 2
-
-    def test_peers_on_a_gpu_agree_on_the_count(self):
-        """Ranks sharing a GPU must derive the same budget without talking."""
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        comm = self._bd_comm(6)
-        # bd_local 0, 3 both map to gpu 0 when n_gpus=3.
-        assert (bd_ranks_sharing_gpu(comm, 0, n_gpus=3)
-                == bd_ranks_sharing_gpu(comm, 3, n_gpus=3))
-
-    def test_gpu_count_from_slurm_env(self, monkeypatch):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        monkeypatch.setenv("SLURM_GPUS_ON_NODE", "2")
-        assert bd_ranks_sharing_gpu(self._bd_comm(4), 0) == 2
-
-    def test_malformed_gpu_count_falls_back_to_one_gpu(self, monkeypatch):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        monkeypatch.setenv("SLURM_GPUS_ON_NODE", "not-a-number")
-        assert bd_ranks_sharing_gpu(self._bd_comm(3), 0) == 3
-
-    def test_eb_only_comm_never_returns_zero(self):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        # size 1 => EB only, no BD workers.  Must not divide a budget by 0.
-        assert bd_ranks_sharing_gpu(self._bd_comm(0), 0, n_gpus=1) == 1
-
-    def test_unusable_comm_falls_back_to_one(self):
-        from psana.gpu.gpu_mpi import bd_ranks_sharing_gpu
-
-        broken = SimpleNamespace(Get_size=lambda: (_ for _ in ()).throw(RuntimeError))
-        assert bd_ranks_sharing_gpu(broken, 0, n_gpus=1) == 1
 
 
 class TestAutoGpuBudgetDivides:

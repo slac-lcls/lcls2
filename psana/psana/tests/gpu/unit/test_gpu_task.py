@@ -191,7 +191,15 @@ def test_dense_and_descriptor_selectors_preserve_sparse_segment_identity(monkeyp
         prepare_task_inputs(GpuTask(noop, [('jf', 'raw', 'missing')]), **args)
 
 
-def test_step_refresh_follows_drains_and_host_update(monkeypatch, cpu_uploads):
+def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
+    """BeginStep drains, hands the transition to the host, and stops there.
+
+    One constant set per run is the supported model and BeginStep does not
+    fetch the calibration DB, so there is nothing for a rescan to pick up.
+    The drains stay because other GPU work depends on them; what must not
+    happen is a constant reupload, which for shared constants would mean
+    replacing an allocation that backs every peer on the device.
+    """
     from psana.gpu import gpu_events as ge
     manager = ge.GpuEventManager.__new__(ge.GpuEventManager)
     manager._task_constants = RequestedConstants([('jf', 'gain')], _GpuBudget(100))
@@ -201,16 +209,24 @@ def test_step_refresh_follows_drains_and_host_update(monkeypatch, cpu_uploads):
     manager.configs = []
     manager._flush_event_pool = lambda: iter(log.append('executions') or ())
     manager._group_inputs = NS(drain_idle=lambda: log.append('inputs'))
+
     def host(dgrams):
         log.append('host')
+        # Even a changed host value must not be picked up mid-run.
         manager.dsparms.calibconst['jf']['gain'][...] = 2
+
     manager.run = NS(_handle_transition=host)
     manager._trim_gpu_caches = lambda: log.append('trim')
     manager._compute_subbatch_budget = lambda: log.append('admission') or 100
-    monkeypatch.setattr(ge, '_iter_step_events', lambda *a: [(ge.TransitionId.BeginStep, [])])
+    monkeypatch.setattr(ge, '_iter_step_events',
+                        lambda *a: [(ge.TransitionId.BeginStep, [])])
+
     assert list(manager._handle_steps({0: (b'x', [])})) == []
-    assert log == ['executions', 'inputs', 'host', 'trim', 'admission']
-    assert manager._task_constants.get('jf', 'gain') == 2
+    assert log == ['executions', 'inputs', 'host'], \
+        'BeginStep trimmed caches or recomputed admission for a constant reupload'
+    # The device still holds what was uploaded at setup.
+    assert manager._task_constants.get('jf', 'gain') == 1
+
     log.clear()
     list(manager._handle_steps({0: (b'x', [])}))
     assert log == ['executions', 'inputs', 'host']

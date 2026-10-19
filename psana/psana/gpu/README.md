@@ -55,9 +55,26 @@ calibration or output copies.
 
 The same experiment/run interface supports serial and MPI execution. MPI GPU
 initialization belongs to BD workers; keep CUDA imports/allocation out of module
-initialization. Use the site's built psana/CuPy/KvikIO environment. The measured
-single-node MPI configuration has one EB and one or more BDs; multi-EB GPU
-accounting is an [open limitation](docs/limitations.md#multi-eb-device-accounting).
+initialization. Use the site's built psana/CuPy/KvikIO environment.
+
+BD worker count is a residual of the launch, not a setting:
+`bd = ranks - PS_SRV_NODES - 1 - PS_EB_NODES`, so ask for more by launching
+more ranks.
+
+```bash
+export PS_EB_NODES=1
+srun -n 6 --gres=gpu:a100:2 python my_analysis.py   # 1 smd0 + 1 eb + 4 bd
+```
+
+Those 4 BD workers split 2-and-2 across the visible GPUs, each pair claiming
+half its card. Workers sharing a GPU are discovered by device identity rather
+than EB-group arithmetic, so
+[multi-EB accounting](docs/limitations.md#multi-eb-device-accounting) is
+supported. Confirm placement
+from the per-rank log line (`peers=` is the figure that has to match the
+device's real membership); see
+[device placement and shared constants](docs/device_placement_and_shared_constants.md)
+for the worked examples.
 
 ## Read next
 
@@ -70,6 +87,7 @@ accounting is an [open limitation](docs/limitations.md#multi-eb-device-accountin
 | [Read/staging performance](docs/performance/read_staging.md) | Latest full JF and partial JF+feespec cold/warm, bulk off/on matrices |
 | [User-kernel performance](docs/performance/user_kernels.md) | Matched scheduling comparison and calibration/integration scaling |
 | [CPU/GPU complexity](docs/complexity.md) | Measured code size and responsibility comparison |
+| [Device placement and shared constants](docs/device_placement_and_shared_constants.md) | Peer discovery by device identity, per-device budgets and CUDA-IPC constant sharing |
 
 For calibrated images use [calibrate_jungfrau.py](examples/calibrate_jungfrau.py).
 For calibration followed by radial integration in one callback use
