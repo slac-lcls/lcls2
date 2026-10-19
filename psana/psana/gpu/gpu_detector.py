@@ -389,18 +389,19 @@ extern "C" __global__ void {name}(
         }}
     }}
     if (pixel == 0) present[row] = valid ? 1 : 0;
-    if (pixel < pixels) {{
+    // Check the actual address, including a possibly sliced owner base.
+    // Alignment is uniform for all threads in this segment tile; keep the
+    // original typed-load path together to minimize aligned-input overhead.
+    if (((reinterpret_cast<unsigned long long>(data) + offset) & (sizeof({ctype}) - 1)) == 0) {{
+        if (pixel < pixels) {{
+            out[row * pixels + pixel] = valid
+                ? reinterpret_cast<const {ctype}*>(data + offset)[pixel] : ({ctype})0;
+        }}
+    }} else if (pixel < pixels) {{
         {ctype} value = ({ctype})0;
         if (valid) {{
-            const unsigned char* field = data + offset;
-            // Check the actual address, including a possibly sliced owner base.
-            // All threads for this segment take the same alignment branch.
-            if ((reinterpret_cast<unsigned long long>(field) & (sizeof({ctype}) - 1)) == 0) {{
-                value = reinterpret_cast<const {ctype}*>(field)[pixel];
-            }} else {{
-                const unsigned char* src = field + pixel * sizeof({ctype});
-                {unaligned_load}
-            }}
+            const unsigned char* src = data + offset + pixel * sizeof({ctype});
+            {unaligned_load}
         }}
         out[row * pixels + pixel] = value;
     }}

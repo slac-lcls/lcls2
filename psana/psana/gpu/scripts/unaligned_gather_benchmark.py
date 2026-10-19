@@ -17,7 +17,7 @@ from psana.gpu import gpu_detector as gd
 from psana.gpu.gpudgram import parser as p
 
 
-def measure(batch, shift, samples, iterations):
+def measure(batch, shift, samples, iterations, warmup):
     segments, height, width = 32, 512, 1024
     pixels = height * width
     nrows = batch * segments
@@ -63,7 +63,7 @@ def measure(batch, shift, samples, iterations):
         stream.synchronize()
         np.testing.assert_array_equal(out.get(), np.broadcast_to(pattern, out.shape))
         np.testing.assert_array_equal(present.get(), np.ones(nrows, np.uint8))
-        for _ in range(8):
+        for _ in range(warmup):
             launch()
         stream.synchronize()
         start, end = cp.cuda.Event(), cp.cuda.Event()
@@ -80,7 +80,8 @@ def measure(batch, shift, samples, iterations):
         median = statistics.median(durations)
         return dict(batch=batch, segments=segments, panel_shape=[height, width],
                     dtype="uint16", base_shift=shift, address_residue=data.data.ptr % 2,
-                    payload_bytes=nbytes, samples=samples, iterations_per_sample=iterations,
+                    payload_bytes=nbytes, warmup_launches=warmup,
+                    samples=samples, iterations_per_sample=iterations,
                     gather_ms=durations, median_gather_ms=median,
                     useful_payload_gb_per_s=nbytes / (median * 1e6),
                     throughput_definition="input pixel bytes per second; not physical DRAM traffic",
@@ -93,17 +94,19 @@ def main():
     parser.add_argument("--batches", type=int, nargs="+", default=[1, 20])
     parser.add_argument("--samples", type=int, default=8)
     parser.add_argument("--iterations", type=int, default=20)
+    parser.add_argument("--warmup", type=int, default=256,
+                        help="untimed launches after compilation and pixel validation")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if min(args.batches + [args.samples, args.iterations]) < 1:
-        parser.error("batches, samples and iterations must be positive")
+    if min(args.batches + [args.samples, args.iterations, args.warmup]) < 1:
+        parser.error("batches, samples, iterations and warmup must be positive")
     device = cp.cuda.Device()
     source = Path(gd.__file__).resolve()
     report = dict(device=device.id, pci_bus=device.pci_bus_id, cupy=cp.__version__,
                   runtime=cp.cuda.runtime.runtimeGetVersion(),
                   driver=cp.cuda.runtime.driverGetVersion(), module=str(source),
                   module_sha256=hashlib.sha256(source.read_bytes()).hexdigest(),
-                  measurements=[measure(b, args.shift, args.samples, args.iterations)
+                  measurements=[measure(b, args.shift, args.samples, args.iterations, args.warmup)
                                 for b in args.batches])
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report), flush=True)
