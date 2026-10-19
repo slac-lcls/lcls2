@@ -153,6 +153,11 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(
             elif len(selections) == 2:
                 assert pointer == original_map_ptr
                 assert batch.configured_locations().capacity > batch.n_dgrams
+        # Retire completed fixture consumers before the next iteration grows
+        # storage. Old result/event aliases legitimately retain old charges.
+        prepared = actual = result = target = None
+        batch.retire()
+        events = ()
         memory = detector.memory_bytes()
         assert budget.committed() == pool.memory_bytes()['total'] + memory['total']
 
