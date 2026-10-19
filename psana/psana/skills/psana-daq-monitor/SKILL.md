@@ -19,11 +19,15 @@ inspection) or `psana-configdb` (read-only configuration lookups) via the
 
 **Prerequisite:** This skill requires a Grafana MCP server providing `grafana_*`
 tools (Prometheus datasource access) to be configured in the active opencode
-session. Before proceeding, call `grafana_list_datasources` (or attempt the
+session for live queries. When only retained evidence is supplied, interpret it
+and mark missing metrics unavailable without service preflight. Otherwise call
+`grafana_list_datasources` (or attempt the
 Step 0 query below) — if it fails or no Grafana MCP tools are available, stop
 and tell the user that Grafana MCP access is required for this skill and is
 not currently configured, rather than attempting further `grafana_*` calls
-that will all fail.
+that will all fail. Mark this leg unavailable and return to any composed
+investigation so it can continue with other evidence. All remediation below is
+advice for human review; never reset hardware, change settings or restart DAQ.
 
 ---
 
@@ -109,13 +113,11 @@ Once you have it (from either source), proceed to Step 1, which confirms
 metrics are actually flowing for it before loading the dashboard.
 
 **If `psana-daq` also handed off a scope** (live, or a past date/time
-range), use it instead of the "Default time ranges" table below: a live
-scope uses the defaults as normal, but a **past** scope means every query in
-this skill should use explicit `startTime`/`endTime` covering that session's
-window rather than a `now`-relative default. Derive the window the same way
-`psana-daq`'s autonomous sweep does for a past session — start from the
-session's log-prefix timestamp, end from the last-written log file's mtime
-— rather than re-deriving it independently here.
+range), reuse that explicit window rather than replacing it with log-prefix/mtime
+estimates. If bounds are unresolved, use the logs skill's "Session selection and
+historical bounds". All historical queries use the resolved requested times,
+including discovery; bypass current-availability preflight. Supplied-evidence
+workflows use retained metrics only and do not require Grafana access.
 
 `startTime`/`endTime` are the only time parameters `query_prometheus`
 accepts, on both instant and range queries — `endTime` is required even for
@@ -137,6 +139,31 @@ substitute for asking:
         ]}]
     )
 
+### Historical windows and coverage
+
+Reuse the caller's hutch, window/time zone and launch/run context. For a past
+window, bypass the live `now` preflight below: query retained range data over
+that window even if no current metrics exist. Use explicit UTC `startTime` and
+`endTime` for range queries; use the selected historical time for instant
+queries. Replace relative `now` defaults in every example, including discovery,
+panels and links (`timeRange` is for rendering, not the Prometheus query API).
+If only log-file activity bounds exist, label them approximate; see the logs
+skill's **Session selection and historical bounds**.
+
+An empty series is unavailable/missing evidence, not a measured zero. Record
+retention, scrape gaps and any relevant `up` data; a scrape failure does not
+prove a DAQ failure. Keep available component/alias/instance labels and correlate
+with launch headers: endpoint/alias reuse after restart can join different
+processes. Counter resets, scrape intervals and short range vectors affect rate
+interpretation. Do not sum overlapping launch series before identifying them.
+For hutch-wide reports, platform/partition is metadata, not the report grouping.
+
+Metric interpretations below are diagnostic leads: correlate state, topology,
+trigger selection and logs before confirming a cause or a successful remedy.
+A positive event rate alone does not establish the run-control state; zero can
+also mean no triggers. Monitoring may intentionally select fewer events than
+recording, so a TEB/MEB rate difference alone does not prove lost events.
+
 ### Step 1: Confirm metrics are flowing and load the dashboard
 
 Fire these in parallel (single message, multiple tool calls):
@@ -154,16 +181,11 @@ Fire these in parallel (single message, multiple tool calls):
 
 - **Metrics present** → proceed with `{instrument="<value>"}` on all
   subsequent queries.
-- **No results, live scope** → tell the user plainly: DAQ is not running
-  for that instrument, or metrics are not flowing; check connectivity
-  before proceeding further.
-- **No results, past scope** → do **not** conclude the DAQ was down.
-  Prometheus retention is finite; a window that predates it returns empty
-  for a session that ran fine. Distinguish the two with an instant query
-  at a recent timestamp for the same instrument: series present now but
-  empty for the requested window → **outside retention**, report it as
-  that rather than as a DAQ fault; series absent both now and then →
-  genuinely not flowing, same as the live case above.
+- **No results** → report metrics unavailable for the selected labels/time.
+  Check access, label identity, scrape gaps and documented retention when those
+  checks are available. Present-day series do not establish that older samples
+  expired; absence both now and then does not establish DAQ inactivity. Mark
+  "outside retention" only when retention evidence supports that attribution.
 
 > **Parallel query rule:** Always fire independent Grafana queries in a single
 > message. The event rate, deadtime, damage, and error queries are all
@@ -239,7 +261,7 @@ The most basic health check: are events flowing through the system?
     )
 
 **Interpretation:**
-- `drp_event_rate` > 0 across all expected detectors = DAQ is running
+- `drp_event_rate` > 0 across expected detectors = events observed in the measurement interval
 - `L0InpRate` ≈ `L0AccRate` = minimal deadtime, triggers accepted efficiently
 - `L0InpRate` >> `L0AccRate` = significant deadtime (see section B)
 - TEB rate ≈ L0AccRate = event builder keeping up
@@ -339,8 +361,8 @@ The damage field is a **bitmask** — multiple types can be set simultaneously.
     )
 
 **Interpretation:**
-- Zero damage rate = healthy
-- Nonzero but low (< 1/s) = occasional glitches, usually benign
+- Zero damage rate = no damage measured in available samples, not proof of overall health
+- Nonzero damage merits context even below 1/s; assess affected fraction and experiment needs
 - Sustained damage rate = systematic issue — check hardware links (H)
   and DRP errors (D)
 - Damage on a single detector = detector-specific problem
@@ -359,8 +381,8 @@ The damage field is a **bitmask** — multiple types can be set simultaneously.
 
 ### D. Are there DRP errors?
 
-Six types of discarded error events, dropped early in the readout chain
-(never reach recording or monitoring). All are registered as `MetricType::Gauge`
+Six readout error indicators; discard behavior differs as shown below. All are
+registered as `MetricType::Gauge`
 in prometheus-cpp despite being monotonically increasing — use `rate()` to
 get the rate.
 

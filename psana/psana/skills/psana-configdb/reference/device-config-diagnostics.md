@@ -3,12 +3,16 @@
 ConfigDB records what configuration was **requested**. psana's own
 `_configs`/`_seg_configs()` attributes — populated from XTC Config
 transitions baked into the actual data file/shared-memory stream — record
-what configuration **actually reached the data** for a given run. These can
+what configuration was **recorded in the data** for a given run. These can
 diverge (e.g. a config change between runs with no new Configure
 transition). This file documents, for each device type, what psana can and
 cannot see about a ConfigDB misconfiguration — i.e. which fields have a
-traceable runtime consumer in psana, and which are invisible to psana
-entirely.
+traceable runtime consumer in a specialized psana detector algorithm. Absence
+of a specialized psana field consumer does not make recorded
+Configure content unavailable to generic dump tools. "NOT CONSUMED" below means
+no direct field use in the named detector algorithm, not proof of absence from
+XTC. Source locations and symptom associations must be checked for the relevant
+release; none alone proves hardware application or a root cause.
 
 ---
 
@@ -16,7 +20,7 @@ entirely.
 
 | ConfigDB field | What it controls | psana consumer (file:line) or "NOT CONSUMED BY PSANA" | Symptom if misconfigured |
 |---|---|---|---|
-| `buildAll`, `buildDets` | Which detectors' contributions the TEB event-builds | NOT CONSUMED BY PSANA | Invisible to psana; verify via ConfigDB/DAQ logs only |
+| `buildAll`, `buildDets` | Which detectors' contributions the TEB event-builds | NOT CONSUMED BY PSANA | No direct algorithm read; inspect retained configuration/DAQ evidence and trigger results |
 | `prescale`, `persistValue`, `monitorValue` | Bit-mask rules for per-event persist/monitor/prescale decisions | `psana/psana/detector/ts.py:161-178` (`triginfo_triginfo_0_0_1.prescale()/persist()/monitor()`) — decodes the per-event *result* of these rules (bit-unpacking the triginfo dgram), not the config fields by name | Unexpected persist/monitor bit patterns per event relative to expected trigger logic |
 
 ## hsd_0 (HSD digitizer)
@@ -26,7 +30,7 @@ entirely.
 | `user.fex.gate_ns` | FEX sample-window length | `psana/psana/hsd/hsd.pyx:361-369` (`hsd_raw_2_0_0._load_config`), `hsd.pyx:381-388` (`hsd_raw_3_0_0._load_config`) — converts to `_padLength` via `int(gate_ns*0.160*13/14)*40` | Wrongly-sized/truncated `padded()` waveform array; triggers "Skipping hsd FEX peak out of range" warning at hsd.pyx:181-184 if inconsistent with actual FEX peak data |
 | `user.fex.ymin`/`ymax` (legacy `fex.ymin[0]`/`ymax[0]` in `hsd_hsd_1_2_3`, hsd.pyx:103-111) | FEX baseline range | `psana/psana/hsd/hsd.pyx:361-369` — averaged into `_padValue` | Wrong baseline/pad value in reconstructed waveform |
 | `user.fex.corr.baseline` | FEX baseline correction | `hsd.pyx:381-388` (`hsd_raw_3_0_0`) — sourced as `_padValue` | Same as above (wrong baseline/pad value) |
-| `user.raw.start_ns` | Raw ADC capture window start time | NOT CONSUMED BY PSANA (only gate_ns/ymin/ymax-derived values are read) | Invisible to psana; would only manifest as a raw ADC capture window shifted in time relative to expectations, with no explicit warning. Verify via ConfigDB only |
+| `user.raw.start_ns` | Raw ADC capture window start time | NOT CONSUMED BY PSANA (only gate_ns/ymin/ymax-derived values are read) | Not directly used by that algorithm; may manifest as a raw ADC capture window shifted in time relative to expectations, with no explicit warning. Inspect retained Configure/DAQ evidence; current ConfigDB alone is insufficient historically |
 
 ## timing_0 / ts (per-readout-group eventcode/inhibit)
 
@@ -63,13 +67,13 @@ entirely.
 
 | ConfigDB field | What it controls | psana consumer (file:line) or "NOT CONSUMED BY PSANA" | Symptom if misconfigured |
 |---|---|---|---|
-| (any opal config field) | — | NOT CONSUMED BY PSANA — confirmed via grep across `opal.py`/`opal_base.py`; `calib()` (`psana/psana/detector/opal_base.py:44-67`) relies entirely on `_pedestals()`/`_gain()` from the separate calib-constants DB | If an opal misconfiguration is suspected, it must be diagnosed via ConfigDB/DAQ logs only |
+| (any opal config field) | — | NOT CONSUMED BY PSANA — confirmed via grep across `opal.py`/`opal_base.py`; `calib()` (`psana/psana/detector/opal_base.py:44-67`) relies entirely on `_pedestals()`/`_gain()` from the separate calib-constants DB | If an opal misconfiguration is suspected, inspect retained configuration and DAQ logs, including generic Configure dumps |
 
 ## piranha4
 
 | ConfigDB field | What it controls | psana consumer (file:line) or "NOT CONSUMED BY PSANA" | Symptom if misconfigured |
 |---|---|---|---|
-| (any piranha4 config field) | — | NOT CONSUMED BY PSANA — no config-field reads found anywhere in `piranha4.py`; all classes are thin pass-throughs | Diagnose via ConfigDB/DAQ logs only |
+| (any piranha4 config field) | — | NOT CONSUMED BY PSANA — no config-field reads found anywhere in `piranha4.py`; all classes are thin pass-throughs | Inspect retained configuration/DAQ logs and generic Configure dumps |
 
 ## wave8
 
@@ -82,5 +86,5 @@ entirely.
 
 ## General runtime signals (not config-specific)
 
-- **Segment completeness silent-drop:** `psana/psana/detector/detector_impl.py:121-136` (`DetectorImpl._segments()`) — if the segment indices present in an event don't exactly match the expected sorted list, the whole detector silently returns `None` for that event rather than raising a warning. Key diagnostic gotcha: a detector "disappearing" from an event is often a segment-count mismatch, not damage.
+- **Segment completeness silent-drop:** `psana/psana/detector/detector_impl.py:121-136` (`DetectorImpl._segments()`) — if the segment indices present in an event don't exactly match the expected sorted list, the whole detector silently returns `None` for that event rather than raising a warning. Key diagnostic gotcha: a detector returning `None` may reflect a segment-membership mismatch; inspect both membership and damage rather than choosing a cause from `None` alone.
 - **Damage bitmask decode:** `psana/psana/detector/damage.py` (`Damage` class, `_load_damage_info` at damage.py:98-137) — decodes Truncated/OutOfOrder/OutOfSynch/Corrupted/DroppedContribution/MissingData/TimedOut/UserDefined bits per segment per event — general-purpose data-quality signal, reflects DAQ/data-path health rather than ConfigDB misconfiguration specifically, but useful to check alongside config diagnosis.

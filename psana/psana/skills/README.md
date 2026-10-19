@@ -29,6 +29,16 @@ Each skill's `description:` frontmatter is the authoritative statement of when
 to load it — the purposes above are a short paraphrase, not a substitute for
 reading the frontmatter or the skill itself.
 
+## Supplied-evidence callers
+
+Applications may supply an already-established hutch/window, dated launches,
+evidence inventory, tool restrictions and a structured output contract. The
+router's "Caller scope and available evidence" section governs this mode:
+reuse that scope, interpret retained evidence, mark unavailable services/history,
+and follow the caller's output contract. Do not offer unavailable history writes
+or replace current citations with known-issue pointers. Standalone sweep/history
+workflows remain available when their tools and authorization are present.
+
 ## How they compose
 
 `psana-daq` establishes `hutch` (the target instrument/hutch) and session
