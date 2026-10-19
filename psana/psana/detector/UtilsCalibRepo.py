@@ -91,6 +91,78 @@ def save_constants_in_repository(dic_consts, **kwa):
         logger.info('saved: %s' % fname)
 
 
+def save_constants_in_repository_v02(dic_consts, **kwa):
+
+    logger.debug('save_constants_in_repository_v02 kwa:', kwa)
+
+    CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
+    repoman  = kwa.get('repoman', None)
+    expname  = kwa.get('exp', None)
+    detname  = kwa.get('det', None)
+    dettype  = kwa.get('dettype', None)
+    deploy   = kwa.get('deploy', False)
+    dirrepo  = kwa.get('dirrepo', './work')
+    dirmode  = kwa.get('dirmode',  0o2775)
+    filemode = kwa.get('filemode', 0o664)
+    group    = kwa.get('group', 'ps-users')
+    tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
+    tsshort  = kwa.get('tsshort', '20100101000000')
+    runnum   = kwa.get('run_orig', None)
+    uniqueid = kwa.get('longname', 'not-def-id')
+    shortname= kwa.get('shortname', 'not-def-shortname')
+    segids   = kwa.get('segment_ids', [])
+    segind   = kwa.get('segind', 0)
+    gainmode = kwa.get('gainmode', None)
+    fdark    = kwa.get('dark_factor', None)
+
+    fmt_peds   = kwa.get('fmt_peds', '%.3f')
+    fmt_offs   = kwa.get('fmt_offs', '%.3f')
+    fmt_rms    = kwa.get('fmt_rms',  '%.3f')
+    fmt_status = kwa.get('fmt_status', '%4i')
+    fmt_max    = kwa.get('fmt_max', '%i')
+    fmt_min    = kwa.get('fmt_min', '%i')
+    fmt_gain   = kwa.get('fmt_gain', '%.6f')
+
+    CTYPE_FMT = {'pedestals'   : fmt_peds,
+                 'pixel_rms'   : fmt_rms,
+                 'pixel_status': fmt_status,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
+                 'status_extra': fmt_status,
+                 'pixel_gain'  : fmt_gain}
+
+    ctypes_for_dark_factor = ('pedestals', 'pixel_rms', 'pixel_max', 'pixel_min')
+
+    repoman = set_repoman_and_logger(kwa)
+
+    logger.info('uniqueid %s' % uniqueid)
+    segid = uniqueid.split('_')[1]
+
+    logger.info(f'\nsave segment constants for gain mode:{gainmode} in repo for segment id: {segid}')
+
+    for ctype, nda in dic_consts.items():
+        if fdark is not None and ctype in (ctypes_for_dark_factor):
+            dtype = nda.dtype
+            logger.info(f'apply dark factor {fdark} to {ctype} due to data bits shift left')
+            arr = nda.astype(np.float64)
+            arr *= fdark
+            #if dtype == np.uint16 and fdark == 0.5: nda = np.right_shift(nda,1)
+            nda = arr.astype(dtype)
+
+        dir_ct = repoman.makedir_ctype(segid, ctype)
+        fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
+
+        fname = calib_file_name(fprefix, ctype, gainmode)
+        fmt = CTYPE_FMT.get(ctype,'%.5f')
+        logger.info(info_ndarr(nda, f'  {ctype}'))  # shape:(4, 192, 384)
+
+        save_ndarray_in_textfile(nda, fname, filemode, fmt)
+        ###save_2darray_in_textfile(nda, fname, filemode, fmt)
+
+        logger.info('saved: %s' % fname)
+
+
 def _set_segment_ind_and_id(kwa):
     """re-define lists of detector segment_inds and segment_ids for specified detector or segind"""
     dettype  = kwa.get('dettype', None)
