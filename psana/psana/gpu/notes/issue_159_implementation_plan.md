@@ -1,7 +1,8 @@
 # Issue 159: alignment-safe GPU reads
 
-Updated 2026-10-19. Status: PR #187 integrated and its staging comparison completed;
-alignment implementation has not started. This document records the agreed scope, staged implementation,
+Updated 2026-10-19. Status: PR #187 comparison completed; A frozen; stage-2
+dense-gather fix implemented and undergoing validation. Later stages have not
+started. This document records the agreed scope, staged implementation,
 dependency expectations, and acceptance gates.
 
 ## Goal summary
@@ -33,6 +34,11 @@ following [Seema's review](https://github.com/slac-lcls/lcls2/issues/159#issueco
 | Pinned PR #187 head | `4b068a867d9164354ac7b7613d89812f06dc5ee6` |
 | Integration merge / initial unfixed A | `90c05965cf34869388cc526a50e7e822b50a6eba` |
 | Initial baseline ref | `baseline/gpu-unaligned-159-pr187-20261019` |
+| Frozen A tag | `freeze/issue159-A-pr187-20261019` |
+
+The [stage-2 record](issue159_stage2_20261019.md) tracks the frozen install and
+dependency hashes, exact candidate revisions, device validation and remaining
+performance checks.
 
 The merge preserves both histories and completed without conflicts. Its first
 parent is the previous base; its second parent is the pinned PR head. Relative
@@ -133,8 +139,8 @@ reviewable commits so a measured change can be isolated.
 | Stage | Work and likely files | Exit gate | Status |
 | --- | --- | --- | --- |
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
-| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Partial: dependency staging campaign passed; focused alignment baseline pending |
-| 2. Safe dense gather | `gpu_detector.py`; extend `test_batched_gather.py` / `test_raw_preparation.py`; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Pending |
+| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Partial: A frozen; 15 aligned baseline tests passed and old unaligned fault reproduced; real-input address audit pending |
+| 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Implemented; validation in progress, not accepted |
 | 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Pending |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
 | 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
@@ -386,12 +392,14 @@ Also completed: independent pre/post-PR #187 builds and A/B/A import checks,
 campaign, final artifact verification and staging cleanup. See the linked
 report for the exact workload and evidence.
 
-Not performed: focused alignment regression tests, sanitizer execution,
-field-address audit, alignment implementation,
-or performance runs of an alignment candidate. The staging campaign does not
-resolve PR #187 reviews or validate its IPC constant-sharing paths.
+Stage 2 has now started; see its linked record for current tests and timings.
+Focused device and direct-gather sanitizer checks passed for the first candidate.
+Pending acceptance includes final-candidate checks, the staged-input address
+audit and the candidate's four-BD performance screen; the measured kernel
+overhead remains explicit in the stage-2 record. The dependency staging
+campaign does not resolve PR #187 reviews or validate IPC constant-sharing.
 
-Next action: finish stage 1's focused baseline tests and address audit, then
-implement and measure stage 2 dense gather alone using A0/B0/B1. No additional
-A/A measurement is planned. Maintain this status
+Next action: finish stage 2 correctness and A0/B0/B1 performance checks before
+starting copy-retention or field-view changes. No additional A/A measurement
+is planned. Maintain this status
 as evidence accumulates; keep #187 repairs in Seema's task.
