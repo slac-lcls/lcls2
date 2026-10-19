@@ -133,7 +133,7 @@ reviewable commits so a measured change can be isolated.
 | Stage | Work and likely files | Exit gate | Status |
 | --- | --- | --- | --- |
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
-| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen; measure identical-build A/A variation | Recorded PR #187 comparison plus safe-address evidence, baseline correctness inventory and measurement repeatability | Partial: dependency staging campaign passed; focused alignment baseline/A/A pending |
+| 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Partial: dependency staging campaign passed; focused alignment baseline pending |
 | 2. Safe dense gather | `gpu_detector.py`; extend `test_batched_gather.py` / `test_raw_preparation.py`; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Pending |
 | 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Pending |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
@@ -199,11 +199,10 @@ validation. No numerical regression tolerance has been agreed.
 
 ### Performance checks during implementation
 
-1. **Freeze a reference and measure variability.** Use `90c05965c` as the
-   unchanged integrated reference. Before interpreting small differences, run
-   balanced A/A labels using the same frozen build/harness and the same cache
-   preparation. This measures execution variability, not build variation.
-   Keep environment, device, affinity, batch/depth and effective budget fixed.
+1. **Freeze a reference.** Use `90c05965c` as the unchanged integrated reference.
+   Per Mona's decision, do not run another A/A campaign. Use balanced repeated
+   comparisons and their spread to assess the candidate. Keep environment,
+   device, affinity, batch/depth and effective budget fixed.
 2. **Measure gather before touching field ownership.** Keep the typed aligned
    path and byte fallback inside the existing kernel. Avoid a preliminary
    scan, repacking of the complete input, extra launch or device-wide barrier.
@@ -227,9 +226,11 @@ validation. No numerical regression tolerance has been agreed.
    Keep `.on_cpu` direct byte D2H and retain the agreed independent `.on_gpu`
    semantics; defer the optional two-copy optimization until measurements
    justify a separate change.
-5. **Use short screens, then full confirmation.** After stage 2 and stages that
+5. **Use short screens, then full confirmation.** For stages that
    affect event processing, run warm/bulk-off and warm/bulk-on with two balanced
    A/B pairs each (eight 10k-event samples), preceded by correctness preflights.
+   Stage 2 expands this to 16 samples to include the B0/B1 alignment comparison
+   specified below; it replaces, rather than duplicates, that stage's screen.
    Retain the same staging/hash/residency gates. This is an early diagnostic,
    not acceptance or proof that cold performance is preserved. The dense-gather
    workload does not exercise field access, so add the focused field/API timing
@@ -240,7 +241,7 @@ validation. No numerical regression tolerance has been agreed.
    the unchanged integrated reference to detect cumulative drift. Rerun both
    sides together; historical rates from separate allocations are context only.
    Investigate repeatable positive changes even if smaller than the old
-   warm/on spread. Use more balanced pairs and A/A controls for ambiguous
+   warm/on spread. Use more balanced A/B pairs for ambiguous
    differences. Do not silently accept a blanket 5% slowdown or hide a
    reproducible regression by increasing the tolerated variance.
 
@@ -274,6 +275,76 @@ difference to alignment. Hash frozen source/native libraries/harness/input files
 - First unaligned `.on_gpu` two-copy cost and direct `.on_cpu` cost.
 - Warm compilation/allocations; separate CUDA kernel duration from host API latency.
   Record copy/allocation/launch counts in separate diagnostics, not timed controls.
+
+### Stage 2: large unaligned Jungfrau input
+
+Use three cases with identical pixel values, shapes and detector work:
+
+| Case | Runtime | Input addresses | Comparison purpose |
+| --- | --- | --- | --- |
+| A0 | Integrated baseline `90c05965c` | Aligned | Valid pre-fix reference |
+| B0 | Stage-2 gather fix only | Aligned | B0/A0 detects safe-path regression |
+| B1 | Same stage-2 fix | Unaligned | B1/B0 measures alignment penalty; B1/A0 measures safe unaligned handling versus the old aligned path |
+
+The old typed-load kernel on unaligned input is not a valid timing reference:
+it may fault or produce invalid results. B1/A0 changes both code and alignment;
+do not describe that ratio as a same-input before/after comparison. B1/B0
+holds the runtime fixed and provides the alignment comparison.
+
+**First isolate the gather.** Use the production gather kernel with full
+32-panel uint16 Jungfrau layout (512 x 1024 pixels/panel), representative owner,
+locator and row tables, batch 20, and the same aligned output. This is 32 MiB
+of raw pixels/event, 640 MiB/batch. Prepare and upload equivalent aligned and
+odd-address fixtures before timing; verify `base_pointer + payload_offset`.
+Test both base shifts and payload-offset shifts, all unaligned rows as the
+worst case, and mixed aligned/unaligned segments. Batch 1 and a partial tail
+check sensitivity to launch overhead. Validate exact output bytes and presence,
+then warm compilation/allocations and time only the gather with CUDA events
+on its stream. Report latency and useful payload throughput with its byte
+definition; do not present that number as physical DRAM bandwidth.
+
+**Then use the same staged data through the full pipeline.** Add a frozen
+benchmark-only reader adapter, identical for both revisions, that reserves
+N+1 bytes and exposes either `[0:N]` (A0/B0) or `[1:N+1]` (B1) as the uint8
+read destination. KvikIO reads directly into the selected view: no extra
+per-batch device copy, no edited XTC records, no padded output image. Apply it
+consistently to input-buffer growth and allocation-requirement accounting;
+retain the backing owner, charge its actual rounded capacity, and preserve
+buffer reuse and valid bounds. All cases reserve the same capacity.
+
+The current parser uses byte-based load_u16/load_u32/load_u64 helpers. Verify
+the complete shifted-input path with CPU-reference pixels and sanitizer before
+timing; do not assume that this source observation proves every consumer safe.
+Confirm the KvikIO CPU-fallback path accepts the shifted contiguous destination.
+If it does not, record the limitation rather than silently adding a repacking
+copy that contaminates the comparison. An address audit must establish that
+A0/B0 are aligned and that B1 exercises the intended odd uint16 addresses;
+record the actual aligned/unaligned row counts. Use mixed-address fixtures
+where whole-buffer shifting cannot give every row the intended alignment.
+
+Run all cases on the same physical A100 with four BDs, the same staged prefixes,
+batch 20, depth 1, eight read workers, 1 MiB tasks, and 6 GiB/BD. The first
+screen uses warm cache and both bulk settings: two balanced pairs for A0/B0
+and two for B0/B1 per setting (**16 timed 10k-event samples**). Each pair runs
+adjacently, reverses order on its second repetition, and prepares/verifies cache
+state before each sample. Every case/bulk combination gets a separate 200-event
+correctness preflight. Increase repetitions if the result is ambiguous.
+
+This staged B1/B0 ratio includes effects of shifting the KvikIO destination
+and parser input as well as gather. Use the isolated gather timing to distinguish
+kernel cost; do not attribute the entire pipeline difference to the byte loads.
+First check the gather on one GPU process, then check four-BD contention through
+the staged campaign. Report gather latency, loop events/s, read wait, setup,
+actual address mix, memory high water, and extra allocation/copy/launch counts.
+Keep profiler diagnostics separate from throughput runs.
+
+Stage 2 passes only after correctness checks and investigation of repeatable
+aligned-path regressions. Report the large-image fallback cost explicitly;
+there is no agreed numerical fallback penalty limit. The final 32-sample safe
+data campaign remains required. Expand the shifted-input comparison to cold
+cache if the early results indicate a read-path effect or before making broad
+end-to-end unaligned-performance claims. Direct field-view copies belong to
+later stages and are measured separately.
 
 ### Staged end-to-end campaign
 
@@ -316,10 +387,11 @@ campaign, final artifact verification and staging cleanup. See the linked
 report for the exact workload and evidence.
 
 Not performed: focused alignment regression tests, sanitizer execution,
-field-address audit, alignment implementation, identical-build A/A controls,
+field-address audit, alignment implementation,
 or performance runs of an alignment candidate. The staging campaign does not
 resolve PR #187 reviews or validate its IPC constant-sharing paths.
 
-Next action: finish stage 1's focused baseline tests, address audit and repeatability
-controls, then implement and measure stage 2 dense gather alone. Maintain this status
+Next action: finish stage 1's focused baseline tests and address audit, then
+implement and measure stage 2 dense gather alone using A0/B0/B1. No additional
+A/A measurement is planned. Maintain this status
 as evidence accumulates; keep #187 repairs in Seema's task.
