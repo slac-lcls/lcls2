@@ -1,8 +1,8 @@
 # Issue 159: alignment-safe GPU reads
 
 Updated 2026-10-19. Status: PR #187 comparison completed; A frozen; stage-2
-dense-gather fix implemented and undergoing validation. Later stages have not
-started. This document records the agreed scope, staged implementation,
+measured overhead accepted by Mona for now; stage-3 copy retention implemented
+and undergoing validation. This document records the agreed scope, staged implementation,
 dependency expectations, and acceptance gates.
 
 ## Goal summary
@@ -141,7 +141,7 @@ reviewable commits so a measured change can be isolated.
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
 | 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Complete: A frozen; aligned baseline and old unaligned fault recorded; real-input address audit passed; inherited failures inventoried |
 | 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen document overhead for acceptance | Implemented; Mona accepted the +0.98%/+1.30% bulk-on cost for now and authorized stage 3; broad-suite failures remain tracked |
-| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | In progress: minimal copy retention and focused lifetime tests |
+| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Implemented: 89 CPU, 21 CUDA, three memcheck cases passed; host timing recorded; staged screen 41349323 queued, acceptance pending |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
 | 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
 | 6. Integrated correctness | Sanitizer, field/gather/raw/ownership/pixel-exact tests, serial and MPI lifecycle coverage on integrated #187, required core groups | Correctness gates pass; inherited dependency/environment blockers are explicitly separated and resolved or accepted by Mona | Pending |
@@ -402,8 +402,9 @@ The broad-suite failures remain tracked for integrated correctness and are not
 waived by performance acceptance. These campaigns do not resolve PR #187
 reviews or validate IPC constant-sharing.
 
-Current action: implement stage 3 copy retention, validate delayed/open-child
-lifetime and failure handling, and measure host bookkeeping and the short staged
-screen against the accepted stage-2 build. Preserve frozen integrated A for final
-cumulative comparison. No additional A/A measurement is planned; keep #187
-repairs in Seema's task.
+The [stage-3 record](issue159_stage3_20261019.md) documents the implemented copy
+retention, passing lifetime/failure checks and host timings. The eight-sample
+staged screen against accepted stage 2 is queued as job 41349323. Review its
+results before stage 4. Preserve frozen integrated A for final cumulative
+comparison. No additional A/A measurement is planned; keep #187 repairs in
+Seema's task.
