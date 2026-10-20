@@ -393,9 +393,8 @@ def epix_deploy_constants_v01(odet, **kwa_depl):
     deploy_constants(ctypes, gainmodes, **kwa_depl)
 
 
-def epix_deploy_constants_epixuhr3x2(odet, **kwa_depl):
+def epixuhr3x2_deploy_constants(odet, **kwa_depl):
     ctdepl  = kwa_depl.get('ctdepl', 'prs')
-    #ctypes = [cc.dic_calib_char_to_name[c] for c in ctdepl]
     for c in ctdepl:
         ctype = cc.dic_calib_char_to_name[c]
         gainmodes = odet.raw._gain_states     if c == 'g' else\
@@ -403,6 +402,23 @@ def epix_deploy_constants_epixuhr3x2(odet, **kwa_depl):
                     odet.raw._gain_modes # 8-modes for pedestals and orther from dark dark
         logger.info(f'begin deployment for ctype: {ctype} gainmodes: {str(gainmodes)}')
         deploy_constants((ctype,), gainmodes, **kwa_depl)
+
+
+def epixm320_deploy_constants(odet, **kwa_depl):
+    import psana.detector.UtilsEpixm320Calib as ue320 # import epixm320_deploy_constants
+    if True: # NEW VERSION - manage gain state order for different ctype
+        ue320.epixm320_deploy_constants_v02(odet, **kwa_depl)
+#    elif False: # THE SAME NEW VERSION DEV TEST
+#        ctdepl  = kwa_depl.get('ctdepl', 'prs')
+#        for c in ctdepl:
+#            ctype = cc.dic_calib_char_to_name[c]
+#            gainmodes = odet.raw._gain_states      if c == 'g' else\
+#                        odet.raw._gain_states_offs if c == 'o' else\
+#                        odet.raw._gain_states_dark # if c in 'prsmx' else\
+#            logger.info(f'begin deployment for ctype: {ctype} gainmodes: {str(gainmodes)}')
+#            deploy_constants((ctype,), gainmodes, **kwa_depl)
+    else: # OLD VERSION
+        ue320.epixm320_deploy_constants_v01(odet, **kwa_depl)
 
 
 def epix_deploy_constants(parser):
@@ -427,10 +443,9 @@ def epix_deploy_constants(parser):
     logger.info(f'epix_deploy_constants for dettype: {dettype} ctdepl: {ctdepl} ctypes: {str(ctypes)}')
 
     if dettype == 'epixuhr3x2':
-       epix_deploy_constants_epixuhr3x2(odet, **kwa_depl)
+       epixuhr3x2_deploy_constants(odet, **kwa_depl)
     elif dettype == 'epixm320':
-       from psana.detector.UtilsEpixm320Calib import epixm320_deploy_constants
-       epix320_deploy_constants(odet, **kwa_depl)
+       epixm320_deploy_constants(odet, **kwa_depl)
     else:
        epix_deploy_constants_v01(odet, **kwa_depl)
 
