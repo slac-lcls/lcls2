@@ -485,23 +485,31 @@ def gain_mode(odet, metadic, nstep):
 #            logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 
-def epixm320_deploy_constants(odet, **kwa):
-    """for input parameters odet, **kwa"""
-    kwa_depl = kwa
-    ctdepl  = kwa.get('ctdepl', 'psr')
+def epixm320_deploy_constants_v01(odet, **kwa_depl):
+    """DEPRECATED re-factored _v00 for input parameters odet, **kwa_depl"""
+    ctdepl  = kwa_depl.get('ctdepl', 'psr')
     print('ctdepl', ctdepl)
     ctypes = CTYPES_ALL #('pedestals', 'pixel_rms', 'pixel_status', 'pixel_max', 'pixel_min', 'pixel_gain', 'pixel_offset')
     ctypes_sel = [KEY_CTYPE[k] for k in ctdepl if k in KEY_CTYPE.keys()]
     print('CTYPES_ALL', CTYPES_ALL)
     print('ctypes_sel', ctypes_sel)
     gainmodes = odet.raw._gain_modes
-#    kwa_depl['shape_as_daq'] = odet.raw._shape_as_daq()
-#    kwa_depl['exp'] = expname
-#    kwa_depl['det'] = detname
-#    kwa_depl['run_orig'] = runnum
     logger.info('kwa_depl:\n%s' % info_dict(kwa_depl, fmt='  %12s: %s', sep='\n'))
-
     deploy_constants(ctypes_sel, gainmodes, **kwa_depl)
+
+
+def epixm320_deploy_constants_v02(odet, **kwa_depl):
+    """2026-10-20 version for input parameters odet, **kwa"""
+    ctdepl  = kwa_depl.get('ctdepl', 'prs')
+    for c in ctdepl:
+        ctype = cc.dic_calib_char_to_name[c]
+        gainmodes = odet.raw._gain_states      if c == 'g' else\
+                    odet.raw._gain_states_offs if c == 'o' else\
+                    odet.raw._gain_states_dark # if c in 'prsmx' else\
+        logger.info(f'begin deployment for ctype: {ctype} gainmodes: {str(gainmodes)}')
+        #print('kwa_depl.keys()', kwa_depl.keys())
+        kwa_depl['gain_states'] = str(gainmodes).replace("'", '')
+        deploy_constants((ctype,), gainmodes, **kwa_depl)
 
 
 def deploy_constants_epixm320(parser):
@@ -512,7 +520,8 @@ def deploy_constants_epixm320(parser):
     ds, orun, odet = up.ds_run_det(**kwa)
     kwa_depl = uc.add_metadata_kwargs(orun, odet, **kwa)
 
-    epixm320_deploy_constants(odet, **kwa_depl)
+    epixm320_deploy_constants_v02(odet, **kwa_depl)
+    #epixm320_deploy_constants_v01(odet, **kwa_depl)
 
 
 def deploy_constants_epixm320_v00(parser):
