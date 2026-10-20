@@ -2,7 +2,8 @@
 
 Status: isolated-install repair and focused validation passed. Job **41397249**
 on `sdfampere032` stopped at the warm-cache gate before timing. Screen-only retry
-**41397802** is running on `sdfampere013`; performance acceptance is pending.
+**41397802** also stopped at the cache gate on `sdfampere013`; performance
+acceptance is pending. See the [cache diagnosis](issue159_cache_diagnosis_20261020.md).
 The runtime source is still stage-3 commit `f425e601e450a292cda440fe9b67820b5dc7b4eb`.
 
 ## Failure and repair
@@ -118,8 +119,14 @@ has its own output directory and private node-local stage. Native and pixel
 preflights still run; the already-passing CPU/CUDA/sanitizer groups are not
 repeated. NIC monitoring now starts with the job.
 
-After briefly queuing for resources, the retry started on `sdfampere013`. Both
-six-rank native preflights passed before staging.
+After briefly queuing for resources, the retry ran on `sdfampere013`. Both
+six-rank native preflights and all four pixel/address preflights passed.
+It failed before timing after three cache-repair passes: s006 was 98.972597%
+resident, below 99%. Its private stage was removed. The
+[cache-only probe](issue159_cache_diagnosis_20261020.md) demonstrated that resetting
+the private staged-file cache once, then using the existing warmer, passes
+the residency gate. That preparation correction remains to be integrated into
+the screen; the frozen installs and residency threshold are unchanged.
 Pending: eight timed warm samples, paired events/s and loop seconds, post-run
 hashes and stage cleanup. This incremental comparison does not replace the
 final cumulative comparison with frozen integrated A. The inherited broad-suite

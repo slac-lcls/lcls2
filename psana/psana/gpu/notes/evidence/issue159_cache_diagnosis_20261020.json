@@ -1,0 +1,1167 @@
+{
+  "41397249": {
+    "host": "sdfampere032",
+    "error": "RuntimeError: Warm prefix residency too low: {'path': '/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2', 'bytes': 62919878192, 'pages': 15361299, 'resident_pages': 15131586, 'resident_fraction': 0.985045991227695}",
+    "complete": false,
+    "removed_stage": "/lscratch/monarin/jf-issue159-41397249",
+    "timed_samples": 0,
+    "snapshots": [
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 36602,
+        "job_memory_bytes": 354511990784,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65318383616,
+          "N1": 14765559808,
+          "N2": 73776291840,
+          "N3": 83010121728,
+          "N4": 16548429824,
+          "N5": 41907138560,
+          "N6": 28741914624,
+          "N7": 28677152768
+        },
+        "reclaim": {
+          "pgscan": 79501023,
+          "pgsteal": 79501023,
+          "workingset_refault_file": 219372
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         8618344 kB\nMemAvailable:   967841136 kB\nBuffers:           19524 kB\nCached:         960212548 kB\nSwapCached:        47152 kB\nActive:         62439040 kB\nInactive:       896260476 kB\nActive(anon):    6839600 kB\nInactive(anon):   229040 kB\nActive(file):   55599440 kB\nInactive(file): 896031436 kB\nUnevictable:    18679376 kB\nMlocked:        18676304 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:             16000 kB\nWriteback:             0 kB\nAnonPages:      17099640 kB\nMapped:          4385176 kB\nShmem:           6873736 kB\nKReclaimable:   16973028 kB\nSlab:           19633900 kB\nSReclaimable:   16973028 kB\nSUnreclaim:      2660872 kB\nKernelStack:       43280 kB\nPageTables:       131236 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27533040 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563692 kB\nVmallocChunk:          0 kB\nPercpu:           299520 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12902400 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 36602,
+        "job_memory_bytes": 376991068160,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65940185088,
+          "N1": 15883481088,
+          "N2": 93851807744,
+          "N3": 83360686080,
+          "N4": 16581566464,
+          "N5": 41923420160,
+          "N6": 28783251456,
+          "N7": 28904714240
+        },
+        "reclaim": {
+          "pgscan": 124850592,
+          "pgsteal": 124850592,
+          "workingset_refault_file": 24891791
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5678400 kB\nMemAvailable:   967625956 kB\nBuffers:           19524 kB\nCached:         962960916 kB\nSwapCached:        47152 kB\nActive:         63855520 kB\nInactive:       897708404 kB\nActive(anon):    6962696 kB\nInactive(anon):   229040 kB\nActive(file):   56892824 kB\nInactive(file): 897479364 kB\nUnevictable:    18680120 kB\nMlocked:        18677048 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               228 kB\nWriteback:             0 kB\nAnonPages:      17214984 kB\nMapped:          4386904 kB\nShmem:           6880784 kB\nKReclaimable:   16972864 kB\nSlab:           19641496 kB\nSReclaimable:   16972864 kB\nSUnreclaim:      2668632 kB\nKernelStack:       43248 kB\nPageTables:       130436 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27750672 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563644 kB\nVmallocChunk:          0 kB\nPercpu:           299520 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12902400 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 45847,
+        "job_memory_bytes": 377009946624,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65940185088,
+          "N1": 15883481088,
+          "N2": 93851877376,
+          "N3": 83360710656,
+          "N4": 16581566464,
+          "N5": 41923420160,
+          "N6": 28783251456,
+          "N7": 28904714240
+        },
+        "reclaim": {
+          "pgscan": 124850592,
+          "pgsteal": 124850592,
+          "workingset_refault_file": 24891791
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5597276 kB\nMemAvailable:   967548784 kB\nBuffers:           19524 kB\nCached:         962964872 kB\nSwapCached:        47152 kB\nActive:         63878628 kB\nInactive:       897712356 kB\nActive(anon):    6985804 kB\nInactive(anon):   229040 kB\nActive(file):   56892824 kB\nInactive(file): 897483316 kB\nUnevictable:    18667780 kB\nMlocked:        18664708 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               376 kB\nWriteback:           116 kB\nAnonPages:      17225984 kB\nMapped:          4394884 kB\nShmem:           6880792 kB\nKReclaimable:   16972864 kB\nSlab:           19641532 kB\nSReclaimable:   16972864 kB\nSUnreclaim:      2668668 kB\nKernelStack:       43200 kB\nPageTables:       130172 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27824620 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563484 kB\nVmallocChunk:          0 kB\nPercpu:           299520 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12900352 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 45847,
+        "job_memory_bytes": 385207951360,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65948131328,
+          "N1": 15898050560,
+          "N2": 102117392384,
+          "N3": 83243646976,
+          "N4": 16584409088,
+          "N5": 41928101888,
+          "N6": 28784791552,
+          "N7": 28908265472
+        },
+        "reclaim": {
+          "pgscan": 146166744,
+          "pgsteal": 146166744,
+          "workingset_refault_file": 40490739
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5877308 kB\nMemAvailable:   967328184 kB\nBuffers:           19524 kB\nCached:         962464356 kB\nSwapCached:        47152 kB\nActive:         64776416 kB\nInactive:       896509132 kB\nActive(anon):    7180664 kB\nInactive(anon):   229396 kB\nActive(file):   57595752 kB\nInactive(file): 896279736 kB\nUnevictable:    18668212 kB\nMlocked:        18665172 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               496 kB\nWriteback:             0 kB\nAnonPages:      17422708 kB\nMapped:          4409512 kB\nShmem:           6880908 kB\nKReclaimable:   16972884 kB\nSlab:           19646956 kB\nSReclaimable:   16972884 kB\nSUnreclaim:      2674072 kB\nKernelStack:       43104 kB\nPageTables:       131384 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   28068180 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563420 kB\nVmallocChunk:          0 kB\nPercpu:           297472 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12955648 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 53972,
+        "job_memory_bytes": 385193807872,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65948131328,
+          "N1": 15898050560,
+          "N2": 102117470208,
+          "N3": 83243675648,
+          "N4": 16584409088,
+          "N5": 41928101888,
+          "N6": 28784791552,
+          "N7": 28908265472
+        },
+        "reclaim": {
+          "pgscan": 146166744,
+          "pgsteal": 146166744,
+          "workingset_refault_file": 40490739
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5730440 kB\nMemAvailable:   967188340 kB\nBuffers:           19524 kB\nCached:         962471364 kB\nSwapCached:        47152 kB\nActive:         64571588 kB\nInactive:       896516148 kB\nActive(anon):    6975836 kB\nInactive(anon):   229396 kB\nActive(file):   57595752 kB\nInactive(file): 896286752 kB\nUnevictable:    18668244 kB\nMlocked:        18665172 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               228 kB\nWriteback:             0 kB\nAnonPages:      17218772 kB\nMapped:          4400632 kB\nShmem:           6880920 kB\nKReclaimable:   16972892 kB\nSlab:           19646992 kB\nSReclaimable:   16972892 kB\nSUnreclaim:      2674100 kB\nKernelStack:       43200 kB\nPageTables:       130792 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27773812 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563324 kB\nVmallocChunk:          0 kB\nPercpu:           297472 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12910592 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 53972,
+        "job_memory_bytes": 390855290880,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65953402880,
+          "N1": 15907688448,
+          "N2": 107655598080,
+          "N3": 83319382016,
+          "N4": 16587898880,
+          "N5": 41932664832,
+          "N6": 28785172480,
+          "N7": 28908642304
+        },
+        "reclaim": {
+          "pgscan": 164097304,
+          "pgsteal": 164097304,
+          "workingset_refault_file": 53204318
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5974820 kB\nMemAvailable:   967669288 kB\nBuffers:           19524 kB\nCached:         962707544 kB\nSwapCached:        47168 kB\nActive:         64509100 kB\nInactive:       896731092 kB\nActive(anon):    6892068 kB\nInactive(anon):   229060 kB\nActive(file):   57617032 kB\nInactive(file): 896502032 kB\nUnevictable:    18668244 kB\nMlocked:        18665172 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:              4284 kB\nWriteback:          4536 kB\nAnonPages:      17134616 kB\nMapped:          4393460 kB\nShmem:           6880480 kB\nKReclaimable:   16972900 kB\nSlab:           19661744 kB\nSReclaimable:   16972900 kB\nSUnreclaim:      2688844 kB\nKernelStack:       42976 kB\nPageTables:       130668 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27703680 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563276 kB\nVmallocChunk:          0 kB\nPercpu:           297472 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12916736 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 58233,
+        "job_memory_bytes": 390831079424,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65953402880,
+          "N1": 15907688448,
+          "N2": 107655675904,
+          "N3": 83319410688,
+          "N4": 16587898880,
+          "N5": 41932664832,
+          "N6": 28785172480,
+          "N7": 28908642304
+        },
+        "reclaim": {
+          "pgscan": 164097304,
+          "pgsteal": 164097304,
+          "workingset_refault_file": 53204318
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5919336 kB\nMemAvailable:   967597212 kB\nBuffers:           19524 kB\nCached:         962690864 kB\nSwapCached:        47168 kB\nActive:         64484424 kB\nInactive:       896714500 kB\nActive(anon):    6867392 kB\nInactive(anon):   229060 kB\nActive(file):   57617032 kB\nInactive(file): 896485440 kB\nUnevictable:    18668244 kB\nMlocked:        18665172 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:                 0 kB\nWriteback:          1096 kB\nAnonPages:      17110904 kB\nMapped:          4392224 kB\nShmem:           6880480 kB\nKReclaimable:   16972900 kB\nSlab:           19652556 kB\nSReclaimable:   16972900 kB\nSUnreclaim:      2679656 kB\nKernelStack:       42896 kB\nPageTables:       129616 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27614936 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563404 kB\nVmallocChunk:          0 kB\nPercpu:           297472 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12910592 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 58233,
+        "job_memory_bytes": 394075807744,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 65956331520,
+          "N1": 15951831040,
+          "N2": 110733709312,
+          "N3": 83404718080,
+          "N4": 16589979648,
+          "N5": 41944723456,
+          "N6": 28787257344,
+          "N7": 28910997504
+        },
+        "reclaim": {
+          "pgscan": 181329176,
+          "pgsteal": 181329176,
+          "workingset_refault_file": 63385803
+        },
+        "meminfo": "MemTotal:       1056133924 kB\nMemFree:         5749560 kB\nMemAvailable:   967753672 kB\nBuffers:           19524 kB\nCached:         963017200 kB\nSwapCached:        47168 kB\nActive:         64527912 kB\nInactive:       897016252 kB\nActive(anon):    6886460 kB\nInactive(anon):   229060 kB\nActive(file):   57641452 kB\nInactive(file): 896787192 kB\nUnevictable:    18668116 kB\nMlocked:        18665044 kB\nSwapTotal:       8388604 kB\nSwapFree:        7926780 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               204 kB\nWriteback:             0 kB\nAnonPages:      17129612 kB\nMapped:          4400032 kB\nShmem:           6880480 kB\nKReclaimable:   16972964 kB\nSlab:           19647952 kB\nSReclaimable:   16972964 kB\nSUnreclaim:      2674988 kB\nKernelStack:       42896 kB\nPageTables:       130360 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514632076 kB\nCommitted_AS:   27724860 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1563420 kB\nVmallocChunk:          0 kB\nPercpu:           297472 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12912640 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    83876744 kB\nDirectMap2M:    855496704 kB\nDirectMap1G:    134217728 kB\n",
+        "zone_reclaim_mode": "0\n"
+      }
+    ],
+    "retries": [
+      {
+        "attempt": 1,
+        "files": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890
+          }
+        ],
+        "before": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192,
+            "pages": 15361299,
+            "resident_pages": 9705985,
+            "resident_fraction": 0.6318466296372461
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 7078806,
+            "resident_fraction": 0.394989483305113
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890,
+            "pages": 12801093,
+            "resident_pages": 11447848,
+            "resident_fraction": 0.8942867612945238
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17745602,
+            "resident_fraction": 0.990184808697707
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17916513,
+            "resident_fraction": 0.9997214519651112
+          }
+        ]
+      },
+      {
+        "attempt": 2,
+        "files": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494
+          }
+        ],
+        "before": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192,
+            "pages": 15361299,
+            "resident_pages": 15066547,
+            "resident_fraction": 0.9808120393984909
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17680699,
+            "resident_fraction": 0.9865632936519562
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890,
+            "pages": 12801093,
+            "resident_pages": 12797781,
+            "resident_fraction": 0.9997412720929377
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 8321396,
+            "resident_fraction": 0.46432462005841585
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 15495714,
+            "resident_fraction": 0.8646435664861851
+          }
+        ]
+      },
+      {
+        "attempt": 3,
+        "files": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494
+          }
+        ],
+        "before": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192,
+            "pages": 15361299,
+            "resident_pages": 11044027,
+            "resident_fraction": 0.7189513725369189
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 13242364,
+            "resident_fraction": 0.7389091485341215
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890,
+            "pages": 12801093,
+            "resident_pages": 12092961,
+            "resident_fraction": 0.944681911146181
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17892003,
+            "resident_fraction": 0.9983538212890045
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397249/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 16466622,
+            "resident_fraction": 0.9188191505121919
+          }
+        ]
+      }
+    ],
+    "log_sha256": "8353dea9b7cbea5e096d33332c0e5506b155b921a44830a52165f86e21446b20"
+  },
+  "41397802": {
+    "host": "sdfampere013",
+    "error": "RuntimeError: Warm prefix residency too low: {'path': '/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2', 'bytes': 73406483494, 'pages': 17921505, 'resident_pages': 17737379, 'resident_fraction': 0.9897259744647562}",
+    "complete": false,
+    "removed_stage": "/lscratch/monarin/jf-issue159-41397802",
+    "timed_samples": 0,
+    "snapshots": [
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 1731797,
+        "job_memory_bytes": 333429379072,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 38898462720,
+          "N1": 41929891840,
+          "N2": 33744416768,
+          "N3": 37892390912,
+          "N4": 29599789056,
+          "N5": 22252703744,
+          "N6": 55254122496,
+          "N7": 72099082240
+        },
+        "reclaim": {
+          "pgscan": 84568960,
+          "pgsteal": 84568957,
+          "workingset_refault_file": 265271
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         6297660 kB\nMemAvailable:   969834140 kB\nBuffers:           19948 kB\nCached:         961679456 kB\nSwapCached:         7728 kB\nActive:         95407672 kB\nInactive:       865066596 kB\nActive(anon):    4187932 kB\nInactive(anon):  2679764 kB\nActive(file):   91219740 kB\nInactive(file): 862386832 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8146428 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:             15960 kB\nWriteback:             0 kB\nAnonPages:      17405916 kB\nMapped:          4405840 kB\nShmem:           6365312 kB\nKReclaimable:   16691312 kB\nSlab:           20017664 kB\nSReclaimable:   16691312 kB\nSUnreclaim:      3326352 kB\nKernelStack:       44208 kB\nPageTables:       130024 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27106424 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566992 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12992512 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 1731797,
+        "job_memory_bytes": 425055059968,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 39496794112,
+          "N1": 42160017408,
+          "N2": 64079990784,
+          "N3": 44882563072,
+          "N4": 80065748992,
+          "N5": 23080230912,
+          "N6": 56689696768,
+          "N7": 72847056896
+        },
+        "reclaim": {
+          "pgscan": 110809123,
+          "pgsteal": 110809120,
+          "workingset_refault_file": 4187770
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         2849836 kB\nMemAvailable:   969698668 kB\nBuffers:           19948 kB\nCached:         965330256 kB\nSwapCached:         7948 kB\nActive:         91074276 kB\nInactive:       873057376 kB\nActive(anon):    3796300 kB\nInactive(anon):  3059852 kB\nActive(file):   87277976 kB\nInactive(file): 869997524 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               172 kB\nWriteback:             0 kB\nAnonPages:      17412800 kB\nMapped:          4406796 kB\nShmem:           6347128 kB\nKReclaimable:   16691088 kB\nSlab:           20022424 kB\nSReclaimable:   16691088 kB\nSUnreclaim:      3331336 kB\nKernelStack:       43648 kB\nPageTables:       130048 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27114688 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566880 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12998656 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 1738271,
+        "job_memory_bytes": 425069912064,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 39496794112,
+          "N1": 42160017408,
+          "N2": 64080027648,
+          "N3": 44882313216,
+          "N4": 80065794048,
+          "N5": 23080230912,
+          "N6": 56685502464,
+          "N7": 72846794752
+        },
+        "reclaim": {
+          "pgscan": 110810275,
+          "pgsteal": 110810272,
+          "workingset_refault_file": 4187770
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         3058640 kB\nMemAvailable:   970125132 kB\nBuffers:           19948 kB\nCached:         965195640 kB\nSwapCached:         7940 kB\nActive:         91081356 kB\nInactive:       872929184 kB\nActive(anon):    3809792 kB\nInactive(anon):  3059844 kB\nActive(file):   87271564 kB\nInactive(file): 869869340 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:                 0 kB\nWriteback:           472 kB\nAnonPages:      17425812 kB\nMapped:          4414404 kB\nShmem:           6347128 kB\nKReclaimable:   16691088 kB\nSlab:           20022112 kB\nSReclaimable:   16691088 kB\nSUnreclaim:      3331024 kB\nKernelStack:       43600 kB\nPageTables:       130064 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27198560 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566672 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13000704 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 1738271,
+        "job_memory_bytes": 446348992512,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 42804346880,
+          "N1": 42161065984,
+          "N2": 66647937024,
+          "N3": 46647939072,
+          "N4": 93410873344,
+          "N5": 23214977024,
+          "N6": 56676646912,
+          "N7": 72956563456
+        },
+        "reclaim": {
+          "pgscan": 116787107,
+          "pgsteal": 116787104,
+          "workingset_refault_file": 8341812
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         2912884 kB\nMemAvailable:   970068916 kB\nBuffers:           19948 kB\nCached:         965125688 kB\nSwapCached:         7940 kB\nActive:         92741964 kB\nInactive:       871257084 kB\nActive(anon):    3868264 kB\nInactive(anon):  3059844 kB\nActive(file):   88873700 kB\nInactive(file): 868197240 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               264 kB\nWriteback:             0 kB\nAnonPages:      17484456 kB\nMapped:          4415600 kB\nShmem:           6347128 kB\nKReclaimable:   16690848 kB\nSlab:           20019072 kB\nSReclaimable:   16690848 kB\nSUnreclaim:      3328224 kB\nKernelStack:       43248 kB\nPageTables:       130284 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27321372 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566336 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13035520 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 1741072,
+        "job_memory_bytes": 446275334144,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 42804359168,
+          "N1": 42161065984,
+          "N2": 66640621568,
+          "N3": 46638252032,
+          "N4": 93410926592,
+          "N5": 23214977024,
+          "N6": 56676646912,
+          "N7": 72956567552
+        },
+        "reclaim": {
+          "pgscan": 116791267,
+          "pgsteal": 116791264,
+          "workingset_refault_file": 8341812
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         2906712 kB\nMemAvailable:   970012796 kB\nBuffers:           19948 kB\nCached:         965075732 kB\nSwapCached:         7940 kB\nActive:         92685340 kB\nInactive:       871207136 kB\nActive(anon):    3811640 kB\nInactive(anon):  3059844 kB\nActive(file):   88873700 kB\nInactive(file): 868147292 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               188 kB\nWriteback:          4524 kB\nAnonPages:      17427680 kB\nMapped:          4414848 kB\nShmem:           6347128 kB\nKReclaimable:   16690848 kB\nSlab:           20029176 kB\nSReclaimable:   16690848 kB\nSUnreclaim:      3338328 kB\nKernelStack:       43264 kB\nPageTables:       130020 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27199588 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566512 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13000704 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 1741072,
+        "job_memory_bytes": 452091731968,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 44616179712,
+          "N1": 42161201152,
+          "N2": 67525505024,
+          "N3": 47246573568,
+          "N4": 94850363392,
+          "N5": 23230238720,
+          "N6": 56686247936,
+          "N7": 73956417536
+        },
+        "reclaim": {
+          "pgscan": 118921443,
+          "pgsteal": 118921440,
+          "workingset_refault_file": 9018590
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         2919480 kB\nMemAvailable:   970265976 kB\nBuffers:           19948 kB\nCached:         965071984 kB\nSwapCached:         7940 kB\nActive:         94348808 kB\nInactive:       869587836 kB\nActive(anon):    3861160 kB\nInactive(anon):  3059800 kB\nActive(file):   90487648 kB\nInactive(file): 866528036 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:              1104 kB\nWriteback:           740 kB\nAnonPages:      17475200 kB\nMapped:          4418104 kB\nShmem:           6347144 kB\nKReclaimable:   16690808 kB\nSlab:           20018536 kB\nSReclaimable:   16690808 kB\nSUnreclaim:      3327728 kB\nKernelStack:       43312 kB\nPageTables:       130764 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27317112 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566528 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13021184 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_BEFORE",
+        "pid": 1742459,
+        "job_memory_bytes": 452001275904,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 44616196096,
+          "N1": 42161205248,
+          "N2": 67512160256,
+          "N3": 47246585856,
+          "N4": 94850375680,
+          "N5": 23230238720,
+          "N6": 56686247936,
+          "N7": 73926049792
+        },
+        "reclaim": {
+          "pgscan": 118932131,
+          "pgsteal": 118932128,
+          "workingset_refault_file": 9018590
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         2981432 kB\nMemAvailable:   970291108 kB\nBuffers:           19948 kB\nCached:         965033520 kB\nSwapCached:         7940 kB\nActive:         94299400 kB\nInactive:       869550748 kB\nActive(anon):    3811484 kB\nInactive(anon):  3059800 kB\nActive(file):   90487916 kB\nInactive(file): 866490948 kB\nUnevictable:    18692180 kB\nMlocked:        18689108 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               800 kB\nWriteback:           612 kB\nAnonPages:      17427524 kB\nMapped:          4415112 kB\nShmem:           6347128 kB\nKReclaimable:   16690808 kB\nSlab:           20018308 kB\nSReclaimable:   16690808 kB\nSUnreclaim:      3327500 kB\nKernelStack:       43168 kB\nPageTables:       130064 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27199592 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566304 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13000704 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      },
+      {
+        "phase": "CACHE_WARM_MEMORY_AFTER",
+        "pid": 1742459,
+        "job_memory_bytes": 453448658944,
+        "job_limit_bytes": 751619276800,
+        "events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "file_bytes_by_node": {
+          "N0": 44978405376,
+          "N1": 42161205248,
+          "N2": 67609387008,
+          "N3": 47456927744,
+          "N4": 95124770816,
+          "N5": 23230238720,
+          "N6": 56686247936,
+          "N7": 74386681856
+        },
+        "reclaim": {
+          "pgscan": 119296611,
+          "pgsteal": 119296608,
+          "workingset_refault_file": 9198095
+        },
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         3135652 kB\nMemAvailable:   970281900 kB\nBuffers:           19948 kB\nCached:         964870852 kB\nSwapCached:         7940 kB\nActive:         94857176 kB\nInactive:       868870540 kB\nActive(anon):    3852480 kB\nInactive(anon):  3059800 kB\nActive(file):   91004696 kB\nInactive(file): 865810740 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:              1792 kB\nWriteback:             0 kB\nAnonPages:      17466520 kB\nMapped:          4415960 kB\nShmem:           6347128 kB\nKReclaimable:   16690808 kB\nSlab:           20018396 kB\nSReclaimable:   16690808 kB\nSUnreclaim:      3327588 kB\nKernelStack:       43168 kB\nPageTables:       130144 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27305508 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566256 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13017088 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    97319268 kB\nDirectMap2M:    825286656 kB\nDirectMap1G:    150994944 kB\n",
+        "zone_reclaim_mode": "0\n"
+      }
+    ],
+    "retries": [
+      {
+        "attempt": 1,
+        "files": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890
+          }
+        ],
+        "before": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192,
+            "pages": 15361299,
+            "resident_pages": 8704899,
+            "resident_fraction": 0.5666772712385847
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 16629866,
+            "resident_fraction": 0.9279279837268132
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890,
+            "pages": 12801093,
+            "resident_pages": 12144243,
+            "resident_fraction": 0.9486879753158578
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17878079,
+            "resident_fraction": 0.9975768776115622
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17827013,
+            "resident_fraction": 0.9947274517402417
+          }
+        ]
+      },
+      {
+        "attempt": 2,
+        "files": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494
+          }
+        ],
+        "before": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192,
+            "pages": 15361299,
+            "resident_pages": 14431077,
+            "resident_fraction": 0.9394437931323386
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 16547495,
+            "resident_fraction": 0.9233317737544922
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890,
+            "pages": 12801093,
+            "resident_pages": 12794348,
+            "resident_fraction": 0.9994730918680147
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17723789,
+            "resident_fraction": 0.9889676676149687
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17665884,
+            "resident_fraction": 0.9857366331678059
+          }
+        ]
+      },
+      {
+        "attempt": 3,
+        "files": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890
+          }
+        ],
+        "before": [
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s005-c000.xtc2",
+            "bytes": 62919878192,
+            "pages": 15361299,
+            "resident_pages": 15282682,
+            "resident_fraction": 0.994882138548309
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s006-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17434518,
+            "resident_fraction": 0.9728266682959941
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s007-c000.xtc2",
+            "bytes": 52433272890,
+            "pages": 12801093,
+            "resident_pages": 12602597,
+            "resident_fraction": 0.984493824082053
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s008-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17911682,
+            "resident_fraction": 0.9994518875507387
+          },
+          {
+            "path": "/lscratch/monarin/jf-issue159-41397802/mfx101210926-r0387-s009-c000.xtc2",
+            "bytes": 73406483494,
+            "pages": 17921505,
+            "resident_pages": 17901912,
+            "resident_fraction": 0.9989067324423926
+          }
+        ]
+      }
+    ],
+    "log_sha256": "afb4c8f9edd0bdb33c3638df8409590466418c6f8b19caba69710f483ac588ff"
+  },
+  "probe": {
+    "status": {
+      "job": "41398320",
+      "host": "sdfampere013",
+      "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+      "stage": "/lscratch/monarin/jf-cache-probe-41398320",
+      "complete": true,
+      "phases": [
+        {
+          "label": "after-stage",
+          "time": 1792511315.1329727,
+          "files": [
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s005-c000.xtc2",
+              "bytes": 62919878192,
+              "pages": 15361299,
+              "resident_pages": 7236981,
+              "resident_fraction": 0.4711177746100769
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s006-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 10039025,
+              "resident_fraction": 0.5601664034354258
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s007-c000.xtc2",
+              "bytes": 52433272890,
+              "pages": 12801093,
+              "resident_pages": 5076455,
+              "resident_fraction": 0.39656418401147464
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s008-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 9689334,
+              "resident_fraction": 0.5406540354730253
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s009-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 9785174,
+              "resident_fraction": 0.5460018006300252
+            }
+          ],
+          "minimum": 0.39656418401147464
+        },
+        {
+          "label": "existing-warmer",
+          "time": 1792511502.6129205,
+          "files": [
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s005-c000.xtc2",
+              "bytes": 62919878192,
+              "pages": 15361299,
+              "resident_pages": 12522432,
+              "resident_fraction": 0.8151935588259821
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s006-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 16613958,
+              "resident_fraction": 0.9270403350611458
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s007-c000.xtc2",
+              "bytes": 52433272890,
+              "pages": 12801093,
+              "resident_pages": 12033787,
+              "resident_fraction": 0.9400593371206661
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s008-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17125254,
+              "resident_fraction": 0.9555700818653344
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s009-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            }
+          ],
+          "minimum": 0.8151935588259821
+        },
+        {
+          "label": "private-reset",
+          "time": 1792511574.2725008,
+          "files": [
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s005-c000.xtc2",
+              "bytes": 62919878192,
+              "pages": 15361299,
+              "resident_pages": 0,
+              "resident_fraction": 0.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s006-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 0,
+              "resident_fraction": 0.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s007-c000.xtc2",
+              "bytes": 52433272890,
+              "pages": 12801093,
+              "resident_pages": 0,
+              "resident_fraction": 0.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s008-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 0,
+              "resident_fraction": 0.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s009-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 0,
+              "resident_fraction": 0.0
+            }
+          ],
+          "minimum": 0.0
+        },
+        {
+          "label": "reset-interleave",
+          "time": 1792511790.519422,
+          "files": [
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s005-c000.xtc2",
+              "bytes": 62919878192,
+              "pages": 15361299,
+              "resident_pages": 15315702,
+              "resident_fraction": 0.9970316963428679
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s006-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s007-c000.xtc2",
+              "bytes": 52433272890,
+              "pages": 12801093,
+              "resident_pages": 12801093,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s008-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s009-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            }
+          ],
+          "minimum": 0.9970316963428679
+        },
+        {
+          "label": "reset-interleave-idle",
+          "time": 1792511814.1175976,
+          "files": [
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s005-c000.xtc2",
+              "bytes": 62919878192,
+              "pages": 15361299,
+              "resident_pages": 15315702,
+              "resident_fraction": 0.9970316963428679
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s006-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s007-c000.xtc2",
+              "bytes": 52433272890,
+              "pages": 12801093,
+              "resident_pages": 12801093,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s008-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s009-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            }
+          ],
+          "minimum": 0.9970316963428679
+        },
+        {
+          "label": "reset-interleave-repeat",
+          "time": 1792511898.02087,
+          "files": [
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s005-c000.xtc2",
+              "bytes": 62919878192,
+              "pages": 15361299,
+              "resident_pages": 15359197,
+              "resident_fraction": 0.9998631626140472
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s006-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s007-c000.xtc2",
+              "bytes": 52433272890,
+              "pages": 12801093,
+              "resident_pages": 12801093,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s008-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            },
+            {
+              "path": "/lscratch/monarin/jf-cache-probe-41398320/mfx101210926-r0387-s009-c000.xtc2",
+              "bytes": 73406483494,
+              "pages": 17921505,
+              "resident_pages": 17921505,
+              "resident_fraction": 1.0
+            }
+          ],
+          "minimum": 0.9998631626140472
+        }
+      ],
+      "affinity": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+        30,
+        31,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60,
+        61,
+        62,
+        63,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        76,
+        77,
+        78,
+        79,
+        80,
+        88,
+        89,
+        90,
+        91,
+        92,
+        93,
+        94,
+        95,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110,
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120,
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127
+      ],
+      "reset_interleave_passed": true,
+      "removed_stage": "/lscratch/monarin/jf-cache-probe-41398320"
+    },
+    "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/cache-diagnosis-20261020-r1",
+    "phases_memory": {
+      "after-stage-memory": {
+        "job_memory_bytes": 291754835968,
+        "file_numa": "file N0=0 N1=21122064384 N2=29953728512 N3=31266570240 N4=124962840576 N5=13349552128 N6=29075537920 N7=41047703552",
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "memory_stat": "anon 198090752\nfile 290777997312\nkernel 778129408\nkernel_stack 32768\npagetables 622592\nsec_pagetables 0\npercpu 7110480\nsock 0\nvmalloc 8192\nshmem 0\nzswap 0\nzswapped 0\nfile_mapped 0\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 146800640\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 198053888\ninactive_file 290777964544\nactive_file 0\nunevictable 0\nslab_reclaimable 770114840\nslab_unreclaimable 170312\nslab 770285152\nworkingset_refault_anon 0\nworkingset_refault_file 0\nworkingset_activate_anon 0\nworkingset_activate_file 0\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgscan 64471808\npgsteal 64471808\npgscan_kswapd 64469760\npgscan_direct 0\npgscan_khugepaged 2048\npgsteal_kswapd 64469760\npgsteal_direct 0\npgsteal_khugepaged 2048\npgfault 49450\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 143\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\n",
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:        74808164 kB\nMemAvailable:   969732888 kB\nBuffers:           19948 kB\nCached:         893302940 kB\nSwapCached:         7944 kB\nActive:         94202060 kB\nInactive:       797901076 kB\nActive(anon):    3825556 kB\nInactive(anon):  3029380 kB\nActive(file):   90376504 kB\nInactive(file): 794871696 kB\nUnevictable:    18692288 kB\nMlocked:        18689216 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               864 kB\nWriteback:           184 kB\nAnonPages:      17411680 kB\nMapped:          4418296 kB\nShmem:           6347128 kB\nKReclaimable:   16691880 kB\nSlab:           20024596 kB\nSReclaimable:   16691880 kB\nSUnreclaim:      3332716 kB\nKernelStack:       44048 kB\nPageTables:       130096 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27182292 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1567120 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12986368 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    98195812 kB\nDirectMap2M:    826507264 kB\nDirectMap1G:    148897792 kB\n"
+      },
+      "existing-warmer-memory": {
+        "job_memory_bytes": 397064499200,
+        "file_numa": "file N0=26929041408 N1=21122326528 N2=81914929152 N3=57587130368 N4=125047996416 N5=13352615936 N6=29077348352 N7=41055215616",
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "memory_stat": "anon 198258688\nfile 396086603776\nkernel 779300864\nkernel_stack 32768\npagetables 638976\nsec_pagetables 0\npercpu 7997600\nsock 0\nvmalloc 8192\nshmem 0\nzswap 0\nzswapped 0\nfile_mapped 0\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 146800640\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 198254592\ninactive_file 396086599680\nactive_file 0\nunevictable 0\nslab_reclaimable 770352936\nslab_unreclaimable 171104\nslab 770524040\nworkingset_refault_anon 0\nworkingset_refault_file 5123127\nworkingset_activate_anon 0\nworkingset_activate_file 5123127\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgscan 82944512\npgsteal 82944512\npgscan_kswapd 82942464\npgscan_direct 0\npgscan_khugepaged 2048\npgsteal_kswapd 82942464\npgsteal_direct 0\npgsteal_khugepaged 2048\npgfault 88651\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 252\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\n",
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         2822060 kB\nMemAvailable:   969149380 kB\nBuffers:           19948 kB\nCached:         965069940 kB\nSwapCached:         7944 kB\nActive:         120397712 kB\nInactive:       843471500 kB\nActive(anon):    3832736 kB\nInactive(anon):  3029360 kB\nActive(file):   116564976 kB\nInactive(file): 840442140 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               204 kB\nWriteback:             0 kB\nAnonPages:      17410520 kB\nMapped:          4419364 kB\nShmem:           6355320 kB\nKReclaimable:   16691912 kB\nSlab:           20034380 kB\nSReclaimable:   16691912 kB\nSUnreclaim:      3342468 kB\nKernelStack:       43760 kB\nPageTables:       130024 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27207132 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566768 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12986368 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    98195812 kB\nDirectMap2M:    826507264 kB\nDirectMap1G:    148897792 kB\n"
+      },
+      "private-reset-memory": {
+        "job_memory_bytes": 84029775872,
+        "file_numa": "file N0=12288 N1=12854116352 N2=2592768 N3=4564754432 N4=25804017664 N5=6719569920 N6=14523760640 N7=19352596480",
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "memory_stat": "anon 198311936\nfile 83821420544\nkernel 9244672\nkernel_stack 32768\npagetables 638976\nsec_pagetables 0\npercpu 7997600\nsock 0\nvmalloc 8192\nshmem 0\nzswap 0\nzswapped 0\nfile_mapped 0\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 146800640\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 198311936\ninactive_file 83821420544\nactive_file 0\nunevictable 0\nslab_reclaimable 309152\nslab_unreclaimable 166120\nslab 475272\nworkingset_refault_anon 0\nworkingset_refault_file 5123127\nworkingset_activate_anon 0\nworkingset_activate_file 5123127\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgscan 82944512\npgsteal 82944512\npgscan_kswapd 82942464\npgscan_direct 0\npgscan_khugepaged 2048\npgsteal_kswapd 82942464\npgsteal_direct 0\npgsteal_khugepaged 2048\npgfault 94342\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 295\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\n",
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:        306947572 kB\nMemAvailable:   968335424 kB\nBuffers:           19948 kB\nCached:         660136636 kB\nSwapCached:         7944 kB\nActive:         120400860 kB\nInactive:       538529540 kB\nActive(anon):    3835884 kB\nInactive(anon):  3020692 kB\nActive(file):   116564976 kB\nInactive(file): 535508848 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               148 kB\nWriteback:             0 kB\nAnonPages:      17404988 kB\nMapped:          4419780 kB\nShmem:           6355320 kB\nKReclaimable:   16685736 kB\nSlab:           20007732 kB\nSReclaimable:   16685736 kB\nSUnreclaim:      3321996 kB\nKernelStack:       43776 kB\nPageTables:       130036 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27207132 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566736 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12986368 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    98195812 kB\nDirectMap2M:    826507264 kB\nDirectMap1G:    148897792 kB\n"
+      },
+      "reset-interleave-idle-memory": {
+        "job_memory_bytes": 394415779840,
+        "file_numa": "file N0=26881011712 N1=21081481216 N2=81945219072 N3=55317692416 N4=124804112384 N5=13301899264 N6=28953047040 N7=41153789952",
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "memory_stat": "anon 198336512\nfile 393438253056\nkernel 779177984\nkernel_stack 32768\npagetables 638976\nsec_pagetables 0\npercpu 7997600\nsock 0\nvmalloc 8192\nshmem 0\nzswap 0\nzswapped 0\nfile_mapped 0\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 146800640\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 198316032\ninactive_file 393438232576\nactive_file 0\nunevictable 0\nslab_reclaimable 770245856\nslab_unreclaimable 165856\nslab 770411712\nworkingset_refault_anon 0\nworkingset_refault_file 5123127\nworkingset_activate_anon 0\nworkingset_activate_file 5123127\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgscan 89289920\npgsteal 89289920\npgscan_kswapd 89287872\npgscan_direct 0\npgscan_khugepaged 2048\npgsteal_kswapd 89287872\npgsteal_direct 0\npgsteal_khugepaged 2048\npgfault 111114\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 466\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\n",
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         5206312 kB\nMemAvailable:   968760904 kB\nBuffers:           19948 kB\nCached:         962387172 kB\nSwapCached:         7944 kB\nActive:         120407612 kB\nInactive:       840780044 kB\nActive(anon):    3842648 kB\nInactive(anon):  3020700 kB\nActive(file):   116564964 kB\nInactive(file): 837759344 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               204 kB\nWriteback:             0 kB\nAnonPages:      17411796 kB\nMapped:          4422152 kB\nShmem:           6355336 kB\nKReclaimable:   16692104 kB\nSlab:           20015664 kB\nSReclaimable:   16692104 kB\nSUnreclaim:      3323560 kB\nKernelStack:       43360 kB\nPageTables:       130060 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27207132 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566336 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12986368 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    98195812 kB\nDirectMap2M:    826507264 kB\nDirectMap1G:    148897792 kB\n"
+      },
+      "reset-interleave-memory": {
+        "job_memory_bytes": 394416246784,
+        "file_numa": "file N0=26881011712 N1=21081481216 N2=81945219072 N3=55317581824 N4=124804112384 N5=13301899264 N6=28953047040 N7=41153789952",
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "memory_stat": "anon 198332416\nfile 393438142464\nkernel 779177984\nkernel_stack 32768\npagetables 638976\nsec_pagetables 0\npercpu 7997600\nsock 0\nvmalloc 8192\nshmem 0\nzswap 0\nzswapped 0\nfile_mapped 0\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 146800640\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 198320128\ninactive_file 393438105600\nactive_file 0\nunevictable 0\nslab_reclaimable 770243864\nslab_unreclaimable 169056\nslab 770412920\nworkingset_refault_anon 0\nworkingset_refault_file 5123127\nworkingset_activate_anon 0\nworkingset_activate_file 5123127\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgscan 89289920\npgsteal 89289920\npgscan_kswapd 89287872\npgscan_direct 0\npgscan_khugepaged 2048\npgsteal_kswapd 89287872\npgsteal_direct 0\npgsteal_khugepaged 2048\npgfault 106891\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 423\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\n",
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         5158852 kB\nMemAvailable:   968712864 kB\nBuffers:           19948 kB\nCached:         962387056 kB\nSwapCached:         7944 kB\nActive:         120456424 kB\nInactive:       840779452 kB\nActive(anon):    3891448 kB\nInactive(anon):  3020700 kB\nActive(file):   116564976 kB\nInactive(file): 837758752 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               228 kB\nWriteback:             0 kB\nAnonPages:      17461184 kB\nMapped:          4435792 kB\nShmem:           6355336 kB\nKReclaimable:   16692104 kB\nSlab:           20040368 kB\nSReclaimable:   16692104 kB\nSUnreclaim:      3348264 kB\nKernelStack:       43632 kB\nPageTables:       130768 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27498656 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1567084 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  13008896 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    98195812 kB\nDirectMap2M:    826507264 kB\nDirectMap1G:    148897792 kB\n"
+      },
+      "reset-interleave-repeat-memory": {
+        "job_memory_bytes": 394594471936,
+        "file_numa": "file N0=26882564096 N1=21081489408 N2=81948577792 N3=55545704448 N4=124745388032 N5=13302161408 N6=28954292224 N7=41156509696",
+        "memory_events": "low 0\nhigh 0\nmax 0\noom 0\noom_kill 0\noom_group_kill 0\n",
+        "memory_stat": "anon 198336512\nfile 393616687104\nkernel 779194368\nkernel_stack 32768\npagetables 638976\nsec_pagetables 0\npercpu 7999680\nsock 0\nvmalloc 8192\nshmem 0\nzswap 0\nzswapped 0\nfile_mapped 0\nfile_dirty 0\nfile_writeback 0\nswapcached 0\nanon_thp 146800640\nfile_thp 0\nshmem_thp 0\ninactive_anon 0\nactive_anon 198332416\ninactive_file 393616670720\nactive_file 4096\nunevictable 0\nslab_reclaimable 770250312\nslab_unreclaimable 168352\nslab 770418664\nworkingset_refault_anon 0\nworkingset_refault_file 5178923\nworkingset_activate_anon 0\nworkingset_activate_file 5178923\nworkingset_restore_anon 0\nworkingset_restore_file 0\nworkingset_nodereclaim 0\npgscan 89360064\npgsteal 89360063\npgscan_kswapd 89358016\npgscan_direct 0\npgscan_khugepaged 2048\npgsteal_kswapd 89358015\npgsteal_direct 0\npgsteal_khugepaged 2048\npgfault 123333\npgmajfault 0\npgrefill 0\npgactivate 0\npgdeactivate 0\npglazyfree 0\npglazyfreed 0\nzswpin 0\nzswpout 0\nzswpwb 0\nthp_fault_alloc 593\nthp_collapse_alloc 0\nthp_swpout 0\nthp_swpout_fallback 0\n",
+        "meminfo": "MemTotal:       1056145160 kB\nMemFree:         4991088 kB\nMemAvailable:   968732684 kB\nBuffers:           19948 kB\nCached:         962578236 kB\nSwapCached:         7944 kB\nActive:         120405144 kB\nInactive:       840971140 kB\nActive(anon):    3840176 kB\nInactive(anon):  3020700 kB\nActive(file):   116564968 kB\nInactive(file): 837950440 kB\nUnevictable:    18692276 kB\nMlocked:        18689204 kB\nSwapTotal:       8388604 kB\nSwapFree:        8120060 kB\nZswap:                 0 kB\nZswapped:              0 kB\nDirty:               184 kB\nWriteback:             0 kB\nAnonPages:      17409292 kB\nMapped:          4422584 kB\nShmem:           6355336 kB\nKReclaimable:   16692104 kB\nSlab:           20028220 kB\nSReclaimable:   16692104 kB\nSUnreclaim:      3336116 kB\nKernelStack:       43344 kB\nPageTables:       130056 kB\nSecPageTables:         0 kB\nNFS_Unstable:          0 kB\nBounce:                0 kB\nWritebackTmp:          0 kB\nCommitLimit:    514637696 kB\nCommitted_AS:   27207148 kB\nVmallocTotal:   34359738367 kB\nVmallocUsed:     1566400 kB\nVmallocChunk:          0 kB\nPercpu:           325120 kB\nHardwareCorrupted:     0 kB\nAnonHugePages:  12986368 kB\nShmemHugePages:        0 kB\nShmemPmdMapped:        0 kB\nFileHugePages:         0 kB\nFilePmdMapped:         0 kB\nCmaTotal:              0 kB\nCmaFree:               0 kB\nUnaccepted:            0 kB\nHugePages_Total:    4928\nHugePages_Free:        0\nHugePages_Rsvd:        0\nHugePages_Surp:        0\nHugepagesize:       2048 kB\nHugetlb:        43646976 kB\nDirectMap4k:    98195812 kB\nDirectMap2M:    826507264 kB\nDirectMap1G:    148897792 kB\n"
+      }
+    },
+    "frozen_screen_hashes_rechecked": 1973,
+    "hashes": {
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/cache-diagnosis-20261020-r1/probe.py": "d456d521840b2b9aa26a3f7891fa746e38e59816198e5ce349ea1a8c084916d1",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/cache-diagnosis-20261020-r1/run.sbatch": "3e5207d35cf9dc5c2cc47d405fbc1ac1cb16de281d76645b1445c796810d14a3",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2/screen/B0/scripts/feespec_bulk_benchmark/warm_cache.py": "fef4159df9b4d6189574ddb0e9eb9afda42f9e1576061135309f02ac7a89f1d3",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2/screen/B0/scripts/feespec_bulk_benchmark/memory_state.py": "0f5798f948101fa646562b72590fe40b768d2e95e621e82b99e9123a03e3135a",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2/screen/B0/scripts/feespec_bulk_benchmark/common.py": "757d326935ea283e58f1592d26c558728ced17c3298e7de6042f2673b7ea07c4",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2/screen/reference.json": "94625e5b7efb92ba38e3a60050d688a86f912c946a219f61315b15f890f0d9ce",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2/screen/expected-staged-sha256.json": "0609b98c00e7086ae1fbcb6819fc9ba2c62b12d7c3eeee27420411cd50b82595"
+    },
+    "logs": {
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/cache-diagnosis-20261020-r1/job-41398320/reset-interleave.log": "14048e87076be921aa3ba685938f3ffb84f795023abb5eba59a658b8925cf82c",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/cache-diagnosis-20261020-r1/job-41398320/existing-warmer.log": "e62e61d148357880f1ed6a75a5da6eeebcf1cfbe037344a03610236add008796",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159/cache-diagnosis-20261020-r1/job-41398320/reset-interleave-repeat.log": "aa916df00ce0f27c8b8f41815d9963e1c346909ed20631459edf1650d64b9de8"
+    }
+  }
+}
