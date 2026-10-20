@@ -37,7 +37,7 @@ counts.
 | `discovery-eb3` | 9 | same, 3 EB groups (the 3.0x case) |
 | `discovery-uneven` | 8 | 3 and 4 peers, both claim 1.0 |
 | `calib-shared` | 4 | **the value check**: GPU calibration pixel-exact against `det.raw.calib()`, constants shared over IPC |
-| `calib-2-gpus-eb2` | 9 | the same across 2 devices at `PS_EB_NODES=2`, so most groups are solo |
+| `calib-2-gpus` | 9 | the same across 2 devices with the mask left wide, so most groups are solo |
 | `calib-reversed-mask` | 6 | the same under `CUDA_VISIBLE_DEVICES=1,0`, where ordinals and physical cards disagree |
 | `fail-select-device` | 5 | a rank that cannot select a device aborts the **job** |
 | `multirun-3-runs` | 6 | per-run rediscovery — reproduces a known pre-existing hang |
@@ -122,15 +122,25 @@ arithmetic would have produced, which reaches 2.0x the device at
 
 The value check, 13 events per case, every pixel equal to `det.raw.calib()`:
 
-    calib-shared      4 ranks, 1 GPU   13 events   191s   work split 8/5
-    calib-2-gpus-eb2  9 ranks, 2 GPUs  13 events   199s   work split 5/3/5
+    calib-shared         4 ranks, 1 GPU   13 events   205s
+    calib-2-gpus         9 ranks, 2 GPUs  13 events   195s
+    calib-reversed-mask  6 ranks, mask 1,0  13 events  196s
 
 `calib-shared` narrows the mask to one card, so all four BD workers are peers
 and the pedestals and pixel_gain -- 384 MiB for this detector -- come from a
-single device allocation over IPC. `calib-2-gpus-eb2` leaves the mask wide, so
-the workers split across cards and most groups are solo. Both produce the same
-pixels, which is the point: the sharing path and the private path have to
-agree with the CPU and with each other.
+single device allocation over IPC. `calib-2-gpus` leaves the mask wide, so
+the workers split across cards and most groups are solo. `calib-reversed-mask`
+presents the cards in reverse, where ordinals and physical devices disagree.
+All three produce the same pixels, which is the point: the sharing path and
+the private path have to agree with the CPU and with each other.
+
+All three run with ONE event builder. `PS_EB_NODES` is capped at the distinct
+host count for mfx experiments -- the cap lives in `_force_mfx_overrides`,
+which returns early for any experiment whose name does not start with `mfx`,
+and this fixture is `mfx100848724` -- so a single-node allocation cannot have
+more. The 2-EB topology is covered by the multi-node suite, which has the
+hosts for it; `--expect-eb-ranks` asserts the count in both places rather
+than leaving it to the case name.
 
 Those timings are why the `calib-*` cases carry a 420s timeout rather than the
 180s default -- `hybrid_det` mirrors the bigdata streams through both the CPU

@@ -93,8 +93,18 @@ CASES = (
     # default timeout clipped.
     ('calib-shared',         4, CALIB, ['--expect-events', '13'], True,
      'clean', 420),
-    ('calib-2-gpus-eb2',     9, CALIB, ['--expect-events', '13'], False,
-     'clean', 420),
+    # NOT a two-EB case, despite what this was called before. For mfx
+    # experiments PS_EB_NODES is capped at the number of distinct HOSTS: the
+    # cap lives in datasource.py _force_mfx_overrides, which returns early
+    # unless the experiment name starts with 'mfx', and this fixture is
+    # mfx100848724. So a single-node allocation gets exactly one EB whatever
+    # is requested.
+    # The two-EB topology is covered by the multi-node suite, which has the
+    # hosts for it. What this case adds over calib-shared is the wide mask --
+    # workers spread over both cards, so most device groups are solo and the
+    # private path is what gets exercised.
+    ('calib-2-gpus',         9, CALIB,
+     ['--expect-events', '13', '--expect-eb-ranks', '1'], False, 'clean', 420),
     # Failure paths. The select-device case is the only test of the abort
     # reaching EB and smd0, which the device-group allreduce cannot touch.
     # A REVERSED mask. CUDA numbers visible devices in the order the mask

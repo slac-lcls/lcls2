@@ -1342,12 +1342,23 @@ class BigDataNode(object):
         try:
             yield from events
         finally:
-            if gpu_manager is not None:
-                gpu_manager.close()
+            # Drain the EB protocol BEFORE closing the manager, not after.
+            #
             # A consumer may stop at max_events or close the generator while
-            # one look-ahead request is outstanding. Drain to EB termination.
+            # one look-ahead request is outstanding, so this rank still owes
+            # the EB a receive. The manager's close() is COLLECTIVE over the
+            # device group -- it barriers while releasing shared constants --
+            # so closing first lets this rank enter a barrier while the EB is
+            # blocked sending it a batch and a peer waits for that EB. That is
+            # a circular wait, broken only by the bounded barrier's timeout.
+            #
+            # Draining first costs nothing: the loop just consumes whatever is
+            # already in flight and runs to EB termination, with no collective
+            # of its own.
             for _ in batch_source:
                 pass
+            if gpu_manager is not None:
+                gpu_manager.close()
 
     def _batch_envelopes(self):
         """Yield coherent batches with one-message look-ahead for every BD.

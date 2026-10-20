@@ -74,10 +74,17 @@ echo "========== multi-node event loop : 2 EB groups, shared constants =========
 # giving three device groups instead of two.
 export PS_EB_NODES=2
 export CUDA_VISIBLE_DEVICES=0
+# --expect-eb-ranks 2 is the point of this case, so assert it rather than
+# merely requesting it. For mfx experiments PS_EB_NODES is capped at the
+# distinct HOST count -- datasource.py _force_mfx_overrides, which returns
+# early for a non-mfx experiment name -- and it reaches the remote ranks only
+# through -x; if either regressed the job would quietly run with one EB and
+# still calibrate correctly, so the case would pass while testing the
+# topology it exists for.
 timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
     -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
     python -u "$D/mpi_calib_pixel_exact.py" \
-    --expect-events 13 || rc=$?
+    --expect-events 13 --expect-eb-ranks 2 || rc=$?
 
 # Same again with one EB group spanning both nodes: the EB topology must not
 # reach the device grouping at all, so the device groups should be identical.
@@ -87,7 +94,7 @@ export PS_EB_NODES=1
 timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
     -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
     python -u "$D/mpi_calib_pixel_exact.py" \
-    --expect-events 13 || rc=$?
+    --expect-events 13 --expect-eb-ranks 1 || rc=$?
 
 # mpirun's exit status is not sufficient: it returns 0 even when ranks report
 # failures, and job 40801452 printed OVERALL: PASS while both summaries said

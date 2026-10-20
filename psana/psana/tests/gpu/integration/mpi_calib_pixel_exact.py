@@ -64,6 +64,14 @@ def main():
     ap.add_argument('--batch-size', type=int, default=5)
     ap.add_argument('--expect-events', type=int, default=0,
                     help='assert the job calibrated exactly this many events')
+    ap.add_argument('--expect-eb-ranks', type=int, default=0,
+                    help='assert this many ranks took the eb role. Worth '
+                         'stating because PS_EB_NODES is capped at the host '
+                         'count for mfx experiments, so a case name claiming '
+                         'a topology the allocation cannot provide would '
+                         'otherwise pass')
+    ap.add_argument('--expect-bd-ranks', type=int, default=0,
+                    help='assert this many ranks took the bd role')
     args = ap.parse_args()
 
     from mpi4py import MPI
@@ -163,8 +171,30 @@ def summarise(rows, args):
     if everything and len(everything) != len(set(everything)):
         failures.append('an event was delivered to more than one BD rank')
 
+    # The ROLES psana actually assigned, not the ones the case name implies.
+    # For mfx experiments PS_EB_NODES is capped at the number of distinct
+    # hosts -- the cap is in datasource.py _force_mfx_overrides, which returns
+    # early unless the experiment name starts with 'mfx' -- so a single-node
+    # allocation gets one EB however many are requested, and a case asserting
+    # a two-EB topology there would pass while testing nothing it was named
+    # for. Asserted from what the ranks reported.
+    roles = {}
+    for r in members:
+        roles[r.get('role')] = roles.get(r.get('role'), 0) + 1
+    if args.expect_eb_ranks and roles.get('eb', 0) != args.expect_eb_ranks:
+        failures.append(
+            f"expected {args.expect_eb_ranks} eb rank(s), psana assigned "
+            f"{roles.get('eb', 0)}; PS_EB_NODES was "
+            f"{members[0].get('eb_nodes') if members else '?'} and is capped "
+            'at the host count for mfx experiments')
+    if args.expect_bd_ranks and roles.get('bd', 0) != args.expect_bd_ranks:
+        failures.append(f"expected {args.expect_bd_ranks} bd rank(s), psana "
+                        f"assigned {roles.get('bd', 0)}")
+
     emit('SUMMARY', {
         'ranks': len(members),
+        'roles': roles,
+        'eb_nodes': members[0].get('eb_nodes') if members else None,
         'gpu_workers': len(workers),
         'hosts': sorted({r['host'] for r in workers if r.get('host')}),
         'events_total': total,

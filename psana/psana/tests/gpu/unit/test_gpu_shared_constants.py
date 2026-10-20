@@ -347,6 +347,73 @@ def test_order_does_not_count_as_disagreement():
     assert len(cp.live) == 2
 
 
+def test_a_scalar_constant_keeps_its_shape_when_shared():
+    """Sharing must not change the layout batch.calibconst() returns.
+
+    np.ascontiguousarray() promotes a 0-d array from () to (1,), so without
+    the reshape a job would see a different shape with sharing on than off --
+    and the private path preserves scalars, which its own test asserts. A
+    kernel indexing a scalar constant would then read out of bounds or get
+    the wrong broadcast.
+    """
+    scalar = np.array(3.5, np.float32)
+    decl = [('jf', 'pedestals')]
+    peers, _ = make_peers([decl, decl])
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': scalar}})
+
+    for peer in peers:
+        got = peer.get('jf', 'pedestals')
+        assert got.shape == scalar.shape, (
+            f'shared scalar came back as {got.shape}, not {scalar.shape}')
+        assert got.dtype == scalar.dtype
+        np.testing.assert_array_equal(np.asarray(got), scalar)
+
+
+def test_an_empty_constant_is_shared_without_an_ipc_export():
+    """An empty constant has no bytes to export.
+
+    cudaMalloc(0) returns a null pointer and ipcGetMemHandle on it fails, so
+    exporting one would abort a job that the private path handles -- purely
+    because sharing was enabled. The owner publishes shape and dtype only and
+    each peer builds its own; zero bytes, so nothing is lost by not sharing
+    the allocation.
+    """
+    empty = np.empty((0, 3), np.float32)
+    decl = [('jf', 'pedestals')]
+    peers, cp = make_peers([decl, decl])
+    for peer in peers:
+        peer.refresh({'jf': {'pedestals': empty}})
+
+    for peer in peers:
+        got = peer.get('jf', 'pedestals')
+        assert got.shape == (0, 3), f'empty constant came back as {got.shape}'
+        assert got.dtype == np.float32
+    # No un-pooled allocation was made for it, and nothing was imported.
+    assert cp.live == {}, 'a zero-byte constant was allocated on the device'
+    for peer in peers:
+        assert peer.imported_bytes == 0
+
+
+def test_a_mixed_set_shares_the_non_empty_constants():
+    """An empty constant alongside a real one must not disable sharing."""
+    decl = [('jf', 'pedestals'), ('jf', 'pixel_status')]
+    peers, cp = make_peers([decl, decl])
+    source = {'jf': {'pedestals': PEDS,
+                     'pixel_status': np.empty((0,), np.uint16)}}
+    for peer in peers:
+        peer.refresh(source)
+
+    for peer in peers:
+        assert peer._placement.sharing == 'on'
+        assert peer.get('jf', 'pixel_status').shape == (0,)
+        np.testing.assert_array_equal(
+            np.asarray(peer.get('jf', 'pedestals')), PEDS)
+    # Exactly one device allocation: the real constant, owned once.
+    assert len(cp.live) == 1
+    assert peers[0].shared_bytes == PEDS.nbytes
+
+
 def test_undeclared_access_still_fails():
     decl = [('jf', 'pedestals')]
     peers, _ = make_peers([decl, decl])

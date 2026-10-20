@@ -302,7 +302,16 @@ class SharedRequestedConstants(RequestedConstants):
                     or value.dtype.char not in '?bBhHiIlLqQefdFD'):
                 raise TypeError(
                     f'{selector!r}: expected a native numeric NumPy array')
-            hosts[selector] = np.ascontiguousarray(value)
+            # ascontiguousarray() promotes a 0-d array from () to (1,), which
+            # would make `batch.calibconst()` return a different shape with
+            # sharing on than off -- the private path preserves scalars, and
+            # its test asserts that. Reshape back to the original dimensions;
+            # the buffer is already C-contiguous by then, and for a 0-d input
+            # there is nothing to reorder.
+            contiguous = np.ascontiguousarray(value)
+            if contiguous.shape != value.shape:
+                contiguous = contiguous.reshape(value.shape)
+            hosts[selector] = contiguous
         return hosts
 
     def _agree_on_set(self):
@@ -488,6 +497,21 @@ class SharedRequestedConstants(RequestedConstants):
         prepared = {}
         for selector in self._shared:
             source = hosts[selector]
+            if not source.nbytes:
+                # Nothing to export. cudaMalloc(0) yields a null pointer and
+                # ipcGetMemHandle on it fails, so an empty constant -- which
+                # the private path supports -- would abort the job merely for
+                # having sharing enabled. Publish shape and dtype only; each
+                # peer builds its own empty array, which costs no device
+                # memory and so is not worth sharing anyway. The digest still
+                # travels, so content agreement is checked as usual.
+                manifest.append({
+                    'selector': selector, 'handle': None,
+                    'shape': tuple(source.shape), 'dtype': source.dtype.str,
+                    'nbytes': 0, 'offset': 0,
+                    'digest': digest_of(source)})
+                prepared[selector] = self._empty_like(source)
+                continue
             block = None
             try:
                 block = _OwnedBlock(self._cp, source.nbytes, self.budget)
@@ -550,6 +574,11 @@ class SharedRequestedConstants(RequestedConstants):
                     f'{selector!r}: peers disagree on content; sharing would '
                     'silently substitute the owner\'s values for this rank\'s')
                 continue
+            if entry.get('handle') is None:
+                # An empty constant, published as metadata. Build it locally;
+                # there is no mapping to open and nothing to import.
+                self._device[selector] = self._empty_like(mine)
+                continue
             block = None
             try:
                 block = _ImportedBlock(self._cp, entry['handle'],
@@ -589,6 +618,14 @@ class SharedRequestedConstants(RequestedConstants):
             'Peers on one device normally run the same GpuTask; check the '
             'calibconst declarations if this is unexpected.',
             peers, wanted, wanted / 1024 ** 2, wanted * peers, wanted)
+
+    def _empty_like(self, source):
+        """A device array matching an empty host constant.
+
+        Zero-byte, so it is not worth an IPC export and cannot have one: see
+        the empty-constant branch in ``_publish``.
+        """
+        return self._cp.empty(source.shape, dtype=source.dtype)
 
     def _note_sharing(self, state):
         """Record the sharing state on the placement, for the log line."""
