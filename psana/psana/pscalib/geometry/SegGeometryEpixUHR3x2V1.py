@@ -143,9 +143,9 @@ class SegGeometryEpixUHR3x2V1(SegGeometryEpix10kaV1):
         if sp.use_wide_pix_center:
             logger.debug(f' use_wide_pix_center - apply offsets for x: {sp._offsw}')
             x_asic_0[-1] += sp._offsw
-            x_asic_1[1]  -= sp._offsw
+            x_asic_1[0]  -= sp._offsw
             x_asic_1[-1] += sp._offsw
-            x_asic_2[1]  -= sp._offsw
+            x_asic_2[0]  -= sp._offsw
         sp.x_arr_um = np.hstack((x_asic_0, x_asic_1, x_asic_2))
 
         logger.debug(f'  size_asic_xcc, um: {size_asic_xcc}'\
