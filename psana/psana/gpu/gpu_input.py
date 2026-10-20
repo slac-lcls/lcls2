@@ -451,6 +451,11 @@ class InputSlotLease:
         self._lock = RLock()
         self._closed = False
         self._callbacks = []
+        self._retained_copies = None
+        self._copy_done = None
+        self._view_children = 0
+        self._view_parent = None
+        self._view_returned = False
         self._owners = tuple(dict.fromkeys(owners))
         self._uses = []
         try:
@@ -490,7 +495,41 @@ class InputSlotLease:
             except BaseException:
                 child.wait_until_safe_to_reuse()
                 raise
+            # Children opened before the first copy must protect that copy too.
+            # Share the lock and point directly at the root for nested views.
+            parent = self._view_parent or self
+            child._lock = self._lock
+            child._view_parent = parent
+            parent._view_children += 1
             return child
+
+    def retain_copy(self, array):
+        """Retain a field allocation independently of public cached views.
+
+        Call before submitting work into the allocation, then register its
+        completion on the submitting lease (or drain that stream on failure).
+        This method allocates no device storage and creates no CUDA event.
+        Retention lists are allocated only when a copy is actually requested.
+        """
+        with self._lock:
+            self.require_active()
+            parent = self._view_parent or self
+            parent.require_active()
+            if parent._retained_copies is None:
+                parent._retained_copies = []
+                parent._copy_done = []
+            parent._retained_copies.append(array)
+
+    def _release_copies(self):
+        # The caller holds the shared root/child lock. Open children may still
+        # submit consumers after the parent closes; their tokens arrive later.
+        if self._closed and not self._view_children and self._retained_copies is not None:
+            for event in self._copy_done:
+                event.synchronize()
+            # A failed wait leaves every allocation and charge available for
+            # retry. Never infer completion from dropping a public field view.
+            self._retained_copies = None
+            self._copy_done = None
 
     def register_consumer_done(self, event):
         with self._lock:
@@ -507,6 +546,8 @@ class InputSlotLease:
                     if callback is not None:
                         callback()
                 events = ([self.result_ready] if self.result_ready is not None else []) + self._consumer_done
+                if self._retained_copies is not None:
+                    self._copy_done.extend(events)
                 for use in self._uses:
                     for event in events:
                         use.register_consumer_done(event)
@@ -518,6 +559,18 @@ class InputSlotLease:
                     event.synchronize()
             self._uses.clear()
             self._owners = ()
+            parent = self._view_parent
+            if parent is not None:
+                if not self._view_returned:
+                    if parent._retained_copies is not None:
+                        parent._copy_done.extend(self._consumer_done)
+                    parent._view_children -= 1
+                    self._view_returned = True
+                if parent._retained_copies is not None:
+                    parent._release_copies()
+                self._view_parent = None
+            elif self._retained_copies is not None:
+                self._release_copies()
             self._consumer_done.clear()
             self.result_ready = None
 

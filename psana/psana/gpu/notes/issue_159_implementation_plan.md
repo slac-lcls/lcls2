@@ -140,8 +140,8 @@ reviewable commits so a measured change can be isolated.
 | --- | --- | --- | --- |
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
 | 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Complete: A frozen; aligned baseline and old unaligned fault recorded; real-input address audit passed; inherited failures inventoried |
-| 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen show no unexplained repeatable slowdown | Implemented; short screen complete; aligned bulk-on +0.98%/+1.30% signal and broad-suite failures remain open; not accepted |
-| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Pending |
+| 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen document overhead for acceptance | Implemented; Mona accepted the +0.98%/+1.30% bulk-on cost for now and authorized stage 3; broad-suite failures remain tracked |
+| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | In progress: minimal copy retention and focused lifetime tests |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
 | 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
 | 6. Integrated correctness | Sanitizer, field/gather/raw/ownership/pixel-exact tests, serial and MPI lifecycle coverage on integrated #187, required core groups | Correctness gates pass; inherited dependency/environment blockers are explicitly separated and resolved or accepted by Mona | Pending |
@@ -246,8 +246,9 @@ validation. No numerical regression tolerance has been agreed.
    candidate to the preceding accepted stage to locate new overhead, and to
    the unchanged integrated reference to detect cumulative drift. Rerun both
    sides together; historical rates from separate allocations are context only.
-   Investigate repeatable positive changes even if smaller than the old
-   warm/on spread. Use more balanced A/B pairs for ambiguous
+   Record repeatable positive changes even if smaller than the old
+   warm/on spread. Mona accepted stage 2's +0.98%/+1.30% warm/bulk-on
+   change for now; this specific decision does not waive future comparisons. Use more balanced A/B pairs for ambiguous
    differences. Do not silently accept a blanket 5% slowdown or hide a
    reproducible regression by increasing the tolerated variance.
 
@@ -394,15 +395,15 @@ report for the exact workload and evidence.
 
 Stage 2 focused device and selected sanitizer checks passed on the optimized
 candidate. The [16-sample four-BD screen](issue159_short_screen_20261019.md)
-and real-input address audits are complete. Aligned bulk-on B0/A0 loop time
-increased **0.98% / 1.30%** in the two balanced pairs; the performance gate
-remains open. Bulk-off showed no regression in this screen, while shifted-input
-comparisons were variable. The measured kernel overhead and unresolved
-broad-suite failures remain explicit in the stage-2 record. These campaigns
-do not resolve PR #187 reviews or validate IPC constant-sharing.
+and real-input address audits are complete. Mona accepted the measured aligned
+bulk-on **+0.98% / +1.30%** loop-time change for now and explicitly authorized
+stage 3. Keep the measured overhead; further investigation is deferred.
+The broad-suite failures remain tracked for integrated correctness and are not
+waived by performance acceptance. These campaigns do not resolve PR #187
+reviews or validate IPC constant-sharing.
 
-Next action: investigate the aligned bulk-on signal with focused gather/read-wait
-profiling and continue broad-test triage before copy-retention or field-view
-changes. Validate any optimization by paired A/B against unchanged frozen A.
-No additional A/A measurement is planned. Maintain this status as evidence
-accumulates; keep #187 repairs in Seema's task.
+Current action: implement stage 3 copy retention, validate delayed/open-child
+lifetime and failure handling, and measure host bookkeeping and the short staged
+screen against the accepted stage-2 build. Preserve frozen integrated A for final
+cumulative comparison. No additional A/A measurement is planned; keep #187
+repairs in Seema's task.

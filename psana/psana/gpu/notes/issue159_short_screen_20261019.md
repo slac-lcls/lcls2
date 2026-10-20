@@ -2,7 +2,8 @@
 
 Status: retry **41337036** completed successfully on `sdfampere030` in **41m13s**.
 All 16 timed samples and eight diagnostic processes passed. The aligned bulk-on
-pairs show **+0.98% / +1.30% loop time**, so the performance gate remains open.
+pairs show **+0.98% / +1.30% loop time**. Mona subsequently accepted this
+measured cost for now and authorized stage 3; further investigation is deferred.
 First attempt **41336758** on `sdfampere026` failed its initial sanitizer
 diagnostic before timing. This screen measures
 stage-2 dense gathering before copy-retention or field-view implementation.
@@ -107,7 +108,8 @@ including the slow B0 bulk-on control, visible.
 
 The aligned bulk-on slowdown appears in both orders. Two pairs do not establish
 statistical significance or its cause, but this is sufficient to hold the agreed
-stage-2 performance gate. Bulk-off shows no regression in this screen; its spread
+stage-2 performance gate initially. Mona subsequently accepted this specific
+cost for now, without changing the measurements. Bulk-off shows no regression in this screen; its spread
 does not justify claiming a reliable speedup. The shifted-input comparisons are
 also variable: the first bulk-on B0 control took 24.531s, versus 20.143s for its
 second control. Read wait increased across all four BDs in the slow control.
@@ -135,9 +137,8 @@ gather, and these measurements do not establish that unaligned loads are faster.
 - All **4,424 frozen artifact hashes** verified after the runs. Slurm reports
   `COMPLETED`, exit `0:0`; the job removed its private node-local stage.
 
-Next: investigate the aligned bulk-on signal with focused gather/read-wait
-profiling before copy-retention or field-view changes. Any candidate optimization
-needs a same-node paired A/B check against the unchanged frozen A, preserving
-these results; no additional A/A campaign is needed. The existing broad-suite
+Next: stage 3 copy retention, as authorized by Mona after accepting this measured
+overhead for now. Preserve these results and frozen A; compare incremental
+changes against the accepted stage-2 build. No additional A/A campaign is needed. The existing broad-suite
 failures remain open. This warm-cache staging screen does not establish cold-cache
 performance, calibration/IPC behavior, or completion of issue 159.
