@@ -1409,7 +1409,8 @@ def issue_2026_10_07(args):
         #gr.show()
 
 def issue_2026_10_15(args):
-    """ISSUE: Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
+    """ISSUE: https://github.com/slac-lcls/lcls2/issues/186
+              Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
        PROBLEM: it was sp.x_psize_um = np.arange(sp._cols)*sp._pixs
                        sp.y_psize_um = np.arange(sp._rows)*sp._pixs
        FIX: fixed as   sp.x_psize_um = np.ones(sp._cols)*sp._pixs
@@ -1421,6 +1422,23 @@ def issue_2026_10_15(args):
     print(s.x_psize_um[:6])          # [0 75 150 225 300 375]
     print(s.pix_area_arr.min(), s.pix_area_arr.max())
     print((s.pix_area_arr == 1.0).sum(), s.pix_area_arr.size)
+
+def issue_2026_10_18(args):
+    """ISSUE: https://github.com/slac-lcls/lcls2/issues/190
+              Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
+            x_asic_1[1]  -= sp._offsw  # WRONG INDICES [1]
+            x_asic_2[1]  -= sp._offsw
+       FIX: indices changed to [0]
+            x_asic_1[0]  -= sp._offsw
+            x_asic_2[0]  -= sp._offsw
+    """
+    import numpy as np
+    from psana.pscalib.geometry.SegGeometryStore import sgs
+    import psana.pscalib.geometry.SegGeometryEpixUHR3x2V1 as U
+    print(U.epixuhr3x2_wpc.x_arr_um[190:195], U.epixuhr3x2_wpc.x_arr_um[381:387])   # problem 1
+    a = sgs.Create(segname='EPIXUHR3X2:V1', use_wide_pix_center=True)
+    b = sgs.Create(segname='EPIXUHR3X2:V1', use_wide_pix_center=False)
+    print(a is b, b.use_wide_pix_center)                                            # problem 2: True True
 
 #===
 
@@ -1492,6 +1510,7 @@ def selector():
     elif TNAME in ('22',):issue_2026_10_05(args) # Mona, jungfrau common mode does not work in raw.calib(evt, cversion=3, cmpars=CM)
     elif TNAME in ('23',):issue_2026_10_07(args) # config and event loop for epixm
     elif TNAME in ('24',):issue_2026_10_15(args) # Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
+    elif TNAME in ('25',):issue_2026_10_18(args) # Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
 
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
