@@ -2,8 +2,9 @@
 
 Status: cache-only diagnostic job **41398320** completed on `sdfampere013`
 in **13m17s**, exit `0:0`. A one-time private-file cache reset followed by the
-existing warmer passed the residency checks. This remedy has not yet been
-integrated into the screen. Stage 3 performance acceptance remains pending.
+existing warmer passed the residency checks. The remedy is now integrated in
+[screen retry 41400127](issue159_stage3_cache_reset_retry_20261020.md), running
+on `sdfampere030`. Stage 3 performance acceptance remains pending.
 
 ## Observed failure
 
