@@ -141,7 +141,7 @@ reviewable commits so a measured change can be isolated.
 | 0. Integrate and record | Preserve prior base, merge pinned #187, record provenance and this plan | Conflict-free merge; runtime matches pinned #187; latest performance documentation retained | Complete |
 | 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Complete: A frozen; aligned baseline and old unaligned fault recorded; real-input address audit passed; inherited failures inventoried |
 | 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen document overhead for acceptance | Implemented; Mona accepted the +0.98%/+1.30% bulk-on cost for now and authorized stage 3; broad-suite failures remain tracked |
-| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Implemented: focused checks passed; native isolation repaired; private-cache reset remedy applied after the two cache-gated attempts; screen retry 41400127 running on sdfampere030, acceptance pending |
+| 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Implemented: focused checks passed; native isolation repaired; private-cache reset remedy applied after the two cache-gated attempts; screen 41400127 completed all eight warm samples with 100% pre/post residency; focused stage checks complete |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Pending |
 | 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
 | 6. Integrated correctness | Sanitizer, field/gather/raw/ownership/pixel-exact tests, serial and MPI lifecycle coverage on integrated #187, required core groups | Correctness gates pass; inherited dependency/environment blockers are explicitly separated and resolved or accepted by Mona | Pending |
@@ -410,8 +410,11 @@ passed validation/native/pixel checks in job 41397249, but warm-cache residency
 failed before timing. Screen-only retry 41397802 on `sdfampere013` also failed
 the warm-cache gate before timing; see the [cache diagnosis](issue159_cache_diagnosis_20261020.md).
 The scoped one-time cache reset is applied in
-[screen retry 41400127](issue159_stage3_cache_reset_retry_20261020.md), running on
-`sdfampere030`.
-Review its results before stage 4. Preserve frozen integrated A for final cumulative
+[screen retry 41400127](issue159_stage3_cache_reset_retry_20261020.md), which
+completed on `sdfampere030`: all eight warm samples passed with 100% pre/post
+residency, 2,084 hashes verified and private-stage cleanup complete. Bulk-off
+paired loop changes were -0.03%/+1.79%; bulk-on changes were -1.89%/-8.19%.
+The next implementation stage is Stage 4, safe field views; it has not started.
+Preserve frozen integrated A for final cumulative
 comparison. No additional A/A measurement is planned; keep #187 repairs in
 Seema's task.

@@ -1,7 +1,7 @@
 {
   "job": 41400127,
   "node": "sdfampere030",
-  "status": "running",
+  "status": "completed",
   "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3",
   "preflight": {
     "harness_commit": "688205b9e6c231b866ba1b50f9f674de93685635",
@@ -54,5 +54,10 @@
     "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/screen/alignment_screen.py": "0c0b6adcee2902d5922b2a993687bf94c84dac2dbb1274d0364827161fd9ef5d",
     "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/screen/B0/scripts/feespec_bulk_benchmark/common.py": "7b30746508536a1e92bb6fc1b680772a248fce9af4673fe82a8a9271e89ce5f9",
     "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/metadata/harness.patch": "fb2a27075b2a33eb00771fef9bc1c8845f77c43997cc1134ed83045ad157a2c8"
-  }
+  },
+  "elapsed": "00:30:28",
+  "exit_code": "0:0",
+  "timed_samples": 8,
+  "results_file": "issue159_stage3_screen_20261020.json",
+  "results_sha256": "4f84c78cec7cac7f19016d11e98deb0fb60032e04be6b3b3aea806082fa90749"
 }

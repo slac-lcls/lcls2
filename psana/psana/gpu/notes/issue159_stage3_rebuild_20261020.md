@@ -2,10 +2,10 @@
 
 Status: isolated-install repair and focused validation passed. Job **41397249**
 on `sdfampere032` stopped at the warm-cache gate before timing. Screen-only retry
-**41397802** also stopped at the cache gate on `sdfampere013`; performance
-acceptance is pending. See the [cache diagnosis](issue159_cache_diagnosis_20261020.md).
-The correction is applied in [retry 41400127](issue159_stage3_cache_reset_retry_20261020.md),
-running on `sdfampere030`.
+**41397802** also stopped at the cache gate on `sdfampere013`. See the
+[cache diagnosis](issue159_cache_diagnosis_20261020.md). The correction passed
+in [retry 41400127](issue159_stage3_cache_reset_retry_20261020.md): all eight
+timed samples completed on `sdfampere030`, with 100% pre/post cache residency.
 The runtime source is still stage-3 commit `f425e601e450a292cda440fe9b67820b5dc7b4eb`.
 
 ## Failure and repair
@@ -129,7 +129,8 @@ resident, below 99%. Its private stage was removed. The
 the private staged-file cache once, then using the existing warmer, passes
 the residency gate. That preparation correction is applied in retry 41400127;
 the frozen installs and residency threshold are unchanged.
-Pending: eight timed warm samples, paired events/s and loop seconds, post-run
-hashes and stage cleanup. This incremental comparison does not replace the
+Retry 41400127 completed all eight timed warm samples, recorded paired events/s
+and loop seconds, verified post-run hashes, and removed its private stage.
+This incremental comparison does not replace the
 final cumulative comparison with frozen integrated A. The inherited broad-suite
 failures remain tracked; Stage 4 has not started.
