@@ -40,7 +40,7 @@ def argument_parser():
 
     d_dskwargs = None
     d_det     = None # 'epixquad'
-    d_nrecs   = 100  # number of records to collect and process
+    d_nrecs   = 1000 # number of records to collect and process
     d_nrecs1  = 50   # number of records to process at 1st stage
     d_idx     = None # 0-15 for epix10ka2m, 0-3 for epix10kaquad
     d_dirrepo = DIR_REPO_EPIX10KA
@@ -103,7 +103,7 @@ def argument_parser():
     h_deploy  = 'deploy constants to the calibration DB, default = %s' % d_deploy
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
 
-    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
+    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epixm320')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)
@@ -131,8 +131,8 @@ def argument_parser():
     parser.add_argument('--frachi',        default=d_frachi,     type=float, help=h_frachi)
     parser.add_argument('-v', '--version', default=d_version,    type=str,   help=h_version)
     parser.add_argument('--datbits',       default=d_datbits,    type=int,   help=h_datbits)
-    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
+    parser.add_argument('-D', '--deploy',  action='store_true', help=h_deploy)
 
     return parser
 
