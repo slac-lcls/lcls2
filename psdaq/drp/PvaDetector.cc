@@ -364,7 +364,6 @@ void PvMonitor::_event(EbDgram* dgram, const void* bufEnd)
     CreateData  cd     (dgram->xtc, bufEnd, m_det.namesLookup(), namesId);
     void*       data = cd.get_ptr();    // Fetch a pointer to the next part of contiguous memory
     Name&       nm   = cd.nameindex().names().get(RawDef::field);
-   ///  ----
     size_t      payloadSize = (char*)bufEnd - (char*)data;
     uint32_t    shape[MaxRank];
     // Write the data into the L1 Xtc for both scalars and arrays.  Scalars
@@ -372,9 +371,6 @@ void PvMonitor::_event(EbDgram* dgram, const void* bufEnd)
     size_t      size = getData(data, payloadSize, shape);
 
     if (nm.rank()) {                    // Handle vectors and arrays, etc.
-        //size_t   payloadSize = (char*)bufEnd - (char*)data;
-        //uint32_t shape[MaxRank];
-        //size_t   size = getData(data, payloadSize, shape); // Write the data into the L1 Xtc
         if (size > payloadSize) {       // Check actual size vs available size
             logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
                            payloadSize, size, name().c_str());
