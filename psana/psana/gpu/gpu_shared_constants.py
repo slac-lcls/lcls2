@@ -27,7 +27,10 @@ giving the importer a pointer to the wrong data. The owner therefore allocates
 outside the pool and charges the budget explicitly.
 
 An IPC failure aborts the job. Set ``PSANA_GPU_SHARE_CONSTANTS=0`` to run
-without sharing on a system where IPC is unavailable -- MIG, chiefly. See
+without sharing on a system where IPC is unavailable, at n times the device
+memory for constants. That is not a MIG mode: it leaves the peer count and
+the budget wrong, because discovery grouped instances of one card as peers.
+MIG is unsupported and deferred (issue #155). See
 docs/device_placement_and_shared_constants.md.
 """
 import logging
@@ -393,8 +396,10 @@ class SharedRequestedConstants(RequestedConstants):
             f'CUDA IPC is unusable on this device group: {detail}. '
             'Constant sharing cannot be established. Re-run with '
             'PSANA_GPU_SHARE_CONSTANTS=0 to use a private copy per rank '
-            '(n times the device memory for constants), which is the '
-            'supported configuration on MIG instances.')
+            '(n times the device memory for constants). On a MIG-partitioned '
+            'card that gets past this error but does not make the job '
+            'correct: instances share a PCI bus id, so the peer count and '
+            'every rank\'s budget are still wrong. MIG is unsupported.')
 
     def _exchange(self, hosts):
         """Publish or import the shared constants. Never raises.

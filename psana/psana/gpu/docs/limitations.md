@@ -20,15 +20,25 @@ See
 
 Two items remain open.
 
-**The automatic budget is conservative.** It takes the job-wide minimum of free
-memory, so one busy GPU, or a mix of 40 GB and 80 GB cards, lowers every rank's
-limit to the worst device's share. No rank over-commits, but ranks on roomier
-cards leave memory unused. An explicit `gpu_memory_budget_gb` is validated
-against the busiest device in the job, so the verdict is the same on every rank.
+**The automatic budget is conservative within a device.** It takes the minimum
+of free memory over the ranks sharing one card, so the busiest peer's sample
+sets the figure for all of them. The minimum is per device, not job-wide: a mix
+of 40 GB and 80 GB cards no longer lowers the 80 GB card's ranks to the 40 GB
+share. An explicit `gpu_memory_budget_gb` is checked against each device's own
+capacity and peer count, and the failure verdict is then reduced job-wide, so
+every rank stops together without any device being judged against another's
+figures.
 
-**MIG is not supported and not tested.** See
+**MIG is not supported and not tested, and no flag makes it work.** Grouping
+keys on the PCI bus id, which instances of one card share, so ranks on separate
+instances are counted as peers and each one's budget is divided by however many
+were merged. `PSANA_GPU_SHARE_CONSTANTS=0` avoids the IPC abort that follows
+but leaves that peer count and budget wrong, so it is not a MIG configuration.
+Deferred per [issue #155](https://github.com/slac-lcls/lcls2/issues/155) as
+follow-up before a MIG deployment, not a blocker for the current non-MIG scope.
+See
 [device placement and shared constants](device_placement_and_shared_constants.md#limits)
-for what happens on a MIG node.
+for the detail.
 
 Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
 [gpu_placement.py](../gpu_placement.py).

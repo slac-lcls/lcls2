@@ -59,39 +59,39 @@ def test_shared_constants_are_charged_to_the_device_once():
 # Explicit budgets are validated against the group
 # ---------------------------------------------------------------------------
 
-def discover_with_budget(budget_gb, *, local_peers, busiest, usable,
-                         sharing_permitted=1):
+def discover_with_budget(budget_gb, *, local_peers, usable,
+                         other_device_over_commits=0, sharing_permitted=1):
     """Run the REAL discover_peers on a GPU-worker path with a fake CuPy.
 
     Calling the production function rather than mirroring its rule: the
     earlier version of these tests reimplemented the budget check here, so
     they passed whatever the shipped code did. The fakes supply only what the
     function reaches out to -- MPI, CuPy and the communicator.
+
+    ``usable`` is THIS device's free memory and ``local_peers`` the number of
+    ranks on it; together they are the only inputs the budget check may use.
+    ``other_device_over_commits`` is what the rest of the job contributes to
+    the job-wide verdict, which is how a device that fits still stops when
+    another does not.
+
+    The fakes distinguish `psana_comm` from `device_comm`, because which
+    communicator a reduction runs on is the thing under test: capacity reduced
+    job-wide sizes a roomy card against the busiest card in the job, and
+    combining a job-wide capacity MIN with a job-wide peer MAX rejects
+    layouts that fit every device.
     """
     from psana.gpu import gpu_placement as gp
 
-    # One allreduce per step, answered in the order discover_peers makes them
-    # on a GPU worker: node-agreement SUM, job-agreement SUM, capacity MIN,
-    # then the busiest-device peak MAX.
-    #
-    # The sharing-permitted MIN is answered SEPARATELY from the generic 'MIN'
-    # slot. Sharing that slot made sharing_permitted come out as
-    # bool(usable) -- True only by coincidence, so a test passing usable=0
-    # would silently disable sharing and the failure would look like
-    # something else.
-    answers = {'SUM': 0, 'MIN': usable, 'MAX': busiest}
-    # What the OTHER peers contribute to the sharing reduction. This rank's
-    # own contribution is read from sendbuf and reduced against it, as a real
-    # MIN would, so the test covers discovery actually reading the
-    # environment variable -- not just the reduced value arriving. A bug that
-    # hardcoded 1 instead of consulting sharing_enabled() would pass if the
-    # fake ignored sendbuf.
-    peers_permit = sharing_permitted
-    mins = {'n': 0, 'sent': None}
+    state = {'device_mins': 0, 'psana_maxes': 0, 'sharing_sent': None,
+             'capacity_sent': None, 'verdict_sent': None}
 
     class Comm:
-        def __init__(self, rank=0, size=local_peers):
-            self._rank, self._size = rank, size
+        """One link in the Split chain: psana -> node -> node_gpu -> device."""
+
+        _next = {'psana': 'node', 'node': 'node_gpu', 'node_gpu': 'device'}
+
+        def __init__(self, kind='psana', rank=0, size=local_peers):
+            self.kind, self._rank, self._size = kind, rank, size
 
         def Get_rank(self):
             return self._rank
@@ -105,35 +105,63 @@ def discover_with_budget(budget_gb, *, local_peers, busiest, usable,
             return [value] * self._size
 
         def Split(self, color, key):
-            return Comm(rank=0, size=local_peers)
+            return Comm(kind=self._next[self.kind], rank=0, size=local_peers)
 
         def Free(self):
             pass
 
         def Iallreduce(self, sendbuf, recvbuf, op=None):
-            # Counted, not inferred from the payload: discover_peers makes
-            # its MINs in a fixed order, and the FIRST one on a GPU worker is
-            # sharing-permitted (on device_comm, right after the Split); the
-            # capacity MIN on psana_comm follows. Keying on the step name
-            # would be better but Iallreduce is not given it, and keying on
-            # the value would break the moment a budget MIN is legitimately
-            # 0 or 1 bytes.
-            if op == 'MIN':
-                # Counted, not inferred from the payload: discover_peers
-                # makes its MINs in a fixed order, and the FIRST one on a GPU
-                # worker is sharing-permitted (on device_comm, right after
-                # the Split); the capacity MIN on psana_comm follows. Keying
-                # on the step name would be better but Iallreduce is not
-                # given it, and keying on the value would break the moment a
-                # budget MIN is legitimately 0 or 1 bytes.
-                mins['n'] += 1
-                if mins['n'] == 1:
-                    mins['sent'] = int(sendbuf[0])
-                    recvbuf[:] = min(mins['sent'], peers_permit)
+            mine = int(sendbuf[0])
+            if self.kind == 'device':
+                # Two MINs on device_comm, in the order discover_peers makes
+                # them: sharing-permitted right after the Split, then
+                # capacity. Counted rather than keyed on the payload, because
+                # a capacity MIN can legitimately be 0 or 1 bytes. Each is
+                # reduced against this rank's own sendbuf, as a real MIN
+                # would, so a bug that contributed a constant instead of
+                # consulting the environment or memGetInfo cannot pass.
+                assert op == 'MIN', f'unexpected {op} on device_comm'
+                state['device_mins'] += 1
+                if state['device_mins'] == 1:
+                    state['sharing_sent'] = mine
+                    recvbuf[:] = min(mine, sharing_permitted)
                 else:
-                    recvbuf[:] = answers['MIN']
+                    state['capacity_sent'] = mine
+                    recvbuf[:] = min(mine, usable)
+            elif self.kind == 'psana':
+                if op == 'MIN':
+                    raise AssertionError(
+                        'capacity was reduced over psana_comm. Automatic '
+                        'sizing must stay local to the device: a job-wide '
+                        'minimum sizes an idle 80 GiB card against a loaded '
+                        '40 GiB one, and pairing it with a job-wide peer MAX '
+                        'rejects layouts that fit every device')
+                if op == 'MAX':
+                    # The job-wide failure verdict, so every role stops
+                    # together even though only this device's ranks evaluated
+                    # this device's claim.
+                    #
+                    # EXACTLY ONE. A second MAX here is a peer count or a
+                    # capacity figure being reduced across devices, which is
+                    # the reviewer's bug: the claim must be assembled from one
+                    # device's own numbers. Keeping capacity on device_comm
+                    # while taking the peer count job-wide still mixes two
+                    # cards, and the guard above cannot see it.
+                    state['psana_maxes'] += 1
+                    if state['psana_maxes'] > 1:
+                        raise AssertionError(
+                            f'{state["psana_maxes"]} MAX reductions on '
+                            'psana_comm; only the failure verdict belongs '
+                            'there. A second one means peer counts or '
+                            'capacity are being combined across devices, so '
+                            'a claim can be checked against a capacity no '
+                            'device actually has')
+                    state['verdict_sent'] = mine
+                    recvbuf[:] = max(mine, other_device_over_commits)
+                else:
+                    recvbuf[:] = mine        # SUM: the failure agreements
             else:
-                recvbuf[:] = answers[op]
+                recvbuf[:] = mine            # node / node_gpu agreement
             return NS(Test=lambda: True)
 
         def Abort(self, code=1):
@@ -155,10 +183,12 @@ def discover_with_budget(budget_gb, *, local_peers, busiest, usable,
         placement = gp.discover_peers(
             Comm(), is_gpu_worker=True, cp=cp, headroom=0.0,
             explicit_limit_bytes=int(budget_gb * GIB))
-        # Expose what this rank contributed to the sharing reduction, so a
-        # test can assert discovery consulted the environment rather than
-        # only that the reduced value arrived.
-        placement.contributed_sharing_flag = mins['sent']
+        # Expose what this rank contributed to each reduction, so a test can
+        # assert discovery consulted its own inputs rather than only that the
+        # reduced value arrived.
+        placement.contributed_sharing_flag = state['sharing_sent']
+        placement.contributed_capacity = state['capacity_sent']
+        placement.contributed_verdict = state['verdict_sent']
         return placement
     finally:
         if saved is None:
@@ -183,8 +213,8 @@ def test_discovery_reduces_the_sharing_opt_out_across_the_group(monkeypatch):
     monkeypatch.delenv('PSANA_GPU_SHARE_CONSTANTS', raising=False)
 
     # Every peer opted in: the MIN returns 1 and sharing stays available.
-    allowed = discover_with_budget(0, local_peers=4, busiest=4,
-                                   usable=40 * GIB, sharing_permitted=1)
+    allowed = discover_with_budget(0, local_peers=4, usable=40 * GIB,
+                                   sharing_permitted=1)
     assert allowed.contributed_sharing_flag == 1, \
         'discovery did not contribute this rank\'s opted-in environment'
     assert allowed.sharing_permitted is True
@@ -192,8 +222,8 @@ def test_discovery_reduces_the_sharing_opt_out_across_the_group(monkeypatch):
 
     # A PEER opted out while this rank did not. The group MIN is 0, so nobody
     # shares -- including this rank, which is the point.
-    refused = discover_with_budget(0, local_peers=4, busiest=4,
-                                   usable=40 * GIB, sharing_permitted=0)
+    refused = discover_with_budget(0, local_peers=4, usable=40 * GIB,
+                                   sharing_permitted=0)
     assert refused.contributed_sharing_flag == 1, \
         'this rank opted in, so it must still have contributed 1'
     assert refused.sharing_permitted is False
@@ -209,8 +239,8 @@ def test_discovery_reduces_the_sharing_opt_out_across_the_group(monkeypatch):
     # that ignores the variable and contributes a constant: the reduction
     # would return 1 and sharing would stay on.
     monkeypatch.setenv('PSANA_GPU_SHARE_CONSTANTS', '0')
-    mine = discover_with_budget(0, local_peers=4, busiest=4,
-                                usable=40 * GIB, sharing_permitted=1)
+    mine = discover_with_budget(0, local_peers=4, usable=40 * GIB,
+                                sharing_permitted=1)
     assert mine.contributed_sharing_flag == 0, \
         'discovery ignored PSANA_GPU_SHARE_CONSTANTS=0 in this rank\'s env'
     assert mine.sharing_permitted is False
@@ -218,8 +248,7 @@ def test_discovery_reduces_the_sharing_opt_out_across_the_group(monkeypatch):
 
 
 def test_explicit_budget_within_the_group_total_is_accepted():
-    result = discover_with_budget(9.0, local_peers=4, busiest=4,
-                                  usable=40 * GIB)
+    result = discover_with_budget(9.0, local_peers=4, usable=40 * GIB)
     # Accepted, and usable_bytes becomes the group's claim on the device.
     assert result.usable_bytes == int(9 * GIB) * 4
 
@@ -229,48 +258,88 @@ def test_explicit_budget_that_over_commits_the_device_is_refused():
     group: four ranks each claiming 20 GiB of a 40 GiB card must not be
     accepted."""
     with pytest.raises(GpuPlacementError, match='exceeds'):
-        discover_with_budget(20.0, local_peers=4, busiest=4, usable=40 * GIB)
+        discover_with_budget(20.0, local_peers=4, usable=40 * GIB)
 
 
-def test_explicit_budget_verdict_is_the_same_on_an_uneven_layout():
-    """The claim is per-device, but the verdict must be job-wide.
+def test_each_device_is_validated_against_its_own_capacity():
+    """A budget every device can honour must be accepted on all of them.
 
-    An uneven split puts 4 peers on one device and 3 on another. A budget too
-    large for 4 but fine for 3 would make one device raise while the other
-    carried on -- ranks on different paths, racing the abort rather than
-    agreeing on it. discover_peers reduces the peer count with MPI.MAX, so
-    the 3-peer device must refuse it too.
+    The reviewer's case, with an explicit 9 GiB per worker:
+
+        device A   40 GiB usable   4 workers   36 GiB claimed   fits
+        device B   20 GiB usable   1 worker     9 GiB claimed   fits
+
+    Nothing in the job over-commits. Reducing capacity job-wide with MIN and
+    the peer count job-wide with MAX combines figures from different cards --
+    9 x 4 > 20 -- and aborts a placement that fits everywhere. The two inputs
+    must come from the same device, which means both are reduced over
+    `device_comm`.
     """
-    # 11 x 4 = 44 GiB over a 40 GiB card; 11 x 3 = 33 would fit.
-    for local_peers in (4, 3):
-        with pytest.raises(GpuPlacementError, match='exceeds'):
-            discover_with_budget(11.0, local_peers=local_peers, busiest=4,
-                                 usable=40 * GIB)
+    a = discover_with_budget(9.0, local_peers=4, usable=40 * GIB)
+    assert a.usable_bytes == int(9 * GIB) * 4
+    assert a.contributed_verdict == 0, \
+        'device A claims 36 of 40 GiB and must raise no objection'
+
+    b = discover_with_budget(9.0, local_peers=1, usable=20 * GIB)
+    assert b.usable_bytes == int(9 * GIB)
+    assert b.contributed_verdict == 0, \
+        'device B claims 9 of 20 GiB and must raise no objection'
 
 
-def test_explicit_budget_error_names_the_busiest_device():
-    """When the local count differs, the message has to say so, or a rank on
-    a 3-peer device reads 'x 4 peers' and cannot reconcile it."""
-    with pytest.raises(GpuPlacementError) as caught:
-        discover_with_budget(11.0, local_peers=3, busiest=4, usable=40 * GIB)
-    message = str(caught.value)
-    assert 'busiest device' in message
-    assert 'this device has 3' in message, message
+def test_automatic_sizing_is_not_shrunk_by_a_busier_device():
+    """Capacity is spent by one device's peers, so it is measured there.
+
+    Taking the job-wide minimum charged the roomiest card for the busiest one:
+    4 peers on an idle 80 GiB card alongside a loaded 40 GiB card were sized
+    at 10 GiB each rather than 20, leaving 40 GiB unused for no reason.
+    """
+    roomy = discover_with_budget(0, local_peers=4, usable=80 * GIB)
+    assert roomy.usable_bytes == 80 * GIB
+    assert per_rank_limit(roomy) == 20 * GIB
+    # And the figure came from this device's own memGetInfo, not a constant.
+    assert roomy.contributed_capacity == 80 * GIB
 
 
-def test_explicit_budget_error_omits_the_aside_when_counts_match():
-    """A rank whose own count IS the busiest must not be told what its own
-    count is -- the parenthetical would read as a contradiction."""
-    with pytest.raises(GpuPlacementError) as caught:
-        discover_with_budget(11.0, local_peers=4, busiest=4, usable=40 * GIB)
-    assert 'this device has' not in str(caught.value)
+def test_an_over_commit_on_another_device_stops_this_one_too():
+    """The claim is per-device; the verdict is job-wide.
+
+    A budget that over-commits any card is a configuration error for the whole
+    job. A device that could honour it and carried on while another aborted
+    would leave ranks on different collective paths -- racing the abort rather
+    than agreeing on it. So this device evaluates its own claim, which fits,
+    and still raises because the job-wide MAX says someone's did not.
+    """
+    with pytest.raises(GpuPlacementError, match='another GPU in this job'):
+        discover_with_budget(9.0, local_peers=1, usable=20 * GIB,
+                             other_device_over_commits=1)
+
+
+def test_the_verdict_message_distinguishes_whose_device_failed():
+    """Two different messages, because the actions they imply differ.
+
+    A rank on the offending device reports the figures to fix. A rank on a
+    device that fits must not report its own capacity as the cause -- it would
+    read as a contradiction, since those numbers add up.
+    """
+    with pytest.raises(GpuPlacementError) as mine:
+        discover_with_budget(20.0, local_peers=4, usable=40 * GIB)
+    message = str(mine.value)
+    assert 'exceeds' in message
+    assert '4 peers' in message and '0:01:00.0' in message, message
+
+    with pytest.raises(GpuPlacementError) as theirs:
+        discover_with_budget(9.0, local_peers=1, usable=20 * GIB,
+                             other_device_over_commits=1)
+    other = str(theirs.value)
+    assert 'could have honoured it' in other, other
+    assert 'exceeds' not in other, \
+        'a device that fits must not be reported as the one that failed'
 
 
 def test_explicit_budget_is_unchecked_for_a_solo_rank():
     """A lone rank can claim the whole card: there is no one to over-commit
     it against, so discovery accepts the figure as given."""
-    result = discover_with_budget(39.0, local_peers=1, busiest=1,
-                                  usable=40 * GIB)
+    result = discover_with_budget(39.0, local_peers=1, usable=40 * GIB)
     assert result.usable_bytes == int(39 * GIB)
 
 
@@ -278,6 +347,93 @@ def test_automatic_budget_uses_the_discovered_capacity():
     """With no explicit budget, the limit is the discovered capacity divided
     among true peers -- which is what GpuEventManager reads."""
     assert per_rank_limit(placement(peers=2, usable=36 * GIB)) == 18 * GIB
+
+
+# ---------------------------------------------------------------------------
+# The public device accessor (GLINT #256)
+# ---------------------------------------------------------------------------
+# GLINT's adapter contract is "keep the mask, follow psana's selected device,
+# never assume cuda:0, verify physical identity". Following it requires a
+# supported way to ask which device psana chose; reaching into
+# run._gpu_placement is not one, and that attribute has been reshaped twice.
+
+def test_gpu_device_reports_the_selected_card():
+    """What an external framework needs: the physical card, not the ordinal.
+
+    The ordinal is an index into this rank's mask and means nothing outside
+    it -- under a reversed mask, ordinal 0 is physical card 1. The bus id
+    names the card, and is what GLINT checks too, so the two agree.
+    """
+    from psana.psexp.run import GpuDevice
+
+    view = GpuDevice(placement(peers=3, usable=40 * GIB))
+    assert view.pci_bus_id == '0:01:00.0'
+    assert view.peers == 3
+    assert view.hostname == 'sdfampere001'
+    assert view.is_owner is True
+    # Reported, but a caller must not identify a card by it.
+    assert isinstance(view.ordinal, int)
+
+
+def test_gpu_device_is_read_only():
+    """Placement is decided once, collectively, inside discovery.
+
+    A settable view would be a second way to influence it, which is a second
+    way to get it wrong -- and a framework that wrote to it would diverge
+    from what the peer group agreed.
+    """
+    from psana.psexp.run import GpuDevice
+
+    view = GpuDevice(placement(peers=2, usable=40 * GIB))
+    for field, value in (('pci_bus_id', '0:99:00.0'), ('ordinal', 7),
+                         ('peers', 99), ('is_owner', False)):
+        with pytest.raises(AttributeError, match='read-only'):
+            setattr(view, field, value)
+    with pytest.raises(AttributeError, match='read-only'):
+        del view.peers
+    # Unchanged, and the message says why rather than only that.
+    assert view.peers == 2 and view.pci_bus_id == '0:01:00.0'
+
+
+def test_gpu_device_reports_a_shared_card_without_complaint():
+    """Several BD workers on one GPU is the normal mode, not an error.
+
+    It is the basis of IPC constant sharing. GLINT treats two ranks on one
+    card as a misconfiguration unless --share-gpu is passed, so a psana2-gpu
+    reader under GLINT needs that flag as the default. Asserted here so the
+    expectation is recorded on this side of the boundary.
+    """
+    from psana.psexp.run import GpuDevice
+
+    view = GpuDevice(placement(peers=4, usable=40 * GIB))
+    assert view.peers == 4
+    assert 'peers=4' in repr(view)
+
+
+def test_gpu_device_is_none_without_a_placement():
+    """CPU roles, the serial path and non-GPU jobs have nothing to follow.
+
+    A caller must handle None rather than defaulting to device 0 -- that
+    default is the failure the accessor exists to prevent.
+    """
+    from psana.psexp.run import Run
+
+    bare = Run.__new__(Run)                 # no _gpu_placement attribute
+    assert bare.gpu_device is None
+
+    bare._gpu_placement = None              # CPU role: discovery set it None
+    assert bare.gpu_device is None
+
+    bare._gpu_placement = placement(peers=2, usable=40 * GIB)
+    assert bare.gpu_device is not None
+    assert bare.gpu_device.peers == 2
+
+
+def test_gpu_device_is_importable_from_psana_gpu():
+    """GLINT should not have to import from psana.psexp, which is internal."""
+    from psana.gpu import GpuDevice as exported
+    from psana.psexp.run import GpuDevice as defined
+    assert exported is defined
 
 
 # ---------------------------------------------------------------------------
@@ -347,15 +503,18 @@ def test_non_gpu_roles_still_perform_the_node_splits(monkeypatch):
     kinds = [entry[0] for entry in log]
     assert kinds.count('allgather') == 1       # hostname exchange
     assert kinds.count('split') == 2           # node, then gpu-role
-    # Three job-wide reductions, in the order a GPU worker makes them: the
-    # failure agreement, the device-capacity minimum, then the busiest-device
-    # peer count. Skipping any leaves this rank racing a peer's MPI_ABORT
-    # instead of participating in the failure. MPI pairs collectives by call
-    # order rather than by operation, so assert the sequence and not just the
-    # count.
-    assert [k for k in kinds if k == 'allreduce'] == ['allreduce'] * 3
+    # Two job-wide reductions, in the order a GPU worker makes them: the
+    # selection-failure agreement, then the explicit-budget verdict. Skipping
+    # either leaves this rank racing a peer's MPI_ABORT instead of
+    # participating in the failure. MPI pairs collectives by call order rather
+    # than by operation, so assert the sequence and not just the count.
+    #
+    # Capacity and peer counts are NOT here: both are reduced on device_comm,
+    # which a CPU role does not hold, so it cannot evaluate the budget itself
+    # and takes the workers' verdict instead.
+    assert [k for k in kinds if k == 'allreduce'] == ['allreduce'] * 2
     operations = [entry[2] for entry in log if entry[0] == 'allreduce']
-    assert operations == ['SUM', 'MIN', 'MAX']
+    assert operations == ['SUM', 'MAX']
     assert result.device_comm is None
     assert result.n_device_peers == 1
 

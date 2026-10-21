@@ -680,8 +680,9 @@ def test_sharing_can_be_disabled_by_environment(monkeypatch):
     """The escape hatch the IPC abort points users at.
 
     A system where CUDA IPC cannot work between ranks discovery grouped as
-    peers -- MIG, chiefly, whose instances share a PCI bus id -- would
-    otherwise abort with no way to proceed.
+    peers would otherwise abort with no way to proceed. Not a MIG mode: it
+    skips sharing but leaves the inflated peer count and budget in place, so
+    MIG stays unsupported (issue #155).
     """
     monkeypatch.delenv('PSANA_GPU_SHARE_CONSTANTS', raising=False)
     assert sharing_enabled()
@@ -757,9 +758,14 @@ def test_follower_import_failure_aborts_the_group():
 
 
 def test_the_abort_names_the_way_to_run_without_sharing():
-    """An abort with no remedy would strand MIG users, who have no other way
-    to run: discovery groups their instances as peers because they share a
-    PCI bus id, and the import then necessarily fails."""
+    """An abort with no remedy leaves a user nothing to try.
+
+    The opt-out is how to run where IPC cannot work between ranks discovery
+    grouped as peers, at n times the memory for constants. It is not a MIG
+    remedy -- on MIG the peer count and budget stay wrong -- so the message
+    says what the setting does rather than naming a configuration it would
+    make supported.
+    """
     decl = [('jf', 'pedestals')]
     peers, cp = make_peers([decl, decl])
     peers[0].refresh(host())

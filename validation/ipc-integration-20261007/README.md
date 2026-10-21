@@ -169,12 +169,12 @@ is the point — EB topology does not reach device grouping.
 
 ## Not covered
 
-MIG, which is untested: no MIG hardware is advertised on S3DF, and IPC cannot
-span instances in any case. Instances of one card share a PCI bus id, so they
-group together and the IPC import fails, which now aborts with a message
-naming `PSANA_GPU_SHARE_CONSTANTS=0`. With sharing disabled the job runs,
-though the peer count is still inflated by the merged instances, so a large
-constant set can exhaust the per-rank limit. See
+MIG, which is unsupported and untested: no MIG hardware is advertised on S3DF,
+and IPC cannot span instances in any case. Instances of one card share a PCI
+bus id, so they group together and the IPC import fails, which aborts.
+`PSANA_GPU_SHARE_CONSTANTS=0` gets the job running, but the peer count is still
+inflated by the merged instances and every budget is divided by it, so it is
+not a MIG configuration. Deferred per issue #155. See
 [docs/device_placement_and_shared_constants.md](../../psana/psana/gpu/docs/device_placement_and_shared_constants.md).
 
 No throughput claim. What is measured is device memory, not events/s.

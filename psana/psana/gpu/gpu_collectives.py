@@ -20,10 +20,10 @@ the ``allgather`` of hostnames, of visible PCI sets and of device keys, plus
 the ``Split`` calls themselves.
 
 What IS bounded is everything expressible as a NumPy buffer: the barriers,
-the discovery *reductions* (node and job agreement, the budget MIN, the
-peer-count MAX, the sharing-permitted MIN) and the agreement vector. So a
-hang in an object-carrying allgather still hangs; the reductions that follow
-it are what report a divergence.
+the discovery *reductions* (node and job agreement, the budget-verdict MAX,
+the per-device capacity MIN, the sharing-permitted MIN) and the agreement
+vector. So a hang in an object-carrying allgather still hangs; the reductions
+that follow it are what report a divergence.
 
 Collective-order checking lives in the tests, in
 ``psana/psana/tests/gpu/collective_recorder.py``: it is a debugging aid rather

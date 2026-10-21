@@ -32,11 +32,15 @@ def sharing_enabled():
     """Whether constant sharing may be attempted, per this rank's environment.
 
     The escape hatch for a system where CUDA IPC does not work between peers
-    that discovery grouped together -- MIG instances of one card share a PCI
-    bus id, so they are grouped as peers and the import then fails, which
-    aborts. Opting out costs n times the device memory for constants but keeps
-    the job running, which is what the removed automatic fallback used to do
-    silently.
+    that discovery grouped together. Opting out costs n times the device
+    memory for constants but keeps the job running, which is what the removed
+    automatic fallback used to do silently.
+
+    It is not a MIG mode. Instances of one card share a PCI bus id, so they
+    are grouped as peers and the import fails; setting this gets past that,
+    but the peer count and the per-rank budget are still wrong, so each
+    instance's worker is charged for the others. MIG is unsupported and
+    deferred -- see issue #155 and docs/limitations.md.
 
     Read once, in ``discover_peers``, and reduced over the device group into
     ``GpuPlacement.sharing_permitted``. Callers should use that rather than
@@ -96,9 +100,9 @@ class GpuPlacement:
 
         Necessary, not sufficient: on a MIG-partitioned card this is True for
         ranks that are not really peers, because instances share a PCI bus id.
-        The IPC import then fails and the job aborts, naming
-        PSANA_GPU_SHARE_CONSTANTS=0. See the grouping comment in
-        ``discover_peers``.
+        The IPC import then fails and the job aborts. MIG is unsupported; see
+        the grouping comment in ``discover_peers`` for why the opt-out does
+        not make it work.
 
         ``sharing_permitted`` is the group's agreed answer to that variable,
         not this rank's reading of it, so every peer decides alike.
@@ -188,32 +192,28 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
     from .gpu_collectives import SETUP_TIMEOUT_S, bounded_allreduce
 
     if not is_gpu_worker:
-        # Join every collective a GPU worker reaches, in the same order, then
-        # stop. Returning early leaves this rank racing a peer's MPI_ABORT --
-        # measured: with a bogus device on one worker, the CPU-only rank
-        # printed SURVIVED before the abort landed.
+        # Join every collective a GPU worker reaches on `comm`, in the same
+        # order, then stop. Returning early leaves this rank racing a peer's
+        # MPI_ABORT -- measured: with a bogus device on one worker, the
+        # CPU-only rank printed SURVIVED before the abort landed.
         if bounded_allreduce(comm, 0, MPI.SUM, 'discovery/job-agreement',
                              timeout=SETUP_TIMEOUT_S, logger=logger):
             raise GpuPlacementError(
                 'a GPU worker failed device selection; aborting this rank '
                 'so the job stops deterministically rather than waiting for '
                 'a peer abort to arrive')
-        # Neutral contribution to the device-capacity minimum.
-        usable = bounded_allreduce(comm, 2 ** 62, MPI.MIN, 'discovery/budget',
-                                   timeout=SETUP_TIMEOUT_S, logger=logger)
-        # Neutral for MAX: a real peer count is always >= 1. Same position in
-        # the sequence as the GPU-worker path, which is what MPI pairs on.
-        max_peers = bounded_allreduce(comm, 0, MPI.MAX, 'discovery/max-peers',
-                                      timeout=SETUP_TIMEOUT_S, logger=logger)
-        # Both reductions are job-wide, so a CPU-only rank can apply the same
-        # explicit-budget check its GPU peers apply and raise with them. It
-        # would otherwise carry on while they abort -- the same racing-the-
-        # abort pattern avoided above for selection failures.
-        if explicit_limit_bytes and max_peers:
-            if int(explicit_limit_bytes) * max_peers > usable:
-                raise GpuPlacementError(
-                    'gpu_memory_budget_gb exceeds what the busiest device in '
-                    'the job can honour; the GPU ranks report the figures')
+        # The explicit-budget verdict. Capacity and peer count are reduced per
+        # device, on `device_comm`, which this rank does not hold -- so it
+        # cannot evaluate the budget itself and takes the GPU workers' answer
+        # instead. Neutral for MAX: 0 is "no objection from here". It would
+        # otherwise carry on while they abort -- the same racing-the-abort
+        # pattern avoided above for selection failures.
+        if bounded_allreduce(comm, 0, MPI.MAX, 'discovery/budget-verdict',
+                             timeout=SETUP_TIMEOUT_S, logger=logger):
+            raise GpuPlacementError(
+                'gpu_memory_budget_gb over-commits at least one GPU in this '
+                'job; aborting this rank so every role stops together. The '
+                'workers on the offending device report the figures.')
         return placement
 
     if cp is None:
@@ -279,10 +279,11 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
     if not errors:
         # Return the previous run's cached blocks before anyone samples free
         # memory: discovery runs per run, and a stale pool makes the card look
-        # full. Because `usable` is a job-wide MIN, one rank's stale pool
-        # lowers every rank's limit. Placed here because the node agreement
-        # and the device-group Split both come later, so every peer has freed
-        # before any of them samples memGetInfo.
+        # full. Because `usable` is a MIN over the device group, one rank's
+        # stale pool lowers every peer's limit on that card. Placed here
+        # because the node agreement and the device-group Split both come
+        # later, so every peer has freed before any of them samples
+        # memGetInfo.
         #
         # Its own try: this only improves the NEXT run's sizing, so a failure
         # logs rather than joining `errors` and failing a run whose device is
@@ -330,12 +331,15 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
     # CuPy truncates getDeviceProperties()['uuid'] at the first NUL -- see
     # the device_pci() docstring.
     #
-    # MIG LIMITATION: instances of one card share a bus id, so ranks on
-    # different instances group here as peers though IPC cannot span them.
-    # Separating them needs nvmlDeviceGetMigDeviceHandleByIndex, which is not
-    # used because no MIG node is advertised on S3DF and the code would be
-    # untestable. docs/limitations.md records the consequences;
-    # PSANA_GPU_SHARE_CONSTANTS=0 is the supported way to run on MIG.
+    # MIG IS NOT SUPPORTED. Instances of one card share a bus id, so ranks on
+    # different instances group here as peers though they have separate
+    # memory. PSANA_GPU_SHARE_CONSTANTS=0 gets past the IPC import that
+    # follows, but it does NOT correct the peer count or the budget: two
+    # single-worker instances with 9 GiB each are counted as two peers and get
+    # 4.5 GiB apiece. So it is not a way to run on MIG. Separating instances
+    # needs nvmlDeviceGetMigDeviceHandleByIndex, which is not used because no
+    # MIG node is advertised on S3DF and the code would be untestable.
+    # Deferred per issue #155; docs/limitations.md records the consequences.
     keys = node_gpu_comm.allgather((hostname, actual_pci))
     distinct = sorted(set(keys))
     placement.device_comm = node_gpu_comm.Split(
@@ -364,40 +368,57 @@ def discover_peers(comm, *, is_gpu_worker, cp=None, headroom=0.10,
     #
     # memGetInfo is not time-invariant -- peers sample it while each other's
     # contexts settle, so raw values differ by a few MiB -- hence the MIN, so
-    # every peer uses one figure. Reduced over all of `comm` rather than per
-    # device: the explicit budget is validated against it, and a per-group
-    # minimum would let one group raise while another continued.
+    # every peer on one card uses one figure.
+    #
+    # Reduced over `device_comm`, not over the whole job. Capacity is a
+    # property of a device and is spent by that device's peers alone, so a
+    # job-wide minimum charged every rank for the busiest card in the job: on a
+    # mix of a loaded 40 GiB card and an idle 80 GiB one, the ranks on the 80
+    # GiB card were sized against the 40. It also broke the explicit-budget
+    # check below, because the capacity MIN and the peer-count MAX could come
+    # from different devices -- an explicit 9 GiB with 4 peers on a 40 GiB card
+    # and 1 peer on a 20 GiB card fits both, but was checked as 9 x 4 > 20 and
+    # rejected.
     observed = int(free_bytes * (1.0 - headroom))
     placement.usable_bytes = bounded_allreduce(
-        comm, observed, MPI.MIN, 'discovery/budget',
+        placement.device_comm, observed, MPI.MIN, 'discovery/budget',
         timeout=SETUP_TIMEOUT_S, logger=logger)
 
-    # Busiest device in the job, so the explicit-budget check below reaches
-    # the same verdict everywhere: the claim is per-device and peer counts
-    # differ in an uneven layout, so validating against the local count would
-    # make one device raise while another carried on. Rejecting job-wide is
-    # also correct on its own terms -- if any device cannot honour the budget,
-    # the job cannot run with it.
+    # This device's own aggregate claim, against this device's own capacity.
+    # N ranks each claiming the whole card must not pass silently.
+    over_commit = ''
+    if explicit_limit_bytes:
+        total_claim = int(explicit_limit_bytes) * placement.n_device_peers
+        if total_claim > placement.usable_bytes:
+            over_commit = (
+                f'gpu_memory_budget_gb={explicit_limit_bytes / 1024 ** 3:.2f} GiB '
+                f'x {placement.n_device_peers} peers on {placement.hostname} '
+                f'{placement.device_pci} = {total_claim / 1024 ** 3:.2f} GiB '
+                f'exceeds the {placement.usable_bytes / 1024 ** 3:.2f} GiB '
+                'usable on that device')
+
+    # The verdict, however, is job-wide: a budget that over-commits one card is
+    # a configuration error for the whole job, and a device that refused it
+    # while another carried on would put ranks on different paths -- racing the
+    # abort rather than agreeing on it. So the check is local and the answer is
+    # reduced. MAX over `comm`, which is the one communicator every role holds,
+    # and it is the same call a CPU-only role makes at the same position.
     #
-    # Unconditional because it is a collective; the check that uses it is not.
-    max_peers = bounded_allreduce(
-        comm, placement.n_device_peers, MPI.MAX, 'discovery/max-peers',
-        timeout=SETUP_TIMEOUT_S, logger=logger)
+    # Unconditional because it is a collective; only the message below depends
+    # on whether this rank's own device is the offending one.
+    if bounded_allreduce(comm, 1 if over_commit else 0, MPI.MAX,
+                         'discovery/budget-verdict',
+                         timeout=SETUP_TIMEOUT_S, logger=logger):
+        placement.device_comm.Free()
+        placement.device_comm = None
+        raise GpuPlacementError(over_commit or (
+            'gpu_memory_budget_gb over-commits another GPU in this job; '
+            'aborting this rank so every role stops together. This device '
+            f'({placement.device_pci}, {placement.n_device_peers} peers, '
+            f'{placement.usable_bytes / 1024 ** 3:.2f} GiB usable) could have '
+            'honoured it. The workers on the offending device report it.'))
 
     if explicit_limit_bytes:
-        # N ranks each claiming the whole device must not pass silently.
-        total_claim = int(explicit_limit_bytes) * max_peers
-        if total_claim > placement.usable_bytes:
-            placement.device_comm.Free()
-            placement.device_comm = None
-            crowded = ('' if max_peers == placement.n_device_peers else
-                       f' (this device has {placement.n_device_peers})')
-            raise GpuPlacementError(
-                f'gpu_memory_budget_gb={explicit_limit_bytes / 1024 ** 3:.2f} GiB '
-                f'x {max_peers} peers on the busiest device{crowded} = '
-                f'{total_claim / 1024 ** 3:.2f} GiB exceeds the '
-                f'{placement.usable_bytes / 1024 ** 3:.2f} GiB usable per '
-                'device')
         placement.usable_bytes = int(explicit_limit_bytes) * placement.n_device_peers
 
     if logger is not None:
