@@ -1577,9 +1577,28 @@ Two causes found and fixed; see the 2026-10-16 entry in `FINDINGS.md`.  What rem
   `_5`, over ten runs.  Node 0 also carries the IB NIC (`mlx5_0`, `71:00.0`), WEKA, and
   `tstcam1_1`'s cross-root DMA (`05` -> `55`) landing on switch 51 beside `tstcam1_2`'s GPU.
   Speculative; nothing measured yet ties any of these to a slowdown.
-- **The margin is negative against the design rate.**  ~21 us of service + ~8 us inferred
-  overhead is ~29 us: ~1.5 us under 33 kHz's 30.3 us, but over 35.7 kHz's 28 us (see the
-  design-rate section at the top).  The Reader needs several us back, more if it fills.
+- **The Reader's margin against the design rate is ~3.7 us** (2026-10-20): 16.2 us of service
+  on hardware + 8.1 us of measured overhead is ~24.3 us of the 28 us budget.  A third of it is
+  overhead, which is what batching attacks.
+- **Host accesses left in TrgInpGen and the Reducer** (read 2026-10-20, not measured):
+  - **The Reducer's per-event index is pinned host memory** (`m_indices`, `Reducer.cu:68`),
+    though nothing on the host reads it.  Every thread of every reduce block dereferences it,
+    so each event costs ~one PCIe round trip per block (NoOpReducer: 320 blocks).  Likely the
+    largest per-event host cost left; moving it to `cudaMalloc` looks like a one-line change.
+  - TrgInpGen's per-event index and state are already device memory; its kernels are
+    `<<<1,1>>>` and touch the host only through the rings fixed above.
+  - `TmoTebPrimitive::_event` writes 2 words into the pinned `hostWrtBufs` per event: posted
+    writes, which are the data the host needs.
+- **Process events in batches per stage** (Ric, 2026-10-20), to amortize the per-event
+  inter-stage cost: one ring push/pop, relaunch and launch per batch instead of per event.
+  The host already batches at the collector (`TrgInpGen::_receiver()` hands `nRet` events
+  on); the GPU stages do not.  For the Reader, a batch is "every DMA already landed", which
+  the backlog walk in `_waitForDMA` already counts, so it costs no latency when idle.  Same
+  family as kernel fusion and the persistent kernel; weigh them together.  The cost it
+  divides is measured: 8.1 us per event of relaunch and launch overhead on the H200 (6.3 on
+  the A5000), from simulator runs with the ring full (2026-10-20).  The simulator
+  (`-d /dev/null -D epixuhrsim -k sim_l1_delay=0`) is Reader-limited, so it is the test bed:
+  46.1 kHz on gpu008 GPU 0, 38.7 kHz on gpu001.
 - **More threads for `_event`** (Ric), for headroom.  Its grid already fills the Reader's
   partition (256 blocks x 64 threads = 8 SMs x 2048 on an H200, ~12 elements per thread), so
   more threads means a larger Reader context, e.g. 16 SMs from the recorder's 76.  `_event`
