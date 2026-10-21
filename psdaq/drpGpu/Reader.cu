@@ -140,10 +140,6 @@ Reader::Reader(const Parameters&                  para,
                    m_pool.nbuffers() * m_pool.hostWrtBufsSize(), gpuNode);
   logHostPlacement("Reader", "pebbleQueue head", m_pebbleQueue.h->headAddr(), sizeof(unsigned), gpuNode);
   logHostPlacement("Reader", "pebbleQueue tail", m_pebbleQueue.h->tailAddr(), sizeof(unsigned), gpuNode);
-  for (unsigned i = 0; i < m_nReaders; ++i) {
-    logHostPlacement("Reader", "readerQueue head", m_readerQueues[i].h->headAddr(), sizeof(unsigned), gpuNode);
-    logHostPlacement("Reader", "readerQueue tail", m_readerQueues[i].h->tailAddr(), sizeof(unsigned), gpuNode);
-  }
 
   // Per-Reader per-event status, written by _waitForDMA and copied out by _event
   m_evtStatus_d.resize(m_nReaders);
@@ -294,7 +290,10 @@ int Reader::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   exporter->add("DRP_pblQueOcc", labels, MetricType::Gauge, [&](){ return m_pebbleQueue.h->occupancy(); });
   for (unsigned i = 0; i < m_nReaders; ++i) {
     auto rdr = std::to_string(i);
-    exporter->add("DRP_rdrQueOcc"+rdr, labels, MetricType::Gauge, [&, i](){ return m_readerQueues[i].h->occupancy(); });
+    exporter->add("DRP_rdrQueOcc"+rdr, labels, MetricType::Gauge, [&, i](){
+      chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+      return m_readerQueues[i].h->occupancy();
+    });
   }
 
   if (m_det.subframeCount()) {

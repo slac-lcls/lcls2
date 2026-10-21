@@ -16,72 +16,63 @@ class RingIndexDtoD
 {
 public:
   __host__ RingIndexDtoD(const unsigned capacity) :
-    m_head        (nullptr),
-    m_tail        (nullptr),
-    m_capacityMask(capacity-1)     // Range of the buffer index [0, capacity-1]
+    m_head_d       (nullptr),
+    m_tail_d       (nullptr),
+    m_capacityMask (capacity-1)     // Range of the buffer index [0, capacity-1]
   {
     assert((capacity & (capacity - 1)) == 0);  // Capacity must be a power of 2
 
     // The ring is empty when head == tail
     // Head refers to the next index to be allocated
-    chkError(hostAlloc(&m_head, sizeof(*m_head)));
-    *m_head = 0;    // Initialize to empty
     // Tail refers to the next index after the last freed one
-    chkError(hostAlloc(&m_tail, sizeof(*m_tail)));
-    *m_tail = 0;
+    chkError(cudaMalloc(&m_head_d, 2 * sizeof(*m_head_d))); // Adjacent, so one copy reads both
+    m_tail_d = m_head_d + 1;
+    reset();
   }
-
-  __host__ const void* headAddr() const { return m_head; }
-  __host__ const void* tailAddr() const { return m_tail; }
 
   __host__ ~RingIndexDtoD()
   {
-    if (m_tail)  chkError(hostFree(m_tail));
-    if (m_head)  chkError(hostFree(m_head));
+    if (m_head_d)  chkError(cudaFree(m_head_d));
   }
 
   __device__ bool push(unsigned index) const           /** Move head forward when not full */
   {
     using namespace cuda;
-    auto tail = m_tail->load(memory_order_acquire);
-    auto head = m_head->load(memory_order_acquire);
+    auto tail = m_tail_d->load(memory_order_acquire);
+    auto head = m_head_d->load(memory_order_acquire);
     //if (index != head)  printf("### Expected index %u, got %u\n", head, index);
     auto next = (head+1)  & m_capacityMask;
     if (next == tail)  return false;                   // Full: caller retries to wait for tail to advance
-    m_head->store(next, memory_order_release);         // Publish new head
+    m_head_d->store(next, memory_order_release);       // Publish new head
     return true;
   }
 
   __device__ bool pop(unsigned* const __restrict__ index) const /** Return current head */
   {
     using namespace cuda;
-    auto tail = m_tail->load(memory_order_acquire);
-    auto head = m_head->load(memory_order_acquire);
+    auto tail = m_tail_d->load(memory_order_acquire);
+    auto head = m_head_d->load(memory_order_acquire);
     if (tail == head)  return false;                   // Empty: caller retries to wait for head to advance
     *index = tail;                                     // Caller now processes buffer at [tail]
     auto next = (tail+1) & m_capacityMask;
-    m_tail->store(next, memory_order_release);         // Publish new tail
+    m_tail_d->store(next, memory_order_release);       // Publish new tail
     return true;
   }
 
-  __host__ __device__ unsigned head() const
-  {
-    using namespace cuda::std;
-    return m_head->load(memory_order_acquire);
-  }
-
-  __host__ __device__ unsigned tail() const
-  {
-    using namespace cuda::std;
-    return m_tail->load(memory_order_acquire);
-  }
+  // On the host these copy from the device, so the caller must have the CUDA context current
+  __host__ __device__ unsigned head() const { return _load(m_head_d); }
+  __host__ __device__ unsigned tail() const { return _load(m_tail_d); }
 
   __host__ __device__ unsigned occupancy() const
   {
-    using namespace cuda;
-    auto head = m_head->load(memory_order_acquire);
-    auto tail = m_tail->load(memory_order_acquire);
-    return (head - tail) & m_capacityMask;
+#ifdef __CUDA_ARCH__
+    auto tail = this->tail();
+    return (head() - tail) & m_capacityMask;
+#else
+    unsigned headTail[2]{0, 0};
+    chkError(cudaMemcpy(headTail, m_head_d, sizeof(headTail), cudaMemcpyDeviceToHost));
+    return (headTail[0] - headTail[1]) & m_capacityMask;
+#endif
   }
 
   __host__ __device__ size_t size() const
@@ -91,14 +82,28 @@ public:
 
   __host__ void reset()
   {
-    *m_head = 0;
-    *m_tail = 0;
+    static_assert(sizeof(*m_head_d) == sizeof(unsigned));
+    chkError(cudaMemset(m_head_d, 0, 2 * sizeof(*m_head_d)));
   }
 
 private:
-  cuda::atomic<unsigned, cuda::thread_scope_device>* m_head; // Must stay coherent across streams
-  cuda::atomic<unsigned, cuda::thread_scope_device>* m_tail; // Must stay coherent across streams
-  const unsigned                                     m_capacityMask;
+  using DevIndex = cuda::atomic<unsigned, cuda::thread_scope_device>;
+
+  __host__ __device__ static unsigned _load(DevIndex const* const index)
+  {
+#ifdef __CUDA_ARCH__
+    return index->load(cuda::memory_order_acquire);
+#else
+    unsigned value{0};
+    chkError(cudaMemcpy(&value, index, sizeof(value), cudaMemcpyDeviceToHost));
+    return value;
+#endif
+  }
+
+private:
+  DevIndex*      m_head_d;              // Device memory, so push and pop never cross PCIe
+  DevIndex*      m_tail_d;
+  const unsigned m_capacityMask;
 };
 
   }
