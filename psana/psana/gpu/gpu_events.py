@@ -94,9 +94,31 @@ class _GpuMemStats:
         raw_input    KvikioGpuReader per-slot input buffers
         xtc_config   run-scoped flattened Configure tables
         xtc_slots    per-slot dgram, ShapesData, and field-locator tables
+        constants    task calibration constants this rank OWNS and is charged
+                     for, from the budget's 'task-constants' allocations
         cupy_pool    CuPy memory-pool total committed bytes
         device_used  bytes in use according to CUDA (total - free)
         device_total total device memory
+
+    Budget categories, from the allocation ledger rather than from a
+    component:
+        committed    bytes currently reserved against the budget
+        held         bytes an admission hold has reserved for future use
+        retained     the RESIDUAL: committed minus every category identified
+                     above. Anything appearing here is owned storage this
+                     snapshot cannot attribute, which is the point -- it is
+                     the figure to watch for a leak. Subtracting a new
+                     category is therefore not cosmetic: leaving one out
+                     makes identified memory look unattributed.
+        failed       storage held by uploads whose stream completion was
+                     never established
+        borrowed     bytes this rank READS BUT DOES NOT OWN, and is not
+                     charged for: a CUDA-IPC mapping of another rank's
+                     constants. Always 0 without constant sharing, which has
+                     no importer. Deliberately NOT part of ``committed``, so
+                     it must never be subtracted from ``retained``; summing
+                     the two would double-count one physical copy against the
+                     owner and every importer.
 
     Pinned-host category:
         pinned       framework-owned host staging
@@ -107,6 +129,7 @@ class _GpuMemStats:
     raw_input: int = 0
     xtc_config: int = 0
     xtc_slots: int = 0
+    constants: int = 0
     committed: int = 0
     held: int = 0
     retained: int = 0
@@ -127,10 +150,12 @@ class _GpuMemStats:
 
     def log(self):
         """Emit a structured INFO log summarising the snapshot."""
-        _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s borrowed=%s pool_used=%s",
+        _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s "
+                  "constants=%s borrowed=%s pool_used=%s",
                   self.label, self._mb(self.committed), self._mb(self.held),
                   self._mb(self.retained), self._mb(self.failed),
-                  self._mb(self.borrowed), self._mb(self.cupy_used))
+                  self._mb(self.constants), self._mb(self.borrowed),
+                  self._mb(self.cupy_used))
         _log.info(
             "GPU mem [%s] raw_input=%s  xtc_config=%s  xtc_slots=%s  "
             "cupy_pool=%s  device_used=%s / %s  pinned=%s",
@@ -233,12 +258,28 @@ class GpuEventManager:
         output_d2h = getattr(self, '_output_d2h', None)
         if output_d2h is not None:
             s.pinned += output_d2h.pinned_bytes
+        # Constants this rank owns and is charged for, read from the budget's
+        # allocation ledger rather than from the constants object: the ledger
+        # is what `committed` is computed from, so the two cannot disagree.
+        # Subtracted from `retained` below -- without that, an owner's
+        # constants show up as unattributed memory while a follower, which is
+        # charged nothing, shows none, so the same run reports structurally
+        # different breakdowns on peer ranks for one physical copy.
+        constants = getattr(self, '_task_constants', None)
+        # Bytes this rank reads through a CUDA-IPC mapping it does not own.
+        # Zero without constant sharing, which has no importer. Not charged
+        # to the budget, so it does NOT enter the `retained` subtraction.
+        s.borrowed = int(getattr(constants, 'imported_bytes', 0) or 0)
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
             s.committed, s.held = budget.committed(), budget._held
             s.allocations = budget.allocation_snapshot()
-            s.retained = max(0, s.committed - s.raw_input - s.xtc_config - s.xtc_slots - sum(s.input_bytes.values()))
+            s.constants = sum(int(a['capacity']) for a in s.allocations
+                              if a.get('category') == 'task-constants')
+            s.retained = max(0, s.committed - s.raw_input - s.xtc_config
+                             - s.xtc_slots - sum(s.input_bytes.values())
+                             - s.constants)
             s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
         # Query CuPy pool and CUDA device info only when a GPU is active.
         # These calls fail on CPU-only nodes and are skipped silently.
@@ -272,7 +313,8 @@ class GpuEventManager:
         s = self._snapshot_memory(label)
         s.log()
         hw = self._high_water
-        for category in ('committed', 'held', 'retained', 'failed', 'borrowed', 'cupy_used'):
+        for category in ('committed', 'held', 'retained', 'failed', 'constants',
+                         'borrowed', 'cupy_used'):
             hw[category] = max(hw.get(category, 0), getattr(s, category))
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
         hw["xtc_config"] = max(hw.get("xtc_config", 0), s.xtc_config)
@@ -284,12 +326,16 @@ class GpuEventManager:
     def log_high_water(self):
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
+        # constants/borrowed are tracked above, so report them: a peak the
+        # ledger recorded but no line prints is why `borrowed` went unnoticed.
         _log.info(
             "GPU mem high-water raw_input=%s xtc_config=%s xtc_slots=%s "
-            "cupy_pool=%s device_used=%s pinned=%s",
+            "constants=%s borrowed=%s cupy_pool=%s device_used=%s pinned=%s",
             _fmt_mib(hw.get("raw_input", 0)),
             _fmt_mib(hw.get("xtc_config", 0)),
             _fmt_mib(hw.get("xtc_slots", 0)),
+            _fmt_mib(hw.get("constants", 0)),
+            _fmt_mib(hw.get("borrowed", 0)),
             _fmt_mib(hw.get("cupy_pool", 0)),
             _fmt_mib(hw.get("device_used", 0)),
             _fmt_mib(hw.get("pinned", 0)),
