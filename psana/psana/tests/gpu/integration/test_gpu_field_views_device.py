@@ -63,24 +63,26 @@ def test_delayed_materialization_second_stream_and_open_child_retirement():
     outputs = [cp.empty(257, cp.uint64) for _ in range(2)]
     done = [cp.cuda.Event(disable_timing=True) for _ in outputs]
     delay = cp.RawKernel(r'''
-    extern "C" __global__ void delay(unsigned long long ticks) {
+    extern "C" __global__ void delay(unsigned long long ticks,
+        unsigned char* data, int n, unsigned char value) {
         unsigned long long start=clock64(); while(clock64()-start<ticks) {}
+        for (int i=1; i<n; ++i) data[i]=value;
     }''', 'delay')
     delay.compile()
     source = case.sources[0].data_gpu
     # Cold cudaMalloc / first kernel loading may synchronize all streams.
     # Warm those before the delay so this test isolates copy-ready ordering.
+    # Fill inside the raw kernel: CuPy scalar assignment can block the host.
     warm_copy = cp.empty(257, cp.uint64)
-    source[1:] = 0
-    delay((1,), (1,), (np.uint64(0),), stream=producer)
+    delay((1,), (1,), (np.uint64(0), source, np.int32(source.size), np.uint8(0)),
+          stream=producer)
     cp.cuda.get_current_stream().synchronize()
     producer.synchronize()
     del warm_copy
     producer.wait_event(case.lease.result_ready)
-    delay((1,), (1,), (np.uint64(500000000),), stream=producer)
     # Changing source after a delayed producer proves entry waits for readiness.
-    with producer:
-        source[1:] = 37
+    delay((1,), (1,), (np.uint64(2000000000), source, np.int32(source.size), np.uint8(37)),
+          stream=producer)
     producer.record(case.lease.result_ready)
     contexts = [case.result.on_gpu_view(first), case.result.on_gpu_view(second)]
     try:
