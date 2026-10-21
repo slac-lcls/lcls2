@@ -119,6 +119,112 @@ def test_borrowed_reports_what_a_rank_reads_without_owning():
         'imported bytes were treated as owned storage'
 
 
+def test_a_sharing_owners_un_pooled_block_is_attributed_too():
+    """The ledger alone misses the rank holding the physical shared copy.
+
+    ``ipcGetMemHandle`` needs a pointer from a bare ``cudaMalloc``, so an
+    IPC-sharing owner allocates outside CuPy's pool and charges the budget
+    with ``reserve()`` directly. That raises ``committed`` but creates no
+    ledger record -- so summing only 'task-constants' allocations reports
+    constants=0 for the owner and lets ``retained`` absorb the whole set,
+    which is the original defect reappearing on the sharing path.
+
+    Simulated with reserve(), which is exactly what _OwnedBlock does.
+    """
+    budget = _GpuBudget(512 * MIB)
+    budget.reserve(384 * MIB)              # what _OwnedBlock.__init__ does
+    owner = NS(shared_bytes=384 * MIB, imported_bytes=0, _is_owner=True)
+
+    stats = manager(budget, constants=owner)._snapshot_memory('ipc-owner')
+
+    assert stats.committed == 384 * MIB
+    assert not stats.allocations, 'the un-pooled block must leave no ledger record'
+    assert stats.constants == 384 * MIB, (
+        'the shared copy is charged to this rank but was not attributed; '
+        'a ledger-only sum reports 0 for the owner holding it')
+    assert stats.retained == 0, (
+        f'{stats.retained / MIB:.0f} MiB of shared constants landed in '
+        '`retained`, where it is indistinguishable from a leak')
+    assert stats.borrowed == 0, 'an owner borrows nothing'
+
+
+def test_a_follower_does_not_claim_the_bytes_it_only_imports():
+    """`shared_bytes` means different things to the two roles.
+
+    On an owner it is the physical copy it allocated; on a follower it is the
+    size of the mapping it imported, which it does not own and is not charged
+    for. Treating a follower's figure as owned would subtract bytes from
+    `retained` that were never in `committed` -- understating the residual by
+    the whole constant set and hiding a leak of that size.
+    """
+    budget = _GpuBudget(512 * MIB)
+    held = owned_empty(np, 8 * MIB, np.uint8, budget, 'detector')
+    follower = NS(shared_bytes=384 * MIB, imported_bytes=384 * MIB,
+                  _is_owner=False)
+
+    stats = manager(budget, constants=follower)._snapshot_memory('follower')
+
+    assert stats.borrowed == 384 * MIB, 'the mapping is what it borrows'
+    assert stats.constants == 0, \
+        'a follower owns no constants; it must not claim the imported bytes'
+    # The unrelated detector bytes are still the residual, undisturbed.
+    assert stats.retained == 8 * MIB, (
+        'the imported bytes were subtracted from `retained`, which hides '
+        f'{(8 * MIB - stats.retained) / MIB:.0f} MiB of real residual')
+    del held
+
+
+def test_a_double_counted_category_is_logged_rather_than_clamped_away():
+    """`retained` is clamped at 0, so over-subtraction is invisible.
+
+    A negative raw residual means a category was counted twice -- the live
+    risk being a constants allocation appearing in both the ledger and
+    shared_bytes. The clamp keeps the figure sane but destroys the evidence,
+    so the raw value goes to DEBUG.
+    """
+    budget = _GpuBudget(512 * MIB)
+    # Charged once, but reported through BOTH sources: 12 MiB in the ledger
+    # and 12 MiB of shared_bytes, against 12 MiB committed.
+    held = owned_empty(np, 12 * MIB, np.uint8, budget, 'task-constants')
+    liar = NS(shared_bytes=12 * MIB, imported_bytes=0, _is_owner=True)
+
+    records = []
+    import psana.gpu.gpu_events as ge
+    real = ge._log.debug
+    ge._log.debug = lambda fmt, *a: records.append(fmt % a)
+    try:
+        stats = manager(budget, constants=liar)._snapshot_memory('double')
+    finally:
+        ge._log.debug = real
+
+    assert stats.constants == 24 * MIB      # the double count
+    assert stats.retained == 0              # clamped, as before
+    assert records, (
+        'the residual went negative and nothing said so; the clamp hid a '
+        'category counted twice, which understates `retained`')
+    assert 'counted twice' in records[0], records[0]
+
+
+def test_an_ordinary_residual_logs_nothing():
+    """The debug line must fire on over-subtraction only, or it is noise on
+    every healthy snapshot."""
+    budget = _GpuBudget(512 * MIB)
+    held = owned_empty(np, 5 * MIB, np.uint8, budget, 'detector')
+
+    records = []
+    import psana.gpu.gpu_events as ge
+    real = ge._log.debug
+    ge._log.debug = lambda fmt, *a: records.append(fmt % a)
+    try:
+        stats = manager(budget)._snapshot_memory('healthy')
+    finally:
+        ge._log.debug = real
+
+    assert stats.retained == 5 * MIB
+    assert not records, f'logged on a healthy snapshot: {records}'
+    del held
+
+
 def test_borrowed_is_zero_without_an_importer():
     """The ordinary case, and the only one on a branch with no sharing: a
     constants object that owns its copy borrows nothing."""
