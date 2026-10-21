@@ -89,7 +89,13 @@ with field.on_gpu_view(user_stream) as views:
 `GpuFieldData` preserves physical segment IDs and each field's shape. It does not
 implicitly stack ragged arrays. Explicit single-segment selection supports
 `.only()`. `.on_gpu` makes independent device copies; `.on_gpu_view(stream)`
-borrows input storage and registers consumer completion on context exit. Do not
+borrows aligned values and registers consumer completion on context exit. An
+aligned field directly views input storage. First access to an unaligned field
+copies only that field into aligned, budgeted device storage; later accesses
+reuse that copy, including single-segment selection. Alignment uses the actual
+buffer address plus the field offset. A cached copy carries readiness ordering
+when accessed on another stream. Thus `on_gpu_view` is borrowed access, not an
+unconditional zero-copy guarantee. Do not
 use escaped borrowed arrays after their access context ends. Input access must
 occur while the event's input lease is active; cached independent CPU values can
 survive retirement.

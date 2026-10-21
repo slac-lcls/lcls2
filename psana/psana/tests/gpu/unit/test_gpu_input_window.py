@@ -281,3 +281,21 @@ def test_partial_multi_owner_view_fork_preserves_parent_and_returns_child(monkey
     parent.wait_until_safe_to_reuse()
     assert fast.released and slow.released
     assert fast.references == slow.references == 0
+
+
+def test_event_pool_passes_the_existing_budget_to_field_leases(monkeypatch):
+    monkeypatch.setitem(sys.modules, 'cupy', NS(cuda=NS(Stream=Stream, Event=Token)))
+    budget = object()
+    fast, slow = window(), window(1)
+    pool = EventPool(n=1, budget=budget)
+    record = pool.submit(event_view(), None, [], {}, input_windows=(fast, slow), batch_id=7)
+    parent = record.input_leases_by_ts[100]
+    assert parent._budget is budget
+    child = parent.acquire_view()
+    assert child._budget is budget
+    child.wait_until_safe_to_reuse()
+    fast.close()
+    slow.close()
+    pool.begin_retire_next()
+    pool.finish_retire_next()
+    assert fast.released and slow.released

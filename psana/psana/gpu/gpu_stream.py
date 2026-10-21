@@ -241,7 +241,8 @@ class EventPool:
             leases_by_ts = {}
             input_dgrams_by_ts, input_leases_by_ts = {}, {}
             for event in gpu_event_dgrams:
-                lease = InputSlotLease(result_ready, event.input_windows, planned_uses=input_uses)
+                lease = InputSlotLease(result_ready, event.input_windows,
+                                       planned_uses=input_uses, budget=self._budget)
                 event.bind_lease(lease)
                 input_dgrams_by_ts[event.timestamp] = event
                 input_leases_by_ts[event.timestamp] = lease

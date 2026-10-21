@@ -159,7 +159,7 @@ def test_field_context_failure_preserves_copy_until_safe_cleanup(cuda, failure):
     budget = _GpuBudget(100)
     saved = []
 
-    def materialize():
+    def materialize(stream):
         saved.append(retain(parent, budget))
         if failure == 'entry':
             raise ValueError('entry failed')

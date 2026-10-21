@@ -53,7 +53,7 @@ def test_retired_cache_keeps_copy_for_two_delayed_streams(monkeypatch, child_bef
     copy_ready.record(copy_stream)
     parent.register_consumer_done(copy_ready)
     result._views = {0: copied}
-    monkeypatch.setattr(GpuFieldResult, '_slot_views', lambda self: self._views)
+    monkeypatch.setattr(GpuFieldResult, '_slot_views', lambda self, stream: self._views)
     try:
         for stream, output, consumer_done in zip(streams, outputs, consumers_done):
             context = _GpuFieldViewContext(result, stream)
