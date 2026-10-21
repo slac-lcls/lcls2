@@ -24,6 +24,13 @@ converting a node.
 Record the day's investigation in HANDOFF, promote to this file only what is still
 open, and move an item to `FINDINGS.md` once it is settled.
 
+## Design rate: 35.7 kHz, i.e. < 28 us per event in every stage
+
+The ePixUHR's designed operating rate is **35.7 kHz (28 us)**.  Today's PCIe bus caps the
+system at 33034 Hz (102 Gbps), but the code must be ready for 35.7 kHz.  So each stage --
+Reader, TrgInpGen, TEB, Reducer -- must handle an event in **under 28 us**, overheads
+included, with margin.  Judge performance work against 28 us, not the 30.3 us of 33 kHz.
+
 ## Comment volume needs a cleanup pass
 
 The GPU DRP's comments have grown past what a reader can take in, and the pattern is
@@ -1570,17 +1577,26 @@ Two causes found and fixed; see the 2026-10-16 entry in `FINDINGS.md`.  What rem
   `_5`, over ten runs.  Node 0 also carries the IB NIC (`mlx5_0`, `71:00.0`), WEKA, and
   `tstcam1_1`'s cross-root DMA (`05` -> `55`) landing on switch 51 beside `tstcam1_2`'s GPU.
   Speculative; nothing measured yet ties any of these to a slowdown.
-- **The margin is thin.**  ~21 us of service + ~8 us inferred overhead against a 30.3 us
-  budget leaves ~1.5 us.  Anything that buys headroom makes the system more predictable.
+- **The margin is negative against the design rate.**  ~21 us of service + ~8 us inferred
+  overhead is ~29 us: ~1.5 us under 33 kHz's 30.3 us, but over 35.7 kHz's 28 us (see the
+  design-rate section at the top).  The Reader needs several us back, more if it fills.
 - **More threads for `_event`** (Ric), for headroom.  Its grid already fills the Reader's
   partition (256 blocks x 64 threads = 8 SMs x 2048 on an H200, ~12 elements per thread), so
   more threads means a larger Reader context, e.g. 16 SMs from the recorder's 76.  `_event`
   is ~12 of the ~21 us, so this is the biggest lever if the kernel scales.  Keep the grid
   sizing in `Reader::_recordGraph()` and the SM count in `_setupGreenContexts()` in step.
-- **`RingIndexDtoD` in device memory** (Ric).  Its head and tail are pinned host memory
-  only so the monitoring can read them; nothing on the host touches them otherwise.  In
-  device memory, with the metric copying out, the Reader's push and TrgInpGen's pop never
-  cross PCIe.  Deferred until the pop counter above has run, so the two are not confounded.
+- **Ring index caching and `RingIndexDtoD` in device memory: measured 2026-10-20.**  Each
+  ring's GPU side keeps its own index in device memory and reads the host's index only when
+  its cached copy says empty or full; `RingIndexDtoD` lives entirely in device memory and the
+  metric copies it out at scrape.  At 33 kHz the Reader's service fell from ~21 to 16.2 us
+  (pop 5.7 -> 2.7, push 3.4 -> 1.7) on all five DRPs.  No ring stayed full, so the full-ring
+  penalty is unmeasured; one brief fill showed +0.4 us in that second, which proves little.
+  Not worth forcing: even the old ~3 us would drain at 35.7 kHz.  Revisit if a ring stays full.
+- **The remaining ~1.3 ms "laggard" looks like the PCIe ceiling, not software** (2026-10-20,
+  inferred).  With all five, `tstcam1_0` (whose card also carries `timing_2`) lagged and
+  asserted deadtime while its Reader backlog stayed ~0; without it, all four tstcams did
+  the same against `timing_2`, at the same 33 kHz, Readers unchanged at 16.2 us.
+  TrgInpGen and Reducer are still unmeasured against 28 us.
 - **Node memory on gpu008.**  417 GB of `nfs_inode_cache` and 43 GB of `dentry` leave 3-8 GB
   free per node.  Our allocations are now bound and immune, but other processes are not.
   Ric's call whether to raise it with whoever runs the node, or try `drop_caches`.

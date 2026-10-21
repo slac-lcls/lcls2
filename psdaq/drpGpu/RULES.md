@@ -143,3 +143,7 @@ reports.  These have cost time twice each.
 - **`drp_deadtime` can read negative** (-4.8, -11.6 seen on gpu008, 2026-10-15), which is
   meaningless for a fraction.  Treat per-DRP deadtime as unreliable until that is chased;
   a sick DRP reading 0.362 against peers' 0.000 is still a usable discriminator.
+- **A latency is wall clock minus the TimingHeader stamp, so it carries a clock offset.**
+  The two clocks are on different machines under separate NTP, so an offset between nodes,
+  or a step within a run, may be NTP rather than the DAQ.  Compare a DRP only with itself, or
+  with DRPs on the same node.  `timing_2`'s `drp_th_latency` stepped ~0.5 ms on 2026-10-20.
