@@ -133,7 +133,9 @@ def test_a_sharing_owners_un_pooled_block_is_attributed_too():
     """
     budget = _GpuBudget(512 * MIB)
     budget.reserve(384 * MIB)              # what _OwnedBlock.__init__ does
-    owner = NS(shared_bytes=384 * MIB, imported_bytes=0, _is_owner=True)
+    # No _is_owner: the role is inferred from the byte counts. An owner
+    # imports nothing, so shared_bytes - imported_bytes is what it owns.
+    owner = NS(shared_bytes=384 * MIB, imported_bytes=0)
 
     stats = manager(budget, constants=owner)._snapshot_memory('ipc-owner')
 
@@ -159,8 +161,9 @@ def test_a_follower_does_not_claim_the_bytes_it_only_imports():
     """
     budget = _GpuBudget(512 * MIB)
     held = owned_empty(np, 8 * MIB, np.uint8, budget, 'detector')
-    follower = NS(shared_bytes=384 * MIB, imported_bytes=384 * MIB,
-                  _is_owner=False)
+    # A follower's shared_bytes IS its imported_bytes, so the difference is
+    # zero -- no private attribute consulted.
+    follower = NS(shared_bytes=384 * MIB, imported_bytes=384 * MIB)
 
     stats = manager(budget, constants=follower)._snapshot_memory('follower')
 
@@ -172,6 +175,36 @@ def test_a_follower_does_not_claim_the_bytes_it_only_imports():
         'the imported bytes were subtracted from `retained`, which hides '
         f'{(8 * MIB - stats.retained) / MIB:.0f} MiB of real residual')
     del held
+
+
+def test_the_role_is_inferred_from_public_byte_counts_only():
+    """No private attribute of the constants object is consulted.
+
+    The owned figure is ``shared_bytes - imported_bytes``, which is correct
+    for either role: an owner imports nothing, and a follower's shared_bytes
+    equals its imported_bytes. Reading a private ``_is_owner`` would couple
+    this to the internals of a class that does not exist on this branch at
+    all -- SharedRequestedConstants lives on the IPC branch -- so a rename
+    there would silently zero the figure here.
+
+    Asserted by handing over an object that RAISES on any private access.
+    """
+    class PublicOnly:
+        shared_bytes = 384 * MIB
+        imported_bytes = 0
+
+        def __getattr__(self, name):
+            raise AssertionError(
+                f'the snapshot read a private attribute {name!r}; it must '
+                'work from the public byte counts alone')
+
+    budget = _GpuBudget(512 * MIB)
+    budget.reserve(384 * MIB)
+
+    stats = manager(budget, constants=PublicOnly())._snapshot_memory('public')
+
+    assert stats.constants == 384 * MIB
+    assert stats.retained == 0
 
 
 def test_a_double_counted_category_is_logged_rather_than_clamped_away():
@@ -186,7 +219,7 @@ def test_a_double_counted_category_is_logged_rather_than_clamped_away():
     # Charged once, but reported through BOTH sources: 12 MiB in the ledger
     # and 12 MiB of shared_bytes, against 12 MiB committed.
     held = owned_empty(np, 12 * MIB, np.uint8, budget, 'task-constants')
-    liar = NS(shared_bytes=12 * MIB, imported_bytes=0, _is_owner=True)
+    liar = NS(shared_bytes=12 * MIB, imported_bytes=0)
 
     records = []
     import psana.gpu.gpu_events as ge

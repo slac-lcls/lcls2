@@ -276,7 +276,7 @@ class GpuEventManager:
         # breakdowns on peer ranks for one physical copy.
         #
         # Two sources, because there are two ways constants get charged and
-        # neither alone covers both:
+        # neither alone covers every rank:
         #
         #   the allocation ledger, for the ordinary private upload. This is
         #   where `committed` comes from, so the two cannot disagree.
@@ -290,17 +290,35 @@ class GpuEventManager:
         #   and `retained` absorbs the whole set -- the defect this function
         #   is being fixed for, reappearing on the sharing path.
         #
-        # Summed, not maxed: a rank may hold both, when peers agreed to share
-        # some selectors and it uploaded the rest privately. getattr with a
-        # default because RequestedConstants has no shared_bytes, and because
-        # a snapshot can be taken before the object exists.
-        owned_constants = int(getattr(constants, 'shared_bytes', 0) or 0)
-        if not getattr(constants, '_is_owner', True):
-            # A follower's shared_bytes reports the bytes it IMPORTED, which
-            # it does not own and is not charged for. Those are `borrowed`;
-            # counting them here would subtract bytes from `retained` that
-            # were never in `committed`.
-            owned_constants = 0
+        # EITHER/OR, not both. The cleaner fix is at the source: route
+        # _OwnedBlock through reserve_allocation(category='task-constants') so
+        # the owner's block appears in the ledger, which would also fix
+        # allocation_snapshot() still omitting it. Doing that WITHOUT dropping
+        # the shared_bytes term here counts the same block twice. The
+        # negative-residual check below is what would catch it.
+        #
+        # Summed because the two sources are DISJOINT, not because a rank can
+        # hold both. Sharing is all-or-nothing -- _agree_on_set returns the
+        # whole request set or () -- so refresh() takes one branch or the
+        # other and a rank holds either a shared block or private uploads.
+        # One term is always zero.
+        #
+        # `shared_bytes - imported_bytes` is the OWNED shared bytes, for
+        # either role and without consulting which role this is: an owner
+        # imports nothing, and a follower's shared_bytes IS its imported
+        # bytes. Those imported bytes are `borrowed` above -- not owned, not
+        # charged -- and subtracting them from `retained` would remove bytes
+        # that were never in `committed`, understating the residual by the
+        # whole constant set.
+        #
+        # getattr defaults throughout: RequestedConstants has neither
+        # attribute, and a snapshot can be taken before the object exists.
+        # Clamped at 0 so a transient mid-teardown ordering cannot go
+        # negative.
+        owned_constants = max(
+            0,
+            int(getattr(constants, 'shared_bytes', 0) or 0)
+            - int(getattr(constants, 'imported_bytes', 0) or 0))
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
