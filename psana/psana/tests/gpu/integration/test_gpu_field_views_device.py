@@ -68,6 +68,14 @@ def test_delayed_materialization_second_stream_and_open_child_retirement():
     }''', 'delay')
     delay.compile()
     source = case.sources[0].data_gpu
+    # Cold cudaMalloc / first kernel loading may synchronize all streams.
+    # Warm those before the delay so this test isolates copy-ready ordering.
+    warm_copy = cp.empty(257, cp.uint64)
+    source[1:] = 0
+    delay((1,), (1,), (np.uint64(0),), stream=producer)
+    cp.cuda.get_current_stream().synchronize()
+    producer.synchronize()
+    del warm_copy
     producer.wait_event(case.lease.result_ready)
     delay((1,), (1,), (np.uint64(500000000),), stream=producer)
     # Changing source after a delayed producer proves entry waits for readiness.
