@@ -55,8 +55,8 @@ on an H200).
 
 **Traps:** `drp_th_latency` carries a per-run clock offset (-40 to -1600 us), so read it
 relative to peers.  The TEB's `EB_arrTime` is relative to the first contributor, usually
-`timing_2`.  `tstcam1_0` shares `datadev_04` with `timing_2`, so its `drp_deadtime` is the
-link's and not its own.  `/proc/<pid>/numa_maps` is unreadable for a capability-bearing
+`timing_2`.  With `timing_2` moved to `datadev_85`, `tstcam1_0` still lags and still asserts
+deadtime alone on `datadev_04`, so the shared card was not the cause.  `/proc/<pid>/numa_maps` is unreadable for a capability-bearing
 process; `move_pages()` with no target nodes, from inside, works unprivileged.
 
 ## CALIB mode records raw data end to end, validated 2026-10-01

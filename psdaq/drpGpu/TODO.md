@@ -1377,6 +1377,14 @@ diverge silently -- that has happened once already.
   path and Jungfrau's nested packet walk, neither of which has ever executed**, and
   an `ncu` target free of spin-waits and device-side relaunch.
 
+- **Nsight on the live pipeline: deferred.**  With the 12.x tools neither Ric nor NVIDIA
+  could profile the device-launched graphs and tail launches.  13.3 is installed and may
+  do better; untested, and finding out may take a while.  `RmProfilingAdminOnly: 1` on
+  gpu008, so the GPU counters need root.  `nsys` on sim mode is the cheap first probe.
+  Recipe: Confluence "GPU DRP" page (PSDMInternal 685820459), "Running nsys" -- Cheolhong's
+  `nsys launch` + start/stop timeline of the live DRP; add `--cuda-graph-trace=node`.
+  Whether that sees inside the tail-launched graphs is unrecorded.
+
 - **A repeatable way to measure any Reducer's ratio and throughput against payload size.**
   Run each available Reducer -- `lc`, `pfpl`, `sleek` today, others as they arrive -- over 1x,
   2x, 4x payloads in the harness.  Worth building as a reusable recipe rather than a one-off
@@ -1457,6 +1465,13 @@ diverge silently -- that has happened once already.
   Ask **Mikhail**, who has done the psana equivalent.
 
 ## Runtime behaviour
+
+- **`drp_deadtime` aborts the DRP when its XPM PV is slow to connect.**  `_pvGetVecElem`
+  (`drp/DrpBase.cc`) calls `abort()` on the first scrape if `DeadFLnk` isn't ready, after
+  Configure has succeeded; shared with the CPU DRP.  Hit once, 2026-10-21 16:53:07,
+  `tstcam1_5` only.  Ric's idea: skip the sample and retry on later scrapes.  Trap:
+  `PV::m_ready` is latched from `getComplete(5)`, whose promise allows one call only, so a
+  retry must key off `connected()` plus a first `updated()`, not call it again.
 
 - **`drp_dma_in_use_max` was the wrong constant, and is now `pool.pgpEvents.size()`.**
   Found 2026-10-14, settled 2026-10-15 by Ric's own trace.  The gauge read 56 against
@@ -1615,6 +1630,8 @@ Two causes found and fixed; see the 2026-10-16 entry in `FINDINGS.md`.  What rem
   inferred).  With all five, `tstcam1_0` (whose card also carries `timing_2`) lagged and
   asserted deadtime while its Reader backlog stayed ~0; without it, all four tstcams did
   the same against `timing_2`, at the same 33 kHz, Readers unchanged at 16.2 us.
+  Every TDet datadev has a timing fiber, so `timing_2` can move off `datadev_04` (e.g. to
+  the spare 0x85 card); untested whether the shared card is what makes `tstcam1_0` lag.
   TrgInpGen and Reducer are still unmeasured against 28 us.
 - **Node memory on gpu008.**  417 GB of `nfs_inode_cache` and 43 GB of `dentry` leave 3-8 GB
   free per node.  Our allocations are now bound and immune, but other processes are not.
