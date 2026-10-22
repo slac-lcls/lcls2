@@ -99,7 +99,7 @@ private:
   std::vector<cudaStream_t>                       m_streams;
   std::vector<timePoint_t>                        m_t0;
   std::vector<cudaGraphExec_t>                    m_graphExecs;
-  std::vector<unsigned*>                          m_indices;
+  std::vector<unsigned*>                          m_indices_d;
   uint64_t                                        m_reduce_us;
   Parameters const&                               m_para;
   ReducerMetrics                                  m_metrics;

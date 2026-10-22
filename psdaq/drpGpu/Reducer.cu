@@ -59,14 +59,14 @@ Reducer::Reducer(const Parameters&                  para,
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
   m_t0.resize(m_para.nworkers);
-  m_indices.resize(m_para.nworkers);
+  m_indices_d.resize(m_para.nworkers);
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     //chkFatal(cudaStreamCreateWithPriority(&m_streams[i], cudaStreamNonBlocking, prio));
     chkFatal(cudaExecutionCtxStreamCreate(&m_streams[i], green_ctx, cudaStreamNonBlocking, prio));
 
-    // Keep track of the head and tail indices of the Reducer stream
-    chkError(hostAlloc(&m_indices[i], sizeof(*m_indices[i])));
-    *m_indices[i] = 0;
+    // Index of the buffer being reduced; device memory since every reduce block reads it
+    chkError(cudaMalloc(&m_indices_d[i],    sizeof(*m_indices_d[i])));
+    chkError(cudaMemset( m_indices_d[i], 0, sizeof(*m_indices_d[i])));
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
 
@@ -256,11 +256,11 @@ Reducer::~Reducer()
   m_pool.destroyReduceBuffers();
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    chkError(hostFree(m_indices[i]));
+    chkError(cudaFree(m_indices_d[i]));
 
     chkError(cudaStreamDestroy(m_streams[i]));
   }
-  m_indices.clear();
+  m_indices_d.clear();
   m_streams.clear();
 }
 
@@ -480,7 +480,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   // Handle messages from TebReceiver to process an event
   //printf("*** Reducer::_recordGraph: worker %d, iq h %p, d %p\n", worker, m_inputQueues2[worker].h, m_inputQueues2[worker].d);
   _reducerRcv<<<1, 1, 0, stream>>>(m_state_d[worker],
-                                   m_indices[worker],
+                                   m_indices_d[worker],
                                    m_inputQueues2[worker].d,
                                    m_metrics.state[worker],
                                    m_metrics.inpWtCtr[worker]);
@@ -490,7 +490,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   // Perform the reduction algorithm
   m_algo->recordGraph(stream,
                       m_state_d[worker],
-                      m_indices[worker],
+                      m_indices_d[worker],
                       calibBuffers,
                       calibBufsCnt,
                       dataBuffers,
@@ -500,7 +500,7 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
   // Post the completed buffer results and relaunch
   //printf("*** Reducer::_recordGraph: worker %d, oq h %p, d %p\n", worker, m_outputQueues2[worker].h, m_outputQueues2[worker].d);
   _reducerLoop<<<1, 1, 0, stream>>>(m_state_d[worker],
-                                    m_indices[worker],
+                                    m_indices_d[worker],
                                     dataBuffers,
                                     dataBufsCnt,
                                     m_pool.reduceBufsRaw(),
@@ -611,7 +611,7 @@ void Reducer::_worker(unsigned worker)
   // Establish context in this thread
   chkError(cudaSetDevice(m_pool.context().deviceNo()));
 
-  auto index        = m_indices[worker];
+  auto index_d      = m_indices_d[worker];
   auto stream       = m_streams[worker];
   auto& inputQueue  = m_inputQueues[worker];
   auto& outputQueue = m_outputQueues[worker];
@@ -622,7 +622,8 @@ void Reducer::_worker(unsigned worker)
   unsigned idx;
   while (inputQueue.pop(idx)) {
     red_scoped_range loop_range{/*"Reducer::_worker", */nvtx3::payload{idx}};
-    if  (m_algo->hasGraph())  *index = idx;
+    if  (m_algo->hasGraph())
+      chkError(cudaMemcpyAsync(index_d, &idx, sizeof(idx), cudaMemcpyHostToDevice, stream));
     //printf("*** Reducer::_worker: worker %u index %u\n", worker, idx);
 
     auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
