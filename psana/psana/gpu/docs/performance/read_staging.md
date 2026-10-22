@@ -136,6 +136,12 @@ commit; matched incremental success must not be read as preservation of the
 September absolute rates. A common-harness old/current cold comparison remains
 needed to resolve the gap.
 
+The requested [fresh pre/post-stack cold comparison](../../notes/prepost_stack_cold_20261022.md)
+is submitted as job **41614567**, using separate native builds, one node, four
+pairs per bulk setting and recorded external-library fingerprints. These
+pre/post commits have identical source trees; this checks build/runtime and
+current absolute throughput before a possible later cumulative comparison.
+
 ## Full JF
 
 Job **39369005**, `sdfampere035`, completed in **3h07m01s**, exit 0.

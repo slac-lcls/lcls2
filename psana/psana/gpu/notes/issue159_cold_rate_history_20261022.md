@@ -117,29 +117,23 @@ would also not reconstruct the exact historical load/state.
 
 ## Next controlled comparison
 
-Before calling this a particular commit regression, run the saved pre-PR187
-`c157b490c` installation against current Stage 4 `ef0a453d4` in one allocation,
-with the **same current harness**, explicit 6 GiB budget, dependencies, MPI
-settings, GPU/CPU placement, private input hashes and per-sample cold gates.
-Use four balanced pairs per bulk condition and retain A/B mean/std reporting.
-This tests different revisions; no additional A/A campaign is proposed.
+The user selected a fresh **pre/post-stack** cold comparison first:
+`9b32dda19` versus `410ebba1c`, with separate source/build/install directories,
+on one node. See the [comparison plan and dependency audit](prepost_stack_cold_20261022.md).
+These commits have identical source trees; the comparison checks the independent
+builds and current absolute rate under matched conditions. It does not test
+cumulative PR187/issue159 changes.
 
-Capture block-device/RAID topology, per-device `/proc/diskstats`, applicable
-cgroup `io.max`/`io.stat`, read-ahead settings, NUMA/CPU affinity and GPU clocks
-around samples, outside loop timing. Do not change host I/O controls. Reuse
-existing frozen builds at their original paths; do not silently rebuild or
-relabel prior results.
+Use the same current harness in both arms, four balanced pairs per bulk setting,
+per-sample cold gates and A/B mean/sample-standard-deviation reporting. Capture
+read-only block-device/RAID, cgroup I/O, NUMA/CPU and GPU evidence outside loop
+timing, plus actual external-library paths and hashes. Prior frozen artifacts
+remain untouched.
 
-- If old and current code both run near 177 Hz, the historical absolute loss is
-  reproduced without requiring the newer runtime; investigate I/O/environment
-  and, if needed, replay the same frozen old revision on a previously faster node.
-- If the old revision is substantially faster on the same node, isolate the
-  cumulative change using the integrated pre-fix baseline and then Stage 2/3.
-- A result near 350 Hz for both would demonstrate node/time dependence; it would
-  not retroactively make the 177 Hz run invalid.
-
-No new job was submitted during this historical audit. The current Stage 4
-screen is complete, but historical throughput preservation remains unresolved.
+The pre-PR187-versus-Stage 4 comparison remains a possible later bridge if needed
+to isolate cumulative runtime changes. The historical throughput question is
+still unresolved; the completed Stage 4 comparison establishes its incremental
+result only.
 
 Sources: [read/staging report](../docs/performance/read_staging.md),
 [PR187 comparison](pr187_staging_comparison_20261019.md),

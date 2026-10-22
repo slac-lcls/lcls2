@@ -1,0 +1,116 @@
+{
+  "status": "submitted_pending_resources",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1",
+  "builds": {
+    "A": {
+      "commit": "9b32dda19b46807f7a4db62fb2351ba87b359e47",
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/A/source",
+      "build": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/A/build",
+      "install": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/A/install",
+      "seconds": 95.33014607429504,
+      "complete": true
+    },
+    "B": {
+      "commit": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8",
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/B/source",
+      "build": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/B/build",
+      "install": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/B/install",
+      "seconds": 95.98575162887573,
+      "complete": true
+    }
+  },
+  "verification": {
+    "separate_native_files": 28,
+    "source_trees_identical": true,
+    "activation_order": [
+      "A0",
+      "B0",
+      "A0"
+    ],
+    "external_libraries_match": true,
+    "external_count": 230,
+    "historical_comparison": {
+      "reference": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-independent-kvikio2610-20261017-r1/metadata/environment.json",
+      "package_changes": {},
+      "recorded_files": {
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/lib64/libkvikio.so": {
+          "before": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+          "now": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+          "unchanged": true
+        },
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/cache_probe.so": {
+          "before": "be28b33bf568240a13555562a051806bd52b661f2be1d78159260d12cb3ababe",
+          "now": "be28b33bf568240a13555562a051806bd52b661f2be1d78159260d12cb3ababe",
+          "unchanged": true
+        },
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/env.sh": {
+          "before": "29e7da0e669c7ccd72aafdbdf1efcfb6843649beeb91d97ddf5f0ce492bd7658",
+          "now": "29e7da0e669c7ccd72aafdbdf1efcfb6843649beeb91d97ddf5f0ce492bd7658",
+          "unchanged": true
+        },
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/activate.sh": {
+          "before": "ec74c4b1b708e1335d8c40d8d3a68afd4037858a303927fc833215e990edf078",
+          "now": "ec74c4b1b708e1335d8c40d8d3a68afd4037858a303927fc833215e990edf078",
+          "unchanged": true
+        }
+      },
+      "limit": "Only historical package versions and the four recorded file hashes can be compared; historical hashes for all external libraries were not recorded."
+    }
+  },
+  "packages": {
+    "kvikio-cu12": "26.10.0",
+    "libkvikio-cu12": "26.10.0",
+    "cupy-cuda12x": "14.0.1",
+    "numpy": "2.3.5",
+    "mpi4py": "4.1.1",
+    "meson": "1.9.2",
+    "Cython": "3.2.2"
+  },
+  "historical_dependency_comparison": {
+    "reference": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-independent-kvikio2610-20261017-r1/metadata/environment.json",
+    "package_changes": {},
+    "recorded_files": {
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/libkvikio/lib64/libkvikio.so": {
+        "before": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+        "now": "55e895504b72e3b9c8c9245459c1fea92da802749cd0d0d1dfbccdb462852d77",
+        "unchanged": true
+      },
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/cache_probe.so": {
+        "before": "be28b33bf568240a13555562a051806bd52b661f2be1d78159260d12cb3ababe",
+        "now": "be28b33bf568240a13555562a051806bd52b661f2be1d78159260d12cb3ababe",
+        "unchanged": true
+      },
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/env.sh": {
+        "before": "29e7da0e669c7ccd72aafdbdf1efcfb6843649beeb91d97ddf5f0ce492bd7658",
+        "now": "29e7da0e669c7ccd72aafdbdf1efcfb6843649beeb91d97ddf5f0ce492bd7658",
+        "unchanged": true
+      },
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/activate.sh": {
+        "before": "ec74c4b1b708e1335d8c40d8d3a68afd4037858a303927fc833215e990edf078",
+        "now": "ec74c4b1b708e1335d8c40d8d3a68afd4037858a303927fc833215e990edf078",
+        "unchanged": true
+      }
+    },
+    "limit": "Only historical package versions and the four recorded file hashes can be compared; historical hashes for all external libraries were not recorded."
+  },
+  "protocol": {
+    "samples": 16,
+    "events_each": 10000,
+    "pairs_per_bulk": 4,
+    "cache": "cold",
+    "std_ddof": 1,
+    "bds": 4,
+    "gpus_used": 1
+  },
+  "job": 41614567,
+  "frozen_inputs": 2107,
+  "checks": [
+    "independent_native_files",
+    "clean_A_B_A_activation",
+    "login_external_library_equality",
+    "historical_dependency_metadata",
+    "balanced_16_sample_schedule",
+    "sample_std_ddof1",
+    "shell_syntax"
+  ]
+}
