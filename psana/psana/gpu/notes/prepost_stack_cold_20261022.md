@@ -124,3 +124,12 @@ Artifact root:
 
 See [historical cold-rate audit](issue159_cold_rate_history_20261022.md) and
 [submission evidence](evidence/prepost_stack_cold_20261022.json).
+
+## Replay on the earlier fast node
+
+Job **41631223** reuses this exact frozen screen on **sdfampere012**, as requested
+after the storage hardware comparison. Submitted October 22 at 15:28 PDT;
+pending resources with no start estimate at the submission check. Same separate
+A/B builds, GPU 0, 16 cold samples, and settings; 2,107 hashes reverified. Results
+will be in `screen/job-41631223/`. See the
+[hardware findings and replay rationale](lscratch_numa_012_027_20261022.md).
