@@ -1,8 +1,10 @@
 # Issue 159 Stage 4: cold A/B performance screen
 
-Job **41604951** submitted; waiting for resources at submission. No measured
-standard deviations are available yet. This is a cold-cache screen, using
-private files staged once on the allocated node's `/lscratch`.
+Job **41604951 completed successfully** on **sdfampere026** in **43m10s**,
+exit `0:0`. All 16 timed samples and four pixel preflights passed. This is a
+cold-cache screen, using private files staged once on node-local `/lscratch`.
+A and B showed no repeatable slowdown in this cold dense-gather workload;
+this is not an equivalence claim or a measurement of field-access cost.
 
 | Variant | Runtime revision | Meaning |
 | --- | --- | --- |
@@ -42,14 +44,28 @@ workload also does not replace the completed field-access microbenchmarks.
 
 ## Reporting mean and standard deviation
 
-Report these four rows after all gates pass:
+Measured results; mean +/- sample standard deviation, n=4 per row:
 
 | Bulk | Variant | n | Loop time, mean +/- sample std (s) | Rate, mean +/- sample std (events/s) |
 | --- | --- | ---: | --- | --- |
-| Off | A | 4 planned | Pending | Pending |
-| Off | B | 4 planned | Pending | Pending |
-| On | A | 4 planned | Pending | Pending |
-| On | B | 4 planned | Pending | Pending |
+| Off | A | 4 | 56.4147 +/- 0.0744 | 177.259 +/- 0.234 |
+| Off | B | 4 | 56.3419 +/- 0.0526 | 177.488 +/- 0.166 |
+| On | A | 4 | 56.3544 +/- 0.0422 | 177.449 +/- 0.133 |
+| On | B | 4 | 56.3739 +/- 0.0910 | 177.387 +/- 0.286 |
+
+Positive paired B/A loop-time change means Stage 4 is slower:
+
+| Bulk | Median paired change | Pair range | Sample std of paired changes |
+| --- | ---: | ---: | ---: |
+| Off | -0.1430% | -0.2911% to +0.0609% | 0.1456 percentage points |
+| On | -0.0124% | -0.0496% to +0.2131% | 0.1209 percentage points |
+
+Signs were mixed: B was faster in three of four bulk-off pairs and two of four
+bulk-on pairs. The largest absolute paired change was 0.2911%. The screen does
+not show a consistent incremental Stage 4 regression; four pairs do not prove
+zero overhead. Keep the separately measured field-access overhead in the
+[Stage 4 report](issue159_stage4_20261021.md) visible, and retain final cumulative
+comparison against the original frozen integrated A.
 
 Sample standard deviation is `sqrt(sum((x - mean(x))**2) / (n - 1))` (ddof=1).
 Calculate rate statistics from each run's measured rate, not by inverting the
@@ -71,3 +87,21 @@ Logs: `logs/screen-41604951.log`; results: `screen/job-41604951/`.
 The job has a 90-minute allocation limit. Queue delay is additional.
 
 [Submission evidence](evidence/issue159_stage4_cold_20261022.json).
+
+## Completed gates and evidence
+
+All 160,000 timed events passed identity/count checks. Both variants passed
+six-rank native provenance, four 200-event pixel checks passed in total, staged
+input hashes matched, and all 1,912 frozen artifact hashes verified before and
+after the screen. The private stage was removed successfully.
+
+The largest pre-sample per-file residency was **0.00028643%**, well below
+1%. Post-run residency was observed without repair; the lowest per-file value
+was 80.33130%, which is permitted for a cold run. Peak tracked owned/held
+allocation was **1.2518 GiB per BD**, below the 6 GiB limit.
+
+The evidence JSON preserves individual rates/loop times, all paired changes,
+per-file pre/post residency, per-BD read/budget counters, setup/preparation times,
+provenance and result-log hashes. Means/stds were independently recomputed from
+individual timed rows and matched the frozen harness summary. No pixel
+preflight or cache-preparation time enters the reported loop statistics.
