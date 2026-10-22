@@ -636,6 +636,7 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
     kwa['dark_factor']  = getattr(obdet.raw, '_dark_factor', None)
     kwa['gain_state_to_factor'] = getattr(obdet.raw, '_dic_gain_state_to_factor', None)
+    #kwa['gain_states'] = str(getattr(obdet.raw, '_gain_states', 'NONDEF-det.raw._gain_states')).replace("'", '')
     #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 
@@ -828,6 +829,13 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
       logger.info(info_ndarr(nda, 'constants combined for %s' % ctype))  # shape:(3, 4, 192, 384)
       logger.info('saved in file: %s' % fname)
 
+      kwa['gain_modes'] = str(gainmodes).replace("'", '').replace(' ', '')
+
+      if ctype != 'pixel_gain':
+         _ = kwa.pop('gain_state_to_factor',None)
+      if not ctype in ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_min', 'pixel_max'):
+         _ = kwa.pop('dark_factor',None)
+
       logger.info('deployment metadata %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
       if deploy:
             detname = kwa['longname']
@@ -840,10 +848,6 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
       else:
             logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
-
-
-
-            
 
 def prefix_block_results(dpo, obrun, obdet, **kwa):
     repoman = kwa.get('repoman', None) # set_repoman_and_logger(kwa)
