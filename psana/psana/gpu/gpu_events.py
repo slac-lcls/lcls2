@@ -94,37 +94,30 @@ class _GpuMemStats:
         raw_input    KvikioGpuReader per-slot input buffers
         xtc_config   run-scoped flattened Configure tables
         xtc_slots    per-slot dgram, ShapesData, and field-locator tables
-        constants    task calibration constants this rank OWNS and is charged
-                     for: the budget's 'task-constants' allocations, plus an
-                     IPC-sharing owner's un-pooled block, which is charged
-                     with reserve() and so leaves no ledger record
+        constants    task calibration constants this rank OWNS and is
+                     charged for: the 'task-constants' ledger entries, plus
+                     an IPC owner's un-pooled block, which reserve() charges
+                     without a ledger record
         cupy_pool    CuPy memory-pool total committed bytes
         device_used  bytes in use according to CUDA (total - free)
         device_total total device memory
 
-    Budget categories, from the allocation ledger rather than from a
-    component:
+    Budget categories, from the allocation ledger:
         committed    bytes currently reserved against the budget
         held         bytes an admission hold has reserved for future use
-        retained     the RESIDUAL: committed minus every category identified
-                     above. Anything appearing here is owned storage this
-                     snapshot cannot attribute, which is the point -- it is
-                     the figure to watch for a leak. Subtracting a new
-                     category is therefore not cosmetic: leaving one out
-                     makes identified memory look unattributed, and
-                     subtracting one twice understates the residual and hides
-                     a leak. Clamped at 0; a negative raw value is logged at
-                     DEBUG, since the clamp would otherwise conceal exactly
-                     that double-count.
+        retained     the RESIDUAL: committed minus every category above, so
+                     it is owned storage this snapshot cannot attribute --
+                     the figure to watch for a leak. Omitting a category
+                     makes identified memory look unattributed; subtracting
+                     one twice hides a leak, so a negative raw value is
+                     logged at DEBUG before the clamp to 0.
         failed       storage held by uploads whose stream completion was
                      never established
-        borrowed     bytes this rank READS BUT DOES NOT OWN, and is not
-                     charged for: a CUDA-IPC mapping of another rank's
-                     constants. Always 0 without constant sharing, which has
-                     no importer. Deliberately NOT part of ``committed``, so
-                     it must never be subtracted from ``retained``; summing
-                     the two would double-count one physical copy against the
-                     owner and every importer.
+        borrowed     bytes this rank READS BUT DOES NOT OWN and is not
+                     charged for: an IPC mapping of a peer's constants. 0
+                     without sharing. Outside ``committed``, so never part
+                     of the ``retained`` subtraction -- summing the two
+                     double-counts one copy against owner and importers.
 
     Pinned-host category:
         pinned       framework-owned host staging
@@ -265,57 +258,21 @@ class GpuEventManager:
         if output_d2h is not None:
             s.pinned += output_d2h.pinned_bytes
         constants = getattr(self, '_task_constants', None)
-        # Bytes this rank reads through a CUDA-IPC mapping it does not own.
-        # Zero without constant sharing, which has no importer. Not charged
-        # to the budget, so it does NOT enter the `retained` subtraction.
+        # Read, not owned: an IPC mapping of a peer's constants. Not charged
+        # to the budget, so it must NOT enter the `retained` subtraction.
         s.borrowed = int(getattr(constants, 'imported_bytes', 0) or 0)
-        # Constants this rank OWNS and is charged for. Subtracted from
-        # `retained` below -- without that, an owner's constants show up as
-        # unattributed memory while a follower, which is charged nothing,
-        # shows none, so the same run reports structurally different
-        # breakdowns on peer ranks for one physical copy.
+        # Owned constants come from two disjoint sources, and the ledger
+        # alone misses the rank holding the physical shared copy:
+        # ipcGetMemHandle needs a bare cudaMalloc pointer, so an IPC owner
+        # allocates outside the pool and charges the budget with reserve(),
+        # leaving no ledger record. (Routing _OwnedBlock through
+        # reserve_allocation would fix that at the source -- but then drop
+        # this term, or the block is counted twice.)
         #
-        # Two sources, because there are two ways constants get charged and
-        # neither alone covers every rank:
-        #
-        #   the allocation ledger, for the ordinary private upload. This is
-        #   where `committed` comes from, so the two cannot disagree.
-        #
-        #   shared_bytes, for an IPC-sharing owner. Its allocation does NOT
-        #   appear in the ledger: ipcGetMemHandle needs a pointer from a bare
-        #   cudaMalloc, so the owner allocates outside the pool and charges
-        #   the budget with reserve() directly, which raises `committed`
-        #   without creating a ledger record. A ledger-only sum therefore
-        #   reports constants=0 for the very rank holding the physical copy,
-        #   and `retained` absorbs the whole set -- the defect this function
-        #   is being fixed for, reappearing on the sharing path.
-        #
-        # EITHER/OR, not both. The cleaner fix is at the source: route
-        # _OwnedBlock through reserve_allocation(category='task-constants') so
-        # the owner's block appears in the ledger, which would also fix
-        # allocation_snapshot() still omitting it. Doing that WITHOUT dropping
-        # the shared_bytes term here counts the same block twice. The
-        # negative-residual check below is what would catch it.
-        #
-        # Summed because the two sources are DISJOINT, not because a rank can
-        # hold both. Sharing is all-or-nothing -- _agree_on_set returns the
-        # whole request set or () -- so refresh() takes one branch or the
-        # other and a rank holds either a shared block or private uploads.
-        # One term is always zero.
-        #
-        # `shared_bytes - imported_bytes` is the OWNED shared bytes, for
-        # either role and without consulting which role this is: an owner
-        # imports nothing, and a follower's shared_bytes IS its imported
-        # bytes. Those imported bytes are `borrowed` above -- not owned, not
-        # charged -- and subtracting them from `retained` would remove bytes
-        # that were never in `committed`, understating the residual by the
-        # whole constant set.
-        #
-        # getattr defaults throughout: RequestedConstants has neither
-        # attribute, and a snapshot can be taken before the object exists.
-        # Clamped at 0 so a transient mid-teardown ordering cannot go
-        # negative.
-        owned_constants = max(
+        # `shared_bytes - imported_bytes` is the owned share for either role
+        # without asking which: an owner imports nothing, and a follower's
+        # shared_bytes IS its imported bytes, which are `borrowed` above.
+        s.constants = max(
             0,
             int(getattr(constants, 'shared_bytes', 0) or 0)
             - int(getattr(constants, 'imported_bytes', 0) or 0))
@@ -324,19 +281,16 @@ class GpuEventManager:
             from .gpu_allocation import backing_capacity
             s.committed, s.held = budget.committed(), budget._held
             s.allocations = budget.allocation_snapshot()
-            s.constants = owned_constants + sum(
+            s.constants += sum(
                 int(a['capacity']) for a in s.allocations
                 if a.get('category') == 'task-constants')
-            # The residual, which is the figure to watch for a leak.
             raw = (s.committed - s.raw_input - s.xtc_config - s.xtc_slots
                    - sum(s.input_bytes.values()) - s.constants)
             if raw < 0:
-                # Clamped below, so a negative value would otherwise vanish.
-                # It means something was subtracted twice -- most likely a
-                # constants allocation counted both in the ledger and in
-                # shared_bytes -- which understates `retained` and would hide
-                # a leak of up to that size. Logged rather than raised: a
-                # diagnostic must not fail a run that is otherwise working.
+                # The clamp below would hide this. A negative residual means
+                # a category was counted twice -- likely constants in both
+                # the ledger and shared_bytes. Logged, not raised: a
+                # diagnostic must not fail a working run.
                 _log.debug(
                     'GPU mem [%s] residual is negative (%s): categories sum '
                     'to more than committed, so one is counted twice and '
@@ -390,8 +344,8 @@ class GpuEventManager:
     def log_high_water(self):
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
-        # constants/borrowed are tracked above, so report them: a peak the
-        # ledger recorded but no line prints is why `borrowed` went unnoticed.
+        # constants/borrowed were tracked but never printed, which is how
+        # the empty `borrowed` field went unnoticed.
         _log.info(
             "GPU mem high-water raw_input=%s xtc_config=%s xtc_slots=%s "
             "constants=%s borrowed=%s cupy_pool=%s device_used=%s pinned=%s",

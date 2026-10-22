@@ -1,13 +1,13 @@
 """The memory snapshot attributes what it can and leaves no silent residual.
 
-`retained` is a residual -- committed minus every identified category -- so it
-is the figure to watch for a leak. A category the subtraction forgets shows up
-there as unattributed memory, which is indistinguishable from the thing the
-field exists to reveal. Nothing exercised `_snapshot_memory` before this file,
-which is how task constants came to inflate it.
+`retained` is committed minus every identified category, so a category the
+subtraction forgets appears there as unattributed memory -- indistinguishable
+from the leak the field exists to reveal. Nothing exercised
+`_snapshot_memory` before this file, which is how task constants came to
+inflate it.
 
-No GPU: the budget's allocation ledger is pure accounting, and `owned_empty`
-takes an array module, so NumPy stands in for CuPy throughout.
+No GPU needed: the ledger is pure accounting and `owned_empty` takes an array
+module, so NumPy stands in for CuPy.
 """
 from types import SimpleNamespace as NS
 
@@ -22,12 +22,8 @@ MIB = 1024 ** 2
 
 
 def manager(budget=None, *, constants=None, reader_bytes=0):
-    """A manager with only what _snapshot_memory reaches out to.
-
-    Built with __new__ rather than through the constructor: the snapshot is a
-    pure read over components, and standing up a real GpuEventManager would
-    need a DataSource, configs and a device.
-    """
+    """Only what _snapshot_memory reaches out to. __new__ rather than the
+    constructor: a real GpuEventManager needs a DataSource and a device."""
     m = GpuEventManager.__new__(GpuEventManager)
     m.input_preparers = {}
     m.event_pool = None
@@ -42,12 +38,9 @@ def manager(budget=None, *, constants=None, reader_bytes=0):
 
 
 def test_owned_constants_are_attributed_not_left_as_a_residual():
-    """The defect: 'task-constants' was absent from the subtraction.
-
-    An owner charged for a constant set saw it in `retained`, which reads as
-    owned storage the snapshot cannot account for -- so a real leak of the
-    same size would have looked identical to normal operation.
-    """
+    """The defect: 'task-constants' was absent from the subtraction, so an
+    owner's set appeared in `retained` -- indistinguishable from a leak of
+    the same size."""
     budget = _GpuBudget(64 * MIB)
     constants = owned_empty(np, 12 * MIB, np.uint8, budget, 'task-constants')
 
@@ -62,11 +55,8 @@ def test_owned_constants_are_attributed_not_left_as_a_residual():
 
 
 def test_a_genuine_residual_still_reaches_retained():
-    """The subtraction must not become a way to hide everything.
-
-    A category the snapshot does NOT identify has to keep showing up, or the
-    field stops being a leak signal. 'detector' is such a category here.
-    """
+    """A category the snapshot does NOT identify must keep showing up, or
+    the subtraction becomes a way to hide storage. 'detector' is one."""
     budget = _GpuBudget(64 * MIB)
     unattributed = owned_empty(np, 5 * MIB, np.uint8, budget, 'detector')
 
@@ -120,17 +110,9 @@ def test_borrowed_reports_what_a_rank_reads_without_owning():
 
 
 def test_a_sharing_owners_un_pooled_block_is_attributed_too():
-    """The ledger alone misses the rank holding the physical shared copy.
-
-    ``ipcGetMemHandle`` needs a pointer from a bare ``cudaMalloc``, so an
-    IPC-sharing owner allocates outside CuPy's pool and charges the budget
-    with ``reserve()`` directly. That raises ``committed`` but creates no
-    ledger record -- so summing only 'task-constants' allocations reports
-    constants=0 for the owner and lets ``retained`` absorb the whole set,
-    which is the original defect reappearing on the sharing path.
-
-    Simulated with reserve(), which is exactly what _OwnedBlock does.
-    """
+    """The ledger alone misses the rank holding the physical shared copy: an
+    IPC owner allocates outside the pool and charges with ``reserve()``,
+    leaving no ledger record. Driven with reserve(), as _OwnedBlock does."""
     budget = _GpuBudget(512 * MIB)
     budget.reserve(384 * MIB)              # what _OwnedBlock.__init__ does
     # No _is_owner: the role is inferred from the byte counts. An owner
@@ -151,14 +133,9 @@ def test_a_sharing_owners_un_pooled_block_is_attributed_too():
 
 
 def test_a_follower_does_not_claim_the_bytes_it_only_imports():
-    """`shared_bytes` means different things to the two roles.
-
-    On an owner it is the physical copy it allocated; on a follower it is the
-    size of the mapping it imported, which it does not own and is not charged
-    for. Treating a follower's figure as owned would subtract bytes from
-    `retained` that were never in `committed` -- understating the residual by
-    the whole constant set and hiding a leak of that size.
-    """
+    """`shared_bytes` is the physical copy on an owner but the imported
+    mapping on a follower. Claiming a follower's would subtract bytes never
+    in `committed`, understating the residual by the whole set."""
     budget = _GpuBudget(512 * MIB)
     held = owned_empty(np, 8 * MIB, np.uint8, budget, 'detector')
     # A follower's shared_bytes IS its imported_bytes, so the difference is
@@ -178,17 +155,10 @@ def test_a_follower_does_not_claim_the_bytes_it_only_imports():
 
 
 def test_the_role_is_inferred_from_public_byte_counts_only():
-    """No private attribute of the constants object is consulted.
-
-    The owned figure is ``shared_bytes - imported_bytes``, which is correct
-    for either role: an owner imports nothing, and a follower's shared_bytes
-    equals its imported_bytes. Reading a private ``_is_owner`` would couple
-    this to the internals of a class that does not exist on this branch at
-    all -- SharedRequestedConstants lives on the IPC branch -- so a rename
-    there would silently zero the figure here.
-
-    Asserted by handing over an object that RAISES on any private access.
-    """
+    """``shared_bytes - imported_bytes`` is correct for either role, so no
+    private attribute is consulted -- SharedRequestedConstants does not even
+    exist on this branch, and a rename there would silently zero the figure.
+    Asserted with an object that RAISES on any private access."""
     class PublicOnly:
         shared_bytes = 384 * MIB
         imported_bytes = 0
@@ -208,13 +178,8 @@ def test_the_role_is_inferred_from_public_byte_counts_only():
 
 
 def test_a_double_counted_category_is_logged_rather_than_clamped_away():
-    """`retained` is clamped at 0, so over-subtraction is invisible.
-
-    A negative raw residual means a category was counted twice -- the live
-    risk being a constants allocation appearing in both the ledger and
-    shared_bytes. The clamp keeps the figure sane but destroys the evidence,
-    so the raw value goes to DEBUG.
-    """
+    """The clamp at 0 keeps `retained` sane but destroys the evidence that a
+    category was counted twice, so the raw value goes to DEBUG."""
     budget = _GpuBudget(512 * MIB)
     # Charged once, but reported through BOTH sources: 12 MiB in the ledger
     # and 12 MiB of shared_bytes, against 12 MiB committed.
@@ -239,8 +204,7 @@ def test_a_double_counted_category_is_logged_rather_than_clamped_away():
 
 
 def test_an_ordinary_residual_logs_nothing():
-    """The debug line must fire on over-subtraction only, or it is noise on
-    every healthy snapshot."""
+    """Fires on over-subtraction only, or it is noise on every run."""
     budget = _GpuBudget(512 * MIB)
     held = owned_empty(np, 5 * MIB, np.uint8, budget, 'detector')
 
@@ -259,8 +223,7 @@ def test_an_ordinary_residual_logs_nothing():
 
 
 def test_borrowed_is_zero_without_an_importer():
-    """The ordinary case, and the only one on a branch with no sharing: a
-    constants object that owns its copy borrows nothing."""
+    """A constants object that owns its copy borrows nothing."""
     budget = _GpuBudget(64 * MIB)
     held = owned_empty(np, 12 * MIB, np.uint8, budget, 'task-constants')
     # A RequestedConstants has no imported_bytes attribute at all.
@@ -281,10 +244,22 @@ def test_the_snapshot_survives_a_manager_with_no_constants():
     assert stats.borrowed == 0 and stats.constants == 0
 
 
+def test_shared_constants_are_reported_without_a_budget():
+    """Both figures come from the constants object, so neither should depend
+    on a budget existing. `borrowed` never did; `constants` used to be set
+    only inside the budget branch and was silently dropped otherwise."""
+    owner = NS(shared_bytes=384 * MIB, imported_bytes=0)
+    m = manager(None, constants=owner)        # no budget at all
+
+    stats = m._snapshot_memory('no-budget')
+
+    assert stats.constants == 384 * MIB
+    assert stats.committed == 0 and stats.retained == 0
+
+
 def test_both_figures_are_reported_in_the_log_line():
-    """A value the snapshot computes but no line prints is how `borrowed`
-    went unnoticed, so assert they reach the log rather than only the
-    dataclass."""
+    """A value computed but never printed is how `borrowed` went unnoticed,
+    so assert both reach the log, not just the dataclass."""
     emitted = []
     stats = _GpuMemStats(label='x', committed=20 * MIB,
                          constants=12 * MIB, borrowed=384 * MIB)
@@ -303,8 +278,8 @@ def test_both_figures_are_reported_in_the_log_line():
 
 
 def test_high_water_tracks_and_prints_both():
-    """Peaks are what a user reads after a run. `constants` and `borrowed`
-    were tracked in the high-water dict but absent from its log line."""
+    """Peaks are what a user reads after a run, and these two were tracked
+    but absent from the line."""
     emitted = []
     m = manager(_GpuBudget(64 * MIB))
     m._high_water = {'constants': 12 * MIB, 'borrowed': 384 * MIB}
