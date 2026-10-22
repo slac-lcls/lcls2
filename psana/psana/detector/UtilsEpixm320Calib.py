@@ -508,7 +508,7 @@ def epixm320_deploy_constants_v02(odet, **kwa_depl):
                     odet.raw._gain_states_dark # if c in 'prsmx' else\
         logger.info(f'begin deployment for ctype: {ctype} gainmodes: {str(gainmodes)}')
         #print('kwa_depl.keys()', kwa_depl.keys())
-        kwa_depl['gain_states'] = str(gainmodes).replace("'", '')
+        #kwa_depl['gain_states'] = str(gainmodes).replace("'", '')
         deploy_constants((ctype,), gainmodes, **kwa_depl)
 
 
