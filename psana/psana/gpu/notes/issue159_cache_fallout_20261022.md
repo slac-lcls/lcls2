@@ -88,7 +88,10 @@ terminated its launched workers and removed its private stage; it provides no
 valid result for NUMA-bound warming. This is a diagnostic portability defect,
 not a cache-gate failure or GPU-runtime failure.
 
-Corrected diagnostic **41596700** is running on `sdfampere042`. It preflights all
+Corrected diagnostic **41596700** completed on `sdfampere042` in **15m21s**
+(exit `0:0`), but the NUMA-bound alternative **failed residency acceptance**.
+The diagnostic records acceptance separately from successful script completion.
+It preflighted all
 worker assignments before staging. Each worker keeps its target memory binding;
 when that node has no allocated CPU, it uses the nearest unused allowed CPU and
 records the remote assignment. CPU resources, memory cap and acceptance gates
@@ -117,14 +120,41 @@ probe.
 
 Syntax checks and the range-partition check passed: every one of the
 **335,572,601,564 measured prefix bytes** is assigned exactly once, without gaps
-or overlaps. Worker policy and actual read-byte totals will be recorded.
+or overlaps. Workers read exactly that byte total. All 13 frozen artifact hashes passed
+before and after the probe, and its private stage was removed.
 
-This tests the alternative already outlined in the October 20 diagnosis, which
-was not exercised because the simpler reset passed then. If it establishes
-stable residency, apply it identically to both screen variants in untimed setup
-and verify the real eight-sample screen. It is not yet a validated remedy. A
-fresh allocation may not reproduce the original node state, so baseline success
-alone would not establish causality.
+## Completed probe results
+
+| Preparation/check | s005 | s006 | s007–s009 | Result |
+| --- | ---: | ---: | ---: | --- |
+| Existing interleaved warmer | 100% | 100% | 100% | Pass, zero repairs |
+| Existing method after 10 s idle | 100% | 100% | 100% | Pass |
+| NUMA-bound range readers | 87.52106% | 98.03529% | 100% | Fail |
+| NUMA-bound method after 10 s idle | 87.52106% | 98.03529% | 100% | Fail |
+| Ordinary full warm pass after alternative | 100% | 100% | 100% | Pass, zero repairs |
+| Final 10 s idle | 100% | 100% | 100% | Pass |
+
+The corrected CPU fallback was exercised: memory node 4 used CPU 40 on node 5.
+The initial existing preparation took 222.04 s including checks; the alternative
+workers took 73.44 s for reads, and the subsequent ordinary preparation took
+104.91 s including checks. These differently scoped setup timings are not GPU
+performance results or a valid accepted speedup for the failed alternative.
+
+Job reclaim increased 15.876 GiB during the first interleaved warm, versus
+43.758 GiB during the NUMA-bound warm; these counters include all job-charged
+cache, not only the private files. Memory-limit and OOM events remained zero.
+Both methods were tested on the same files in one allocation, but sequential
+order and evolving cache state prevent a clean causal attribution to one
+policy parameter. The alternative changes concurrency and readahead as well
+as memory policy.
+
+**Recommendation:** do not adopt the NUMA-bound warmer. Retain the existing
+private reset plus interleaved preparation and the unchanged 99% per-file
+pre/post gates for the next Stage 4 screen. It now passed cache-only probes on
+two other nodes, but remains conditional on passing each screen's gates. A
+fresh screen is still required: this probe ran no 10k-event GPU samples and
+does not close Stage 4 performance acceptance. No new screen was submitted as
+part of this status check.
 
 No threshold relaxation, global cache drop, eviction of shared source files,
 mlock, reduced event count or repair after timing is proposed.
