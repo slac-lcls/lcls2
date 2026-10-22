@@ -47,6 +47,7 @@ Reducer::Reducer(const Parameters&                  para,
   m_terminate  (terminate),
   m_terminate_d(terminate_d),
   m_reduce_us  (0),
+  m_timePrev   {0, 0},
   m_para       (para)
 {
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
@@ -150,6 +151,21 @@ Reducer::Reducer(const Parameters&                  para,
       chkError(cudaMemset( m_retCode_d[i], 0, sizeof(*m_retCode_d[i])));
     }
 
+    m_time_d.resize(m_para.nworkers);
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      chkError(cudaMalloc(&m_time_d[i],    sizeof(*m_time_d[i])));
+      chkError(cudaMemset( m_time_d[i], 0, sizeof(*m_time_d[i])));
+    }
+
+    // Optional loop timing histograms, a debugging aid
+    m_hist_d.resize(m_para.nworkers, nullptr);
+    if (para.kwargs.find("readerHist") != para.kwargs.end() && para.kwargs.at("readerHist") != "0") {
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        chkError(cudaMalloc(&m_hist_d[i],    sizeof(*m_hist_d[i])));
+        chkError(cudaMemset( m_hist_d[i], 0, sizeof(*m_hist_d[i])));
+      }
+    }
+
     // Set up a state variable
     m_state_d.resize(m_para.nworkers);
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
@@ -201,6 +217,18 @@ Reducer::~Reducer()
     m_state_d[i] = nullptr;
   }
   m_state_d.clear();
+
+  for (auto& hist : m_hist_d) {
+    if (hist)  chkError(cudaFree(hist));
+    hist = nullptr;
+  }
+  m_hist_d.clear();
+
+  for (auto& time : m_time_d) {
+    if (time)  chkError(cudaFree(time));
+    time = nullptr;
+  }
+  m_time_d.clear();
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_retCode_d[i])  chkError(cudaFree(m_retCode_d[i]));
@@ -291,7 +319,16 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
     }
   }
 
-  exporter->add("DRP_reduceTime", labels, MetricType::Gauge, [&](){ return m_reduce_us; });
+#ifndef HOST_LAUNCHED_REDUCERS
+  if (m_algo && m_algo->hasGraph()) {
+    m_timePrev[0] = m_timePrev[1] = 0;
+    exporter->addFloat("DRP_reduceTime", labels, [&](double& us){
+      chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+      return stageTimeMean(m_time_d.data(), m_time_d.size(), m_timePrev, us);
+    });
+  } else
+#endif
+    exporter->add("DRP_reduceTime", labels, MetricType::Gauge, [&](){ return m_reduce_us; });
 
   return 0;
 }
@@ -384,7 +421,9 @@ void _reducerRcv(unsigned*                const __restrict__ state,
                  unsigned*                const __restrict__ index,
                  RingQueueHtoD<unsigned>* const __restrict__ inputQueue,
                  uint64_t*                const __restrict__ stateMon,
-                 uint64_t* const                __restrict__ inpWtCtr)
+                 uint64_t* const                __restrict__ inpWtCtr,
+                 StageTime*               const __restrict__ time,
+                 StageHist*               const __restrict__ hist)
 {
   if (*state == 0) {
     //*stateMon = 1;
@@ -399,6 +438,8 @@ void _reducerRcv(unsigned*                const __restrict__ state,
       }
     }
     //printf("### _reducerRcv: got idx %u\n", *index);
+    stageTimeStart(time);
+    if (hist)  stageHistStart(hist);
     *state = 1;
     //*stateMon = 3;
     //++(*inpWtCtr);
@@ -415,9 +456,12 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
                   RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
                   uint64_t*                    const __restrict__ stateMon,
                   uint64_t*                    const __restrict__ outWtCtr,
+                  StageTime*                   const __restrict__ time,
+                  StageHist*                   const __restrict__ hist,
                   cuda::std::atomic<unsigned>  const&             terminate)
 {
   if (*state == 2) {
+    if (hist)  stageHistWorkDone(hist);
     //*stateMon = 4;
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
     // The size the algorithm recorded, in the word just below whatever it wrote:
@@ -437,8 +481,13 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
         break;
       }
     }
-    if (!rc) {
+    if (rc) {
+      if (hist)  ++hist->pushFulls;
+    }
+    else {
       //printf("### _reducerLoop: pushed {%u, %lu}\n", *index, dataSize);
+      stageTimePushed(time);
+      if (hist)  stageHistPushed(hist);
       *state = 0;
       //*stateMon = 6;
       //++(*outWtCtr);
@@ -483,7 +532,9 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
                                    m_indices_d[worker],
                                    m_inputQueues2[worker].d,
                                    m_metrics.state[worker],
-                                   m_metrics.inpWtCtr[worker]);
+                                   m_metrics.inpWtCtr[worker],
+                                   m_time_d[worker],
+                                   m_hist_d[worker]);
   chkError(cudaGetLastError(), "Launch of _reducerRcv kernel failed");
 #endif
 
@@ -507,6 +558,8 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
                                     m_outputQueues2[worker].d,
                                     m_metrics.state[worker],
                                     m_metrics.outWtCtr[worker],
+                                    m_time_d[worker],
+                                    m_hist_d[worker],
                                     m_terminate_d);
   chkError(cudaGetLastError(), "Launch of _reducerLoop kernel failed");
 #endif
@@ -594,6 +647,14 @@ void Reducer::dump() const
              m_inputQueues2[i].h->head(), m_inputQueues2[i].h->tail(),
              m_outputQueues2[i].h->head(), m_outputQueues2[i].h->tail());
     }
+  }
+}
+
+void Reducer::reportHistograms() const
+{
+  for (unsigned i = 0; i < m_hist_d.size(); ++i) {
+    std::string name{"Reducer[" + std::to_string(i) + "]"};
+    reportStageHist(name.c_str(), m_hist_d[i]);
   }
 }
 

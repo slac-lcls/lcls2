@@ -15,6 +15,7 @@
 #include "EventBatcher.hh"              // For EvtBatcherSubFrames
 #include "RingIndex_HtoD.hh"
 #include "RingIndex_DtoD.hh"
+#include "StageHist.hh"
 
 namespace Pds {
   class MetricExporter;
@@ -41,7 +42,7 @@ struct ReaderMetrics
 // The log2 histograms are binned by floor(log2(ns)).
 struct ReaderHist
 {
-  static constexpr unsigned nLog2   {40};
+  static constexpr unsigned nLog2   {NLog2Bins};
   static constexpr unsigned nBacklog{1024};
   uint64_t tEntry;                      // Last state-0 pass start, %globaltimer ns
   uint64_t tDetect;                     // When the current event's DMA was seen
@@ -137,6 +138,8 @@ private:
   std::vector<unsigned*>                  m_states_d;
   std::vector<unsigned*>                  m_evtStatus_d; // Per-event EventStatus
   std::vector<ReaderHist*>                m_hist_d;      // nullptr unless readerHist=1
+  std::vector<StageTime*>                 m_time_d;
+  uint64_t                                m_timePrev[2];
   unsigned                                m_nReaders;
   const Parameters&                       m_para;
   ReaderMetrics                           m_metrics;

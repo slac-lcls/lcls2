@@ -15,6 +15,7 @@
 #include "RingQueue_DtoH.hh"
 #include "RingQueue_HtoD.hh"
 #include "ReducerAlgo.hh"
+#include "StageHist.hh"
 #include "drp/spscqueue.hh"
 #include "psdaq/service/Dl.hh"
 #include <nlohmann/json.hpp>
@@ -58,6 +59,7 @@ public:
   bool startup();
   void shutdown();
   void dump() const;
+  void reportHistograms() const;
   bool start(unsigned worker, unsigned index) {
 #ifdef HOST_LAUNCHED_REDUCERS
     m_inputQueues[worker].push(index);  return true;
@@ -100,6 +102,9 @@ private:
   std::vector<timePoint_t>                        m_t0;
   std::vector<cudaGraphExec_t>                    m_graphExecs;
   std::vector<unsigned*>                          m_indices_d;
+  std::vector<StageHist*>                         m_hist_d;      // nullptrs unless readerHist=1
+  std::vector<StageTime*>                         m_time_d;
+  uint64_t                                        m_timePrev[2];
   uint64_t                                        m_reduce_us;
   Parameters const&                               m_para;
   ReducerMetrics                                  m_metrics;

@@ -955,8 +955,10 @@ unsigned PGPDrp::unconfigure()
   }
   //printf("*** PGPDrp::unconfigure 4\n");
 
+  if (m_reducer)  m_reducer->reportHistograms();
   m_reducer.reset();
   //printf("*** PGPDrp::unconfigure 5\n");
+  if (m_trgInpGen)  m_trgInpGen->reportHistograms();
   m_trgInpGen.reset();
   //printf("*** PGPDrp::unconfigure 6\n");
   // Report anything the Readers found wrong with the sub-frame layout.  The
