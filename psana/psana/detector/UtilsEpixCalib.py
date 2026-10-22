@@ -408,15 +408,6 @@ def epixm320_deploy_constants(odet, **kwa_depl):
     import psana.detector.UtilsEpixm320Calib as ue320 # import epixm320_deploy_constants
     if True: # NEW VERSION - manage gain state order for different ctype
         ue320.epixm320_deploy_constants_v02(odet, **kwa_depl)
-#    elif False: # THE SAME NEW VERSION DEV TEST
-#        ctdepl  = kwa_depl.get('ctdepl', 'prs')
-#        for c in ctdepl:
-#            ctype = cc.dic_calib_char_to_name[c]
-#            gainmodes = odet.raw._gain_states      if c == 'g' else\
-#                        odet.raw._gain_states_offs if c == 'o' else\
-#                        odet.raw._gain_states_dark # if c in 'prsmx' else\
-#            logger.info(f'begin deployment for ctype: {ctype} gainmodes: {str(gainmodes)}')
-#            deploy_constants((ctype,), gainmodes, **kwa_depl)
     else: # OLD VERSION
         ue320.epixm320_deploy_constants_v01(odet, **kwa_depl)
 
