@@ -118,7 +118,9 @@ The scheduling cursor may read ahead across steps and admit new-scope work while
 
 The CPU delivery cursor processes the original records in order and alone dispatches their CPU state updates through `Run._handle_transition()` (or an equivalent single owner). It offers preceding public events before applying the following CPU transition. `run.events()` hides controls; `run.steps()` uses ordered scope boundaries. Neither adapter repeats the CPU EnvStore update. Scheduling read-ahead must not call the live CPU handler early, and must not rely on that handler to resolve GPU chunk files.
 
-Store only the identity/lifecycle metadata needed for GPU scopes: run identity, logical source-step identity, and a local generation where useful. Existing `batch.step_generation` can remain a local progression value; it is not automatically a cross-BD step key. Define replay handling from source transition identity/order and header metadata, without reading step payload values. Preserve unseen empty steps, make known history replay idempotent, and validate fake-step/timestamp-jump cases before freezing the identity encoding. Enable replay additionally validates its required chunkinfo. Original payload dgrams belong to CPU delivery, not a GPU state snapshot.
+Store only the identity/lifecycle metadata needed for GPU scopes: run identity, logical source-step identity, and a local generation where useful. Existing `batch.step_generation` can remain a local progression value; it is not automatically a cross-BD step key. Define replay handling from source transition identity/order and header metadata, without reading step payload values. A new source BeginStep establishes a scope for subsequent events; receiving that same source transition again through catch-up history preserves its scope identity and does not advance the local step generation. Preserve unseen empty BeginStep/EndStep pairs as empty public steps, and assign events by SMD record order. Validate these behaviors at the EB/BD interface before freezing the identity encoding; timestamp equality alone must not be assumed to prove replay. Enable replay additionally validates its required chunkinfo. Original payload dgrams belong to CPU delivery, not a GPU state snapshot.
+
+Synthetic steps generated upstream by SMDReader (`PS_FAKESTEP_FLAG=1`) arrive at EB and BD as ordinary Disable/EndStep/BeginStep/Enable records. The GPU path applies the same transition rules regardless of their origin; it does not inspect this flag, detect synthetic steps, or implement a separate fake-step path. Running the existing fake-step mode is an optional integration check, not a separate feature or approval gate for this design. The earlier phrase "fake-step/timestamp-jump cases" did not define an additional input contract: no timestamp-jump recovery mechanism is requested here. Any proposed timestamp-based scope key must state its uniqueness and replay assumptions and validate them against the supported EB/BD transition stream.
 
 ### Overlap and completion
 
@@ -382,7 +384,7 @@ Stages 1–2 can ship with local constants; IPC must not block #153's step/trans
 
 | Area | Required cases and assertions |
 | --- | --- |
-| Ordered planning | Real fast EB append/break; leading/trailing/repeated history; empty steps; transition-only packets; GPU-only placeholders and zero-GPU rows; malformed framing rejected |
+| Ordered planning | Real fast EB append/break; new BeginStep creates a scope; same-source history replay preserves identity/generation; leading/trailing history and empty steps; transition-only packets; GPU-only placeholders and zero-GPU rows; malformed framing rejected |
 | Scope overlap | Every execution subbatch has one scope; two or more occupied slots may retain different scopes; two BDs progress independently; delayed old scope; byte splits preserve identity; no blanket step flush |
 | Step/bin reductions | Compare per-step sums with explicit expected values for several subbatches per step, concurrent same/different-step slots, short/empty steps and retained partials; no cross-bin contamination or premature accumulator reset/free; account for scratch/output storage |
 | Scheduling cost | Scope discovery reuses packet traversal; no per-field scheduling or repeated full-plan construction per scope/subbatch; submissions change only for required execution boundaries; measure short-step fragmentation and memory high water |
@@ -412,7 +414,7 @@ Use synthetic arrays/dgrams first; real IPC tests need supported hardware and de
 
 | Decision | Starting point |
 | --- | --- |
-| Scope identity and public API | Existing local `batch.step_generation` plus replay-safe source scope identity; validate fake steps/timestamp jumps; no step payload parsing |
+| Scope identity and public API | Existing local `batch.step_generation` plus replay-safe source scope identity; validate new BeginStep, same-source history replay and empty steps in SMD record order; no origin-specific handling or step payload parsing |
 | Scheduling/delivery implementation | Independent cursors and bounded look-ahead; ordered CPU state updates and per-scope result completion |
 | Iterator remainder semantics | Child close/outer advance consumes and discards remainder while preserving callbacks; outer close terminal locally; explicit global terminate |
 | Stateful user work | One step per execution; isolated partial sums/scope storage or declared dependencies; define combining and retaining multiple subbatch contributions without assuming one accumulator per BD |
