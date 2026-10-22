@@ -11,6 +11,13 @@
 #SBATCH --job-name=ipc-multinode
 #SBATCH --output=validation/ipc-multinode-20261007/job-%j.log
 #
+# PREEMPTION. Only the `preemptable` QoS here, and two nodes is more exposed
+# -- the job dies if either is taken. `--requeue` would not help
+# (PreemptMode=CANCEL). Override as in ../ipc-integration-20261007/run.sbatch:
+#   SBATCH_ACCOUNT=lcls:prjdat21 SBATCH_QOS=normal sbatch .../run.sbatch
+#
+# 30 minutes left as-is: this suite measures ~7 min.
+#
 # Multi-node peer discovery. On ONE node the hostname half of the
 # (hostname, device_uuid) grouping key is constant, so a hostname that is
 # ignored or inconsistently formatted is invisible -- and that is issue #155's

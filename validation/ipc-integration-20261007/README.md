@@ -22,7 +22,7 @@ Run from the repository root after building:
 
 ## Cases
 
-Twelve cases. Five discovery topologies, because the defect being fixed was
+Thirteen cases. Five discovery topologies, because the defect being fixed was
 peer counts
 derived from EB-group arithmetic: `bd_comm` is split per EB group, so the count
 was wrong whenever groups did not map onto devices. `discovery-uneven` is the
@@ -39,6 +39,8 @@ counts.
 | `calib-shared` | 4 | **the value check**: GPU calibration pixel-exact against `det.raw.calib()`, constants shared over IPC |
 | `calib-2-gpus` | 9 | the same across 2 devices with the mask left wide, so most groups are solo |
 | `calib-reversed-mask` | 6 | the same under `CUDA_VISIBLE_DEVICES=1,0`, where ordinals and physical cards disagree |
+| `calib-budget-fits` | 4 | an explicit `gpu_memory_budget_gb` the device can honour is accepted **and applied** — `usable_bytes == budget x peers` |
+| `calib-budget-over` | 4 | a budget no device can honour aborts **every** role, smd0 and EB included |
 | `fail-select-device` | 5 | a rank that cannot select a device aborts the **job** |
 | `multirun-3-runs` | 6 | per-run rediscovery — reproduces a known pre-existing hang |
 | `fail-follower-import` | 4 | a failed IPC import aborts **every** peer, not just the one that failed |
@@ -104,6 +106,30 @@ the `SharedConstantsError` to check things an exit status cannot show: that
 every peer raised, that the message names `PSANA_GPU_SHARE_CONSTANTS=0`, and
 that nothing was left mapped or charged.
 
+### The two explicit-budget cases
+
+`gpu_memory_budget_gb` had unit coverage only: `mpi_placement_discovery.py`
+always passes `explicit_limit_bytes=0`. It is a different code path, not a
+parameter — discovery validates `budget x peers` against **this device's**
+capacity and replaces `usable_bytes` with the claim.
+
+`calib-budget-fits` checks the budget was *applied*, not merely accepted: a
+job that ignored the ceiling calibrates the same pixels, so
+`--expect-budget-honoured` asserts `usable_bytes == budget x peers`. The one
+place a case reads an internal.
+
+`calib-budget-over` tests the collective. smd0 and EB cannot evaluate any
+device's claim and take the verdict from the `discovery/budget-verdict`
+`MAX`; if that reduction were dropped they would continue into the event loop
+while the workers aborted — a hang, not a failure.
+
+Its 40 GiB is chosen so the over-commit holds whatever the peer count and
+card: `40 x 2 = 80` GiB exceeds both a 40 GB card's ~34.8 usable and an 80 GB
+card's ~72. A smaller figure passes vacuously — `15 x 2 = 30` *fits* in 34.8.
+`judge_abort` also requires `usable on that device` in the log, not bare
+`exceeds`, which matches `allocation exceeds admission estimate` and two
+others; such a log was measured passing the case.
+
 `multirun-3-runs` is `expect='hang-known'`: psana2 hangs at the second run of
 any multi-run MPI job, which is pre-existing on the base branch. The case
 passes while the bug is present and **fails if the job completes**, so the
@@ -112,19 +138,100 @@ suite says when to promote it. See
 
 ## Results
 
-Single node, jobs 40888078 and 40889090 on an A100 pair: **13/13 PASS**,
+**Production code: `b0103a3ad`. Harness: this commit.** Both, because they
+differ: the runs used a tree already carrying these validation changes, so
+`b0103a3ad` alone will not reproduce the table. Nothing under
+`psana/psana/gpu/` or `psana/psana/psexp/` differed when they ran, which is
+what the production figures rest on.
+
+| Suite | Job | Node(s) | Result |
+| --- | --- | --- | --- |
+| single node | 41602553 | sdfampere004 | **13/13** |
+| two nodes | 41519162 | sdfampere038, sdfampere040 | **PASS**, 4/4 |
+
+Two nodes, job 41519162: both EB topologies pass, and the two-EB one is
+**observed** rather than requested — `roles: {bd: 7, eb: 2, smd0: 1}` with
+`eb_nodes: 2` at 10 ranks, against `{bd: 8, eb: 1, smd0: 1}` for the
+single-EB case. 13 events and `all_pass` in both. This is the only place the
+two-EB path runs: `PS_EB_NODES` is capped at the distinct host count for mfx
+experiments, so a single-node allocation cannot produce it however many are
+requested.
+
+### Per case, single node
+
+| Case | Ranks | Expect | Result | Elapsed |
+| --- | --- | --- | --- | --- |
+| `discovery-eb1` | 9 | clean | PASS | 10.4s |
+| `discovery-eb2` | 9 | clean | PASS | 9.2s |
+| `discovery-eb2-contig` | 9 | clean | PASS | 9.3s |
+| `discovery-eb3` | 9 | clean | PASS | 9.2s |
+| `discovery-uneven` | 8 | clean | PASS | 8.7s |
+| `calib-shared` | 4 | clean | PASS | 195.3s |
+| `calib-2-gpus` | 9 | clean | PASS | 195.5s |
+| `calib-reversed-mask` | 6 | clean | PASS | 195.4s |
+| `calib-budget-fits` | 4 | clean | PASS | 194.7s |
+| `calib-budget-over` | 4 | abort | PASS | 190.0s |
+| `multirun-3-runs` | 6 | hang-known | PASS | 150.0s |
+| `fail-select-device` | 5 | abort | PASS | 10.9s |
+| `fail-follower-import` | 4 | clean | PASS | 6.7s |
+
 `collective_order_diverged: 0` in every case.
+
+A run can also stop short: the suite emits `CASE_SKIP` rather than be killed
+mid-case and lose the VERDICT. **A `SKIP` is neither a failure nor a pass** —
+the verdict reports `INCOMPLETE` and exits nonzero. A healthy ~20-minute run
+never skips.
+
+`calib-budget-over` passed in 190.0s against a 300s budget, exit 1, with the
+expected error on the BD workers —
+
+    GpuPlacementError: gpu_memory_budget_gb=40.00 GiB x 2 peers on
+    sdfampere004 ... = 80.00 GiB exceeds the 34.80 GiB usable on that device
+
+which also shows why the figure is 40 and not 15: the card reports
+**34.80 GiB** usable to **2** peers, so `15 x 2 = 30` would have *fit* and
+the case would have passed without provoking an abort.
+
+**Why an abort case takes ~190s.** Discovery is reached ~90s in and decides
+in under 2s, so nearly all of the elapsed time is either side of it. Measured
+back-to-back on `sdfampere004` in job 41602553:
+
+| | setup | discovery | case total |
+| --- | ---: | ---: | ---: |
+| `calib-budget-fits` | t+90.7s | placement t+92.4s | 194.7s |
+| `calib-budget-over` | t+90.5s | aborts ~t+92s | 190.0s |
+
+The two spend about the same ~100s after discovery, but `fits` spends it
+calibrating 13 events while `over` has already aborted — so for `over` that
+window is MPI/PRRTE teardown and process exit, not a rank waiting. Nothing
+waits out `SETUP_TIMEOUT_S`: a collective that slow logs a warning, and the
+log has none. `fail-select-device` aborts in ~11s because it calls
+`discover_peers` directly and never builds a `DataSource`.
+
+That is why `ABORT_SETUP_S` exists: promptness has to be judged from when the
+abort becomes reachable, not from launch. The case first ran with a 120s
+timeout copied from `fail-select-device` and was killed mid-setup, reporting
+a hang that was only the timeout expiring — and `judge_abort`'s
+half-the-timeout clause made it unpassable anyway, since 60s is below the
+setup cost.
+
+This run used `SBATCH_ACCOUNT=lcls:prjdat21 SBATCH_QOS=normal`. Earlier
+attempts on the default `preemptable` QoS were evicted three times mid-suite.
+
+Earlier runs are not cited as evidence for this head. Jobs 40888078, 40889090
+and 40889879 (Oct 15) predate `4b068a867`, `b5cda0dae` and `b0103a3ad`, and
+the last of those moved the capacity `MIN` off `psana_comm` and replaced the
+peer-count `MAX` with the budget-verdict `MAX` — a change to the setup
+collective sequence, which is exactly what a hardware run is for. Job
+40888078 also **FAILED** (`sacct` exit 1:0), so the previous "13/13 PASS"
+line citing it was wrong on its own terms.
 
 Discovery: two devices, `aggregate_claim` 1.0 on each, with `discovery-uneven`
 giving groups of 3 and 4. Every record also reports what EB-group rank
 arithmetic would have produced, which reaches 2.0x the device at
 `PS_EB_NODES=2`.
 
-The value check, 13 events per case, every pixel equal to `det.raw.calib()`:
-
-    calib-shared         4 ranks, 1 GPU   13 events   205s
-    calib-2-gpus         9 ranks, 2 GPUs  13 events   195s
-    calib-reversed-mask  6 ranks, mask 1,0  13 events  196s
+The value check, 13 events per case, every pixel equal to `det.raw.calib()`.
 
 `calib-shared` narrows the mask to one card, so all four BD workers are peers
 and the pedestals and pixel_gain -- 384 MiB for this detector -- come from a

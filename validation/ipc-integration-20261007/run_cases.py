@@ -10,6 +10,12 @@ outcome is parsed from the log rather than inferred from an exit status --
 Usage, from the repository root inside a GPU allocation::
 
     python validation/ipc-integration-20261007/run_cases.py
+
+Naming cases runs only those; the verdict says it was a subset. An unknown
+name is refused, since a typo would otherwise look like a clean run::
+
+    python .../run_cases.py calib-budget-over
+    sbatch .../run.sbatch calib-budget-over      # sbatch forwards its args
 """
 import json
 import os
@@ -24,7 +30,16 @@ import time
 HERE = pathlib.Path(__file__).resolve().parent
 REPO = HERE.parents[1]
 TESTS = REPO / 'psana/psana/tests/gpu/integration'
-LOGS = HERE / f'cases-{time.strftime("%Y%m%d-%H%M%S")}'
+# Job id in the directory name: a killed attempt leaves a partial directory
+# beside the complete one, and the %j log is overwritten on restart.
+# (_TRY is set by a requeue -- node failure or scontrol -- not by preemption,
+# which cancels outright. See run.sbatch.)
+_JOB = os.environ.get('SLURM_JOB_ID')
+_TRY = os.environ.get('SLURM_RESTART_COUNT')
+_TAG = time.strftime('%Y%m%d-%H%M%S')
+if _JOB:
+    _TAG += f'-job{_JOB}' + (f'-try{int(_TRY) + 1}' if _TRY else '')
+LOGS = HERE / f'cases-{_TAG}'
 # MPI session directories, which are large and transient, go somewhere
 # without a quota. SCRATCH if the site sets it, else /tmp.
 SESSIONS = pathlib.Path(
@@ -49,6 +64,8 @@ CALIB = TESTS / 'mpi_calib_pixel_exact.py'
 #                 clause is the point: a correct abort and a regressed
 #                 deadlock produce near-identical logs, and without it a hang
 #                 would pass.
+#                 ABORT_REASONS below additionally pins WHICH failure, so a
+#                 case cannot pass on an unrelated abort.
 # expect='hang-known'
 #                 the job must hang at a KNOWN pre-existing bug, which the
 #                 case is the reproducer for. Passing means the bug is still
@@ -60,6 +77,22 @@ CALIB = TESTS / 'mpi_calib_pixel_exact.py'
 # that legitimately take longer -- not as a way to accommodate a slow start,
 # which is what an abort case's timing budget is there to catch.
 DEFAULT_TIMEOUT = 180
+
+# A substring the log must contain, so an abort case cannot pass on an
+# unrelated failure: an OOM or a missing file also exits nonzero with 'Abort'.
+ABORT_REASONS = {
+    'fail-select-device': 'cannot select a GPU',
+    # Not bare 'exceeds' -- that also matches 'allocation exceeds admission
+    # estimate' and two others, and such a log was measured passing this case.
+    'calib-budget-over': 'usable on that device',
+}
+
+# Setup an abort case pays before its failure is reachable, added to the
+# promptness budget. A real DataSource needs ~89s before discovery runs, so
+# without this the abort looks that much "too slow" and can never pass.
+ABORT_SETUP_S = {
+    'calib-budget-over': 90,
+}
 CASES = (
     ('discovery-eb1',        9, DISCOVERY,
      ['--n-eb', '1', '--expect-hosts', '1', '--expect-devices', '2'], False, 'clean'),
@@ -117,6 +150,26 @@ CASES = (
     # Replaces masked_device.sbatch, which tested this as a standalone job.
     ('calib-reversed-mask',  6, CALIB, ['--expect-events', '13'], '1,0',
      'clean', 420),
+    # An EXPLICIT gpu_memory_budget_gb, which nothing else sets:
+    # mpi_placement_discovery always passes explicit_limit_bytes=0. Discovery
+    # validates budget x peers against this device's capacity and replaces
+    # usable_bytes with the claim, so both halves need real hardware.
+    #
+    # FITS, and --expect-budget-honoured checks it was APPLIED: a job that
+    # accepted the ceiling then ignored it gives identical pixels.
+    ('calib-budget-fits',    4, CALIB,
+     ['--expect-events', '13', '--budget-gb', '2',
+      '--expect-budget-honoured'], True, 'clean', 420),
+    # OVER-COMMITS, so every role must abort -- smd0 and EB cannot evaluate
+    # any device's claim and take the verdict from the budget-verdict MAX.
+    #
+    # 40 GiB because the over-commit must hold whatever the peer count and
+    # card: 40 x 2 = 80 exceeds both a 40GB card's ~34.8 usable and an 80GB
+    # card's ~72. 15 would have FIT here (15 x 2 = 30 < 34.8) and passed
+    # without provoking anything. No --expect-events: it aborts before any
+    # event exists. 420s not 120s -- see ABORT_SETUP_S.
+    ('calib-budget-over',    4, CALIB,
+     ['--budget-gb', '40'], True, 'abort', 420),
     # Per-run rediscovery: run N+1 must not be sized against a card that
     # still holds run N's memory. This is the coverage review findings N1, N2
     # and finding 1 asked for -- and it cannot pass yet, because psana2 hangs
@@ -193,7 +246,9 @@ def run_case(tag, ranks, script, extra, one_gpu, expect='clean',
 
     text = log.read_text()
     if expect == 'abort':
-        ok, detail = judge_abort(text, status, elapsed, timeout, timed_out)
+        ok, detail = judge_abort(text, status, elapsed, timeout, timed_out,
+                                 reason=ABORT_REASONS.get(tag),
+                                 setup_s=ABORT_SETUP_S.get(tag, 0))
     elif expect == 'hang-known':
         ok, detail = judge_known_hang(text, timed_out)
     elif timed_out:
@@ -287,20 +342,18 @@ def judge_known_hang(text, timed_out):
     return True, detail
 
 
-def judge_abort(text, status, elapsed, timeout, timed_out):
-    """An abort case passes only if the job died, and died quickly.
-
-    Three conditions, all required:
-
-    * it did not time out -- a deadlock is the regression being guarded
-      against, and it leaves a log almost identical to a clean abort;
-    * the exit status is nonzero, so the failure propagated to the launcher;
-    * it finished well inside the timeout, so "aborted" is distinguishable
-      from "nearly hung".
-    """
+def judge_abort(text, status, elapsed, timeout, timed_out, reason=None,
+                setup_s=0):
+    """Passes only if the job died, died quickly, and died of the right thing:
+    no timeout, nonzero exit, ``reason`` in the log, and prompt once the
+    failure was reachable. ``setup_s`` is work that must precede the failure
+    (DataSource setup), added to the budget so the message stays comparable
+    with the wall clock."""
     detail = {'expected': 'abort', 'timed_out': timed_out}
-    budget = 0.5 * timeout
+    budget = 0.5 * timeout + setup_s
     detail['time_budget'] = budget
+    if setup_s:
+        detail['setup_allowance'] = setup_s
     aborted = ('MPI_ABORT' in text or 'Abort' in text
                or 'GpuPlacementError' in text)
     detail['abort_evidence'] = aborted
@@ -316,12 +369,21 @@ def judge_abort(text, status, elapsed, timeout, timed_out):
         detail['error'] = f'exited {status}; the failure did not propagate'
         return False, detail
     if elapsed > budget:
-        detail['error'] = (f'took {elapsed}s of a {timeout}s timeout; too slow '
-                           'to distinguish an abort from a near-hang')
+        allowance = f' (half the timeout + {setup_s}s setup)' if setup_s else ''
+        detail['error'] = (f'took {elapsed}s against a {budget:.0f}s budget'
+                           f'{allowance}; too slow to distinguish an abort '
+                           'from a near-hang')
         return False, detail
     if not aborted:
         detail['error'] = 'no abort or placement error in the log'
         return False, detail
+    if reason is not None:
+        detail['reason_required'] = reason
+        if reason not in text:
+            detail['error'] = (f'aborted, but {reason!r} is not in the log; '
+                               'the job may have died of something other than '
+                               'the injected failure')
+            return False, detail
     return True, detail
 
 
@@ -395,15 +457,62 @@ def parse(text):
     return ok, detail
 
 
-def main():
+def select(names):
+    """Named cases in CASES order, or all of them. An unknown name is refused:
+    a typo would otherwise run a smaller suite and still print PASS."""
+    if not names:
+        return list(CASES)
+    known = {case[0] for case in CASES}
+    unknown = [n for n in names if n not in known]
+    if unknown:
+        print(f'unknown case(s): {", ".join(unknown)}', file=sys.stderr)
+        print(f'known: {", ".join(sorted(known))}', file=sys.stderr)
+        raise SystemExit(2)
+    wanted = set(names)
+    return [case for case in CASES if case[0] in wanted]
+
+
+def main(argv=None):
+    cases = select(list(argv if argv is not None else sys.argv[1:]))
     LOGS.mkdir(parents=True, exist_ok=True)
     print(f'LOG_DIRECTORY {LOGS}', flush=True)
     print(f'SESSION_DIRECTORY {SESSIONS}', flush=True)
-    results = {}
+    if len(cases) != len(CASES):
+        # Also repeated in the verdict, so a partial log cannot later be read
+        # as a full-suite pass.
+        print(f'SUBSET running {len(cases)} of {len(CASES)} cases: '
+              f'{", ".join(c[0] for c in cases)}', flush=True)
+    if _TRY:
+        print(f'RESTART attempt {int(_TRY) + 1} of job {_JOB} (requeued, '
+              'not preempted); earlier partial logs are in a previous '
+              'cases-* directory. Every case re-runs from the start.',
+              flush=True)
+    # Stop early rather than be killed mid-case: every case hitting its
+    # timeout is ~58 min against a 35-min wall clock, and a killed job loses
+    # the VERDICT. SLURM_JOB_END_TIME is set on S3DF (measured, job 41529773);
+    # unset means unbounded, so run.sbatch prints it to prove it was there.
+    deadline = None
+    end_time = os.environ.get('SLURM_JOB_END_TIME')
+    if end_time:
+        try:
+            # 60s for teardown and the verdict; each case's own timeout
+            # is added separately below.
+            deadline = float(end_time) - 60
+        except ValueError:
+            deadline = None
+
+    results, skipped = {}, []
     try:
-        for case in CASES:
+        for case in cases:
             tag, ranks, script, extra, one_gpu, expect = case[:6]
             timeout = case[6] if len(case) > 6 else DEFAULT_TIMEOUT
+            if deadline is not None and time.time() + timeout > deadline:
+                # Skipped, not failed: an unrun case is evidence of nothing.
+                skipped.append(tag)
+                print(f'CASE_SKIP {tag} would need {timeout}s and the job '
+                      f'has {deadline - time.time():.0f}s left; stopping so '
+                      'the verdict is printed', flush=True)
+                continue
             ok, _ = run_case(tag, ranks, script, extra, one_gpu,
                              expect=expect, timeout=timeout)
             results[tag] = ok
@@ -417,8 +526,18 @@ def main():
           flush=True)
     for tag, ok in results.items():
         print(f'  {"PASS" if ok else "FAIL"}  {tag}', flush=True)
-    overall = all(results.values())
-    print(f'  OVERALL: {"PASS" if overall else "FAIL"}', flush=True)
+    for tag in skipped:
+        print(f'  SKIP  {tag}  (no wall clock left)', flush=True)
+    # A skip is not a pass: report INCOMPLETE and exit nonzero, or ending
+    # early becomes the cheapest way to go green.
+    overall = all(results.values()) and not skipped
+    notes = []
+    if len(cases) != len(CASES):
+        notes.append(f'SUBSET: {len(cases)} of {len(CASES)} cases requested')
+    if skipped:
+        notes.append(f'INCOMPLETE: {len(skipped)} case(s) never ran')
+    scope = f' ({"; ".join(notes)}; not a full-suite result)' if notes else ''
+    print(f'  OVERALL: {"PASS" if overall else "FAIL"}{scope}', flush=True)
     return 0 if overall else 1
 
 
