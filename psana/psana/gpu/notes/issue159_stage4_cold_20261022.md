@@ -105,3 +105,12 @@ per-file pre/post residency, per-BD read/budget counters, setup/preparation time
 provenance and result-log hashes. Means/stds were independently recomputed from
 individual timed rows and matched the frozen harness summary. No pixel
 preflight or cache-preparation time enters the reported loop statistics.
+
+## Historical absolute throughput remains unresolved
+
+The near-zero Stage 4/Stage 3 difference does not explain the older ~350 Hz
+cold baseline versus ~177 Hz here. The [historical audit](issue159_cold_rate_history_20261022.md)
+traces ~390 Hz on October 16, ~300 Hz October 17 and ~261 Hz October 19, with
+unchanged runtime source across the first two drops. The latest additional
+loss appears in read-future wait time. A matched old/current comparison is
+needed before attributing the absolute gap to a code revision.

@@ -125,6 +125,17 @@ checks. Full logs and per-sample records remain under
 - Pre/post stack: `prepost-stack-independent-kvikio2610-20261017-r1/job-41173787/`.
 - September/post stack: `postmerge-ab-1gpu4bd-kvikio2610-20261015-r1/job-40882509/`.
 
+### October 19–22 follow-up
+
+The [issue159 historical audit](../../notes/issue159_cold_rate_history_20261022.md)
+records later cold 4BD/1GPU rates: ~261 Hz before PR187 on October 19 and
+~177 Hz for both Stage 3 and Stage 4 on October 22. Payload/reference hashes and
+read counts match the campaigns here. Increased read-future waits dominate the
+extra loop time. These different-node observations do not locate a causal
+commit; matched incremental success must not be read as preservation of the
+September absolute rates. A common-harness old/current cold comparison remains
+needed to resolve the gap.
+
 ## Full JF
 
 Job **39369005**, `sdfampere035`, completed in **3h07m01s**, exit 0.
