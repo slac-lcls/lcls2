@@ -108,7 +108,7 @@ class CnfParser:
 
         # Import Config class if needed
         try:
-            from psdaq.slurm.config import Config
+            from psalg.slurm.config import Config
             namespace['Config'] = Config
         except ImportError:
             pass
