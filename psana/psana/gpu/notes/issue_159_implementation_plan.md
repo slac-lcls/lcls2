@@ -1,9 +1,32 @@
 # Issue 159: alignment-safe GPU reads
 
-Updated 2026-10-21. Status: PR #187 comparison completed; A frozen; stage-2
+Updated 2026-10-22. Status: PR #187 comparison completed; A frozen; stage-2
 measured overhead accepted by Mona for now; stage-3 focused validation and warm
-screen complete; stage-4 safe field views implemented, focused checks passed, and first staged screen failed cache preparation; retry 41602068 also failed its pre-timing cache gate. This document records the agreed scope, staged implementation,
+screen complete; stage-4 safe field views implemented, focused checks passed, and first staged screen failed cache preparation; retry 41602068 also failed its pre-timing cache gate; cold screen 41604951 is submitted. This document records the agreed scope, staged implementation,
 dependency expectations, and acceptance gates.
+
+## Performance policy update — October 22
+
+Mona requested **cold performance screens from now on**, with standard deviations
+for A and B. This supersedes warm-screen requirements below for future runs;
+historical warm results remain evidence, not a prerequisite to the next stage.
+Stage private prefixes once on node-local `/lscratch`. Before **every** timed
+sample, evict only those private files and verify each measured prefix is at
+most 1% resident. Record residency after timing without eviction or a cold
+postcondition. Do not mix cold and warm results.
+
+Use four balanced AB/BA pairs per bulk condition for each comparison: **16
+10k-event samples**, yielding n=4 independently measured runs for A and B in
+each of bulk-off and bulk-on. Report individual samples, each variant's mean
+and **sample standard deviation (ddof=1)** for loop seconds and events/s,
+plus median paired B/A loop-time changes and spread. Do not pool variants or
+bulk conditions. These standard deviations describe run-to-run variation, not
+standard errors or confidence intervals. Field/gather microbenchmarks retain
+their own CUDA warmup procedure; disk-cache policy is a separate control.
+
+The [Stage 4 cold screen](issue159_stage4_cold_20261022.md) is the first run
+under this policy. Cold results cannot establish unchanged warm performance;
+that limitation stays explicit without blocking cold-screen progress.
 
 ## Goal summary
 
@@ -142,10 +165,10 @@ reviewable commits so a measured change can be isolated.
 | 1. Establish baseline | Finish focused baseline tests and address audit; freeze microbenchmarks and a short staging screen | Recorded PR #187 comparison plus safe-address evidence and baseline correctness inventory; no additional A/A campaign | Complete: A frozen; aligned baseline and old unaligned fault recorded; real-input address audit passed; inherited failures inventoried |
 | 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen document overhead for acceptance | Implemented; Mona accepted the +0.98%/+1.30% bulk-on cost for now and authorized stage 3; broad-suite failures remain tracked |
 | 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Implemented: focused checks passed; native isolation repaired; private-cache reset remedy applied after the two cache-gated attempts; screen 41400127 completed all eight warm samples with 100% pre/post residency; focused stage checks complete |
-| 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Implemented; 399 CPU / 323 CUDA / 305 memcheck checks passed; field overhead measured; [screen 41494246](issue159_stage4_20261021.md) failed its pre-timing cache gate; [remedy follow-up](issue159_cache_fallout_20261022.md): existing method passed on sdfampere036/042; NUMA alternative failed in 41596700; retain existing preparation; retry 41602068 failed on sdfampere038 at 79.69% residency, with zero timed samples; performance acceptance open |
+| 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Implemented; 399 CPU / 323 CUDA / 305 memcheck checks passed; field overhead measured; [screen 41494246](issue159_stage4_20261021.md) failed its pre-timing cache gate; [remedy follow-up](issue159_cache_fallout_20261022.md): existing method passed on sdfampere036/042; NUMA alternative failed in 41596700; retain existing preparation; retry 41602068 failed on sdfampere038 at 79.69% residency, with zero timed samples; cold screen 41604951 submitted; performance acceptance open |
 | 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
 | 6. Integrated correctness | Sanitizer, field/gather/raw/ownership/pixel-exact tests, serial and MPI lifecycle coverage on integrated #187, required core groups | Correctness gates pass; inherited dependency/environment blockers are explicitly separated and resolved or accepted by Mona | Pending |
-| 7. Final performance | Repeat full 32-sample staged campaign against unchanged integrated base; field/API benchmarks separately; incremental comparisons to locate any remaining slowdown | Complete paired samples and correctness/cache/provenance gates; no unexplained repeatable safe-path regression; fallback costs reported separately | Pending |
+| 7. Final performance | Repeat cold staged campaign against unchanged integrated base (four pairs per bulk setting; 16 samples); field/API benchmarks separately; incremental comparisons to locate any remaining slowdown | Complete paired samples and correctness/cache/provenance gates; no unexplained repeatable safe-path regression; fallback costs reported separately | Pending |
 | 8. Documentation and review | API copy caveat, concise evidence report, final dependency reconciliation and fix-only review diff | Reviewable #159 change and reproducible validation; no unsubstantiated completion/performance claims | Pending |
 
 ## Regression matrix
@@ -233,15 +256,15 @@ validation. No numerical regression tolerance has been agreed.
    semantics; defer the optional two-copy optimization until measurements
    justify a separate change.
 5. **Use short screens, then full confirmation.** For stages that
-   affect event processing, run warm/bulk-off and warm/bulk-on with two balanced
-   A/B pairs each (eight 10k-event samples), preceded by correctness preflights.
-   Stage 2 expands this to 16 samples to include the B0/B1 alignment comparison
-   specified below; it replaces, rather than duplicates, that stage's screen.
+   affect event processing, run cold/bulk-off and cold/bulk-on with four balanced
+   A/B pairs each (16 10k-event samples), preceded by correctness preflights.
+   A new B0/B1 alignment comparison, when required, is a separate matched
+   comparison under the same cold policy.
    Retain the same staging/hash/residency gates. This is an early diagnostic,
-   not acceptance or proof that cold performance is preserved. The dense-gather
+   not final acceptance or proof that warm performance is preserved. The dense-gather
    workload does not exercise field access, so add the focused field/API timing
-   cases rather than relying on staging rates alone. Run additional cold checks
-   early if read/admission behavior or a measured regression warrants them.
+   cases rather than relying on staging rates alone. Investigate repeatable regressions
+   with focused read/admission or compute diagnostics.
 6. **Attribute changes without resetting away regressions.** Compare each
    candidate to the preceding accepted stage to locate new overhead, and to
    the unchanged integrated reference to detect cumulative drift. Rerun both
@@ -330,8 +353,8 @@ record the actual aligned/unaligned row counts. Use mixed-address fixtures
 where whole-buffer shifting cannot give every row the intended alignment.
 
 Run all cases on the same physical A100 with four BDs, the same staged prefixes,
-batch 20, depth 1, eight read workers, 1 MiB tasks, and 6 GiB/BD. The first
-screen uses warm cache and both bulk settings: two balanced pairs for A0/B0
+batch 20, depth 1, eight read workers, 1 MiB tasks, and 6 GiB/BD. The original
+Stage 2 screen used warm cache and both bulk settings: two balanced pairs for A0/B0
 and two for B0/B1 per setting (**16 timed 10k-event samples**). Each pair runs
 adjacently, reverses order on its second repetition, and prepares/verifies cache
 state before each sample. Every case/bulk combination gets a separate 200-event
@@ -347,10 +370,10 @@ Keep profiler diagnostics separate from throughput runs.
 
 Stage 2 passes only after correctness checks and investigation of repeatable
 aligned-path regressions. Report the large-image fallback cost explicitly;
-there is no agreed numerical fallback penalty limit. The final 32-sample safe
-data campaign remains required. Expand the shifted-input comparison to cold
-cache if the early results indicate a read-path effect or before making broad
-end-to-end unaligned-performance claims. Direct field-view copies belong to
+there is no agreed numerical fallback penalty limit. Final cumulative safe-data
+confirmation remains required under the current cold policy (16 samples). Use
+a matched cold shifted-input comparison before making broad end-to-end
+unaligned-performance claims. Direct field-view copies belong to
 later stages and are measured separately.
 
 ### Staged end-to-end campaign
@@ -367,9 +390,11 @@ later stages and are measured separately.
   performance; separate integrated correctness tests exercise shared constants.
 - Audit consumed addresses to ensure baseline A reads safe data. Run separate
   200-event correctness preflights.
-- Bulk off/on x cold/warm x four balanced AB/BA pairs = **32 fresh-process timed
-  samples**. Verify each measured prefix is below 1% resident before cold samples
-  and above 99% resident for warm samples, including required post-run checks.
+- Bulk off/on x cold x four balanced AB/BA pairs = **16 fresh-process timed
+  samples** under the October 22 policy. Verify each measured prefix is at most
+  1% resident before every sample; record post-run residency without eviction.
+  Report mean and sample standard deviation for A/B rates and loop times
+  separately within each bulk condition.
 - Preserve timestamps, payload/request counts, device/peer placement, budget and
   drained-resource gates. Record physical GPU UUID/PCI identity and runtime paths.
 - Report individual samples, median paired loop-time changes and spread, events/s,
