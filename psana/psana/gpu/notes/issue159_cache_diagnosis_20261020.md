@@ -5,7 +5,9 @@ in **13m17s**, exit `0:0`. A one-time private-file cache reset followed by the
 existing warmer passed the residency checks. The remedy is now integrated in
 [screen retry 41400127](issue159_stage3_cache_reset_retry_20261020.md), which
 completed on `sdfampere030`: all eight timed samples passed with 100% residency
-before and after timing. The cache remedy is validated in the actual screen.
+before and after timing. That screen validated the remedy on its node. The subsequent Stage 4 screen
+failed after a successful private reset; see the [October 22 follow-up](issue159_cache_fallout_20261022.md)
+for its limitation and the controlled NUMA-worker probe.
 
 ## Observed failure
 

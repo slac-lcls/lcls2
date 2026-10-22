@@ -1792,7 +1792,7 @@
       }
     ]
   },
-  "screen_status": "not yet complete",
+  "screen_status": "failed before first timed sample: s005 97.7243656% residency after private reset and three warm repairs; job exit 1:0; four pixel preflights passed",
   "imports-A.jsonl": [
     {
       "rank": 0,
