@@ -118,9 +118,9 @@ void _reduce(unsigned* const        __restrict__ state,
 
     __syncthreads();    // Wait for all threads to complete so that thread 0 can't increment blockCount before they're done
     if (threadIdx.x == 0) {
-      __threadfence();                                    // Ensure global memory is updated before the following
-      unsigned value = atomicInc(&blockCount, gridDim.x); // Thread 0 signals that it is done
-      isLastBlockDone = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last  block to be done
+      __threadfence();                                        // Ensure global memory is updated before the following
+      unsigned value = atomicInc(&blockCount, gridDim.x - 1); // Wraps to 0 for the next launch
+      isLastBlockDone = (value == (gridDim.x - 1));           // Thread 0 determines if its block is the last block to be done
     }
     if (isLastBlockDone) {
       if (threadIdx.x == 0) {
