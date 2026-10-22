@@ -1,6 +1,5 @@
 import typer
 from typing_extensions import Annotated
-from psdaq.procmgr.ProcMgr import deduce_platform
 
 
 def _get_platform(in_file):
@@ -16,7 +15,11 @@ def _get_platform(in_file):
                 parts = s.split("=", 1)
                 if len(parts) == 2:
                     return parts[1].strip().strip("'\"")
+    # Imported lazily: psdaq is only installed by the DAQ build, and its
+    # ProcMgr needs telnetlib, which is gone from the stdlib in Python 3.13.
     try:
+        from psdaq.procmgr.ProcMgr import deduce_platform
+
         return deduce_platform(in_file)
     except Exception:
         return "0"

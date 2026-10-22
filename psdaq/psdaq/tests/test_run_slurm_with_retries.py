@@ -4,7 +4,7 @@ import shutil
 import logging
 import pytest
 
-from psdaq.slurm.utils import run_slurm_with_retries  # Replace with the actual module path
+from psalg.slurm.utils import run_slurm_with_retries  # Replace with the actual module path
 
 logger = logging.getLogger(__name__)
 

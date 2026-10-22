@@ -21,8 +21,8 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox, QTableWidget
 import subprocess
 
 
-from psdaq.slurm.main import Runner
-from psdaq.slurm import ui_procStat
+from psalg.slurm.main import Runner
+from psalg.slurm import ui_procStat
 
 __version__ = "0.6"
 

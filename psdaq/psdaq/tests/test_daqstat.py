@@ -4,7 +4,7 @@ import pytest
 
 pytest.importorskip("PyQt5")
 
-from psdaq.slurm import daqstat
+from psalg.slurm import daqstat
 
 
 @pytest.mark.parametrize("option", ["-h", "-v", "--help", "--version"])

@@ -212,9 +212,6 @@ install_subdir(
     'trigger/TriggerLookup.pyx',
     'trigger/XGmdTebData.pxd',
     'eb/meson.build',
-    'slurm/readme.md',
-    'slurm/slurm.cnf',
-    'slurm/xthi.c',
     'hsd/meson.build',
   ],
 )
