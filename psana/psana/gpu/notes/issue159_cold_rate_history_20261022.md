@@ -11,6 +11,16 @@ The Stage 4-versus-Stage 3 result remains valid as an incremental comparison.
 It does not establish preservation of the historical 350 Hz baseline or rule
 out cumulative effects before Stage 4. This broader question remains open.
 
+## Subsequent hardware finding
+
+A [live storage/NUMA inventory](lscratch_numa_012_027_20261022.md) found that the
+391 Hz node 012 has two Kioxia Gen4 ×4 SSDs, while the 177 Hz node 027 has two WD
+Gen3 ×4 SSDs. Both pairs attach to NUMA 5; GPU 0 attaches to NUMA 3 on the other
+socket. Device-rated sequential throughput differs by about 2.1× and is
+consistent with most of the observed gap. This is a concrete hardware confounder,
+not a controlled proof that all software/NUMA effects are absent. The intervening
+nodes in the chronology below have not been inventoried by this check.
+
 ## When lower rates appear in the records
 
 All rows below are 10,000 events, JF-only dense raw gathering, 4 BDs/1 GPU,

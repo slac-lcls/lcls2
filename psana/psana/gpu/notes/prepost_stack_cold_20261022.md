@@ -1,7 +1,7 @@
 # Pre/post-stack cold comparison — October 22, 2026
 
-Status: job **41614567** submitted; waiting for resources at the last check.
-No timed results are available yet. This comparison was requested
+Status: job **41614567** completed on **sdfampere027**, exit 0, in **44m03s**.
+All 16 timed samples and final dependency/hash checks passed. This comparison was requested
 following the historical cold-rate audit. It compares the pre/post review stack,
 before PR187 and the issue159 alignment changes.
 
@@ -91,6 +91,15 @@ September used **KvikIO 24.08.02 / CuPy 13.6.0**, whereas this run uses
 **26.10.00 / 14.0.1**. The fast October 16 post-stack result already used these
 newer versions. No package upgrades or local KvikIO patches were made for this
 comparison. GPU driver and loaded CUDA library evidence will come from the job.
+
+## Completed result and hardware follow-up
+
+Both arms reproduced about 177 Hz. Post-stack B's median-loop rates are
+177.17 Hz bulk off and 176.96 Hz bulk on. Final dependency comparisons and all
+2,107 frozen hashes passed. The [storage/NUMA follow-up](lscratch_numa_012_027_20261022.md)
+found materially slower SSD hardware on 027 than the earlier 391 Hz node 012;
+their physical GPU/storage NUMA layout matches. Full A/B mean/std values remain
+in `screen/job-41614567/summary.json`.
 
 ## Interpretation and artifacts
 
