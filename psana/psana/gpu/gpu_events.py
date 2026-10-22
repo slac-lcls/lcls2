@@ -94,9 +94,30 @@ class _GpuMemStats:
         raw_input    KvikioGpuReader per-slot input buffers
         xtc_config   run-scoped flattened Configure tables
         xtc_slots    per-slot dgram, ShapesData, and field-locator tables
+        constants    task calibration constants this rank OWNS and is
+                     charged for: the 'task-constants' ledger entries, plus
+                     an IPC owner's un-pooled block, which reserve() charges
+                     without a ledger record
         cupy_pool    CuPy memory-pool total committed bytes
         device_used  bytes in use according to CUDA (total - free)
         device_total total device memory
+
+    Budget categories, from the allocation ledger:
+        committed    bytes currently reserved against the budget
+        held         bytes an admission hold has reserved for future use
+        retained     the RESIDUAL: committed minus every category above, so
+                     it is owned storage this snapshot cannot attribute --
+                     the figure to watch for a leak. Omitting a category
+                     makes identified memory look unattributed; subtracting
+                     one twice hides a leak, so a negative raw value is
+                     logged at DEBUG before the clamp to 0.
+        failed       storage held by uploads whose stream completion was
+                     never established
+        borrowed     bytes this rank READS BUT DOES NOT OWN and is not
+                     charged for: an IPC mapping of a peer's constants. 0
+                     without sharing. Outside ``committed``, so never part
+                     of the ``retained`` subtraction -- summing the two
+                     double-counts one copy against owner and importers.
 
     Pinned-host category:
         pinned       framework-owned host staging
@@ -107,6 +128,7 @@ class _GpuMemStats:
     raw_input: int = 0
     xtc_config: int = 0
     xtc_slots: int = 0
+    constants: int = 0
     committed: int = 0
     held: int = 0
     retained: int = 0
@@ -127,10 +149,12 @@ class _GpuMemStats:
 
     def log(self):
         """Emit a structured INFO log summarising the snapshot."""
-        _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s borrowed=%s pool_used=%s",
+        _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s "
+                  "constants=%s borrowed=%s pool_used=%s",
                   self.label, self._mb(self.committed), self._mb(self.held),
                   self._mb(self.retained), self._mb(self.failed),
-                  self._mb(self.borrowed), self._mb(self.cupy_used))
+                  self._mb(self.constants), self._mb(self.borrowed),
+                  self._mb(self.cupy_used))
         _log.info(
             "GPU mem [%s] raw_input=%s  xtc_config=%s  xtc_slots=%s  "
             "cupy_pool=%s  device_used=%s / %s  pinned=%s",
@@ -233,12 +257,47 @@ class GpuEventManager:
         output_d2h = getattr(self, '_output_d2h', None)
         if output_d2h is not None:
             s.pinned += output_d2h.pinned_bytes
+        constants = getattr(self, '_task_constants', None)
+        # Read, not owned: an IPC mapping of a peer's constants. Not charged
+        # to the budget, so it must NOT enter the `retained` subtraction.
+        s.borrowed = int(getattr(constants, 'imported_bytes', 0) or 0)
+        # Owned constants come from two disjoint sources, and the ledger
+        # alone misses the rank holding the physical shared copy:
+        # ipcGetMemHandle needs a bare cudaMalloc pointer, so an IPC owner
+        # allocates outside the pool and charges the budget with reserve(),
+        # leaving no ledger record. (Routing _OwnedBlock through
+        # reserve_allocation would fix that at the source -- but then drop
+        # this term, or the block is counted twice.)
+        #
+        # `shared_bytes - imported_bytes` is the owned share for either role
+        # without asking which: an owner imports nothing, and a follower's
+        # shared_bytes IS its imported bytes, which are `borrowed` above.
+        s.constants = max(
+            0,
+            int(getattr(constants, 'shared_bytes', 0) or 0)
+            - int(getattr(constants, 'imported_bytes', 0) or 0))
         budget = getattr(self, '_gpu_budget', None)
         if budget is not None:
             from .gpu_allocation import backing_capacity
             s.committed, s.held = budget.committed(), budget._held
             s.allocations = budget.allocation_snapshot()
-            s.retained = max(0, s.committed - s.raw_input - s.xtc_config - s.xtc_slots - sum(s.input_bytes.values()))
+            s.constants += sum(
+                int(a['capacity']) for a in s.allocations
+                if a.get('category') == 'task-constants')
+            raw = (s.committed - s.raw_input - s.xtc_config - s.xtc_slots
+                   - sum(s.input_bytes.values()) - s.constants)
+            if raw < 0:
+                # The clamp below would hide this. A negative residual means
+                # a category was counted twice -- likely constants in both
+                # the ledger and shared_bytes. Logged, not raised: a
+                # diagnostic must not fail a working run.
+                _log.debug(
+                    'GPU mem [%s] residual is negative (%s): categories sum '
+                    'to more than committed, so one is counted twice and '
+                    'retained is understated. constants=%s committed=%s',
+                    label, _fmt_mib(raw), _fmt_mib(s.constants),
+                    _fmt_mib(s.committed))
+            s.retained = max(0, raw)
             s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
         # Query CuPy pool and CUDA device info only when a GPU is active.
         # These calls fail on CPU-only nodes and are skipped silently.
@@ -272,7 +331,8 @@ class GpuEventManager:
         s = self._snapshot_memory(label)
         s.log()
         hw = self._high_water
-        for category in ('committed', 'held', 'retained', 'failed', 'borrowed', 'cupy_used'):
+        for category in ('committed', 'held', 'retained', 'failed', 'constants',
+                         'borrowed', 'cupy_used'):
             hw[category] = max(hw.get(category, 0), getattr(s, category))
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
         hw["xtc_config"] = max(hw.get("xtc_config", 0), s.xtc_config)
@@ -284,12 +344,16 @@ class GpuEventManager:
     def log_high_water(self):
         """Log the peak memory values seen since the last reset."""
         hw = self._high_water
+        # constants/borrowed were tracked but never printed, which is how
+        # the empty `borrowed` field went unnoticed.
         _log.info(
             "GPU mem high-water raw_input=%s xtc_config=%s xtc_slots=%s "
-            "cupy_pool=%s device_used=%s pinned=%s",
+            "constants=%s borrowed=%s cupy_pool=%s device_used=%s pinned=%s",
             _fmt_mib(hw.get("raw_input", 0)),
             _fmt_mib(hw.get("xtc_config", 0)),
             _fmt_mib(hw.get("xtc_slots", 0)),
+            _fmt_mib(hw.get("constants", 0)),
+            _fmt_mib(hw.get("borrowed", 0)),
             _fmt_mib(hw.get("cupy_pool", 0)),
             _fmt_mib(hw.get("device_used", 0)),
             _fmt_mib(hw.get("pinned", 0)),
