@@ -180,7 +180,8 @@ def epixuhr3x2_init(
     # ... gets passed around via this horrible global variable strategy ...
     base = {}
     #  Connect to the camera and the PCIe card
-    emulator: bool = True  # Changed per Gabriel: False to initialize nonexistent ASICs
+    # emulator: bool = True  # Changed per Gabriel: False to initialize nonexistent ASICs
+    emulator: bool = False
     detectorRoot = epixUhrDev.Root(
         # This specifies datadev for config and data C1100's
         ReadoutSystems = [devReadoutSystem], # List, as you could hvae multiple in 1 proc
@@ -406,9 +407,10 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
     manager.setup_bypasses_for_disabled_asics(asic_mask=asic_mask)
 
     # Enable passThru, i.e., disable the gain expansion
-    for i in range(0, 6):
-        manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
-        manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
+    manager.ReadoutSystem.Float16.set(False)
+    # for i in range(0, 6):
+    #    manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
+    #    manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
 
     # Setup BoardCtrl3x2Readout Registers - this also sets the debug timing outputs
     board_ctrl: Dict[str, Any] = cfg["expert"]["FebFpga"]["App"]["BoardCtrl3x2Readout"]

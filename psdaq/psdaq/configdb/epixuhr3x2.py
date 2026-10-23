@@ -160,7 +160,7 @@ class EpixUHR3x2_Manager:
     @lru_cache
     def FebAsics(self):
         asic_dict: Dict[int, Any] = {}
-        for i in range(1, self._nasics + 1):
+        for i in range(self._nasics):
             # asic_dict[i] = self._get_feb_asic(asic=i)
             asic_dict[i] = self._get_nonpython_name(
                 base_node=self.FebFpga.App, template="Asic[{asic}]", asic=i
@@ -172,7 +172,7 @@ class EpixUHR3x2_Manager:
     @lru_cache
     def FebFramerAsics(self):
         asic_dict: Dict[int, Any] = {}
-        for i in range(1, self._nasics + 1):
+        for i in range(self._nasics):
             # asic_dict[i] = self._get_feb_asic(asic=i)
             asic_dict[i] = self._get_nonpython_name(
                 base_node=self.FebFpga.App, template="FramerAsic[{asic}]", asic=i
@@ -188,7 +188,7 @@ class EpixUHR3x2_Manager:
 
             return getter
 
-        for i in range(1, nasics + 1):
+        for i in range(nasics):
             setattr(
                 EpixUHR3x2_Manager,
                 f"Asic{i}",
@@ -422,7 +422,7 @@ class EpixUHR3x2_Manager:
     def _set_running_framer_asic(self, asic: int) -> None:
         registers_and_vals: Dict[str, Any] = {
             "enable": True,
-            "DisableLane": 0,
+            "DisableAsic": 0,
         }
 
         self.write_many(
@@ -434,9 +434,17 @@ class EpixUHR3x2_Manager:
         for asic in asics:
             logger.info(f"Configuring Asic {asic}")
             asic_reg_cfg: Dict[str, Any] = app_cfg[f"Asic[{asic}]"]
-            self._set_running_asic(asic=asic, reg_cfg=asic_reg_cfg)
+            # NOTE: Have switched to zero indexing now with v5.0.0
+            # All config is 1 indexed... do subtraction here
+            zeroed: int = asic - 1
+            print("Using zero-indexed asic:", zeroed)
+            self._set_running_asic(asic=zeroed, reg_cfg=asic_reg_cfg)
             time.sleep(0.1)
-            self._set_running_framer_asic(asic=asic)
+            self._set_running_framer_asic(asic=zeroed)
+
+            # self._set_running_asic(asic=asic, reg_cfg=asic_reg_cfg)
+            # time.sleep(0.1)
+            # self._set_running_framer_asic(asic=asic)
 
         logger.info("Done with SACI configuration")
 
@@ -452,8 +460,15 @@ class EpixUHR3x2_Manager:
 
     def init_asics(self, asics: Tuple[int, ...]):
         for asic in asics:
-            self._init_asic(asic=asic)
-            self._init_framer_asic(asic=asic)
+            # NOTE: Have switched to zero indexing now with v5.0.0
+            # All config is 1 indexed... do subtraction here
+            zeroed: int = asic - 1
+            print("Using zero-indexed asic:", zeroed)
+            self._init_asic(asic=zeroed)
+            self._init_framer_asic(asic=zeroed)
+
+            # self._init_asic(asic=asic)
+            # self._init_framer_asic(asic=asic)
 
     def setup_event_batchers(self, timeout: Optional[int] = None):
         for devPtr in self.ReadoutSystem.find(typ=batcher.AxiStreamBatcherEventBuilder):
@@ -540,7 +555,11 @@ class EpixUHR3x2_Manager:
         logger: logging.Logger = logging.getLogger(self._logger_name)
         if not emulator:
             for i in asics:
-                asicGtData = self.FebFpga.App.AsicGtData[i]
+                # NOTE: Have switched to zero indexing now with v5.0.0
+                # All config is 1 indexed... do subtraction here
+                zeroed: int = i - 1
+                asicGtData = self.FebFpga.App.AsicGtData[zeroed]
+                # asicGtData = self.FebFpga.App.AsicGtData[i]
                 try:
                     asicGtData.enable.set(True)
                     asicGtData.gtStableRst.set(True)
@@ -550,7 +569,11 @@ class EpixUHR3x2_Manager:
             time.sleep(1)
 
             for i in asics:
-                asicGtData = self.FebFpga.App.AsicGtData[i]
+                # NOTE: Have switched to zero indexing now with v5.0.0
+                # All config is 1 indexed... do subtraction here
+                zeroed: int = i - 1
+                asicGtData = self.FebFpga.App.AsicGtData[zeroed]
+                # asicGtData = self.FebFpga.App.AsicGtData[i]
                 try:
                     asicGtData.gtStableRst.set(False)
                 except Exception as e:
@@ -601,7 +624,8 @@ class EpixUHR3x2_Manager:
             if not self._emulator:
                 devPtr.FebFpga.App.AsicGtClk.enable.set(True)
                 for i in range(self._nasics):
-                    devPtr.FebFpga.App.AsicGtData[i+1].enable.set(True)
+                    # devPtr.FebFpga.App.AsicGtData[i+1].enable.set(True)
+                    devPtr.FebFpga.App.AsicGtData[i].enable.set(True)
 
             time.sleep(1)
             devPtr.FebFpga.App.WaveformControl.GlblRstPolarity.set(False)
@@ -618,10 +642,12 @@ class EpixUHR3x2_Manager:
                 time.sleep(1)
                 devPtr.FebFpga.App.AsicGtClk.gtRstAll.set(False)
                 for i in range(self._nasics):
-                    devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(True)
+                    # devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(True)
+                    devPtr.FebFpga.App.AsicGtData[i].gtStableRst.set(True)
                 time.sleep(1)
                 for i in range(self._nasics):
-                    devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(False)
+                    # devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(False)
+                    devPtr.FebFpga.App.AsicGtData[i].gtStableRst.set(False)
 
     def init_board(self, timebase: str):
         self._check_pll_lock()
@@ -652,7 +678,8 @@ class EpixUHR3x2_Manager:
         # Force use of CPU data path. Seems to not determine that sometimes.
         # Per Gabriel: set use_cpu=False for GPU use
         # self._kick_data_path(use_cpu=True)
-        self._kick_data_path(use_cpu=False)
+        # self._kick_data_path(use_cpu=False)
+        self._kick_data_path(use_cpu=True)
 
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()
@@ -901,7 +928,11 @@ class EpixUHR3x2_Manager:
         logger: logging.Logger = logging.getLogger(self._logger_name)
         logger.info(f"Programming Pixel Gain {gain_value} for ASICs {asics}")
         for i in asics:
-            asic = self.FebAsics[i]
+            # NOTE: Have switched to zero indexing now with v5.0.0
+            # All config is 1 indexed... do subtraction here
+            zeroed: int = i - 1
+            asic = self.FebAsics[zeroed]
+            # asic = self.FebAsics[i]
             self.write_and_check(asic.PixNumModeEn, True)
             # NOTE: This register expects the bits as a string...
             asic.progPixelMatrixConstantValue(str(gain_value))

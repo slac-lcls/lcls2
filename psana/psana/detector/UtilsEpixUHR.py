@@ -256,6 +256,30 @@ def raw_v01(det_raw, evt, sh_seg=(336,576)):
     return out
 
 
+def raw_v100(det_raw, evt, sh_seg=(336,576)):
+    """raw for firmware >= v5.0.0 (raw alg version 1.0.0):
+       the FPGA delivers each panel as a single row-major (336, 576) array,
+       so no ASIC reshaping/stacking is needed.
+       returns raw for all segments shaped as (<number of segments>, 336, 576)
+    """
+    if cond_msg(evt is None, msg='evt is None - return None', output_meth=logger.warning):
+        return None
+    segs = det_raw._segments(evt)
+    if segs is None:
+        return None
+    segnums = det_raw._segment_numbers
+    maxsegnum = max(segnums)
+    out = np.zeros((maxsegnum+1,)+sh_seg, dtype=np.uint16)
+    for iseg, nseg in enumerate(segnums):
+        raw_panel = segs[iseg].raw # shape:(336, 576)
+        if raw_panel.shape != sh_seg:
+            logger.error('segment %d raw shape %s != expected %s - ASIC-major data tagged as raw v1.0.0?'
+                         % (nseg, str(raw_panel.shape), str(sh_seg)))
+            return None
+        out[nseg,:] = bit_opers_3x2_raw(raw_panel)
+    return out
+
+
 def image_v01(det_raw,  evt, **kwargs):
     """returns raw[0,:] 2-d temporary image for a single panel raw data (1, 336, 576)"""
     if cond_msg(evt is None, msg='evt is None - return None', output_meth=logger.warning):
