@@ -65,7 +65,7 @@ The relevant defects and gaps are:
 
 - The fast GPU EB appends BeginStep and then stops. A real packet is `[L1 A, L1 B, BeginStep 2]`; later step-2 L1 events are in a subsequent packet. `_handle_steps()` runs before this packet’s L1 submission, so A/B can get step 2’s state. Draining previously submitted work does not fix unsubmitted A/B.
 - Serial GPU processing consumes transitions internally; MPI GPU `steps()` returns immediately. Both need a common stream that can support event and step views.
-- `_iter_step_events()` uses service zero for empty records, colliding with ClearReadout. Filtering and `first_service()` compound the loss; file-read coalescing also drops its fence.
+- ClearReadout/service-zero handling is tracked separately at P2 in [#156](https://github.com/slac-lcls/lcls2/issues/156). Its repair is not a completion criterion or approval gate for #153 or this design.
 - SlowUpdate already reaches the host environment store. Preserve that ordered CPU path; GPU EnvStore and GPU interpretation of SlowUpdate/step values are deferred. The independent CPU timestamp-lookup concern recorded in #153 is separate follow-up work, not a GPU implementation gate.
 - The removed calibration IPC path was specialized to prepared Jungfrau arrays. Restoring its old leader formula or float32 assumptions would conflict with the current generic requested-constant API.
 
@@ -77,14 +77,13 @@ Source inspection and isolated probes establish the problems; they are not end-t
 | --- | --- | --- |
 | [GPU-148-01](https://github.com/slac-lcls/lcls2/pull/148#discussion_r4200896653), #153 P1 | Assign preceding events to the old scope; preserve CPU-visible transition order while scheduling ahead | Real EB trailing BeginStep → planner → callback; delayed old-scope work overlaps new scope without mislabeling events/results |
 | [GPU-140-03](https://github.com/slac-lcls/lcls2/pull/140#discussion_r4159309391), #153 | Serial/MPI event and step iteration with CPU metadata handling and GPU results | Two or more steps, empty steps, GPU-only/mixed events, ordinary MPI distribution and history catch-up |
-| [GPU-141-02](https://github.com/slac-lcls/lcls2/pull/141#discussion_r4160862286), #153 | Distinguish ClearReadout from empty GPU-only placeholders; preserve CPU dispatch and coalescing fences | Service zero survives; malformed framing and sentinel 13 fail; no fake transition from an empty record |
 | [GPU-149-04](https://github.com/slac-lcls/lcls2/pull/149#discussion_r4201235524), #153 | One stream owner; step completion differs from terminal run cleanup | Retained iterators, explicit close, next step, exceptions, terminate, repeated cleanup, bounded MPI shutdown |
 | Enable/chunk handling, #153 | Bind every pending read to the correct immutable per-stream file identity and descriptor offset | Rollover inside a step, old reads delayed, replayed/trailing Enable, multiple streams, bulk and non-bulk paths |
 | Deferred GPU EnvStore scope | No GPU extraction/storage/upload/API for SlowUpdate or step values; CPU retains its functionality | CPU dispatch once in order; GPU look-ahead does not advance public CPU configuration early; no GPU payload dependency |
 | [GPU-147-01](https://github.com/slac-lcls/lcls2/pull/147#discussion_r4199547812), #168 P2 | Share identical requested run constants behind the existing API | Two/four BDs per GPU allocate approximately one copy per identical object; no follower upload; exact values |
 | #168 topology and lifetime | Correct actual GPU peers; all imports close before export free | Multiple nodes/GPUs/EB groups, different selectors/content, delayed peers/consumers, failed setup, early exit and repeated close |
 
-The P1 on #153 comes from ordering, not a new P1 classification for every row. #156 was consolidated into #153, not fixed. Coordinate decoding work with [#154](https://github.com/slac-lcls/lcls2/issues/154), peer discovery with [#155](https://github.com/slac-lcls/lcls2/issues/155), and partial-setup rollback with [#169](https://github.com/slac-lcls/lcls2/issues/169).
+The P1 on #153 comes from step ordering. As of October 22, ClearReadout/service-zero repair is tracked independently at P2 in #156, which is reopened after the earlier consolidation. Keep its decoder/filter/validation/coalescing changes independently reviewable; coordinate shared-code edits without making that repair an approval gate for this design. Coordinate decoding work with [#154](https://github.com/slac-lcls/lcls2/issues/154), peer discovery with [#155](https://github.com/slac-lcls/lcls2/issues/155), and partial-setup rollback with [#169](https://github.com/slac-lcls/lcls2/issues/169).
 
 ## Proposed responsibilities
 
@@ -108,7 +107,7 @@ Use SMD record order as the authority: missing history → L1 range → transiti
 
 Every L1 in the current split path has a GPUBAT1 event row, including zero-GPU-contribution rows. Such events remain deliverable even if no task callback is selected. An all-empty record is not itself evidence of either a transition or an L1: establish its event meaning from the coherent packet/table correspondence or reject the packet. CPU-only batches without GPUBAT1 use their real dgrams.
 
-The transition-only decoder counts present dgrams, takes the first present service, validates packet sizes before skipping all-empty records, and yields service zero. The ordered planner must additionally preserve original empty-record positions for L1 correlation; it cannot use the transition decoder's filtered positions as event indices. Remove service truth-value filtering from the manager, bulk-read selection, file resolver and shared service validation.
+The ordered planner preserves original empty-record positions for L1 correlation and validates packet framing; it cannot use a transition decoder's filtered positions as event indices. The separate #156 fix owns service-zero decoding, caller filtering, shared service validation, and ClearReadout coalescing-fence repair.
 
 Preserve control positions in the ordered plan. Execution splitting combines the existing byte-budget ranges with required BeginStep/EndStep boundaries: a subbatch must not cross a step boundary. It carries one immutable run/step identity, original event indices and resolved read-file mappings. Read-group/coalescing fences are separate from execution boundaries; a CPU-only SlowUpdate does not by itself require another GPU execution submission. Preserve read correctness and ownership when composing these plans. No scan/step/SlowUpdate payload values are captured for GPU work. Initial decoder tables and unchanged run constants are retained independently of scope.
 
@@ -165,12 +164,12 @@ One-step subbatches simplify each execution, but do not imply one accumulator fo
 | SlowUpdate | Ignore payload values on GPU; no GPU EnvStore, upload or mandatory drain | Existing CPU EPICS/EnvStore handling remains |
 | Enable with new chunkinfo | Resolve affected streams' new files and retain old handles for old reads | Preserve CPU file-switch behavior at its own cursor |
 | Disable | Recognize boundary; no inferred EndStep or constant change | May surround a chunk rollover within one step |
-| ClearReadout (0) / Reset (1) | Recognize nonempty records; no invented file switch, payload interpretation or event deletion | Preserve CPU dispatch; additional GPU reset semantics need an explicit contract |
+| Reset (1) | Recognize nonempty records; no invented file switch, payload interpretation or event deletion | Preserve CPU dispatch; additional GPU reset semantics need an explicit contract |
 | EndRun | Stop admission; finish outstanding reads, producers, copies and consumers before release | Apply ordered terminal host handling |
 | EOF / event limit / explicit close | Same idempotent terminal cleanup without inventing an EndRun dgram | Preserve documented local/global stop distinction |
 | Unconfigure / unexpected Configure | Retire configuration resources after users finish; reject unsupported active-run decoder/layout changes | Normal DataSource setup must establish the next configured run |
 
-ClearReadout is 0; `L1Accept_EndOfBatch` is 11 and L1Accept is 12. Both events satisfy `TransitionId.isEvent()`; end-of-batch is not EndStep. `NumberOf == 13` is an invalid record sentinel. Missing dgrams remain distinct from valid service zero. Preserve the existing conservative coalescing fence at real non-L1 controls; that is not a CUDA fence or a GPU EnvStore operation. Relaxing coalescing fences is separate work.
+`L1Accept_EndOfBatch` is 11 and L1Accept is 12. Both events satisfy `TransitionId.isEvent()`; end-of-batch is not EndStep. `NumberOf == 13` is an invalid record sentinel. Preserve the existing conservative coalescing fence at real non-L1 controls; that is not a CUDA fence or a GPU EnvStore operation. ClearReadout is valid service 0; its distinction from missing dgrams and its missing fence are repaired separately under #156. Relaxing coalescing fences is separate work.
 
 Initial scope is the existing experiment/run serial and MPI GPU path. New shmem/DRP modes and GPU support for changing detector layouts/configuration values are separate. GPU EnvStore and GPU SlowUpdate/step-value APIs are explicitly deferred. The CPU timestamp-lookup concern documented in #153 should be addressed separately; this work must preserve CPU dispatch order without claiming that defect is fixed.
 
@@ -333,7 +332,7 @@ Neither BD waits for a peer to reach a step boundary. A faster BD can finish its
 ### Ignored GPU values and independent chunk rollover
 
 ```text
-records:      [A, SlowUpdate U, B, ClearReadout, Enable(chunk 2), C]
+records:      [A, SlowUpdate U, B, Disable, Enable(chunk 2), C]
 GPU scope:    scope 1 ------------------------------------------>
 GPU values:   no SlowUpdate/step payload extraction or retention
 CPU delivery: A -> apply U -> B -> controls -> C
@@ -342,7 +341,7 @@ read offsets: descriptor offsets in chunk 1     | offsets in chunk 2
 constants:    same run manifest -------------------------------->
 ```
 
-ClearReadout remains a valid control and conservative coalescing fence without changing files. SlowUpdate remains available through existing CPU handling; this diagram does not claim to repair its independent timestamp-lookup issue. Pending chunk-1 reads retain their original handles even after chunk-2 reads are admitted.
+Disable does not end the step or change files; Enable with new chunkinfo changes the read-file identity. SlowUpdate remains available through existing CPU handling; this diagram does not claim to repair its independent timestamp-lookup issue. Pending chunk-1 reads retain their original handles even after chunk-2 reads are admitted.
 
 ### Child close and terminal cleanup
 
@@ -371,7 +370,7 @@ The selected direction is Design 1 with GPU EnvStore deferred. Remaining interfa
 | Stage | Work | Exit criterion |
 | --- | --- | --- |
 | 0 Refine contracts | Scope identity/replay, scheduling versus delivery cursors, step completion/close semantics | Concrete API and acceptance cases; no reopening of deferred GPU payload-value scope |
-| 1 Ordered planning and files | Planner, ClearReadout decoder/filter/validation, per-scope ranges, immutable file resolution for bulk/non-bulk reads | Real EB trailing BeginStep labels correctly; Enable rollover and service zero tests pass; CPU state not advanced by planning |
+| 1 Ordered planning and files | Planner, coherent packet framing, per-scope ranges, immutable file resolution for bulk/non-bulk reads | Real EB trailing BeginStep labels correctly; Enable rollover and framing tests pass; CPU state not advanced by planning |
 | 2 Design 1 scheduler and public steps | Per-submission scope, bounded cross-step look-ahead, completion accounting, event/step adapters and close ownership | Multiple scopes demonstrably in flight within one BD; serial/MPI steps and ordered CPU delivery work; early-exit matrix passes |
 | 3 Run constants and peer/budget contract | Remove BeginStep refresh, retain run manifest, coordinate #155 topology and aggregate budgets | Same constants across all steps; actual GPU groups and fully charged local fallback |
 | 4 IPC backend | Choose exporter/progress mechanism, implement readiness, import leases, physical-once ledger and partial rollback | Two/four BDs share generic numeric arrays without follower uploads; differing content isolated |
@@ -391,7 +390,6 @@ Stages 1–2 can ship with local constants; IPC must not block #153's step/trans
 | CPU/GPU division | GPU ignores SlowUpdate and step payload values; no GPU EnvStore/upload/context API; CPU dispatch once in order; GPU look-ahead does not mutate public CPU configuration early |
 | File rollover | Bulk/non-bulk; new chunk offsets; multiple streams; Enable without change; leading/trailing/replayed chunkinfo; old handle retained until pending reads complete; rollover independent of step |
 | Constants | Run setup once; unchanged manifest across steps/controls; next run setup; no per-step refresh or acquisition barrier |
-| ClearReadout | Service 0 present, empty record absent; leading/trailing missing streams; malformed sizes fail; CPU dispatch and coalescing fence; Enable behavior unchanged; sentinel 13 rejected |
 | Public delivery | Serial/MPI events/steps, empty steps, GPU-only/hybrid/mixed events, no task, sparse results, retained CPU results; step completion does not flush later scopes |
 | Iterator lifecycle | Child/outer close, outer advance, retained stale iterators, bare break, user exception, terminate, repeated close, EndRun/EOF/max-events, outstanding EB receive |
 | Sharing | 2/4 BDs per GPU, actual devices across nodes/EB groups, visibility/MIG capability or explicit fallback, same/different selectors/content, no duplicate uploads |
