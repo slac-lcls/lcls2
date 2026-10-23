@@ -21,11 +21,3 @@ body:
       placeholder: Explain the feature or change.
     validations:
       required: true
-
-  - type: textarea
-    id: alternatives
-    attributes:
-      label: Alternatives Considered
-      description: Any other approaches or workarounds you have tried.
-    validations:
-      required: false
