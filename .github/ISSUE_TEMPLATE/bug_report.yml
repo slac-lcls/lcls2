@@ -29,25 +29,20 @@ body:
       description: |
         Provide the steps and relevant code needed to reproduce the issue.
         Include commands, configuration, or example inputs where applicable.
-      placeholder: |
-        1. Run...
-        2. Configure...
-        3. Observe...
     validations:
       required: true
 
-  - type: textarea
+  - type: dropdown
     id: environment
     attributes:
       label: Environment
-      description: Where and how did you run this?
-      placeholder: |
-        Component: psana / DAQ
-        Version or commit:
-        Where it ran: S3DF / CDS / local
-        Install: conda env (name) / pip
+      description: Which environment were you using?
+      options:
+        - Analysis
+        - DAQ
+        - Custom
     validations:
-      required: false
+      required: true
 
   - type: textarea
     id: traceback
