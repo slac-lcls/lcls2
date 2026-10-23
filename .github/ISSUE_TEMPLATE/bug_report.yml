@@ -1,0 +1,56 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug"]
+
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug or unexpected behavior.
+      placeholder: Explain what went wrong.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected Behavior
+      description: Describe what you expected to happen.
+      placeholder: Explain what should have happened instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to Reproduce
+      description: |
+        Provide the steps and relevant code needed to reproduce the issue.
+        Include commands, configuration, or example inputs where applicable.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      description: Which environment were you using?
+      options:
+        - Analysis
+        - DAQ
+        - Custom
+    validations:
+      required: true
+
+  - type: textarea
+    id: traceback
+    attributes:
+      label: Traceback or Error Logs
+      description: |
+        Paste any relevant traceback or error logs.
+        This section will be automatically formatted as code.
+      render: shell
+    validations:
+      required: false
