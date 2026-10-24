@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
+    """Open `DataSource(exp=exp, run=run, **kwa)` and return `(ds, first run, run.Detector(detname))`."""
     from psana import DataSource
     ds = DataSource(exp=exp, run=run, **kwa)
     orun = next(ds.runs())
@@ -19,6 +20,7 @@ def ds_run_det(exp='ascdaq18', run=171, detname='epixhr', **kwa):
 
 
 def issue_2025_mm_dd():
+    """Template: print "template". It is what test name '0' runs."""
     print('template')
 
 
@@ -467,7 +469,11 @@ def issue_2025_03_28():
 
 
 def issue_2025_04_02():
-    """
+    """Show a test image built with the default epixm320 geometry file.
+
+    Loads `pscalib/geometry/data/geometry-def-epixm320.data` (relative to this package), fills a
+    test pattern, maps it to an image with `img_from_pixel_arrays` using the pixel coordinate
+    indexes, and shows it with `fleximage`.
     """
     import os
     #from psana.pscalib.geometry.GeometryAccess import GeometryAccess, img_from_pixel_arrays
@@ -639,6 +645,10 @@ def issue_2025_04_11():
 
 
 def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
+    """Create a float64 array of normal random values (mean `mu`, sigma `sigma`) of shape `shape`.
+
+    Prints its summary and saves it with `np.save` to `fname`.
+    """
     import numpy as np
     #import psana.pyalgos.generic.NDArrGenerators as ag
     import psana.pyalgos.generic.NDArrUtils as ndu
@@ -647,6 +657,7 @@ def make_random_nda(shape=(704, 768), mu=100, sigma=10, fname='fake.npy'):
     np.save(fname, a)
 
 def issue_2025_nda():
+    """Save random arrays of shapes (704, 768) and (512, 1024) (mean 2, sigma 0.1) as `fake_704x768.npy` and `fake_512x1024.npy` with `make_random_nda`."""
     for sh in ((704, 768), (512,1024)):
         make_random_nda(shape=sh, mu=2, sigma=0.1, fname='fake_%dx%d.npy' % sh)
 
@@ -894,17 +905,20 @@ def issue_2025_05_14():
     import sys
 
     class CustomQComboBox(QComboBox):
+        """`QComboBox` that ignores the up/down arrow keys and mouse-wheel events."""
         def __init__(self, parent=None):
             super().__init__(parent)
 
         def keyPressEvent(self, event):
             #print('event.key():', event.key())
+            """Ignore up and down arrow key events; pass other keys to `QComboBox.keyPressEvent`."""
             if event.key() in (Qt.Key_Up, Qt.Key_Down):
                 event.ignore()  # Ignore up and down arrow keys
             else:
                 super().keyPressEvent(event) # Default behavior for other keys
 
         def wheelEvent(self, event):
+            """Ignore every mouse-wheel event."""
             event.ignore()
             #print('event:', dir(event), '\n')
             #print('event.angleDelta().y():', event.angleDelta().y(), '\n')
@@ -915,6 +929,7 @@ def issue_2025_05_14():
             #    super().keyPressEvent(event) # Default behavior for other keys
 
     class MainWindow(QMainWindow):
+        """Window holding one `CustomQComboBox` (items One to Four) whose activated, text-changed and index-changed signals print messages."""
         def __init__(self):
             super().__init__()
             combobox = CustomQComboBox()
@@ -927,12 +942,15 @@ def issue_2025_05_14():
             self.setCentralWidget(combobox)
 
         def activated(Self, index):
+            """Print the activated index."""
             print("Activated index:", index)
 
         def text_changed(self, s):
+            """Print the new text `s`."""
             print("Text changed:", s)
 
         def index_changed(self, index):
+            """Print the new index."""
             print("Index changed", index)
 
     app = QApplication(sys.argv)
@@ -1582,7 +1600,9 @@ def issue_2025_09_18(subtest='0o7777'):
 
 
 def issue_2025_09_19(subtest='0o7777'):
-    """
+    """Open rix101237525 run 55 from the drpsrcf directory, print "got event" for the first event of the first run, and stop.
+
+    `subtest` is not used.
     """
     from psana import DataSource
     ds = DataSource(exp='rix101237525',run=55,dir='/cds/data/drpsrcf/rix/rix101237525/xtc')
@@ -1702,6 +1722,11 @@ def issue_2025_10_17():
 #===
 
 def argument_parser():
+    """Return the `ArgumentParser` of this script.
+
+    Positional `tname`, -k/--dskwargs (default exp=rixc00121,run=140 in the drpsrcf ffb directory),
+    -d/--detname (default archon), -L/--loglevel (default INFO) and -s/--subtest.
+    """
     from argparse import ArgumentParser
     d_tname = '0'
     d_dskwargs = 'exp=rixc00121,run=140,dir=/sdf/data/lcls/drpsrcf/ffb/rix/rixc00121/xtc'  # None
@@ -1724,6 +1749,11 @@ def argument_parser():
 
 
 def selector():
+    """Parse the arguments, set up root logging at `loglevel`, and run the check chosen by `tname`.
+
+    '0' is the template and '1' to '48' are the issue checks listed in the code; unknown names print
+    the usage and exit. Calls `exit` at the end.
+    """
     parser = argument_parser()
     args = parser.parse_args()
     STRLOGLEV = args.loglevel
@@ -1788,6 +1818,7 @@ def selector():
 
 
 def USAGE():
+    """Return the usage text: the script name, the source lines of `selector` that contain "TNAME in", and help hints."""
     import inspect
     #return '\n  TEST'
     return '\n  %s <TNAME>\n' % sys.argv[0].split('/')[-1]\

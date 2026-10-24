@@ -1,3 +1,9 @@
+"""Convert calibration constants (as stored in calibconst.pkl) to and from an xtc2 buffer that holds
+one Configure and one L1Accept dgram.
+
+Provides `load_calib_pickle`, `CalibXtcConverter`, `write_xtc_file`, `load_calib_xtc` and
+`load_calib_xtc_from_buffer`.
+"""
 import json
 import logging
 import numbers

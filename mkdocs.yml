@@ -105,6 +105,7 @@ nav:
       - features/index.md
       - DataSource, Run and the event loop: features/datasource-run-events.md
       - Detector interface: features/detector-interface.md
+      - Calibration constants: features/calibration.md
   - Python API:
       - api/python/index.md
       - psana.datasource: api/python/datasource.md
@@ -119,5 +120,6 @@ nav:
       - psana.psexp.null_ds: api/python/null_ds.md
       - psana.detector.detector_impl: api/python/detector_impl.md
       - psana.detector.areadetector: api/python/areadetector.md
+      - psana.detector.calibconstants: api/python/calibconstants.md
       - psana.detector.envstore: api/python/envstore.md
   - C++ API: api/cpp/index.html

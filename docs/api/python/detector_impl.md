@@ -14,7 +14,7 @@ type followed by the id of each segment, joined with `_` (built in
 `psana/psana/dgrammanager.py`); `det.raw._uniqueid` is the name to pass to
 `calib_constants()` (except for `exp="xpptut15"`, for which
 `Run._setup_run_calibconst` in `psana/psana/psexp/run.py` uses the fixed name
-`cspad_detnum1234`; see Calibration constants).
+`cspad_detnum1234`; see [Calibration constants](../../features/calibration.md)).
 These attributes have no docstrings, so they are not listed below.
 
 See [Detector interface](../../features/detector-interface.md).

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+"""The det_dark_proc command: process a dark run of the specified detector with `UtilsCalib.pedestals_calibration`."""
 import sys
 from psana.detector.dir_root import DIR_REPO # _DARK_PROC
 from psana.detector.UtilsLogging import logging, STR_LEVEL_NAMES
@@ -28,6 +29,16 @@ USAGE = 'Usage:'\
 
 
 def argument_parser():
+    """Return the `ArgumentParser` of this command.
+
+    Options -k/--dskwargs, -d/--det, -n/--nrecs (default 500), --nrecs1 (50), -o/--dirrepo
+    (DIR_REPO), -L/--logmode ('INFO'), -E/--errskip (store_false flag), --stepnum, --stepmax (1),
+    --evskip (0), --events (1000000), --datbits (0x3fff), --dirmode, --filemode, --group
+    ('ps-users'), --int_lo (1), --int_hi (16000), --intnlo, --intnhi, --rms_lo (0.001), --rms_hi
+    (16000), --rmsnlo, --rmsnhi, --fraclm, --fraclo, --frachi, the flag -D/--deploy, -t/--tstamp,
+    -v/--version ('V2025-07-10'), -B/--run_beg, -R/--run_end ('end'), -C/--comment ('no comment')
+    and -p/--plotim (0).
+    """
     from argparse import ArgumentParser
 
     d_dskwargs= None    # 'files=<fname.xtc>,exp=<expname>,run=<runs>,dir=<xtc-dir>, ...'
@@ -142,6 +153,11 @@ def argument_parser():
 
 def do_main():
 
+    """Entry point: parse the options and run `UtilsCalib.pedestals_calibration(parser)`.
+
+    Exits with the usage text if fewer than two command-line arguments are given, fails an assert
+    if -k or -d is missing, and logs the elapsed time.
+    """
     parser = argument_parser()
     args = parser.parse_args()
     if len(sys.argv)<3: sys.exit('\n%s\n\nEXIT DUE TO MISSING ARGUMENTS\n' % USAGE)

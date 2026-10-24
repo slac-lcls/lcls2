@@ -1,13 +1,12 @@
 
-"""
-Class CalibConstants with convenience methods to access info from dict returned from DB
+"""Class CalibConstants with convenience methods to access info from dict returned from DB
 =======================================================================================
 
 Usage::
 
   from psana.detector.calibconstants import CalibConstants
 
-  o = CalibConstants(calibconst, **kwa)
+  o = CalibConstants(calibconst, detname, **kwa)
   v = o.calibconst()
   v = o.cons_and_meta_for_ctype(ctype='pedestals')
   v = o.cached_array(p, ctype='pedestals')
@@ -22,12 +21,11 @@ Usage::
   v = o.shape_as_daq()
   v = o.number_of_segments_total()
   v = o.geotxt_and_meta()
-  v = o.geotxt_default()
   v = o.geo()
   v = o.pixel_coords(**kwa)
   v = o.pixel_coord_indexes(**kwa)
   v = o.cached_pixel_coord_indexes(segnums, **kwa)
-  v = o.image(self, nda, segnums=None, **kwa)
+  v = o.image(nda, segnums=None, **kwa)
   v = o.pix_rc()
   v = o.pix_xyz()
   v = o.interpol_pars()
@@ -51,15 +49,23 @@ from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
 
 #from psana.detector.Utils import is_none
 def is_none(par, msg, logger_method=logger.debug):
+    """Return True if `par` is None, calling `logger_method(msg)` in that case; otherwise return False."""
     resp = par is None
     if resp: logger_method(msg)
     return resp
 
 def is_dict_like(d):
+    """Return True if `d` is a dict or a `weakref.WeakValueDictionary`."""
     import weakref
     return isinstance(d, dict) or isinstance(d, weakref.WeakValueDictionary)
 
 class CalibConstants:
+    """Access to one detector's calibration constants and to the geometry-based image mapping.
+
+    `calibconst` is the dict from the calibration DB that maps a constant type to a (data, metadata)
+    tuple. Instances are shared per `detname`: creating the class again with the same name returns
+    the existing instance, reset to the new `calibconst`.
+    """
     _registry = {}
     def __new__(cls, calibconst, detname, **kwargs):
         if detname not in cls._registry:
@@ -69,13 +75,13 @@ class CalibConstants:
         return cls._registry[detname]
 
     def __init__(self, calibconst, detname, **kwa):
-        """
-        Parameters
+        """Parameters
         ----------
         calibconst: dict - retrieved from DB by method calib_constants_all_types from psana.pscalib.calib.MDBWebUtils.
-        calib_constants_all_types is USED BY psana/psexp/ds_base.py TO RETRIEVE ALL CONSTANTS FROM DB
+        calib_constants_all_types is USED BY psana/psexp/run.py (Run._setup_run_calibconst) TO RETRIEVE ALL CONSTANTS FROM DB
 
-        **kwa: not used
+        **kwa: stored as self._kwa. kwa['logmet_init'] (default logger.debug) is the logging method
+        used by cached_pixel_coord_indexes, and seg_geo reads kwa['odet'] (default None).
         """
         logger.debug('__init__') #  self.__class__.__name__
 
@@ -104,12 +110,14 @@ class CalibConstants:
         self._rc_tot_max = None
 
     def calibconst(self):
+        """Return the calibration dict, or None (with a debug message) if it is None."""
         logger.debug('calibconst')
         cc = self._calibconst
         if is_none(cc, 'self._calibconst is None'): return None
         return cc
 
     def cons_and_meta_for_ctype(self, ctype='pedestals'):
+        """Return the (data, metadata) tuple stored for `ctype`, or (None, None) if the calibration dict or that entry is missing."""
         logger.debug('cons_and_meta_for_ctype(ctype="%s")'%ctype)
         cc = self.calibconst()
         if cc is None: return None, None
@@ -122,17 +130,51 @@ class CalibConstants:
         if p is None: p = self.cons_and_meta_for_ctype(ctype)[0] # 0-data/1-metadata
         return p
 
-    def pedestals(self):   return self.cached_array(self._pedestals, 'pedestals')
+    def pedestals(self):
+        """Return the 'pedestals' constant array, or None if it is absent.
 
-    def rms(self):         return self.cached_array(self._rms, 'pixel_rms')
+        Calls `cached_array(self._pedestals, 'pedestals')`. `_pedestals` is reset to None and never filled in
+        this class, so the array is looked up in the calibration dict on each call.
+        """
+        return self.cached_array(self._pedestals, 'pedestals')
 
-    def common_mode(self): return self.cached_array(self._common_mode, 'common_mode')
+    def rms(self):
+        """Return the 'pixel_rms' constant array, or None if it is absent.
 
-    def gain(self):        return self.cached_array(self._gain, 'pixel_gain')
+        Calls `cached_array(self._rms, 'pixel_rms')`. `_rms` is reset to None and never filled in
+        this class, so the array is looked up in the calibration dict on each call.
+        """
+        return self.cached_array(self._rms, 'pixel_rms')
 
-    def offset(self):      return self.cached_array(self._offset, 'pixel_offset')
+    def common_mode(self):
+        """Return the 'common_mode' constant array, or None if it is absent.
+
+        Calls `cached_array(self._common_mode, 'common_mode')`. `_common_mode` is reset to None and never filled in
+        this class, so the array is looked up in the calibration dict on each call.
+        """
+        return self.cached_array(self._common_mode, 'common_mode')
+
+    def gain(self):
+        """Return the 'pixel_gain' constant array, or None if it is absent.
+
+        Calls `cached_array(self._gain, 'pixel_gain')`. `_gain` is reset to None and never filled in
+        this class, so the array is looked up in the calibration dict on each call.
+        """
+        return self.cached_array(self._gain, 'pixel_gain')
+
+    def offset(self):
+        """Return the 'pixel_offset' constant array, or None if it is absent.
+
+        Calls `cached_array(self._offset, 'pixel_offset')`. `_offset` is reset to None and never filled in
+        this class, so the array is looked up in the calibration dict on each call.
+        """
+        return self.cached_array(self._offset, 'pixel_offset')
 
     def mask_calib(self):
+        """Return the 'pixel_mask' constant array converted to `DTYPE_MASK`, or None if it is absent.
+
+        Looked up with `cached_array(self._mask_calib, 'pixel_mask')`.
+        """
         a = self.cached_array(self._mask_calib, 'pixel_mask')
         return a if a is None else a.astype(DTYPE_MASK)
 
@@ -161,12 +203,22 @@ class CalibConstants:
         return self._gain_factor
 
     def shape_as_daq(self):
+        """Return the DAQ data shape derived from the pedestals, or None if there are no pedestals.
+
+        This is the pedestal shape when it has fewer than 4 dimensions, otherwise its last three
+        dimensions.
+        """
         peds = self.pedestals()
         #print(info_ndarr(peds, 'XXX shape_as_daq pedesstals'))
         if is_none(peds, 'shape_as_daq - pedestals is None, can not define daq data shape - returns None'): return None
         return peds.shape if peds.ndim<4 else peds.shape[-3:]
 
     def number_of_segments_total(self):
+        """Return the total number of segments derived from `shape_as_daq()`.
+
+        None if that shape is None, 1 if it has fewer than 3 dimensions, otherwise its third-from-last
+        dimension.
+        """
         shape = self.shape_as_daq()
         return None if shape is None else\
                1 if len(shape) < 3 else\
@@ -182,6 +234,11 @@ class CalibConstants:
         return segnums
 
     def geotxt_and_meta(self):
+        """Return the (geometry text, metadata) tuple stored under 'geometry'.
+
+        Returns (None, None) if that entry is missing, and a single None if the calibration dict itself
+        is None.
+        """
         logger.debug('geotxt_and_meta')
         cc = self.calibconst()
         if cc is None: return None
@@ -316,6 +373,14 @@ class CalibConstants:
         return {"key": key, "meta": meta, "specs": specs, "arrays": arrays}
 
     def cached_pixel_coord_indexes(self, segnums=None, **kwa):
+        """Compute and store the pixel row/column indexes and image-mapping tables; returns None.
+
+        `segnums` defaults to all segments. When the shared calib cache (`_shared_calibc_cache`) is enabled and holds every array for this key they are taken from it; otherwise the indexes come from `pixel_coord_indexes(**kwa)` (nothing is stored if that is None), and multi-pixel statistics, hole tables (`fillholes`, default True) or, for `mapmode` 4, interpolation parameters are computed (`mapmode` default 2).
+
+        Notes
+        -----
+        The mapmode-4 path calls `self._pixel_coords`, which this class does not define.
+        """
         logger.debug('CalibConstants.cached_pixel_coord_indexes')
 
         mapmode = kwa.get('mapmode', 2)
@@ -494,11 +559,17 @@ class CalibConstants:
                img_interpolated(nda, self._cached_interpol_pars()) if mapmode==4 else\
                self.img_entries
 
-    def pix_rc(self): return self._pix_rc
+    def pix_rc(self):
+        """Return the stored (rows, cols) pixel index arrays; (None, None) until `cached_pixel_coord_indexes` fills them."""
+        return self._pix_rc
 
-    def pix_xyz(self): return self._pix_xyz
+    def pix_xyz(self):
+        """Return the stored (x, y, z) pixel coordinate arrays; (None, None, None) unless the mapmode-4 path filled them."""
+        return self._pix_xyz
 
-    def interpol_pars(self): return self._interpol_pars
+    def interpol_pars(self):
+        """Return the stored interpolation parameters; None unless the mapmode-4 path set them."""
+        return self._interpol_pars
 
     def info_calibconst(self):
         """grabs det.raw._calibconst from self and returns info about available constants"""
