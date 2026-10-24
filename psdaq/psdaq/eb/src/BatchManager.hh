@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief BatchManager, which owns the region where a TEB contributor builds its batches.
+ */
 #ifndef Pds_Eb_BatchManager_hh
 #define Pds_Eb_BatchManager_hh
 
@@ -9,19 +13,29 @@
 namespace Pds {
   namespace Eb {
 
+    /** Owns the page-aligned region in which batches are built and decides when a batch has expired. */
     class BatchManager
     {
     public:
+      /** Construct with no region. */
       BatchManager();
+      /** Free the region. */
       ~BatchManager();
     public:
+      /** Reallocate the region for numBatches batches of maxEntries entries of maxEntrySize bytes if that total size changed, and set the expiration mask from maxEntries. Returns 0, 1 if maxEntries is not a power of 2, or ENOMEM if allocation fails. */
       int    initialize(size_t maxEntrySize, unsigned maxEntries, unsigned numBatches);
+      /** Zero the whole region; it is not freed. */
       void   shutdown();
+      /** Return the address of entry idx: the region start plus idx times the entry size. */
       void*  fetch(unsigned idx) const;
+      /** Return the start of the region. */
       void*  batchRegion() const;
+      /** Return the size of the region in bytes. */
       size_t batchRegionSize() const;
+      /** Return true if pid and start differ in any bit above the low log2(maxEntries) bits, that is, if they lie in different batch periods. */
       bool   expired(uint64_t pid, uint64_t start) const;
     public:
+      /** Print the region base, region size, maximum batch size and entry size to stderr. */
       void   dump() const;
     private:
       size_t   _regSize;      // The allocated size of the _region
