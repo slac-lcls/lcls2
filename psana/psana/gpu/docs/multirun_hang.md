@@ -2,6 +2,7 @@
 
 **Status:** pre-existing on `features/psana2-gpu`, this branch's parent. Not
 introduced by the device-placement / CUDA-IPC work, and not fixed by it.
+Tracked separately as [P2 #209](https://github.com/slac-lcls/lcls2/issues/209).
 
 **Effect:** a psana2 MPI job given more than one run processes the first run,
 then stops. The second run's BD workers each receive zero events, the EB rank
@@ -64,5 +65,6 @@ until this is fixed, because psana does not reach run 2 at all.
 It is kept, and wired into `run_cases.py`, for two reasons: it is the
 reproducer for this bug, and it is the coverage those findings asked for the
 moment the multi-run path works. The case is marked `expect='hang-known'` so
-the harness asserts the *known* failure rather than reporting a pass -- if
-multi-run starts working, that case fails and says so.
+the harness marks reproduction of the *known* failure as an expected outcome.
+A suite-level PASS therefore does not mean successful multi-run processing;
+if multi-run starts working, this case fails and says to update the expectation.
