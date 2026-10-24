@@ -1,3 +1,8 @@
+"""Parallel-mode settings and small helpers shared by `psana.psexp`.
+
+`mode` is the environment variable PS_PARALLEL (default "mpi"). `MODE` is "SERIAL" when `mode`
+is "mpi" and the MPI world has one rank, and "PARALLEL" in every other case.
+"""
 import os
 import weakref
 
@@ -27,6 +32,12 @@ class RunHelper(object):
     # pickled and sent across the network, as long as every node has the same
     # Run under the same ID. (This should be true as long as the client
     # code initializes Runs in a deterministic order.)
+    """Give a run object a unique integer id and register it.
+
+    The constructor sets `run.id` from the class-level counter `next_run_id`, increments the
+    counter, and stores the run in the class-level `WeakValueDictionary` `run_by_id`, so
+    `run_from_id` can find it while the run is alive.
+    """
     next_run_id = 0
     run_by_id = weakref.WeakValueDictionary()
 
@@ -37,6 +48,10 @@ class RunHelper(object):
 
 
 def run_from_id(run_id):
+    """Return the run registered under `run_id` by `RunHelper`.
+
+    Raises KeyError if no live run has that id.
+    """
     return RunHelper.run_by_id[run_id]
 
 
@@ -48,6 +63,12 @@ class ConfigHelper(object):
     # - Setup det_class table
     # - Setup configinfo dict
 
+    """Hold a data source `ds` and prune its file and config lists to the selected detectors.
+
+    The only method, `_prune_to_sel_det`, keeps the entries of `ds.smd_files`, `ds.xtc_files` and
+    `ds._configs` whose config has an attribute named in `ds.sel_det_names`; nothing changes if
+    that list is empty.
+    """
     def __init__(self, ds):
         self.ds = ds
 
@@ -69,6 +90,12 @@ class ConfigHelper(object):
 
 
 def get_excl_ranks():
+    """Return the list of excluded MPI rank numbers.
+
+    The list is rank 0 (commented as SMD0), ranks 1 to PS_EB_NODES (default 1), and the last
+    PS_SRV_NODES ranks (default 0). Returns an empty list if `mode` is not "mpi" or there is only
+    one rank.
+    """
     if mode != "mpi":
         return []
 

@@ -7,6 +7,6 @@ roles are assigned by `Communicators` in `psana/psana/psexp/node.py`). Its
 events on the big-data ranks. `RunParallel` also implements random access
 (`build_table()`, `event(ts)`) and shares calibration constants between ranks.
 
-See MPI parallel analysis.
+See [MPI parallel analysis](../../features/mpi-parallel.md).
 
 ::: psana.psexp.mpi_ds

@@ -1,3 +1,8 @@
+"""MPI roles for parallel psana.
+
+`Communicators` creates the MPI communicators and gives each rank its role (smd0, eb, bd or
+srv); `Smd0`, `EventBuilderNode` and `BigDataNode` do the work of the smd0, eb and bd roles.
+"""
 import os
 from glob import glob
 
@@ -38,6 +43,11 @@ def _parse_cpulist(cpulist):
 
 
 def build_cpu_to_numa():
+    """Return a dict that maps CPU id to NUMA node id, read from /sys/devices/system/node/node*/cpulist.
+
+    Node entries whose id or cpulist cannot be read or parsed are skipped; the dict is empty if none
+    are found.
+    """
     cpu_to_numa = {}
     node_paths = sorted(glob('/sys/devices/system/node/node*/cpulist'))
     for path in node_paths:
@@ -57,6 +67,11 @@ def build_cpu_to_numa():
 
 
 def get_cpu_id():
+    """Return the id of the CPU this process is running on.
+
+    Uses `os.sched_getcpu()` when available, otherwise field 39 of /proc/self/stat; returns -1 if
+    both fail.
+    """
     if hasattr(os, "sched_getcpu"):
         try:
             return os.sched_getcpu()
@@ -92,6 +107,21 @@ class Communicators(object):
     # servers).  These nodes will do nothing for event/step iterators
     # (see run_node method below).  The "psana_group" consists of
     # all non-reserved ranks and is used for smd0/smd/bd cores.
+    """Create the MPI communicators and assign this rank's role for parallel psana.
+
+    The last PS_SRV_NODES world ranks are reserved ("srv") and world rank 0 is "smd0". The other
+    ranks are split into PS_EB_NODES `bd_comm` groups (by rank modulo PS_EB_NODES, or by host when
+    PS_EB_NODE_LOCAL is on) whose rank 0 is an "eb" rank and whose other ranks are "bd" ranks;
+    `smd_comm` joins smd0 with the eb ranks, and per-host, host-leader and per-NUMA communicators
+    are also made for the non-reserved ranks.
+
+    Raises
+    ------
+    Exception
+        If fewer than 3 ranks remain after removing the PS_SRV_NODES reserved ranks.
+    RuntimeError
+        If `bd_comm` cannot be created.
+    """
     comm = None
     world_rank = 0
     world_size = 1
@@ -253,36 +283,57 @@ class Communicators(object):
                 self.numa_size = self.numa_comm.Get_size()
 
     def bd_group(self):
+        """Return the MPI group of the bd ranks (non-reserved ranks other than smd0 and the eb ranks)."""
         return self._bd_only_group
 
     def srv_group(self):
+        """Return the MPI group of the reserved ranks (the last PS_SRV_NODES world ranks)."""
         return self._srv_group
 
     def node_type(self):
+        """Return this rank's role: "smd0", "eb", "bd", "srv", or None if no role was assigned."""
         return self._nodetype
 
     def is_node_leader(self):
+        """Return True if this rank is rank 0 of its per-host communicator `node_comm`."""
         return self._is_node_leader
 
     def get_node_comm(self):
+        """Return the communicator of non-reserved ranks on the same host (None on reserved ranks)."""
         return self.node_comm
 
     def get_node_leader_comm(self):
+        """Return the communicator that joins rank 0 of each host's `node_comm`.
+
+        It is MPI.COMM_NULL on other non-reserved ranks and None on reserved ranks.
+        """
         return self.node_leader_comm
 
     def get_numa_comm(self):
+        """Return the communicator of non-reserved ranks on the same host and NUMA node.
+
+        This is `node_comm` itself when the NUMA node could not be determined.
+        """
         return self.numa_comm
 
     def get_numa_id(self):
+        """Return the NUMA node id found for this rank when the communicators were built, or -1 if unknown."""
         return self.numa_id
 
     def get_numa_rank(self):
+        """Return this rank's rank in `numa_comm` (its `node_comm` rank if the NUMA node is unknown, -1 on reserved ranks)."""
         return self.numa_rank
 
     def get_numa_size(self):
+        """Return the size of `numa_comm` (the `node_comm` size if the NUMA node is unknown, 0 on reserved ranks)."""
         return self.numa_size
 
     def get_shmem_comm(self):
+        """Return the communicator to use for shared memory.
+
+        Returns `numa_comm` when the environment variable PS_SHMEM_SCOPE is "numa" or "numa_comm"
+        (case-insensitive), otherwise `node_comm`.
+        """
         scope = os.environ.get("PS_SHMEM_SCOPE", "NODE").strip().lower()
         if scope in ("numa", "numa_comm"):
             return self.numa_comm
@@ -378,6 +429,12 @@ class StepHistory(object):
             self.send_history.append(np.zeros(self.n_smds, dtype=int))
 
     def extend_buffers(self, views, client_id, as_event=False):
+        """Append step data to the per-stream buffers and count it as already sent to `client_id`.
+
+        With `as_event` False, `views` holds one chunk per stream; with True, it holds packed events
+        whose packets are split per stream (asserting one packet per stream). The send history of
+        `client_id` (stored at index `client_id - 1`) grows by the bytes added for each stream.
+        """
         idx = client_id - 1  # rank 0 has no send history.
         # Views is either list of smdchunks or events
         if not as_event:
@@ -395,6 +452,7 @@ class StepHistory(object):
                     self.send_history[idx][i_smd] += dg_bytes.nbytes
 
     def update_history(self, views, client_id):
+        """Add the byte sizes of `views` (one per stream) to the send history of `client_id` without storing any data."""
         indexed_id = client_id - 1  # rank 0 has no send history.
         for i, view in enumerate(views):
             self.send_history[indexed_id][i] += view.nbytes
@@ -465,6 +523,7 @@ def repack_for_bd(smd_batch, step_views, configs, client=-1):
 
 
 def wait_for(requests):
+    """Block until all MPI `requests` complete (`MPI.Request.Waitall`)."""
     status = [MPI.Status() for i in range(len(requests))]
     MPI.Request.Waitall(requests, status)
 
@@ -551,6 +610,14 @@ class Smd0(object):
 
     def start(self):
         # Rank 0 waits on World comm for terminating signal
+        """Run the smd0 loop: hand out smalldata chunks to the eb ranks until the data ends.
+
+        For each chunk from `smdr_man.chunks()` it waits for a request from an eb rank on `smd_comm`,
+        sends that rank the chunk repacked together with any step data it has not seen yet
+        (non-blocking send), and updates the "psana_smd0_wait" and "psana_smd0_rate" gauges; the loop
+        stops at EndRun or when a termination message arrives on the world communicator. Afterwards each
+        eb rank is sent its remaining step data and then an empty message that tells it to stop.
+        """
         t_rankreq = np.empty(1, dtype="i")
         t_req = self.comms.comm.Irecv(t_rankreq, source=MPI.ANY_SOURCE)
 
@@ -705,6 +772,7 @@ class EventBuilderNode(object):
         self.requests = [MPI.REQUEST_NULL for i in range(self.comms.bd_size - 1)]
 
     def pack(self, *args):
+        """Concatenate the buffers in `args` and append a `PacketFooter` holding their sizes; return the bytearray."""
         pf = PacketFooter(len(args))
         batch = bytearray()
         for i, arg in enumerate(args):
@@ -961,6 +1029,20 @@ class EventBuilderNode(object):
         return smd_chunk
 
     def start(self):
+        """Run the eb loop: get smalldata chunks from smd0, build event batches and send them to bd ranks.
+
+        For each chunk an `EventBuilderManager` builds batches; a batch for destination 0 goes to a
+        requesting bd rank (strict round robin when a smalldata callback is set and there is more than
+        one bd rank), batches for explicit destinations go to those ranks, and every batch is prefixed
+        with step data the rank has not seen yet. When smd0 sends an empty chunk, the remaining step
+        data is sent and every bd rank gets an empty message that tells it to stop; with
+        PS_EB_BYPASS_BD=1 batches are built but not sent.
+
+        Raises
+        ------
+        RuntimeError
+            If a batch has an explicit destination larger than the number of bd ranks.
+        """
         rankreq = np.empty(6, dtype=np.int64)
         smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
@@ -1211,6 +1293,12 @@ class EventBuilderNode(object):
                 self.logger.debug(bd_stats)
 
     def start_broadcast(self):
+        """Variant of the eb loop that broadcasts every batch to all ranks of `bd_comm`.
+
+        For each smalldata chunk from smd0 it builds batches with `EventBuilderManager` and broadcasts
+        the destination-0 batch as a uint8 array (`bd_comm.bcast`, root 0). After smd0 sends an empty
+        chunk it broadcasts an empty array to mark the end.
+        """
         smd_comm = self.comms.smd_comm
         bd_comm = self.comms.bd_comm
         callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
@@ -1236,6 +1324,21 @@ class EventBuilderNode(object):
 
 
 class BigDataNode(object):
+    """Work of a bd rank: request event batches from its eb rank and yield their events.
+
+    Parameters
+    ----------
+    comms : Communicators
+        MPI communicators of this rank.
+    configs : list
+        Configure dgrams, one per stream.
+    dm : DgramManager
+        Reader of the bigdata files.
+    dsparms : DsParms
+        Data source parameters.
+    shared_state : SimpleNamespace
+        Holds `terminate_flag`.
+    """
     def __init__(self, comms, configs, dm, dsparms, shared_state):
         self.comms = comms
         self.configs = configs
@@ -1252,6 +1355,14 @@ class BigDataNode(object):
         self._last_bd_proc_time_ns = 0
 
     def start(self):
+        """Yield the dgram lists of the events that this bd rank's eb rank sends to it.
+
+        Each new batch is requested by sending on `bd_comm` to rank 0 an int64 array with this rank's
+        bd rank and the read and processing statistics of the previous batch, then receiving the batch;
+        the events are produced by `Events` with that request function. Events are read but not yielded
+        once `shared_state.terminate_flag` is set, and iteration ends when the eb rank sends an empty
+        batch.
+        """
         def on_batch_end(payload):
             (read_bytes, read_time), event_count, elapsed = payload
             self._last_bd_read_bytes = int(read_bytes)
@@ -1319,6 +1430,18 @@ class BigDataNode(object):
             yield dgrams
 
     def start_smdonly(self):
+        """Build and return a timestamp table from smalldata batches broadcast by the eb rank.
+
+        Receives batches with `bd_comm.bcast` (as sent by `EventBuilderNode.start_broadcast`) until an
+        empty one arrives. Every L1Accept adds an entry mapping its timestamp to
+        {stream index: (bigdata offset, size)} taken from the dgrams' `smdinfo`; entries that cannot be
+        parsed are skipped.
+
+        Returns
+        -------
+        dict
+            The timestamp table.
+        """
         bd_comm = self.comms.bd_comm
 
         def get_smd():

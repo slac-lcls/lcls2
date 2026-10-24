@@ -33,6 +33,7 @@ short orientation written for these docs, followed by the generated reference.
 | [`psana.dgrammanager`](dgrammanager.md) | `DgramManager`, which reads dgrams from files, shared memory or the DRP. |
 | [`psana.psexp.mpi_ds`](mpi_ds.md) | `MPIDataSource` and `RunParallel` (MPI mode). |
 | [`psana.psexp.null_ds`](null_ds.md) | `NullDataSource` and `NullRun`, for MPI ranks that read no data. |
+| [`psana.smalldata`](smalldata.md) | `SmallData` (HDF5 output from MPI jobs) and its `Server`. |
 | [`psana.detector.detector_impl`](detector_impl.md) | `DetectorImpl`, the base class of detector interfaces. |
 | [`psana.detector.areadetector`](areadetector.md) | `AreaDetector` / `AreaDetectorRaw` (`raw`, `calib`, `image`). |
 | [`psana.detector.calibconstants`](calibconstants.md) | `CalibConstants`, access to calibration constants and geometry. |
