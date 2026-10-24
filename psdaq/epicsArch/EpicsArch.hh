@@ -34,9 +34,12 @@ public:
     virtual ~EaDetector();
     unsigned connect(const nlohmann::json&, const std::string& collectionId, std::string& msg);
     unsigned disconnect();
+    /** Run XpmDetector::configure (returning 1 if it fails), reset the stale count and add the PV names from the EpicsArchMonitor to xtc. Aborts if the Configure datagram or the PV payload size reported by the monitor exceeds Parameters::maxTrSize; otherwise returns 0. */
     unsigned configure(const std::string& config_alias, XtcData::Xtc& xtc, const void* bufEnd) override;
     unsigned unconfigure();
+    /** Add the current PV values and their stale flags to xtc with EpicsArchMonitor::getData, which also sets the stale count returned by nStales(). */
     void slowupdate(XtcData::Xtc& xtc, const void* bufEnd) override;
+    /** Does nothing; empty body (marked unused). */
     void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t l1count) override;
 public:
     const std::unique_ptr<EpicsArchMonitor>& monitor() const { return m_monitor; }

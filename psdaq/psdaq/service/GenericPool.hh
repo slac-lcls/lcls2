@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief GenericPool, a Pool whose buffers come from one contiguous allocation and whose free list is a locked Queue.
+ */
 /*
 ** ++
 **  Package:
@@ -24,20 +28,27 @@
 #include "Queue.hh"
 
 namespace Pds {
+/** Pool whose buffers are carved from one new[] block and kept on a Queue of PoolEntry (spin-locked); allocation returns nullptr when the queue is empty. */
 class GenericPool : public Queue<PoolEntry>, public Pool
   {
   public:
+    /** Allocate a block for numberofObjects buffers of sizeofObject bytes plus headers and put all buffers on the free list. */
     GenericPool(size_t sizeofObject, int numberofObjects);
+    /** Like GenericPool(sizeofObject, numberofObjects), with each user buffer aligned to alignBoundary (the block gets alignBoundary extra bytes). */
     GenericPool(size_t sizeofObject, int numberofObjects, unsigned alignBoundary);
+    /** Free the block. */
     ~GenericPool();
   public:
+    /** Return the start of the block. */
     void*  buffer() const;
+    /** Return the block size in bytes. */
     size_t size  () const;
   protected:
     virtual void* deque(); 
     virtual void  enque(PoolEntry*);
     virtual void* allocate(size_t size);
   public:
+    /** Print the block size, address and fill offset, the object size and count, and the counters to stdout. */
     void dump() const;
   private:
     size_t _bounds;

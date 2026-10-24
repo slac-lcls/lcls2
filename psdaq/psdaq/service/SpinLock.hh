@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief SpinLock, a busy-waiting lock on std::atomic_flag, usable with std::lock_guard.
+ */
 #ifndef PDS_SPINLOCK_HH
 #define PDS_SPINLOCK_HH
 
@@ -6,17 +10,24 @@
 
 namespace Pds
 {
+  /** Busy-waiting lock on an atomic flag; satisfies the lock() and unlock() interface of std::lock_guard. Not copyable. */
   class SpinLock
   {
   public:
+    /** Construct unlocked. */
     SpinLock();
+    /** Defaulted destructor. */
     ~SpinLock() = default;
 
+    /** Deleted: a lock cannot be copied. */
     SpinLock(const SpinLock&) = delete;
+    /** Deleted: a lock cannot be copy-assigned. */
     SpinLock& operator=(const SpinLock&) = delete;
 
   public:
+    /** Spin until the flag is acquired, executing a pause instruction and yielding the thread between attempts. */
     void lock();
+    /** Clear the flag. */
     void unlock();
 
   private:

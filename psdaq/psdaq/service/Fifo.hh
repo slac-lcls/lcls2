@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Fifo, a fixed-size ring buffer, with a lock-guarded variant (FifoMT) and a variant whose readers can wait (FifoW).
+ */
 #ifndef Pds_Fifo_hh
 #define Pds_Fifo_hh
 
@@ -12,22 +16,35 @@
 
 namespace Pds
 {
+  /** Fixed-size ring buffer of T, not thread-safe. push() and pop() return true when they fail (full or empty). */
   template <class T>
   class Fifo
   {
   public:
+    /** Allocate size slots and start empty. */
     Fifo(size_t size);
   public:
+    /** Make the FIFO empty (the slots are not cleared). */
     void          clear();
+    /** Copy item to the back; returns true, without storing, if the FIFO is full, else false. */
     bool          push(const T& item);
+    /** Move the front element into item; returns true, without changing item, if the FIFO is empty, else false. */
     bool          pop(T& item);
+    /** Return a reference to the front slot (not checked for emptiness). */
     T&            front();
+    /** Return a const reference to the front slot (not checked for emptiness). */
     const T&      front() const;
+    /** Return the slot offset positions after the front (wrapping; not checked against count()). */
     const T&      peek(size_t offset) const;
+    /** Return a reference to the most recently pushed slot. */
     T&            back();
+    /** Return a const reference to the most recently pushed slot. */
     const T&      back()  const;
+    /** Return true if the FIFO holds no elements. */
     bool          empty() const;
+    /** Return the capacity. */
     size_t        size()  const;
+    /** Return a reference to the number of elements held. */
     const size_t& count() const;
   private:
     size_t         _head;
@@ -147,23 +164,37 @@ const size_t& Pds::Fifo<T>::count() const
 
 namespace Pds
 {
+  /** Fifo of T whose every operation holds a lock of type L (default Pds::SpinLock) for multi-threaded use; references returned by front(), back() and peek() are used after the lock is released. */
   template <class T, class L = Pds::SpinLock>
   class FifoMT : private Fifo<T>        // MT = Multi-Threading
   {
   public:
+    /** Allocate size slots and start empty. */
     FifoMT(size_t size) : Fifo<T>(size) { }
   public:
+/** Declares a std::lock_guard on the member lock for the rest of the enclosing body; undefined after the member functions. */
 #define           LCK                       std::lock_guard<L> lk(_lock)
+    /** Under the lock, make the FIFO empty. */
     void          clear()                 { LCK;        Fifo<T>::clear();    }
+    /** Under the lock, copy item to the back; returns true if the FIFO was full. */
     bool          push(const T& item)     { LCK; return Fifo<T>::push(item); }
+    /** Under the lock, move the front element into item; returns true if the FIFO was empty. */
     bool          pop(T& item)            { LCK; return Fifo<T>::pop(item);  }
+    /** Under the lock, return a reference to the front slot. */
     T&            front()                 { LCK; return Fifo<T>::front();    }
+    /** Under the lock, return a const reference to the front slot. */
     const T&      front() const           { LCK; return Fifo<T>::front();    }
+    /** Under the lock, return the slot ofs positions after the front. */
     const T&      peek(size_t ofs) const  { LCK; return Fifo<T>::peek(ofs);  }
+    /** Under the lock, return a reference to the most recently pushed slot. */
     T&            back()                  { LCK; return Fifo<T>::back();     }
+    /** Under the lock, return a const reference to the most recently pushed slot. */
     const T&      back()  const           { LCK; return Fifo<T>::back();     }
+    /** Under the lock, return true if the FIFO is empty. */
     bool          empty() const           { LCK; return Fifo<T>::empty();    }
+    /** Under the lock, return the capacity. */
     size_t        size()  const           { LCK; return Fifo<T>::size();     }
+    /** Under the lock, return a reference to the number of elements. */
     const size_t& count() const           { LCK; return Fifo<T>::count();    }
 #undef            LCK
   private:
@@ -174,17 +205,25 @@ namespace Pds
 
 namespace Pds
 {
+  /** Fifo of T whose push() and pop() hold a lock of type L (default std::mutex) and notify a condition variable, so other threads can wait in pend() for data or in pendn() for the FIFO to drain. The inherited accessors do not lock. */
   template <class T, class L = std::mutex>
   class FifoW : public Fifo<T>
   {
   public:
+    /** Allocate size slots and start empty. */
     FifoW(size_t size);
   public:
+    /** Under the lock, copy item to the back and wake one waiter; returns true if the FIFO was full. */
     bool push(const T& item);
+    /** Under the lock, move the front element into item and wake one waiter; returns true if the FIFO was empty. */
     bool pop(T& item);
+    /** Block until the FIFO is not empty. */
     void pend() const;
+    /** Block until the FIFO is not empty or tmo has elapsed. */
     void pend(const std::chrono::milliseconds& tmo) const;
+    /** Block until the FIFO is empty. */
     void pendn() const;
+    /** Block until the FIFO is empty or tmo has elapsed. */
     void pendn(const std::chrono::milliseconds& tmo) const;
   private:
     mutable L               _lock;
