@@ -1,6 +1,11 @@
 # a detector interface class name must follow the
 # naming convention: dettype_drpalg_major_minor_micro
 
+"""Import all detector interface modules into one namespace.
+
+`DgramManager` looks up interface classes here by name; the code comment says names follow
+`dettype_drpalg_major_minor_micro`. The epixhremu import is commented out.
+"""
 from .test_detectors        import *
 from .misc_detectors        import *
 from .bld                   import *

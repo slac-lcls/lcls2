@@ -1,3 +1,4 @@
+"""Detector interfaces for wave8 data (raw waveforms, fex values, cube data) and the wave8v1 waveform decoder."""
 import functools
 from enum import Enum
 from typing import Any, Dict, List, Optional, Type, Union
@@ -9,6 +10,13 @@ from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array1d, Array2d
 
 class wave8_raw_0_0_1(DetectorImpl):
+    """Detector interface for detector type `wave8`, software `raw`, version 0.0.1.
+
+    On construction `_add_fields()` adds one method per data field declared in the config (except
+    `software` and `version`); each returns that field of segment 0 for an event, or None if the
+    detector's segments are missing. `raw_all`
+    stacks the waveforms of the generated `raw_0` to `raw_7` accessors.
+    """
     def __init__(self, *args):
         super(wave8_raw_0_0_1, self).__init__(*args)
 
@@ -24,6 +32,11 @@ class wave8_raw_0_0_1(DetectorImpl):
     def raw_all(self,evt) -> Array2d:
         # only return a 2D array if all channels present
         # have the same length
+        """Return the waveforms of the generated `raw_0` to `raw_7` accessors stacked into a 2-D array.
+
+        Accessors that do not exist and None waveforms are skipped. Returns None if no waveform is
+        present or a waveform's shape differs from the previous one.
+        """
         waveforms = []
         for i in range(8):
             func = getattr(self,'raw_%d'%i, None)
@@ -38,6 +51,13 @@ class wave8_raw_0_0_1(DetectorImpl):
         return np.stack(waveforms)
 
 class wave8_fex_0_0_1(DetectorImpl):
+    """Detector interface for detector type `wave8`, software `fex`, version 0.0.1.
+
+    On construction `_add_fields()` adds one method per data field declared in the config (except
+    `software` and `version`); each returns that field of segment 0 for an event, or None if the
+    detector's segments are missing. `base_all`
+    and `integral_all` collect the per-channel values.
+    """
     def __init__(self, *args):
         super(wave8_fex_0_0_1, self).__init__(*args)
 
@@ -51,6 +71,10 @@ class wave8_fex_0_0_1(DetectorImpl):
         return segments[0]
 
     def base_all(self,evt) -> Array1d:
+        """Return a numpy array of the non-None values of the generated `base_0` to `base_7` accessors.
+
+        Accessors that do not exist are skipped; returns None if there are no values.
+        """
         vals = []
         for i in range(8):
             func = getattr(self,'base_%d'%i, None)
@@ -61,6 +85,10 @@ class wave8_fex_0_0_1(DetectorImpl):
         return np.array(vals)
 
     def integral_all(self,evt) -> Array1d:
+        """Return a numpy array of the non-None values of the generated `integral_0` to `integral_7` accessors.
+
+        Accessors that do not exist are skipped; returns None if there are no values.
+        """
         vals = []
         for i in range(8):
             func = getattr(self,'integral_%d'%i, None)
@@ -71,6 +99,12 @@ class wave8_fex_0_0_1(DetectorImpl):
         return np.array(vals)
 
 class wave8_cube_2_0_0(DetectorImpl):
+    """Detector interface for detector type `wave8`, software `cube`, version 2.0.0.
+
+    On construction `_add_fields()` adds one method per data field declared in the config (except
+    `software` and `version`); each returns that field of segment 0 for an event, or None if the
+    detector's segments are missing.
+    """
     def __init__(self, *args):
         super(wave8_cube_2_0_0, self).__init__(*args)
 
@@ -111,6 +145,7 @@ class wave8_cube_2_0_0(DetectorImpl):
 """
 
 class wave8v1wf_config_1_0_0(DetectorImpl):
+    """Detector interface for detector type `wave8v1wf`, software `config`, version 1.0.0; adds nothing to `DetectorImpl`."""
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
@@ -201,6 +236,13 @@ class wave8v1wf_raw_1_0_0(DetectorImpl):
         return None
 
     def raw_all(self, evt) -> Array2d:
+        """Return the decoded waveforms of channels 0 to 15 stacked into a 2-D array, or None.
+
+        Returns None if the configured channels have different sample counts or no waveform is decoded.
+        It calls `raw_<i>` for every i from 0 to 15 without a default, and the constructor creates these
+        accessors only for enabled channels, so a disabled channel raises AttributeError (unless
+        `_add_fields` created an attribute of that name).
+        """
         if not self._all_wf_same_length:
             return None
         else:

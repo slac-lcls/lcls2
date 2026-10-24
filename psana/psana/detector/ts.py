@@ -1,4 +1,5 @@
 #import bitstruct
+"""Detector interfaces for the `ts` detector type (pulse id, timestamp, event codes and related fields) and for `triginfo`."""
 import numpy as np
 import typing
 import amitypes
@@ -39,6 +40,11 @@ def _unpack(data):
              _to_word(data[40:48]))     # mps_power_class
 
 class ts_ts_1_2_3(DetectorImpl):
+    """Detector interface for detector type `ts`, software `ts`, version 1.2.3.
+
+    `info` unpacks the first 48 bytes of segment 0's `data` into a `TsData` named tuple and
+    `sequencer_info` returns the bytes after them viewed as uint16.
+    """
     def __init__(self, *args):
         super(ts_ts_1_2_3, self).__init__(*args)
 
@@ -78,6 +84,12 @@ class ts_ts_1_2_3(DetectorImpl):
 
     def info(self,evt):
         # check for missing data
+        """Return the data of segment 0 unpacked into a `TsData` named tuple, or None if the segments are missing.
+
+        The fields (pulseId, timestamp, rate markers, time slot, ebeam and photon request values, MPS
+        values) are decoded from little-endian words of `segments[0].data` by the module function
+        `_unpack`; the reserved fields are always 0.
+        """
         segments = self._segments(evt)
         if segments is None: return None
         # seems reasonable to assume that all TS data comes from one segment
@@ -88,6 +100,10 @@ class ts_ts_1_2_3(DetectorImpl):
 
     def sequencer_info(self,evt):
         # check for missing data
+        """Return the bytes of segment 0's `data` after the first 48, viewed as uint16, or None if the segments are missing.
+
+        The code comment says these bytes hold the event codes.
+        """
         segments = self._segments(evt)
         if segments is None: return None
         # seems reasonable to assume that all TS data comes from one segment
@@ -99,11 +115,21 @@ class ts_ts_1_2_3(DetectorImpl):
 
 
 class ts_ts_0_0_1(DetectorImpl):
+    """Detector interface for detector type `ts`, software `ts`, version 0.0.1.
+
+    Its private `_info` returns the first segment found in the event (not necessarily segment 0), or
+    None if the segments are missing.
+    """
     def __init__(self, *args):
         super(ts_ts_0_0_1, self).__init__(*args)
         #self._add_fields()
 
     def eventcodes(self,evt) -> amitypes.Array1d:
+        """Return a list of 288 ints (0 or 1): bit i is bit `i & 0xf` of word `i >> 4` of `sequenceValues`.
+
+        `sequenceValues` is read from the first segment. No missing-data check: raises
+        AttributeError if the event does not have all of this detector's segments.
+        """
         seqV = self._info(evt).sequenceValues
         return [int((seqV[i>>4]>>(i&0xf))&1) for i in range(288)]
 
@@ -122,26 +148,60 @@ class ts_ts_0_0_1(DetectorImpl):
         return next(iter(segments.values()))
 
 class ts_raw_2_0_0(ts_ts_0_0_1):
+    """Detector interface for detector type `ts`, software `raw`, version 2.0.0.
+
+    Same as `ts_ts_0_0_1`; adds nothing.
+    """
     def __init__(self, *args):
         super().__init__(*args)
 
 class ts_raw_2_1_0(ts_raw_2_0_0):
+    """Detector interface for detector type `ts`, software `raw`, version 2.1.0.
+
+    Extends `ts_raw_2_0_0` with accessors for fields of the first segment.
+    """
     def __init__(self, *args):
         super().__init__(*args)
 
     def inhibitCounts(self,evt) -> amitypes.Array1d:
+        """Return the `inhibitCounts` field of the first segment.
+
+        No missing-data check: raises AttributeError if the event does not have all of this detector's
+        segments.
+        """
         return self._info(evt).inhibitCounts
 
     def destination(self,evt) -> int:
+        """Return the `ebeamDestn` field of the first segment.
+
+        No missing-data check: raises AttributeError if the event does not have all of this detector's
+        segments.
+        """
         return self._info(evt).ebeamDestn
 
     def pulseId(self,evt) -> int:
+        """Return the `pulseId` field of the first segment with bit 63 cleared.
+
+        The code comment says bit 63 identifies LCLS-1 data. No missing-data check: raises AttributeError if the event does not have all of this detector's
+        segments.
+        """
         return self._info(evt).pulseId & ~(1<<63) # bit 63 identifies LCLS-1
 
     def timestamp(self,evt) -> int:
+        """Return the `timeStamp` field of the first segment.
+
+        No missing-data check: raises AttributeError if the event does not have all of this detector's
+        segments.
+        """
         return self._info(evt).timeStamp
 
 class ts_cube_2_0_0(DetectorImpl):
+    """Detector interface for detector type `ts`, software `cube`, version 2.0.0.
+
+    On construction `_add_fields()` adds one method per data field declared in the config (except
+    `software` and `version`); each returns that field of segment 0 for an event, or None if the
+    detector's segments are missing.
+    """
     def __init__(self, *args):
         super().__init__(*args)
         self._add_fields()
@@ -159,20 +219,27 @@ class ts_cube_2_0_0(DetectorImpl):
 """
 
 class triginfo_triginfo_0_0_1(DetectorImpl):
+    """Detector interface for detector type `triginfo`, software `triginfo`, version 0.0.1.
+
+    Each method returns bits of segment 0's `data`, or None if the segments are missing.
+    """
     def __init__(self, *args):
         super(triginfo_triginfo_0_0_1, self).__init__(*args)
 
     def prescale(self, evt) -> int:
+        """Return bit 0 of segment 0's `data`, or None if the detector's segments are missing."""
         segments = self._segments(evt)
         if segments is None: return None
         return (segments[0].data >> 0) & 0x1
 
     def persist(self, evt) -> int:
+        """Return bit 1 of segment 0's `data`, or None if the detector's segments are missing."""
         segments = self._segments(evt)
         if segments is None: return None
         return (segments[0].data >> 1) & 0x1
 
     def monitor(self, evt) -> int:
+        """Return bits 2 to 5 of segment 0's `data` (`(data >> 2) & 0xf`), or None if the detector's segments are missing."""
         segments = self._segments(evt)
         if segments is None: return None
         return (segments[0].data >> 2) & 0xf

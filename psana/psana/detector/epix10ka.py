@@ -14,10 +14,19 @@ logger = logging.getLogger(__name__)
 # make an empty detector interface for Matt's hardware
 # configuration object so that config_dump works - cpo
 class epix10kaquad_config_2_0_0(DetectorImpl):
+    """Empty interface for detector type `epix10kaquad`, software `config`, version 2.0.0.
+
+    The code comment says it exists so that config_dump works for this hardware configuration
+    object. Keyword arguments given to the constructor are not passed on.
+    """
     def __init__(self, *args, **kwargs):
         super(epix10kaquad_config_2_0_0, self).__init__(*args)
 
 class epix10ka_config_3_0_0(DetectorImpl):
+    """Empty interface for detector type `epix10ka`, software `config`, version 3.0.0.
+
+    Keyword arguments given to the constructor are not passed on.
+    """
     def __init__(self, *args, **kwargs):
         logger.debug('class epix10ka_config_3_0_0')
         super().__init__(*args)
@@ -25,6 +34,11 @@ class epix10ka_config_3_0_0(DetectorImpl):
 
 
 class epix10k_raw_0_0_1(eb.epix_base):
+    """Area-detector interface for detector type `epix10k`, software `raw`, version 0.0.1.
+
+    `epix_base` subclass that sets the segment geometry "EPIX10KA:V1" and the default geometry file
+    `pscalib/geometry/data/geometry-def-epix10ka-TBD.data`.
+    """
     def __init__(self, *args, **kwargs):
         logger.debug('%s.__init__' % self.__class__.__name__)
         eb.epix_base.__init__(self, *args, **kwargs)
@@ -33,6 +47,14 @@ class epix10k_raw_0_0_1(eb.epix_base):
 
 
 class epix10ka_raw_2_0_1(eb.epix_base):
+    """Area-detector interface for detector type `epix10ka`, software `raw`, version 2.0.1.
+
+    `epix_base` subclass. The constructor sets the segment geometry "EPIX10KA:V1", data mask M14 (0x3fff), gain bit B14 (0o40000), gain bit shift 9, default gains (16.4, 5.466, 0.164) and the default geometry file `pscalib/geometry/data/geometry-def-epix10kaquad.data`; configuration bits come from `epix_base.cbits_config_epix10ka` with shape (352, 384), and `raw` and `calib` call the `epix_base` methods.
+
+    Notes
+    -----
+    The module also binds the name `epix_raw_2_0_1` to this class (old detector type, per the code comment).
+    """
     def __init__(self, *args, **kwargs):
         logger.debug('epix10ka_raw_2_0_1.__init__')
         eb.epix_base.__init__(self, *args, **kwargs)
@@ -97,6 +119,11 @@ class epix10ka_raw_2_0_1(eb.epix_base):
 
 
 class epix10ka_raw_3_0_1(epix10ka_raw_2_0_1):
+    """Area-detector interface for detector type `epix10ka`, software `raw`, version 3.0.1.
+
+    Same as `epix10ka_raw_2_0_1` except that the configuration bits are the segment config's
+    `cbitsConfig` array and `calib` uses `UtilsEpix10ka.calib_epix10ka_v02`.
+    """
     def __init__(self, *args, **kwargs):
         logger.debug('epix10ka_raw_3_0_1.__init__')
         epix10ka_raw_2_0_1.__init__(self, *args, **kwargs)
