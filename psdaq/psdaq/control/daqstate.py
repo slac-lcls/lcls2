@@ -10,6 +10,13 @@ import json
 def main():
 
     # process arguments
+    """Command-line tool to query or change the DAQ state through `DaqControl`.
+
+    Exits unless `getInstrument` matches -P. Then performs one action: ``--state``
+    (optionally with ``--phase1`` JSON), ``--transition``, ``--config``/-B, ``--record``,
+    ``--bypass``, ``--monitor`` (prints status messages until `monitorStatus` returns None),
+    or by default prints the `getStatus` fields; error strings returned are printed.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0,
                         help='platform (default 0)')

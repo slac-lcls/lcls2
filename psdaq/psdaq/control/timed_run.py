@@ -17,6 +17,25 @@ import argparse
 # RETURNS: Two values: platform number (or -1 on error) and collection host name
 #
 def deduce_platform3(configfilename, platform=None):
+    """Execute a DAQ config file and return its platform and collection host.
+
+    The file is run with `exec` in a namespace pre-filled with placeholder names; the
+    result comes from its 'platform' and 'collect_host' variables. Reads
+    ``os.environ['CONDA_PREFIX']`` (outside the try block, so a missing variable raises KeyError).
+
+    Parameters
+    ----------
+    configfilename : str
+        Path of the config file to execute.
+    platform : optional
+        Initial value of 'platform' in the namespace.
+
+    Returns
+    -------
+    tuple
+        (platform, collect_host). platform is int(platform) only if the file left a digit
+        string there, else -1; on any exception returns (-1, 'Error').
+    """
     platform_rv = -1  # return -1 on error
     cc = {'platform': platform, 'procmgr_config': None, 'TESTRELDIR': '', 'CONDA_PREFIX': os.environ['CONDA_PREFIX'],
           'CONFIGDIR': '', 'collect_host': '',
@@ -36,6 +55,12 @@ def deduce_platform3(configfilename, platform=None):
     return platform_rv, collect_host_rv
 
 def main():
+    """Run the DAQ for ``--duration`` seconds using the platform and host from ``--config``.
+
+    Exits if the platform cannot be deduced or the initial state is 'error'. With
+    ``--record`` it enables recording if `getStatus` reports it off, then uses `TimedRun`
+    to go to 'running', sleep, return to 'connected' and shut down the communicator thread.
+    """
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--config', help='configuration file name (required)', required=True)

@@ -1,3 +1,8 @@
+"""Client-side `DaqControl` class that talks to the DAQ collection process over ZMQ.
+
+Requests go over REQ sockets to `front_rep_port` and `fast_rep_port`; status updates
+are received on a SUB socket connected to `front_pub_port` and `step_pub_port`.
+"""
 import logging
 import zmq
 from psdaq.control.ControlDef import ControlDef, front_pub_port, front_rep_port, fast_rep_port, create_msg
@@ -30,6 +35,15 @@ class DaqControl:
     # DaqControl.getState - get current state
     #
     def getState(self):
+        """Send a 'getstate' request and return the reply's ``header['key']``.
+
+        On a receive timeout (zmq.Again) the front REQ socket is re-created.
+
+        Returns
+        -------
+        str
+            The reply key, or 'error' on timeout, exception, KeyboardInterrupt or a missing key.
+        """
         retval = 'error'
         try:
             msg = create_msg('getstate')
@@ -55,6 +69,15 @@ class DaqControl:
     # DaqControl.getPlatform - get platform
     #
     def getPlatform(self):
+        """Send a 'getstate' request and return the reply's body.
+
+        On a receive timeout (zmq.Again) the front REQ socket is re-created.
+
+        Returns
+        -------
+        dict
+            ``reply['body']``, or {} on timeout, exception, KeyboardInterrupt or a missing key.
+        """
         retval = {}
         try:
             msg = create_msg('getstate')
@@ -80,6 +103,11 @@ class DaqControl:
     # DaqControl.getJsonConfig - get json configuration
     #
     def getJsonConfig(self):
+        """Return the platform info converted by `levels_to_activedet` as indented, sorted JSON.
+
+        Note that neither `levels_to_activedet` nor `oldjson` is imported in this module, so
+        as written this raises NameError.
+        """
         src = self.getPlatform()
         dst = levels_to_activedet(src)
         retval =  oldjson.dumps(dst, sort_keys=True, indent=4)
@@ -90,6 +118,20 @@ class DaqControl:
     # DaqControl.storeJsonConfig - store json configuration
     #
     def storeJsonConfig(self, json_data):
+        """Send a 'storejsonconfig' request with body ``{'json_data': json_data}``.
+
+        On a receive timeout (zmq.Again) the front REQ socket is re-created.
+
+        Parameters
+        ----------
+        json_data
+            Data placed in the request body.
+
+        Returns
+        -------
+        dict
+            ``reply['body']``, or {} on timeout, exception, KeyboardInterrupt or a missing key.
+        """
         retval = {}
         body = {"json_data": json_data}
         try:
@@ -116,6 +158,20 @@ class DaqControl:
     # DaqControl.selectPlatform - select platform
     #
     def selectPlatform(self, body):
+        """Send a 'selectplatform' request with the given body.
+
+        On a receive timeout (zmq.Again) the front REQ socket is re-created.
+
+        Parameters
+        ----------
+        body : dict
+            Request body.
+
+        Returns
+        -------
+        dict
+            ``reply['body']``, or {} on timeout, exception, KeyboardInterrupt or a missing key.
+        """
         retval = {}
         try:
             msg = create_msg('selectplatform', body=body)
@@ -141,6 +197,14 @@ class DaqControl:
     # DaqControl.getInstrument - get instrument name
     #
     def getInstrument(self):
+        """Send a 'getinstrument' request on the fast REQ socket.
+
+        Returns
+        -------
+        str or None
+            ``reply['body']['instrument']``, or None if the request or lookup fails (the
+            exception is printed).
+        """
         r1 = None
         try:
             msg = create_msg('getinstrument')
@@ -160,6 +224,15 @@ class DaqControl:
     # DaqControl.getStatus - get status
     #
     def getStatus(self):
+        """Send a 'getstatus' request and return fields of the reply body.
+
+        Returns
+        -------
+        tuple
+            (transition, state, config_alias, recording, platform, bypass_activedet,
+            experiment_name, run_number, last_run_number). Defaults are 'error' for every
+            field except platform ({}); on a KeyError, fields read before it keep their values.
+        """
         r1 = r2 = r3 = r4 = r6 = 'error'
         r5 = {}
         r7 = r8 = r9 = 'error'
@@ -193,6 +266,15 @@ class DaqControl:
     def monitorStatus(self):
 
         # process messages
+        """Block on the SUB socket until a recognized message arrives and return its fields.
+
+        Messages with other keys are ignored. Always returns an 8-tuple:
+        'status' -> (transition, state, config_alias, recording, bypass_activedet,
+        experiment_name, run_number, last_run_number); 'error'/'warning' -> (key, err_info,
+        'error' x6); 'fileReport' -> ('fileReport', path, 'error' x6); 'progress' ->
+        ('progress', transition, elapsed, total, 'error' x4); 'step' -> ('step', step_done,
+        'error' x6). On KeyboardInterrupt or KeyError returns eight Nones.
+        """
         while True:
             try:
                 msg = self.front_sub.recv_json()
@@ -240,6 +322,22 @@ class DaqControl:
     #  'enable':    {'myvalue5':37, 'myvalue6': 'hello'}}
     #
     def setState(self, state, phase1Info={}):
+        """Send a 'setstate.<state>' request with `phase1Info` as the body.
+
+        On a receive timeout (zmq.Again) the front REQ socket is re-created.
+
+        Parameters
+        ----------
+        state : str
+            Target state name.
+        phase1Info : dict, optional
+            Per-transition phase-1 info, e.g. ``{'beginstep': {...}, 'enable': {...}}``.
+
+        Returns
+        -------
+        str or None
+            ``reply['body']['err_info']`` if present, an error string on timeout/exception, else None.
+        """
         errorMessage = None
         try:
             msg = create_msg('setstate.' + state, body=phase1Info)
@@ -263,6 +361,13 @@ class DaqControl:
     # DaqControl.setConfig - set BEAM/NOBEAM
     #
     def setConfig(self, config):
+        """Send a 'setconfig.<config>' request on the front REQ socket.
+
+        Returns
+        -------
+        str or None
+            ``reply['body']['err_info']`` if present, an error string on exception, else None.
+        """
         errorMessage = None
         try:
             msg = create_msg('setconfig.' + config)
@@ -283,6 +388,19 @@ class DaqControl:
     #   True or False
     #
     def setRecord(self, recordIn):
+        """Send 'setrecord.1' or 'setrecord.0' on the fast REQ socket.
+
+        Parameters
+        ----------
+        recordIn : bool
+            Record flag; any non-bool value is rejected without sending.
+
+        Returns
+        -------
+        str or None
+            ``reply['body']['err_info']`` if present, an error string on exception or non-bool
+            input, else None.
+        """
         errorMessage = None
         if type(recordIn) == type(True):
             if recordIn:
@@ -310,6 +428,13 @@ class DaqControl:
     # DaqControl.getBlock -
     #
     def getBlock(self, data):
+        """Send a 'getblock' request with `data` as body on the fast REQ socket.
+
+        Returns
+        -------
+        object or None
+            ``reply['body']``, or None if the request or lookup fails (the exception is printed).
+        """
         r1 = None
         try:
             msg = create_msg('getblock', body=data)
@@ -331,6 +456,19 @@ class DaqControl:
     #   True or False
     #
     def setBypass(self, bypassIn):
+        """Send 'setbypass.1' or 'setbypass.0' on the front REQ socket.
+
+        Parameters
+        ----------
+        bypassIn : bool
+            Bypass flag; any non-bool value is rejected without sending.
+
+        Returns
+        -------
+        str or None
+            ``reply['body']['err_info']`` if present, an error string on exception or non-bool
+            input, else None.
+        """
         errorMessage = None
         if type(bypassIn) == type(True):
             if bypassIn:
@@ -362,6 +500,13 @@ class DaqControl:
     # {'myvalue1':3 , 'myvalue2': {'myvalue3':72}}
     #
     def setTransition(self, transition, phase1Info={}):
+        """Send a request whose key is `transition` with `phase1Info` as the body.
+
+        Returns
+        -------
+        str or None
+            ``reply['body']['err_info']`` if present, an error string on exception, else None.
+        """
         errorMessage = None
         try:
             msg = create_msg(transition, body=phase1Info)
@@ -382,6 +527,11 @@ class DaqControl:
     #
     def front_req_init(self):
         # if socket previouly created, close it
+        """Close the existing front REQ socket (if any) and create a new one.
+
+        The new socket has linger 0 and RCVTIMEO set to `self.timeout`, and is connected to
+        `front_req_endpoint`.
+        """
         if self.front_req is not None:
             self.front_req.close()
         # create new socket
@@ -395,6 +545,11 @@ class DaqControl:
     #
     def fast_req_init(self):
         # if socket previouly created, close it
+        """Close the existing fast REQ socket (if any) and create a new one.
+
+        The new socket has linger 0 and RCVTIMEO set to `self.timeout`, and is connected to
+        `fast_req_endpoint`.
+        """
         if self.fast_req is not None:
             self.fast_req.close()
         # create new socket

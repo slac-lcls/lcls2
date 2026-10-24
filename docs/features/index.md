@@ -18,3 +18,4 @@ need access to LCLS data storage, the calibration database, or a running DAQ.
 | [MPI parallel analysis](mpi-parallel.md) | `psana/psana/psexp/mpi_ds.py`, `psana/psana/psexp/node.py`, `psana/psana/smalldata.py` |
 | [Shared memory and live analysis](shmem-live.md) | `psana/psana/psexp/shmem_ds.py`, `psana/psana/shmem/`, `psalg/psalg/shmem/` |
 | [psalg algorithms](psalg.md) | `psalg/psalg/`, `psana/psana/peakFinder/`, `psana/psana/hsd/` |
+| [DAQ control](daq-control.md) | `psdaq/psdaq/control/` |

@@ -1,3 +1,9 @@
+"""DAQ collection manager.
+
+Defines `CollectionManager`, a `transitions.Machine`-based state machine that talks to
+DAQ processes over ZMQ, to XPMs through PVA PVs (`DaqXPM`, `DaqPVA`) and to the logbook
+web service over HTTP, plus helper functions and the `main` command-line entry point.
+"""
 import os
 import time
 import copy
@@ -28,6 +34,18 @@ report_keys = ['error', 'warning', 'fileReport']
 
 
 def set2csv(seg_set):
+    """Return the sorted elements of `seg_set` as a comma-separated string.
+
+    Parameters
+    ----------
+    seg_set : iterable
+        Elements to join; each is formatted with an f-string.
+
+    Returns
+    -------
+    str
+        E.g. '0,1,3'; empty string for an empty input.
+    """
     seg_csv = ""
     seg_list = list(seg_set)
     seg_list.sort()
@@ -45,9 +63,11 @@ class PvInfo:
         self.desc = desc
 
     def get_name(self):
+        """Return the PV name."""
         return self.name
 
     def get_desc(self):
+        """Return the PV description, or the PV name if the description is None."""
         return self.name if self.desc is None else self.desc
 
     def __repr__(self):
@@ -69,6 +89,22 @@ class RunParams:
         self.simulator = pva is None # True when in simulator mode
 
     def updateFileSet(self, fileSet):
+        """Return `fileSet` plus the files included by lines starting with '<' in those files.
+
+        In each file, text after '#' is dropped; a line starting with '<' is parsed as a
+        comma-separated list of file names. Relative names are prefixed with the directory of
+        `self.path`. Errors opening/reading a file are logged and skipped.
+
+        Parameters
+        ----------
+        fileSet : set of str
+            Files to scan.
+
+        Returns
+        -------
+        set of str
+            Union of `fileSet` and the included file names found.
+        """
         logging.debug(f"RunParams updateFileSet({fileSet})")
         found = set()
         for ff in fileSet:
@@ -91,6 +127,12 @@ class RunParams:
         return fileSet | found
 
     def updatePvSet(self):
+        """Parse the files in `self.fileSet` and set `self.pvaList` and `self.caList`.
+
+        Lines starting with '*' or '#*' set the description used for the following PV lines;
+        '<' lines, blank lines and other '#' lines reset it to None. Any other line is a PV
+        name, stored as a `PvInfo` in `pvaList` if followed by 'pva', else in `caList`.
+        """
         logging.debug("RunParams updatePvSet()")
         pvaFound = []
         caFound = []
@@ -132,6 +174,13 @@ class RunParams:
         return
 
     def configure(self):
+        """Collect the run-parameter files and PVs starting from `self.path`.
+
+        If `self.path` is not '/dev/null' and does not exist, an error is reported via
+        `collection.report_error`. Otherwise include files are followed recursively with
+        `updateFileSet`, and missing files are reported and dropped. Then `updatePvSet` is
+        called if any files were found and `recordedExperiments` is reset to an empty set.
+        """
         if (self.path != '/dev/null') and not os.path.isfile(self.path):
             self.collection.report_error(f"logbook run parameter file not found: {self.path}")
         else:
@@ -162,12 +211,26 @@ class RunParams:
         self.recordedExperiments = set()    # updated in beginrun
 
     def unconfigure(self):
+        """Clear `fileSet`, `pvaList` and `caList`."""
         logging.debug("RunParams unconfigure()")
         self.fileSet = set()
         self.pvaList = []
         self.caList = []
 
     def beginrun(self, experiment_name):
+        """Read run parameters and post them to the logbook for `experiment_name`.
+
+        Does nothing in simulator mode. Reads the PVA PVs via `pva.pv_get` and the CA PVs via
+        `epics.caget_many` (failed reads and nan/inf floats are reported as warnings and
+        skipped), adds 'partition' and, for each active non-monitor drp alias of the form
+        '<name>_<N>', a 'DAQ Detectors/drp/<name>' entry with the sorted segment numbers.
+
+        Notes
+        -----
+        The parameters are sent with `collection.add_run_params`; PV descriptions are sent
+        with `collection.add_update_run_param_descriptions` only the first time an experiment is
+        seen. Errors are reported if fewer items were recorded than sent.
+        """
         logging.debug(f"RunParams beginrun() experiment_name={experiment_name}")
         if self.simulator:
             return              # Nothing to do in simulator mode
@@ -347,11 +410,28 @@ next_dict = {
 # Translate drp alias to detector name
 # For example: 'cam_1' -> 'cam'
 def detector_name(drp_alias):
+    """Return `drp_alias` with its last '_' suffix removed (e.g. 'cam_1' -> 'cam')."""
     return drp_alias.rsplit('_', 1)[0]
 
 # Count the number of drp segments matching a detector name.
 # If only_active=True, count only the active segments.
 def segment_count(det_name, platform_dict, *, only_active=False):
+    """Count drp entries in `platform_dict` whose alias maps to `det_name`.
+
+    Parameters
+    ----------
+    det_name : str
+        Detector name compared with `detector_name(alias)`.
+    platform_dict : dict
+        Dict with a 'drp' level mapping ids to entries with ``['proc_info']['alias']``.
+    only_active : bool, optional
+        If True, count only entries whose 'active' value is 1.
+
+    Returns
+    -------
+    int
+        The count; counting stops (keeping the partial count) at the first KeyError.
+    """
     count = 0
     try:
         for v in platform_dict['drp'].values():
@@ -366,12 +446,28 @@ def segment_count(det_name, platform_dict, *, only_active=False):
     return count
 
 def timestampStr():
+    """Return the current UTC time as ``'%010d-%09d' % (sec, nsec)`` with seconds since the EPICS epoch."""
     current = datetime.now(timezone.utc)
     nsec = 1000 * current.microsecond
     sec = int(current.timestamp()) - ControlDef.POSIX_TIME_AT_EPICS_EPOCH
     return '%010d-%09d' % (sec, nsec)
 
 def get_readout_group_mask(body):
+    """Return a bitmask of the readout groups used by 'drp' and 'tpr' entries in `body`.
+
+    For each entry, bit ``node_info['det_info']['readout']`` is set; entries without that
+    key are skipped.
+
+    Parameters
+    ----------
+    body : dict
+        Mapping of level name to {id: node_info}.
+
+    Returns
+    -------
+    int
+        The readout-group bitmask.
+    """
     mask = 0
     for receivertype in ['drp','tpr']:
         if receivertype in body:
@@ -420,6 +516,21 @@ def wait_for_answers(socket, wait_time, msg_id):
         remaining = max(0, int(wait_time - 1000*(time.time() - start)))
 
 def levels_to_activedet(src):
+    """Convert a platform/cmstate dict to the active-detectors file layout.
+
+    The 'control' level is skipped. Each remaining entry is stored under its alias with
+    its 'active' value and a copy of 'det_info' if present.
+
+    Parameters
+    ----------
+    src : dict
+        Mapping of level -> id -> entry with ``['proc_info']['alias']`` and 'active'.
+
+    Returns
+    -------
+    dict
+        ``{'activedet': {level: {alias: {'active': ..., ['det_info': ...]}}}}``.
+    """
     dst = {"activedet": {}}
     for level, item1 in src.items():
         if level == "control":
@@ -435,6 +546,10 @@ def levels_to_activedet(src):
     return dst
 
 class DaqPVA():
+    """Thin wrapper around a p4p 'pva' client `Context` for PV gets and puts.
+
+    `report_error` is a callable used to report failed puts.
+    """
     def __init__(self, *, report_error):
         self.report_error     = report_error
         # initialize EPICS context
@@ -446,6 +561,18 @@ class DaqPVA():
     # Return a list of PV values or exceptions.
     #
     def pv_get(self, pvList):
+        """Get one or more PVA PVs without raising on errors.
+
+        Parameters
+        ----------
+        pvList : list of str, str or None
+            PV name(s); a single name is wrapped in a list.
+
+        Returns
+        -------
+        list
+            Values or exception objects from ``ctxt.get(..., throw=False)``; [] if `pvList` is None.
+        """
         if pvList is None:
             retval = []
         elif isinstance(pvList, list):
@@ -460,6 +587,23 @@ class DaqPVA():
     #
     def pv_put(self, pvName, val):
 
+        """Put a value to one or more PVA PVs without waiting.
+
+        If `pvName` is a list and `val` is not, `val` is repeated for each name. Timeouts and
+        other exceptions are reported with `report_error`.
+
+        Parameters
+        ----------
+        pvName : str or list of str
+            PV name(s).
+        val
+            Value or list of values.
+
+        Returns
+        -------
+        bool
+            True if the put call did not raise, else False.
+        """
         retval = False
 
         if isinstance(pvName, list) and not isinstance(val, list):
@@ -480,6 +624,12 @@ class DaqPVA():
 #  Encapsulate control-XPM communication
 #
 class DaqXPM():
+    """Encapsulate control-to-XPM communication.
+
+    PV names are built from ``pv_base + ':XPM:<xpm_master>'``. Register writes go through
+    PVA puts when `xpm_host` is None; otherwise some are sent as JSON messages on a ZMQ
+    PUSH socket connected to `xpm_host` at `xpm_pull_port`.
+    """
     def __init__(self, *, platform, xpm_master, pv_base, pva, zctxt, xpm_host, report_error):
         self.platform         = platform
         self.xpm_master       = xpm_master
@@ -504,6 +654,17 @@ class DaqXPM():
     #  DaqXPM.allocate
     #
     def allocate(self,groups):
+        """Build per-group PV name lists and put `groups` to each group's L0Groups PV.
+
+        For each bit g set in `groups`, ':PART:<g>:MsgHeader', ':PART:<g>:Master' and
+        ':PART:<g>:L0Groups' PV names are stored in `pvListMsgHeader`, `pvListXPM` and
+        `pvListL0Groups`. An error is reported if the put fails.
+
+        Returns
+        -------
+        bool
+            Result of `pva.pv_put`.
+        """
         self.pvListMsgHeader = []
         self.pvListXPM = []
         self.pvListL0Groups = []
@@ -527,6 +688,17 @@ class DaqXPM():
     #  DaqXPM.setup_common
     #
     def setup_common(self,platform,groups):
+        """Configure the common group for `platform`.
+
+        Puts ``groups ^ (1 << platform)`` to ':PART:<platform>:L0Groups', reads the
+        ':PART:<g>:L0Delay' PVs of those groups and puts the fixed value 99 to ':CommonL0Delay'
+        (the read values are not used).
+
+        Returns
+        -------
+        bool
+            False if a put fails (or the get returns None), else True.
+        """
         groups = groups ^ (1<<platform)
         pv = f'{self.pv_xpm_base}:PART:{platform}:L0Groups'
         if not self.pva.pv_put(pv,groups):
@@ -557,6 +729,7 @@ class DaqXPM():
     #  DaqXPM.deallocate
     #
     def deallocate(self,groups):
+        """Put 0 to all L0Groups PVs in `pvListL0Groups` and return the put result; `groups` is unused."""
         logging.debug(f'deallocate() putting 0 to PV {self.pvListL0Groups}')
         rv = self.pva.pv_put(self.pvListL0Groups, 0)
         return rv
@@ -565,6 +738,7 @@ class DaqXPM():
     #  DaqXPM.recording
     #
     def recording(self,recording,groups):
+        """Put `recording` to ':PART:<g>:Recording' for each bit g set in `groups`."""
         for g in range(8):
             if groups & (1 << g):
                 pv = self.pv_xpm_base + f':PART:{g}:Recording'
@@ -574,6 +748,11 @@ class DaqXPM():
     #  DaqXPM.clear_readout
     #
     def clear_readout(self,groups):
+        """Write `groups` to the group L0 reset, insert a ClearReadout transition and sleep 1 s.
+
+        The reset is a PVA put to ':GroupL0Reset' or, when using the XPM host, a ZMQ
+        'set_reg' message for register 'groupL0Reset'.
+        """
         if self._usepva:
             self.pva.pv_put(self.pvGroupL0Reset, groups)
         else:
@@ -588,6 +767,13 @@ class DaqXPM():
     #  DaqXPM.set_master
     #
     def set_master(self,groups):
+        """Put 1 to every ':PART:<g>:Master' PV in `pvListXPM`.
+
+        Returns
+        -------
+        bool
+            False at the first failed put, else True. `groups` is unused.
+        """
         for pv in self.pvListXPM:
             if not self.pva.pv_put(pv, 1):
                 logging.debug('connect: failed to put PV \'%s\'' % pv)
@@ -598,6 +784,7 @@ class DaqXPM():
     #  DaqXPM.set_common
     #
     def set_common(self,common):
+        """Put 2 to ':PART:<common>:Master'; report an error and return False if the put fails, else return True."""
         pv = f'{self.pv_xpm_base}:PART:{common}:Master'
         if not self.pva.pv_put(pv, 2):
             self.report_error(f'set_common: failed to put PV {pv} common')
@@ -608,6 +795,16 @@ class DaqXPM():
     #  DaqXPM.group_run
     #
     def group_run(self, groups, enable):
+        """Enable or disable L0 triggering for `groups`.
+
+        Writes `groups` to ':GroupL0Enable' (or ':GroupL0Disable') by PVA put, or sends a ZMQ
+        'set_reg' message for 'groupL0Enable'/'groupL0Disable' when using the XPM host.
+
+        Returns
+        -------
+        bool
+            The put result, or True when the ZMQ message was sent.
+        """
         pv = self.pvGroupL0Enable if enable else self.pvGroupL0Disable
         if self._usepva:
             rv = self.pva.pv_put(pv, groups)
@@ -624,6 +821,17 @@ class DaqXPM():
     # DaqXPM.insert_transition
     #
     def insert_transition( self, groups, id ):
+        """Insert transition `id` for `groups`.
+
+        With PVA, puts `id` to all MsgHeader PVs and then, if that succeeded, `groups` to
+        ':GroupMsgInsert'. Otherwise sends 'set_idx_reg' (reg 'msgHdr') and 'set_reg'
+        (reg 'groupMsgInsert') ZMQ messages.
+
+        Returns
+        -------
+        bool
+            The PVA put result, or True when ZMQ messages were sent.
+        """
         if self._usepva:
             rval = self.pva.pv_put(self.pvListMsgHeader, id)
             if rval:
@@ -648,6 +856,17 @@ class DaqXPM():
     # If you don't want steps, set StepGroups = 0.
     #
     def setup_step(self, group, mask, readout):
+        """Set up step-end counting for readout group `group`.
+
+        Writes `readout` to ':PART:<group>:StepEnd' and `mask` to ':PART:<group>:StepGroups'
+        (PVA puts, or ZMQ 'set_reg' messages when using the XPM host), and puts 0 to
+        ':PART:<group>:StepDone', which is stored as `pvStepDone`.
+
+        Returns
+        -------
+        bool
+            Result of the StepGroups put, or True on the ZMQ path.
+        """
         pv_base = f'{self.pv_xpm_base}:PART:{group}'
         if self._usepva:
             self.pva.pv_put(f'{pv_base}:StepEnd', readout)
@@ -679,6 +898,13 @@ class DaqXPM():
     # DaqXPM.step_groups_clear -
     #
     def step_groups_clear(self, groups):
+        """Put 0 to ':PART:<g>:StepGroups' for each bit g set in `groups`.
+
+        Returns
+        -------
+        bool
+            False (and logs an error) if the put fails, else True.
+        """
         logging.debug("step_groups_clear()")
         retval = True
         pv = []
@@ -694,6 +920,7 @@ class DaqXPM():
         return retval
 
     def setup_seq(self, seqpv):
+        """Set `pvStepDone` to `seqpv` and return 0."""
         self.pvStepDone = seqpv
         return 0
 
@@ -701,10 +928,24 @@ class DaqXPM():
     # DaqXPM.monitor_StepDone
     #
     def monitor_StepDone(self, *, callback):
+        """Start a PVA monitor on `pvStepDone` with `callback` and return the subscription."""
         return self.pva.ctxt.monitor(self.pvStepDone, callback)
 
 
 class CollectionManager():
+    """DAQ collection manager state machine.
+
+    The constructor binds the back PULL/PUB, front REP/PUB and fast REP ZMQ sockets,
+    creates DAQ helper objects, registers the transitions with a `transitions.Machine`,
+    starts the fast-reply (and optional slow-update) threads and then runs the main loop
+    `run()`; when it returns, the threads are stopped and joined.
+
+    Notes
+    -----
+    Each transition calls its `condition_*` method; the state changes only if it returns
+    True, after which `report_status` is called (`enable` also calls `after_enable`).
+    'slowupdate' is an internal transition in 'running' with no state change or report.
+    """
     def __init__(self, args):
         self.simulator = args.sim   # Prevent XPM or DB access when True
         self.platform = args.p
@@ -894,6 +1135,10 @@ class CollectionManager():
     # cmstate_levels - return copy of cmstate with only drp/teb/meb entries
     #
     def cmstate_levels(self):
+        """Return a dict with only the `cmstate` entries whose keys are in `level_keys`.
+
+        `level_keys` is {'drp', 'teb', 'meb', 'control', 'tpr'}.
+        """
         return {k: self.cmstate[k] for k in self.cmstate.keys() & self.level_keys}
 
     def _process_run_type_keys(self, msg_body):
@@ -906,6 +1151,19 @@ class CollectionManager():
         #  setconfig.CONFIG_ALIAS
         #  TRANSITION
         #  REQUEST
+        """Receive one request on the front REP socket and handle it.
+
+        Keys 'setstate.<STATE>' (after storing 'run_type' and merging the body into
+        `phase1Info`) and 'setconfig.<ALIAS>' are passed to `handle_setstate`/
+        `handle_setconfig`, which send their own replies. A transition key gets an 'ok' reply
+        before `handle_trigger` runs; other keys use `handle_request`.
+
+        Notes
+        -----
+        'slowupdate' is dropped while slow updates are disabled. A KeyError produces an
+        'error' reply. For a transition with a non-empty body the code uses ``key[1]`` and an
+        undefined name `phase1Info`, which would raise.
+        """
         answer = None
         try:
             msg = self.front_rep.recv_json()
@@ -958,6 +1216,12 @@ class CollectionManager():
         #  setrecord.RECORD_FLAG
         #  setbypass.BYPASS_FLAG
         #  REQUEST
+        """Receive one request on the fast REP socket and handle it.
+
+        'setrecord.<0|1>' and 'setbypass.<0|1>' call `handle_setrecord`/`handle_setbypass`
+        (any value other than '0' means True), which reply themselves. Other keys are looked up
+        in `handle_fast` and the result is sent as the reply; a KeyError sends an 'error' reply.
+        """
         logging.debug('entered service_fast()')
         answer = None
         try:
@@ -995,6 +1259,17 @@ class CollectionManager():
     # register_file -
     #
     def register_file(self, body):
+        """Publish a fileReport and register the data file with the logbook.
+
+        Does nothing in simulator mode. Sends `fileReport_msg(path)` on the front PUB socket
+        and POSTs `body` as JSON to '<url>lgbk/<experiment>/ws/register_file' with HTTP basic auth.
+
+        Raises
+        ------
+        ConfigDBError
+            If `experiment_name` is None, the request raises, the status is not OK, or the
+            reply's 'success' is false.
+        """
         if self.simulator:
             return              # Nothing to do in simulator mode
 
@@ -1033,6 +1308,19 @@ class CollectionManager():
     # confirm_response -
     #
     def confirm_response(self, socket, wait_time, msg_id, ids, *, progress_txt=None):
+        """Collect replies from `ids` on `socket` until all respond, an error arrives or time runs out.
+
+        Uses `wait_for_answers` in 1 s slices up to `wait_time` ms; if `progress_txt` is given,
+        `progressReport` is called each slice. A message whose body has 'err_info' (key other
+        than 'warning') ends the wait and resets the pending list to that sender only.
+
+        Returns
+        -------
+        tuple
+            (ids still pending, list of reply messages, list of report messages). After an
+            error the pending list is empty if the error came in a regular reply and holds the
+            sender if it came in a report.
+        """
         global report_keys
         logging.debug('confirm_response(): ids = %s' % ids)
         msgs = []
@@ -1070,6 +1358,12 @@ class CollectionManager():
     # process_reports
     #
     def process_reports(self, report_list):
+        """Handle report messages.
+
+        'fileReport' calls `register_file` (which may raise ConfigDBError), 'error'/'warning'
+        are re-published with `report_error`/`report_warning`, and 'chunkRequest' calls
+        `handle_chunkrequest`. KeyErrors are logged.
+        """
         for msg in report_list:
             try:
                 if msg['header']['key'] == 'fileReport':
@@ -1086,11 +1380,16 @@ class CollectionManager():
                 logging.error('process_reports() KeyError: %s' % ex)
 
     def service_status(self):
+        """Receive one JSON message on the back PULL socket and pass it to `process_reports`."""
         msg = self.back_pull.recv_json()
         logging.debug('service_status() received msg \'%s\'' % msg)
         self.process_reports([msg])
 
     def run(self):
+        """Main loop: poll the front REP and back PULL sockets and service whichever is ready.
+
+        Runs until KeyboardInterrupt, which is logged.
+        """
         try:
             while True:
                 socks = dict(self.poller.poll())
@@ -1102,6 +1401,17 @@ class CollectionManager():
             logging.info('KeyboardInterrupt')
 
     def handle_trigger(self, key, *, stateChange=True):
+        """Fire state-machine trigger `key` and build a reply.
+
+        MachineError and AttributeError from the trigger are turned into an error text. With
+        `stateChange` True, an unchanged state is also an error.
+
+        Returns
+        -------
+        dict
+            Message keyed by the current state with body `cmstate`, or with body
+            ``{'err_info': <text without double quotes>}`` on error.
+        """
         logging.debug('handle_trigger(\'%s\', stateChange=\'%s\') in state \'%s\'' % (key, stateChange, self.state))
         stateBefore = self.state
         trigError = None
@@ -1130,6 +1440,7 @@ class CollectionManager():
         return answer
 
     def next_transition(self, oldstate, newstate):
+        """Return the next transition from `next_dict` to move from `oldstate` toward `newstate`, or 'error'."""
         try:
             retval = next_dict[oldstate][newstate]
         except Exception as ex:
@@ -1140,6 +1451,17 @@ class CollectionManager():
         return retval
 
     def handle_setstate(self, newstate):
+        """Reply on the front REP socket and step the state machine toward `newstate`.
+
+        An unknown state gets an 'error' reply. Otherwise an 'ok' reply is sent first and
+        transitions from `next_transition` are triggered until the state matches; it stops at
+        the first error, which is reported with `report_error`.
+
+        Returns
+        -------
+        dict
+            The last reply/answer message built.
+        """
         logging.debug('handle_setstate(\'%s\') in state %s' % (newstate, self.state))
         stateBefore = self.state
 
@@ -1170,6 +1492,11 @@ class CollectionManager():
         return answer
 
     def handle_setconfig(self, newconfig):
+        """Set the config alias and reply on the front REP socket.
+
+        In 'running' or 'paused' an 'error' reply is sent. Otherwise, if `newconfig` differs
+        from `config_alias`, it is stored and `report_status` is called; then 'ok' is sent.
+        """
         logging.debug('handle_setconfig(\'%s\') in state %s' % (newconfig, self.state))
 
         if self.state == 'running' or self.state == 'paused':
@@ -1187,6 +1514,11 @@ class CollectionManager():
             self.front_rep.send_json(answer)
 
     def handle_setrecord(self, newrecording):
+        """Set the recording flag and reply on the fast REP socket.
+
+        In 'running', 'paused' or 'starting' an 'error' reply is sent. Otherwise, if the value
+        changed, `recording` is updated and `report_status` is called; then 'ok' is sent.
+        """
         logging.debug('handle_setrecord(\'%s\') in state %s' % (newrecording, self.state))
 
         if self.state == 'running' or self.state == 'paused' or self.state == 'starting':
@@ -1204,6 +1536,11 @@ class CollectionManager():
             self.fast_rep.send_json(answer)
 
     def handle_setbypass(self, newbypass):
+        """Set the bypass_activedet flag and reply on the fast REP socket.
+
+        Only allowed in 'reset' or 'unallocated'; otherwise an 'error' reply is sent. If the
+        value changed, `bypass_activedet` is updated and `report_status` is called; then 'ok' is sent.
+        """
         logging.debug('handle_setbypass(\'%s\') in state %s' % (newbypass, self.state))
 
         if self.state != 'reset' and self.state != 'unallocated':
@@ -1221,6 +1558,12 @@ class CollectionManager():
             self.fast_rep.send_json(answer)
 
     def status_msg(self):
+        """Return a 'status' message.
+
+        The body has 'state', 'transition' (last transition), 'platform' (`cmstate_levels()`),
+        'config_alias', 'recording', 'bypass_activedet', 'experiment_name' ('None' if unset),
+        'run_number' and 'last_run_number'.
+        """
         if not self.experiment_name:
             expname = 'None'
         else:
@@ -1232,12 +1575,17 @@ class CollectionManager():
         return create_msg('status', body=body)
 
     def report_status(self):
+        """Publish `status_msg()` on the front PUB socket."""
         logging.debug('status: state=%s transition=%s config_alias=%s recording=%s bypass_activedet=%s' %
                       (self.state, self.lastTransition, self.config_alias, self.recording, self.bypass_activedet))
         self.front_pub.send_json(self.status_msg())
 
     # check_answers - report and count errors in answers list
     def check_answers(self, answers):
+        """Report each answer that contains ``body['err_info']`` and return how many there were.
+
+        Each error is reported as '<alias>: <err_info>' using `get_aliases`.
+        """
         error_count = 0
         for answer in answers:
             try:
@@ -1253,6 +1601,17 @@ class CollectionManager():
 
     def get_phase2_replies(self, transition):
         # get responses from the drp timing systems
+        """Wait for phase-2 replies to `transition` from active drp and meb processes.
+
+        Uses `confirm_response` on the back PULL socket with `phase2_timeout`, then processes
+        reports; a ConfigDBError from them is reported.
+
+        Returns
+        -------
+        bool
+            False if report processing raised ConfigDBError or any process did not respond
+            (each is reported), else True.
+        """
         ids = self.filter_active_set(self.ids)
         ids = self.filter_level('drp', ids) | self.filter_level('meb', ids)
         # make sure all the clients respond to transition before timeout
@@ -1272,6 +1631,20 @@ class CollectionManager():
 
     def condition_alloc(self):
         # select procs with active flag set
+        """Condition for the 'alloc' transition.
+
+        Publishes 'alloc' (body: active ids plus `cmstate`), waits up to 15 s for replies and
+        merges them into `cmstate`. Assigns 'drp_id', 'teb_id' and 'meb_id' numbers, computes
+        the readout-group mask `groups` and (outside simulator mode) disables L0, clears step
+        groups, allocates XPM PVs and optionally sets up the common group.
+
+        Returns
+        -------
+        bool
+            True on success. False if a client does not respond, there is no active drp or teb,
+            no drp uses readout group `platform`, disabling L0, clearing step groups or XPM `allocate` fails, or writing the activedet
+            file (only done when its content changes) raises.
+        """
         ids = self.filter_active_set(self.ids)
         msg = create_msg('alloc', body={'ids': list(ids), **self.cmstate})
         self.back_pub.send_multipart([b'all', json.dumps(msg)])
@@ -1392,6 +1765,17 @@ class CollectionManager():
 
     def condition_dealloc(self):
         # select procs with active flag set
+        """Condition for the 'dealloc' transition.
+
+        Publishes 'dealloc', waits up to 30 s for replies and, if all answered without
+        errors, puts 0 to the L0Groups PVs (outside simulator mode).
+
+        Returns
+        -------
+        bool
+            True on success. On a deallocate failure the code formats an undefined name `pv`,
+            which would raise NameError.
+        """
         ids = self.filter_active_set(self.ids)
         msg = create_msg('dealloc')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
@@ -1418,6 +1802,18 @@ class CollectionManager():
         return dealloc_ok
 
     def condition_beginrun(self):
+        """Condition for the 'beginrun' transition.
+
+        Looks up the experiment; when recording, starts a run in the logbook and records run
+        parameters, otherwise uses run number 0. Puts run/monitor info in
+        ``phase1Info['beginrun']``, advertises recording to the XPM, runs phase 1 via
+        `condition_common` and, outside simulator mode, clears readout and inserts BeginRun.
+
+        Returns
+        -------
+        bool
+            False if the experiment lookup, start_run, phase 1 or phase 2 replies fail, else True.
+        """
         logging.debug('condition_beginrun(): self.recording = %s' % self.recording)
 
         # run_info
@@ -1505,6 +1901,17 @@ class CollectionManager():
         return True
 
     def condition_endrun(self):
+        """Condition for the 'endrun' transition.
+
+        Ends the logbook run if recording, runs phase 1, then (outside simulator mode)
+        inserts EndRun and sets XPM recording to False before collecting phase-2 replies. On
+        success moves `run_number` to `last_run_number` if it is > 0.
+
+        Returns
+        -------
+        bool
+            False if phase 1 or phase 2 fails, else True.
+        """
         logging.debug('condition_endrun(): self.recording = %s' % self.recording)
 
         if self.recording and self.experiment_name:
@@ -1537,6 +1944,13 @@ class CollectionManager():
 
     def condition_beginstep(self):
         # phase 1
+        """Condition for 'beginstep': phase 1 (30 s timeout), insert BeginStep (outside simulator mode), phase-2 replies.
+
+        Returns
+        -------
+        bool
+            False if phase 1 or phase 2 fails, else True.
+        """
         ok = self.condition_common('beginstep', 30000)
         if not ok:
             logging.error('condition_beginstep(): beginstep phase1 failed')
@@ -1555,6 +1969,13 @@ class CollectionManager():
 
     def condition_endstep(self):
         # phase 1
+        """Condition for 'endstep': phase 1 (6 s timeout), insert EndStep (outside simulator mode), phase-2 replies.
+
+        Returns
+        -------
+        bool
+            False if phase 1 or phase 2 fails, else True.
+        """
         ok = self.condition_common('endstep', 6000)
         if not ok:
             logging.error('condition_endstep(): endstep phase1 failed')
@@ -1572,6 +1993,15 @@ class CollectionManager():
         return True
 
     def condition_slowupdate(self):
+        """Condition for 'slowupdate': insert transition ``0x80 | SlowUpdate`` (outside simulator mode).
+
+        The code comment says 0x80 means "throw away transition if there is deadtime".
+
+        Returns
+        -------
+        bool
+            Result of `insert_transition`, or True in simulator mode.
+        """
         update_ok = True
 
         # phase 1 not needed
@@ -1586,6 +2016,18 @@ class CollectionManager():
         return update_ok
 
     def condition_connect(self):
+        """Condition for the 'connect' transition.
+
+        Outside simulator mode sets the XPM master (and common group if enabled). Then
+        publishes 'connect' with the active part of `cmstate_levels()` and waits up to 20 s
+        for replies without errors.
+
+        Returns
+        -------
+        bool
+            True on success. On an XPM failure the code calls `self.report_err`, which is not
+            defined in this class (raises AttributeError).
+        """
         logging.debug('condition_connect: phase1Info = %s' % self.phase1Info)
         connect_ok = True
 
@@ -1624,6 +2066,13 @@ class CollectionManager():
 
     def condition_disconnect(self):
         # select procs with active flag set
+        """Condition for 'disconnect': publish 'disconnect' and wait up to 30 s for error-free replies.
+
+        Returns
+        -------
+        bool
+            False if any client did not respond or replied with an error, else True.
+        """
         ids = self.filter_active_set(self.ids)
         msg = create_msg('disconnect')
         self.back_pub.send_multipart([b'partition', json.dumps(msg)])
@@ -1643,16 +2092,26 @@ class CollectionManager():
         return disconnect_ok
 
     def handle_getstate(self, body):
+        """Return a message keyed by the current state with body `cmstate_levels()`; `body` is unused."""
         logging.debug('handle_getstate()')
         return create_msg(self.state, body=self.cmstate_levels())
 
     # returns last transition plus current state
     def handle_getstatus(self, body):
+        """Return `status_msg()`; `body` is unused."""
         logging.debug('handle_getstatus()')
         return self.status_msg()
 
     # request chunking opportunity (Running->Paused->Running)
     def handle_chunkrequest(self, body):
+        """Trigger 'disable' then 'enable' if in 'running'.
+
+        Returns
+        -------
+        dict
+            'ok' message on success; the failing trigger's answer on error; an 'error' message
+            if not in 'running'.
+        """
         logging.debug(f'handle_chunkrequest() in state {self.state}')
 
         retval = create_msg('ok')   # ok
@@ -1676,6 +2135,10 @@ class CollectionManager():
     # Update the active detector file.
     # May throw an exception.
     def handle_storejsonconfig(self, body):
+        """Write `body` (as text) to the active detectors file unless it is '/dev/null', and return {}.
+
+        File errors are not caught.
+        """
         logging.debug('handle_storejsonconfig(): body = %s' % body)
         if self.activedetfilename != '/dev/null':
             with open(self.activedetfilename, 'w') as f:
@@ -1684,11 +2147,25 @@ class CollectionManager():
         return {}
 
     def handle_getinstrument(self, body):
+        """Return an 'instrument' message with body ``{'instrument': ..., 'station': ...}``."""
         logging.debug('handle_getinstrument()')
         body = {'instrument': self.instrument, 'station': self.station}
         return create_msg('instrument', body=body)
 
     def handle_getblock(self, body):
+        """Build an xtc block from `body` using the `CyDgram` object and return it hex-encoded.
+
+        Adds a detector from the 'detname', 'dettype', 'serial_number', 'namesid',
+        'alg_name', 'alg_version' and 'motors' fields, then calls `getSelect` with 'timestamp',
+        'transitionid', 'add_names' and 'add_shapes_data'. The dgram work is done in
+        `psalg.utils.dgramCreate`; not visible here.
+
+        Returns
+        -------
+        dict
+            'block' message whose body is the hex of the bytes after the first 12, or an
+            `error_msg` if `body` is not a dict.
+        """
         if body is None or type(body) != type({}):
             msg = 'getblock requires dict'
             self.report_error(msg)
@@ -1722,6 +2199,16 @@ class CollectionManager():
         return create_msg('block', body=reply.hex())
 
     def handle_selectplatform(self, body):
+        """Update 'active', 'monitor' and drp/tpr readout groups in `cmstate` from `body`.
+
+        Only allowed in 'unallocated'. Attempts to clear a control-level active flag are
+        reverted with a warning, and monitor-only entries produce a warning.
+
+        Returns
+        -------
+        dict
+            'ok' message, or an `error_msg` if the state is wrong or an exception occurs.
+        """
         logging.debug('handle_selectplatform()')
         if self.state != 'unallocated':
             msg = 'selectPlatform only permitted in unallocated state'
@@ -1752,11 +2239,17 @@ class CollectionManager():
         return create_msg('ok')
 
     def on_enter_reset(self):
+        """Clear `cmstate` and `ids`.
+
+        The `transitions` package calls a model method named ``on_enter_<state>`` when that
+        state is entered; that dispatch is not visible here.
+        """
         self.cmstate.clear()
         self.ids.clear()
         return
 
     def subtract_clients(self, missing_set):
+        """Remove '<level>/<alias>' for every client in `cmstate_levels()` from `missing_set` in place."""
         if missing_set:
             for level, item in self.cmstate_levels().items():
                 for xid in item.keys():
@@ -1769,6 +2262,14 @@ class CollectionManager():
         return
 
     def read_json_file(self, filename):
+        """Read a JSON file and return its contents.
+
+        Returns
+        -------
+        dict
+            Parsed JSON, or {} if the file is missing (a warning for '/dev/null', else an
+            error), empty, or fails to parse (errors are reported).
+        """
         json_data = {}
 
         if not os.path.isfile(filename):
@@ -1794,6 +2295,13 @@ class CollectionManager():
         return json_data
 
     def get_active_and_inactive(self, d):
+        """Split the entries under ``d['activedet']`` into active and inactive '<level>/<alias>' sets.
+
+        Returns
+        -------
+        tuple of set
+            (active_set, inactive_set); a KeyError is logged and the partial sets returned.
+        """
         active_set = set()
         inactive_set = set()
         try:
@@ -1808,6 +2316,7 @@ class CollectionManager():
         return active_set, inactive_set
 
     def progressReport(self, begin_time, end_time, *, progress_txt):
+        """Publish a progress message for `progress_txt` once at least 1 s has elapsed since `begin_time`."""
         elapsed = (datetime.now(timezone.utc) - begin_time).total_seconds()
         if elapsed >= 1.0:
             total   = (end_time - begin_time).total_seconds()
@@ -1815,6 +2324,18 @@ class CollectionManager():
         return
 
     def condition_rollcall(self):
+        """Condition for the 'rollcall' transition.
+
+        Reads the active detectors file (unless bypassed), then repeatedly publishes
+        'rollcall' until all expected clients answer or `rollcall_timeout` expires, filling
+        `cmstate` and `ids`. Active flags and readout groups come from the file, history or
+        defaults; a 'control' entry is added if missing.
+
+        Returns
+        -------
+        bool
+            Always True; missing clients and duplicate aliases are only reported.
+        """
         global report_keys
         retval = False
         active_set = set()
@@ -1969,6 +2490,7 @@ class CollectionManager():
 
     # check_for_dups - check for duplicate aliases
     def check_for_dups(self):
+        """Return the set of '<level>/<alias>' entries whose alias was already seen in `cmstate_levels()`."""
         aliases = set()
         dups = set()
         for level, item in self.cmstate_levels().items():
@@ -1984,6 +2506,7 @@ class CollectionManager():
 
     # filter_active_set - return subset of ids which have 'active' flag set
     def filter_active_set(self, ids):
+        """Return the subset of `ids` whose `cmstate_levels()` entry has 'active' equal to 1."""
         matches = set()
         for level, item in self.cmstate_levels().items():
             for xid in item:
@@ -1993,6 +2516,7 @@ class CollectionManager():
 
     # filter_active_dict - return subset of dict that has 'active' flag set
     def filter_active_dict(self, oldstate):
+        """Return a new level -> id dict with shallow copies of the entries whose 'active' is 1."""
         newstate = dict()
         for level, item in oldstate.items():
             for xid in item:
@@ -2004,6 +2528,7 @@ class CollectionManager():
 
     # filter_level - return subset of ids for which 'level' starts with prefix
     def filter_level(self, prefix, ids):
+        """Return the subset of `ids` found under levels whose name starts with `prefix`."""
         matches = set()
         for level, item in self.cmstate_levels().items():
             if level.startswith(prefix):
@@ -2011,6 +2536,11 @@ class CollectionManager():
         return matches.intersection(ids)
 
     def get_aliases(self, id_list):
+        """Return the aliases of the clients in `id_list`.
+
+        Entries without 'proc_info' are skipped; if 'alias' is missing,
+        '<level>/<pid>/<host>' is used instead.
+        """
         alias_list = []
         for level, item in self.cmstate_levels().items():
             for xid in item.keys():
@@ -2025,16 +2555,33 @@ class CollectionManager():
         return alias_list
 
     def report_error(self, msg):
+        """Log `msg` as an error and publish an `error_msg` on the front PUB socket."""
         logging.error(msg)
         self.front_pub.send_json(error_msg(msg))
         return
 
     def report_warning(self, msg):
+        """Log `msg` as a warning and publish a `warning_msg` on the front PUB socket."""
         logging.warning(msg)
         self.front_pub.send_json(warning_msg(msg))
         return
 
     def start_run(self, experiment_name):
+        """Start a run in the logbook and return its number.
+
+        POSTs to '<url>/run_control/<experiment>/ws/start_run?run_type=<runType>' and resets
+        `runType` to the default. In simulator mode returns the seconds since the EPICS epoch.
+
+        Returns
+        -------
+        int
+            The run number from ``value['num']`` of the reply.
+
+        Raises
+        ------
+        Exception
+            'start_run error' if the request fails or does not report success.
+        """
         if self.simulator:
             current = datetime.now(timezone.utc)
             run_num = int(current.timestamp()) - ControlDef.POSIX_TIME_AT_EPICS_EPOCH
@@ -2069,6 +2616,13 @@ class CollectionManager():
         return run_num
 
     def add_run_params(self, experiment_name, params):
+        """POST `params` as JSON to '<url>/run_control/<experiment>/ws/add_run_params'.
+
+        Returns
+        -------
+        int
+            len(params) on success (or if `params` is empty), else 0 after reporting an error.
+        """
         param_count = len(params)
         if param_count > 0:
             ok = False
@@ -2093,6 +2647,13 @@ class CollectionManager():
         return param_count
 
     def add_update_run_param_descriptions(self, experiment_name, param_descs):
+        """POST `param_descs` to '<url>/run_control/<experiment>/ws/add_update_run_param_descriptions'.
+
+        Returns
+        -------
+        int
+            len(param_descs) on success (or if empty), else 0 after reporting an error.
+        """
         param_desc_count = len(param_descs)
         if param_desc_count > 0:
             ok = False
@@ -2117,6 +2678,10 @@ class CollectionManager():
         return param_desc_count
 
     def end_run(self, experiment_name):
+        """POST to '<url>/run_control/<experiment>/ws/end_run'; report an error on failure.
+
+        Does nothing in simulator mode. Returns None.
+        """
         if self.simulator:
             return              # Nothing to do in simulator mode
 
@@ -2143,6 +2708,16 @@ class CollectionManager():
         return
 
     def get_last_run_number(self):
+        """Return the current run number of `experiment_name` from the logbook.
+
+        GETs '<url>/lgbk/<experiment>/ws/current_run' (with 'ws-auth'/'ws-kerb' replaced by
+        'ws'). In simulator mode returns the seconds since the EPICS epoch.
+
+        Returns
+        -------
+        int
+            ``value['num']`` from the reply, or 0 on any failure.
+        """
         logging.debug('get_last_run_number()')
         last_run_number = 0
 
@@ -2188,6 +2763,16 @@ class CollectionManager():
         return last_run_number
 
     def get_experiment(self):
+        """Return the active experiment name for this instrument and station.
+
+        GETs '.../lgbk/ws/activeexperiment_for_instrument_station' (URL with 'ws-auth'/
+        'ws-kerb' replaced by 'ws'). In simulator mode returns '<instrument>_1'.
+
+        Returns
+        -------
+        str or None
+            ``value['name']`` from the reply, or None on failure.
+        """
         logging.debug('get_experiment()')
         experiment_name = None
         instrument = self.instrument
@@ -2221,6 +2806,16 @@ class CollectionManager():
         return experiment_name
 
     def condition_common(self, transition, timeout, body=None):
+        """Run phase 1 of `transition`: publish it to the partition and wait for replies.
+
+        Any ``phase1Info[transition]`` is added to the body as 'phase1Info' and then removed.
+        Replies are awaited from active drp, teb and meb processes for `timeout` ms.
+
+        Returns
+        -------
+        bool
+            True if no replies are expected or all replied without errors, else False.
+        """
         if body is None:
             body = {}
         retval = True
@@ -2260,6 +2855,19 @@ class CollectionManager():
         return retval
 
     def condition_configure(self):
+        """Condition for the 'configure' transition.
+
+        Reads optional 'readout_count', 'step_group', 'seqpv_name'/'seqpv_val' and
+        'seqpv_done' from ``phase1Info['configure']`` and fetches the trigger config from the
+        configdb (a dummy dict in simulator mode). Runs phase 1 with 'config_alias',
+        'trigger_config' and 'trigger_body', configures `runParams` and, outside simulator
+        mode, clears readout, inserts Configure, sets up steps and may start the step-done thread.
+
+        Returns
+        -------
+        bool
+            False if the configdb fetch, phase 1 or phase 2 fails, else True.
+        """
         logging.debug('condition_configure: phase1Info = %s' % self.phase1Info)
 
         # readout_count and group_mask are optional
@@ -2371,6 +2979,15 @@ class CollectionManager():
         return True
 
     def condition_unconfigure(self):
+        """Condition for 'unconfigure': clear `phase1Info`, unconfigure `runParams`, phase 1, insert Unconfigure, phase-2 replies.
+
+        The ``step_exit.set()`` call after ``return False`` is unreachable.
+
+        Returns
+        -------
+        bool
+            False if phase 1 or phase 2 fails, else True.
+        """
         self.phase1Info = {}    # clear phase1Info
 
         self.runParams.unconfigure()
@@ -2397,6 +3014,7 @@ class CollectionManager():
 
     # set slow_update_enabled to True or False
     def set_slow_update_enabled(self, enabled):
+        """Set `slow_update_enabled` and log whether slowupdate transitions are enabled."""
         self.slow_update_enabled = enabled
         if enabled:
             logging.info('slowupdate transitions ENABLED')
@@ -2404,12 +3022,25 @@ class CollectionManager():
             logging.info('slowupdate transitions DISABLED')
 
     def after_enable(self):
+        """Enable slowupdate transitions if `slow_update_rate` is non-zero."""
         if self.slow_update_rate:
             # enable slowupdate transitions
             self.set_slow_update_enabled(True)
 
     def condition_enable(self):
         # readout_count and group_mask are optional
+        """Condition for the 'enable' transition.
+
+        Runs phase 1; outside simulator mode adds ``phase1Info['enable']['readout_count']`` (if
+        > 0) to the cumulative StepEnd count and inserts Enable. After phase-2 replies it may
+        issue one slow update (first Enable after BeginRun), then enables L0 and optionally
+        puts 1 to `seqpv_name`.
+
+        Returns
+        -------
+        bool
+            False if any step fails, else True.
+        """
         group_mask    = self.group_mask
         readout_count = self.readout_count
         try:
@@ -2465,6 +3096,17 @@ class CollectionManager():
 
     def condition_disable(self):
 
+        """Condition for the 'disable' transition.
+
+        Outside simulator mode puts 0 to `seqpv_name` (if set) and disables L0 first; slow
+        updates are then disabled. Runs phase 1, inserts ``0x180 | Disable`` (outside simulator
+        mode) and collects phase-2 replies.
+
+        Returns
+        -------
+        bool
+            False if any step fails, else True.
+        """
         if not self.simulator:
             # optionally enable a sequence
             if self.seqpv_name:
@@ -2506,6 +3148,16 @@ class CollectionManager():
 
 
     def condition_reset(self):
+        """Condition for the 'reset' transition.
+
+        Clears `phase1Info`, disables L0 if running (outside simulator mode), disables slow
+        updates, sets `step_exit` and publishes 'reset' to all clients.
+
+        Returns
+        -------
+        bool
+            Always True.
+        """
         self.phase1Info = {}    # clear phase1Info
 
         if not self.simulator:
@@ -2526,6 +3178,11 @@ class CollectionManager():
         return True
 
     def slow_update_func(self):
+        """Thread body: send 'slowupdate' requests to this manager's front REP port while enabled.
+
+        Uses its own REQ socket to localhost and runs at `slow_update_rate` Hz until
+        `threads_exit` is set.
+        """
         logging.debug('slowupdate thread starting up')
 
         # zmq sockets are not thread-safe
@@ -2542,6 +3199,10 @@ class CollectionManager():
         logging.debug('slowupdate thread shutting down')
 
     def fast_reply_func(self):
+        """Thread body: poll the fast REP socket and call `service_fast` until `threads_exit` is set.
+
+        It also creates a REP socket that is never used.
+        """
         logging.debug('fastreply thread starting up')
 
         # zmq sockets are not thread-safe
@@ -2558,6 +3219,14 @@ class CollectionManager():
         logging.debug('fastreply thread shutting down')
 
     def step_done_func(self):
+        """Thread body: publish a 'step' message when the StepDone PV reports done.
+
+        Creates a new ZMQ context (replacing `self.context`) and a PUB socket bound to
+        `step_pub_port`. Outside simulator mode it monitors the StepDone PV and, while
+        `step_exit` is not set, sends ``step_msg(1)`` each time the callback sets `step_done`
+        in 'running' or 'paused'. In simulator mode `sub` is never assigned, so ``sub.close()``
+        raises NameError.
+        """
         logging.debug('stepdone thread starting up')
 
         # zmq sockets are not thread-safe
@@ -2597,6 +3266,11 @@ class CollectionManager():
 
 def main():
     # Process arguments
+    """Parse command-line arguments, configure SysLog logging and run a `CollectionManager`.
+
+    Outside simulator mode -x and -B are required (an error is printed and it returns if
+    missing); in simulator mode they are ignored with a warning.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=0, help='platform (default 0)')
     parser.add_argument('-x', metavar='XPM', type=int, help='master XPM')

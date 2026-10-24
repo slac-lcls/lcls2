@@ -40,6 +40,9 @@ short orientation written for these docs, followed by the generated reference.
 | [`psana.detector.areadetector`](areadetector.md) | `AreaDetector` / `AreaDetectorRaw` (`raw`, `calib`, `image`). |
 | [`psana.detector.calibconstants`](calibconstants.md) | `CalibConstants`, access to calibration constants and geometry. |
 | [`psana.detector.envstore`](envstore.md) | `EnvImpl`, the callable detector object for EPICS and scan variables. |
+| [`psdaq.control.control`](control.md) | `CollectionManager` and the DAQ control process. |
+| [`psdaq.control.DaqControl`](daqcontrol.md) | `DaqControl`, the client API used by DAQ scripts. |
+| [`psdaq.control.TimedRun`](timedrun.md) | `TimedRun`, a helper that runs the DAQ for a fixed time. |
 
 Only modules that parse with Python 3 are listed; some files in the repository
 are Python 2 only and are deliberately not referenced.

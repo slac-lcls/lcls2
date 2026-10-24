@@ -110,6 +110,7 @@ nav:
       - MPI parallel analysis: features/mpi-parallel.md
       - Shared memory and live analysis: features/shmem-live.md
       - psalg algorithms: features/psalg.md
+      - DAQ control: features/daq-control.md
   - Python API:
       - api/python/index.md
       - psana.datasource: api/python/datasource.md
@@ -129,4 +130,7 @@ nav:
       - psana.detector.areadetector: api/python/areadetector.md
       - psana.detector.calibconstants: api/python/calibconstants.md
       - psana.detector.envstore: api/python/envstore.md
+      - psdaq.control.control: api/python/control.md
+      - psdaq.control.DaqControl: api/python/daqcontrol.md
+      - psdaq.control.TimedRun: api/python/timedrun.md
   - C++ API: api/cpp/index.html
