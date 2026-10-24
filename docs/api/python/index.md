@@ -8,7 +8,7 @@ parsed, never imported, so the pages build without the compiled extensions
 
 - Objects that only exist in compiled code (`.pyx`, `.cc`) do not appear here,
   for example the `psana.dgram` extension, `psana.hsd` and the algorithm
-  modules listed in psalg algorithms. For the C++
+  modules listed in [psalg algorithms](../../features/psalg.md). For the C++
   side see the [C++ API](../cpp/index.html) (Doxygen).
 - The search box of this site covers these pages and the other MkDocs pages,
   but not the C++ symbols. The C++ API pages have their own search box.

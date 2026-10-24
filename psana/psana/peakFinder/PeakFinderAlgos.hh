@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares psalgos::PeakFinderAlgos (droplet-style peak finding in 2-d images with allocator-backed arrays) and its Peak and RingAvgRms result structures.
+ */
 #ifndef PSALGOS_PEAKFINDERALGOS_H
 #define PSALGOS_PEAKFINDERALGOS_H
 
@@ -14,6 +18,7 @@
 #include <typeinfo> // for typeid
 #include <iomanip>  // for std::setw
 #include <chrono> // timer
+/** Global alias for std::chrono::high_resolution_clock. */
 typedef std::chrono::high_resolution_clock Clock;
 
 #include "Types.hh"
@@ -31,9 +36,13 @@ using namespace psalg; // Array
 namespace psalgos {
 
 //-----------------------------
+/** Alias for types::mask_t (uint16_t). */
 typedef types::mask_t      mask_t;
+/** Alias for types::extrim_t (uint16_t). */
 typedef types::extrim_t    extrim_t;
+/** Alias for types::conmap_t (uint32_t). */
 typedef types::conmap_t    conmap_t;
+/** Alias for types::TwoIndexes. */
 typedef types::TwoIndexes  TwoIndexes;
 //-----------------------------
 
@@ -44,28 +53,30 @@ typedef types::TwoIndexes  TwoIndexes;
 //public:
 
 struct Peak{
-  float seg;
-  float row;
-  float col;
-  float npix;
-  float npos=0;
-  float amp_max;
-  float amp_tot;
-  float row_cgrav; 
-  float col_cgrav;
-  float row_sigma;
-  float col_sigma;
-  float row_min;
-  float row_max;
-  float col_min;
-  float col_max;
-  float bkgd;
-  float noise;
-  float son;
+  float seg;  ///< Segment index of the finder (m_seg).
+  float row;  ///< Row of the group's first pixel, where the connected-pixel search started.
+  float col;  ///< Column of the group's first pixel, where the connected-pixel search started.
+  float npix;  ///< Number of pixels in the connected group.
+  float npos=0;  ///< Initialized to 0; not set by the code in PeakFinderAlgos.hh.
+  float amp_max;  ///< Intensity of the first pixel minus the background average.
+  float amp_tot;  ///< Sum of the background-subtracted intensities over the group.
+  float row_cgrav;  ///< Intensity-weighted mean row (the first pixel's row if amp_tot is not positive).
+  float col_cgrav;  ///< Intensity-weighted mean column (the first pixel's column if amp_tot is not positive).
+  float row_sigma;  ///< Intensity-weighted rms of the row (0 for one pixel, a non-positive amp_tot or a non-positive variance).
+  float col_sigma;  ///< Intensity-weighted rms of the column (0 for one pixel, a non-positive amp_tot or a non-positive variance).
+  float row_min;  ///< Smallest row in the group.
+  float row_max;  ///< Largest row in the group.
+  float col_min;  ///< Smallest column in the group.
+  float col_max;  ///< Largest column in the group.
+  float bkgd;  ///< Background average (RingAvgRms::avg) used for this peak.
+  float noise;  ///< Background rms (RingAvgRms::rms) used for this peak.
+  float son;  ///< amp_tot / (noise * sqrt(npix)), or 0 if that denominator is not positive.
 
+  /** Default constructor; members are left uninitialized except npos (0). */
   Peak(){} // do not fill out member by default
 
   //copy constructor http://en.cppreference.com/w/cpp/language/copy_constructor
+  /** Copy every field of o. */
   Peak(const Peak& o)
     : seg      (o.seg      )
     , row      (o.row      )
@@ -87,6 +98,10 @@ struct Peak{
     , son      (o.son      )
     {}
 
+  /**
+   * Copy every field of rhs.
+   * @return *this.
+   */
   Peak& operator=(const Peak& rhs) {
     seg         = rhs.seg;
     row         = rhs.row;
@@ -120,18 +135,27 @@ operator<<(std::ostream& os, const Peak& p);
  */ 
 
 struct RingAvgRms {
+  /** Average intensity in the ring (per the trailing comment). */
   double   avg; // average intensity in the ring
+  /** RMS of the intensity in the ring (per the trailing comment). */
   double   rms; // rms in the ring
+  /** Number of pixels used (per the trailing comment). */
   unsigned npx; // number of pixels used
 
+  /** Set avg, rms and npx to av, rm and np (all default 0). */
   RingAvgRms(const double& av=0, 
              const double& rm=0,
              const unsigned& np=0) :
     avg(av), rms(rm), npx(np) {}
 
   //copy constructor
+  /** Copy avg, rms and npx from o. */
   RingAvgRms(const RingAvgRms& o) : avg(o.avg), rms(o.rms), npx(o.npx){}
 
+  /**
+   * Copy avg, rms and npx from rhs.
+   * @return *this.
+   */
   RingAvgRms& operator=(const RingAvgRms& rhs) {
     avg = rhs.avg;
     rms = rhs.rms;
@@ -140,6 +164,7 @@ struct RingAvgRms {
   }
 };
 
+/** Write " Bkgd avg:", " RMS:" and " Npix:" with the values of b to os, and return os. */
 std::ostream& 
 operator<<(std::ostream& os, const RingAvgRms& b);
 
@@ -237,6 +262,7 @@ public:
 
   PeakFinderAlgos(Allocator *allocator, const size_t& seg=0, const unsigned& pbits=0, const size_t& lim_rank=50, const size_t& lim_peaks=6000);
 
+  /** Delete the local-maxima, local-minima and connected-pixel maps. */
   virtual ~PeakFinderAlgos();
 
   /// Prints memeber data
@@ -252,6 +278,7 @@ public:
   void printMatrixOfRingIndexes();
 
   //void printVectorOfRingIndexes();
+  /** Print the (row, col) offsets used for the background ring to stdout, ten per line, computing them first with _evaluateRingIndexes_drp() if the list is empty. */
   void printVectorOfRingIndexes_drp();
 
   /// Set peak selection parameters
@@ -300,6 +327,7 @@ public:
     std::memcpy(map, m_conmap, rows*cols*sizeof(conmap_t)); 
   }
 
+  /** Set the stored Allocator pointer (the trailing comment says it is changed for each event). */
   void setAllocator(Allocator *allocator); // change allocator for each event
 
 private:
@@ -348,10 +376,10 @@ private:
   Allocator *m_allocator;
 
 public:
-  AllocArray1D<float> rows;
-  AllocArray1D<float> cols;
-  AllocArray1D<float> intens;
-  unsigned numPeaksSelected = 0;
+  AllocArray1D<float> rows;  ///< Row centers of gravity of the selected peaks, filled by _convPeaksSelected().
+  AllocArray1D<float> cols;  ///< Column centers of gravity of the selected peaks, filled by _convPeaksSelected().
+  AllocArray1D<float> intens;  ///< Total intensities (amp_tot) of the selected peaks, filled by _convPeaksSelected().
+  unsigned numPeaksSelected = 0;  ///< Number of selected peaks, set by _convPeaksSelected() (0 initially).
 //-----------------------------
 
 public:
@@ -566,6 +594,10 @@ _findConnectedPixelsForLocalMaximumV2_drp(const T* data
 
 //-----------------------------
 // Templated recursive method finging connected pixels for lacalMaximums
+/**
+ * Recursively add pixel (r, c) and its 4-connected neighbours to the current pixel group: a pixel is taken if it is unmasked, not yet in the connected-pixel map and not below the region threshold, and it is marked there with the current region number.
+ * The search stays inside the current region limits.
+ */
 template <typename T>
 void
 _findConnectedPixelsInRegionV3_drp(const T* data, const int& r, const int& c)
