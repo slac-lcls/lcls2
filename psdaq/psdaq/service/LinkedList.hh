@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief ListBase and LinkedList: intrusive doubly linked lists where an object serves either as a list head or as an element.
+ */
 /*
 ** ++
 **  Package:
@@ -22,19 +26,31 @@
 #define PDS_LINKEDLIST
 
 namespace Pds {
+/** Node of an intrusive doubly linked list; an object can be a list head (label) or an element. No locking (see LinkedListSL for a locked version). */
 class ListBase
   {
   public:
+    /** Does nothing; empty body. */
     ~ListBase();
+    /** Construct as an empty list head: both links point to itself. */
     ListBase();
+    /** Append this object at the tail of the list whose head is listhead. */
     ListBase(ListBase* listhead);
+    /** Insert this object after after and return after. */
     ListBase* connect(ListBase* after);
+    /** Unlink this object from its list and return it (its own links are left unchanged). */
     ListBase* disconnect();
+    /** Treating this object as a list head, append entry at the tail; returns the previous tail. */
     ListBase* insert(ListBase*);
+    /** Treating this object and entry as list heads, move all elements of entry to the tail of this list, leaving entry empty; returns this. */
     ListBase* insertList(ListBase*);
+    /** Treating this object as a list head, unlink and return the head element (the head itself, i.e. empty(), if the list is empty). */
     ListBase* remove();
+    /** Return the address of this object as the list label, which forward() returns when the list is empty. */
     ListBase* empty()  const;
+    /** Return the next node (the head element when this is a list head). */
     ListBase* forward() const;
+    /** Return the previous node (the tail element when this is a list head). */
     ListBase* reverse() const;
   private:
     ListBase* _flink;
@@ -219,20 +235,32 @@ inline Pds::ListBase* Pds::ListBase::remove()
 */
 
 namespace Pds {
+/** Typed wrapper over ListBase whose operations return T pointers. */
 template<class T>
 class LinkedList : public ListBase
   {
   public:
+    /** Does nothing; empty body. */
     ~LinkedList(){}
+    /** Construct as an empty list head. */
     LinkedList() :            ListBase()         {}
+    /** Append this object at the tail of the list whose head is listhead. */
     LinkedList(T* listhead) : ListBase(listhead) {}
+    /** Insert this object after after; returns after as T*. */
     T* connect(T* after)          {return (T*)ListBase::connect(after);}
+    /** Unlink this object and return it as T*. */
     T* disconnect()               {return (T*)ListBase::disconnect();}
+    /** Append entry at the tail of this list head; returns the previous tail as T*. */
     T* insert(ListBase* entry)    {return (T*)ListBase::insert(entry);}
+    /** Move all elements of list to the tail of this list; returns this as T*. */
     T* insertList(ListBase* list) {return (T*)ListBase::insertList(list);}
+    /** Unlink and return the head element as T* (empty() if none). */
     T* remove()                   {return (T*)ListBase::remove();}
+    /** Return the list label as T*. */
     T* empty()  const             {return (T*)ListBase::empty();}
+    /** Return the next node as T*. */
     T* forward() const            {return (T*)ListBase::forward();}
+    /** Return the previous node as T*. */
     T* reverse() const            {return (T*)ListBase::reverse();}
   };
 }

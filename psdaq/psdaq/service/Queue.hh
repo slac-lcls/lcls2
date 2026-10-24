@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Entry, List and Queue: intrusive doubly linked lists whose list operations are guarded by a spin lock (the NL variants skip the lock).
+ */
 #ifndef PDS_QUEUE
 #define PDS_QUEUE
 
@@ -32,32 +36,50 @@
 
 namespace Pds {
 
+/** Element of an intrusive doubly linked List; a new entry is linked to itself. */
 class Entry
   {
   public:
+    /** Construct an entry whose links point to itself. */
     Entry();
+    /** Insert this entry after after and return after. The code comment warns that inserting an entry after itself corrupts the list. */
     Entry* insert(Entry* after);
+    /** Splice the list that this entry belongs to (from this entry to its predecessor) in after after; returns after. */
     Entry* insertList(Entry* after);
+    /** Unlink this entry from its list, relink it to itself and return it. */
     Entry* remove();
+    /** Return the next entry. */
     Entry* next()     const;
+    /** Return the previous entry. */
     Entry* previous() const;
   private:
     Entry* _flink;
     Entry* _blink;
   };
 
+/** Head (label) of an intrusive doubly linked list of Entry objects; insert, jam and remove hold a spin lock, their NL variants do not. */
 class List
   {
   public:
+    /** Construct an empty list (both links point at the list label). */
     List();
+    /** Return the list label address, which atHead() and remove() return when the list is empty. */
     Entry* empty() const;
+    /** Under the lock, append entry at the tail and return the entry it was inserted after. */
     Entry* insert(Entry*);
+    /** Append entry at the tail without locking and return the entry it was inserted after. */
     Entry* insertNL(Entry*);
+    /** Under the lock, insert entry at the head and return the entry it was inserted after. */
     Entry* jam(Entry*);
+    /** Under the lock, unlink and return the head entry; returns empty() if the list is empty. */
     Entry* remove();
+    /** Unlink and return the head entry without locking; returns empty() if the list is empty. */
     Entry* removeNL();
+    /** Under the lock, unlink entry and return it. */
     Entry* remove(Entry*);
+    /** Return the head entry (empty() if the list is empty). */
     Entry* atHead() const;
+    /** Return the tail entry (empty() if the list is empty). */
     Entry* atTail() const;
   private:
     mutable Pds::SpinLock _lock;
@@ -264,20 +286,32 @@ inline Pds::Entry* Pds::List::remove(Entry* entry)
 
 
 namespace Pds {
+/** Typed wrapper over List (private base) for elements of type T derived from Entry. */
 template<class T>
 class Queue : private List
   {
   public:
+    /** Does nothing; empty body. */
     ~Queue()                {}
+    /** Construct an empty queue. */
     Queue()                 {}
+    /** Return the list label as T*, for comparison with atHead() or remove(). */
     T* empty() const        {return (T*) List::empty();}
+    /** Append entry at the tail under the lock; returns the entry it was inserted after. */
     T* insert(T* entry)     {return (T*) List::insert((Entry*)entry);}
+    /** Append entry at the tail without locking; returns the entry it was inserted after. */
     T* insertNL(T* entry)   {return (T*) List::insertNL((Entry*)entry);}
+    /** Insert entry at the head under the lock; returns the entry it was inserted after. */
     T* jam(T* entry)        {return (T*) List::jam((Entry*)entry);}
+    /** Remove and return the head entry under the lock (empty() if none). */
     T* remove()             {return (T*) List::remove();}
+    /** Remove and return the head entry without locking (empty() if none). */
     T* removeNL()           {return (T*) List::removeNL();}
+    /** Unlink entry under the lock and return it. */
     T* remove(T* entry)     {return (T*) List::remove((Entry*)entry);}
+    /** Return the head entry (empty() if none). */
     T* atHead() const       {return (T*) List::atHead();}
+    /** Return the tail entry (empty() if none). */
     T* atTail() const       {return (T*) List::atTail();}
   };
 }

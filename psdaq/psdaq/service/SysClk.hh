@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief SysClk, static helpers to sample a fast clock and compute time differences.
+ */
 /*
 ** ++
 **
@@ -48,12 +52,17 @@
 #endif
 
 namespace Pds {
+/** Static clock helpers. On non-VxWorks builds a sample is the nanosecond field of CLOCK_REALTIME (1 ns per tick). */
 class SysClk
 {
 public:
+  /** Return the current nanosecond field of CLOCK_REALTIME (on VxWorks, the processor time base). */
   static unsigned sample();
+  /** Return 1.0 (60.0 on VxWorks), the nanoseconds per sample tick. */
   static double   nsPerTick();
+  /** Return the ticks elapsed since prev, allowing for one wrap of the nanosecond field at one second. */
   static unsigned since (unsigned prev);
+  /** Return end minus start in nanoseconds. */
   static long long int diff(const timespec& end, 
 			    const timespec& start);
 };

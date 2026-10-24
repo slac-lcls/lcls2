@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief QueueSS, a List-based queue whose operations hold a pthread mutex (the UNIX version of QueueSlowSafe).
+ */
 #ifndef PDS_QUEUE_SS
 #define PDS_QUEUE_SS
 
@@ -22,23 +26,28 @@
 
 namespace Pds {
 template<class T>
+/** Queue of T over List (private base) whose insert, remove, atHead and atTail hold a pthread mutex (per the header comment, re-entrant but slow). Note that atHead() and atTail() are const but call the non-const lock helpers. */
 class QueueSS : private List
 {
   public:
+    /** Initialize the mutex. */
     QueueSS()
     {
       int status = pthread_mutex_init( &_lockkey, NULL);
       // assert(!status);
     }
+    /** Destroy the mutex. */
     ~QueueSS()
     {
       int status = pthread_mutex_destroy( &_lockkey);
       // assert(!status);
     }
+    /** Return the list label as T*, without locking. */
     T* empty() const
     {
       return (T*) List::empty();
     }
+    /** Append entry at the tail while holding the mutex; returns the entry it was inserted after. */
     T* insert(Entry *entry)
     {
       T* t;
@@ -47,6 +56,7 @@ class QueueSS : private List
       unlock();
       return t;
     }
+    /** Remove and return the head entry while holding the mutex (the list label if empty). */
     T* remove()
     {
       T* t;
@@ -55,6 +65,7 @@ class QueueSS : private List
       unlock();
       return t; 
     }
+    /** Return the head entry while holding the mutex. */
     T* atHead() const
     {
       T* t;
@@ -63,6 +74,7 @@ class QueueSS : private List
       unlock();
       return t; 
     }
+    /** Return the tail entry while holding the mutex. */
     T* atTail() const
     {
       T* t;

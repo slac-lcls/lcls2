@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares detector::AreaDetectorJungfrau, the AreaDetector subclass for Jungfrau config and raw data, and raw_jungfrau_t.
+ */
 #ifndef PSALG_AREADETECTORJUNGFRAU_H
 #define PSALG_AREADETECTORJUNGFRAU_H
 //-----------------------------
@@ -10,28 +14,47 @@ using namespace psalg;
 
 namespace detector {
 
+/** uint16_t; element type of AreaDetectorJungfrau::raw() (trailing comment: raw DAQ data type of jungfrau). */
 typedef uint16_t raw_jungfrau_t; // raw daq rata type of jungfrau
 
 //-----------------------------
+/** AreaDetector subclass for Jungfrau: reads module counts and per-module version and serial numbers from the config, and returns the data field "frame" as raw(). */
 class AreaDetectorJungfrau : public AreaDetector {
 public:
 
   //------------------------------
 
+  /** Construct with AreaDetector(detname, config) and call process_config(). */
   AreaDetectorJungfrau(const std::string& detname, XtcData::ConfigIter& config);
+  /** Construct with AreaDetector(detname); no ConfigIter is stored and process_config() is not called. */
   AreaDetectorJungfrau(const std::string& detname);
+  /** Destructor; only logs a debug message. */
   virtual ~AreaDetectorJungfrau();
 
+  /**
+   * Read the config fields MaxModulesPerDetector, numberOfModules, MaxRowsPerModule, numberOfColumnsPerModule and numPixels into the matching public counts, and moduleConfigM_firmwareVersion, _moduleVersion and _serialNumber (M = 0..7) into per-module arrays, all as int64.
+   * Uses the stored ConfigIter without checking that one is set.
+   */
   virtual void process_config();
+  /** Print each data field of datao to stdout: INT64 scalars with their value, UINT16 (type 1) fields with their first five elements, rank-1 INT64 (type 7) fields with their first three elements read as int32, and "TBD" for the rest. */
   virtual void process_data(XtcData::DataIter& datao);
+  /**
+   * Write module ind's version, firmware version and serial number in hex joined by '-', or, if ind is negative, those of modules 0 .. numberOfModules-1 joined by '_'. The stream is left in hex mode.
+   * Asserts ind < MAX_NUMBER_OF_MODULES and 0 < numberOfModules <= MAX_NUMBER_OF_MODULES.
+   */
   virtual void detid(std::ostream& os, const int ind=-1); //ind for panel, -1-for entire detector
 
+  /** Print detname, dettype, the module and pixel counts, panel ids 0 and 1, detid(), ndim(), size() and shape() to stdout. */
   virtual const void print_config();
 
+  /** Log an INFO message "In AreaDetectorJungfrau::" followed by msg. */
   void _class_msg(const std::string& msg=std::string());
 
+  /** Forward to AreaDetector::raw(evt), a default that logs a warning; declared here to avoid a hidden-overload warning. */
   virtual const NDArray<raw_t>& raw(const event_t& evt) {return AreaDetector::raw(evt);} // Silence compiler "hidden" warning
+  /** Find the data field "frame" (first call only), point the internal array at its data without copying, shape it with shape() and ndim(), and return it. */
   NDArray<raw_jungfrau_t>& raw(XtcData::DescData& ddata);
+  /** Return raw(DescData&) for datao.desc_value() built with the stored ConfigIter's NamesLookup. */
   NDArray<raw_jungfrau_t>& raw(XtcData::DataIter& datao);
 
   // implemented in AreaDetector
@@ -77,7 +100,7 @@ public:
   const NDArray<pixel_size_t>&  image_yaxis(const event_t&);
   */
 
-  enum {MAX_NUMBER_OF_MODULES=8};
+  enum {MAX_NUMBER_OF_MODULES=8 /**< Value 8: size of the per-module arrays filled by process_config(). */ };
 
 private:
 

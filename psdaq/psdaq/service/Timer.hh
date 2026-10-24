@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Timer, which calls expired() in a user Task after duration() milliseconds, once or repeatedly, and its UNIX service routine.
+ */
 // ---------------------------------------------------------------------------
 // Description:
 //
@@ -53,14 +57,20 @@ private:
   enum{_lockRetries=3};
 };
 #else
+/** UNIX implementation of a Timer: a separate service Task waits on a condition variable with a deadline and, on timeout, queues the Timer on its user task. */
 class TimerServiceRoutine : private Routine {
 public:
+  /** Keep timer and initialize the status mutex and condition variable; the service task is created on the first armTimer(). */
   TimerServiceRoutine(Timer* timer);
+  /** Destroy the condition variable and mutex, and destroy the service task if one was created. */
   virtual ~TimerServiceRoutine();
 
+  /** Create the service task on first use (named after the user task, same priority), then if the timer is off, turn it on, set the delay to duration() (minus 10 ms when above 10 ms) and queue the wait. Returns 0 if armed, 1 if it was already on. */
   unsigned armTimer();
+  /** If the timer is on, turn it off, wake the service task and wait until it has finished; returns 0, or 1 if it was already off. */
   unsigned disarmTimer();
 
+  /** Queue the wait routine on the service task if the timer is on. */
   void submit();
 
 private:
@@ -84,27 +94,36 @@ private:
 };
 #endif
 
+/** Base of timers: after start(), expired() is run in the Task returned by task() every duration() milliseconds (or once if repetitive() is 0) until cancel(). The header comment requires cancel() before destruction. */
 class Timer: public Routine {
 public:
+  /** Create the service routine for this timer. */
   Timer();
+  /** Does nothing; empty virtual destructor. */
   virtual ~Timer();
 
   // Start timer
+  /** Arm the timer (TimerServiceRoutine::armTimer()); returns 0, or 1 if it was already running. */
   unsigned start();
 
   // Stop timer
+  /** Disarm the timer and, if it was running, make sure no expired() call is pending: remove it from the queue when called from the user task, else wait until the user task has drained its queue. Returns 0, or 1 if the timer was not running. */
   unsigned cancel();
 
   // User's code executed in the task's context
+  /** Pure virtual: the user code run in task() when the timer expires. */
   virtual void     expired()          = 0;
 
   // Task the timer is connected to
+  /** Pure virtual: the Task in which expired() runs. */
   virtual Task* task()             = 0;
 
   // Value in milliseconds of the duration of the timer
+  /** Pure virtual: the timer period in milliseconds (per the comment). */
   virtual unsigned duration()   const = 0;
 
   // Return 0 if one-shot, != 0 if repetitive
+  /** Pure virtual: 0 for a one-shot timer, non-zero for a repeating one (per the comment). */
   virtual unsigned repetitive() const = 0;
 
 private:
