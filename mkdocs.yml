@@ -100,3 +100,4 @@ plugins:
 
 nav:
   - Home: index.md
+  - C++ API: api/cpp/index.html

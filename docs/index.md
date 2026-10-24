@@ -13,6 +13,10 @@ LCLS-II (SLAC). It holds four packages that are built together by the root
 
 ## How these docs are organized
 
+- [C++ API](api/cpp/index.html): Doxygen pages for the public headers of
+  xtcdata, psalg, psdaq and psana. The search box of this site does not cover
+  them; the C++ pages have their own search box.
+
 The site is versioned with [mike](https://github.com/jimporter/mike): `dev`
 follows the `master` branch of
 [slac-lcls/lcls2](https://github.com/slac-lcls/lcls2), and release tags
