@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief TprApp, a collection application that programs TPR trigger outputs for a readout group.
+ */
 #pragma once
 
 #include <thread>
@@ -9,10 +13,13 @@ namespace Drp {
 
 struct TprParameters;
 
+/** CollectionApp (role tpr) that, after connect, programs the TPR channel and outputs given in its parameters to trigger on the partition readout group, and keeps a worker thread until disconnect. */
 class TprApp : public CollectionApp
 {
 public:
+    /** Register with the collection as a tpr with the alias from para. */
     TprApp(TprParameters& para);
+    /** Unsubscribe from the partition and stop the worker thread. */
     void handleReset(const nlohmann::json& msg) override;
 private:
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;

@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief SPSCQueue, a fixed-capacity ring buffer for one producer and one consumer, with blocking and non-blocking reads.
+ */
 #ifndef SPSCQUEUE_H
 #define SPSCQUEUE_H
 
@@ -9,11 +13,13 @@
 
 #include "psdaq/service/fast_monotonic_clock.hh"
 
+/** Fixed-capacity ring buffer for one producer thread and one consumer thread. push() never checks for a full queue; the read functions can block on a condition variable, and shutdown() releases blocked readers. */
 template <typename T>
 class SPSCQueue
 {
     using ms_t = std::chrono::milliseconds;
 public:
+    /** Allocate capacity slots; throws a C string (after printing a message) if capacity is not a power of 2. */
     SPSCQueue(int capacity) : m_terminate(false), m_write_index(0), m_read_index(0)
     {
         if ((capacity & (capacity - 1)) != 0) {
@@ -26,9 +32,12 @@ public:
         m_buffer_mask = capacity - 1;
     }
 
+    /** Copying is disabled. */
     SPSCQueue(const SPSCQueue&) = delete;
+    /** Copy assignment is disabled. */
     void operator=(const SPSCQueue&) = delete;
 
+    /** Move constructor: take over the slots, indices, capacity and mask of d; the terminate flag starts cleared. */
     SPSCQueue(SPSCQueue&& d) noexcept
     {
         m_terminate.store(false);
@@ -41,6 +50,7 @@ public:
 
     // Write an item to the back of the queue
     // Note that this does not check that the queue is full first!
+    /** Write value at the back and wake a reader if the queue was empty. Does not check whether the queue is full (per the code comment). */
     void push(T value)
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
@@ -57,6 +67,7 @@ public:
     }
 
     // blocking read from queue
+    /** Pop the front element into value, blocking while the queue is empty. Returns false, without popping, if the queue was empty on entry and shutdown() has been called (even if an element arrived meanwhile); otherwise true. */
     bool popW(T& value)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -80,6 +91,7 @@ public:
     }
 
     // blocking read from queue with ms timeout
+    /** Like popW(T&), but waits at most msTmo milliseconds; returns false on timeout or if terminating while still empty. */
     bool popW(T& value, unsigned msTmo)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -106,6 +118,7 @@ public:
     }
 
     // blocking read from queue with polling for the 1st ms before blocking
+    /** Pop the front element into value, polling for up to 1 ms and then blocking with popW(T&). Returns false only if popW() does. */
     bool pop(T& value)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -126,6 +139,7 @@ public:
     }
 
     // non blocking read from queue
+    /** Pop the front element into value without blocking; returns false if the queue is empty. */
     bool try_pop(T& value)
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -141,6 +155,7 @@ public:
     }
 
     // Inspect the front of the queue returning empty status
+    /** Copy the front element into value without removing it; returns false if the queue is empty. */
     bool peek(T& value) const
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -154,6 +169,7 @@ public:
     }
 
     // Inspect the front of the queue
+    /** Return a reference to the slot at the read position (not checked for emptiness). */
     T& front()
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -161,6 +177,7 @@ public:
     }
 
     // Inspect the front of the queue
+    /** Return a const reference to the slot at the read position (not checked for emptiness). */
     const T& front() const
     {
         int64_t index = m_read_index.load(std::memory_order_relaxed);
@@ -176,6 +193,7 @@ public:
     }
 
     // Inspect the back of the queue
+    /** Return a reference to the slot at the write position, the next one push() will fill. */
     T& back()
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
@@ -183,6 +201,7 @@ public:
     }
 
     // Inspect the back of the queue
+    /** Return a const reference to the slot at the write position, the next one push() will fill. */
     const T& back() const
     {
         int64_t index = m_write_index.load(std::memory_order_relaxed);
@@ -190,6 +209,7 @@ public:
     }
 
     // Check whether the queue is empty
+    /** Return true if the read and write positions are equal. */
     bool is_empty() const
     {
         return m_read_index.load(std::memory_order_acquire) ==
@@ -197,6 +217,7 @@ public:
     }
 
     // Wait for the queue to become nonempty
+    /** Block until the queue is not empty; returns false if shutdown() was called while it is still empty, else true. */
     bool wait_for_nonempty() const
     {
         if (is_empty()) {
@@ -212,6 +233,7 @@ public:
     }
 
     // Return the occupancy of the queue
+    /** Return the number of queued elements (write minus read position, plus the capacity if negative). */
     int guess_size() const
     {
         int ret = m_write_index.load(std::memory_order_acquire) -
@@ -223,12 +245,14 @@ public:
     }
 
     // Return the capacity of the queue
+    /** Return the capacity. */
     size_t size() const
     {
         return m_ring_buffer.size();
     }
 
     // Shut down the queue by releasing the lock
+    /** Set the terminate flag and wake one blocked reader. */
     void shutdown()
     {
         {
@@ -239,6 +263,7 @@ public:
     }
 
     // Reset the state of the queue to allow it to be reused
+    /** Clear the terminate flag and reset both positions to 0. */
     void startup()
     {
         m_terminate.store(false);
