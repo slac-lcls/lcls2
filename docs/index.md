@@ -13,6 +13,8 @@ LCLS-II (SLAC). It holds four packages that are built together by the root
 
 ## How these docs are organized
 
+- [Getting started](getting-started.md): build and environment pointers taken from
+  `README.md` and the build scripts.
 - [C++ API](api/cpp/index.html): Doxygen pages for the public headers of
   xtcdata, psalg, psdaq and psana. The search box of this site does not cover
   them; the C++ pages have their own search box.

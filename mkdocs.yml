@@ -100,4 +100,5 @@ plugins:
 
 nav:
   - Home: index.md
+  - Getting started: getting-started.md
   - C++ API: api/cpp/index.html
