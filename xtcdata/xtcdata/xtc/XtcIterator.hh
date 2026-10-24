@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares XtcData::XtcIterator, the abstract base class for walking the child xtcs of an Xtc.
+ */
 #ifndef PDS_XTCITERATOR
 #define PDS_XTCITERATOR
 
@@ -39,23 +43,37 @@ namespace XtcData
 
 class Xtc;
 
+/**
+ * Abstract iterator over the child xtcs of a root Xtc. iterate() calls process() once per direct child and stops when it returns 0.
+ * It does not descend into children by itself; subclasses call iterate(child, bufEnd) from process() to do that.
+ */
 class XtcIterator
 {
 public:
+    /** Store root and bufEnd for use by iterate(). */
     XtcIterator(Xtc* root, const void* bufEnd);
+    /** Default constructor; root and bufEnd are left uninitialized (use iterate(Xtc*, const void*)). */
     XtcIterator()
     {
     }
+    /** Virtual destructor; does nothing. */
     virtual ~XtcIterator()
     {
     }
 
 public:
+    /** Called by iterate() for each child xtc; return 0 to stop iterating, nonzero to continue. Pure virtual. */
     virtual int process(Xtc* xtc, const void* bufEnd) = 0;
 
 public:
+    /** Call iterate(root, bufEnd) with the values given to the constructor. */
     void iterate();
+    /**
+     * Call process() on each child xtc in root's payload, in order, until process() returns 0 or the payload is used up.
+     * Returns at once if root's damage has the Damage::Corrupted bit set. Prints a message and calls abort() if a child starts at or past a non-null bufEnd or has extent < sizeof(Xtc).
+     */
     void iterate(Xtc*, const void* bufEnd);
+    /** Return the root xtc given to the constructor. */
     const Xtc* root() const;
 
 private:

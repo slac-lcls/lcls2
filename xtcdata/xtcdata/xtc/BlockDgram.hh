@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares XtcData::BlockDgram, which builds a Dgram from pre-built memory blocks (Names, Shapes, Data).
+ */
 #ifndef BLOCKDGRAM__H
 #define BLOCKDGRAM__H
 
@@ -9,9 +13,17 @@
 
 namespace XtcData {
 
+/**
+ * Builds a Dgram in a caller-supplied buffer by appending copies of pre-built Names, Shapes and Data blocks. The comment above says it is used by cython.
+ * It derives from Xtc, but these methods do not use that base.
+ */
 class BlockDgram : public Xtc
 {
 public:
+    /**
+     * Placement-construct a Dgram at buffdgram with time TimeStamp(tstamp), env control << 24, and an empty TypeId::Parent (version 0) xtc.
+     * buffdgram + buffSize is the end bound used by later alloc() calls, which abort if it would be passed.
+     */
     BlockDgram(uint8_t* buffdgram, size_t buffSize, uint64_t tstamp,
                unsigned control):
         _dgram(*new(buffdgram) Dgram()),
@@ -24,6 +36,7 @@ public:
         _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
     };
 
+    /** Append to the top-level xtc a TypeId::Names xtc (src NamesId(nodeId, namesId)) whose payload is a copy of sizeof(NameInfo) + block_elems*sizeof(Name) bytes from name_block. */
     void addNamesBlock(uint8_t* name_block, size_t block_elems,
                        unsigned nodeId, unsigned namesId){
         size_t nameblock_size = sizeof(NameInfo) + block_elems*sizeof(Name);
@@ -34,6 +47,10 @@ public:
         _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
     }
 
+    /**
+     * Append a TypeId::ShapesData xtc (src NamesId(nodeId, namesId)) holding a Shapes xtc and then a Data xtc.
+     * The Shapes payload is sizeof(uint32_t) + block_elems*sizeof(Shape) bytes copied from shape_block; the Data payload is sizeofdata bytes copied from data_block.
+     */
     void addShapesDataBlock(uint8_t* shape_block, uint8_t* data_block, size_t sizeofdata, size_t block_elems, unsigned nodeId, unsigned namesId){
         // cpo: need to take away this uint32_t when we eliminate
         // it from the Shapes class
@@ -54,6 +71,7 @@ public:
         _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
     }
 
+    /** Append a TypeId::ShapesData xtc with default src (0) holding only a Data xtc whose payload is sizeofdata bytes copied from data_block. */
     void addDataBlock(uint8_t* data_block, size_t sizeofdata){
         size_t data_size = sizeof(Xtc) + sizeofdata;
         size_t shapesdata_size = sizeof(Xtc) + data_size;
@@ -66,6 +84,7 @@ public:
         _sizeDgram =sizeof(Dgram)+_dgram.xtc.sizeofPayload();
     }
 
+    /** Return sizeof(Dgram) plus the top-level xtc's payload size, as updated by the constructor and each add*Block() call. */
     uint32_t dgramSize(){
         return _sizeDgram;
     };
