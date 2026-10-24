@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares calib::getCalibParsDB(), the factory for calibration DB backends.
+ */
 #ifndef PSALG_CALIBPARSDBSTORE_H
 #define PSALG_CALIBPARSDBSTORE_H
 //-----------------------------
@@ -25,6 +29,10 @@
 
 namespace calib {
 
+  /**
+   * Return a new backend for dbtype: CalibParsDB for DBDEF, CalibParsDBWeb for DBWEB; for other types log a WARNING and return NULL. The caller owns the object.
+   * With DEBUG logging enabled, the debug message calls name_of_dbtype(), which throws for DBMONGO.
+   */
   CalibParsDB* getCalibParsDB(const DBTYPE dbtype=calib::DBWEB);
 
 } // namespace calib

@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares psalg::ArrayIO, which loads an NDArray from a text file with '#' metadata lines.
+ */
 #ifndef PSALG_ARRAYIO_H
 #define PSALG_ARRAYIO_H
 
@@ -29,26 +33,42 @@ namespace psalg {
 
 //-------------------
 
+/**
+ * Loads an array of T from a text file in the constructor. Lines starting with '#' are metadata ("SHAPE (d0,d1,...)" sets the shape, "DATATYPE x" the type name); the first other non-empty line and everything after it are read as whitespace-separated values.
+ * Instantiated in ArrayIO.cc for int, unsigned, unsigned short and float.
+ */
 template <typename T>
 class ArrayIO {
 
 public:
 
+  /** Alias for psalg::types::shape_t (uint32_t). */
   typedef psalg::types::shape_t shape_t; // uint32_t
+  /** Alias for psalg::types::size_t (uint32_t). */
   typedef psalg::types::size_t  size_t;  // uint32_t
 
-  enum        STATUS     {LOADED=0, DEFAULT,   UNREADABLE,   UNDEFINED};
-  std::string STRAUS[4]={"LOADED", "DEFAULT", "UNREADABLE", "UNDEFINED"};
+  /** Load status reported by status(). */
+  enum        STATUS     {LOADED=0, /**< 0: the file was read (also set when the value count differs from the shape size). */ DEFAULT, /**< 1: not set anywhere in ArrayIO.cc. */   UNREADABLE, /**< 2: the file could not be opened. */   UNDEFINED /**< 3: initial value before loading. */ };
+  std::string STRAUS[4]={"LOADED", "DEFAULT", "UNREADABLE", "UNDEFINED"};  ///< Names of the STATUS values, used by str_status().
 
   //ArrayIO();
+  /**
+   * Read fname right away. Values go into buf if it is non-null, otherwise into a buffer the NDArray allocates.
+   * Logs a warning if the file cannot be opened (status UNREADABLE) or if the number of values differs from the shape size; extra values are still written past the end of the buffer.
+   */
   ArrayIO(const std::string& fname, void *buf=0);
+  /** Destructor; only logs a trace message. */
   ~ArrayIO();
 
   //inline char* __name__(){return (char*)"ArrayIO";}
+  /** Return the load status. */
   inline const STATUS status() const {return _status;}
+  /** Return the status name ("LOADED", "DEFAULT", "UNREADABLE" or "UNDEFINED"). */
   inline const std::string str_status() const {return STRAUS[_status];}
+  /** Return the DATATYPE value read from the file (empty if there was none). */
   inline const std::string& dtype_name() const {return _dtype_name;}
 
+  /** Return the loaded array. */
   NDArray<T>& ndarray(){return _nda;};
 
 private:

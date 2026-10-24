@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares calib::CalibParsEpix100a, a CalibPars subclass for Epix100a that currently adds no overrides.
+ */
 #ifndef PSALG_CALIBPARSEPIX100A_H
 #define PSALG_CALIBPARSEPIX100A_H
 //-----------------------------
@@ -12,12 +16,16 @@ namespace calib {
 
 //-----------------------------
 
+/** CalibPars subclass for Epix100a. Its per-constant overrides are commented out, so all behavior comes from CalibPars; getCalibPars() creates it for EPIX100A names. */
 class CalibParsEpix100a : public CalibPars {
 public:
 
+  /** Construct as CalibPars(detname, dbtype) and log a debug message. */
   CalibParsEpix100a(const char* detname="Epix100a", const DBTYPE& dbtype=DBWEB);
+  /** Destructor; only logs a debug message. */
   virtual ~CalibParsEpix100a();
 
+  /** Log a WARNING message: "METHOD CalibParsEpix100a::" + msg + " TBE". */
   void _default_msg(const std::string& msg=std::string()) const;
 
   /// access to calibration constants. DEFAULT IS USED IF UNDEFINED
@@ -49,6 +57,7 @@ public:
   */
 
   CalibParsEpix100a(const CalibParsEpix100a&) = delete;
+  /** Copy assignment is disabled. */
   CalibParsEpix100a& operator = (const CalibParsEpix100a&) = delete;
 
   //private:
