@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Opal, the DRP detector class for the Opal camera.
+ */
 #pragma once
 
 #include "BEBDetector.hh"
@@ -8,13 +12,19 @@ namespace Drp {
 class OpalTT;
 class OpalTTSim;
 
+/** BEBDetector for the Opal camera: records an m_rows x m_columns UINT16 image, with optional timetool processing (OpalTT) and simulation from XTC files. */
 class Opal : public BEBDetector
 {
 public:
+    /** Connect the error PUSH socket to the collection server, initialize the BEBDetector with _init(detName) and _init_feb(), and create a simulator if the simxtc (OpalTTSimL1) or simxtc2 (OpalTTSimL2, with simtime) kwarg is set. */
     Opal(Parameters* para, MemPool* pool);
+    /** Delete the simulator and the timetool object if present. */
     ~Opal();
+    /** If timetool processing is set up (m_tt), call OpalTT::slowupdate; otherwise call Detector::slowupdate, which resets xtc to an empty Parent Xtc. */
     void slowupdate(XtcData::Xtc&, const void* bufEnd) override;
+    /** Call OpalTT::shutdown if timetool processing is set up, then BEBDetector::shutdown, which calls the Python unconfig function for the detector type. */
     void shutdown() override;
+    /** Add the image (m_rows x m_columns UINT16) under namesId, copying it from subframes[2]. */
     void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
 protected:
     void           _connectionInfo(PyObject*) override;
