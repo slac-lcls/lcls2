@@ -71,7 +71,7 @@ built by `create_msg()` in `ControlDef.py`. On the C++ side the DAQ processes
 derive from `CollectionApp` (`psdaq/psdaq/service/Collection.hh`, base port
 `zmq_base_port = 29980`), which subscribes to `all`, adds `partition` after
 `alloc`, and routes `configure`, `beginrun`, `enable`, ... to
-`handlePhase1` (see DRP and event building).
+`handlePhase1` (see [DRP and event building](drp-eventbuilding.md)).
 
 ### Client API: `DaqControl`
 
