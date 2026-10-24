@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares XtcData::NameIndex, which holds a private copy of a Names xtc and name-to-index maps, and the IndexMap typedef.
+ */
 #ifndef XtcData_NameIndex_hh
 #define XtcData_NameIndex_hh
 
@@ -5,17 +9,21 @@
 
 #include <map>
 
+/** Map from a field name to an index, used by NameIndex. */
 typedef std::map<std::string, unsigned> IndexMap;
 
 namespace XtcData
 {
 
+/** Holds a malloc'd copy of a Names xtc (extent bytes) plus two maps: nameMap (field name to its position in the Names) and shapeMap (field name to its position among the array fields, those with rank > 0). */
 class NameIndex {
 public:
     // default constructor, used by NamesLookup std::map for keys
     // that don't exist (see comment in names() method below).
+    /** Construct an empty index with no Names copy. The comment above notes NamesLookup uses it for missing keys; names() then throws. */
     NameIndex() : _names(0) {}
 
+    /** Copy names (names.extent bytes) with malloc, map each Name's name to its index (nameMap), and map each array field (rank > 0) to its running array index (shapeMap). */
     NameIndex(Names& names) {
         _init_names(names);
         unsigned iarray = 0;
@@ -28,6 +36,7 @@ public:
             }
         }
     }
+    /** Deep copy: duplicate old's Names copy (if any) and copy both maps. */
     NameIndex(const NameIndex& old) {
         if (old._names) {
             _init_names(*old._names);
@@ -37,6 +46,10 @@ public:
         _shapeMap = old._shapeMap;
         _nameMap = old._nameMap;
     }
+    /**
+     * Free the current Names copy, deep-copy rhs's (if any) and copy both maps. Self-assignment is not handled (the copy is freed before it is read).
+     * @return *this.
+     */
     NameIndex& operator=(const NameIndex& rhs) {
         if (_names) free(_names);
         if (rhs._names) {
@@ -49,9 +62,13 @@ public:
         _nameMap = rhs._nameMap;
         return *this;
     }
+    /** Free the Names copy, if any. */
     ~NameIndex() {if (_names) free(_names);}
+    /** Return the map from array-field name to array index (rank > 0 fields only, in Names order). */
     IndexMap& shapeMap() {return _shapeMap;}
+    /** Return the map from field name to its index in the Names. */
     IndexMap& nameMap()  {return _nameMap;}
+    /** Return the stored Names copy. If there is none (default-constructed), prints a message and throws a const char* exception. */
     Names&    names()    {
         if (_names == 0) {
             // this typically happens when the user gives a bad NamesId
@@ -77,6 +94,7 @@ public:
         }
         return *_names;
     }
+    /** Return true if a Names copy is stored. */
     bool      exists()   {return _names!=0;}
 private:
     void _init_names(Names& names) {

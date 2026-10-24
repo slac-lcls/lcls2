@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares XtcData::VarDef, a list of Name definitions.
+ */
 
 #ifndef VARDEF__H
 #define VARDEF__H
@@ -11,10 +15,11 @@ namespace XtcData
 {
   class Name;  
 
+  /** Holder for a list of Name definitions; Names::add() appends a copy of each entry in NameVec to a Names xtc. */
   class VarDef
 {
 public:
-  std::vector <Name> NameVec;  
+  std::vector <Name> NameVec;  ///< Name definitions, in order.
   };
 
 };

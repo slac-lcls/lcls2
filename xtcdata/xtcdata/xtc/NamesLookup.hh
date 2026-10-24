@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares XtcData::NamesLookup, the map from NamesId to NameIndex.
+ */
 #ifndef XtcData_NamesLookup_hh
 #define XtcData_NamesLookup_hh
 
@@ -17,6 +21,10 @@ namespace XtcData{
 // implementation was done with std::vector, to avoid the map key
 // search, but used alot of memory (see NamesId::NumberOf)
 
+/**
+ * Map from a NamesId value (as unsigned) to the NameIndex built from the matching Names xtc.
+ * Per the comment above, it links the Names xtc of the Configure transition with the ShapesData xtc of each event. operator[] on a missing key inserts an empty NameIndex, whose names() throws.
+ */
 typedef std::unordered_map<unsigned,NameIndex> NamesLookup;
 
 };
