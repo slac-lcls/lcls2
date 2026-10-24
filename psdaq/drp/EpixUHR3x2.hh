@@ -1,25 +1,40 @@
+/**
+ * @file
+ * @brief EpixUHR3x2, the DRP detector class for the 3x2-ASIC ePixUHR camera.
+ */
 #pragma once
 
 #include "BEBDetector.hh"
 #include "psdaq/service/Semaphore.hh"
 
+/** Defined as 24 (also in EpixUHR.hh); no use was found in the psdaq/drp source files. */
 #define NUM_BANKS 24
 
 
 namespace Drp {
 
+/** BEBDetector for the 3x2-ASIC ePixUHR. L1Accept data is a 6 x (168 * 192) UINT16 array with ASIC data taken from subframes 3 to 8 for the ASICs enabled in user.asic_enable; missing ASICs stay zero. */
 class EpixUHR3x2 : public BEBDetector
 {
 public:
+    /** Set virtual channel 0, initialize through _init_dual_dev() with the detector name, device and lane mask, and install a one-shot handler for SIGINT, SIGTERM, SIGQUIT, SIGABRT and SIGSEGV that prints the signal, restores the previous handler and re-raises the signal. */
     EpixUHR3x2(Parameters* para, MemPool* pool);
+    /** Does nothing; empty body. */
     ~EpixUHR3x2();
+    /** Reset the error print budget, call monStreamDisable() and return 0. */
     unsigned enable   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
+    /** Call monStreamEnable() and return 0. */
     unsigned disable  (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
+    /** Call Detector::slowupdate(). */
     void slowupdate(XtcData::Xtc&, const void* bufEnd) override;
+    /** Return false. */
     bool scanEnabled() override;
+    /** If the configuration module is loaded and the monitor stream is off (monStreamDisable() was called last), call monStreamEnable(). */
     void shutdown() override;
+    /** Declared here; no definition was found in psdaq/drp. */
     void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
 
+    /** Return the timing header of DMA buffer index: the data after the first event-batcher header. */
     Pds::TimingHeader* getTimingHeader(uint32_t index) const override;
 protected:
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
@@ -36,7 +51,9 @@ private:
     void           __event   (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&);
 public:
+    /** Call the Python function `{detType}_disable` of the configuration module with the device root object. */
     void           monStreamEnable ();
+    /** Call the Python function `{detType}_enable` of the configuration module with the device root object. */
     void           monStreamDisable();
 protected:
     Pds::Semaphore    m_env_sem;

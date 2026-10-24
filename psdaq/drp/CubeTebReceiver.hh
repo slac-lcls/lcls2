@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief CubeTebReceiver, a TebReceiver that bins detector raw data into a cube according to the trigger results.
+ */
 #pragma once
 
 #include "TebReceiver.hh"                   // Contains base class for TebReceiver
@@ -7,11 +11,14 @@ namespace Drp {
 
 class CubeData;
 
+/** TebReceiver that accumulates the detector raw data (Detector::rawDef()) into bins chosen by the Cube trigger results, using nCubeWorkers worker threads; the full cube is recorded at EndRun and single bins are recorded or monitored as the results request (per the file comment). */
 class CubeTebReceiver: public TebReceiver
 {
 public:
+    /** Construct the TebReceiver base and the per-buffer result copies, with one initialization flag and one semaphore per cube worker. */
     CubeTebReceiver(const Parameters&, DrpBase&);
 public:
+    /** Thread body (named drp/CubeTebProc): for each completed result in order, take the matching index from the worker output queue (aborting on a mismatch), monitor and record the requested bins, free the transition and pebble buffers, and zero the flushed bins (or mark the whole cube for reinitialization). Busy-waits while no new result is available; exits when terminating or a worker queue is shut down. */
     void finalize();
 protected:
     virtual void complete(unsigned index, const Pds::Eb::ResultDgram&) override;

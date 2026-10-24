@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Wave8, the DRP detector class for the Wave8 digitizer (detType wave8 in PGPDetectorApp).
+ */
 #pragma once
 
 #include "BEBDetector.hh"
@@ -7,9 +11,11 @@
 
 namespace Drp {
 
+/** BEBDetector for the Wave8 (detType wave8 in PGPDetectorApp), recording raw and FEX data and supporting cube binning. */
 class Wave8 : public BEBDetector
 {
 public:
+    /** Construct the BEBDetector base and initialize it with the epics_prefix kwarg. */
     Wave8(Parameters* para, MemPool* pool);
 private:
     unsigned       _configure(XtcData::Xtc&, const void* bufEnd, XtcData::ConfigIter&) override;

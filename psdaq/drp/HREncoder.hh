@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief HREncoder, the DRP detector class for the high-rate encoder.
+ */
 #pragma once
 
 #include "BEBDetector.hh"
@@ -8,9 +12,11 @@
 namespace Drp
 {
 
+/** BEBDetector for the high-rate encoder (detType hrencoder in PGPDetectorApp). */
 class HREncoder : public BEBDetector
 {
 public:
+    /** Initialize the BEBDetector with the epics_prefix kwarg; a timebase kwarg of 119M sets the extra event-batcher level. */
     HREncoder(Parameters* para, MemPool* pool);
 
 private:
