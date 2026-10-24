@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief FiTransport, a point-to-point libfabric transport adapted from the libfabric pingpong example (see the license block below).
+ */
 /*
  * Much of the following code was taken from the pingpong.c libfabric example.
  */
@@ -42,11 +46,14 @@
 namespace Pds {
   namespace Eb {
 
+    /** Point-to-point libfabric transport for DGRAM, RDM or MSG endpoints, adapted from the libfabric pingpong example per the file comment. In MSG mode a separate socket control connection is used to exchange synchronization messages. */
     class FiTransport
     {
     public:
+      /** Enable (non-zero) or disable the FT_DEBUG messages; the flag is file-static, so it affects all instances. */
       static void debug(int enable);
     public:
+      /** Store the ports and destination address and allocate libfabric hints filled from epType, caps, mode, mr_mode, domain and provider. If the allocation fails, start() returns EXIT_FAILURE. */
       FiTransport(uint16_t        srcPort,
                   uint16_t        dstPort,
                   char*           dstAddr,
@@ -56,17 +63,27 @@ namespace Pds {
                   uint64_t        mr_mode,
                   char*           domain,
                   char*           provider);
+      /** Shut down the endpoint if one is open and free all libfabric resources. */
       ~FiTransport();
     public:
+      /** Set up the transport for the endpoint type given in the hints: DGRAM (applying maxMsgSize if non-zero and posting one extra receive into buffer), RDM, or MSG (control connection, server or client connect, then a sync). Returns 0 or an error code (EXIT_FAILURE for an unsupported type or a failed constructor). */
       int     start(int maxMsgSize, void* buffer, size_t size);
+      /** Send size bytes from buf with fi_inject() if size is below the provider's inject size, otherwise with fi_send() followed by a wait for its transmit completion. Posts that return -FI_EAGAIN are retried. Returns 0 or an error. */
       ssize_t postTransmit(void* buf, size_t size);
+      /** Wait for the completion of the previously posted receive, then post the next receive into buf (length is the larger of size and 64) and count it as an acknowledged message. Returns 0 or an error. */
       ssize_t postReceive(void* buf, size_t size);
+      /** Copy the string fin into buf and send it with fi_sendmsg(FI_INJECT | FI_TRANSMIT_COMPLETE), wait for its transmit completion and for one receive completion, then close the control connection. Returns 0 or an error. */
       int     finalize(void* buf, size_t size);
     public:
+      /** Reset the acknowledged-message counter. */
       void    clearCounters();
+      /** Return the fi_info selected for the connection. */
       const struct fi_info* fi() const;
+      /** Print fabric, domain and endpoint attributes of the selected fi_info with FT_DEBUG (printed only when debug output is enabled). */
       void    dumpFabricInfo();
+      /** Exchange the sync question and answer strings over the control connection (the client sends and waits for the answer, the server waits and answers). Returns 0, a negative errno, or -EBADMSG. */
       int     ctrlSync();               // Revisit
+      /** Exchange the acknowledged-message count over the control connection: the client sends its count and expects an ok reply; the server receives and stores the count and replies. Returns 0, a negative error, or in some mismatch cases the received length. */
       int     ctrl_txrx_msg_count();    // Revisit
     private:
       int     _ctrl_init_client();
