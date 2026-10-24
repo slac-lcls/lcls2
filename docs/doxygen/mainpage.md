@@ -28,3 +28,4 @@ to their pages here.
 |---|---|---|
 | XTC2 data format (`xtcdata`) | XtcData::Dgram, XtcData::Xtc, XtcData::TransitionId, XtcData::Names, XtcData::ShapesData, XtcData::NamesId, XtcData::DescData, XtcData::XtcIterator, XtcData::XtcFileIterator | [XTC2 data format](../../features/xtc2/index.html) |
 | `psalg` libraries and algorithms | geometry::GeometryAccess, calib::CalibPars, psalg::shmem::ShmemClient, psalg::shmem::XtcMonitorServer, Pds::HSD::Channel, psalg::AllocArray, psalgos::PeakFinderAlgos | [psalg algorithms](../../features/psalg/index.html) |
+| DRP and event building (`psdaq`) | Drp::Detector, Drp::DrpBase, Drp::PGPDetectorApp, Drp::Factory, Drp::MemPool, CollectionApp, Pds::Eb::EbAppBase, Pds::Eb::TebContributor, Pds::Eb::MebContributor, Pds::Eb::ResultDgram, Pds::Trg::Trigger, Pds::Trg::TriggerPrimitive | [DRP and event building](../../features/drp-eventbuilding/index.html) |

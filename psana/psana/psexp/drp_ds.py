@@ -1,3 +1,4 @@
+"""Define `DrpDataSource`, the data source that reads dgrams from the DRP through `DgramManager(["drp"])`."""
 from psana.dgrammanager import DgramManager
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
@@ -8,6 +9,14 @@ from psana import utils
 
 
 class DrpDataSource(DataSourceBase):
+    """Data source that reads dgrams from the DRP shared memory and message queues.
+
+    The object given as `drp` supplies the segment, supervisor flag, worker number, tcp and ipc socket names and Prometheus config directory; worker 0 is the publisher. The constructor makes PUB/SUB zmq sockets from those flags (supervisor publisher: tcp PUB and ipc PUB; other publisher: tcp SUB and ipc PUB; non-publishers: ipc SUB), a `SmallData` object and the `DgramManager`, and starts the Prometheus HTTP exposer.
+
+    Notes
+    -----
+    The first line after the base constructor reads `self.drp`, which `DataSourceBase.__init__` in this file version does not set, so as written it raises AttributeError unless the attribute is set elsewhere.
+    """
     def __init__(self, *args, **kwargs):
         super(DrpDataSource, self).__init__(**kwargs)
         self.tag = self.drp
@@ -68,6 +77,13 @@ class DrpDataSource(DataSourceBase):
         return found_next_run
 
     def runs(self):
+        """Yield a `RunDrp` for each BeginRun read from the DRP, then delete the zmq sockets.
+
+        Each run also gets the supervisor and publisher flags, the tcp PUB socket (supervisor publisher
+        only) and the ipc PUB socket (publisher only). Iteration ends when the `DgramManager` stops
+        before another BeginRun; the sockets are deleted afterwards, which the code comment says avoids
+        "Address already in use" when they are recreated.
+        """
         while self._start_run():
             # Extra kwargs for RunDrp
             kwargs = {'drp_is_supervisor': self._is_supervisor,
@@ -105,4 +121,5 @@ class DrpDataSource(DataSourceBase):
                 del self._ipc_sub_socket
 
     def is_mpi(self):
+        """Return False."""
         return False

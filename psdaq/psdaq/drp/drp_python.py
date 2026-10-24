@@ -1,3 +1,11 @@
+"""Python worker process for a DRP: opens POSIX IPC queues/shared memory and runs the Python scripts it is told to run.
+
+Twelve positional command-line arguments give partition, buffer sizes, detector name/
+type/id/segment, worker number, verbosity, instrument and Prometheus config directory.
+A message b's' is answered with b's' plus a newline; any other message
+'script,is_supervisor,ip:port' selects a script file that is compiled and run with `exec`.
+The queues are closed and the shared-memory descriptors released on exit (including KeyboardInterrupt).
+"""
 import sys
 import posix_ipc
 import logging
@@ -21,6 +29,11 @@ logging.basicConfig(format='%(filename)s L%(lineno)04d: <%(levelname).1s> %(mess
 
 
 class IPCInfo:
+    """Open the message queues '/mqinp_<key>_<n>' (read) and '/mqres_<key>_<n>' (write) and shared memories '/shminp_<key>_<n>' and '/shmres_<key>_<n>'.
+
+    <key> is 'p<partition>_<detector_name>_<detector_segment>' and <n> is `worker_num`;
+    any posix_ipc error triggers ``assert(False)``. `shm_mem_size` is unused.
+    """
     def __init__(self, partition, detector_name, detector_segment, worker_num, shm_mem_size):
 
         keybase = f"p{partition}_{detector_name}_{detector_segment}";
@@ -37,6 +50,7 @@ class IPCInfo:
             assert(False)
 
 class DrpInfo:
+    """Plain holder of the DRP worker settings, the `IPCInfo`, supervisor flags and the IPC socket name 'ipc:///tmp/<detector_name>_<detector_segment>.pipe'."""
     def __init__(self, detector_name, detector_type, detector_id, detector_segment, worker_num,
                  pebble_bufsize, transition_bufsize, ipc_info, instrument, partition, prom_cfg_dir):
         self.det_name = detector_name
