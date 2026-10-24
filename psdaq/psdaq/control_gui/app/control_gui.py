@@ -14,6 +14,7 @@ LEVEL_NAMES = ', '.join(list(logging._levelToName.values()))
 #------------------------------
 
 def usage():
+    """Return a usage string with example `control_gui` command lines."""
     return 'command examples for app %s\n'%sys.argv[0]\
          + '  control_gui\n'\
          + '  control_gui -l INFO -L log-daq-control'\
@@ -47,6 +48,13 @@ def control_gui() :
 
 def input_option_parser() :
 
+    """Build and return the optparse `OptionParser` for the control GUI.
+
+    Options: -p/--platform (6), -H/--host ('localhost'), -t/--timeout (60000 ms),
+    -l/--loglevel ('DEBUG'), -L/--logdir (None), -e/--expname ('tmo12345'), -u/--uris
+    (`URI_CONFIGDB`), -E/--expert (False), --user ('tmoopr') and --password (env
+    CONFIGDB_AUTH).
+    """
     from optparse import OptionParser
 
     d_platform   = 6 # [0-7]

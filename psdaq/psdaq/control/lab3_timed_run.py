@@ -1,3 +1,7 @@
+"""Command-line script that runs the DAQ for a fixed duration with `TimedRun`.
+
+Defaults: platform 1, collection host 'daq-tst-dev03'.
+"""
 import sys
 import logging
 import threading
@@ -6,6 +10,12 @@ from psdaq.control.TimedRun import TimedRun
 import argparse
 
 def main():
+    """Parse arguments, put the DAQ in 'running' for ``--duration`` seconds, then back to 'connected'.
+
+    Exits with an error if the initial `getState` returns 'error'. On KeyboardInterrupt it
+    sends 'shutdown' to the TimedRun communicator thread and exits; otherwise it calls
+    `unstage` and then sends 'shutdown'.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-p', type=int, choices=range(0, 8), default=1,
                         help='platform (default 1)')
