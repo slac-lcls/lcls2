@@ -11,6 +11,7 @@ need access to LCLS data storage, the calibration database, or a running DAQ.
 
 | Page | Main code |
 |---|---|
+| [XTC2 data format](xtc2.md) | `xtcdata/xtcdata/xtc/`, `psana/src/dgram.cc`, `psana/psana/dgramedit.pyx` |
 | [DataSource, Run and the event loop](datasource-run-events.md) | `psana/psana/datasource.py`, `psana/psana/psexp/` |
 | [Detector interface](detector-interface.md) | `psana/psana/detector/` |
 | [Calibration constants](calibration.md) | `psana/psana/detector/calibconstants.py`, `psana/psana/pscalib/` |

@@ -30,6 +30,7 @@ short orientation written for these docs, followed by the generated reference.
 | [`psana.psexp.run`](run.md) | The `Run` base class and the serial/single-file/shmem/DRP/smalldata run classes. |
 | [`psana.psexp.step`](step.md) | `Step`, the object yielded by `run.steps()`. |
 | [`psana.event`](event.md) | `Event`, the object yielded by `run.events()`. |
+| [`psana.psexp.transitionid`](transitionid.md) | `TransitionId`, the transition codes returned by `evt.service()`. |
 | [`psana.dgrammanager`](dgrammanager.md) | `DgramManager`, which reads dgrams from files, shared memory or the DRP. |
 | [`psana.psexp.mpi_ds`](mpi_ds.md) | `MPIDataSource` and `RunParallel` (MPI mode). |
 | [`psana.psexp.shmem_ds`](shmem_ds.md) | `ShmemDataSource` (shared-memory mode). |

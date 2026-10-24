@@ -60,7 +60,7 @@ effect.
 For `exp=` the data source expects the usual LCLS layout: big-data files
 `<exp>-r<run>-s<stream>-c<chunk>.xtc2` in the xtc directory and small-data
 files `smalldata/<exp>-r<run>-s<stream>-c<chunk>.smd.xtc2` next to them (see
-XTC2 data format).
+[XTC2 data format](xtc2.md)).
 
 ### `Run`
 
