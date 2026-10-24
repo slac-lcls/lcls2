@@ -124,6 +124,14 @@ len_evt = {}  # len name to {timestamp: length}
 
 
 def set_keytypes(k):
+    """Classify dataset key `k` and record the result in the module dicts.
+
+    A key is variable-length (`var_dict[k] = True`) if any "/"-separated part starts with "var_". If that part is the last one and ends with "_len", the key is itself a length key; otherwise the name of its length key (the path up to and including that part, plus "_len") is stored in `len_map[k]`, marked as a length key in `len_dict` and given an empty entry in `len_evt`.
+
+    Notes
+    -----
+    Keys with no "var_" part are marked as neither variable nor length keys.
+    """
     parts = k.split("/")
     # New regime: any part can have "var_"!
     for i, p in enumerate(parts):
@@ -144,6 +152,15 @@ def set_keytypes(k):
 
 
 def get_len_map(k):
+    """Return the name of the length key for variable key `k`.
+
+    Looks `k` up in `len_map`, calling `set_keytypes(k)` first if it is not there yet.
+
+    Raises
+    ------
+    KeyError
+        If `k` has no length key (it has no "var_" part, or it is itself a length key).
+    """
     try:
         return len_map[k]
     except Exception:
@@ -152,6 +169,10 @@ def get_len_map(k):
 
 
 def is_len_key(k):
+    """Return True if `k` is a length key, as classified by `set_keytypes`.
+
+    The classification is computed on first lookup and cached in `len_dict`.
+    """
     try:
         return len_dict[k]
     except Exception:
@@ -160,6 +181,10 @@ def is_len_key(k):
 
 
 def is_var_key(k):
+    """Return True if any "/"-separated part of `k` starts with "var_".
+
+    The classification is computed by `set_keytypes` on first lookup and cached in `var_dict`.
+    """
     try:
         return var_dict[k]
     except Exception:
@@ -168,10 +193,12 @@ def is_var_key(k):
 
 
 def is_group(event_data_dict):
+    """Return True if `event_data_dict` contains the reserved key "align_group"."""
     return ALIGN_GROUP_KW in event_data_dict
 
 
 def get_group_name(event_data_dict):
+    """Return the value of the "align_group" key of `event_data_dict`, or "default" if it is absent."""
     datagroup = ALIGN_GROUP_DEFAULT
     if is_group(event_data_dict):
         datagroup = event_data_dict[ALIGN_GROUP_KW]
@@ -244,6 +271,14 @@ class CacheArray:
         return
 
     def append(self, data):
+        """Add one event's `data` to the cache.
+
+        For a fixed-shape cache, `data` is written into the next row of the preallocated array and `size` grows by 1. For a variable-length cache, the entries of `data` are appended along axis 0 and `size` grows by `len(data)`; None or empty `data` adds nothing.
+
+        Notes
+        -----
+        `n_events` is incremented in every case.
+        """
         if self.is_var:
             if data is None or len(data) == 0:
                 self.n_events += 1
@@ -263,6 +298,11 @@ class CacheArray:
         return
 
     def reset(self):
+        """Mark the cache as empty.
+
+        Sets `size` and `n_events` to 0 and, for a variable-length cache, sets `data` to None. A
+        fixed-shape cache keeps its buffer; old rows are overwritten later.
+        """
         if self.is_var:
             self.data = None
         self.size = 0
@@ -271,6 +311,27 @@ class CacheArray:
 
 
 class Server:  # (hdf5 handling)
+    """Receive per-event data from smalldata clients and write it to one HDF5 file.
+
+    For each alignment group it records the dtype and shape of every dataset and keeps a
+    `CacheArray` per dataset, which is flushed to the file when it holds `cache_size` entries;
+    datasets missing from an event are backfilled. If `filename` is None nothing is written, but
+    the callbacks are still called for every event.
+
+    Parameters
+    ----------
+    filename : str, optional
+        HDF5 file to create (opened with mode "w" and `libver="latest"` in the constructor).
+    smdcomm : MPI communicator, optional
+        Communicator used by `recv_loop`; every rank in it except one is counted as a client.
+    cache_size : int
+        Number of entries cached per dataset before writing.
+    callbacks : list of callable
+        Each is called with one flattened dict per event in `handle`.
+    swmr_mode : bool
+        If True, turn on HDF5 SWMR mode after the first dataset is created and flush the file after
+        every batch.
+    """
     def __init__(self, filename=None, smdcomm=None, cache_size=10000, callbacks=[], swmr_mode=False):
         self.filename = filename
         self.smdcomm = smdcomm
@@ -299,6 +360,14 @@ class Server:  # (hdf5 handling)
         return
 
     def recv_loop(self):
+        """Receive batches from clients on `smdcomm` until every client has sent "done".
+
+        The number of clients is `smdcomm.Get_size() - 1`. A received list is passed to `handle`; the string "done" counts one finished client.
+
+        Notes
+        -----
+        The receive wait time and `number of events / processing seconds * 1e-3` are set on the "psana_srv_wait" and "psana_srv_rate" Prometheus gauges.
+        """
         num_clients_done = 0
         num_clients = self.smdcomm.Get_size() - 1
         while num_clients_done < num_clients:
@@ -319,6 +388,25 @@ class Server:  # (hdf5 handling)
         return
 
     def handle(self, batch):
+        """Process a batch of events: store their datasets and call the callbacks.
+
+        When a file is open, new datasets are created with `new_dset`, values go through
+        `append_to_cache`, datasets seen before but absent from this event are backfilled, and the length of "var_"
+        data is appended to the shared "_len" dataset (once per event when the keys sharing it have
+        equal lengths). Each callback gets one flat dict
+        per event whose keys are "<group>/<name>" (just "<name>" for the default group).
+
+        Parameters
+        ----------
+        batch : list of dict
+            One dict per event, mapping alignment group name to that event's
+            {dataset name: value} dict, which must contain "timestamp" when a file is written.
+
+        Raises
+        ------
+        KeyError
+            If an event key is itself a "var_..._len" length key.
+        """
         for grp_event_data in batch:
             # flatten datagroup to align_group/dataset_name: val for the callbacks
             flatten_event_data_dict = {}
@@ -442,6 +530,21 @@ class Server:  # (hdf5 handling)
         return (shape, maxshape, dtype)
 
     def new_dset(self, dataset_name, data, datagroup):
+        """Create an empty, resizable HDF5 dataset for `dataset_name` in `datagroup`.
+
+        The per-event shape and dtype come from `data` (from its first element for a "var_" key) and
+        are recorded in `_dsets`; the dataset is created at the file root for the default group and in
+        the group `datagroup` otherwise, chunked by `cache_size`. Then, except for non-length "var_"
+        keys, `num_events_seen[datagroup]` zero entries are backfilled.
+
+        Raises
+        ------
+        TypeError
+            If `data` is not an int, float or object with a `dtype`, or a "var_" key's data is not a
+            list or array.
+        ValueError
+            If the per-event shape is (0,).
+        """
         is_var = is_var_key(dataset_name)
         is_len = is_len_key(dataset_name)
         if is_var and not is_len:
@@ -499,6 +602,11 @@ class Server:  # (hdf5 handling)
         return
 
     def append_to_cache(self, dataset_name, data, datagroup):
+        """Append `data` to the cache of `dataset_name` in `datagroup`.
+
+        Creates a `CacheArray` from the recorded dtype and shape on first use. When the cache holds
+        `cache_size` or more entries, it is written out with `write_to_file`.
+        """
         if dataset_name not in self._cache[datagroup].keys():
             dtype, shape = self._dsets[datagroup][dataset_name]
             cache = CacheArray(
@@ -523,6 +631,13 @@ class Server:  # (hdf5 handling)
         # Avoids TypeError when cache.data is None (e.g. detector never produced data).
         # This happens for variable-length datasets that were registered but never filled.
         # See traceback from tmo-preproc/preproc_tab_v2.py using SmallData done().
+        """Write the entries held in `cache` to the end of the HDF5 dataset and reset the cache.
+
+        The dataset (`dataset_name` at the root for the default group, else
+        `datagroup/dataset_name`) is resized by `cache.size` and the first `cache.size` cached rows are
+        written into the new space. If the cache has no data, a warning is printed, the cache is reset
+        and nothing is written.
+        """
         if cache.data is None or cache.size == 0:
             print(f"[WARN] Skipping flush for {datagroup}/{dataset_name}: no data to write ({cache.data=}, {cache.size=})")
             cache.reset()
@@ -540,6 +655,16 @@ class Server:  # (hdf5 handling)
         return
 
     def backfill(self, dataset_name, num_to_backfill, datagroup, missing_value=None):
+        """Append `num_to_backfill` fill entries to the cache of `dataset_name`.
+
+        The fill entry has the dataset's recorded shape and dtype and is filled with `missing_value`,
+        or, when that is None, with -99999 for integer dtypes and NaN for float dtypes.
+
+        Raises
+        ------
+        ValueError
+            If `missing_value` is None and the dtype is neither integer nor float.
+        """
         dtype, shape = self._dsets[datagroup][dataset_name]
 
         if missing_value is None:
@@ -553,6 +678,11 @@ class Server:  # (hdf5 handling)
         return
 
     def done(self):
+        """Flush all non-empty caches, close the HDF5 file and fsync it.
+
+        Does nothing if `filename` is None. Errors from the final HDF5 flush and from the fsync are
+        ignored.
+        """
         if self.filename is not None:
             # flush the data caches (in case did not hit cache_size yet)
             for dgroup, dset_cache in self._cache.items():
@@ -578,6 +708,19 @@ class Server:  # (hdf5 handling)
 
 
 class SmallData:  # (client)
+    """Client-side object for saving per-event and summary data to HDF5 with smalldata.
+
+    In parallel mode (more than one MPI rank) the constructor builds communicators from
+    `server_group` and `client_group` and gives this rank the role "server", "client" or "other";
+    in serial mode the constructor does nothing. Clients collect events in batches and send them to
+    their server, servers write part files, and `done` joins the part files into one file with HDF5
+    virtual datasets (on client rank 0).
+
+    Raises
+    ------
+    Exception
+        In parallel mode, if `server_group` is empty.
+    """
     def __init__(self, server_group=None, client_group=None):
         """
         Parameters
@@ -695,9 +838,15 @@ class SmallData:  # (client)
         return
 
     def get_rank(self):
+        """Return this rank's number in the smalldata communicator (servers plus clients).
+
+        The communicator is created by the constructor only in parallel mode; in serial mode the
+        attribute does not exist and AttributeError is raised.
+        """
         return self._smalldata_comm.Get_rank()
 
     def get_world_rank(self):
+        """Return the rank in MPI.COMM_WORLD, or 0 in serial mode."""
         if MODE == "SERIAL":
             return 0
         return RANK
@@ -843,34 +992,123 @@ class SmallData:  # (client)
         return r
 
     def sum(self, value, inplace=False):
+        """Sum `value` element-wise across client ranks (MPI.SUM) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode ints and floats become
+        one-element arrays, client ranks with no array contribute zeros, and the result is returned on
+        client rank 0; other client ranks get None (or their own `value` if `inplace`), and non-client
+        ranks get None.
+
+        Parameters
+        ----------
+        value : int, float or numpy.ndarray
+            Local value.
+        inplace : bool
+            If True, reduce into `value` itself instead of a new array.
+
+        Raises
+        ------
+        Exception
+            If no client rank has an array, or the arrays differ in shape or dtype.
+        """
         result = self._reduction(value, MPI.SUM, inplace)
         return result
 
     def max(self, value, inplace=False):
+        """Take the element-wise maximum of `value` across client ranks (MPI.MAX) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode ints and floats become
+        one-element arrays, client ranks with no array contribute an array filled with the global
+        minimum, and the result is returned on client rank 0; other client ranks get None (or their
+        own `value` if `inplace`), and non-client ranks get None.
+        """
         return self._reduction(value, MPI.MAX, inplace)
 
     def min(self, value, inplace=False):
+        """Take the element-wise minimum of `value` across client ranks (MPI.MIN) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode ints and floats become
+        one-element arrays, client ranks with no array contribute an array filled with the global
+        maximum, and the result is returned on client rank 0; other client ranks get None (or their
+        own `value` if `inplace`), and non-client ranks get None.
+        """
         return self._reduction(value, MPI.MIN, inplace)
 
     def prod(self, value, inplace=False):
+        """Multiply `value` element-wise across client ranks (MPI.PROD) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data, so every client rank must pass an array or number.
+        """
         return self._reduction(value, MPI.PROD, inplace)
 
     def land(self, value, inplace=False):
+        """Combine `value` across client ranks with logical AND (MPI.LAND) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data.
+        """
         return self._reduction(value, MPI.LAND, inplace)
 
     def band(self, value, inplace=False):
+        """Combine `value` across client ranks with bitwise AND (MPI.BAND) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data.
+        """
         return self._reduction(value, MPI.BAND, inplace)
 
     def lor(self, value, inplace=False):
+        """Combine `value` across client ranks with logical OR (MPI.LOR) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data.
+        """
         return self._reduction(value, MPI.LOR, inplace)
 
     def bor(self, value, inplace=False):
+        """Combine `value` across client ranks with bitwise OR (MPI.BOR) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data.
+        """
         return self._reduction(value, MPI.BOR, inplace)
 
     def lxor(self, value, inplace=False):
+        """Combine `value` across client ranks with logical XOR (MPI.LXOR) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data.
+        """
         return self._reduction(value, MPI.LXOR, inplace)
 
     def bxor(self, value, inplace=False):
+        """Combine `value` across client ranks with bitwise XOR (MPI.BXOR) onto client rank 0.
+
+        In serial mode `value` is returned unchanged. In parallel mode the result is returned on client rank 0, other client ranks get None (or their own `value` if `inplace`), and non-client ranks get None.
+
+        Notes
+        -----
+        No stand-in array is made for a client rank without data.
+        """
         return self._reduction(value, MPI.BXOR, inplace)
 
     def _safe_reduction(self, value, op, inplace):
@@ -1036,7 +1274,14 @@ class SmallData:  # (client)
         return
 
     def join_files(self):
-        """ """
+        """Join the per-server part files into the main HDF5 file with virtual datasets.
+
+        Looks for `<basename>_part<i>.h5` for every server rank i, printing a warning for each one that is missing. For every dataset found in any part file, it creates a virtual dataset whose rows are the part files' rows in server order; a part file without that dataset leaves a gap as long as its "/timestamp" dataset, filled with -99999 (integers) or NaN (floats).
+
+        Notes
+        -----
+        The main file is opened with `_get_full_file_handle` and closed at the end.
+        """
 
         joined_file = self._get_full_file_handle()
 

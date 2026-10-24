@@ -14,3 +14,4 @@ need access to LCLS data storage, the calibration database, or a running DAQ.
 | [DataSource, Run and the event loop](datasource-run-events.md) | `psana/psana/datasource.py`, `psana/psana/psexp/` |
 | [Detector interface](detector-interface.md) | `psana/psana/detector/` |
 | [Calibration constants](calibration.md) | `psana/psana/detector/calibconstants.py`, `psana/psana/pscalib/` |
+| [MPI parallel analysis](mpi-parallel.md) | `psana/psana/psexp/mpi_ds.py`, `psana/psana/psexp/node.py`, `psana/psana/smalldata.py` |

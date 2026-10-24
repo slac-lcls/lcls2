@@ -28,7 +28,7 @@ that order and returns the matching class (details on the
 
 | You pass | You get | Typical use |
 |---|---|---|
-| `exp=`, `run=` (optionally `dir=`) | `SerialDataSource`, or under MPI `MPIDataSource` (see MPI parallel analysis) | offline analysis of a run |
+| `exp=`, `run=` (optionally `dir=`) | `SerialDataSource`, or under MPI `MPIDataSource` (see [MPI parallel analysis](mpi-parallel.md)) | offline analysis of a run |
 | `files=` | `SingleFileDataSource` | one xtc2 file, no small data needed |
 | `shmem=` | `ShmemDataSource` (see Shared memory and live analysis) | monitoring a running DAQ |
 | `drp=` | `DrpDataSource` | Python code running inside the DAQ's DRP |
