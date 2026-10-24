@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Wrapper that includes the RoentDek header roentdek/resort64c.h; the comment below lists where the header and library were installed.
+ */
 #ifndef RESORT64C_H
 #define RESORT64C_H
 

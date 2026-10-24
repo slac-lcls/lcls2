@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares psalg1::PeakFinderAlgos, the std::vector-based (LCLS1-style) peak finder for 2-d images, with its Peak and RingAvgRms structures.
+ */
 #ifndef PSALGOS_PEAKFINDERALGOSLCLS1_H
 #define PSALGOS_PEAKFINDERALGOSLCLS1_H
 
@@ -25,11 +29,16 @@
 
 using namespace std;
 
+/** LCLS1-style (std::vector based) version of the PeakFinderAlgos peak finder. */
 namespace psalg1 {
 
+/** Alias for types::mask_t (uint16_t). */
 typedef types::mask_t      mask_t;
+/** Alias for types::extrim_t (uint16_t). */
 typedef types::extrim_t    extrim_t;
+/** Alias for types::conmap_t (uint32_t). */
 typedef types::conmap_t    conmap_t;
+/** Alias for types::TwoIndexes. */
 typedef types::TwoIndexes  TwoIndexes;
 
 /**
@@ -39,25 +48,26 @@ typedef types::TwoIndexes  TwoIndexes;
 //public:
 
 struct Peak{
-  float seg;
-  float row;
-  float col;
-  float npix;
-  float npos;
-  float amp_max;
-  float amp_tot;
-  float row_cgrav;
-  float col_cgrav;
-  float row_sigma;
-  float col_sigma;
-  float row_min;
-  float row_max;
-  float col_min;
-  float col_max;
-  float bkgd;
-  float noise;
-  float son;
+  float seg;  ///< Segment index of the finder (m_seg), set by _procPixGroupV1().
+  float row;  ///< Row of the group's first pixel, where the connected-pixel search started.
+  float col;  ///< Column of the group's first pixel, where the connected-pixel search started.
+  float npix;  ///< Number of pixels in the connected group.
+  float npos;  ///< Set to 0 by _procPixGroupV1().
+  float amp_max;  ///< Intensity of the first pixel minus the background average.
+  float amp_tot;  ///< Sum of the background-subtracted intensities over the group.
+  float row_cgrav;  ///< Intensity-weighted mean row (the first pixel's row if amp_tot is not positive).
+  float col_cgrav;  ///< Intensity-weighted mean column (the first pixel's column if amp_tot is not positive).
+  float row_sigma;  ///< Intensity-weighted rms of the row (0 for one pixel, a non-positive amp_tot or a non-positive variance).
+  float col_sigma;  ///< Intensity-weighted rms of the column (0 for one pixel, a non-positive amp_tot or a non-positive variance).
+  float row_min;  ///< Smallest row in the group.
+  float row_max;  ///< Largest row in the group.
+  float col_min;  ///< Smallest column in the group.
+  float col_max;  ///< Largest column in the group.
+  float bkgd;  ///< Background average (RingAvgRms::avg) used for this peak.
+  float noise;  ///< Background rms (RingAvgRms::rms) used for this peak.
+  float son;  ///< amp_tot / (noise * sqrt(npix)), or 0 if that denominator is not positive.
 
+  /** Default constructor; members are left uninitialized. */
   Peak(){} // do not fill out member by default
   /*
   Peak(const float& _seg      =0,
@@ -99,6 +109,7 @@ struct Peak{
   */
 
   //copy constructor http://en.cppreference.com/w/cpp/language/copy_constructor
+  /** Copy every field of o. */
   Peak(const Peak& o)
     : seg      (o.seg      )
     , row      (o.row      )
@@ -120,6 +131,10 @@ struct Peak{
     , son      (o.son      )
     {}
 
+  /**
+   * Copy every field of rhs.
+   * @return *this.
+   */
   Peak& operator=(const Peak& rhs) {
     seg         = rhs.seg;
     row         = rhs.row;
@@ -152,18 +167,27 @@ operator<<(std::ostream& os, const Peak& p);
  */
 
 struct RingAvgRms {
+  /** Average intensity in the ring (per the trailing comment). */
   double   avg; // average intensity in the ring
+  /** RMS of the intensity in the ring (per the trailing comment). */
   double   rms; // rms in the ring
+  /** Number of pixels used (per the trailing comment). */
   unsigned npx; // number of pixels used
 
+  /** Set avg, rms and npx to av, rm and np (all default 0). */
   RingAvgRms(const double& av=0,
              const double& rm=0,
              const unsigned& np=0) :
     avg(av), rms(rm), npx(np) {}
 
   //copy constructor
+  /** Copy avg, rms and npx from o. */
   RingAvgRms(const RingAvgRms& o) : avg(o.avg), rms(o.rms), npx(o.npx){}
 
+  /**
+   * Copy avg, rms and npx from rhs.
+   * @return *this.
+   */
   RingAvgRms& operator=(const RingAvgRms& rhs) {
     avg = rhs.avg;
     rms = rhs.rms;
@@ -172,6 +196,7 @@ struct RingAvgRms {
   }
 };
 
+/** Write the background average, rms and pixel count of b to os and return os (defined in PeakFinderAlgosLCLS1.cc). */
 std::ostream&
 operator<<(std::ostream& os, const RingAvgRms& b);
 
@@ -261,6 +286,7 @@ public:
   //PeakFinderAlgos();
   PeakFinderAlgos(const size_t& seg=0, const unsigned& pbits=0);
 
+  /** Delete the local-maxima, local-minima and connected-pixel maps, logging a message first if the DEBUG bit of the print bits is set. */
   virtual ~PeakFinderAlgos();
 
   /// Prints memeber data
@@ -274,6 +300,7 @@ public:
 
   /// Prints indexes for S/N algorithm
   void printMatrixOfRingIndexes();
+  /** Print the (row, col) offsets used for the background ring to stdout, ten per line, computing them first with _evaluateRingIndexes() if the list is empty. */
   void printVectorOfRingIndexes();
 
   /// Recursive method finding connected pixels in constrained region and filling vector of indexes for V3r3.
@@ -641,6 +668,10 @@ _findConnectedPixelsForLocalMaximumV2(const T* data
 
 // Templated recursive method finging connected pixels for lacalMaximums
 
+/**
+ * Recursively add pixel (r, c) and its 4-connected neighbours to the current pixel group: a pixel is taken if it is unmasked, not yet in the connected-pixel map and not below the region threshold, and it is marked there with the current region number.
+ * The search stays inside the current region limits.
+ */
 template <typename T>
 void
 _findConnectedPixelsInRegionV3(const T* data, const int& r, const int& c)
@@ -898,6 +929,10 @@ _findConnectedPixelsForDroplet(const int& r0
 
 // Recursive method finging connected pixels for Droplet
 
+/**
+ * Recursively add pixel (r, c) and its 4-connected neighbours to the current pixel group when their value in the local-maxima map is at least 2 (the code comment says 0 is masked and 1 below the low threshold) and they are not yet in the connected-pixel map; each is marked with the current region number.
+ * The search stays inside the current region limits.
+ */
 void
 _findConnectedPixelsInDroplet(const int& r, const int& c)
 {

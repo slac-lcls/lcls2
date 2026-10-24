@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares the waveform edge finder psalg::find_edges() and its helper _add_edge().
+ */
 #ifndef PSALG_PEAKS_WFALGOS_H
 #define PSALG_PEAKS_WFALGOS_H
 
@@ -36,9 +40,15 @@
 
 namespace psalg {
 
+/** uint32_t; index type of the find_edges() results. */
 typedef uint32_t index_t;
+/** double. Not used in WFAlgos.hh or WFAlgos.cc. */
 typedef double wfdata_t;
 
+/**
+ * From sample start, find the first sample i where v reaches the level fraction (an absolute level: upward if rising, downward otherwise) and interpolate the edge position linearly between samples i-1 and i (0 if i is 0).
+ * If no edge was recorded yet (last < 0) or the edge is more than deadtime after last, store peak in pkvals[ipk] and the edge, truncated to index_t, in pkinds[ipk], then increment ipk and set last. The search is not bounded by the size of v.
+ */
 template <typename T>
 void
 _add_edge(
@@ -53,6 +63,11 @@ _add_edge(
   T*       pkvals,
   index_t* pkinds);
 
+/**
+ * Find pulses in wf that go beyond threshold (above it if threshold > baseline, else below) for more than deadtime samples; for each, store its extreme value in pkvals and the interpolated index of the edge at level fraction*(peak-baseline)+baseline in pkinds (leading edge, or with leading_edge false the trailing edge searched from the peak).
+ * Edges within deadtime of the previous one are skipped and at most npkmax peaks are stored. Instantiated in WFAlgos.cc for double, float, int, int64_t and int16_t.
+ * @return The number of peaks stored.
+ */
 template <typename T>
 index_t
 find_edges(
