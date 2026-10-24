@@ -1,3 +1,4 @@
+"""Define `SerialDataSource`, the data source that reads an experiment's runs on a single process."""
 import os
 
 import numpy as np
@@ -16,6 +17,15 @@ if mode == "mpi":
 
 
 class SerialDataSource(DataSourceBase):
+    """Data source for an experiment (`exp`, optional `run`) read on a single process.
+
+    The constructor builds the run-number list (all runs found in the xtc directory if `run` is not
+    given), creates a `SmallData` object, publishes run info for psplot_live when `psmon_publish`
+    is set, sets up the first run, and starts the Prometheus client. Setting up a run finds its
+    smalldata and bigdata files, applies the detector selection, opens the smalldata files with a
+    `SmdReaderManager` (whose first dgrams are the configs), and opens the bigdata files with a
+    `DgramManager`.
+    """
     def __init__(self, *args, **kwargs):
         super(SerialDataSource, self).__init__(**kwargs)
         super()._setup_runnum_list()
@@ -81,6 +91,13 @@ class SerialDataSource(DataSourceBase):
         return found_next_run
 
     def runs(self):
+        """Yield a `RunSerial` for each BeginRun found in the smalldata files.
+
+        When the current run's smalldata files have no more BeginRun dgrams, the next run number is set
+        up and searched; iteration stops when no run numbers remain or a newly set-up run has no
+        BeginRun. Each run gets the experiment, run number and timestamp from the BeginRun dgram, plus
+        `dsparms`, the `DgramManager`, the `SmdReaderManager`, the configs and the BeginRun dgrams.
+        """
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
@@ -97,4 +114,5 @@ class SerialDataSource(DataSourceBase):
             yield run
 
     def is_mpi(self):
+        """Return False."""
         return False

@@ -1,4 +1,5 @@
 # run_ctx.py
+"""Define `RunCtx`, the small run context attached to `Event` objects."""
 from __future__ import annotations
 from psana import utils
 

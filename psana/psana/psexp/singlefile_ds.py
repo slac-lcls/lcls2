@@ -1,3 +1,4 @@
+"""Define `SingleFileDataSource`, the data source that reads the xtc2 files given with `files`."""
 from psana.dgrammanager import DgramManager
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DataSourceBase
@@ -7,6 +8,12 @@ from psana import utils
 
 
 class SingleFileDataSource(DataSourceBase):
+    """Data source that reads the xtc2 files listed in `files` directly, one after another.
+
+    Smalldata (smd) files are not used. The constructor passes the keyword arguments to
+    `DataSourceBase.__init__`, opens the first file with a `DgramManager` (FileNotFoundError if it
+    does not exist), and starts the Prometheus client.
+    """
     def __init__(self, *args, **kwargs):
         super(SingleFileDataSource, self).__init__(**kwargs)
         self.runnum_list = list(range(len(self.files)))
@@ -76,6 +83,13 @@ class SingleFileDataSource(DataSourceBase):
         return found_next_run
 
     def runs(self):
+        """Yield a `RunSingleFile` for each BeginRun found, reading the files in order.
+
+        When the current file has no more BeginRun dgrams the next file is opened and searched;
+        iteration stops when no files remain or a newly opened file has no BeginRun. Each run gets the
+        experiment, run number and timestamp from the BeginRun dgram, plus `dsparms`, the
+        `DgramManager`, the configs and the BeginRun dgrams.
+        """
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
@@ -92,4 +106,5 @@ class SingleFileDataSource(DataSourceBase):
             yield run
 
     def is_mpi(self):
+        """Return False."""
         return False

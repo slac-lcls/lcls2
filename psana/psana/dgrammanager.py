@@ -1,3 +1,8 @@
+"""Define `DgramManager`, which reads dgrams from xtc2 files, a shared-memory (shmem) client or the
+DRP shared-memory/message-queue interface, and keeps the current Configure dgrams.
+
+Also contains dgram dump helpers and a small command-line test (`main`).
+"""
 import sys, os
 import time
 import getopt
@@ -18,6 +23,11 @@ import numpy as np
 
 
 def dumpDict(dict, indent):
+    """Print the keys of `dict` in sorted order, recursing into values that have a `__dict__`.
+
+    Each line is indented by `indent` spaces (each nested level adds 2); leaf values are printed
+    after their key.
+    """
     for k in sorted(dict.keys()):
         if hasattr(dict[k], "__dict__"):
             print(" " * indent, k)
@@ -28,6 +38,7 @@ def dumpDict(dict, indent):
 
 # method to dump dgrams to stdout.  ideally this would move into dgram.cc
 def dumpDgram(d):
+    """Print the attribute tree of dgram `d` to stdout by calling `dumpDict(d.__dict__, 0)`."""
     dumpDict(d.__dict__, 0)
 
 
@@ -45,6 +56,11 @@ def _service(view):
 
 # Warning: If XtcData::Dgram ever changes, this function will likely need to change
 def dgSize(view):
+    """Return the total size in bytes of the dgram at the start of buffer `view`.
+
+    Computed as 12 (the size of `XtcData::TransitionBase`, per the code comment) plus the uint32
+    extent field at uint32 index 5 of the buffer, so it depends on the `XtcData::Dgram` layout.
+    """
     iExt = 5  # Index of extent field, in units of uint32_t
     txSize = 3 * 4  # sizeof(XtcData::TransitionBase)
     return txSize + np.array(view, copy=False).view(dtype=np.uint32)[iExt]
@@ -52,6 +68,30 @@ def dgSize(view):
 
 class DgramManager(object):
 
+    """Read dgrams from xtc2 files, shmem or the DRP, and hold the current Configure dgrams.
+
+    `xtc_files` can be one file name, a list or array of file names (opened read-only unless `fds`
+    is given), `["shmem"]` (connects a `PyShmemClient` with `tag` and starts a background reader
+    thread) or `["drp"]` (uses the shared memory and message queues described by `tag`). The
+    Configure dgrams are read from the sources unless `configs` is given; `set_configs` then
+    builds the detector class tables and per-detector config info and sets them on this object and
+    on every object in `config_consumers`.
+
+    Parameters
+    ----------
+    xtc_files : str, list or numpy.ndarray
+        Data sources, as described above.
+    configs : list, optional
+        Configure dgrams to use instead of reading them.
+    fds : list, optional
+        Already-open file descriptors, one per file; they are not closed by `close`.
+    tag : optional
+        Shmem client tag, or for the DRP an object carrying the DRP connection details.
+    max_retries : int
+        Passed to every `dgram.Dgram` file read.
+    config_consumers : list, optional
+        Objects that also receive the attributes made by `set_configs`.
+    """
     def __init__(
         self,
         xtc_files,
@@ -407,14 +447,23 @@ class DgramManager(object):
                 self.chunk_ids.append(int(filename[st + 2 : en]))
 
     def get_chunk_id(self, ind):
+        """Return the chunk id of file index `ind`, or None if no chunk ids were found.
+
+        Chunk ids are parsed from the file names by `set_chunk_ids`.
+        """
         if not self.chunk_ids:
             return None
         return self.chunk_ids[ind]
 
     def set_chunk_id(self, ind, new_chunk_id):
+        """Set the chunk id stored for file index `ind` to `new_chunk_id`."""
         self.chunk_ids[ind] = new_chunk_id
 
     def close(self):
+        """Close the file descriptors opened by this object.
+
+        Does nothing if the descriptors were passed in through `fds`.
+        """
         if not self.given_fds:
             for fd in self.fds:
                 os.close(fd)
@@ -614,6 +663,16 @@ class DgramManager(object):
         return dgrams
 
     def jumps(self, dgram_i, offset, size):
+        """Read one dgram of `size` bytes at `offset` from file index `dgram_i`.
+
+        The read uses that file's descriptor and Configure dgram and is done by the C extension
+        `psana.dgram` (`dgram.Dgram`).
+
+        Returns
+        -------
+        dgram.Dgram or None
+            The dgram, or None if both `offset` and `size` are 0 or the read raises StopIteration.
+        """
         if offset == 0 and size == 0:
             d = None
         else:
@@ -641,12 +700,23 @@ class DgramManager(object):
         return dgrams
 
     def get_timestamps(self):
+        """Return the timestamps of the dgram lists returned so far by iteration, as a numpy uint64 array."""
         return np.asarray(
             self._timestamps, dtype=np.uint64
         )  # return numpy array for easy search later
 
 
 def parse_command_line():
+    """Parse `sys.argv` for the command-line test `main`.
+
+    Accepts -h (calls `usage_error`, which exits), -f <file name>, and -v and -d <value>, which are
+    accepted but ignored.
+
+    Returns
+    -------
+    tuple
+        (remaining positional arguments, xtc file name); the file name defaults to "data.xtc".
+    """
     opts, args_proper = getopt.getopt(sys.argv[1:], "hvd:f:")
     xtcdata_filename = "data.xtc"
     for option, parameter in opts:
@@ -660,6 +730,11 @@ def parse_command_line():
 
 
 def getMemUsage():
+    """Return the memory size of this process as reported by `ps`.
+
+    Runs `/usr/bin/ps -q <pid> --no-headers -eo size` with `os.popen` and returns its output as an
+    int, in the units `ps` reports for `size`.
+    """
     pid = os.getpid()
     os.getppid()
     cmd = "/usr/bin/ps -q %d --no-headers -eo size" % pid
@@ -669,6 +744,13 @@ def getMemUsage():
 
 
 def main():
+    """Command-line test that prints the contents of an xtc2 file.
+
+    Opens the file given by -f (default "data.xtc") with `DgramManager`, prints the manager's
+    attributes, then for each event prints the attribute names and types of every dgram. It also
+    tries to write into `dgram.xpphsd.raw.array0Pgp` and prints whether that array is read-only, so
+    it expects every dgram to have an `xpphsd` detector.
+    """
     args_proper, xtcdata_filename = parse_command_line()
     ds = DgramManager(xtcdata_filename)
     print("vars(ds):")
@@ -699,6 +781,7 @@ def main():
 
 
 def usage_error():
+    """Write the usage text to stdout and exit with status 1."""
     s = "usage: python %s" % os.path.basename(sys.argv[0])
     sys.stdout.write("%s [-h]\n" % s)
     sys.stdout.write("%s [-f xtcdata_filename]\n" % (" " * len(s)))

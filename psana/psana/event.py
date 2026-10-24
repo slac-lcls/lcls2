@@ -1,5 +1,9 @@
 # import detectors
 
+"""Define `Event`, the object that holds the dgrams making up one event.
+
+Entries in the dgram list can be None when a dgram is missing from the event.
+"""
 import datetime
 import numpy as np
 
@@ -16,6 +20,10 @@ epoch = datetime.datetime(1990, 1, 1)
 
 
 class DrpClassContainer(object):
+    """Empty placeholder class.
+
+    Its `__init__` body is `pass` and it defines no other members.
+    """
     def __init__(self):
         pass
 
@@ -41,6 +49,15 @@ class Event:
 
     # we believe this can be hidden with underscores when we eliminate py2 support
     def next(self):
+        """Return the next dgram of this event and advance the iterator position.
+
+        The returned entry can be None for a missing dgram.
+
+        Raises
+        ------
+        StopIteration
+            When all dgrams have been returned.
+        """
         if self._position >= len(self._dgrams):
             raise StopIteration
         d = self._dgrams[self._position]
@@ -64,12 +81,10 @@ class Event:
         return event_bytes
 
     def timestamp_diff(self, ts):
-        """Subtract the given timestamp from the event timestamp and return
-        differences in nanasecond unit.
+        """Subtract the given timestamp from the event timestamp and return the difference in nanoseconds.
 
-        Since timestamp format is [32 bits of seconds][32 bits of nanoseconds],
-        we need to convert these two parts in seconds and nanoseconds
-        respectively prior to the calculation
+        A timestamp packs seconds in its upper 32 bits and nanoseconds in its lower 32 bits, so both
+        parts of each timestamp are converted to a total number of nanoseconds before subtracting.
         """
         evt_sec = self._seconds
         evt_nsec = self._nanoseconds
@@ -90,13 +105,25 @@ class Event:
 
     @property
     def timestamp(self):
+        """Timestamp of the first dgram in the event that provides one.
+
+        Delegates to `psana.utils.first_timestamp`, which skips None dgrams and raises RuntimeError
+        if no dgram has a timestamp. `timestamp_diff` and `datetime` treat the upper 32 bits as
+        seconds and the lower 32 bits as nanoseconds.
+        """
         return utils.first_timestamp(self._dgrams)
 
     @property
     def env(self):
+        """Value of `env()` of the first dgram that provides it.
+
+        Delegates to `psana.utils.first_env`, which skips None dgrams and raises RuntimeError if no
+        dgram can provide `env()`.
+        """
         return utils.first_env(self._dgrams)
 
     def run(self):
+        """Return the run object given as `run` when the event was created, or None if none was given."""
         return self._run
 
     def _assign_det_segments(self):
@@ -139,9 +166,22 @@ class Event:
         return hasattr(self._dgrams[0], "info")
 
     def service(self):
+        """Return the service code of the event.
+
+        Delegates to `psana.utils.first_service`, which returns `(env() >> 24) & 0xF` of the first
+        valid dgram and raises RuntimeError if that value is outside 1..13 or no dgram provides
+        `env()`.
+        """
         return utils.first_service(self._dgrams)
 
     def keepraw(self):
+        """Return the keepraw bit of the event.
+
+        Returns
+        -------
+        int or None
+            Bit 22 of `env()` of the first non-None dgram (0 or 1), or None if every dgram is None.
+        """
         keepraw = None
         for d in self._dgrams:
             if d:
@@ -150,6 +190,15 @@ class Event:
         return keepraw
 
     def get_offsets_and_sizes(self):
+        """Return the offset and size of every dgram in the event.
+
+        Returns
+        -------
+        numpy.ndarray
+            int64 array of shape (number of dgrams, 2); row i is `get_offset_and_size(i)`: offset and
+            dgram size from the `smdinfo` field when the dgram has one, otherwise offset 0 and the
+            dgram's `_size`, and 0, 0 for a missing (None) dgram.
+        """
         offset_and_size_arr = np.zeros((self._size, 2), dtype=np.int64)
         for i in range(self._size):
             offset_and_size_arr[i, :] = self.get_offset_and_size(i)
@@ -174,6 +223,11 @@ class Event:
         return offset_and_size
 
     def datetime(self):
+        """Return the event timestamp as a `datetime.datetime`.
+
+        Adds the seconds (upper 32 bits) and the nanoseconds (lower 32 bits, divided by 1000 to give
+        microseconds) to the epoch 1990-01-01 00:00:00. The result is a naive datetime (no time zone).
+        """
         sec = self.timestamp >> 32
         usec = (self.timestamp & 0xFFFFFFFF) / 1000
         delta_t = datetime.timedelta(seconds=sec, microseconds=usec)
