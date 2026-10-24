@@ -22,6 +22,6 @@ they are not listed below. `run.run()` returns `runnum`. `RunSmallData` does
 not call `Run.__init__` and does not set these three attributes.
 
 See [DataSource, Run and the event loop](../../features/datasource-run-events.md)
-and Detector interface.
+and [Detector interface](../../features/detector-interface.md).
 
 ::: psana.psexp.run

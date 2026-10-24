@@ -1,3 +1,4 @@
+"""Area-detector interfaces for the jungfrau detector type (`jungfrau_raw_0_1_0`, `jungfrau_raw_0_2_0`)."""
 from amitypes import Array3d
 
 import logging
@@ -9,6 +10,13 @@ import psana.detector.areadetector as ad
 AreaDetectorRaw = ad.AreaDetectorRaw
 
 class jungfrau_raw_0_1_0(AreaDetectorRaw):
+    """Area-detector interface for detector type `jungfrau`, software `raw`, version 0.1.0.
+
+    The constructor picks the default geometry file `geometry-def-jungfrau<05M|1M|4M|16M>.data` from
+    the total segment count that `UtilsJungfrau.jungfrau_segments_tot` gives for the largest segment
+    number, and sets the segment geometry "JUNGFRAU:V2", gain modes ('g0', 'g1', 'g2') and data
+    bit mask 0x3fff. `calib` uses `UtilsJungfrau.calib_jungfrau_versions`.
+    """
     def __init__(self, *args, **kwa):
         logger.debug('jungfrau_raw_0_1_0.__init__')
         AreaDetectorRaw.__init__(self, *args, **kwa)
@@ -80,11 +88,13 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         return uj.calib_jungfrau_versions(self, evt, **kwa)
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
+    """Same as `jungfrau_raw_0_1_0` plus accessors for the hot-pixel fields of the segments (version 0.2.0)."""
     def __init__(self, *args, **kwa):
         logger.debug('jungfrau_raw_0_2_0.__init__')
         jungfrau_raw_0_1_0.__init__(self, *args, **kwa)
 
     def num_hot_pixels(self, evt):
+        """Return the sum of `numHotPixels` over all segments of this detector in `evt`, or None if its segments are missing."""
         n_hot_pixels = 0
         segs = self._segments(evt)
         if segs is None:
@@ -94,6 +104,7 @@ class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
         return n_hot_pixels
 
     def hot_pixel_thresh(self, evt):
+        """Return `hotPixelThresh` of the first segment in the event's segment dict, or None if the segments are missing."""
         hp_tresh = 0
         segs = self._segments(evt)
         if segs is None:

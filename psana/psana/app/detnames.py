@@ -1,3 +1,4 @@
+"""The detnames command: print a table of the detectors, epics variables, scan variables or raw data types of a data source."""
 from psana import DataSource
 from psana.psexp.utils import DataSourceFromString
 
@@ -13,6 +14,13 @@ def detnames():
   # that and then parsing it appropriately feels challenging.  So only
   # support single runs, shmem, and filenames using standard sys.argv.
 
+  """Print a table for the first run of the data source given on the command line.
+
+  The argument is an exp=...,run=... string, an xtc2 file name or shmem=.... By default the table
+  lists detector names and data types; -e lists epics detector names and epics names, -s scan
+  names, -r raw detector types, data types and versions, and -i data types, segment indexes and
+  unique ids.
+  """
   parser = argparse.ArgumentParser()
   parser.add_argument("dsname", help="psana datasource experiment/run (e.g. exp=xppd7114,run=43) or xtc2 filename or shmem=<my_shmem_identifier>")
   parser.add_argument('-e','--epics', dest='epics', action='store_true', help='Dump epics variable aliases for use with Detector interface')

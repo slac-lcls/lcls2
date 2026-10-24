@@ -77,7 +77,7 @@ XTC2 data format).
 - `run.steps()`: yields a `Step` for each BeginStep; `step.events()` yields the
   L1Accepts until the matching EndStep.
 - `run.Detector(name, accept_missing=False, **kwargs)`: see
-  Detector interface.
+  [Detector interface](detector-interface.md).
 - `run.detnames`, `run.epicsinfo`, `run.scaninfo`, `run.xtcinfo`: what is in
   the run.
 - Random access by timestamp: `RunSerial` and `RunParallel` have a

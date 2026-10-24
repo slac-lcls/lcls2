@@ -503,20 +503,26 @@ class AreaDetectorRaw(AreaDetector):
 
 
     def raw(self, evt, copy=True) -> Array3d:
-        """
-        Returns dense 3-d numpy array of segment data
-        from dict self._segments(evt)
+        """Returns dense 3-d numpy array of segment data
+        from dict self._segments(evt).
+
+        With more than one segment, the segment arrays are stacked into an internal buffer that is
+        reused across calls while their shape and dtype stay the same. With one segment, that
+        segment's raw array is returned as is (not stacked and not copied, whatever `copy` is).
 
         Parameters
         ----------
-        evt: event
-            psana event object, ex. run.events().next().
+        evt : event
+            psana event object, ex. next(run.events()).
+        copy : bool, default True
+            If True, returns a copy of the stacked buffer to avoid view aliasing across events;
+            if False, returns a view of that buffer, which later calls can overwrite.
 
         Returns
         -------
-        raw data: np.array, ndim=3, shape: as data
-        copy: bool, default True
-            If True, returns a copy to avoid view aliasing across events.
+        np.ndarray or None
+            Raw data, ndim=3, shape: as data (with one segment, that segment's raw array unchanged).
+            None if `evt` is None or self._segments(evt) is None.
         """
 
         #print('XXX AreaDetectorRaw.raw')

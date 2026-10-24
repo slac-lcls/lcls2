@@ -1,3 +1,4 @@
+"""Base detector interface `DetectorImpl`, plus `MissingDet`, `Container` and the `hiddenmethod` decorator."""
 import typing
 
 import amitypes
@@ -12,11 +13,17 @@ def hiddenmethod(obj):
 
 
 class Container(object):
+    """Empty container class; its `__init__` body is `pass`."""
     def __init__(self):
         pass
 
 
 class MissingDet:
+    """Stand-in for a missing detector.
+
+    Any attribute access returns a new `MissingDet`, iterating yields nothing, and calling it with
+    one argument returns None.
+    """
     def __init__(self):
         pass
 
@@ -37,6 +44,14 @@ class MissingDet:
         return None
 
 class DetectorImpl:
+    """Base class of the detector interfaces for one (detector name, data type) pair.
+
+    Instances are shared: creating the class again with the same detector name and data type
+    returns the existing instance, reset with the new arguments (detectors named "scan" or "epics"
+    get a new instance each time). It stores the detector's configs, calibration constants, sorted
+    segment ids, unique id, detector type, env store and variable name; `_segments(evt)` returns the
+    detector's segments in an event, or None unless all expected segments are present.
+    """
     _registry = {}
 
     def __new__(
@@ -116,6 +131,7 @@ class DetectorImpl:
         return seg_configs
 
     def config(self, evt) -> dict:
+        """Return a dict that merges the per-segment config entries of this detector from all its Configure dgrams; `evt` is not used."""
         return self._seg_configs()
 
     def _segments(self, evt):
