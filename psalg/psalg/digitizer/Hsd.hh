@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares Pds::HSD::Channel, which unpacks the raw and fex streams of one HSD channel into arrays.
+ */
 #ifndef HSD_EVENTHEADER_HH
 #define HSD_EVENTHEADER_HH
 
@@ -63,27 +67,41 @@
 namespace Pds {
   namespace HSD {
 
+    /**
+     * Unpacks one HSD channel: the raw stream (stream id 0) is copied into waveform, and the fex stream (stream id 1) is parsed into peak start positions (sPos), widths (len) and data pointers (fexPtr).
+     * The arrays are allocated from the given Allocator with capacity maxSize each.
+     */
     class Channel {
     public:
+        /**
+         * Allocate the four arrays from allocator, then walk the streams flagged in bits 21:20 of evtheader[0]. Each StreamHeader at data is followed by num_samples() 16-bit words; stream id 0 is copied into waveform and stream id 1 is parsed into peaks.
+         * In the fex stream, groups of four words whose first word has bit 15 set are skips (their low 15 bits add to the sample position); other groups of four belong to a peak.
+         */
         Channel(Allocator *allocator, const uint32_t *evtheader, const uint8_t *data);
 
+        /** Destructor; does nothing itself (the arrays release their memory in their own destructors). */
         ~Channel(){}
 
+        /** Return numFexPeaks. */
         unsigned npeaks(){
             return numFexPeaks;
         }
 
     public:
-        unsigned maxSize = 1000000;
-        Allocator *m_allocator;
-        unsigned numPixels;
-        unsigned numFexPeaks;
-        unsigned content;
+        unsigned maxSize = 1000000;  ///< Capacity (1000000 elements) of each array allocated by the constructor.
+        Allocator *m_allocator;  ///< Allocator passed to the constructor.
+        unsigned numPixels;  ///< Number of raw samples copied into waveform (0 if there is no raw stream).
+        unsigned numFexPeaks;  ///< Number of peaks found in the fex stream.
+        unsigned content;  ///< Not set by the constructor or by anything in Hsd.hh or Hsd.cc.
+        /** Not set by the constructor or by anything in Hsd.hh or Hsd.cc; the trailing comment calls it a pointer to raw data. */
         uint16_t* rawPtr; // pointer to raw data
 
-        psalg::AllocArray1D<uint16_t> waveform;
+        psalg::AllocArray1D<uint16_t> waveform;  ///< Raw samples of stream id 0.
+        /** Start sample of each fex peak: the skipped samples plus the widths of earlier peaks. */
         psalg::AllocArray1D<uint16_t> sPos; // maxLength
+        /** Width in samples of each fex peak. */
         psalg::AllocArray1D<uint16_t> len; // maxLength
+        /** Pointer to the first data word of each fex peak inside the input buffer. */
         psalg::AllocArray1D<uint16_t*> fexPtr; // maxLength
 
     private:

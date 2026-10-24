@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares calib::getCalibPars(), the factory for CalibPars objects.
+ */
 #ifndef PSALG_CALIBPARSSTORE_H
 #define PSALG_CALIBPARSSTORE_H
 //-----------------------------
@@ -16,6 +20,10 @@
 
 namespace calib {
 
+  /**
+   * Return a new CalibPars for detname: CalibParsEpix100a if find_area_dettype(detname) is EPIX100A, the base CalibPars for UNDEFINED or PNCCD.
+   * For any other type it logs a WARNING and throws a const char*. The caller owns the object.
+   */
   CalibPars* getCalibPars(const char* detname = "undefined", const DBTYPE& dbtype=DBWEB);
 
 } // namespace calib

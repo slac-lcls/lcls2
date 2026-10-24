@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares psalg::NDArray, an XtcData::Array subclass with its own shape storage and an external or owned data buffer.
+ */
 #ifndef PSALG_NDARRAY_H
 #define PSALG_NDARRAY_H
 
@@ -60,23 +64,33 @@ using namespace std;
 namespace psalg {
 
 
+/**
+ * XtcData::Array<T> subclass that keeps its own copy of the shape (set_shape() asserts ndim < MAXNDIM) and either points at an external buffer or owns a heap buffer, deleted in the destructor.
+ * Copy construction and assignment deep-copy the data into an owned buffer.
+ */
 template <typename T>
 class NDArray : public XtcData::Array<T> {
 
 public:
 
+  /** Alias for psalg::types::shape_t (uint32_t). */
   typedef psalg::types::shape_t shape_t; // uint32_t
+  /** Alias for psalg::types::size_t (uint32_t). */
   typedef psalg::types::size_t  size_t;  // uint32_t
+  /** Alias for the base class XtcData::Array<T>. */
   typedef XtcData::Array<T> base;  // base class scope
 
+  /** T with const removed; element type of the owned buffer. */
   using NON_CONST_T = typename remove_const<T>::type;  // non-const T
 
-  bool T_IS_CONST = std::is_const<T>::value;
+  bool T_IS_CONST = std::is_const<T>::value;  ///< True if T is const. It is a non-static member, so every object stores it.
 
   //const static size_t MAXNDIM = 10;
-  enum {MAXNDIM = XtcData::MaxRank};
+  /** Size of the internal shape array. */
+  enum {MAXNDIM = XtcData::MaxRank /**< Equal to XtcData::MaxRank (5); set_shape() asserts ndim < MAXNDIM. */ };
 
 
+  /** Set the shape from sh and ndim, then use buf_ext as the data buffer without copying; if buf_ext is null, allocate an owned buffer of size() elements. */
   NDArray(const shape_t* sh, const size_t ndim, void *buf_ext=0) :
     base(), _buf_ext(0), _buf_own(0)
   {
@@ -85,6 +99,7 @@ public:
   }
 
 
+  /** Set the shape from sh and ndim, then point at the const buffer buf_ext without copying (nothing is allocated if it is null). */
   NDArray(const shape_t* sh, const size_t ndim, const void *buf_ext) :
     base(), _buf_ext(0), _buf_own(0)
   {
@@ -93,13 +108,16 @@ public:
   }
 
 
+  /** Empty array: no shape (rank 0) and no data. */
   NDArray() : base(), _buf_ext(0), _buf_own(0) {}
 
 
+  /** Delete the owned buffer, if any. */
   ~NDArray(){if(_buf_own) delete [] _buf_own;} // delete &_shape;}
 
 
 // copy constructor from XtcData::Array<T>&
+  /** Copy the shape of the Array o and deep-copy its size() elements into an owned buffer. */
   NDArray(const base& o) :
     base(), _buf_ext(0), _buf_own(0)
   {
@@ -109,6 +127,7 @@ public:
   }
 
 // copy constructor from NDArray<T>&
+  /** Copy the shape of o and deep-copy its size() elements into an owned buffer. */
   NDArray(const NDArray<T>& o) :
     base(), _buf_ext(0), _buf_own(0)
   {
@@ -121,6 +140,10 @@ public:
   //NDArray<T>& operator = (const NDArray<T>&) = delete;
 
 
+  /**
+   * Unless o is this object, copy o's base members, then its shape and a deep copy of its data into an owned buffer.
+   * @return *this.
+   */
   NDArray<T>& operator=(const NDArray<T>& o)
   {
     if(&o == this) return *this;
@@ -131,6 +154,7 @@ public:
   }
 
 
+  /** Copy ndim entries of shape (if it is not null) into the internal shape array and set the rank; asserts ndim < MAXNDIM. The data buffer is not changed. */
   inline void set_shape(const shape_t* shape=NULL, const size_t ndim=0) {
     //MSG(TRACE, "set_shape for ndim="<<ndim);
     assert(ndim<MAXNDIM);
@@ -162,32 +186,41 @@ public:
   }
 
 
+  /** Same as set_shape(shape, ndim). */
   inline void reshape(const shape_t* shape, const size_t ndim) {set_shape(shape, ndim);}
 
+  /** Return the data pointer. */
   inline T* data() {return base::data();}
 
+  /** Return the data pointer as const T*. */
   inline const T* const_data() const {return base::const_data();}
 
+  /** Return the shape pointer. */
   inline shape_t* shape() const {return base::shape();}
 
+  /** Return the rank. */
   inline size_t ndim() const {return base::rank();}
 
+  /** Return the rank (same as ndim()). */
   inline size_t rank() const {return base::rank();}
 
 // the same as uint64_t Array::num_elem()
 //  inline uint64_t size() const {return base::num_elem();}
+  /** Return the product of the first ndim() shape entries (1 for rank 0). */
   inline size_t size() const {
     size_t s=1; for(size_t i=0; i<ndim(); i++) s*=shape()[i];
     return s;
   }
 
 
+  /** Copy the shape of a and point at its data without copying (an owned buffer is released). If a has no data, an owned buffer of size() elements is allocated instead. */
   inline void set_ndarray(base& a) {
      set_shape(a.shape(), a.rank());
      set_data_buffer(a.data()); // (void*)a.data()
   }
 
 
+  /** Copy the shape of a and point at its data without copying (an owned buffer is released). If a has no data, an owned buffer of size() elements is allocated instead. */
   inline void set_ndarray(NDArray<T>& a) {
      set_shape(a.shape(), a.rank());
      set_data_buffer(a.data());
@@ -255,6 +288,7 @@ public:
   }
 
 
+  /** Return "typeid=... ndim=... size=... shape=(...) data=..." listing at most max_nvalues values, followed by "..." if there are more; an empty string for rank 0. */
   std::string string_ndarray(const size_t max_nvalues=5)
   {
     const NDArray<T>& o = *this;
@@ -275,6 +309,7 @@ public:
   }
 
 
+  /** Write the same description as string_ndarray() with at most 4 values to os (nothing for rank 0) and return os. */
   friend std::ostream&
   operator << (std::ostream& os, const NDArray<T>& o)
   {
