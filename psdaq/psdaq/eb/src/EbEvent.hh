@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief EbEvent, one event being built: the contributions received so far for a pulse ID and the contributors still missing.
+ */
 #ifndef Eb_EbEvent_hh
 #define Eb_EbEvent_hh
 
@@ -19,32 +23,47 @@ namespace Pds {
 
     class EventBuilder;
 
+    /** One event being built by EventBuilder: its contributions (a variable-length array that follows the object), the bit list of contributors still missing, accumulated damage and payload size. Allocated from a pool sized by EventBuilder. */
     class EbEvent : public LinkedList<EbEvent>
     {
     private:
       using time_point_t = std::chrono::time_point<fast_monotonic_clock>;
     public:
+      /** Macro from Pool.hh that declares an operator new allocating from a Pds::Pool and an operator delete that returns the buffer to its pool. */
       PoolDeclare;
     public:
+      /** Start an event with the first contribution ctrb, remove its source bit from contract to form the remaining list, and insert the event into the list after after. Throws a C string if the source is not in contract. */
       EbEvent(uint64_t            contract,
               EbEvent*            after,
               const Pds::EbDgram* ctrb,
               unsigned            immData,
               const time_point_t& t0);
+      /** Does nothing; empty body. */
       ~EbEvent();
     public:
+      /** Return the immediate data kept for this event (from the first contribution, replaced by a later contribution whose value is greater than MAX_ENTRIES). */
       unsigned        immData()   const;
+      /** Return the pulse ID of the first contribution. */
       uint64_t        sequence()  const;
+      /** Return the sum of the XTC payload sizes of all contributions, in bytes. */
       size_t          size()      const;
+      /** Return the bit list of contributors that have not yet contributed; 0 means complete. */
       uint64_t        remaining() const;
+      /** Return the bit list of contributors expected for this event. */
       uint64_t        contract()  const;
+      /** Return the accumulated damage. */
       XtcData::Damage damage()    const;
+      /** Increase the accumulated damage by value (XtcData::Damage::increase()). */
       void            damage(XtcData::Damage::Value);
     public:
+      /** Return the first contribution, which created the event. */
       const Pds::EbDgram*  const  creator() const;
+      /** Return a pointer to the first element of the contributions array. */
       const Pds::EbDgram*  const* begin()   const;
+      /** Return a pointer one past the last contribution. */
       const Pds::EbDgram** const  end()     const;
     public:
+      /** Print one line about the event (pulse ID, control, env, size, source, remaining and contract bits, age and latency) to stderr; with non-zero detail, also number and the list pointers. */
       void     dump(unsigned detail, int number);
     private:
       friend class EventBuilder;
