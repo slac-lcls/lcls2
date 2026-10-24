@@ -1,0 +1,113 @@
+# Build the documentation site (MkDocs + Material + mkdocstrings + Doxygen).
+# Modeled on slac-lcls/lute's .github/workflows/build_versioned_mkdocs.yml.
+#
+#   push to master            -> publish version "dev" (also the default version)
+#   push of a release tag     -> publish version "<tag>" (e.g. 4.3.4), alias "latest"
+#                                (hutch tags such as xpp-20261015 are not published)
+#   pull request from a docs-site/* branch
+#                             -> check that only comments and docstrings changed
+#                                in source files and build the site (strict);
+#                                with previews turned on (see below), branches in
+#                                this repository also get a preview under
+#                                pr-preview/pr-<number>/, linked in a comment
+#   other pull requests       -> nothing
+#
+# Publishing needs GitHub Pages set to serve from the gh-pages branch
+# (repository Settings -> Pages). mike adds a .nojekyll file on every deploy.
+# Previews are off until the repository variable DOCS_PREVIEW is set to true
+# (Settings -> Secrets and variables -> Actions -> Variables).
+name: Docs - build versioned MkDocs site
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
+  pull_request:
+    types: [opened, reopened, synchronize, closed]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+# Deploys (pushes to master and tags) push to gh-pages: run them one at a time,
+# in one shared group. Each pull request gets its own group, so runs of different
+# PRs never cancel each other; a new push to a PR cancels that PR's older run.
+# (With previews turned on, a preview and a deploy can still push to gh-pages at
+# the same time; if that becomes a problem, move the preview into its own job.)
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('docs-pr-{0}', github.event.pull_request.number) || 'docs-gh-pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  mkdocs_build:
+    if: github.event_name != 'pull_request' || startsWith(github.head_ref, 'docs-site/')
+    runs-on: ubuntu-latest
+    env:
+      PR_CLOSED: ${{ github.event_name == 'pull_request' && github.event.action == 'closed' }}
+      # Pull requests from forks get a read-only token, so they cannot publish a preview.
+      SAME_REPO_PR: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          # mike needs the gh-pages history; the comments check needs the base branch.
+          fetch-depth: 0
+
+      - name: Setup Python
+        if: env.PR_CLOSED != 'true'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+
+      - name: Check that only comments and docstrings changed
+        if: github.event_name == 'pull_request' && env.PR_CLOSED != 'true'
+        run: python docs/tools/check_comments_only.py "origin/${{ github.base_ref }}"
+
+      - name: Install Python dependencies
+        if: env.PR_CLOSED != 'true'
+        run: pip install -r docs/requirements.txt
+
+      - name: Install Doxygen
+        if: env.PR_CLOSED != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends doxygen
+          doxygen --version
+
+      # Writes docs/api/cpp/, which mkdocs copies into the site.
+      # Must run before mkdocs: the "C++ API" nav entry links to docs/api/cpp/index.html.
+      - name: Generate C++ API pages (Doxygen)
+        if: env.PR_CLOSED != 'true'
+        run: doxygen Doxyfile
+
+      - name: Build site (pull request)
+        if: github.event_name == 'pull_request' && env.PR_CLOSED != 'true'
+        run: mkdocs build
+
+      - name: Publish or remove preview (pull request from this repository)
+        if: env.SAME_REPO_PR == 'true' && vars.DOCS_PREVIEW == 'true'
+        uses: rossjrw/pr-preview-action@ffa7509e91a3ec8dfc2e5536c4d5c1acdf7a6de9 # v1.8.1
+        with:
+          source-dir: site
+          umbrella-dir: pr-preview
+
+      - name: Git config
+        if: github.event_name != 'pull_request'
+        run: |
+          git config --local user.name "github-actions[bot]"
+          git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Deploy dev version
+        if: github.ref == 'refs/heads/master'
+        run: |
+          mike deploy --push dev
+          mike set-default --push dev
+
+      - name: Deploy release version
+        if: github.ref_type == 'tag'
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: mike deploy --push --update-aliases "$TAG_NAME" latest

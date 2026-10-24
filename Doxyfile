@@ -1,0 +1,80 @@
+# Doxygen configuration for the C++ API pages of the lcls2 documentation site.
+#
+# Run from the repository root, before building the MkDocs site:
+#
+#     doxygen Doxyfile
+#     mkdocs build --strict
+#
+# The HTML is written to docs/api/cpp/ (ignored by git through docs/.gitignore).
+# MkDocs copies it into the site as static files, and the "C++ API" entry in
+# mkdocs.yml links to docs/api/cpp/index.html.
+#
+# Only options that differ from the Doxygen defaults are listed here.
+
+#---------------------------------------------------------------------------
+# Project
+#---------------------------------------------------------------------------
+PROJECT_NAME           = "lcls2"
+PROJECT_BRIEF          = "C++ API: public headers of xtcdata, psalg, psdaq and psana"
+OUTPUT_DIRECTORY       = docs/api
+HTML_OUTPUT            = cpp
+# Show paths relative to the repository root (e.g. psdaq/drp/DrpBase.hh).
+STRIP_FROM_PATH        = .
+JAVADOC_AUTOBRIEF      = YES
+
+#---------------------------------------------------------------------------
+# What to extract
+#---------------------------------------------------------------------------
+# List every class, function, etc. even if it has no doc comment yet.
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+EXTRACT_PRIVATE        = NO
+
+#---------------------------------------------------------------------------
+# Input: public headers only, plus the landing page (index.html)
+#---------------------------------------------------------------------------
+INPUT                  = docs/doxygen/mainpage.md \
+                         xtcdata/xtcdata \
+                         psalg/psalg \
+                         psdaq \
+                         psana/psana
+# The landing page links back to the MkDocs site (docs/api/cpp/ sits two
+# levels below the site root). mkdocs.yml excludes docs/doxygen/ from the site.
+USE_MDFILE_AS_MAINPAGE = docs/doxygen/mainpage.md
+FILE_PATTERNS          = *.h \
+                         *.hh \
+                         *.hpp \
+                         *.cuh
+EXTENSION_MAPPING      = cuh=C++
+RECURSIVE              = YES
+# psdaq/psdaq/submodules is a git submodule that is usually not checked out.
+EXCLUDE                = psdaq/psdaq/submodules
+EXCLUDE_PATTERNS       = */tests/* \
+                         */build/* \
+                         */builddir*/*
+
+#---------------------------------------------------------------------------
+# Keep the output small: no source browser, no verbatim header copies,
+# no graphs, no LaTeX.
+#---------------------------------------------------------------------------
+SOURCE_BROWSER         = NO
+INLINE_SOURCES         = NO
+VERBATIM_HEADERS       = NO
+HAVE_DOT               = NO
+CLASS_GRAPH            = TEXT
+COLLABORATION_GRAPH    = NO
+INCLUDE_GRAPH          = NO
+INCLUDED_BY_GRAPH      = NO
+GENERATE_LATEX         = NO
+GENERATE_HTML          = YES
+GENERATE_TREEVIEW      = YES
+SEARCHENGINE           = YES
+
+#---------------------------------------------------------------------------
+# Messages
+#---------------------------------------------------------------------------
+QUIET                  = YES
+# Most symbols are not documented yet; do not warn about each one.
+# Warnings go to stderr.
+WARN_IF_UNDOCUMENTED   = NO
+WARN_LOGFILE           =
