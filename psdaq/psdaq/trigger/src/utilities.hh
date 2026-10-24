@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Trigger helpers: fetchDocument() to read a configuration from the config database, and Factory to load a plugin from a shared library.
+ */
 #ifndef Pds_Trg_utilities_hh
 #define Pds_Trg_utilities_hh
 
@@ -14,18 +18,23 @@
 namespace Pds {
   namespace Trg {
 
+    /** Call get_config_json of the Python module psdaq.configdb.get_config with connectMsg, configAlias and section (and 0), and parse the returned JSON into top. Returns 0, or -1 on a Python or parse error. Python must already be initialized (per the code comment). */
     int fetchDocument(const std::string&   connectMsg,
                       const std::string&   configAlias,
                       const std::string&   section,
                       rapidjson::Document& top);
 
     template <typename T>
+    /** Loads a shared library and creates one object of type T with a C function exported by it; the object is deleted when the factory is destroyed or reused. */
     class Factory
     {
     public:
+      /** Construct with no object. */
       Factory() : _object(nullptr) {}
+      /** Delete the object if one was created. */
       ~Factory() { if (_object)  delete _object; }
     public:
+      /** Delete any previous object, close any open library, open soname and call its function symbol to create a new object. Returns the object, or nullptr if the library, the symbol or the creation fails. */
       T* create(const std::string& soname,
                 const std::string& symbol);
     private:
