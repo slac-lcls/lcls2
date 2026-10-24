@@ -1,3 +1,6 @@
+"""Base class and shared parameters of the psana data sources: `DataSourceBase`, `DsParms` and
+`InvalidDataSourceArgument`.
+"""
 import abc
 import glob
 import json
@@ -25,6 +28,7 @@ if mode == "mpi":
     pass
 
 class InvalidDataSourceArgument(Exception):
+    """Exception raised by `DataSourceBase._setup_runnum_list` when `exp` is missing or `run` is neither an int nor a list."""
     pass
 
 
@@ -40,6 +44,14 @@ def _log_file_list(logger, title, files):
 
 @dataclass
 class DsParms:
+    """Data source parameters shared with runs, readers and event builders.
+
+    The dataclass fields hold the batch size, maximum number of events, read retries, live flag,
+    filter timestamps, integrating detector settings, calibration cache settings, database suffix,
+    smalldata callback, and the smd file list with its per-file flags. Other code adds attributes:
+    for example `DgramManager.set_configs` sets `det_classes`, `configinfo_dict` and other detector
+    tables on it, and runs set `calibconst`.
+    """
     batch_size: int
     max_events: int
     max_retries: int
@@ -59,12 +71,18 @@ class DsParms:
     def set_det_class_table(
         self, det_classes, xtc_info, det_info_table, det_stream_id_table
     ):
+        """Store `det_classes`, `xtc_info`, `det_info_table` and `det_stream_id_table` as attributes of the same names."""
         self.det_classes = det_classes
         self.xtc_info = xtc_info
         self.det_info_table = det_info_table
         self.det_stream_id_table = det_stream_id_table
 
     def update_smd_state(self, smd_files, use_smds):
+        """Set `smd_files` and the per-file flags `use_smds`.
+
+        `DataSourceBase._apply_detector_selection` sets a flag to True where a bigdata file is used in
+        place of the smalldata file.
+        """
         self.smd_files = smd_files
         self.use_smds = use_smds
 
@@ -72,6 +90,11 @@ class DsParms:
     def intg_stream_id(self):
         # We only set detector related fields later (setup run files) so there
         # is a chance that the stream id table is not created yet.
+        """Stream index of the integrating detector `intg_det`, or -1.
+
+        Looked up in `det_stream_id_table`; -1 if that table is not set yet or does not contain
+        `intg_det`.
+        """
         stream_id = -1
         if hasattr(self, "det_stream_id_table"):
             if self.intg_det in self.det_stream_id_table:
@@ -79,72 +102,88 @@ class DsParms:
         return stream_id
 
 class DataSourceBase(abc.ABC):
-    """
-    Base class for data sources in the psana2 framework.
+    """Base class for data sources in the psana2 framework.
 
-    Keyword Arguments:
-    ------------------
+    `__init__` reads the options below from its keyword arguments; any other keyword is logged as a
+    warning ("Unrecognized kwarg").
+
+    Other Parameters
+    ----------------
     exp : str
         Experiment ID (e.g., 'xpptut13').
-    run : int
-        Run number to process.
+    run : int or list of int
+        Run number or list of run numbers to process (used with `exp`). If None (the default), every
+        run that has a `*-r*.xtc2` file in the xtc directory is used; any other type raises
+        InvalidDataSourceArgument.
     dir : str
         Manual path to XTC files.
-    files : str or list
-        XTC2 file path(s).
+    files : str or list of str
+        XTC2 file path(s); a single str is wrapped in a list.
     shmem : str
         Shared memory identifier (for live mode).
-    drp : str
-        DRP-specific parameters (not currently used).
+    drp : object
+        DRP parameters object. `DataSource` creates a `DrpDataSource` when `drp` is given without
+        `shmem`, `exp` or `files`; that class reads attributes such as `det_segment`, `is_supervisor`
+        and `worker_num` from it. This base class does not read it.
     batch_size : int
-        Number of events per batch sent to bigdata core (default: 1000).
+        Number of events per batch sent to bigdata core (default: 1000). Must be greater than 0
+        (asserted).
     max_events : int
-        Max number of events to read.
+        Max number of events to read (default: 0).
     detectors : list
-        User-selected detector names.
+        User-selected detector names (default: []).
     xdetectors : list
-        Detectors to explicitly exclude.
+        Detectors to explicitly exclude (default: []).
     det_name : str
-        Deprecated (use 'detectors').
+        Deprecated (use 'detectors'). Accepted without a warning but not read.
     live : bool
         Enable live data mode (default: False).
     smalldata_kwargs : dict
-        Arguments forwarded to the SmallData interface.
+        Arguments forwarded to the SmallData interface (default: {}).
     monitor : bool
         Enable Prometheus monitoring client (default: False).
     small_xtc : list
-        Detectors to use bigdata files in place of SMD files.
-    timestamps : np.ndarray
-        List of user-selected timestamps to filter on.
+        Detectors to use bigdata files in place of SMD files (default: []).
+    timestamps : np.ndarray or str
+        User-selected timestamps to filter on, as an array or the path of a .npy file; stored sorted
+        as uint64 (default: empty array). Any other type is logged and gives no filtering.
     dbsuffix : str
-        Suffix to use for private calibration constants.
+        Suffix to use for private calibration constants (default: "").
     intg_det : str
-        Name of integrating detector for timestamp alignment.
-    intg_delta_t : float
-        Integration delay in seconds.
+        Name of integrating detector for timestamp alignment (default: "").
+    intg_delta_t : int
+        Integration time window in nanoseconds; the smd reader adds it to each integrating-detector
+        timestamp when it builds batches (default: 0).
     smd_callback : callable or int
-        Callback for SMD event handling.
+        Callback for SMD event handling (default: 0).
     psmon_publish : psmon.publish
         Enable publishing to psmon (default: None).
     prom_jobid : str
-        Prometheus job ID tag.
-    skip_calib_load : str
-        List of detectors that skip calibration constant loading.
+        Prometheus job ID tag (default: None). Stored as the `prom_jobid` attribute; no code in this
+        repository reads it.
+    skip_calib_load : list of str or str
+        Names of detectors that skip calibration constant loading, or "all" to skip it for every
+        detector (default: []).
     use_calib_cache : bool
         Enable calibration constant saving and loading in shared memory (default: False).
-    fetch_calib_cache_max_retries: int
+    fetch_calib_cache_max_retries : int
         Max number of retries reading calibration constant from shared memory (default: 60).
     cached_detectors : list, optional
         List of detector names to load cached calibration attributes for
         when use_calib_cache is True. Default is [].
     mpi_ts : bool
-        Used internally to avoid repeated file I/O in MPI contexts.
-    log_level : int
-        Python logging level (e.g., logging.DEBUG, logging.INFO). Default is logging.INFO.
+        Used internally to avoid repeated file I/O in MPI contexts: when True, `timestamps` is not
+        loaded or sorted here.
+    log_level : int or str
+        Python logging level (e.g., logging.DEBUG, logging.INFO) or its name (e.g., "DEBUG"; an
+        unknown name gives INFO). Default is logging.INFO.
     log_file : str
-        Log file path. If None, logs to stdout (default: None).
+        Path of a rotating log file written in addition to the console output on stderr (default:
+        None, console only). The rank is inserted before the file extension, e.g. `run.log` becomes
+        `run.rank0.log`; the rank is the MPI world rank when PS_PARALLEL is "mpi" (the default) and
+        0 otherwise.
     auto_tune : bool
-        Enable auto-tuning of PS_EB_NODES and PS_SRV_NODES (default: False).
+        Stored as the `auto_tune` attribute (default: False); no code in this repository reads it.
     """
 
     def __init__(self, **kwargs):
@@ -235,6 +274,11 @@ class DataSourceBase(abc.ABC):
         # Input: timestamps
         #   str         : load the input file (e.g. .npy) and return sorted array with uint64 dtype
         #   np.ndarray  : return sorted array with np.uint64 dtype
+        """Return the filter timestamps as a sorted numpy uint64 array.
+
+        A str is the path of a .npy file to load; a numpy array is used as given; any other type logs a
+        message at info level and gives an empty array.
+        """
         formatted_timestamps = np.empty(0, dtype=np.uint64)
         if isinstance(timestamps, str):
             with open(timestamps, "rb") as ts_npy_f:
@@ -252,6 +296,14 @@ class DataSourceBase(abc.ABC):
         # Send run info to psplotdb server using kafka (default).
         # Note that you can use zmq instead by specifying zmq server
         # in the env var. below.
+        """Publish this job's run info for psplot_live when `psmon_publish` is set.
+
+        Calls `psmon_publish.init()` and sends a dict with the fully qualified host name, `exp`,
+        `runnum`, the publish port and SLURM_JOB_ID (or the process id): to the Kafka topic KAFKA_TOPIC
+        (default "psplot_live") at KAFKA_BOOTSTRAP_SERVER (default 172.24.5.240:9094), or, when
+        PSPLOT_LIVE_ZMQ_SERVER is set, through a zmq REQ socket to that address with `msgtype` set to
+        `MonitorMsgType.PSPLOT`. Does nothing if `psmon_publish` is None.
+        """
         PSPLOT_LIVE_ZMQ_SERVER = os.environ.get("PSPLOT_LIVE_ZMQ_SERVER", "")
         if getattr(self, "psmon_publish", None) is not None:
             publish = self.psmon_publish
@@ -285,16 +337,22 @@ class DataSourceBase(abc.ABC):
 
     @abc.abstractmethod
     def runs(self):
+        """Abstract method: subclasses yield their run objects. The base body returns None."""
         return
 
     @abc.abstractmethod
     def is_mpi(self):
+        """Abstract method: subclasses return whether they use MPI parallel mode. The base body returns None."""
         return
 
     def unique_user_rank(self):
-        """Only applicable to MPIDataSource
-        All other types of DataSource always return True.
-        For MPIDataSource, only the last bigdata rank returns True."""
+        """Return whether this rank is the unique user rank.
+
+        When `is_mpi()` is False this base method returns True; that is the case for `SerialDataSource`,
+        `SingleFileDataSource`, `ShmemDataSource` and `DrpDataSource`. `NullDataSource` overrides it to
+        return False. For `MPIDataSource` only world rank `world_size - PS_SRV_NODES - 1` (the highest rank
+        that is not a srv rank; PS_SRV_NODES defaults to 0) returns True.
+        """
         if not self.is_mpi():
             return True
 
@@ -619,6 +677,17 @@ class DataSourceBase(abc.ABC):
             )
 
     def smalldata(self, **kwargs):
+        """Set up and return this data source's `SmallData` object.
+
+        Calls `self.smalldata_obj.setup_parms(**kwargs)` (filename, batch_size, cache_size, callbacks,
+        swmr_mode); on smalldata server ranks that call runs the server receive loop until all clients
+        are done. The `smalldata_obj` attribute must have been created by the subclass.
+
+        Raises
+        ------
+        Exception
+            In parallel mode (`psana.psexp.tools.MODE` "PARALLEL") if PS_SRV_NODES is unset or 0.
+        """
         if MODE == "PARALLEL":
             PS_SRV_NODES = int(os.environ.get("PS_SRV_NODES", 0))
             if not PS_SRV_NODES:

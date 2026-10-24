@@ -1,3 +1,9 @@
+"""Run classes returned by the psana data sources.
+
+`Run` is the base class; `RunShmem`, `RunDrp`, `RunSingleFile`, `RunSerial` and `RunSmallData`
+are the variants for shared memory, the DRP, single files, serial reading and smalldata
+callbacks. Also defines `StepEvent` and `CallbackRunState`.
+"""
 import inspect
 import time
 import os
@@ -79,13 +85,27 @@ class StepEvent(object):
         self.env_store = env_store
 
     def dgrams(self, evt):
+        """Return, for each stream, the last step dgram at or before the timestamp of `evt` (None if there is none).
+
+        Delegates to `EnvStore.get_step_dgrams_of_event` of the env store given to the constructor.
+        """
         return self.env_store.get_step_dgrams_of_event(evt)
 
     def docstring(self, evt) -> str:
+        """Return the value of the "step_docstring" env variable for `evt`, or None if it is not found.
+
+        Uses `EnvStore.values([evt], "step_docstring")`, which looks back up to PS_N_STEP_SEARCH_STEPS
+        (default 10) stored dgrams.
+        """
         env_values = self.env_store.values([evt], "step_docstring")
         return env_values[0]
 
     def value(self, evt) -> float:
+        """Return the value of the "step_value" env variable for `evt`, or None if it is not found.
+
+        Uses `EnvStore.values([evt], "step_value")`, which looks back up to PS_N_STEP_SEARCH_STEPS
+        (default 10) stored dgrams.
+        """
         env_values = self.env_store.values([evt], "step_value")
         return env_values[0]
 
@@ -99,6 +119,10 @@ class CallbackRunState:
         self.current_step_evt = None
 
     def reset_envstore(self, configs):
+        """Create a new `EnvStoreManager` for `configs`, clear the step state and return the new manager.
+
+        Sets `in_step` to False and `current_step_evt` to None.
+        """
         self.esm = EnvStoreManager(configs)
         self.in_step = False
         self.current_step_evt = None
@@ -106,6 +130,14 @@ class CallbackRunState:
 
 
 class Run(object):
+    """Base class for a psana run.
+
+    The constructor stores the experiment, run number, BeginRun timestamp, `dsparms`, the
+    `DgramManager` and the smalldata reader manager, creates a `RunCtx` and an `Event` from the
+    BeginRun dgrams, fills `detinfo` with `build_detinfo_dict`, and registers the run with
+    `RunHelper`. Subclasses set `configs`, the env store manager `esm` and the iterator
+    `_evt_iter` that `events()` and `steps()` read from.
+    """
     def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams):
         self.expt, self.runnum, self.timestamp = (expt, runnum, timestamp)
         self.dsparms = dsparms
@@ -140,6 +172,11 @@ class Run(object):
         return self.runnum
 
     def events(self):
+        """Yield the L1Accept events of the run as `Event` objects.
+
+        Other transitions are not yielded but update the env store. Iteration stops at EndRun or when
+        the underlying iterator ends.
+        """
         for dgrams in self._evt_iter:
             if self._handle_transition(dgrams):
                 # EndRun handling here ends the stream
@@ -150,6 +187,11 @@ class Run(object):
             yield Event(dgrams=dgrams, run=self._run_ctx)
 
     def steps(self):
+        """Yield a `Step` for each BeginStep transition.
+
+        Every non-L1Accept transition updates the env store and L1Accepts seen here are skipped;
+        iteration stops at EndRun. Each Step reads its events from this run's shared iterator.
+        """
         for dgrams in self._evt_iter:
             svc = utils.first_service(dgrams)
             if TransitionId.isEvent(svc):
@@ -316,6 +358,31 @@ class Run(object):
 
     def Detector(self, name, accept_missing=False, **kwargs):
 
+        """Return the detector interface object for `name`.
+
+        If `name` is a detector in the "normal" detector class table, the result is a container with
+        one attribute per data type (for example `raw`), each an instance of the matching detector
+        class created with the detector's config info, calibration constants (an empty dict if none)
+        and `**kwargs`; the container also gets `calibconst`, a `step` attribute when the detector has
+        its own env store, and cached calibration attributes when `use_calib_cache` is set and the
+        detector is in `cached_detectors`. Otherwise, if `name` is an epics or scan variable name, or an
+        epics name that maps to one, the result is a single detector object for that variable built
+        with the env store.
+
+        Parameters
+        ----------
+        name : str
+            Detector name or env variable name.
+        accept_missing : bool
+            If True, return `MissingDet()` instead of raising when `name` is unknown.
+        **kwargs
+            Passed to the detector class constructors (detector case only).
+
+        Raises
+        ------
+        KeyError
+            If `name` is neither a detector nor an env variable and `accept_missing` is False.
+        """
         mapped_env_var_name = self._get_valid_env_var_name(name)
 
         if name not in self.dsparms.configinfo_dict and mapped_env_var_name is None:
@@ -329,6 +396,7 @@ class Run(object):
             name = mapped_env_var_name
 
         class Container:
+            """Empty container class; `Run.Detector` attaches the detector interfaces to an instance as attributes."""
             def __init__(self):
                 pass
 
@@ -428,10 +496,12 @@ class Run(object):
 
     @property
     def scannames(self):
+        """Set of scan variable names (first element of each key of `scaninfo`)."""
         return set([x[0] for x in self.scaninfo.keys()])
 
     @property
     def detnames(self):
+        """Set of detector names in the "normal" detector class table (detectors with a matching detector class)."""
         return set([x[0] for x in self.dsparms.det_classes["normal"].keys()])
 
     def get_filtered_detinfo(self):
@@ -490,22 +560,43 @@ class Run(object):
     def epicsinfo(self):
         # EnvStore a key-value pair of detectorname (e.g. AT1K0_PressureSetPt)
         # and epics name (AT1K0:GAS:TRANS_SP_RBV) in epics_mapper.
+        """Dict describing the epics variables, from `get_info()` of the "epics" env store.
+
+        Keys are (variable name, epics name) and values are the epics name ("" if unknown).
+        """
         return self.esm.stores["epics"].get_info()
 
     @property
     def scaninfo(self):
+        """Dict describing the scan variables, from `get_info()` of the "scan" env store.
+
+        Keys are (variable name, algorithm name) and values are the algorithm name.
+        """
         return self.esm.stores["scan"].get_info()
 
     @property
     def xtcinfo(self):
+        """List of (detector name, detector type, data type name, version) tuples from the Configure dgrams (`dsparms.xtc_info`).
+
+        The version is the version numbers joined with "_".
+        """
         return self.dsparms.xtc_info
 
     def analyze(self, event_fn=None, det=None):
+        """Loop over `events()` and call `event_fn(event, det)` for each event.
+
+        If `event_fn` is None the events are still read but nothing is called. Returns None.
+        """
         for event in self.events():
             if event_fn is not None:
                 event_fn(event, det)
 
     def step(self, evt):
+        """Return an `Event` made of the step dgrams in effect for `evt`.
+
+        For each stream it takes the last dgram in the "scan" env store with a timestamp at or before
+        `evt.timestamp` (None if there is none).
+        """
         step_dgrams = self.esm.stores["scan"].get_step_dgrams_of_event(evt)
         return Event(dgrams=step_dgrams, run=self._run_ctx)
 
@@ -616,6 +707,17 @@ class RunDrp(Run):
     def add_detector(
         self, detdef, algdef, datadef, nodeId=None, namesId=None, segment=None
     ):
+        """Add a detector definition to the dgram being edited and return the result.
+
+        Calls `curr_dgramedit.Detector(detdef, algdef, datadef, nodeId, namesId, segment)`; the work is
+        done by the `psana.dgramedit` extension (not visible here). Only allowed before the run is
+        primed by `events()` or `steps()`.
+
+        Raises
+        ------
+        RuntimeError
+            If event iteration has already started.
+        """
         if self._edtbl_config:
             return self.curr_dgramedit.Detector(
                 detdef, algdef, datadef, nodeId, namesId, segment
@@ -627,9 +729,23 @@ class RunDrp(Run):
             )
 
     def add_data(self, data):
+        """Add `data` to the dgram being edited by calling `curr_dgramedit.adddata(data)`, and return its result.
+
+        The work is done by the `psana.dgramedit` extension; not visible here.
+        """
         return self.curr_dgramedit.adddata(data)
 
     def remove_data(self, det_name, alg):
+        """Remove the data of `det_name` / `alg` from the dgram being edited and return the result.
+
+        Calls `curr_dgramedit.removedata(det_name, alg)` (work done by the `psana.dgramedit`
+        extension).
+
+        Raises
+        ------
+        RuntimeError
+            If event iteration has not started yet.
+        """
         if not self._edtbl_config:
             return self.curr_dgramedit.removedata(det_name, alg)
         else:
@@ -656,6 +772,13 @@ class RunDrp(Run):
         self._primed = True
 
     def events(self):
+        """Yield the L1Accept events of the DRP run, saving every dgram to the DRP result shared memory.
+
+        On first use the Configure and BeginRun dgrams are saved and configuration edits are frozen.
+        For every dgram a new `DgramEdit` becomes `curr_dgramedit`; transitions update the env store
+        and are saved at once (iteration stops at EndRun), while each L1Accept is yielded first, so it
+        can be edited, and saved to `dm.shm_res_mv` when the caller resumes the iteration.
+        """
         self._prime_run_once()
 
         for dgrams in self._evt_iter:
@@ -681,6 +804,14 @@ class RunDrp(Run):
             self.curr_dgramedit.save(self.dm.shm_res_mv)
 
     def steps(self):
+        """Yield a `Step` for each BeginStep transition of the DRP run, saving transitions to the DRP result shared memory.
+
+        Primes the run on first use as `events()` does. L1Accepts seen here are skipped; every other transition updates the env store and gets a new `DgramEdit`, a BeginStep is saved after the caller resumes the iteration, other transitions are saved at once, and iteration stops at EndRun.
+
+        Notes
+        -----
+        Each Step is created with `run=self`, so its events are saved too.
+        """
         self._prime_run_once()
 
         for dgrams in self._evt_iter:
@@ -784,6 +915,18 @@ class RunSerial(Run):
             pass
 
     def event(self, ts):
+        """Read and return the event with timestamp `ts`, using the table built by `build_table`.
+
+        Each stream's dgram is read with `os.pread` at the offset and size recorded for `ts` and wrapped
+        in `dgram.Dgram`; streams without an entry are None.
+
+        Raises
+        ------
+        RuntimeError
+            If `build_table` has not been used yet.
+        ValueError
+            If `ts` is not in the table.
+        """
         if self._ts_table is None:
             raise RuntimeError("build_table() must be called before event(ts)")
 
@@ -850,6 +993,13 @@ class RunSmallData(Run):
                 yield item
 
     def steps(self):
+        """Yield a `Step` for each BeginStep transition in the event builder output.
+
+        If `callback_run_state` says a step is already in progress (from an earlier chunk), a Step for
+        it is yielded first. Non-L1Accept transitions update the env store (a BeginRun resets it first)
+        and have their proxy event appended to `proxy_events`; a BeginStep is recorded in
+        `callback_run_state`, and iteration stops at EndRun.
+        """
         if self.callback_run_state is not None and self.callback_run_state.in_step:
             yield Step(
                 self.callback_run_state.current_step_evt,
@@ -883,6 +1033,12 @@ class RunSmallData(Run):
                     )
 
     def events(self):
+        """Yield the L1Accept events from the event builder as `Event` objects with their proxy events.
+
+        Transitions are not yielded: they update the env store (a BeginRun resets it first) and their
+        proxy events are appended to `proxy_events`; iteration stops at EndRun. The events come from a
+        new `_iter_events()` generator, which reads `eb.events()` while `eb.has_more()` is true.
+        """
         for (dgrams, proxy_evt) in self._iter_events():
             svc = utils.first_service(dgrams)
             if not TransitionId.isEvent(svc):

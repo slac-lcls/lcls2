@@ -1,3 +1,4 @@
+"""Define `MPIDataSource` and `RunParallel`, the data source and run used when psana runs on several MPI ranks."""
 import os
 import sys
 import time
@@ -35,6 +36,7 @@ if mode == "mpi":
 
 
 class InvalidEventBuilderCores(Exception):
+    """Exception class; nothing in this module raises it."""
     pass
 
 
@@ -120,6 +122,14 @@ class RunParallel(Run):
         self._setup_jungfrau_shared_caches()
 
     def build_xtc_buffer(self, det_info):
+        """Convert the run's calibration constants into an xtc2 buffer stored in `_calib_xtc_buffer`.
+
+        Uses `CalibXtcConverter(det_info).convert_to_buffer`; `det_info` None means {}. If there are no constants, `_calib_xtc_buffer` is set to None; a conversion error is logged as a warning and leaves `_calib_xtc_buffer` unchanged.
+
+        Returns
+        -------
+        None
+        """
         if not self._calib_const:
             self._calib_xtc_buffer = None
             return
@@ -425,6 +435,13 @@ class RunParallel(Run):
         return targets
 
     def events(self):
+        """Yield the L1Accept events received by this rank as `Event` objects.
+
+        Only bd ranks yield events; on smd0 and eb ranks `start()` runs their loop to the end and yields
+        nothing. Transitions update the env store and are not yielded, and every PS_BD_ANA_INTERVAL
+        (default 1000) iterations the analysis rate and memory use are logged at debug level and the
+        rate is set on the "psana_bd_ana_rate" gauge.
+        """
         evt_iter = self.start()
         st = time.time()
         try:
@@ -461,6 +478,11 @@ class RunParallel(Run):
                 st = time.time()
 
     def steps(self):
+        """Yield a `Step` for each BeginStep transition received by this rank.
+
+        As in `events()`, only bd ranks receive data; on smd0 and eb ranks `start()` runs their loop.
+        Every non-L1Accept transition updates the env store, and each Step reads from the same iterator.
+        """
         evt_iter = self.start()
         for dgrams in evt_iter:
             svc = utils.first_service(dgrams)
@@ -479,6 +501,12 @@ class RunParallel(Run):
                 )
 
     def close_shared_memory(self):
+        """Release the shared calibration buffer and shared-memory helpers of this run.
+
+        Calls the private `_close_shared_memory`, which acts only once: it frees the MPI window holding
+        the calibration xtc buffer and closes the Jungfrau and geometry `MPISharedMemory` helpers
+        (errors are logged at debug level).
+        """
         self._close_shared_memory()
 
     def __del__(self):
@@ -520,6 +548,17 @@ class RunParallel(Run):
         yield success
 
     def event(self, ts):
+        """Read and return the event with timestamp `ts`, using the table built by `build_table` on bd ranks.
+
+        Each stream's dgram is read with `os.pread` at the recorded offset and size and wrapped in
+        `dgram.Dgram`; streams without an entry are None. The `Event` gets `run=self` (this run object,
+        not its RunCtx).
+
+        Raises
+        ------
+        ValueError
+            If `ts` is not in the table (AttributeError if no table was built on this rank).
+        """
         offsets = self._ts_table.get(ts)
         if offsets is None:
             raise ValueError(f"Timestamp {ts} not found in offset table.")
@@ -532,17 +571,34 @@ class RunParallel(Run):
         return Event(dgrams=dgrams, run=self)
 
     def terminate(self):
+        """Ask smd0 to stop, then set this run's terminate flag.
+
+        Calls `comms.terminate()`, a non-blocking send of this rank's number to world rank 0, then
+        `Run.terminate()`.
+        """
         self.comms.terminate()
         super().terminate()
 
 
 def safe_mpi_abort(msg):
+    """Print `msg`, flush stdout and call `MPI.COMM_WORLD.Abort()`."""
     print(msg)
     sys.stdout.flush()  # make sure error is printed
     MPI.COMM_WORLD.Abort()
 
 
 class MPIDataSource(DataSourceBase):
+    """Data source that reads an experiment in parallel on several MPI ranks.
+
+    The constructor takes a `Communicators` object and passes the keyword arguments to
+    `DataSourceBase.__init__`; it creates a `SmallData` object if PS_SRV_NODES > 0, aborts all ranks
+    with `safe_mpi_abort` unless the psana communicator has more than PS_EB_NODES + 1 ranks,
+    broadcasts the run-number list and xtc path from smd0, starts the Prometheus client and sets up
+    the first run. Run setup (finding files, detector selection, reading configs with a
+    `SmdReaderManager`) happens on smd0, whose file lists, smd flags and configs are broadcast to the
+    other psana ranks, and every rank opens the bigdata files with a `DgramManager`; when
+    `timestamps` is a file name only eb ranks load it.
+    """
     def __init__(self, comms, *args, **kwargs):
         # Check if an I/O-friendly numpy file storing timestamps is given by the user
         if "timestamps" in kwargs:
@@ -706,6 +762,14 @@ class MPIDataSource(DataSourceBase):
                 return True
 
     def runs(self):
+        """Yield a `RunParallel` for each BeginRun.
+
+        smd0 reads the next dgrams from the smalldata files and broadcasts them to all psana ranks until
+        a BeginRun is found; when the current files have none left, the next run number is set up. Each
+        run gets the experiment, run number and timestamp from the BeginRun dgram, plus `dsparms`, the
+        `DgramManager`, the `SmdReaderManager` (None except on smd0), the configs, the BeginRun dgrams
+        and `comms`.
+        """
         while self._start_run():
             # Pull (expt, runnum, ts) from the BeginRun dgrams
             expt, runnum, ts = self._get_runinfo()
@@ -723,4 +787,5 @@ class MPIDataSource(DataSourceBase):
             yield run
 
     def is_mpi(self):
+        """Return True."""
         return True

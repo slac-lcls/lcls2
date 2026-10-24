@@ -1,3 +1,9 @@
+"""The `DataSource` factory, which returns the psana data source object that matches its keyword
+arguments, and the `InvalidDataSource` exception.
+
+On import it sets the environment variable PS_PROMETHEUS_JOBID: in MPI mode to the process id
+of rank 0 (broadcast to all ranks), otherwise to this process's id.
+"""
 import os
 import sys
 import gc
@@ -152,6 +158,11 @@ def _force_mfx_overrides(exp, kwargs):
 
 
 class InvalidDataSource(Exception):
+    """Exception raised by `DataSource` for unsupported arguments or parallel mode.
+
+    Raised when none of the keywords exp, shmem, files or drp is given, or when `exp` is given and
+    `psana.psexp.tools.mode` is neither "mpi" nor "none".
+    """
     pass
 
 
@@ -165,6 +176,31 @@ from psana.psexp.null_ds import NullDataSource
 def DataSource(*args, **kwargs):
     # force garbage collection to clean up old DataSources, in
     # particular to cause destructors to run to close old shmem msg queues
+    """Create and return the data source object that matches the keyword arguments.
+
+    Calls `gc.collect()` first and converts positional arguments to str; all arguments are passed
+    on to the chosen class. The keywords are checked in the order shmem, exp, files, drp.
+
+    Returns
+    -------
+    object
+        - `shmem` given: `ShmemDataSource`. With more than one MPI rank, `smalldata_kwargs` with
+          server and client groups is added and ranks below PS_SRV_NODES get a `NullDataSource`
+          (RuntimeError if PS_SRV_NODES equals the number of ranks).
+        - `exp` given: for experiment names starting with "mfx", PS_EB_NODES, PS_SMD_N_EVENTS
+          and `batch_size` defaults are adjusted first. In MPI mode with one rank,
+          `SerialDataSource` (a FileNotFoundError is logged and the process exits with status 1);
+          with several ranks, `Communicators` are built and smd0/eb/bd ranks get `MPIDataSource`,
+          other ranks `NullDataSource`. With mode "none", `SerialDataSource`.
+        - `files` given: `SingleFileDataSource`.
+        - `drp` given: `DrpDataSource`.
+
+    Raises
+    ------
+    InvalidDataSource
+        If none of these keywords is given, or `exp` is given with a mode other than "mpi" or
+        "none".
+    """
     gc.collect()
     args = tuple(
         map(str, args)

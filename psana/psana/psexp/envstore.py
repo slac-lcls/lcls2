@@ -1,3 +1,6 @@
+"""Env data storage: `EnvManager` keeps the env dgrams (for example epics or scan) of one stream, and
+`EnvStore` combines the `EnvManager` objects of all streams for one env name.
+"""
 import os
 from collections import defaultdict
 
@@ -24,6 +27,7 @@ class EnvManager(object):
 
     @property
     def timestamps(self):
+        """Timestamps of the dgrams added so far, as a numpy uint64 array."""
         return np.asarray(self._timestamps, dtype=np.uint64)
 
     def _init_env_variables(self):
@@ -72,11 +76,17 @@ class EnvManager(object):
                     self.env_variables[alg] = {segment_id: env_vars}
 
     def add(self, d):
+        """Append dgram `d` and its `timestamp()` to this manager and increment `n_items`."""
         self.dgrams.append(d)
         self._timestamps.append(d.timestamp())
         self.n_items += 1
 
     def is_empty(self):
+        """Return the `env_variables` dict.
+
+        Despite the name this does not return a bool: the dict is truthy when at least one algorithm
+        entry was found in the config for this env name, and empty otherwise.
+        """
         return self.env_variables
 
     def locate_variable(self, var_name):
@@ -136,6 +146,7 @@ class EnvStore(object):
         return None
 
     def add_to(self, dgram, env_manager_idx):
+        """Add `dgram` to the `EnvManager` of stream index `env_manager_idx`."""
         self.env_managers[env_manager_idx].add(dgram)
 
     def dgrams(self, from_pos=0, scan=True):
@@ -150,6 +161,14 @@ class EnvStore(object):
                     yield dgram
 
     def get_step_dgrams_of_event(self, evt):
+        """Return, for each stream, the last stored dgram at or before the timestamp of `evt`.
+
+        Returns
+        -------
+        list
+            One entry per `EnvManager`: the dgram with the largest timestamp <= `evt.timestamp`, or None
+            if the stream has no such dgram.
+        """
         step_dgrams = []
         for i, env_man in enumerate(self.env_managers):
             found_pos = np.searchsorted(env_man.timestamps, evt.timestamp, side="right")
@@ -209,6 +228,12 @@ class EnvStore(object):
         return env_values
 
     def get_info(self):
+        """Return a dict describing the variables of this store.
+
+        For the "epics" store the keys are (variable name, epics name) and the value is the epics name
+        ("" if no mapping is known); for other stores the keys are (variable name, algorithm name) and
+        the value is the algorithm name.
+        """
         info = {}
         for alg, segment_dict in self.env_variables.items():
             for segment_id, var_dict in segment_dict.items():
@@ -223,6 +248,7 @@ class EnvStore(object):
         return info
 
     def dtype(self, var_name):
+        """Return the type recorded for variable `var_name` (from `DetectorImpl._return_types`), or None if it is not found."""
         var_loc = self.locate_variable(var_name)
         if var_loc:
             alg, segment_id = var_loc
