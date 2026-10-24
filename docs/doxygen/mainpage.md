@@ -18,3 +18,12 @@ page.
   the tree on the left.
 - The search box at the top right searches these C++ pages. The search on the
   main documentation site does not cover C++ symbols.
+
+## Starting points
+
+The feature pages of the main documentation explain these classes and link
+to their pages here.
+
+| Area | Classes | Explained in |
+|---|---|---|
+| XTC2 data format (`xtcdata`) | XtcData::Dgram, XtcData::Xtc, XtcData::TransitionId, XtcData::Names, XtcData::ShapesData, XtcData::NamesId, XtcData::DescData, XtcData::XtcIterator, XtcData::XtcFileIterator | [XTC2 data format](../../features/xtc2/index.html) |

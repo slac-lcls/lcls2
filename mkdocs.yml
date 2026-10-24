@@ -103,6 +103,7 @@ nav:
   - Getting started: getting-started.md
   - Features:
       - features/index.md
+      - XTC2 data format: features/xtc2.md
       - DataSource, Run and the event loop: features/datasource-run-events.md
       - Detector interface: features/detector-interface.md
       - Calibration constants: features/calibration.md
@@ -117,6 +118,7 @@ nav:
       - psana.psexp.run: api/python/run.md
       - psana.psexp.step: api/python/step.md
       - psana.event: api/python/event.md
+      - psana.psexp.transitionid: api/python/transitionid.md
       - psana.dgrammanager: api/python/dgrammanager.md
       - psana.psexp.mpi_ds: api/python/mpi_ds.md
       - psana.psexp.shmem_ds: api/python/shmem_ds.md

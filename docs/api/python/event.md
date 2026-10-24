@@ -11,8 +11,8 @@ not the full `Run`. Detector data are read through detector objects
 `service()` returns `(env() >> 24) & 0xF` of the first dgram that has
 `env()`, through `psana.utils.first_service`. That function raises
 `RuntimeError` unless the value is between 1 and 13. Transition id 0 is
-ClearReadout in both `TransitionId` and the C++ enum (see
-XTC2 data format), so a dgram with that id makes
+ClearReadout in both [`TransitionId`](transitionid.md) and the C++ enum (see
+[XTC2 data format](../../features/xtc2.md)), so a dgram with that id makes
 `service()` raise instead of returning 0.
 
 See [DataSource, Run and the event loop](../../features/datasource-run-events.md).
