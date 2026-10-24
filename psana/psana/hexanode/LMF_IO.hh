@@ -1,21 +1,33 @@
+/**
+ * @file
+ * @brief Declares the RoentDek LMF (list-mode file) reader/writer LMF_IO, its MyFILE binary-file helper, hardware header structures, and DAQ-id and data-format constants.
+ */
 #ifndef _LMF_IO_
 	#define _LMF_IO_
 #include "fstream"
 //#include "stdio.h"
 #include "time.h"
 
+/** Defined unconditionally, so the LINUX branch below is always used (string.h, fseeko/ftello and the __intN macros). */
 #define LINUX
 
 #ifdef LINUX
 	#include "string.h"
+        /** Mapped to fseeko in the LINUX branch; used by MyFILE::open() and MyFILE::seek(). */
         #define _fseeki64 fseeko
+	/** Mapped to ftello in the LINUX branch; used by MyFILE::open() to get the file size. */
 	#define _ftelli64 ftello
 
 	#ifndef __int32_IS_DEFINED
+		/** Guard so the __intN macros below are defined only once. */
 		#define __int32_IS_DEFINED
+		/** Defined as int. */
 		#define __int32 int
+		/** Defined as short. */
 		#define __int16 short
+		/** Defined as long long. */
 		#define __int64 long long
+		/** Defined as char. */
 		#define __int8 char
 	#endif
 #endif
@@ -25,14 +37,24 @@
 #endif
 
 
+/**
+ * Small binary file wrapper around a C FILE: open() for reading or writing (chosen at construction), raw read()/write(), and >> / << operators that read or write the bytes of basic types.
+ * It keeps its own position and file size and reports problems through error and eof instead of exceptions.
+ */
 class MyFILE
 {
 public:
+	/** Set the mode (true reads, false writes) and clear error, eof, position and filesize; no file is open. */
 	MyFILE(bool mode_reading_) {error = 0; eof = false; mode_reading = mode_reading_; file = 0; position = 0; filesize = 0;}
+	/** Call close() (which sets error to 1 if no file was open), then reset error and eof. */
 	~MyFILE() {close(); error = 0; eof = false;}
 
-	FILE * file;
+	FILE * file;  ///< Underlying C FILE, or 0 when no file is open.
 
+	/**
+	 * Open name with fopen(): "rb" in read mode, recording the file size by seeking to the end and back, or "wb" in write mode.
+	 * Returns false and sets error to 1 if a file is already open or fopen() fails; otherwise true.
+	 */
 	bool open(__int8* name) {
 		if (file) {error = 1; return false;}
 		eof = false;
@@ -46,14 +68,18 @@ public:
 		if (file) return true; else {error = 1; return false;}
 	}
 
+	/** Close the file if one is open (otherwise set error to 1), then reset position, filesize and eof. */
 	void close() {
 		if (file) {fclose(file);  file = 0;} else error = 1;
 		position = 0; filesize = 0; eof = false;
 	}
 
+	/** Return the position kept by this class (bytes read or written since open, or the last seek()). */
 	unsigned __int64 tell() {return position;}
+	/** fseeko() to pos from the start of the file; on success set the position to pos, otherwise set error to 1. Defined in LMF_IO.cc. */
 	void seek(unsigned __int64 pos);
 
+	/** Read length_bytes bytes into string with fread(). On a short read set error to 1, and eof if the end of the file was reached; the position always advances by length_bytes. */
 	void read(__int8* string,__int32 length_bytes) {
 		unsigned __int32 read_bytes = (unsigned __int32)(fread(string,1,length_bytes,file));
 		if (read_bytes != (unsigned __int32)length_bytes) {
@@ -63,6 +89,7 @@ public:
 		position += length_bytes;
 	}
 
+	/** Read length_bytes bytes into dest with fread(). On a short read set error to 1, and eof if the end of the file was reached; the position always advances by length_bytes. */
 	void read(unsigned __int32 * dest,__int32 length_bytes) {
 		unsigned __int32 read_bytes = (unsigned __int32)(fread(dest,1,length_bytes,file));
 		if (read_bytes != (unsigned __int32)length_bytes) {
@@ -72,40 +99,122 @@ public:
 		position += length_bytes;
 	}
 
+	/** Write length bytes from string with fwrite() (the result is not checked), advance the position and raise filesize to it if needed. */
 	void write(const __int8* string,__int32 length) {
 		fwrite(string,1,length,file);
 		position += length;
 		if (filesize < position) filesize = position;
 	}
 
+	/** Call fflush() on the file. */
 	void flush() {fflush(file);}
 
+	/**
+	 * Read sizeof(unsigned __int8) bytes into c with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(unsigned __int8 &c)		{read((__int8*)&c,sizeof(unsigned __int8));		return *this;}
+	/**
+	 * Read sizeof(__int8) bytes into c with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(__int8 &c)				{read((__int8*)&c,sizeof(__int8));				return *this;}
+	/**
+	 * Read sizeof(unsigned __int16) bytes into l with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(unsigned __int16 &l)	{read((__int8*)&l,sizeof(unsigned __int16));	return *this;}
+	/**
+	 * Read sizeof(unsigned __int32) bytes into l with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(unsigned __int32 &l)	{read((__int8*)&l,sizeof(unsigned __int32));	return *this;}
+	/**
+	 * Read sizeof(unsigned __int64) bytes into l with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(unsigned __int64 &l)	{read((__int8*)&l,sizeof(unsigned __int64));	return *this;}
+	/**
+	 * Read sizeof(__int16) bytes into s with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(__int16 &s)				{read((__int8*)&s,sizeof(__int16));				return *this;}
+	/**
+	 * Read sizeof(__int32) bytes into l with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(__int32 &l)				{read((__int8*)&l,sizeof(__int32));				return *this;}
+	/**
+	 * Read sizeof(__int64) bytes into l with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(__int64 &l)				{read((__int8*)&l,sizeof(__int64));				return *this;}
+	/**
+	 * Read sizeof(double) bytes into d with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(double &d)				{read((__int8*)&d,sizeof(double));				return *this;}
+	/**
+	 * Read sizeof(bool) bytes into d with read().
+	 * @return *this.
+	 */
 	MyFILE & operator>>(bool &d)				{read((__int8*)&d,sizeof(bool));				return *this;}
 
 
+	/**
+	 * Write the sizeof(unsigned __int8) bytes of c with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(unsigned __int8 c)		{write((__int8*)&c,sizeof(unsigned __int8));	return *this;}
+	/**
+	 * Write the sizeof(__int8) bytes of c with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(__int8 c)				{write((__int8*)&c,sizeof(__int8));				return *this;}
+	/**
+	 * Write the sizeof(unsigned __int16) bytes of l with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(unsigned __int16 l)		{write((__int8*)&l,sizeof(unsigned __int16));	return *this;}
+	/**
+	 * Write the sizeof(unsigned __int32) bytes of l with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(unsigned __int32 l)		{write((__int8*)&l,sizeof(unsigned __int32));	return *this;}
+	/**
+	 * Write the sizeof(unsigned __int64) bytes of l with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(unsigned __int64 l)		{write((__int8*)&l,sizeof(unsigned __int64));	return *this;}
+	/**
+	 * Write the sizeof(__int16) bytes of s with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(__int16 s)				{write((__int8*)&s,sizeof(__int16));			return *this;}
+	/**
+	 * Write the sizeof(__int32) bytes of l with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(__int32 l)				{write((__int8*)&l,sizeof(__int32));			return *this;}
+	/**
+	 * Write the sizeof(__int64) bytes of l with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(__int64 l)				{write((__int8*)&l,sizeof(__int64));			return *this;}
+	/**
+	 * Write the sizeof(double) bytes of d with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(double d)				{write((__int8*)&d,sizeof(double));				return *this;}
+	/**
+	 * Write the sizeof(bool) bytes of d with write().
+	 * @return *this.
+	 */
 	MyFILE & operator<<(bool d)					{write((__int8*)&d,sizeof(bool));				return *this;}
 
-	__int32 error;
-	bool eof;
-	unsigned __int64 filesize;
+	__int32 error;  ///< Set to 1 on failures (open, close without a file, short read, failed seek); cleared only by the constructor and destructor.
+	bool eof;  ///< Set when a short read reaches the end of the file; cleared by the constructor, open() and close().
+	unsigned __int64 filesize;  ///< File size: measured by open() in read mode, or the largest position written in write mode; 0 after close().
 
 private:
 	bool mode_reading;
@@ -118,46 +227,71 @@ private:
 
 
 #ifndef _WINNT_
+/** Replacement for the Windows LARGE_INTEGER union, defined when _WINNT_ is not defined: a 64-bit QuadPart sharing storage with a LowPart/HighPart pair of 32-bit fields, available directly and as member u. */
 typedef union _myLARGE_INTEGER {
 	struct {
-		unsigned __int32 LowPart;
-		__int32 HighPart;
+		unsigned __int32 LowPart;  ///< Unsigned 32-bit field.
+		__int32 HighPart;  ///< Signed 32-bit field.
 	}; 
 	struct {
-		unsigned __int32 LowPart;
-		__int32 HighPart;
-	} u;
-	__int64 QuadPart;
+		unsigned __int32 LowPart;  ///< Unsigned 32-bit field.
+		__int32 HighPart;  ///< Signed 32-bit field.
+	} u;  ///< The same LowPart/HighPart pair as a named member.
+	__int64 QuadPart;  ///< Signed 64-bit view of the union.
 } myLARGE_INTEGER,  *PmyLARGE_INTEGER;
 #endif
 
 
+/** Value 1. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadHM1Header(). */
 #define DAQ_ID_HM1     0x000001
+/** Value 2. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadTDC8PCI2Header(). */
 #define DAQ_ID_TDC8	   0x000002
+/** Value 3. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadCAMACHeader(). */
 #define DAQ_ID_CAMAC   0x000003
+/** Value 4. Not in the list that OpenInputLMF() accepts; other code in LMF_IO.cc checks for it. */
 #define DAQ_ID_2HM1	   0x000004
+/** Value 5. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with Read2TDC8PCI2Header(). */
 #define DAQ_ID_2TDC8   0x000005
+/** Value 6. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadHM1Header(). */
 #define DAQ_ID_HM1_ABM 0x000006
+/** Value 8. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadTDC8HPHeader_LMFV_1_to_7(). */
 #define DAQ_ID_TDC8HP  0x000008
+/** Value 9. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadTCPIPHeader(). */
 #define DAQ_ID_TCPIP   0x000009
+/** Value 0x10. For a Cobold LMF file, OpenInputLMF() accepts it and reads the rest of the header with ReadTDC8HPHeader_LMFV_1_to_7(). */
 #define DAQ_ID_TDC8HPRAW 0x000010
 
+/** Value 100. OpenNonCoboldFile() sets it when skip_header is set. */
 #define DAQ_ID_RAW32BIT 100
+/** Value 101. OpenNonCoboldFile() sets it when skip_header is not set and the id is not already DAQ_ID_RAW32BIT. */
 #define DAQ_ID_SIMPLE 101
 
 
+/** Data format code 1 (trailing comment: 8-bit integer); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define LM_BYTE					1	//  8bit integer
+/** Data format code 2 (trailing comment: 16-bit integer); for a Cobold LMF file OpenInputLMF() accepts it as the header data format. */
 #define LM_SHORT				2	// 16bit integer
+/** Data format code 3 (trailing comment: 32-bit integer); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define LM_LONG					3	// 32bit integer
+/** Data format code 4 (trailing comment: 32-bit IEEE float); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define	LM_FLOAT				4   // 32bit IEEE float
+/** Data format code 5 (trailing comment: 64-bit IEEE float); for a Cobold LMF file OpenInputLMF() accepts it as the header data format. */
 #define LM_DOUBLE				5	// 64bit IEEE float
+/** Data format code 6 (trailing comment: 24-bit integer); for a Cobold LMF file OpenInputLMF() accepts it as the header data format. */
 #define LM_CAMAC				6	// 24bit integer
+/** Data format code 7 (trailing comment: 64-bit integer); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define LM_DOUBLELONG			7	// 64bit integer
+/** Data format code 8 (trailing comment: signed 8-bit integer); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define LM_SBYTE				8	// signed 8bit integer
+/** Data format code 9 (trailing comment: signed 16-bit integer); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define LM_SSHORT				9	// signed 16bit integer
+/** Data format code 10 (trailing comment: signed 32-bit integer); for a Cobold LMF file OpenInputLMF() accepts it as the header data format. */
 #define LM_SLONG				10	// signed 32bit integer
+/** Data format code 11 (trailing comment: signed 64-bit integer); for a Cobold LMF file OpenInputLMF() rejects it as the header data format (error 8). */
 #define LM_SDOUBLELONG			11	// signed 64bit integer
+/** Equal to LM_SDOUBLELONG (11); not used in LMF_IO.cc. */
 #define LM_LASTKNOWNDATAFORMAT	LM_SDOUBLELONG
+/** Data format code -1 (trailing comment: the user handles the reading); for a Cobold LMF file OpenInputLMF() accepts it as the header data format. */
 #define LM_USERDEF				-1	// user will handle the reading 
 
 

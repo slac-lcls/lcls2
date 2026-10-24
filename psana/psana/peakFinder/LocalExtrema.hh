@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares localextrema functions that build maps and lists of local minima/maxima in 1-d and 2-d arrays, and the diagonal-offset helpers.
+ */
 #ifndef PSALGOS_LOCALEXTREMA_H
 #define PSALGOS_LOCALEXTREMA_H
 
@@ -23,6 +27,7 @@ using namespace psalg; // Array
 
 //-----------------------------
 
+/** Local-extremum search functions for 1-d and 2-d arrays (maps of local minima and maxima, lists of extremum indexes) used by the peak finders. */
 namespace localextrema {
 
 /**
@@ -91,16 +96,24 @@ namespace localextrema {
 //-----------------------------
 
 typedef types::mask_t     mask_t;
+/** Alias for types::extrim_t (uint16_t). */
 typedef types::extrim_t   extrim_t;
+/** Alias for types::TwoIndexes. */
 typedef types::TwoIndexes TwoIndexes;
 
 //-----------------------------
 
+/** Return the (i, j) offsets with -rank <= i, j <= rank and both nonzero (the square around a pixel without its central row and column), in an AllocArray1D allocated from allocator. */
 AllocArray1D<TwoIndexes> evaluateDiagIndexes_drp(const size_t& rank, Allocator *allocator);
+/** Print to stdout a (2*rank+1) x (2*rank+1) matrix of the offsets used by evaluateDiagIndexes(): 1 for used, 0 for the central row and column, and + at the center. */
 void printMatrixOfDiagIndexes(const size_t& rank);
+/** Print the size and the (i, j) pairs of evaluateDiagIndexes(rank) to stdout, ten pairs per line. */
 void printVectorOfDiagIndexes(const size_t& rank);
+/** Return how many of the rows*cols entries of map equal vsel. */
 size_t numberOfExtrema(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7);
+/** Return the (i, j) offsets with -rank <= i, j <= rank and both nonzero, as a std::vector. */
 std::vector<TwoIndexes> evaluateDiagIndexes(const size_t& rank);
+/** Return the (row, col) indexes of all entries of map equal to vsel, in row-major order. maxlen (rows*cols/4 if 0) only sets the reserved capacity; it does not limit the result. */
 std::vector<TwoIndexes> vectorOfExtremeIndexes(const extrim_t *map, const size_t& rows, const size_t& cols, const extrim_t& vsel=7, const size_t& maxlen=0);
 
 //-----------------------------
