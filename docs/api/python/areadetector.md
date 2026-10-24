@@ -22,7 +22,7 @@ Notes for reading the reference below:
   the detector name used to fetch calibration constants (except for
   `exp="xpptut15"`, for which `Run._setup_run_calibconst` in
   `psana/psana/psexp/run.py` uses the fixed name `cspad_detnum1234`; see
-  Calibration constants).
+  [Calibration constants](../../features/calibration.md)).
 - `raw(evt, copy=True)`: `copy` is a parameter, although the generated
   section lists it under "Returns". For a detector with more than one segment
   the segments are stacked into a buffer that the next call reuses (while
@@ -30,7 +30,7 @@ Notes for reading the reference below:
   a copy. For a single segment the segment's array is returned in both cases.
 
 See [Detector interface](../../features/detector-interface.md) and
-Calibration constants.
+[Calibration constants](../../features/calibration.md).
 
 ::: psana.detector.areadetector
     options:

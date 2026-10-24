@@ -22,7 +22,7 @@ Defined in `psana/psana/psexp/run.py` (`Run.Detector`).
   DRP class found in the data, for example `det.raw` or `det.fex`. Each
   attribute is an instance of the matching interface class. The container also
   carries `det.calibconst` (the calibration constants for this detector, see
-  Calibration constants) and `det._det_name`.
+  [Calibration constants](calibration.md)) and `det._det_name`.
 - If `name` is an EPICS variable or a scan variable, it returns a single
   callable object instead (see below).
 - If nothing matches, it raises `KeyError` ("No available detector class
@@ -109,7 +109,7 @@ be `None` before the first update).
 Area detector image, from `psana/psana/tests/test_epix_calib.py`. The xtc2
 file ships with the repository, but `image()` needs calibration constants and
 geometry, which psana fetches from the calibration database (see
-Calibration constants):
+[Calibration constants](calibration.md)):
 
 ```python
 from psana import DataSource

@@ -76,7 +76,7 @@ the analysis-only build above.
 From `README.md`: `LCLS_CALIB_HTTP` is the base URL of the calibration web
 service, for example `https://pswww.slac.stanford.edu/ws`. Do not append
 `/calib_ws/`; psana adds that path itself. See
-Calibration constants.
+[Calibration constants](features/calibration.md).
 
 ## Run the tests
 

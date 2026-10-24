@@ -66,6 +66,10 @@ logger.debug(f'URL CALIB DB RW: {URL_KRB}')
 _counter = 0
 
 def krbheaders():
+    """Return Kerberos HTTP authorization headers for ``URL_KRBHEADERS`` as a dict with ``'Content-Type'`` set to ``'application/octet-stream'``, or None if getting the ticket fails.
+
+    A failure is logged at debug level only the first time (module counter ``_counter``).
+    """
     global _counter
     try:
         krbh = KerberosTicket(URL_KRBHEADERS).getAuthHeaders()
@@ -216,6 +220,7 @@ dic_det_name_to_type = dict(zip(list_det_names, list_det_types))
 
 if __name__ == "__main__":
   def test_constants():
+    """Print the configured URLs, DB host and port, user name and password values (defined only when run as a script)."""
     print('URL_ENV  : %s' % str(URL_ENV )\
       + '\nURL      : %s' % str(URL     )\
       + '\nURL_KRB  : %s' % str(URL_KRB )\

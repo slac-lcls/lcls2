@@ -130,6 +130,7 @@ logger = logging.getLogger(__name__)
 
 ups=None
 def import_ups():
+    """Import ``psana.pscalib.geometry.UtilsPSF`` into the module global ``ups`` the first time it is called; later calls do nothing."""
     global ups
     if ups is None: import psana.pscalib.geometry.UtilsPSF as ups
 
@@ -171,6 +172,7 @@ class GeometryAccess:
 
     def reset_cash(self):
         # Parameters for caching
+        """Reset the cached geometry, object name/index, tilt flag, coordinate arrays, index arrays, point, frame and fraction values (``*_old`` attributes) to None."""
         self.geo_old    = None
         self.oname_old  = None
         self.oindex_old = None
@@ -501,6 +503,7 @@ class GeometryAccess:
 
 
     def print_list_of_geos(self):
+        """Log a header (noting an empty list) and, if the geometry is valid, call ``print_geo()`` for every object in ``list_of_geos``."""
         s = 'print_list_of_geos():'
         if len(self.list_of_geos) == 0:  s += ' List_of_geos is empty...'
         logger.info(s)
@@ -509,6 +512,7 @@ class GeometryAccess:
 
 
     def print_list_of_geos_children(self):
+        """Log a header (noting an empty list) and, if the geometry is valid, call ``print_geo_children()`` for every object in ``list_of_geos``."""
         s = 'print_list_of_geos_children():'
         if len(self.list_of_geos) == 0: s += ' List_of_geos is empty...'
         logger.info(s)
@@ -517,6 +521,7 @@ class GeometryAccess:
 
 
     def print_comments_from_dict(self):
+        """Log the geometry-file comments from ``dict_of_comments`` sorted by key; does nothing if the geometry is not valid."""
         s = '\nprint_comments_from_dict():'
         if not self.valid: return
         #for k,v in self.dict_of_comments.iteritems():
@@ -538,6 +543,12 @@ class GeometryAccess:
 
 
     def xy_to_rc_point(self, X, Y, p_um=(0,0), pix_scale_size_um=None, xy0_off_pix=None, cframe=0, fract=False):
+        """Return the image (row, column) of point ``p_um`` (x, y in um) for pixel coordinate arrays ``X`` and ``Y``.
+
+        The origin is the minimum x and y (``cframe=0``) or minimum x and maximum y (``cframe=1``, rows from y),
+        shifted by half a pixel and by ``xy0_off_pix`` if given; the pixel size is ``pix_scale_size_um`` or
+        ``get_pixel_scale_size()``. Returns ints (floor) or, with ``fract``, floats; ``(None, None)`` if ``X`` or ``Y`` is None.
+        """
         if X is None or Y is None: return None, None
 
         x_um, y_um = self.p_um_old = p_um

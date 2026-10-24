@@ -150,15 +150,18 @@ def info_dict(d, cmt='', offset='  '):
     return s
 
 def info_dict_keys(d, sep=' '):
+    """Return the keys of dict ``d`` joined by ``sep``."""
     return sep.join(d.keys())
 
 def info_dict_for_keys(d, keys=('_id', 'experiment', 'run', 'run_orig', 'short', 'time_stamp', 'ctype'), sep='  '):
+    """Return ``'key: value'`` strings for the items of ``d`` whose key is in ``keys``, joined by ``sep``."""
     return sep.join([f'{k}: {v}' for k,v in d.items() if k in keys])
     #d = up.dict_filter(doc, list_keys=keys, ordered=False)
 
 info_document = info_dict_for_keys
 
 def info_ldocs(ldocs, nmax=4, sep='\n  '):
+    """Return ``'ndocs=<n>'`` followed by short summaries (:func:`info_dict_for_keys`) of at most ``nmax`` documents, or ``'None'`` if ``ldocs`` is None."""
     if ldocs is None: return 'None'
     ndocs = len(ldocs)
     s = f'ndocs={ndocs}'
@@ -166,6 +169,10 @@ def info_ldocs(ldocs, nmax=4, sep='\n  '):
     return s
 
 def info_docs_list(docs, strlen=150):
+    """Return one line per document of ``docs`` with its index and the first ``strlen`` characters of ``str(doc)``.
+
+    If ``docs`` is not a list, a message saying so is returned instead.
+    """
     if not isinstance(docs, list):
         return f'info_docs_list parameter docs is not list: {str(docs)}'
     s = ''
@@ -174,16 +181,23 @@ def info_docs_list(docs, strlen=150):
     return s
 
 def info_detname(d, keys=('_id','short','time_stamp','long')):
+    """Return the ``_id``/``short``/``time_stamp``/``long`` items of ``d['json']`` as a string, or ``'None'`` if that entry is not a dict."""
     r = d.get('json', None)
     return info_dict_for_keys(r, keys=keys) if isinstance(r, dict) else 'None'
 
 def info_detnames(ldocs, keys=('_id','short','time_stamp','long'), nmax=10, sep='\n  '):
+    """Return ``'ndocs=<n>'`` followed by :func:`info_detname` of at most ``nmax`` entries of ``ldocs``, or ``'None'`` if ``ldocs`` is None."""
     if ldocs is None: return 'None'
     return f'ndocs={len(ldocs)}' + sep + sep.join([info_detname(d, keys=keys) for i,d in enumerate(ldocs) if i<nmax])
 
 
 
 def post(url, data=None, doc={}, **kwa):
+    """Send an HTTP POST of ``data`` (or JSON ``doc`` if ``data`` is None) to ``url`` and return the response.
+
+    Uses the JWT session if a ``CALIB_JWT`` token is set, otherwise ``requests.post`` with Kerberos headers.
+    In the JWT branch a ``'headers'`` key in ``doc`` triggers ``json.pop(...)`` on the json module, which raises AttributeError.
+    """
     logger.debug(f'post url: {url}  ticket: {info_ticket}  **kwa: {str(kwa)}  doc: {str(doc)}  data: {str(data)[:200]}')
     if has_jwt:
         if data is None:
@@ -202,12 +216,18 @@ def post(url, data=None, doc={}, **kwa):
 
 
 def put(url, doc, **kwa):
+    """Send an HTTP PUT of JSON ``doc`` to ``url`` (JWT session, or Kerberos headers without a token) and return the response."""
     logger.debug(f'put url: {url} doc: {str(doc)}')
     return session.put(url, json=doc) if has_jwt else\
            req.put(url, json=doc, headers=cc.krbheaders())
 
 
 def get(url, query=None, timeout=180, **kwa):
+    """Send an HTTP GET to ``url`` with ``query`` and return the response.
+
+    With a JWT token the query is sent as a JSON body; otherwise Kerberos headers are used and the query is
+    sent as URL parameters (``USE_QUERY_STR``) or as JSON.
+    """
     logger.debug(f'get for url: {url}  query: {str(query)}  ticket: {info_ticket}')
     if has_jwt:
         r = session.get(url, json=query, timeout=timeout)
@@ -221,6 +241,7 @@ def get(url, query=None, timeout=180, **kwa):
 
 
 def delete_cmd(url):
+    """Send an HTTP DELETE to ``url`` (JWT session or Kerberos headers), log the result and return the response."""
     resp = session.delete(url) if has_jwt else\
            req.delete(url, headers=cc.krbheaders())
     logger.info(f'delete for url: {url}  ticket: {info_ticket}  resp.ok: {resp.ok}')
@@ -228,6 +249,7 @@ def delete_cmd(url):
 
 
 def query_id_pro_str(query):
+    """Rewrite ``query['_id']`` in place as the string ``'ObjectId(<id>)'`` unless it is missing or already contains ``'ObjectId'``; return ``query``."""
     id = query.get('_id', None)
     if (id is None) or ('ObjectId' in id): return query
     query['_id'] = 'ObjectId(%s)'%id
@@ -235,6 +257,10 @@ def query_id_pro_str(query):
 
 
 def query_id_pro(query):
+    """Prepare the ``'_id'`` entry of ``query`` for the web service and return ``query``.
+
+    Uses :func:`query_id_pro_str` when ``USE_QUERY_STR`` is set; otherwise a str ``_id`` is converted to ``bson.ObjectId``.
+    """
     if USE_QUERY_STR: return query_id_pro_str(query)
     id = query.get('_id', None)
     if isinstance(id, str):
@@ -243,6 +269,10 @@ def query_id_pro(query):
 
 
 def request(url, query=None, timeout=180, **kwa):
+    """Send a GET with :func:`get` and return the response if it is OK, otherwise None.
+
+    An HTTP 503 status logs a warning and calls ``sys.exit(1)``.
+    """
     logger.debug(f'in request for url: {url} and query: {str(query)}     {info_ticket}')
     #t0_sec = time()
     #r = req.get(url, query, timeout=180)
@@ -908,6 +938,11 @@ def delete_document_and_data(dbname, colname, doc_id, **kwa):
 
 
 def delete_documents(dbname, colname, doc_ids, **kwa):
+    """Delete each document id in ``doc_ids`` from ``dbname``/``colname``; returns None.
+
+    For DB ``'cdb_detnames'`` only the document is deleted (``delete_document``), otherwise the document
+    and its data (``delete_document_and_data``). Requests go to the web service.
+    """
     resp = None
     for doc_id in doc_ids:
         isok = delete_document(dbname, colname, doc_id) if dbname == 'cdb_detnames' else\
@@ -916,6 +951,10 @@ def delete_documents(dbname, colname, doc_ids, **kwa):
 
 
 def info_doc(dbname, colname, docid, strlen=150):
+    """Return a multi-line string with the items of the document ``docid`` in ``dbname``/``colname`` (values cut at ``strlen``).
+
+    Returns a short message instead if no document is found or it is not a dict.
+    """
     ldocs = find_docs(dbname, colname, query=query_id_pro({"_id":docid}))
     if not ldocs:
         return f'db/collection: {dbname}/{colname} does not have any document'
@@ -929,6 +968,7 @@ def info_doc(dbname, colname, docid, strlen=150):
 
 
 def info_docs(dbname, colname, query={}, strlen=150):
+    """Return a string with the number of documents in ``dbname``/``colname`` matching ``query`` and a line per document, or a "not found" message if the query returns None."""
     docs = find_docs(dbname, colname, query)
     if docs is None:
         return f'DB/collection {dbname}/{colname} DOCUMENTS NOT FOUND'
@@ -936,6 +976,7 @@ def info_docs(dbname, colname, query={}, strlen=150):
 
 
 def str_formatted_list(lst, ncols=5, width=24):
+    """Return the items of ``lst`` left-justified to ``width`` characters, ``ncols`` per line."""
     s=''
     c=0
     for v in lst:
@@ -949,6 +990,12 @@ def str_formatted_list(lst, ncols=5, width=24):
 
 def info_webclient(**kwargs):
 
+    """Return a text summary of the calibration DB web service selected by ``kwargs``.
+
+    Without a DB name: all DB names (only ``cdb_`` ones if ``cdbonly``) with their collections; with a DB
+    name: its collections and documents; with a collection: its documents; with ``docid``: that document.
+    Messages are returned for unknown DB/collection names or when no DB names are returned.
+    """
     width = kwargs.get('width', 24)
     ptrn = mu.db_prefixed_name('') if kwargs.get('cdbonly', False) else None
     dbnames = database_names(pattern=ptrn)
@@ -1022,7 +1069,9 @@ def valid_post_privilege(dbname):
     return r.ok
 
 
-def my_sort_parameter(e): return e['_id']
+def my_sort_parameter(e):
+    """Return ``e['_id']``; used as the sort key for documents."""
+    return e['_id']
 
 
 def collection_info(dbname, cname, **kwa):
@@ -1049,6 +1098,7 @@ def collection_info(dbname, cname, **kwa):
 
 
 def list_of_documents(dbname, cname):
+    """Return the documents of ``dbname``/``cname`` from :func:`find_docs` sorted by ``_id``, or an empty list if there are none."""
     docs = find_docs(dbname, cname)
     if not docs: return []
     docs = sorted(docs, key=my_sort_parameter) #, reverse=True
