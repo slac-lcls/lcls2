@@ -51,6 +51,13 @@ manager builds this binding from sorted Configure segment IDs. Missing or
 rejected segments are zero-filled and marked absent. A valid field with a
 non-`Corrupted` damage flag remains usable; presence does not mean damage-free.
 
+A constants array from `batch.calibconst()` stays valid for the whole run,
+including when BD ranks share a GPU: the device copy is uploaded once at setup
+and released at teardown, never replaced mid-run. Keeping a reference across
+events or steps is therefore safe; keeping one past the run is not, so copy
+with `.get()` to outlive it. See
+[lifetime](device_placement_and_shared_constants.md#lifetime-valid-for-the-whole-run).
+
 Generic fields need no dense adapter or CPU detector class. They preserve
 physical segment identity and runtime shape in device descriptors. Configure
 payload fields are not event selectors. Pointer-consuming kernels must check
@@ -63,14 +70,22 @@ arrays are allowed; missing keys, unsupported values and undeclared access fail
 explicitly. Gains are not implicitly inverted; offsets and masks are not
 implicitly prepared. Empty declarations cause no task-constant upload.
 
-Each BD owns a requested snapshot. BeginStep drains prior work and refreshes
-changed requested arrays after the host transition; it does not fetch the DB.
-Original calibration arrays retain their physical segment axis. Map dense rows
-using `segment_ids` rather than assuming a dense row number is a physical ID.
+Each BD owns a requested snapshot, uploaded once at run setup. psana does not
+replace or refresh it during the run: BeginStep drains prior work and applies
+the host transition but does not reupload constants, because it does not fetch
+the DB. **Mutating the host-side calibration dictionary after setup does not
+update the GPU snapshot.** One constant set per run is the supported model;
+dynamic mid-run updates are deferred (#168). Original calibration arrays retain
+their physical segment axis. Map dense rows using `segment_ids` rather than
+assuming a dense row number is a physical ID.
 
-Inputs/constants are read-only by contract. Psana cannot intercept arbitrary
-native writes. To modify values, allocate and register an owned destination
-before submitting the copy or kernel:
+Inputs and constants are read-only **by contract, not by enforcement**. CuPy
+arrays have no NumPy-style WRITEABLE flag and psana cannot intercept native
+writes, so nothing stops a kernel writing into an array from
+`batch.calibconst()` — it just corrupts the snapshot for every later batch and,
+when constants are shared over CUDA IPC, for every peer rank on the GPU. Write
+results into separate outputs. To modify values, allocate and register an owned
+destination before submitting the copy or kernel:
 
 ```python
 raw = batch.input("jungfrau.raw")

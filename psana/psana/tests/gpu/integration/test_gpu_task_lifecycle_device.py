@@ -86,7 +86,15 @@ def test_transition_drains_task_publications_before_constant_change(monkeypatch,
         if service == TransitionId.BeginStep:
             submit()
             for i, envelope in enumerate(m._flush_event_pool()):
-                np.testing.assert_array_equal(envelope.gpu_state.get('value').on_cpu, expected[i] + 2)
+                # Still + 1, not + 2. `dispatch` above sets host[...] = 2,
+                # but one constant set per run means the device copy is not
+                # re-read at a BeginStep -- psana does not fetch the
+                # calibration DB there, so a host array cannot change under a
+                # running job. This expected + 2 when the old contract
+                # refreshed at every step.
+                np.testing.assert_array_equal(envelope.gpu_state.get('value').on_cpu, expected[i] + 1)
+            # The step generation still advances: BeginStep drains and
+            # re-dispatches, it just does not reload constants.
             assert calls == [(3, 0), (3, 1)]
         else:
             assert calls == [(3, 0)] and m._step_generation == 0

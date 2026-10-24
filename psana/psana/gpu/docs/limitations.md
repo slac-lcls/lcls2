@@ -6,15 +6,42 @@ current design and tests; this page contains current restrictions and open work.
 
 ## Multi-EB device accounting
 
-**Open correctness/resource issue:** BD GPU pinning and automatic peer counts
-use the EB-local `bd_comm`. With several EB groups on one node, local rank
-numbering restarts: groups can select the same GPU while budgeting only their
-own peers. `PS_EB_NODES > 1` on shared GPUs is not a validated configuration.
-The accepted campaigns use one EB. Resolving this requires node-wide BD device
-assignment and memory accounting before CUDA initialization, followed by uneven
-multi-EB/BD/GPU placement tests. An explicit memory quota alone does not implement
-that coordination. Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
-[gpu_mpi.py](../gpu_mpi.py).
+**Supported.** BD workers sharing a GPU are grouped by driver-reported
+`(hostname, PCI bus id)`, so the peer count is independent of EB topology by
+construction and no rank arithmetic participates. Deriving it from the
+EB-local `bd_comm` instead would over-commit the device, because local rank
+numbering restarts in each group: measured 2.0x at `PS_EB_NODES=2` and 3.0x at
+3, with ranks on one device disagreeing about the count in uneven layouts.
+
+Validated on A100s at `PS_EB_NODES` 1, 2 and 3, contiguous and round-robin, an
+uneven 8-rank split, and across two nodes: aggregate claim 1.0 on every device.
+See
+[device placement and shared constants](device_placement_and_shared_constants.md).
+
+Two items remain open.
+
+**The automatic budget is conservative within a device.** It takes the minimum
+of free memory over the ranks sharing one card, so the busiest peer's sample
+sets the figure for all of them. The minimum is per device, not job-wide: a mix
+of 40 GB and 80 GB cards no longer lowers the 80 GB card's ranks to the 40 GB
+share. An explicit `gpu_memory_budget_gb` is checked against each device's own
+capacity and peer count, and the failure verdict is then reduced job-wide, so
+every rank stops together without any device being judged against another's
+figures.
+
+**MIG is not supported and not tested, and no flag makes it work.** Grouping
+keys on the PCI bus id, which instances of one card share, so ranks on separate
+instances are counted as peers and each one's budget is divided by however many
+were merged. `PSANA_GPU_SHARE_CONSTANTS=0` avoids the IPC abort that follows
+but leaves that peer count and budget wrong, so it is not a MIG configuration.
+Deferred per [issue #155](https://github.com/slac-lcls/lcls2/issues/155) as
+follow-up before a MIG deployment, not a blocker for the current non-MIG scope.
+See
+[device placement and shared constants](device_placement_and_shared_constants.md#limits)
+for the detail.
+
+Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
+[gpu_placement.py](../gpu_placement.py).
 
 ## Supported interface and configuration
 
