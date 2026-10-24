@@ -1,0 +1,102 @@
+site_name: lcls2
+site_description: Documentation for lcls2 (psana2 analysis, psdaq DAQ, xtcdata, psalg)
+site_url: https://slac-lcls.github.io/lcls2/
+repo_url: https://github.com/slac-lcls/lcls2
+repo_name: slac-lcls/lcls2
+copyright: lcls2 contributors, SLAC National Accelerator Laboratory
+
+# Files under docs/ that are build inputs, not site content.
+exclude_docs: |
+  /hooks/
+  /requirements.txt
+  /doxygen/
+  /tools/
+
+# Fail the build on any warning (broken links, missing pages, mkdocstrings
+# errors). "mike deploy" does not pass --strict, so it is set here.
+strict: true
+
+theme:
+  name: material
+  features:
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - search.highlight
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+
+extra:
+  version:
+    provider: mike
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.inlinehilite
+  - pymdownx.superfences
+
+plugins:
+  - search
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          # Static analysis only: griffe reads the source files and never
+          # imports them (psana and psdaq need compiled extensions).
+          paths: [psana, psdaq]
+          options:
+            allow_inspection: false
+            # See the docstrings in docs/hooks/griffe_extensions.py.
+            extensions:
+              - docs/hooks/griffe_extensions.py:DropUnresolvedWildcards
+              - docs/hooks/griffe_extensions.py:DropUndocumentedAttributes
+              # Module docstrings written as plain text (ASCII art, "Usage::"
+              # blocks) are shown as preformatted text.
+              - docs/hooks/griffe_extensions.py:VerbatimDocstrings:
+                  paths:
+                    - psana.smalldata
+                    - psana.detector.areadetector
+                    - psana.detector.calibconstants
+            docstring_style: numpy
+            # Many docstrings in the repository are not strict numpydoc.
+            # Do not let style mismatches turn into (strict) build failures.
+            docstring_options:
+              warn_unknown_params: false
+              warn_missing_types: false
+              warnings: false
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: true
+            # Show signatures of undocumented functions/classes too.
+            show_if_no_docstring: true
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            merge_init_into_class: true
+            heading_level: 2
+            filters:
+              - "!^_"
+  - mike:
+      alias_type: symlink
+      canonical_version: dev
+      # Keep mike's default "version_selector: true". Material draws the
+      # selector itself (extra.version.provider: mike), but its base.html
+      # leaves it out when this option is false. mike adds no files of its
+      # own for the material theme (no "material" entry in mike.themes).
+
+nav:
+  - Home: index.md

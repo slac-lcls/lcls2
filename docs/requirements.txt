@@ -1,0 +1,12 @@
+# Tools for building the documentation site (mkdocs.yml, Doxyfile).
+# Versions match the environment the site was developed and tested with.
+# Doxygen is not a Python package; install it separately (e.g. apt-get install doxygen).
+mkdocs==1.6.1
+mkdocs-material==9.7.7
+mkdocstrings[python]==1.0.6
+mkdocstrings-python==2.0.9
+mkdocs-autorefs==1.4.4
+griffelib==2.3.0
+pymdown-extensions==12.1
+mike==2.2.0
+jsonschema==4.26.0
