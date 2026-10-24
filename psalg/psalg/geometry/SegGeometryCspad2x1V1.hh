@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::SegGeometryCspad2x1V1, the SegGeometry of a CSPAD 2x1 sensor.
+ */
 #ifndef PSALG_SEGGEOMETRYCSPAD2X1V1_H
 #define PSALG_SEGGEOMETRYCSPAD2X1V1_H
 
@@ -175,6 +179,7 @@ public:
   //-----------------
   // Singleton stuff:
 
+  /** Return the single shared SegGeometryCspad2x1V1, creating it with use_wide_pix_center on the first call; later calls ignore the argument. */
   static geometry::SegGeometry* instance(const bool& use_wide_pix_center=false);
 
 private:

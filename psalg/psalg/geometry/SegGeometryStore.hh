@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::SegGeometryStore, whose static Create() returns the SegGeometry for a segment name (SENS2X1:V1, EPIX100:V1, EPIX10KA:V1, PNCCD:V1 or a MTRX:... name), or 0 for other names.
+ */
 #ifndef PSALG_SEGGEOMETRYSTORE_H
 #define PSALG_SEGGEOMETRYSTORE_H
 

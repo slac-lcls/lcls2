@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares templates that fill an NDArray with a constant, uniform random integers or normal random values.
+ */
 #ifndef PSALG_NDARRAYGENERATORS_H
 #define PSALG_NDARRAYGENERATORS_H
 
@@ -60,6 +64,7 @@ namespace psalg {
 
 //---------
 // fill ndarray with constant
+/** Set every element of a to c. */
 template <typename T>
 void fill_ndarray_const(NDArray<T>& a, const T& c) {
   std::fill(a.data(), a.data() + a.size(), c);
@@ -67,6 +72,7 @@ void fill_ndarray_const(NDArray<T>& a, const T& c) {
 
 //---------
 // fill ndarray with random values in the range [0,100)
+/** Set every element of a to std::rand() % range, cast to T. */
 template <typename T>
 void fill_ndarray_random(NDArray<T>& a, int range=100) {
   for(T* p=a.data(); p<a.data() + a.size(); ++p) *p = (T)(std::rand() % range);
@@ -74,6 +80,10 @@ void fill_ndarray_random(NDArray<T>& a, int range=100) {
 
 //---------
 // fill ndarray with random values in the range [0,100)
+/**
+ * Set every element of a to a sample from a normal distribution with the given mean and stddev, cast to T.
+ * A default-constructed std::default_random_engine is used, so every call produces the same sequence.
+ */
 template <typename T>
 void fill_ndarray_normal(NDArray<T>& a, double mean=0, double stddev=1) {
   std::default_random_engine generator;

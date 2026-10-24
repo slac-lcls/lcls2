@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::SegGeometryMatrixV1, the SegGeometry of a rectangular pixel matrix, and matrix_pars() for MTRX segment names.
+ */
 #ifndef PSALG_SEGGEOMETRYMATRIXV1_H
 #define PSALG_SEGGEOMETRYMATRIXV1_H
 
@@ -109,10 +113,12 @@ bool matrix_pars(const std::string& segname
 
 //-------------------
 
+/** SegGeometry of a rectangular rows x cols matrix with uniform pixel sizes; the defaults (512 x 512, 75 um) are for pnCCD per the comment above. The pixel coordinate arrays are built in the constructor. */
 class SegGeometryMatrixV1 : public geometry::SegGeometry {
 
 public:
 
+  /** Map from segment name to SegGeometry pointer. instance(segname) keeps its instances in a namespace-level map of this type defined in SegGeometryMatrixV1.cc. */
   typedef std::map<const std::string, geometry::SegGeometry*> MapInstance;
 
   /// Number of corners
@@ -148,6 +154,7 @@ public:
 		     ,const pixel_coord_t& pix_scale_size = PIX_SCALE_SIZE_DEF
                      );
 
+  /** Destructor with an empty body; the arrays allocated by the class are not freed. */
   virtual ~SegGeometryMatrixV1();
 
   //-----------------
@@ -199,6 +206,10 @@ public:
   //-----------------
   // Singleton stuff:
 
+  /**
+   * Parse segname ("MTRX:rows:cols:rowsize:colsize") and return the instance stored for that exact name, creating a SegGeometryMatrixV1(rows, cols, rowsize, colsize) on first use.
+   * Returns 0 (after printing a message and logging an ERROR) if segname does not contain "MTRX".
+   */
   static geometry::SegGeometry* instance(const std::string& segname="MTRX:512:512:75:75");
 
 private:

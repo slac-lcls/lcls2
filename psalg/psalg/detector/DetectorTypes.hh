@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares detector::DETTYPE, the name-to-type maps and find_dettype(), dettypename() and the map printers.
+ */
 #ifndef PSALG_DETECTORTYPES_H
 #define PSALG_DETECTORTYPES_H
 
@@ -14,19 +18,21 @@
 
 namespace detector {
 
-  enum DETTYPE {UNDEFINED_DETECTOR=0,
-                AREA_DETECTOR,
-                CONTROL_DATA_DETECTOR,
-		DDL_DETECTOR,
-                EPICS_DETECTOR,
-                EVR_DETECTOR,
-                WF_DETECTOR,
-                IPIMB_DETECTOR,
-                OCEAN_DETECTOR,
-                USDUSB_DETECTOR,
-                TDC_DETECTOR         
+  /** Detector categories. find_dettype() maps detector names to them and dettypename() maps them to their enumerator names. */
+  enum DETTYPE {UNDEFINED_DETECTOR=0, /**< Value 0; returned by find_dettype() when no key matches (map key "NoDevice"). */ 
+                AREA_DETECTOR,  ///< Value 1; map keys such as "Cspad", "Jungfrau", "pnCCD", "Opal1000".
+                CONTROL_DATA_DETECTOR,  ///< Value 2; no map key gives this type.
+		DDL_DETECTOR,  ///< Value 3; keys "Encoder" and "Gsc16ai" and several entries of map_bldinfo_to_dettype.
+                EPICS_DETECTOR,  ///< Value 4; no map key gives this type.
+                EVR_DETECTOR,  ///< Value 5; map key "Evr".
+                WF_DETECTOR,  ///< Value 6; map key "Acqiris".
+                IPIMB_DETECTOR,  ///< Value 7; map key "Ipimb" and the IPM entries of map_bldinfo_to_dettype.
+                OCEAN_DETECTOR,  ///< Value 8; no map key gives this type.
+                USDUSB_DETECTOR,  ///< Value 9; no map key gives this type.
+                TDC_DETECTOR  ///< Value 10; map key "AcqTDC".
                };
 
+  /** Map from DETTYPE to its enumerator name, used by dettypename(). Static in the header, so each translation unit has its own copy. */
   static std::map<DETTYPE, std::string> map_dettype_to_typename = {
     {UNDEFINED_DETECTOR,    "UNDEFINED_DETECTOR"},
     {AREA_DETECTOR,         "AREA_DETECTOR"},
@@ -41,6 +47,7 @@ namespace detector {
     {TDC_DETECTOR,    	    "TDC_DETECTOR"}
   };
 
+  /** Map from a detector-name fragment (e.g. "Cspad", "Jungfrau", "Evr") to DETTYPE, searched first by find_dettype(). Static in the header, so each translation unit has its own copy. */
   static std::map<std::string, DETTYPE> map_detname_to_dettype = {
     {"NoDevice"       , UNDEFINED_DETECTOR},
     {"Evr"            , EVR_DETECTOR},
@@ -92,6 +99,7 @@ namespace detector {
     {"ControlsCamera" , AREA_DETECTOR}
   };
 
+  /** Map from name fragments such as "EBeam", "FEEGasDetEnergy" or "XCS-IPM-01" to DETTYPE, searched by find_dettype() after map_detname_to_dettype. Static in the header, so each translation unit has its own copy. */
   static std::map<std::string, DETTYPE> map_bldinfo_to_dettype = {
     {"EBeam"              , DDL_DETECTOR},
     {"PhaseCavity"        , DDL_DETECTOR},
@@ -182,11 +190,15 @@ namespace detector {
     {"FEE-AIN-01"         , DDL_DETECTOR}
   };
 
+  /** Return the type of the first key of map_detname_to_dettype (alphabetical key order) that occurs in detname, else the first such key of map_bldinfo_to_dettype, else UNDEFINED_DETECTOR. Matching is a case-sensitive substring test. */
   const DETTYPE find_dettype(const std::string& detname);
 
+  /** Return the enumerator name of dettype from map_dettype_to_typename; operator[] inserts an empty name for a value not in the map. */
   inline const std::string& dettypename(const DETTYPE dettype) {return map_dettype_to_typename[dettype];}
 
+  /** Log all entries of map_detname_to_dettype as one INFO message, one "key => value" line each. */
   void print_map_detname_to_dettype();
+  /** Log all entries of map_bldinfo_to_dettype as one INFO message, one "key => value" line each. */
   void print_map_bldinfo_to_dettype();
 
 } // namespace detector

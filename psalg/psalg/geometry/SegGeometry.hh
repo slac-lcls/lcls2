@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::SegGeometry, the abstract interface to one detector segment's pixel geometry, and the min_of_arr/max_of_arr helpers.
+ */
 #ifndef PSALG_SEGGEOMETRY_H
 #define PSALG_SEGGEOMETRY_H
 
@@ -33,6 +37,10 @@ const static angle_t DEG_TO_RAD = 3.141592653589793238463 / 180;
 
 //-------------------
 
+/**
+ * Abstract interface to one segment's geometry: size, rows, cols, shape, pixel scale size, the pixel area, size, coordinate (per AXIS) and mask arrays, and the coordinate minimum and maximum.
+ * Everything except the constructor and destructor is pure virtual.
+ */
 class SegGeometry {
 public:
 
@@ -41,6 +49,7 @@ public:
 
   SegGeometry();
 
+  /** Virtual destructor; does nothing. */
   virtual ~SegGeometry();
 
   /// Prints segment info for selected bits
