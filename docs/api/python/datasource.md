@@ -8,7 +8,7 @@ classes, all derived from
 
 | Keyword | Returned class | Module |
 |---|---|---|
-| `shmem=` | `ShmemDataSource` (`NullDataSource` on the first `PS_SRV_NODES` MPI ranks) | `psana.psexp.shmem_ds`, [`psana.psexp.null_ds`](null_ds.md) |
+| `shmem=` | `ShmemDataSource` (`NullDataSource` on the first `PS_SRV_NODES` MPI ranks) | [`psana.psexp.shmem_ds`](shmem_ds.md), [`psana.psexp.null_ds`](null_ds.md) |
 | `exp=` (and `run=`) | `SerialDataSource` when `PS_PARALLEL=none` or only one MPI rank; otherwise `MPIDataSource` on smd0/eb/bd ranks and `NullDataSource` on the other ranks | [`psana.psexp.serial_ds`](serial_ds.md), [`psana.psexp.mpi_ds`](mpi_ds.md), [`psana.psexp.null_ds`](null_ds.md) |
 | `files=` | `SingleFileDataSource` | [`psana.psexp.singlefile_ds`](singlefile_ds.md) |
 | `drp=` | `DrpDataSource` (its constructor currently raises AttributeError; see drp_ds) | `psana.psexp.drp_ds` |

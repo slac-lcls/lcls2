@@ -30,7 +30,7 @@ that order and returns the matching class (details on the
 |---|---|---|
 | `exp=`, `run=` (optionally `dir=`) | `SerialDataSource`, or under MPI `MPIDataSource` (see [MPI parallel analysis](mpi-parallel.md)) | offline analysis of a run |
 | `files=` | `SingleFileDataSource` | one xtc2 file, no small data needed |
-| `shmem=` | `ShmemDataSource` (see Shared memory and live analysis) | monitoring a running DAQ |
+| `shmem=` | `ShmemDataSource` (see [Shared memory and live analysis](shmem-live.md)) | monitoring a running DAQ |
 | `drp=` | `DrpDataSource` | Python code running inside the DAQ's DRP |
 
 All of them derive from `DataSourceBase` (`psana/psana/psexp/ds_base.py`),
@@ -48,7 +48,7 @@ in `DataSourceBase.__init__`:
 | `detectors` / `xdetectors` | `[]` | Keep / drop the stream files of these detectors. |
 | `small_xtc` | `[]` | Detectors whose data are read from the big-data file instead of the small-data file. |
 | `timestamps` | empty array | Only process these event timestamps (array or `.npy` path). |
-| `live` | `False` | Wait for files that are still being written (see Shared memory and live analysis). |
+| `live` | `False` | Wait for files that are still being written (see [Shared memory and live analysis](shmem-live.md)). |
 | `skip_calib_load` | `[]` | Detector names (or `"all"`) whose calibration constants are not fetched. |
 | `log_level` | `logging.INFO` | Logging level (a level name string is accepted). |
 

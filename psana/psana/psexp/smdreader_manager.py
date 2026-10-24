@@ -1,3 +1,4 @@
+"""Define `SmdReaderManager`, which reads smalldata (smd) files through the `psana.smdreader` extension, and `BatchIterator`."""
 import os
 import time
 
@@ -79,6 +80,22 @@ class BatchIterator(object):
 
 
 class SmdReaderManager(object):
+    """Read smalldata files through `psana.smdreader.SmdReader` and hand out configs, chunks and batches.
+
+    The `SmdReader` is created over `smd_fds` with a buffer size of PS_SMD_CHUNKSIZE (default
+    0x10000000) and each batch is built with up to PS_SMD_N_EVENTS events (default 20000), or
+    `dsparms.max_events` if that is smaller. Iterating the manager (serial mode) yields one
+    `BatchIterator` per batch, and `chunks()` is the generator used by smd0 in parallel mode.
+
+    Parameters
+    ----------
+    smd_fds : sequence of int
+        Open file descriptors of the smalldata files (at least one).
+    dsparms : DsParms
+        Data source parameters.
+    configs : list, optional
+        Configure dgrams; if None, the first dgrams read by `get_next_dgrams` become the configs.
+    """
     def __init__(self, smd_fds, dsparms, configs=None):
         self.n_files = len(smd_fds)
         self.dsparms = dsparms
@@ -181,6 +198,13 @@ class SmdReaderManager(object):
         return True
 
     def pop_read_stats(self):
+        """Return and clear the byte counts and durations of the reads recorded by `force_read`.
+
+        Returns
+        -------
+        tuple of list
+            (bytes per read, seconds per read) since the previous call.
+        """
         bytes_list = self._read_bytes
         times_list = self._read_times
         self._read_bytes = []
@@ -189,6 +213,7 @@ class SmdReaderManager(object):
 
     @property
     def processed_events(self):
+        """Number of events processed so far, as reported by the `SmdReader` extension (`n_processed_events`)."""
         return self.smdr.n_processed_events
 
     def get_next_dgrams(self):
@@ -396,8 +421,10 @@ class SmdReaderManager(object):
 
     @property
     def min_ts(self):
+        """`min_ts` of the underlying `SmdReader`; computed in the extension, not visible here."""
         return self.smdr.min_ts
 
     @property
     def max_ts(self):
+        """`max_ts` of the underlying `SmdReader`; computed in the extension, not visible here."""
         return self.smdr.max_ts

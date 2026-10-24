@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares psalg::shmem::XtcMonitorServer, which serves datagrams to monitoring clients through shared memory.
+ */
 #ifndef MonReq_XtcMonitorServer_hh
 #define MonReq_XtcMonitorServer_hh
 
@@ -66,21 +70,46 @@ namespace psalg {
 
     class TransitionCache;
 
+    /**
+     * Serves datagrams to clients through shared memory: event buffer indexes go through POSIX message queues (serially or round-robin, see distribute()), transition buffer indexes through TCP sockets, and a TransitionCache keeps the transitions late clients need.
+     * The header comment above describes the design. Shared memory, queues and threads are created by the protected _init().
+     */
     class XtcMonitorServer {
     public:
+      /**
+       * Store the sizes, set up the message template (buffer count numberofEvBuffers plus 18 transition buffers), and install handlers for SIGINT, SIGSEGV, SIGABRT, SIGTERM and SIGPIPE that call unlink() and re-raise the signal.
+       * Shared memory, queues and threads are not created here (see _init()).
+       */
       XtcMonitorServer(const char* tag,
                        unsigned sizeofBuffers,
                        unsigned numberofEvBuffers,
                        unsigned numberofEvQueues);
+      /** Stop and join the discovery and task threads, print "Not Unlinking Shared Memory...", call unlink(), and delete the transition cache and internal arrays. */
       virtual ~XtcMonitorServer();
     public:
-      enum Result { Handled, Deferred };
+      /** Return value of events(). */
+      enum Result { Handled, /**< Transition: already copied into a transition buffer, or dropped if none was free. */ Deferred  /**< L1Accept: queued for copying by the task thread, or dropped if no event buffer was free; _deleteDatagram() is called when done. */ };
+      /**
+       * For an L1Accept, take a free event buffer (from the request queue, or stolen from a client queue) and queue dg for copying by the task thread, dropping it if none is free; returns Deferred.
+       * For other transitions, get a buffer from the TransitionCache, copy dg into it, on Enable reclaim all event buffers from the client queues, and send the buffer index to every ready client over TCP; returns Handled (also when no buffer is free).
+       */
       Result events   (XtcData::Dgram* dg);
+      /** Sleep in 1-second steps until the client list is non-empty. */
       void wait       ();
+      /**
+       * Discovery loop, run on its own thread by _init(): bind a TCP socket on 127.0.0.1 from port 32768 upward, advertise the port on the discovery message queue, and pass each accepted connection to the task thread through a pipe until terminated.
+       * Exits the process if the socket cannot be created; aborts on accept errors and on queue errors other than EAGAIN.
+       */
       void discover   ();
+      /**
+       * Task loop, run on its own thread by _init(): set up new clients, move returned event buffers to the request queue, copy queued events into shared memory and send their index to a client queue (serially or round-robin), and handle returned transition buffers and client disconnects until terminated.
+       * On exit it shuts down and closes the client sockets.
+       */
       void routine    ();
+      /** Set the terminate flag, then close all message queues and unlink their names (event, request, shuffle and discovery queues). The shared memory is not unlinked. */
       void unlink     ();
     public:
+      /** Choose event placement: true sets the return queue in the message template to the number of event queues (round-robin distribution), false sets it to 0 (serial). Messages already in the request and input queues are rewritten with the new value. */
       void distribute (bool);
     protected:
       int  _init             ();
