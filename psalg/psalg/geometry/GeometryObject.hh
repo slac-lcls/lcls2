@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::GeometryObject, one node (with position, rotations, tilts, parent and children) of a detector geometry tree.
+ */
 #ifndef PSALG_GEOMETRYOBJECT_H
 #define PSALG_GEOMETRYOBJECT_H
 
@@ -116,7 +120,9 @@ namespace geometry {
 class GeometryObject {
 public:
 
+  /** Alias for geometry::SegGeometry. */
   typedef geometry::SegGeometry SG;
+  /** Pointer to a GeometryObject. */
   typedef GeometryObject* pGO;
 
   /**
@@ -151,9 +157,12 @@ public:
                  angle_t       tilt_x = 0
                 );
 
+  /** Delete the segment geometry that the constructor got from SegGeometryStore::Create() (this can be a shared singleton instance) and free the pixel coordinate, area and mask arrays. */
   virtual ~GeometryObject() ;
 
+  /** Return a one-line string with the parent name and index, the object name and index, the position x0, y0, z0, the rotation angles and the tilt angles. */
   std::string string_geo();
+  /** Return a one-line string with the parent and object names and indexes, the number of children, and each child's name and index. */
   std::string string_geo_children();
   /// Returns string of data for output file
   std::string str_data();

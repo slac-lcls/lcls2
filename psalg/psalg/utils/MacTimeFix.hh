@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief On macOS without CLOCK_REALTIME, defines CLOCK_REALTIME and CLOCK_MONOTONIC as 0 and a clock_gettime() that fills the timespec from gettimeofday() (microsecond resolution); on other systems it only includes time.h.
+ */
 #include <time.h>
 #if defined(__MACH__) && !defined(CLOCK_REALTIME)
 #include <sys/time.h>

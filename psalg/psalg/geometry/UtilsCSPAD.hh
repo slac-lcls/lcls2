@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares CSPAD 2x2 constants and templates that reorder data between [185,388,2] and [2,185,388] layouts.
+ */
 #ifndef PSALG_UTILSCSPAD_H
 #define PSALG_UTILSCSPAD_H
 //-------------------
@@ -23,17 +27,19 @@ namespace geometry {
 
 using namespace psalg;
 
+/** Alias for psalg::types::shape_t (uint32_t). */
 typedef psalg::types::shape_t shape_t;
+/** Alias for psalg::types::size_t (uint32_t). */
 typedef psalg::types::size_t  psalg_size_t;
   //typedef psalg::NDArray NDArray;
 
 //-------------------
 
-static const psalg_size_t N2X1    = 2;
-static const psalg_size_t ROWS2X1 = 185;
-static const psalg_size_t COLS2X1 = 388;
-static const psalg_size_t SIZE2X1 = COLS2X1*ROWS2X1; 
-static const psalg_size_t SIZE2X2 = N2X1*SIZE2X1; 
+static const psalg_size_t N2X1    = 2;  ///< 2: number of 2x1 parts, the first dimension of the two2x1 layout used by the conversion templates.
+static const psalg_size_t ROWS2X1 = 185;  ///< 185: rows per 2x1 part in the conversion templates.
+static const psalg_size_t COLS2X1 = 388;  ///< 388: columns per 2x1 part in the conversion templates.
+static const psalg_size_t SIZE2X1 = COLS2X1*ROWS2X1;  ///< COLS2X1*ROWS2X1 (71780) elements per 2x1 part.
+static const psalg_size_t SIZE2X2 = N2X1*SIZE2X1;  ///< N2X1*SIZE2X1 (143560) elements.
 
 //-------------------
 

@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::SegGeometryEpix10kaV1, the SegGeometry of an Epix10ka sensor.
+ */
 #ifndef PSALG_SEGGEOMETRYEPIX10KAV1_H
 #define PSALG_SEGGEOMETRYEPIX10KAV1_H
 
@@ -188,6 +192,7 @@ public:
   //-----------------
   // Singleton stuff:
 
+  /** Return the single shared SegGeometryEpix10kaV1, creating it with use_wide_pix_center on the first call; later calls ignore the argument. */
   static geometry::SegGeometry* instance(const bool& use_wide_pix_center=false);
 
 private:

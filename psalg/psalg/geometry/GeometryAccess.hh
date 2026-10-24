@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares geometry::GeometryAccess, which loads a detector geometry description and computes pixel coordinates, areas, masks and image indexes.
+ */
 #ifndef PSALG_GEOMETRYACCESS_H
 #define PSALG_GEOMETRYACCESS_H
 
@@ -139,12 +143,19 @@ namespace geometry {
 
 using namespace psalg;
 
+/**
+ * Detector geometry built from "geometry" calibration text: each non-comment line becomes a GeometryObject, linked to its parent, and pixel arrays are computed from the tree.
+ * The long comment above gives usage examples.
+ */
 class GeometryAccess {
 public:
 
+  /** Alias for psalg::types::shape_t (uint32_t). */
   typedef psalg::types::shape_t shape_t;
+  /** Alias for GeometryObject::pGO, a GeometryObject pointer. */
   typedef GeometryObject::pGO pGO;
 
+  /** double; element type of the images from img_from_pixel_arrays() and ref_img_from_pixel_arrays(). */
   typedef double image_t;
 
   /**
@@ -166,6 +177,7 @@ public:
    */
   GeometryAccess(std::stringstream& ss);
 
+  /** Free the internal index, image and projected-coordinate arrays (delete[] on each that was allocated). */
   virtual ~GeometryAccess() ;
 
   /// Returns shared pointer to the geometry object specified by name and index 
@@ -194,6 +206,10 @@ public:
                          const bool do_tilt=true,
                          const bool do_eval=false);
 
+  /**
+   * Compute the pixel coordinates of the top geometry object (tilt applied) and return a new 1-d NDArray over the X, Y or Z array chosen by axis (X for any other value).
+   * The NDArray points at internal data without copying; the caller owns the NDArray object.
+   */
   NDArray<const pixel_coord_t>* get_pixel_coords(const AXIS axis=AXIS_X);
 
   /// Returns pixel coordinate arrays XatZ, YatZ, of size for specified Zplane and geometry object 
@@ -212,6 +228,10 @@ public:
 			 const std::string& oname = std::string(), 
 			 const segindex_t& oindex = 0);
 
+  /**
+   * Return a new 1-d NDArray over the X or Y pixel coordinates of the top geometry object projected to z = Zplane (get_pixel_xy_at_z()); AXIS_Y selects Y, any other value X.
+   * No data is copied; the caller owns the NDArray object.
+   */
   NDArray<const pixel_coord_t>* get_pixel_coords_at_z(const pixel_coord_t Zplane=0, const AXIS axis=AXIS_X);
 
   /// Returns pixel areas array A, of size for specified geometry object 
@@ -226,6 +246,7 @@ public:
 		        const std::string& oname = std::string(), 
 		        const segindex_t& oindex = 0);
 
+  /** Return a new 1-d NDArray over the pixel areas of the top geometry object (get_pixel_areas(A, size)). No data is copied; the caller owns the NDArray object. */
   NDArray<const pixel_area_t>* get_pixel_areas();
 
   /// Returns pixel mask array of size for specified geometry object 
@@ -246,6 +267,7 @@ public:
  		      const segindex_t& oindex = 0,
 		      const bitword_t& mbits = 0377);
 
+  /** Return a new 1-d NDArray over the pixel mask of the top geometry object built with mbits (get_pixel_mask(mask, size, "", 0, mbits)). No data is copied; the caller owns the NDArray object. */
   NDArray<const pixel_mask_t>* get_pixel_mask(const unsigned& mbits=0377);
 
   /// Returns pixel scale size for specified geometry object through its children segment
@@ -296,6 +318,10 @@ public:
                                const int* xy0_off_pix = 0,
                                const bool do_tilt=true);
 
+  /**
+   * Return a new 1-d NDArray over the X or Y pixel index array of the top geometry object, computed with tilt by get_pixel_coord_indexes(iX, iY, size, ...); AXIS_Y selects Y, any other value X.
+   * No data is copied; the caller owns the NDArray object.
+   */
   NDArray<const pixel_idx_t>* get_pixel_coord_indexes(const AXIS axis=AXIS_X,
                                                       const pixel_coord_t pix_scale_size_um = 0,
                                                       const int* xy0_off_pix = 0);
@@ -320,6 +346,10 @@ public:
                               const pixel_coord_t& pix_scale_size_um = 0, 
                               const int* xy0_off_pix = 0);
 
+  /**
+   * Return a new 1-d NDArray over the X or Y pixel index array of the top geometry object at z = Zplane (get_pixel_xy_inds_at_z()); AXIS_Y selects Y, any other value X.
+   * No data is copied; the caller owns the NDArray object.
+   */
   NDArray<const pixel_idx_t>* get_pixel_inds_at_z(const pixel_coord_t Zplane = 0,
                                                   const AXIS axis=AXIS_X,
                                                   const pixel_coord_t pix_scale_size_um = 0,
@@ -353,7 +383,9 @@ public:
   //void load_pars_from_string(const std::string& s);
 
   void load_pars_from_stringstream(std::stringstream& ss);
+  /** Parse s as geometry text (load_pars_from_stringstream()): the comment and object lists are cleared, '#' lines are stored as comments, empty lines are skipped, every other line becomes a geometry object, and parent/child relations are then set. */
   void load_pars_from_string(const std::string& s);
+  /** If fname is not empty, store it as the path; then read the file at the stored path and parse it as load_pars_from_string() does. A file that cannot be opened is logged as an ERROR and nothing is read from it. */
   void load_pars_from_file(const std::string& fname = std::string());
 
   /// Saves calibration file
@@ -398,6 +430,7 @@ public:
                 const pixel_coord_t& dt_z = 0 
 		);
 
+  /** Append the contents of file fname to ss; if it cannot be opened, log an ERROR and append nothing. */
   static void file_to_stringstream(const std::string& fname, std::stringstream& ss);
 
   //protected:

@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares psalg directory helpers files_in_dir() and dir_content().
+ */
 #ifndef PSALG_UTILS_H
 #define PSALG_UTILS_H
 
@@ -29,6 +33,10 @@ namespace psalg {
 
 //-------------------
 
+    /**
+     * Return the sorted paths dirname + "/" + name of the entries of dirname ("." and ".." included) whose names contain pattern, or all entries if pattern is null.
+     * A failed opendir() is not checked. The default dirname is a hard-coded /reg/neh/home/dubrovin path.
+     */
     std::vector<std::string>  
     files_in_dir(const char* dirname="/reg/neh/home/dubrovin/LCLS/con-detector/work",
                  const char* pattern=0) { // pattern="nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1"
@@ -51,6 +59,7 @@ namespace psalg {
 
 //-------------------
 
+    /** Print to stdout, one per line, the names of the entries of dirname that contain pattern (all if pattern is null). A failed opendir() is not checked. */
     void dir_content(const char* dirname="/reg/neh/home/dubrovin/LCLS/con-detector/work",
                      const char* pattern=0) { // "nda-xpptut15-r0260-XcsEndstation.0_Epix100a.1") {
         dirent* pdir;

@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares detector::AreaDetectorEpix100a, an AreaDetector subclass with stub shape and size overrides.
+ */
 #ifndef PSALG_AREADETECTOREPIX100A_H
 #define PSALG_AREADETECTOREPIX100A_H
 //-----------------------------
@@ -10,19 +14,24 @@ using namespace psalg;
 namespace detector {
 
 //-----------------------------
+/** AreaDetector subclass for Epix100a with stub overrides of shape(evt) and size(evt); everything else comes from AreaDetector. getAreaDetector(detname) creates it for EPIX100A names. */
 class AreaDetectorEpix100a : public AreaDetector {
 public:
 
   //------------------------------
 
+  /** Construct as AreaDetector(detname); no ConfigIter is stored. */
   AreaDetectorEpix100a(const std::string& detname);
+  /** Destructor; only logs a debug message. */
   virtual ~AreaDetectorEpix100a();
 
+  /** Log an INFO message "In AreaDetectorEpix100a::" followed by msg. */
   void _class_msg(const std::string& msg=std::string());
 
   /// shape, size, ndim of data from configuration object
   const shape_t* shape(const event_t&);
   //const size_t   ndim (const event_t&);
+  /** Stub: logs an INFO message and returns 123. */
   const size_t   size (const event_t&);
 
   /// access to calibration constants

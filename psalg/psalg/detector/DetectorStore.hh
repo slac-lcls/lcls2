@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares detector::getDetector(), the factory for Detector objects.
+ */
 #ifndef PSALG_DETECTORSTORE_H
 #define PSALG_DETECTORSTORE_H
 //-----------------------------
@@ -24,6 +28,7 @@
 
 namespace detector {
 
+  /** Return getAreaDetector(detname) if find_dettype(detname) is AREA_DETECTOR (logged at INFO); otherwise log a WARNING and return NULL. */
   Detector* getDetector(const std::string& detname);
 
 } // namespace detector
