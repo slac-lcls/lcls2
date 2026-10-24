@@ -1,4 +1,5 @@
 
+"""Define `ShmemDataSource`, the data source that reads dgrams from shared memory."""
 from psana import utils
 from psana.dgrammanager import DgramManager
 from psana.psexp import TransitionId
@@ -9,6 +10,15 @@ from psana.smalldata import SmallData
 
 
 class ShmemDataSource(DataSourceBase):
+    """Data source that reads dgrams from a shared-memory server through `DgramManager(["shmem"])`.
+
+    The constructor passes the keyword arguments to `DataSourceBase.__init__`, uses `shmem` as the
+    shmem client tag, turns off smalldata-file reading, creates a `SmallData` object and the
+    `DgramManager`, and starts the Prometheus client. If `supervisor` is given, a PUB socket is
+    bound at `tcp://<supervisor_ip_addr>` when it is 1 and a SUB socket is connected there
+    otherwise; the code comment says these sockets broadcast calibration constants, and they are
+    passed to each run.
+    """
     def __init__(self, *args, **kwargs):
         super(ShmemDataSource, self).__init__(**kwargs)
         self.tag = self.shmem
@@ -61,6 +71,13 @@ class ShmemDataSource(DataSourceBase):
         return found_next_run
 
     def runs(self):
+        """Yield a `RunShmem` for each BeginRun read from shared memory.
+
+        Each run gets the experiment, run number and timestamp from the BeginRun dgram, this data
+        source's `dsparms`, `DgramManager`, configs and BeginRun dgrams, and the supervisor value with
+        the PUB socket (supervisor 1) or SUB socket (supervisor 0). Iteration ends when the
+        `DgramManager` stops before another BeginRun is found.
+        """
         while self._start_run():
             kwargs = {'shmem_supervisor': self.supervisor,
                       'shmem_pub_socket': self._pub_socket if self.supervisor == 1 else None,
@@ -81,4 +98,5 @@ class ShmemDataSource(DataSourceBase):
             yield run
 
     def is_mpi(self):
+        """Return False."""
         return False

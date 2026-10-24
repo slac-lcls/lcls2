@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
 
+"""Simple shared-memory client: read the events of a psana shmem DataSource and count them."""
 import argparse
 from psana import DataSource
 
 def shmemClientSimple(args):
+    """Read all events of the first run of `DataSource(shmem=args.partitionTag)` and return their number.
+
+    With `args.verbose` each event's service code, timestamp (hex and seconds.nanoseconds) and
+    `evt._size` are printed.
+    """
     dg_count = 0
     ds = DataSource(shmem=args.partitionTag)
     run = next(ds.runs())
@@ -16,6 +22,7 @@ def shmemClientSimple(args):
 #------------------------------
 
 def main() :
+    """Parse -p/--partitionTag (default 'tst') and -v/--verbose and run `shmemClientSimple` with them."""
     hutch = 'tst'
 
     parser = argparse.ArgumentParser(description='Python shmemClient')
