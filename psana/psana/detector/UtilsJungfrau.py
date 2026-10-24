@@ -66,6 +66,7 @@ dic_calibmet = {CALIB_PYT_V0:    'CALIB_PYT_V0',\
 #is_true = ut.is_true
 
 def is_true(cond, msg, logger_method=logger.debug):
+    """Return `cond` unchanged, calling `logger_method(msg)` first if it is truthy."""
     if cond: logger_method(msg)
     return cond
 
@@ -395,6 +396,7 @@ class DetCache():
         self.add_calibcons(det, evt)
 
     def kwargs_are_the_same(self, **kwa):
+        """Return True if `kwa` equals the keyword arguments this cache was created with."""
         return self.kwa == kwa
 
     def _calibcons_for_ctype(self, ctype):
@@ -405,6 +407,14 @@ class DetCache():
         return nda_and_meta # - 4d shape:(3, <nsegs>, 512, 1024)
 
     def add_calibcons(self, det, evt):
+        """Fill the cache from the detector's calibration constants.
+
+        Returns early, leaving `isset` False, if the constants, the 'pedestals' entry or the pedestal
+        array are missing. Otherwise the gain factors (1/pixel_gain or ones), pedestals plus offsets,
+        gain*mask and combined constants come from shared memory when available and are computed locally
+        otherwise (`add_ccons` for `cversion` > 0); the mask is the shared one if its key matches, else
+        `det._mask(**kwa)`. Sets `isset` True at the end.
+        """
         self.detname = det._det_name
         self.inds    = det._sorted_segment_inds # det._segment_numbers
         self.calibc  = det._calibconst
@@ -582,6 +592,11 @@ class DetCache():
 
 
     def check_cversion3_validity(self):
+        """Log summaries of `ccons`, `poff` and `gmask` and check the layout of `ccons` (shape (4, npix, 2)).
+
+        Asserts that `ccons[k, :, 0]` equals the pedestals plus offsets and `ccons[k, :, 1]` the gain*mask
+        for gain ranges 0, 1 and 2 at k = 0, 1 and 3; raises AssertionError on a mismatch.
+        """
         po = self.poff
         gm = self.gmask
         cc = self.ccons
@@ -696,6 +711,10 @@ def calib_jungfrau(det, evt, **kwa): # cmpars=(7,3,200,10),
 
 
 def gainbits_statistics(arr):
+    """Count the pixels of `arr` in each gain-bit state (`arr >> 14` equal to 0, 1, 2 or 3).
+
+    Returns `(n00, n01, n10, n11, total, arr.size)`; asserts that the counts add up to `arr.size`.
+    """
     gbits = np.array(arr>>14, dtype=np.uint8)
     gb00, gb01, gb10, gb11 = gbits==0, gbits==1, gbits==2, gbits==3
     arr1 = np.ones_like(arr, dtype=np.uint32)
@@ -712,10 +731,12 @@ def gainbits_statistics(arr):
 
 def info_gainbits_statistics(arr, fmt='gainbits statistics 00:%05d  01:%05d  10:%05d  11:%05d  total/arr.size:%6d/%6d'):
     #ngb00, ngb01, ngb10, ngb11, total, size = gainbits_statistics(arr)
+    """Return `fmt` filled with the result of `gainbits_statistics(arr)`."""
     return fmt % gainbits_statistics(arr)
 
 
 def gainrange_statistics(arr):
+    """Return the numbers of pixels of `arr` in gain range 0, 1, 2 and in the bad state, i.e. with `arr >> 14` equal to 0, 1, 3 and 2."""
     gbits = np.array(arr>>14, dtype=np.uint8)
     gr0, gr1, gr2, bad = gbits==0, gbits==1, gbits==3, gbits==2
     arr1 = np.ones_like(arr, dtype=np.uint32)
@@ -727,17 +748,20 @@ def gainrange_statistics(arr):
 
 
 def info_gainrange_statistics(arr, fmt='gainrange statistics 0:%d  1:%d  2:%d  bad:%d  total/arr.size:%d/%d'):
+    """Return `fmt` filled with the four counts of `gainrange_statistics(arr)`, their sum and `arr.size`."""
     ngr0, ngr1, ngr2, nbad = gainrange_statistics(arr)
     return fmt % (ngr0, ngr1, ngr2, nbad, ngr0+ngr1+ngr2+nbad, arr.size)
 
 
 def gainrange_fractions(arr):
+    """Return the fractions of pixels in gain range 0, 1, 2 and the bad state (from `gainrange_statistics`) and the total count."""
     ngr0, ngr1, ngr2, nbad = gainrange_statistics(arr)
     total = float(ngr0 + ngr1 + ngr2 + nbad)
     return ngr0/total, ngr1/total, ngr2/total, nbad/total, total
 
 
 def info_gainrange_fractions(arr, fmt='gainrange fractions 0:%0.4f  1:%0.4f  2:%0.4f  bad:%0.4f  of total:%d'):
+    """Return `fmt` filled with the result of `gainrange_fractions(arr)`."""
     fgr0, fgr1, fgr2, fbad, total = gainrange_fractions(arr)
     return fmt % gainrange_fractions(arr)
 

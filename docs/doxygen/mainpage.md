@@ -27,3 +27,4 @@ to their pages here.
 | Area | Classes | Explained in |
 |---|---|---|
 | XTC2 data format (`xtcdata`) | XtcData::Dgram, XtcData::Xtc, XtcData::TransitionId, XtcData::Names, XtcData::ShapesData, XtcData::NamesId, XtcData::DescData, XtcData::XtcIterator, XtcData::XtcFileIterator | [XTC2 data format](../../features/xtc2/index.html) |
+| `psalg` libraries and algorithms | geometry::GeometryAccess, calib::CalibPars, psalg::shmem::ShmemClient, psalg::shmem::XtcMonitorServer, Pds::HSD::Channel, psalg::AllocArray, psalgos::PeakFinderAlgos | [psalg algorithms](../../features/psalg/index.html) |

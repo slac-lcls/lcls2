@@ -1,3 +1,7 @@
+/**
+ * @file
+ * @brief Declares Pds::HSD::ChannelPython, a non-copying view of one HSD channel's raw waveform and fex peaks for the Python wrapper.
+ */
 #ifndef HSD_EVENTHEADER_HH
 #define HSD_EVENTHEADER_HH
 
@@ -10,12 +14,20 @@
 
 #include "psalg/digitizer/Stream.hh"
 
+/** Outer namespace of the HSD digitizer helpers. */
 namespace Pds {
+  /** HSD digitizer classes; here ChannelPython, used by the Python wrapper. */
   namespace HSD {
 
+    /**
+     * View of one HSD channel: the constructor finds the raw (stream id 0) and fex (stream id 1) stream headers, waveform() returns the raw samples in place, and next_peak() iterates over the fex peaks. Nothing is copied.
+     * The header comment refers to Hsd.hh for the data layout.
+     */
     class ChannelPython {
     public:
+        /** Default constructor; all members are left uninitialized. */
         ChannelPython() {}
+        /** Reset the peak iterator and record the stream headers found at data for the streams flagged in bits 21:20 of evtheader[0]; each stream header is followed by num_samples() 16-bit words. */
         ChannelPython(uint32_t *evtheader, uint8_t* data) :
             _evtheader(evtheader), _data(data), _sh_raw(0), _sh_fex(0)
         {
@@ -35,8 +47,10 @@ namespace Pds {
             }
         }
 
+        /** Destructor; does nothing. */
         ~ChannelPython(){}
 
+        /** Return a pointer to the raw stream's samples in the input buffer and set numsamples, or return 0 (numsamples unchanged) if there is no raw stream. */
         uint16_t* waveform(unsigned& numsamples) {
             if (!_sh_raw) return 0;
             numsamples = _sh_raw->num_samples();
@@ -52,6 +66,10 @@ namespace Pds {
         //     return wf;
         // }
 
+        /**
+         * Return the length of the next fex peak and set startPos (skipped samples plus the widths of earlier peaks) and *peakPtr (its first sample in the input buffer); returns 0 when no peak is left or there is no fex stream.
+         * Groups of four words whose first word has bit 15 set are skips that add their low 15 bits to the position.
+         */
         unsigned next_peak(unsigned& startPos, uint16_t** peakPtr) {
             unsigned peakLen = 0; // indicate that, by default, we haven't found a peak
             if (!_sh_fex) return peakLen; // no more peaks to look for
@@ -93,6 +111,7 @@ namespace Pds {
             return peakLen;
         }
 
+      /** Return the out_of_range() bit of the fex stream header, or 0 if there is no fex stream. */
       unsigned char fex_out_of_range() { return _sh_fex ? _sh_fex->out_of_range() : 0; }
     private:
         uint32_t* _evtheader;
