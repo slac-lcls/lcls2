@@ -21,3 +21,11 @@ body:
       placeholder: Explain the feature or change.
     validations:
       required: true
+
+  - type: input
+    id: jira-ticket
+    attributes:
+      label: Jira Ticket
+      description: Add the corresponding Jira ticket, if there is one.
+    validations:
+      required: false

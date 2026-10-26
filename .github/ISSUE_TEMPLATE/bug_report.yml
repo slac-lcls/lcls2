@@ -54,3 +54,11 @@ body:
       render: shell
     validations:
       required: false
+
+  - type: input
+    id: jira-ticket
+    attributes:
+      label: Jira Ticket
+      description: Add the corresponding Jira ticket, if there is one.
+    validations:
+      required: false
