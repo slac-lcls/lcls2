@@ -243,6 +243,7 @@ void Teb::disconnect()
   EbAppBase::disconnect();
 
   _monBufLists.clear();
+  _iMeb = 0;                            // The next connect may have fewer MEBs
 }
 
 void Teb::unconfigure()
@@ -409,7 +410,7 @@ void Teb::_queueMrqBuffers()
                      src, immData, rc);
       break;
     }
-    if (ImmData::idx(immData) > _prms.numMebEvBufs[src]) [[unlikely]] {
+    if (ImmData::idx(immData) >= _prms.numMebEvBufs[src]) [[unlikely]] {
       logging::error("Ignoring out-of-bounds buffer index %08x, max %08x from MEB %u (immData = %08lx, rc = %zd)",
                      ImmData::idx(immData), _prms.numMebEvBufs[src], src, immData, rc);
       break;
@@ -499,10 +500,11 @@ void Teb::_monitor(ResultDgram* rdg)
 
       dsts &= ~(1 << iMeb);
 
-      if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
+      auto& monBufList = _monBufLists.at(iMeb);
+      if (monBufList.count() > _rogReserved[iMeb])
       {
         unsigned buffer;
-        _monBufLists[iMeb].pop(buffer);
+        monBufList.pop(buffer);
 
         rdg->monBufNo(buffer);
 
