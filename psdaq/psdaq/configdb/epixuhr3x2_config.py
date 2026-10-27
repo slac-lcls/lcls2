@@ -356,7 +356,8 @@ def get_active_asics(asic_mask: int) -> List[int]:
     n: int = asic_mask
     while n:
         if n & 1:
-            result.append(pos)
+            # Setup the asics to be 0-indexed!
+            result.append(pos - 1)
         n >>= 1
         pos += 1
 
