@@ -1055,12 +1055,11 @@ void PvDrp::_collector()
         if (transitionId == TransitionId::L1Accept) {
             // Time out events based on age measured using a local clock
             // to avoid skew-related false time outs
-            ms_t age{};
             bool timedOut{false};
             for (auto& pvMonitor: m_det.pvMonitors()) {
                 // Recomputed per PV so that one event's total wait is bounded by tmo
                 auto dt{fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) - it.t0};
-                age = std::chrono::duration_cast<ms_t>(dt);
+                ms_t age{std::chrono::duration_cast<ms_t>(dt)};
                 EbDgram* pvDg{nullptr};
                 if (age < tmo) [[likely]] // Not yet timed out and not terminating
                     pvMonitor->pvQueue.popW(pvDg, (tmo-age).count());
@@ -1084,7 +1083,9 @@ void PvDrp::_collector()
                                    evtDg->time.seconds(), evtDg->time.nanoseconds());
                 }
             }
-            // Monitor event age for timeout issues
+            // Monitor event age, including all PV waits, for timeout issues
+            auto dt{fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) - it.t0};
+            ms_t age{std::chrono::duration_cast<ms_t>(dt)};
             m_age = age.count();
             if (timedOut) [[unlikely]] {
                 logging::debug("Event timed out!! "
