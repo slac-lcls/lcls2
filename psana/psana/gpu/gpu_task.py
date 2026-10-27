@@ -73,7 +73,12 @@ class RequestedConstants:
     Caller drains all users before refresh/close. Uploads complete on the
     current stream before publication. Replacement is atomic and may require
     space for both generations; escaped aliases retain their budget charges.
-    A host snapshot detects in-place source changes at transition boundaries.
+
+    ``refresh()`` is called once per run, at setup -- the one production call
+    site is ``gpu_events.py``'s setup path. Host-side changes after that are
+    not picked up, so the ``_host`` copy it keeps serves only to make a second
+    call a no-op rather than to watch for mutation. See
+    ``ProducerContext.calibconst`` for the user-facing contract.
     """
     def __init__(self, requests, budget):
         self.requests = _selectors(requests, constants=True)

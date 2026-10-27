@@ -1,0 +1,122 @@
+#!/bin/bash
+#SBATCH --account=lcls
+#SBATCH --partition=ampere
+#SBATCH --nodes=2
+#SBATCH --ntasks-per-node=5
+#SBATCH --cpus-per-task=4
+#SBATCH --mem=96G
+#SBATCH --gres=gpu:a100:2
+#SBATCH --time=00:30:00
+#SBATCH --exclude=sdfampere003,sdfampere008,sdfampere016,sdfampere024,sdfampere028,sdfampere029,sdfampere037,sdfampere039
+#SBATCH --job-name=ipc-multinode
+#SBATCH --output=validation/ipc-multinode-20261007/job-%j.log
+#
+# PREEMPTION. Only the `preemptable` QoS here, and two nodes is more exposed
+# -- the job dies if either is taken. `--requeue` would not help
+# (PreemptMode=CANCEL). Override as in ../ipc-integration-20261007/run.sbatch:
+#   SBATCH_ACCOUNT=lcls:prjdat21 SBATCH_QOS=normal sbatch .../run.sbatch
+#
+# 30 minutes left as-is: this suite measures ~7 min.
+#
+# Multi-node peer discovery. On ONE node the hostname half of the
+# (hostname, device_uuid) grouping key is constant, so a hostname that is
+# ignored or inconsistently formatted is invisible -- and that is issue #155's
+# first named failure mode: "multi-node GPU with single EB group spanning both,
+# counting 8 peers instead of 16".
+#
+# 2 nodes x 5 tasks x 2 GPUs: 1 CPU-role rank + 4 GPU workers per node, so
+# 2 workers share each of 4 distinct devices across 2 distinct hosts.
+#
+# A 2-node A100 reservation queues far worse than the single-node suite.
+# Submit and leave it; do not iterate on this one.
+#
+# NOTE: no `set -u` -- ps_20241122's conda activate.d scripts reference
+# unbound variables (ADDR2LINE) and abort under nounset.
+set -o pipefail
+cd "${SLURM_SUBMIT_DIR:-$PWD}"
+source setup_env.sh >/dev/null
+
+export PYTHONUNBUFFERED=1
+export CUDA_DEVICE_ORDER=PCI_BUS_ID
+export CUPY_CACHE_DIR="$PWD/validation/ipc-multinode-20261007/cupy-cache"
+mkdir -p "$CUPY_CACHE_DIR"
+
+D=psana/psana/tests/gpu/integration
+rc=0
+
+echo "=============================== environment ==============================="
+echo "SLURM_JOB_NODELIST=${SLURM_JOB_NODELIST:-<unset>}"
+echo "SLURM_NNODES=${SLURM_NNODES:-<unset>} SLURM_NTASKS=${SLURM_NTASKS:-<unset>}"
+srun --ntasks-per-node=1 bash -c 'echo "$(hostname): $(nvidia-smi --query-gpu=index,uuid --format=csv,noheader | tr "\n" " ")"'
+echo
+
+# PS_EB_NODES=1 spanning both nodes is #155's case A exactly: one EB group,
+# workers on two hosts. The arithmetic it replaces counts every rank in
+# bd_comm regardless of host; discovery must count only same-host peers.
+echo "========== multi-node discovery : 1 EB spanning 2 nodes =========="
+timeout 180 mpirun -n 10 python -u "$D/mpi_placement_discovery.py" \
+    --n-eb 1 --expect-hosts 2 --expect-devices 4 || rc=$?
+
+echo
+echo "========== multi-node discovery : 2 EB groups =========="
+timeout 180 mpirun -n 10 python -u "$D/mpi_placement_discovery.py" \
+    --n-eb 2 --expect-hosts 2 --expect-devices 4 || rc=$?
+
+
+# The event loop across nodes, with constants read through the public
+# batch.calibconst() inside a real callback. This is what the discovery cases
+# above do NOT cover: CUDA IPC is single-node, so a 2-node job must end up
+# with one owner PER NODE and one shared copy per node. A grouping bug that
+# let a device group span hosts would fail the remote peer's import and
+# degrade the whole job, and no single-node run can see it.
+#
+# CUDA_VISIBLE_DEVICES=0 narrows each node to one card, so the workers on a
+# node are peers of one another and sharing actually engages -- with the mask
+# left wide they spread over both cards and most groups are solo.
+echo
+echo "========== multi-node event loop : 2 EB groups, shared constants =========="
+# -x, not a prefix assignment: a prefix sets the variable for the local
+# mpirun only, so remote ranks keep Slurm's own mask. Measured in job
+# 40801452, where node 014's ranks saw mask='0' and node 015's saw '0,1',
+# giving three device groups instead of two.
+export PS_EB_NODES=2
+export CUDA_VISIBLE_DEVICES=0
+# --expect-eb-ranks 2 is the point of this case, so assert it rather than
+# merely requesting it. For mfx experiments PS_EB_NODES is capped at the
+# distinct HOST count -- datasource.py _force_mfx_overrides, which returns
+# early for a non-mfx experiment name -- and it reaches the remote ranks only
+# through -x; if either regressed the job would quietly run with one EB and
+# still calibrate correctly, so the case would pass while testing the
+# topology it exists for.
+timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
+    -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
+    python -u "$D/mpi_calib_pixel_exact.py" \
+    --expect-events 13 --expect-eb-ranks 2 || rc=$?
+
+# Same again with one EB group spanning both nodes: the EB topology must not
+# reach the device grouping at all, so the device groups should be identical.
+echo
+echo "========== multi-node event loop : 1 EB spanning 2 nodes =========="
+export PS_EB_NODES=1
+timeout 600 mpirun -n 10 -x PS_EB_NODES -x CUDA_VISIBLE_DEVICES \
+    -x CUDA_DEVICE_ORDER -x CUPY_CACHE_DIR \
+    python -u "$D/mpi_calib_pixel_exact.py" \
+    --expect-events 13 --expect-eb-ranks 1 || rc=$?
+
+# mpirun's exit status is not sufficient: it returns 0 even when ranks report
+# failures, and job 40801452 printed OVERALL: PASS while both summaries said
+# all_pass:false. The log decides.
+log="validation/ipc-multinode-20261007/job-${SLURM_JOB_ID}.log"
+if grep -aq '"all_pass": false' "$log" 2>/dev/null; then
+    echo "  a summary reported all_pass:false"
+    rc=1
+fi
+if ! grep -aq '"all_pass": true' "$log" 2>/dev/null; then
+    echo "  no summary reported all_pass:true -- did every case run?"
+    rc=1
+fi
+
+echo
+echo "=============================== VERDICT ==================================="
+if [ "$rc" -eq 0 ]; then echo "  OVERALL: PASS"; else echo "  OVERALL: FAIL (rc=$rc)"; fi
+exit "$rc"

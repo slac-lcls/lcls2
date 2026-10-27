@@ -191,7 +191,15 @@ def test_dense_and_descriptor_selectors_preserve_sparse_segment_identity(monkeyp
         prepare_task_inputs(GpuTask(noop, [('jf', 'raw', 'missing')]), **args)
 
 
-def test_step_refresh_follows_drains_and_host_update(monkeypatch, cpu_uploads):
+def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
+    """BeginStep drains, hands the transition to the host, and stops there.
+
+    One constant set per run is the supported model and BeginStep does not
+    fetch the calibration DB, so there is nothing for a rescan to pick up.
+    The drains stay because other GPU work depends on them; what must not
+    happen is a constant reupload, which for shared constants would mean
+    replacing an allocation that backs every peer on the device.
+    """
     from psana.gpu import gpu_events as ge
     manager = ge.GpuEventManager.__new__(ge.GpuEventManager)
     manager._task_constants = RequestedConstants([('jf', 'gain')], _GpuBudget(100))
@@ -201,19 +209,91 @@ def test_step_refresh_follows_drains_and_host_update(monkeypatch, cpu_uploads):
     manager.configs = []
     manager._flush_event_pool = lambda: iter(log.append('executions') or ())
     manager._group_inputs = NS(drain_idle=lambda: log.append('inputs'))
+
     def host(dgrams):
         log.append('host')
+        # Even a changed host value must not be picked up mid-run.
         manager.dsparms.calibconst['jf']['gain'][...] = 2
+
     manager.run = NS(_handle_transition=host)
     manager._trim_gpu_caches = lambda: log.append('trim')
     manager._compute_subbatch_budget = lambda: log.append('admission') or 100
-    monkeypatch.setattr(ge, '_iter_step_events', lambda *a: [(ge.TransitionId.BeginStep, [])])
+    monkeypatch.setattr(ge, '_iter_step_events',
+                        lambda *a: [(ge.TransitionId.BeginStep, [])])
+
     assert list(manager._handle_steps({0: (b'x', [])})) == []
-    assert log == ['executions', 'inputs', 'host', 'trim', 'admission']
-    assert manager._task_constants.get('jf', 'gain') == 2
+    assert log == ['executions', 'inputs', 'host'], \
+        'BeginStep trimmed caches or recomputed admission for a constant reupload'
+    # The device still holds what was uploaded at setup.
+    assert manager._task_constants.get('jf', 'gain') == 1
+
     log.clear()
     list(manager._handle_steps({0: (b'x', [])}))
     assert log == ['executions', 'inputs', 'host']
+
+
+def test_the_documented_calibconst_contract_is_on_the_call_users_make():
+    """The contract has to be where help(batch.calibconst) finds it.
+
+    `batch` in a task callback is a ProducerContext, which delegates to
+    BatchInputContext. Documenting only the inner method leaves the public
+    call undocumented, which is how the snapshot semantics went unstated in
+    the first place (review comment on PR 187).
+
+    Asserted on the promises rather than on prose: that constants are a
+    once-at-setup snapshot, that host mutation does not reach them, and that
+    read-only is a contract rather than something CuPy enforces. A user
+    relying on any of the three would corrupt the shared copy.
+    """
+    from psana.gpu.gpu_producer import ProducerContext
+    from psana.gpu.gpu_task_batch import BatchInputContext
+
+    # Normalised, so a reflow that moves a line break cannot fail this.
+    public = ' '.join((ProducerContext.calibconst.__doc__ or '').split())
+    assert public, 'the call users make has no docstring'
+    for promise in ('run setup', 'does not replace', 'BeginStep',
+                    'read-only', 'not enforced immutability', 'peer'):
+        assert promise in public, f'the contract does not state {promise!r}'
+    # The delegate points at the public one rather than restating it, so the
+    # two cannot drift apart.
+    delegate = ' '.join((BatchInputContext.calibconst.__doc__ or '').split())
+    assert 'ProducerContext.calibconst' in delegate
+
+
+def test_refresh_is_documented_as_once_per_run_not_as_change_detection():
+    """RequestedConstants' docstring said a host snapshot 'detects in-place
+    source changes at transition boundaries' -- the opposite of the contract,
+    since refresh() has one production call site and it is run setup.
+
+    Pinned because the misleading line was what made the behaviour look like
+    a regression in review rather than the intended design.
+    """
+    doc = ' '.join((RequestedConstants.__doc__ or '').split())
+    assert 'once per run' in doc
+    assert 'not picked up' in doc
+    assert 'detects in-place source changes' not in doc
+
+
+def test_a_second_refresh_with_unchanged_values_uploads_nothing(cpu_uploads):
+    """Why the _host copy exists, now that it is not change detection.
+
+    It makes a repeat call a no-op instead of reallocating and re-uploading.
+    That matters for shared constants, where replacing the allocation would
+    mean swapping memory every peer on the device is reading.
+    """
+    source = {'jf': {'gain': np.arange(4, dtype=np.float32)}}
+    constants = RequestedConstants([('jf', 'gain')], _GpuBudget(1 << 20))
+
+    assert constants.refresh(source) is True
+    uploads = [entry for entry in cpu_uploads if entry[0] == 'allocate']
+    assert uploads, 'the first refresh uploaded nothing'
+
+    cpu_uploads.clear()
+    assert constants.refresh(source) is False, \
+        'an unchanged second refresh must not report a change'
+    assert not [e for e in cpu_uploads if e[0] == 'allocate'], \
+        'an unchanged refresh reallocated; for shared constants that would ' \
+        'replace memory every peer on the device is reading'
 
 
 def test_public_submission_queues_delivery_after_releasing_input_reservation():
