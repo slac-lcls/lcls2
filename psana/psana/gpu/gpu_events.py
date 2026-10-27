@@ -55,6 +55,13 @@ def _iter_step_events(batch_bytes, configs):
 
         event_pf = PacketFooter(view=event_view)
         event_footer_nbytes = memoryview(event_pf.footer).nbytes
+        # Counted rather than inferred from `service`: 0 is
+        # TransitionId.ClearReadout, a real record, so it cannot double as the
+        # "no dgram present" sentinel. Conflating the two made every genuine
+        # ClearReadout indistinguishable from an all-empty record, and callers
+        # dropped both (issue #156, GPU-141-02).
+        n_dgrams = 0
+        service = None
         dgram_offset = 0
         dgrams = [None] * len(configs)
         for i_stream in range(event_pf.n_packets):
@@ -65,16 +72,25 @@ def _iter_step_events(batch_bytes, configs):
                     view=event_view,
                     offset=dgram_offset,
                 )
+                if service is None:
+                    service = dgrams[i_stream].service()
+                n_dgrams += 1
             dgram_offset += dgram_size
 
+        # Validated BEFORE the skip below, so a malformed record whose streams
+        # are all absent still fails rather than passing as "empty".
         if dgram_offset + event_footer_nbytes != event_size:
             raise RuntimeError(f"Malformed step event {event_index}: dgrams={dgram_offset} footer={event_footer_nbytes} event_size={event_size}")
 
-        service = 0
-        for dg in dgrams:
-            if dg is not None:
-                service = dg.service()
-                break
+        if n_dgrams == 0:
+            # An all-empty record is a GPU-only L1 with nothing in the SMD
+            # packet. Dropping it here loses no position: public delivery
+            # builds those envelopes from GPUBAT1, iterating
+            # subbatch.timestamps and synthesising _GpuOnlyDgram when no CPU
+            # envelope matches. Every tuple yielded below therefore carries at
+            # least one real dgram, which is what lets service 0 be trusted.
+            continue
+
         yield service, dgrams
 
 
@@ -761,8 +777,12 @@ class GpuEventManager:
         pending_transitions = []
         for step_batch, _ in step_dict.values():
             for service, dgrams in _iter_step_events(step_batch, self.configs):
-                if service == 0:
-                    # A GPU-only L1 has no dgrams in the CPU/SMD packet.
+                # Defensive: the decoder no longer yields an all-empty record,
+                # so this is unreachable through it. Kept because the helper is
+                # monkeypatched in tests and a fake can still emit None, and
+                # because `service == 0` here -- the old test -- silently
+                # dropped ClearReadout.
+                if service is None:
                     continue
                 if TransitionId.isEvent(service):
                     continue
@@ -1020,7 +1040,9 @@ class GpuEventManager:
                         transition
                         for packet, _ in step_dict.values()
                         for transition in _iter_step_events(packet, self.configs)
-                        if transition[0] and not TransitionId.isEvent(transition[0])
+                        # `is not None`, not truthiness: service 0 is
+                        # ClearReadout and must fence reads.
+                        if transition[0] is not None and not TransitionId.isEvent(transition[0])
                     ]
                     self._gpu_read_files = self._gpu_file_epochs.resolve(
                         [d for view in gpu_views for d in view.iter_read_descs(self.dm)],

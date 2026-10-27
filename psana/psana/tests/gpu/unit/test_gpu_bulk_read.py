@@ -209,6 +209,48 @@ def test_transition_fence_prevents_merge_even_with_same_file_and_adjacent_bytes(
     reader.close()
 
 
+def test_clearreadout_fences_coalescing_like_any_other_control(io):
+    """ClearReadout is service 0, which `resolve()` skipped via `not service`
+    -- so a real ClearReadout never advanced the coalescing fence
+    (GPU-141-02 site 4).
+
+    It is a real control record and must fence, as the test above
+    establishes for a non-zero service. It must NOT change files:
+    `_apply()` returns early for anything that is not Enable.
+    """
+    io.files = {"/fast": bytes(range(32))}
+    reader = KvikioGpuReader(bulk_read=True)
+    descriptors = [desc(0, 0, 0), desc(1, 0, 4)]
+    epochs = GpuFileEpochs(dm(io.files)).resolve(
+        descriptors, [control(105, service=TransitionId.ClearReadout)])
+
+    # Same file either side, so only the fence can prevent the merge.
+    assert {e.file for e in epochs.values()} == {
+        ResolvedFile(os.path.realpath("/fast"), 0)}
+    for i, g in enumerate(groups(descriptors, epochs)):
+        reader.wait_batch(reader.issue_group(g, slot_id=i))
+    assert reader.io_stats()["total_requests"] == 2, (
+        'ClearReadout did not fence: the two reads coalesced across a '
+        'control boundary')
+    reader.close()
+
+
+def test_clearreadout_does_not_change_the_resolved_file(io):
+    """A fence is not a file switch. Only Enable with chunkinfo remaps a
+    stream, so ClearReadout must leave the resolved file untouched even when
+    its dgram happens to carry chunkinfo."""
+    io.files = {"/fast": bytes(range(32))}
+    before = GpuFileEpochs(dm(io.files))._active[0]
+
+    epochs = GpuFileEpochs(dm(io.files)).resolve(
+        [desc(0, 0, 0)],
+        # chunkinfo present, but the service is not Enable.
+        [control(105, chunk=7, filename="other.xtc2",
+                 service=TransitionId.ClearReadout)])
+
+    assert epochs[(0, 0)].file == before
+
+
 def test_capacity_is_total_input_not_last_logical_row(io):
     io.files = {"/a": bytes(range(32)), "/z": bytes(range(32))}
     reader = KvikioGpuReader(budget=_GpuBudget(8), bulk_read=False)
