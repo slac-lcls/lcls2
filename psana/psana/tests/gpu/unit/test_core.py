@@ -671,17 +671,26 @@ def test_decoder_validates_size_before_skipping_an_all_empty_record():
 
     Otherwise a malformed packet whose streams are all absent is silently
     accepted, and the corruption is discovered later or not at all.
+
+    The record must stay genuinely all-empty for this to test what it claims.
+    So the corruption is unaccounted padding ahead of the event footer, with
+    the outer size covering it: both stream sizes still read 0, no dgram is
+    constructed, and only the size check can object. Inflating the claimed
+    size instead would pull the batch footer into the record and have it
+    decoded as one present stream, which exercises a different path.
     """
-    batch = bytearray(_step_batch_bytes([[0, 0]], n_streams=2))
-    # Claim the record is larger than the bytes actually present.
-    batch_pf = PacketFooter(view=memoryview(bytes(batch)))
-    truthful = batch_pf.get_size(0)
-    tampered = PacketFooter(1)
-    tampered.set_size(0, truthful + 8)
-    batch = batch[:truthful] + bytearray(tampered.footer)
+    event_pf = PacketFooter(2)
+    event_pf.set_size(0, 0)
+    event_pf.set_size(1, 0)
+    padding = bytearray(8)  # in the record's bytes, in neither stream's size
+    event = padding + bytearray(event_pf.footer)
+
+    batch_pf = PacketFooter(1)
+    batch_pf.set_size(0, len(event))
+    batch = bytes(event + bytearray(batch_pf.footer))
 
     with pytest.raises(RuntimeError, match='Malformed step event'):
-        list(gpu_events_module._iter_step_events(bytes(batch), [None, None]))
+        list(gpu_events_module._iter_step_events(batch, [None, None]))
 
 
 class _ServiceByteDgram:
