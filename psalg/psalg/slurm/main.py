@@ -3,7 +3,7 @@ from typing_extensions import Annotated
 import time
 import asyncio
 import socket
-from psalg.slurm.utils import SbatchManager, run_slurm_with_retries, build_sbatch_env
+from psalg.slurm.utils import SbatchManager, run_slurm, run_slurm_with_retries, build_sbatch_env
 from psalg.slurm.subproc import SubprocHelper
 import os
 import sys
