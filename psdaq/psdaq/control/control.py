@@ -732,6 +732,7 @@ class CollectionManager():
         self.threads_exit = Event()
         self.step_exit = Event()
         self.phase2_timeout = args.T
+        self.disable_msg_mode = args.disable_msg_mode
         self.user = args.user
         self.password = args.password
         self.url = args.url
@@ -2495,7 +2496,8 @@ class CollectionManager():
             # until deadtime goes away.  can result in completely lost transitions
             # if deadtime is 100%. could then go out later and corrupt a later instance
             # of the daq? just a guess.  - cpo oct 24, 2024
-            self.xpm.insert_transition(self.groups, (0x180 | ControlDef.transitionId['Disable']))
+            # --disable_msg_mode overrides the mode bits for testing (issue #237)
+            self.xpm.insert_transition(self.groups, (self.disable_msg_mode | ControlDef.transitionId['Disable']))
 
         ok = self.get_phase2_replies('disable')
         if not ok:
@@ -2612,6 +2614,8 @@ def main():
 #    parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=7500, help='phase 2 timeout msec (default 7500)')
 # 7.5 s seems to be too short for UED and this timeout must be larger than the EB timeouts, currently at 12 s
     parser.add_argument('-T', type=int, metavar='P2_TIMEOUT', default=12500, help='phase 2 timeout msec (default 12500)')
+    parser.add_argument('--disable_msg_mode', type=lambda s: int(s, 0), default=0x180, choices=(0x000, 0x080, 0x100, 0x180),
+                        help='XPM message mode bits for Disable: 0x180 wait while full (default), 0x080 drop if full, 0x100 low priority, 0x000 always send')
     parser.add_argument('--rollcall_timeout', type=int, default=30, help='rollcall timeout sec (default 30)')
     parser.add_argument('-s', metavar='STEP_GROUP', default=None, type=int, help='Readout group for scan step counts')
     parser.add_argument('-v', action='store_true', help='be verbose')
