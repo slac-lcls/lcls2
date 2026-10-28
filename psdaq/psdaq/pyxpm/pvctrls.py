@@ -819,27 +819,6 @@ class PVCtrls(object):
                                 logging.warning(f'Recover stepDone for group {i} events {nL0}/{end}[{endr}]')
                                 g.stepDone(True)
 
-    def _checkMsgHdr(self, app, groups, value):
-        #  Read back each group's message header before GroupMsgInsert is
-        #  written, to catch a header that did not land (issue #237)
-        lock.acquire()
-        try:
-            bad = []
-            for g in range(8):
-                if groups & (1<<g):
-                    app.partition.set(g)
-                    rbk = app.msgHdr.get()
-                    if rbk != value:
-                        bad.append(f'{g}:{rbk:#05x}')
-            if bad:
-                logging.error(f'msgHdr readback mismatch, wrote {value:#05x} to groups {groups:#04x}: {" ".join(bad)}')
-            else:
-                logging.debug(f'msgHdr readback ok, {value:#05x} groups {groups:#04x}')
-        except Exception:
-            logging.exception('msgHdr readback failed')
-        finally:
-            lock.release()
-
     def zrcv(self):
         from psdaq.control.ControlDef import xpm_pull_port
 
@@ -866,8 +845,6 @@ class PVCtrls(object):
                                       app.partition,
                                       g)
                         hdl.handle(None,value)
-                if msg['reg']=='msgHdr':
-                    self._checkMsgHdr(app, groups, value)
 
             elif msg['type']=='set_reg':
                 value = msg['value']

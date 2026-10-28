@@ -1,123 +1,208 @@
-# Disable phase-2 failures: test tools and plan (issue #237)
+# Disable delivery under inhibition (#237)
 
-At TMO and MFX, a Disable sometimes reaches only some readout groups. control then logs `disable phase2 failed` and lists most of the DAQ as not responding. This directory has the tools and the plan to reproduce it on a test stand, find the cause, and test a fix.
+When Disable is inserted with XPM mode `0x180` (WAIT_FULL), a readout group's
+message waits while message inhibition is asserted. On TMO, a controlled
+inhibition test twice reproduced the production signature: group 0 received
+Disable, groups 2 and 5 did not, and phase 2 timed out after 40 seconds.
 
-| File | What it does |
-|---|---|
-| `check_disable_groups.py` | For each `disable phase2 failed` in a launch, lists which readout groups' DRPs received the Disable |
-| `disable_stress.py` | Cycles Enable/Disable many times through `DaqControl`, counts failures, and saves XPM state when one happens |
+This change defaults Disable to `0x000`: insert the transition without waiting
+for message inhibition. Control still stops L0 triggers first, completes phase 1,
+and requires phase-2 replies from all active DRPs and MEBs. The transition ID,
+group mask, and the modes of other transitions are unchanged.
+`--disable_msg_mode 0x180` retains the baseline behavior for comparison.
 
-The same change also adds two things outside this directory:
+The mode-only candidate passed 20 and then 300 cycles between/after the two
+baseline failures. This verifies delivery under programmable inhibition; it
+does not yet establish safety with truly full receiver buffers or recorded-data
+integrity. Keep those checks open before operational adoption.
 
-- `control --disable_msg_mode {0x180,0x080,0x100,0x000}`: sets the XPM message mode bits for Disable. The default is `0x180`, which is the current behaviour.
-- pyxpm: after control writes the per-group `MsgHeader` (ZMQ path), each group's header is read back. A mismatch is logged as `msgHdr readback mismatch`.
+## Hardware experiment: TMO, 2026-10-28
 
-## What we know
+All times below are America/Los_Angeles. The experiment used TMO XPM 2,
+platform 0, ZMQ (`-X drp-srcf-mon001`), SlowUpdate at 1 Hz (`-S 1`), common
+group (`-c`), and a 40000 ms phase-2 timeout. Active groups were 0, 2, 5
+(mask `0x25`). Actual L0Delay values were 75, 75, 10.
 
-| Fact | Source |
-|---|---|
-| TMO: **21 failures in 8815 Disables (0.24%)**, 09/17 – 10/27/2026 | all `drp-srcf-mon001:control.log*` under `/sdf/home/t/tmoopr/daq/logs/2026` |
-| In 18 of 19 TMO failures with per-group data, group 0 got the Disable and group 2 and/or 5 did not | DRP logs (`check_disable_groups.py`) |
-| The XPM generated the Disable for only some groups | XTC `env & 0xffff` on the Disable record: run 105 `09040005` (groups 0, 2; group 5 missing), run 126 `09220021` (groups 0, 5; group 2 missing) |
-| MFX: same per-group loss in 10 of 12 failures | `/sdf/home/m/mfxopr/daq/logs/2026/10` |
-| TMO and MFX control send XPM writes over ZMQ (`-X drp-srcf-mon001`) | control `CMDLINE` |
-| pyxpm writes the headers one group at a time (0, 2, 5), then `GroupMsgInsert` | `pyxpm/pvctrls.py`, `zrcv()` |
-| Disable is the only transition sent with `0x180` (`WAIT_FULL`) | `control/control.py`, `condition_disable()` |
-| control couples message deadtime across the partition's groups (`L0Groups = groups`) | `control.py` `DaqXPM.allocate()`; `XpmAppMaster.vhd` lines 387 – 389 |
-| Per-group DeadTime/DeadFrac stop counting while L0 is disabled, and L0 is disabled just before the Disable is inserted | `XpmL0Select.vhd` lines 205 – 216 |
+- Group 2 used event code 10 (120 Hz), group 5 code 13 (10 Hz).
+  Group 0 was the common group.
+- In group 2 only, inhibit row 0 was enabled with interval 4000, limit 1.
+  Other inhibit rows remained disabled.
+- Recording was OFF throughout. No retry or cleanup transition was sent after
+  either failure; logs and state were preserved before restarting.
+- Baseline and candidate were separate launches of the same private installation,
+  with the same detector/config snapshots. The mode argument was the only
+  baseline/candidate software configuration difference.
+- The private installation copied production `lcls2_101226/install`; a comparison
+  of 2621 files found only `psdaq/control/control.py` changed. That installed
+  patch added the mode option with the old default; candidate launches explicitly
+  selected `0x000`. This PR makes that tested selection the new default.
+- The existing pyxpm and IOCs were not changed or restarted for the experiment.
+  The earlier PR's pyxpm readback instrumentation was not used and has been
+  removed from this PR. No MFX hardware test was performed.
 
-The last two rows explain why Grafana can show no deadtime in group 5:
-- the per-group counter is stopped when it matters;
-- deadtime in *any* group holds every group's message.
+| Order | Result file | Mode | Disable attempts | Completed cycles | Outcome |
+|---|---|---|---:|---:|---|
+| A | `baseline_20261028_122652.jsonl` | `0x180` | 1 | 0 | Groups 2 and 5 missed Disable |
+| B | `candidate_20261028_123347.jsonl` | `0x000` | 20 | 20 | Passed |
+| A | `baseline_20261028_124401.jsonl` | `0x180` | 1 | 0 | Groups 2 and 5 missed Disable again |
+| B | `candidate_20261028_132228.jsonl` | `0x000` | 300 | 300 | Passed in 1573.5 seconds |
 
-Per-link `DeadFLnk` keeps counting with L0 disabled, so it is the metric to watch.
+A preceding 300-cycle baseline run without programmed inhibition passed, so
+the controlled inhibition was necessary to reproduce quickly in this session.
+The historical production estimate (21/8815 Disables) did not determine the
+stressed test's sample size. The experiment stopped after the repeated
+baseline/candidate comparison and 300 additional candidate cycles; it does
+not claim to satisfy the earlier 1250/2000-cycle production-rate criterion.
 
-## Two explanations
+### What was verified
 
-| | Cause | Does Disable `0x000` fix it? |
-|---|---|---|
-| **A** | The `0x180` "wait while full" handling loses or holds the Disable while there is deadtime | Yes |
-| **B** | A group's `MsgHeader` write is lost or late, so it still holds the previous header | No |
+Both baseline failures had the same partial-group signature in DRP logs:
+`timing_0` (group 0) logged `PGPReader saw Disable` and sent its contribution
+to the TEB; the checked DRPs in groups 2 and 5 logged the control request but
+no timing-system Disable. The TEB received only the group-0 contribution.
+Control's list of missing acknowledgments includes downstream consequences,
+so its first reported alias is not a diagnosis of that detector.
 
-**How the pyxpm read-back tells them apart:**
-- The group that misses still reads back `0x189` (Disable, `0x180`) → the header is fine, so **A**.
-- It reads back `0x08A` (SlowUpdate) or `0x008` (Enable) → **B**.
+For both candidate runs, all ten DRPs with timing-reader logging had exactly
+20 or 300 `PGPReader saw Disable` messages and the same number of
+`TebRcvr saw Disable` results. Their ordered timestamp/pulse-ID sequences
+matched within each DRP and across all ten DRPs, with no duplicates.
+The ten were timing, laser_wav8_ip1, fzp_opal, atm_piranha_ip1, fzp_piranha,
+itof_hsd, mbes_hsd_0, mbes_hsd_1, epics, and im5k4.
+Control also required phase-2 replies from every active participant,
+including those without that logging.
 
-An explanation consistent with B, not yet tested:
-1. Group 5 keeps the last SlowUpdate header (`0x08A`, "drop if full").
-2. `GroupMsgInsert` fires during a brief deadtime in a coupled group.
-3. Groups 0 and 2 wait and get the Disable.
-4. Group 5's stale SlowUpdate is dropped, so it gets nothing.
+In the 300-cycle run:
 
-## Test setup
+- Every group had a positive accepted-trigger increase in every cycle.
+- Groups 0 and 2 each accepted 90053 triggers (241–360 per cycle);
+  group 5 accepted 7505 (20–30 per cycle).
+- Group 2's median sampled DeadTime was 51.74%; 298/300 samples exceeded 40%.
+  Samples ranged from 0.053% to 67.61%. These were sampled after Disable,
+  not measured at the exact insertion instant.
+- The JSONL contained 300 attempts, 300 trigger checks, 300 completed cycles,
+  and a successful final EndRun; no error or warning records.
+- Control was left Configured with recording OFF. A post-run read confirmed
+  group 2 inhibit 0 remained enabled at interval 4000, limit 1.
+- TEB/MEB logs had an existing startup `Inadequate RTPRIO limit` message;
+  this report does not claim completely clean process logs.
 
-This follows Matt's three steps on #237.
+[tmo-20261028.json](tmo-20261028.json) contains per-run outcomes, per-DRP
+delivery counts, timestamp agreement, and SHA-256 hashes of the input JSONL
+and DRP/control logs. Raw evidence remains on SLAC storage:
 
-Use the FEE test stand (`cnf/fee_teststand.cnf`, `DAQ:NEH`, XPM 10). It reports the same XPM firmware version as TMO and MFX (`FwVersion 0x30f0000`).
+```text
+/sdf/home/t/tmoopr/daq/disable-test-20261028/
+  results/<result file above>
+  logs/baseline/2026/10/28_10:52:38_<host>:<process>.log
+  logs/candidate/2026/10/28_12:32:13_<host>:<process>.log
+  logs/baseline/2026/10/28_12:42:18_<host>:<process>.log
+  logs/candidate/2026/10/28_13:19:50_<host>:<process>.log
 
-1. **Allocate many readout groups.**
-   - Enable the commented-out fakecam DRPs (`timing_3`, `timing_4`) so there are at least 3 DRPs, each in its own group. Mirror TMO: groups 0, 2 and 5.
-   - Set `PART:<g>:L0Delay` to 99, 75 and 10.
-2. **Configure triggers to generate deadtime,** in one group (start with group 2), in two ways:
-   - **Programmable:** `PART:<g>:InhEnable 1`, with `InhInterval` and `InhLimit` set for 10 – 50% deadtime.
-   - **Back-pressure:** fakecam trigger rate above what the DRP can take, so its link reports full.
-3. **Cycle through many transitions** with `disable_stress.py`.
-
-Run control as production does: **`-S 1`** (SlowUpdates on; `fee_teststand.cnf` has `-S 0`), and `-X <pyxpm host>` (ZMQ path). Run pyxpm from this branch so the read-back is active.
-
-```bash
-# DAQ allocated and connected with the groups and deadtime above
-python -m psdaq.debugtools.disable_phase2.disable_stress \
-    -C <collect host> -p <platform> -B DAQ:NEH -x 10 --groups 0x25 \
-    --cycles 2000 --events 100 --out T1.jsonl
-
-# after a run, per-group delivery for each failure
-python -m psdaq.debugtools.disable_phase2.check_disable_groups \
-    --logdir <daq log dir> <launch prefix>
-
-# header read-back results
-grep 'msgHdr readback' <pyxpm log>
+/sdf/home/m/monarin/lcls2/tmp/tmo-disable-20261028/evidence/
+  baseline-inhibit-122658/
+  candidate-inhibit-123347/
+  baseline-inhibit-124401/
+  candidate-inhibit-132228/
 ```
 
-## Test matrix
+## Reproduction method
 
-| ID | Groups | Deadtime | `-S` | XPM path | `--disable_msg_mode` | Purpose | If A | If B |
-|---|---|---|---|---|---|---|---|---|
-| T0 | 1 | none | 1 | ZMQ | `0x180` | Harness check | 0 failures | 0 failures |
-| **T1** | 3 | programmable, group 2 | 1 | ZMQ | `0x180` | **Reproduce** | failures | failures |
-| T1b | 3 | back-pressure, group 2 | 1 | ZMQ | `0x180` | Reproduce with real "full" | failures | failures |
-| **T2** | 3 | as T1 | 1 | ZMQ | **`0x000`** | **Test the fix** | **0 failures** | failures |
-| T3 | 3 | none | 1 | ZMQ | `0x180` | Is deadtime needed? | 0 failures | failures |
-| T4 | 3 | as T1 | **0** | ZMQ | `0x180` | Is the stale header a SlowUpdate? | failures | group gets a duplicate **Enable** instead of nothing |
-| T5 | 3 | as T1 | 1 | **PVA** (no `-X`) | `0x180` | Does the write path matter? | same as T1 | rate changes |
-| T6 | 3 | as T1 | 1 | ZMQ | `0x180` | Equal `L0Delay` in all groups (optional) | same as T1 | – |
-| T7 | 3 | as T1 | 1 | ZMQ, no `-c` | `0x180` | Like MFX (no common group) | same as T1 | same as T1 |
+Use an agreed hardware test window and separate launch/build configuration.
+A private installation does not isolate shared timing hardware. Set control
+to `--disable_msg_mode 0x180` for baseline or `0x000` for candidate; verify
+the actual command in its launch log. The stress script's `--label` only labels
+the result: it does not select or verify the running control's mode.
 
-T6 checks an observation that may be coincidence. At both hutches, the group that misses has a shorter `L0Delay` than group 0:
-- TMO: groups 5 (10) and 2 (75) miss; group 0 (99) never does.
-- MFX: group 2 (70) misses; groups 0 and 3 (75) never do.
+1. Launch the selected mode, choose the participating detectors, and keep
+   recording OFF. Configure in the GUI.
+2. Apply the same trigger selections and programmable inhibition **after**
+   Configure, which can overwrite timing-panel changes. At TMO the settings
+   were those listed above; enable the inhibit only after setting interval/limit.
+3. Run a short baseline attempt and stop on the first failure.
+4. Preserve the launch logs and JSONL, inspect per-group delivery, then restart
+   with candidate mode and reapply the same settings.
+5. Run candidate for 20 cycles, repeat baseline, then run candidate for 300.
 
-## How many cycles
+Example for the TMO candidate, with the intended test DAQ already Configured:
 
-- At the production rate (0.24%), 2000 Disables gives about 5 failures, even if the deadtime stress has no effect.
-- Measure the T1 failure rate, `p1`.
-- To call the T2 fix good: **0 failures in at least `3 / p1` cycles, and at least 1250.** 1250 is the 95% confidence figure at the production rate: 0.9976¹²⁵⁰ ≈ 0.05.
-- For T3 – T7, run at least as many cycles as T1 needed to see 3 failures.
+```bash
+python -m psdaq.debugtools.disable_phase2.disable_stress \
+    --host drp-srcf-mon001 --platform 0 --xpm-base DAQ:NEH:XPM:2 \
+    --groups 0x25 --label candidate --cycles 300 --use-configured \
+    --out candidate.jsonl
+```
 
-## Checks that `0x000` is safe (T2)
+Omitting `--use-configured` requires Connected and performs Configure with
+`readout_count=0`. With the option, Configure is skipped to preserve manual
+settings. The harness checks that recording is OFF and that the active groups
+exactly match `--groups`. It never changes trigger or inhibit PVs.
 
-`0x000` sends the Disable even while a group is in deadtime. Check:
+Each cycle requests Running (BeginRun on the first cycle, then BeginStep and
+Enable), acquires for a random 2–3 seconds, requests Paused (**Disable only**),
+waits 1.2 seconds for published statistics, verifies accepted-trigger increases
+in every group, and requests Starting (EndStep). A completed run requests
+Configured (EndRun). It does not use StepDone or event-count termination.
 
-1. every DRP logs `PGPReader saw Disable`, `TebCtrb sent`, `TebRcvr saw` and `MebCtrb sent`, and answers phase 2;
-2. no `Pulse ID did not advance`, damage, or `out-of-bounds` errors in TEB/MEB logs;
-3. the next step starts and records `--events` events;
-4. with recording on, exactly one Disable per step in every stream, with `env & 0xffff` equal to the group mask.
+Any error, missing trigger increase, timeout, or Ctrl-C stops with a nonzero
+exit status and no retry/cleanup transition. Failure records distinguish Enable,
+Disable, trigger verification, and EndStep and count attempts separately from
+completed cycles. Inspect the DAQ before recovery; logical state can remain
+Running even after triggers have stopped. Success does not imply recording
+integrity because recording is prohibited by this harness.
 
-Two more checks:
+This script ports the private `reproduce.py` used on TMO. The port makes
+host/platform/groups/XPM prefix explicit and defaults to 20 cycles.
+The hardware results belong to the private script, whose hash is retained in
+the evidence; the packaged version is covered by hardware-free tests.
 
-- **cpo's concern** (the comment above the Disable insert in `control.py`): after a T1 failure, restart and check the new session's first transitions in XTC for a stray Disable.
-- **Retries:** after a T1 failure and its retry, check that the duplicate Disable in the groups that got the first one is handled. Run 126 at TMO already contains such duplicates.
+To summarize a failed launch:
 
-## Open question for the firmware
+```bash
+python -m psdaq.debugtools.disable_phase2.check_disable_groups \
+    --logdir /sdf/home/t/tmoopr/daq/disable-test-20261028/logs/baseline/2026 \
+    10/28_12:42:18
+```
 
-The per-group message FIFO fill count (`msgRdCount`, `XpmAppMaster.vhd` line 293) only goes to a debug ILA. If it could be read as a register, it would show directly, after a failure, whether a group's Disable is still queued.
+Restore the original timing settings when finished. For this TMO session:
+disable group 2 inhibit 0 first, restore interval/limit to 1/1, and restore
+group 2 event code **136**. Stop the private DAQ with its launcher, return to
+the normal release/configuration, and perform the usual operational check.
+
+## Interpretation and remaining checks
+
+The A/B/A/B result strongly supports changing Disable's mode for this
+reproducer. It does not establish why WAIT_FULL failed to complete: a held
+or displaced message, internal timing, and other firmware mechanisms remain
+to be distinguished. The loaded firmware's exact correspondence to the
+inspected RTL has not been established.
+
+`0x000` bypasses the message-inhibit check, which can include receiver
+backpressure as well as programmable inhibition. Before operational adoption:
+
+- Verify Disable delivery with genuine receiver backpressure and confirm
+  transition-buffer capacity/overflow behavior with the firmware owner.
+- In a separately authorized recording test, verify the final accepted events,
+  the next step, and exactly one Disable per step in each stream with the
+  expected readout-group mask. Check damage and event-builder errors.
+- Inspect for stray late transitions after a failed baseline and restart.
+  Duplicate/retry behavior was not tested because this harness never retries.
+- Validate other hutch topologies, including MFX, separately.
+
+No hardware message-header readback was taken in this experiment.
+The cached PVA `MsgHeader` value is not evidence of the hardware register.
+Even a direct readback of `0x189` would establish the observed register value,
+not prove WAIT_FULL is the root cause or exclude a clock-domain/timing issue.
+For reference, `0x080` is DROP_FULL; LOW_PRIO is `0x100`.
+
+Hardware-free validation: all 11 harness tests and the applicable repository
+pre-commit hooks passed. The actual control parser was also exercised with its
+manager mocked: the default and explicit candidate resolve to 0x000, and the
+baseline resolves to 0x180. Mocked calls to the actual Disable method verified
+stop/phase-1/insert/phase-2 ordering, both headers, and propagation of a failed
+phase-2 acknowledgment without marking the transition successful.
+
+```bash
+PYTHONPATH=psdaq python3 -m unittest discover \
+    -s psdaq/psdaq/debugtools/disable_phase2 -p 'test_*.py' -v
+```

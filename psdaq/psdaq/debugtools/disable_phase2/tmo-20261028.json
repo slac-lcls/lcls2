@@ -1,0 +1,521 @@
+{
+  "date": "2026-10-28",
+  "timezone": "America/Los_Angeles",
+  "runtime_root": "/sdf/home/t/tmoopr/daq/disable-test-20261028",
+  "evidence_root": "/sdf/home/m/monarin/lcls2/tmp/tmo-disable-20261028/evidence",
+  "provenance": {
+    "reproduce.py": {
+      "sha256": "7972f9aab170621c1628df8e2d23a682c673bd28b7e8ecdc9b38a1e1fac93add"
+    },
+    "control.patch": {
+      "sha256": "b5784c20ebbdee525b292fc81117663d2bd3e8274549c4d492714224c81d8b57"
+    },
+    "manifest.json": {
+      "sha256": "f93289b9536621d825281b120f12a7854f5d52da4f2ffe00eb7e0bfec1e06295"
+    }
+  },
+  "tests": [
+    {
+      "evidence_directory": "baseline-inhibit-122658",
+      "result_file": "baseline_20261028_122652.jsonl",
+      "result_sha256": "1e15d8368db215687d270f6d6e066b109d92255725ad9e25c6c76bd9d9c32e6b",
+      "mode": "0x180",
+      "end": {
+        "event": "end",
+        "outcome": "failed",
+        "stage": "disable",
+        "error": "atm_piranha_ip1_0 did not respond to disable phase 2",
+        "attempted": 1,
+        "delivered": 0,
+        "completed": 0,
+        "time": 1793215658.5042992
+      },
+      "elapsed_seconds": 45.30128312110901,
+      "events": {
+        "start": 1,
+        "disable_attempt": 1,
+        "error": 1,
+        "end": 1
+      },
+      "drps": [
+        {
+          "log": "28_10:52:38_drp-srcf-cmp001:epics_0.log",
+          "sha256": "be35c4a726551cd73a2c1466a0449864279a191906c81217422903c85def5b63",
+          "group_mask": "0x20",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp001:im5k4_0.log",
+          "sha256": "33df57437aa1e83a79b473068248e93e73475c8843e1bcb93451f205eedf5511",
+          "group_mask": "0x20",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp003:timing_0.log",
+          "sha256": "f79b206692a363fc85fa453ceb760ba7ef48e0e194ffbb1226c8f87eb76a4679",
+          "group_mask": "0x01",
+          "pgp_disable_count": 343,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp004:laser_wav8_ip1_0.log",
+          "sha256": "43376d665b9f4e2a2d7caa729172b64d8d47d695a519ff203e27c29be19be918",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp011:fzp_opal_0.log",
+          "sha256": "f4a0626009ebf362c6f1d3de8a42a766c2093639fd62a06c7e3427e80df7066c",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp013:atm_piranha_ip1_0.log",
+          "sha256": "5f057aad30fbac36bfa1c0dfd17bf3e52791ffc94918bd6c58e3e40e2b2e117c",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp013:fzp_piranha_0.log",
+          "sha256": "57d7a65580b3702b03ee41bc0060b63b2e046f945a16dc538503fe447087099a",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp020:itof_hsd_0.log",
+          "sha256": "cc24ce34b9f55ba6aab7cc4dfe1e327a0f6689c9c146f17dbc9967db342db8aa",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp046:mbes_hsd_0.log",
+          "sha256": "4bf4f90855fe1be2845c3a107d7614dfa1195bfaa10f43c1cf7bc02d7c6235e8",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        },
+        {
+          "log": "28_10:52:38_drp-srcf-cmp048:mbes_hsd_1.log",
+          "sha256": "13810d0a91155d8240a9a9048f4ad70c0905de3a8fdf3b8ee27380e40e5d5962",
+          "group_mask": "0x04",
+          "pgp_disable_count": 342,
+          "teb_result_count": 342
+        }
+      ],
+      "group2_sampled_deadtime": 0.4678677022457123,
+      "control_log": {
+        "file": "28_10:52:38_drp-srcf-mon001:control.log",
+        "sha256": "3e42afb54bf68988f788ca26d3d54bbe219763dc5b65658c95c3eee2bab1165b"
+      },
+      "post_run_state": "running",
+      "post_run_recording": false,
+      "post_run_group2_inhibit": {
+        "InhEnable0": 1,
+        "InhInterval0": 4000,
+        "InhLimit0": 1
+      }
+    },
+    {
+      "evidence_directory": "candidate-inhibit-123347",
+      "result_file": "candidate_20261028_123347.jsonl",
+      "result_sha256": "cd77be98ab3d5246107b92eff872d9c79a642695d68f9851b8f7f13e292f85be",
+      "mode": "0x000",
+      "end": {
+        "event": "end",
+        "outcome": "complete",
+        "attempted": 20,
+        "delivered": 20,
+        "completed": 20,
+        "time": 1793216134.801328
+      },
+      "elapsed_seconds": 106.75045490264893,
+      "events": {
+        "start": 1,
+        "disable_attempt": 20,
+        "trigger_check": 20,
+        "cycle_ok": 20,
+        "end": 1
+      },
+      "drps": [
+        {
+          "log": "28_12:32:13_drp-srcf-cmp001:epics_0.log",
+          "sha256": "6be1897e52346120cdea731178870e2fa964c794ce37ebbe1c37551135a78433",
+          "group_mask": "0x20",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp001:im5k4_0.log",
+          "sha256": "ef43856d6638823593e80c52e96c78ddf91440bba2d5cd4cb57a4c5437364656",
+          "group_mask": "0x20",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp003:timing_0.log",
+          "sha256": "b47b566e5f6fbc5c1af47c068b206e0bbc5c85c64761042bcdafebc6d2255b7c",
+          "group_mask": "0x01",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp004:laser_wav8_ip1_0.log",
+          "sha256": "9fa78938c6c69a16709c00e3eda234ff90c8e728aa423b1c4c9cc2f74eb8bb56",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp011:fzp_opal_0.log",
+          "sha256": "10cd356691b88da0370066a1e99556aec55b70e32050c53b30237688027b0bce",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp013:atm_piranha_ip1_0.log",
+          "sha256": "dbb8e1658ac310911420270a22fd5574f98c10bf72311d80f0e9a261b7b95f49",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp013:fzp_piranha_0.log",
+          "sha256": "226a011c5164515b00a7f59bab71a3f1d02641d8407ee32fc01ca1b377db60d2",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp020:itof_hsd_0.log",
+          "sha256": "113cb6b0e28b696e27a02204d8cc518058f4530f9b38574c32ee587439003fa3",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp046:mbes_hsd_0.log",
+          "sha256": "53093a4e242973a532e423d180d8940774836c1ce517bf848b174f93c422c710",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_12:32:13_drp-srcf-cmp048:mbes_hsd_1.log",
+          "sha256": "f11e2f36f0beaaa9ad3c631cb06f3d4cc5c69b36d74fbb18075a351727b6722b",
+          "group_mask": "0x04",
+          "pgp_disable_count": 20,
+          "teb_result_count": 20,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        }
+      ],
+      "groups": {
+        "0": {
+          "accepted_total": 5903.0,
+          "minimum_accepted_per_cycle": 241.0,
+          "maximum_accepted_per_cycle": 358.0,
+          "sampled_deadtime_min": 0.0,
+          "sampled_deadtime_median": 0.0,
+          "sampled_deadtime_max": 1.48329434068728e-06,
+          "deadtime_samples_above_40_percent": 0
+        },
+        "2": {
+          "accepted_total": 5903.0,
+          "minimum_accepted_per_cycle": 241.0,
+          "maximum_accepted_per_cycle": 358.0,
+          "sampled_deadtime_min": 0.5157293677330017,
+          "sampled_deadtime_median": 0.5180039405822754,
+          "sampled_deadtime_max": 0.5351502895355225,
+          "deadtime_samples_above_40_percent": 20
+        },
+        "5": {
+          "accepted_total": 494.0,
+          "minimum_accepted_per_cycle": 20.0,
+          "maximum_accepted_per_cycle": 30.0,
+          "sampled_deadtime_min": 0.0,
+          "sampled_deadtime_median": 0.0,
+          "sampled_deadtime_max": 1.4834923831585911e-06,
+          "deadtime_samples_above_40_percent": 0
+        }
+      },
+      "control_log": {
+        "file": "28_12:32:13_drp-srcf-mon001:control.log",
+        "sha256": "611d902456e133f5f2c21cc0abfdc8f72b928347dc43a28649c5cec78331fd20"
+      },
+      "post_run_state": "configured",
+      "post_run_recording": false,
+      "post_run_group2_inhibit": {
+        "InhEnable0": 1,
+        "InhInterval0": 4000,
+        "InhLimit0": 1
+      }
+    },
+    {
+      "evidence_directory": "baseline-inhibit-124401",
+      "result_file": "baseline_20261028_124401.jsonl",
+      "result_sha256": "c68741af3bf12d5a3072d97d30c291cf0f34019179846b7d15dafe101b86fe4d",
+      "mode": "0x180",
+      "end": {
+        "event": "end",
+        "outcome": "failed",
+        "stage": "disable",
+        "error": "im5k4_0 did not respond to disable phase 2",
+        "attempted": 1,
+        "delivered": 0,
+        "completed": 0,
+        "time": 1793216687.464472
+      },
+      "elapsed_seconds": 45.11455059051514,
+      "events": {
+        "start": 1,
+        "disable_attempt": 1,
+        "error": 1,
+        "end": 1
+      },
+      "drps": [
+        {
+          "log": "28_12:42:18_drp-srcf-cmp001:epics_0.log",
+          "sha256": "ebd3981090f3993c4833de2df83e311794a6316281cfd584d64658f51e85e076",
+          "group_mask": "0x20",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp001:im5k4_0.log",
+          "sha256": "165965437f4a10222f452b00b6e05dacffe6e50858ec4143e1a479348c643397",
+          "group_mask": "0x20",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp003:timing_0.log",
+          "sha256": "a8371fc9b3bf6e6e0b47a6199315d88123e005a32d93a9a72470fdfaa24f2efc",
+          "group_mask": "0x01",
+          "pgp_disable_count": 1,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp004:laser_wav8_ip1_0.log",
+          "sha256": "c43fdc41ce557d1090f9accb55d74fb4904164d32533c31528497d8605052861",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp011:fzp_opal_0.log",
+          "sha256": "039bf992ef6571d5de58e32fbcd4f7b152e8f3b49e42c9c858f91d52137e7657",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp013:atm_piranha_ip1_0.log",
+          "sha256": "2fa3d7dc0ca9d7255731f964427851ea7c9e8fd24cdfffcac27138d7efa65a01",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp013:fzp_piranha_0.log",
+          "sha256": "2b6fab0f6b97aac2210837151845e648d2a78643fdfe7f2f876ca05b350f622c",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp020:itof_hsd_0.log",
+          "sha256": "7eaf412c63eee2b0fe6496a4b05e7445db45cd319d6566e11da650a54a851852",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp046:mbes_hsd_0.log",
+          "sha256": "cceb3a374fefb498fa432b36a667e97995a1ebb3a38f2ef4ef5f87c27d28f5b7",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        },
+        {
+          "log": "28_12:42:18_drp-srcf-cmp048:mbes_hsd_1.log",
+          "sha256": "b5045dd6c8f57d43176cce19644fb9c635578d6eac7b644e9325474ac09b0433",
+          "group_mask": "0x04",
+          "pgp_disable_count": 0,
+          "teb_result_count": 0
+        }
+      ],
+      "group2_sampled_deadtime": 0.5175859928131104,
+      "control_log": {
+        "file": "28_12:42:18_drp-srcf-mon001:control.log",
+        "sha256": "1b12089f2b46654b1cd38ed716b6cd80328427ae14b17c0268e19d973d458bec"
+      },
+      "post_run_state": "running",
+      "post_run_recording": false,
+      "post_run_group2_inhibit": {
+        "InhEnable0": 1,
+        "InhInterval0": 4000,
+        "InhLimit0": 1
+      }
+    },
+    {
+      "evidence_directory": "candidate-inhibit-132228",
+      "result_file": "candidate_20261028_132228.jsonl",
+      "result_sha256": "2c249ee80fc4b303fe5c8aeb8c49cbfcb5181a4df0277f805683672253c3dca5",
+      "mode": "0x000",
+      "end": {
+        "event": "end",
+        "outcome": "complete",
+        "attempted": 300,
+        "delivered": 300,
+        "completed": 300,
+        "time": 1793220522.4523551
+      },
+      "elapsed_seconds": 1573.5023701190948,
+      "events": {
+        "start": 1,
+        "disable_attempt": 300,
+        "trigger_check": 300,
+        "cycle_ok": 300,
+        "end": 1
+      },
+      "drps": [
+        {
+          "log": "28_13:19:50_drp-srcf-cmp001:epics_0.log",
+          "sha256": "d85ef4b896d9ddb30f714c929e09d932e6bb71674dd517e36f2e574480301d20",
+          "group_mask": "0x20",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp001:im5k4_0.log",
+          "sha256": "bb955bdd7cb1a7cfa66014526fbffa6a2ddfb277a021dc7f4eef33019a814be7",
+          "group_mask": "0x20",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp003:timing_0.log",
+          "sha256": "b8af2137b01a24f9d637951f3036ded0ceef5fc448a05b7d6957e82aeb2fb2f6",
+          "group_mask": "0x01",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp004:laser_wav8_ip1_0.log",
+          "sha256": "8d40cbc4639ece11b281f5ad9347bce6d2a709ed3608a44b93f10e663cda2ff1",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp011:fzp_opal_0.log",
+          "sha256": "5d29eb24c13709e055ed7f105e259e7d9d327e1a02aeaf905165ee200ca03964",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp013:atm_piranha_ip1_0.log",
+          "sha256": "02fe7451e46a31ef4f651ce307f6287a17bbc67eb9722737dd7cb27d988661a0",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp013:fzp_piranha_0.log",
+          "sha256": "8149ccdeb4b45835a9e6a55a61d5e9e2059b87e977c366274d16d7dfb61af4f6",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp020:itof_hsd_0.log",
+          "sha256": "1c11d2348dae6ae7413a2b74fed0e7be5dc3b25e2cc73e418694ed50f95b072e",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp046:mbes_hsd_0.log",
+          "sha256": "562b01c649c27933fe16ab2e8b0edf5774ea58276717ef604dcb542b417b6695",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        },
+        {
+          "log": "28_13:19:50_drp-srcf-cmp048:mbes_hsd_1.log",
+          "sha256": "55a7fcf071dc9a1d5d3ade78d3a37eba6c8df3f050fbc1f3a50957dd856eaf70",
+          "group_mask": "0x04",
+          "pgp_disable_count": 300,
+          "teb_result_count": 300,
+          "unique_ordered_timestamps_and_pulses_match_all_drps": true
+        }
+      ],
+      "groups": {
+        "0": {
+          "accepted_total": 90053.0,
+          "minimum_accepted_per_cycle": 241.0,
+          "maximum_accepted_per_cycle": 360.0,
+          "sampled_deadtime_min": 0.0,
+          "sampled_deadtime_median": 0.0,
+          "sampled_deadtime_max": 1.777237457645242e-06,
+          "deadtime_samples_above_40_percent": 0
+        },
+        "2": {
+          "accepted_total": 90053.0,
+          "minimum_accepted_per_cycle": 241.0,
+          "maximum_accepted_per_cycle": 360.0,
+          "sampled_deadtime_min": 0.0005299416952766478,
+          "sampled_deadtime_median": 0.5173741579055786,
+          "sampled_deadtime_max": 0.6760741472244263,
+          "deadtime_samples_above_40_percent": 298
+        },
+        "5": {
+          "accepted_total": 7505.0,
+          "minimum_accepted_per_cycle": 20.0,
+          "maximum_accepted_per_cycle": 30.0,
+          "sampled_deadtime_min": 0.0,
+          "sampled_deadtime_median": 0.0,
+          "sampled_deadtime_max": 1.7775217884263839e-06,
+          "deadtime_samples_above_40_percent": 0
+        }
+      },
+      "control_log": {
+        "file": "28_13:19:50_drp-srcf-mon001:control.log",
+        "sha256": "627789382d8f3d6fc1eba25291639b9217f270ad02daf1930171b1a4f4e285b0"
+      },
+      "post_run_state": "configured",
+      "post_run_recording": false,
+      "post_run_group2_inhibit": {
+        "InhEnable0": 1,
+        "InhInterval0": 4000,
+        "InhLimit0": 1
+      }
+    }
+  ]
+}
