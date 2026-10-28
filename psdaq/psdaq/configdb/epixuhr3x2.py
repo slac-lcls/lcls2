@@ -442,6 +442,23 @@ class EpixUHR3x2_Manager:
 
         logger.info("Done with SACI configuration")
 
+    def setup_asic_descramblers(self, asics: List[int]) -> None:
+        logger: logging.Logger = logging.getLogger(self._logger_name)
+        descrambler = self.FebFpga.App.Descrambler
+        for asic in asics:
+            asic_descrambler = descrambler.DescAsic[asic]
+
+            # For the top row of asics - ASIC[0...2] - set `MirrorCols`
+            # For the bottom row of asics - ASIC[3...5] - set `MirrorRows`
+            if asic < 3:
+                asic_descrambler.MirrorCols.set(True)
+                asic_descrambler.MirrorRows.set(False)
+            else:
+                asic_descrambler.MirrorCols.set(False)
+                asic_descrambler.MirrorRows.set(True)
+
+        logger.info("Done with ASIC Descrambler Mirroring Setup")
+
     def _init_framer_asic(self, asic: int) -> None:
         registers_and_vals: Dict[str, Any] = {
             "enable": False,

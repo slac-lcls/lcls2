@@ -430,6 +430,9 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
 
     time.sleep(1)
 
+    # Setup the ASIC left-right, and up-down flips
+    manager.setup_asic_descramblers(asics=asics)
+
     # Configure any gain settings
     if cfg["user"]["Gain"]["SetSameGain4All"]:
         if cfg["user"]["Gain"]["UsePixelMap"]:
