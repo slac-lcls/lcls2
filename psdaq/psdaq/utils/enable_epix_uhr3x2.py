@@ -2,12 +2,9 @@ import pyrogue as pr
 import os
 import sys
 
-# submoduledir = os.environ["SUBMODULEDIR"]
+submoduledir = os.environ["SUBMODULEDIR"]
 
-# top_level = submoduledir + "/epixuhr-3x2-readout-testing/"
-
-# FOR TESTING v5.0.0
-top_level = "/sdf/home/d/dorlhiac/Repos/epixuhr-3x2-readout-testing/"
+top_level = submoduledir + "/epixuhr-3x2-readout-testing/"
 
 sys.path.append("%s/firmware/python".format(top_level))
 
