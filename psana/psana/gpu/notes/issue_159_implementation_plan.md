@@ -58,8 +58,12 @@ Independent review and validation now run in parallel; see the
 [review prompt](issue159_review_prompt_20261028.md) and
 [validation plan/results](issue159_parallel_validation_20261028.md).
 The integrated runtime passed 333 GPU tests and 315 selected memcheck checks
-with zero sanitizer errors. Combined MPI/reporting and matched performance
-checks remain pending; Stage 5 still waits for review and acceptance.
+with zero sanitizer errors. [MPI/reporting validation](issue159_mpi_reporting_20261028.md)
+passed 16 combined field cases and two real-data pixel comparisons. The report
+separately records an inherited host calibration scalar-shape limitation; the
+focused scalar IPC test injects the intended shapes at the GPU-manager boundary.
+Matched performance and independent review remain pending; Stage 5 still waits
+for acceptance.
 
 ## Goal summary
 

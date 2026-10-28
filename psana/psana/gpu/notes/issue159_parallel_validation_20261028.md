@@ -6,6 +6,19 @@ or PR merge is authorized by this validation work. The reviewer receives the
 [full prompt](issue159_review_prompt_20261028.md), covering cumulative Stages
 1–4 before reviewing the dependency integration.
 
+## MPI/reporting completion update
+
+Job **42250696** on `sdfampere001` passed all 16 combined field/reporting
+cases and two real Jungfrau pixel comparisons (20 events each). See the
+[MPI report](issue159_mpi_reporting_20261028.md) for the exact coverage, new
+test driver, and inherited host scalar-shape limitation. The focused synthetic
+scalar check starts at the GPU-manager input boundary; the real-data pixel
+checks use unchanged calibration setup. No production code changed.
+
+The planning sections below describe the original coverage plan. Combined
+MPI/reporting is now complete within that stated scope. Independent review and
+the matched cold/field performance screen remain pending.
+
 ## Fixed code under test
 
 - Review baseline: main fix `87bce00cb`.
@@ -95,7 +108,8 @@ owner/imported constant totals, and release after the last consumer. Field copie
 belong to private retained memory, not imported borrowed constants. A snapshot
 must not mutate budget admission state. Use bounded process timeouts and require
 clean exit as well as completion markers; a hang or missing rank is not a pass.
-This combined MPI coverage has not yet been implemented or run in this task.
+This combined coverage is now implemented and passed; see the completion update
+and MPI report above, including the host scalar-shape scope limitation.
 
 ## Performance preparation and run
 
@@ -130,7 +144,8 @@ regressions before proceeding; there is no new arbitrary pass/fail percentage.
 
 ## Current remaining gates
 
-Independent review, combined MPI/reporting coverage, and the matched cold/field
-performance screen remain pending. The focused device gate is complete with
-333 GPU tests and 315 selected sanitizer checks passing. This does not establish
-combined MPI/IPC teardown correctness or full integrated acceptance.
+Independent review and the matched cold/field performance screen remain pending.
+The focused device gate passed 333 GPU tests and 315 selected sanitizer checks.
+The combined MPI/reporting gate passed 16 field cases and two real pixel checks,
+with the separate inherited host scalar-shape finding documented in the MPI
+report. These results are not full Stage5/final acceptance.
