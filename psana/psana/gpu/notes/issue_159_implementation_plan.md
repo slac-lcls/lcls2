@@ -34,10 +34,25 @@ PR187 and PR208 have merged into `features/psana2-gpu` at `8cf05e86a`.
 [Integration review](issue159_target_merge_review_20261028.md) recommends a
 normal merge **before Stage 5**. An isolated merge/build passed 990 CPU unit
 tests plus three field-copy/accounting probes, with the alignment production
-patch preserved exactly. The active branch has not yet integrated this update.
+patch preserved exactly. The update is now committed on the separate
+`integrate/issue159-pr187-pr208` branch for review; the main fix branch has not
+yet integrated it.
 Keep old frozen A intact; establish a new unfixed target reference, rerun focused
 CUDA/MPI checks for the changed dependency, and then implement Stage 5.
 No accessor-design change or additional A/A campaign is required.
+
+## Review workflow — October 28
+
+Substantial steps use a separate branch/worktree and a PR targeting
+`fix/gpu-unaligned-reads-159`. Keep dependency integration and implementation
+stages in separate PRs. Each PR records its scope, validation evidence, known
+limitations, and the specific ownership/budget/performance interactions to review.
+Pause progression to the next substantial step until another agent has reviewed
+the PR, findings are resolved, and the step is accepted and merged. Do not
+self-merge or start Stage 5 while this dependency-integration PR is awaiting
+review. Small corrections and review fixes can stay in the current step's PR.
+The main fix branch remains the eventual issue159 PR source targeting
+`features/psana2-gpu`.
 
 ## Goal summary
 
