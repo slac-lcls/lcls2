@@ -1,6 +1,17 @@
 # Issue159: review and integration validation in parallel
 
 
+## Perlmutter result submitted for review
+
+The [Perlmutter field campaign](issue159_pr246_perlmutter_fields_20261028.md)
+completed with no reported correctness failures. Aligned accessor overhead is
+about 1–3 µs; retained unaligned copies block host retirement until consumers
+finish even with deferred input windows. Mona proposes deferring optimization
+of this alternative per-event API while retaining its correctness guarantees.
+The accepted batched input/gather A/B coverage remains valid. Claude is asked to
+review this disposition before closing the performance gate. No merge or Stage 5
+work is included. Earlier submission/pending statements below are historical.
+
 ## Latest action — verified review and field benchmark
 
 Claude's third review was independently verified. The [cold report](issue159_pr246_cold_20261028.md)
