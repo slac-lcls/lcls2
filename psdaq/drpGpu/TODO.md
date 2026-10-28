@@ -1322,6 +1322,13 @@ diverge silently -- that has happened once already.
 
 ## Performance and structure
 
+- **Reducer-specific metrics.**  The general path is done: an algorithm sets the
+  `retCode` that `recordGraph()` hands it, `_reducerLoop` carries it in `ReducerTuple`, and
+  the recorder counts non-zero codes as `DRP_redErrors`, logging the first ten.  Still
+  open, Ric's second idea: a virtual `ReducerAlgo::setupMetrics(exporter, labels)`,
+  default no-op, called from `Reducer::setupMetrics()`, for numbers only the algorithm
+  knows (compression ratio, say).
+
 - **`maxTrSize`: the buffer-sizing problem IS fixed.  What is left is only the error
   message.**  Two separate things wore the same name, which is why this item has read
   confusingly:
@@ -1406,9 +1413,10 @@ diverge silently -- that has happened once already.
   compatibility path rather than peer-to-peer.  That decides whether it is a floor or a
   ceiling.  Scatter-gather writes are the other open question.
 
-- **Remove `HOST_LAUNCHED_REDUCERS`.**  A temporary switch for seeing whether
-  certain reducers worked at all.  It gives reducers two launch paths of which only
-  one is ever exercised — the same shape as the `HOST_REARMS_DMA` rot.
+- **Port or retire `EipReducer`, `CuSzReducer`, `CuSZpReducer`.**  Unbuilt, and still on
+  the removed `hasGraph()`/`reduce()` interface; each needs a `recordGraph()` that sets
+  state 2 and writes its size below the payload, as `NoOpReducer` does.  Ric to ask Matt
+  about EIP.
 
 - **Third-party compressor support** via shims in `lcls2-dev/subprojects`.  `lc`,
   `pfpl` and `sleek` work; `cusz` and `cuszp` have problems; `eip` was started in
@@ -1463,6 +1471,18 @@ diverge silently -- that has happened once already.
   the gain configuration as well as the detector.  `epixuhr3x2_config.py` already computes
   `gainMapSelection` and `gainValSelection` at Configure; **neither reaches the GPU today**.
   Ask **Mikhail**, who has done the psana equivalent.
+
+- **Port `drp/EpixUHR3x2` into `drpGpu/` if borrowing it costs more.**  The GPU class
+  relies on it for configuration and for the event `Names` (hence `setRawAlgVersion()`).
+  Ric, 2026-10-22: if further complications arise, a GPU-owned version would be simpler,
+  and symmetric with `EpixUHRemu`.
+
+- **psana's `epixuhr3x2_raw_1_0_0` is on Gabriel's `features/uhr_cpu_v5`**, along with
+  the CPU DRP's move to raw 1.0.0 and the v5.0.0 single-panel layout.  Until that is on
+  master, GPU-recorded 3x2 data has no `det.raw` from a master build.
+
+- **Use the f/w header on tdest 4.**  Its per-ASIC OutputFP16 bit could select the u16 or
+  fp16 policy instead of the `raw` kwarg; its maximum value is a cheap sanity check.
 
 ## Runtime behaviour
 
