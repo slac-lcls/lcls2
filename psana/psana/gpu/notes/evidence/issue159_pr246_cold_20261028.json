@@ -171,5 +171,17 @@
   "manifest_sha256": "f432a66f1ba0b913309240278e7b2dab8696f58368f72c329e3b8872f58370f2",
   "review": "https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5686938706",
   "acknowledgment": "https://github.com/slac-lcls/lcls2/pull/246#issuecomment-6476232774",
-  "results_available": false
+  "results_available": false,
+  "status_update": {
+    "state": "RUNNING",
+    "node": "sdfampere015",
+    "start": "2026-10-28T10:48:40-07:00",
+    "phase": "private staging; no timed samples yet",
+    "preflight_passed": [
+      "8086 frozen hashes",
+      "compute-node external dependencies match",
+      "six-rank runtime provenance A/B",
+      "reader adapter and GDS probe A/B"
+    ]
+  }
 }
