@@ -17,7 +17,7 @@ DTYPES = ('u1', 'u2', 'u4', 'u8', 'i1', 'i2', 'i4', 'i8', 'f4', 'f8')
 
 
 def field_case(cp, *, type_id=1, shapes=((3, 5),), base_shift=0, offset=1,
-               absent=(), limit=1024**3, lease_budget=True):
+               absent=(), limit=1024**3, lease_budget=True, budget=None):
     dtype = np.dtype(DTYPES[type_id])
     segments = (9, 4, 17)[:len(shapes)]
     data, expected, rows, handles = {}, {}, {}, {}
@@ -45,7 +45,7 @@ def field_case(cp, *, type_id=1, shapes=((3, 5),), base_shift=0, offset=1,
     cp.cuda.get_current_stream().record(ready)
     owner = InputWindow(0, 0, NS(n_dgrams=0, data_gpu=data, walk_done=ready),
                         np.zeros((0, DESC_NCOLS), np.uint64), defer_retirement=True)
-    budget = _GpuBudget(limit)
+    budget = _GpuBudget(limit) if budget is None else budget
     lease = InputSlotLease(ready, (owner,), **({'budget': budget} if lease_budget else {}))
     binding = GpuDetectorBinding('det', canonical_segment_ids=segments,
         field_handles_by_segment={}, field_handles_by_name={('raw', 'value'): handles})

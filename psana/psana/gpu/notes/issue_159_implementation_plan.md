@@ -62,8 +62,15 @@ with zero sanitizer errors. [MPI/reporting validation](issue159_mpi_reporting_20
 passed 16 combined field cases and two real-data pixel comparisons. The report
 separately records an inherited host calibration scalar-shape limitation; the
 focused scalar IPC test injects the intended shapes at the GPU-manager boundary.
-Matched performance and independent review remain pending; Stage 5 still waits
-for acceptance.
+Claude's initial review at `e7c700ba2` found no blockers. The
+[review follow-up](issue159_review_followup_20261028.md) adds the empty-field fast
+path, cumulative-budget and reporting tests, and user documentation. Focused
+validation passed 377 CPU tests and 302 device / 302 memcheck cases (zero errors).
+The inherited host scalar transport finding is tracked as #247. Follow-up review
+and matched performance remain pending; Stage 5 still waits for acceptance.
+The next B performance candidate must include the reviewed empty-field change.
+Measure bulk-on unaligned field retirement separately before considering any
+change to its current host-wait behavior.
 
 ## Goal summary
 

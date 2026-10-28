@@ -6,6 +6,17 @@ or PR merge is authorized by this validation work. The reviewer receives the
 [full prompt](issue159_review_prompt_20261028.md), covering cumulative Stages
 1–4 before reviewing the dependency integration.
 
+## Review follow-up update
+
+Claude completed the initial review at `e7c700ba2` without blockers. The
+[small follow-up fixes](issue159_review_followup_20261028.md) passed 377 CPU
+tests and 302 CUDA tests plus 302 memcheck cases with zero sanitizer errors.
+The new empty-field guard changes the B candidate: freeze the reviewed follow-up
+head and verify a separate install before timing. Earlier results below remain
+at their stated revisions. Claude's follow-up review is next; performance,
+PR merge and Stage 5 remain pending. The scalar transport issue is tracked as
+[#247](https://github.com/slac-lcls/lcls2/issues/247).
+
 ## MPI/reporting completion update
 
 Job **42250696** on `sdfampere001` passed all 16 combined field/reporting
@@ -114,8 +125,10 @@ and MPI report above, including the host scalar-shape scope limitation.
 ## Performance preparation and run
 
 Preserve original frozen A `90c05965c`. New A is the unfixed target `8cf05e86a`;
-new B is the integrated Stage4 runtime `31c4c2f2`. Both include the final PR187/208
-code. The other task's C tree at `701f5ebb1` equals new A: reuse that installation
+new B is the reviewed follow-up to integrated Stage4 (original runtime
+`31c4c2f2`, now with the empty-field correction documented above). Freeze its exact
+revision before running; do not time the older installation as the new B.
+Both arms include the final PR187/208 code. The other task's C tree at `701f5ebb1` equals new A: reuse that installation
 only after checking build/environment manifests, file hashes and actual native
 origins against B. Build fresh if those checks fail; do not patch or relocate an
 old install. This is not a new A/A campaign.
@@ -137,15 +150,19 @@ Stage5/full-fix acceptance.
 
 Run the existing field-view benchmark separately on the same node/install pair:
 aligned direct first/cached access on A/B, unaligned first/cached access on B only,
-scalar and large array cases. Report host latency, CUDA duration and retained
+scalar and large array cases. Include bulk-on unaligned access with delayed
+consumers and time retirement separately, to measure the host wait identified
+in Claude's review. Compare bulk-off as well; do not infer this cost from the
+safe-data dense screen. Report host latency, CUDA duration and retained
 bytes separately. The safe-data dense workload does not measure these APIs.
 No calibrated-path or PR187 startup campaign is reopened. Review repeatable
 regressions before proceeding; there is no new arbitrary pass/fail percentage.
 
 ## Current remaining gates
 
-Independent review and the matched cold/field performance screen remain pending.
-The focused device gate passed 333 GPU tests and 315 selected sanitizer checks.
+Claude's follow-up review and the matched cold/field performance screen remain
+pending. The original focused device gate passed 333 GPU tests and 315 selected
+sanitizer checks; the review delta passed the focused checks recorded above.
 The combined MPI/reporting gate passed 16 field cases and two real pixel checks,
 with the separate inherited host scalar-shape finding documented in the MPI
 report. These results are not full Stage5/final acceptance.

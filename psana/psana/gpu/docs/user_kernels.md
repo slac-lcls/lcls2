@@ -62,13 +62,19 @@ Generic fields need no dense adapter or CPU detector class. They preserve
 physical segment identity and runtime shape in device descriptors. Configure
 payload fields are not event selectors. Pointer-consuming kernels must check
 source presence, locator status, type/rank and byte bounds before dereferencing.
+The actual `raw_ptr + offset` address may be unaligned: check its alignment
+before typed loads, or use byte-safe loads within the validated bounds. Task
+field descriptors reference packed input, not public field-view aligned copies.
 
 Constant selectors address the run's calibration dictionary. Psana unwraps
 `(array, metadata)` entries and uploads only declared native numeric NumPy
 arrays, retaining original shape, dtype and values. Scalars/empty numeric
 arrays are allowed; missing keys, unsupported values and undeclared access fail
-explicitly. Gains are not implicitly inverted; offsets and masks are not
-implicitly prepared. Empty declarations cause no task-constant upload.
+explicitly. The host calibration XTC transport currently promotes scalar NumPy
+arrays from shape `()` to `(1,)` before GPU setup; this inherited limitation is
+tracked in [#247](https://github.com/slac-lcls/lcls2/issues/247). GPU upload
+preserves the shape it receives. Gains are not implicitly inverted; offsets and
+masks are not implicitly prepared. Empty declarations cause no task-constant upload.
 
 Each BD owns a requested snapshot, uploaded once at run setup. psana does not
 replace or refresh it during the run: BeginStep drains prior work and applies

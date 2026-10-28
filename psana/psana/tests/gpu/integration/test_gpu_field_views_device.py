@@ -45,6 +45,9 @@ def test_device_field_bits_alignment_and_cache(type_id, shape, base_shift, offse
             assert cached.only().data.ptr == ptr
         assert case.budget.committed() == charge
         assert charge == (0 if aligned else ((value.nbytes + 511) // 512) * 512)
+        if aligned or value.nbytes == 0:
+            assert case.lease._field_copies is case.lease._retained_copies is None
+            assert case.result._views_ready == ()
         stream.synchronize()
         assert output.get().tobytes() == case.expected[9].tobytes()
         assert value.shape == shape and value.dtype == dtype

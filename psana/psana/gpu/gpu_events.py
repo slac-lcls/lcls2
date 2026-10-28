@@ -107,7 +107,11 @@ class _GpuMemStats:
         held         bytes an admission hold has reserved for future use
         retained     the RESIDUAL: committed minus every category above, so
                      it is owned storage this snapshot cannot attribute --
-                     the figure to watch for a leak. Omitting a category
+                     a persistent unexplained residual can indicate a leak.
+                     Live aligned field copies legitimately appear here;
+                     inspect their 'field-copy' ledger entries and expect
+                     them to clear after lease retirement and final alias release.
+                     Omitting a category
                      makes identified memory look unattributed; subtracting
                      one twice hides a leak, so a negative raw value is
                      logged at DEBUG before the clamp to 0.

@@ -1,5 +1,17 @@
 # Review prompt: issue159 Stages 1–4, then PR246
 
+## Follow-up review after the initial verdict
+
+Claude's initial review covered head `e7c700ba2` and found no blocking correctness
+defects. Review the subsequent `e7c700ba2..HEAD` delta using the
+[follow-up dispositions and validation](issue159_review_followup_20261028.md).
+It includes a small production empty-field fast path as well as tests and docs;
+it is no longer a notes-only delta. Confirm the budget/lifetime decisions,
+empty-field behavior and coverage, descriptor documentation, reporting tests,
+and separate scalar follow-up #247. Record the exact new head reviewed. The
+original scope below remains context; do not restart already completed review
+unless this delta exposes a new interaction. Performance and Stage 5 still wait.
+
 Review the alignment fix for issue159 in slac-lcls/lcls2. This is an independent
 code review, not an implementation task. Stages 1–4 were committed directly to
 the fix branch; reviewing only PR246 would miss those changes. Review both

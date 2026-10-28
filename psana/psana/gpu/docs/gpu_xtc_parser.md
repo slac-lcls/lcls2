@@ -98,7 +98,26 @@ when accessed on another stream. Thus `on_gpu_view` is borrowed access, not an
 unconditional zero-copy guarantee. Do not
 use escaped borrowed arrays after their access context ends. Input access must
 occur while the event's input lease is active; cached independent CPU values can
-survive retirement.
+survive retirement. Empty fields require no aligned copy, regardless of the
+source address.
+
+Aligned copies are charged to the owning BD's GPU budget and retained until the
+event's input lease retires and its borrowed consumers finish. Events delivered
+from one execution slot can therefore accumulate copies across the whole slot;
+exiting each view context does not release them immediately. These lazy copies
+are not included in the setup-time admission estimate. If a copy would exceed
+the remaining budget, access raises `GpuMemoryPressureError`; there is no
+automatic trim-and-retry inside field access. Reduce `batch_size` or
+`n_gpu_streams`, or increase `gpu_memory_budget_gb` within available device memory.
+In the current implementation, `.on_cpu` and `.on_gpu` also use this aligned
+intermediate for unaligned input. Live copies appear as `field-copy` ledger
+entries and contribute to `retained`, never to imported `borrowed` constants.
+
+Retiring a lease with copies synchronizes their completion and registered
+consumers on the host. This can reduce overlap even with bulk reads and deferred
+input-window retirement; fields using direct views do not add this copy-related
+wait. The first unaligned access may allocate and copy despite the
+`on_gpu_view` name.
 
 Unlike task descriptors, the first public materialization may copy the small
 locator row to the CPU to determine dtype/shape. Copying a locator is not CPU
@@ -120,6 +139,11 @@ of shape `(N, S, 8)` and `segment_ids` identifies the second axis:
 accepted the field. Check it before dereferencing; then check the locator's
 status, type/rank and bounds. `locator_ptr` addresses the configured field's row
 table, not the selected row. Different entries may refer to different owners.
+The actual `raw_ptr + offset` address may be unaligned even when the offset alone
+is divisible by the dtype size. Before a typed load, check the actual address
+against that type's alignment requirement; otherwise use byte-safe loads within
+the validated field bounds. Task descriptors expose the original packed input,
+not the aligned copies produced by public field views.
 These tables and device event identities upload together on first metadata
 access during the callback. The producer's leases retain all referenced storage.
 
