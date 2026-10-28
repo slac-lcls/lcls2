@@ -54,6 +54,13 @@ review. Small corrections and review fixes can stay in the current step's PR.
 The main fix branch remains the eventual issue159 PR source targeting
 `features/psana2-gpu`.
 
+Independent review and validation now run in parallel; see the
+[review prompt](issue159_review_prompt_20261028.md) and
+[validation plan/results](issue159_parallel_validation_20261028.md).
+The integrated runtime passed 333 GPU tests and 315 selected memcheck checks
+with zero sanitizer errors. Combined MPI/reporting and matched performance
+checks remain pending; Stage 5 still waits for review and acceptance.
+
 ## Goal summary
 
 Fix [issue #159](https://github.com/slac-lcls/lcls2/issues/159) while preserving

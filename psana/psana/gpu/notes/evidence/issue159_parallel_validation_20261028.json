@@ -1,0 +1,190 @@
+{
+  "r1": {
+    "root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1",
+    "job": "42247426",
+    "status": {
+      "job": "42247426",
+      "host": "sdfampere004",
+      "scope": "CUDA and selected memcheck; MPI/performance pending",
+      "complete": false,
+      "device": {
+        "returncode": 1,
+        "seconds": 16.2945901970088,
+        "command": [
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-B",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/run_tests.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/job-42247426/device-tmp",
+          "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/job-42247426/device.xml",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gather_alignment.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_field_views_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_input_copy_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_group_ownership_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_input_window_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_raw_preparation.py"
+        ],
+        "counts": {
+          "tests": 333,
+          "failures": 15,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "error": "AssertionError(('device', {'returncode': 1, 'seconds': 16.2945901970088, 'command': ['/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python', '-B', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/run_tests.py', '-q', '-p', 'no:cacheprovider', '--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/job-42247426/device-tmp', '--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/job-42247426/device.xml', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gather_alignment.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_field_views_device.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_input_copy_device.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_group_ownership_device.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_gpu_input_window_device.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r1/tests/gpu/integration/test_raw_preparation.py'], 'counts': {'tests': 333, 'failures': 15, 'errors': 0, 'skipped': 0}}))"
+    },
+    "files": {
+      "run.sbatch": "47e4d56808e50987bf8ac07ddc5b28d653f873ac4d7ae020d875253e5b383f3c",
+      "run_tests.py": "b87f06268d2960553c342bc135781cfac3282c3d920ab6356cffede314254ce1",
+      "validate.py": "ddbf477b1847e0596757cde9f97520ef2f61e45a06574347b07ef12f15e04a83",
+      "metadata/hashes.json": "85bd3d164833d4a20dc2c44a05d0ddd5ccf0dd5895ac3ad8a31f88785f0472e3",
+      "metadata/source.json": "e422fa8474b4667d0822b734a4de76eb845f1f3bff582b31d087fac225620b8c",
+      "job-42247426/gpu.txt": "38b0527adb723ba7dc744c30cb665bfb6e61f08eb77643694163d136f5f58419",
+      "job-42247426/device.xml": "2d261cd1a4047cd164e3b89b29c2659f7cb8010b5d1dfefcb0840706e1861c0d",
+      "job-42247426/status.json": "8d209ad989d41582368ceecbc797403973e5ffc6720223540b4123f556341994",
+      "job-42247426/device.log": "f21dc7073257ddbb6bcb23c89fc35b657c82191ff0bd81112e5bd17bc3e2e75c"
+    }
+  },
+  "r2": {
+    "root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2",
+    "job": "42247538",
+    "status": {
+      "job": "42247538",
+      "host": "sdfampere004",
+      "scope": "CUDA and selected memcheck; MPI/performance pending",
+      "complete": false,
+      "device": {
+        "returncode": 0,
+        "seconds": 20.55891705598333,
+        "command": [
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-B",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/run_tests.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/job-42247538/device-tmp",
+          "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/job-42247538/device.xml",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gather_alignment.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_field_views_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_input_copy_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_group_ownership_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_input_window_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_raw_preparation.py"
+        ],
+        "counts": {
+          "tests": 333,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "memcheck": {
+        "returncode": 99,
+        "seconds": 12.696367126976838,
+        "command": [
+          "/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer",
+          "--tool",
+          "memcheck",
+          "--error-exitcode",
+          "99",
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-B",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/run_tests.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/job-42247538/memcheck-tmp",
+          "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/job-42247538/memcheck.xml",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gather_alignment.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_field_views_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_input_copy_device.py"
+        ],
+        "counts": {
+          "tests": 315,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      },
+      "error": "AssertionError(('memcheck', {'returncode': 99, 'seconds': 12.696367126976838, 'command': ['/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer', '--tool', 'memcheck', '--error-exitcode', '99', '/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python', '-B', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/run_tests.py', '-q', '-p', 'no:cacheprovider', '--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/job-42247538/memcheck-tmp', '--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/job-42247538/memcheck.xml', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gather_alignment.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_field_views_device.py', '/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r2/tests/gpu/integration/test_gpu_input_copy_device.py'], 'counts': {'tests': 315, 'failures': 0, 'errors': 0, 'skipped': 0}}))"
+    },
+    "files": {
+      "run.sbatch": "e81dc4f904d5ecc4cde493400854b9b1ede09e56c989c632c0a03d7724c15d8e",
+      "run_tests.py": "b87f06268d2960553c342bc135781cfac3282c3d920ab6356cffede314254ce1",
+      "validate.py": "ddbf477b1847e0596757cde9f97520ef2f61e45a06574347b07ef12f15e04a83",
+      "metadata/hashes.json": "1a11ea6ae00e2a47775e3e976a161d523bae15e7cb49dc74aa284b880e8ba124",
+      "metadata/source.json": "e422fa8474b4667d0822b734a4de76eb845f1f3bff582b31d087fac225620b8c",
+      "job-42247538/device.log": "9076d64dcc51391d0f1bbd5789043cf8638a7c38b242830de7cebfb9199a2030",
+      "job-42247538/memcheck.log": "fae26ccb67d2f388bef9f65081e9682ebfc2ad50a07dc7f99acd5b46e7e0643e",
+      "job-42247538/memcheck.xml": "5ad821967633778a221ffdb051ef5df0f9bc9c19d4a226381f818adbeb49d5b9",
+      "job-42247538/device.xml": "3bfb0e7fa3ba733a4345f11d6cb3ecc04d42ae350e67a62ec204a6bdb3c63506",
+      "job-42247538/gpu.txt": "38b0527adb723ba7dc744c30cb665bfb6e61f08eb77643694163d136f5f58419",
+      "job-42247538/status.json": "11314d0aab0806afcadf2cd9df8599ce2542917b028df03f570b01dc66e68354"
+    }
+  },
+  "r3": {
+    "root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3",
+    "job": "42247695",
+    "status": {
+      "job": "42247695",
+      "host": "sdfampere004",
+      "scope": "CUDA and selected memcheck; MPI/performance pending",
+      "complete": true,
+      "device_reference": "42247538: 333 passed, unchanged code and tests; this retry runs memcheck only",
+      "memcheck": {
+        "returncode": 0,
+        "seconds": 11.992924393009162,
+        "command": [
+          "/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer",
+          "--tool",
+          "memcheck",
+          "--error-exitcode",
+          "99",
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-B",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3/run_tests.py",
+          "-q",
+          "-p",
+          "no:cacheprovider",
+          "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3/job-42247695/memcheck-tmp",
+          "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3/job-42247695/memcheck.xml",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3/tests/gpu/integration/test_gather_alignment.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3/tests/gpu/integration/test_gpu_field_views_device.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-20261028-r3/tests/gpu/integration/test_gpu_input_copy_device.py"
+        ],
+        "counts": {
+          "tests": 315,
+          "failures": 0,
+          "errors": 0,
+          "skipped": 0
+        }
+      }
+    },
+    "files": {
+      "run.sbatch": "b69c8b32e850a258c0ce28ee037a681570a2bd7f178587912d07fb918ca51c21",
+      "run_tests.py": "b87f06268d2960553c342bc135781cfac3282c3d920ab6356cffede314254ce1",
+      "validate.py": "a12b08aec3daa4eeb691d2cf61c17bca181e4917abdb149a8292f056e8ea3c74",
+      "metadata/hashes.json": "d3b2fa40b66615212c19184f60198f056d13169132937cd190671032e02d1520",
+      "metadata/source.json": "e422fa8474b4667d0822b734a4de76eb845f1f3bff582b31d087fac225620b8c",
+      "job-42247695/status.json": "725b69b6b6d3e75e7a87e280a0c9bc82654e3ee0833bcfe552207fb00a496fb9",
+      "job-42247695/gpu.txt": "38b0527adb723ba7dc744c30cb665bfb6e61f08eb77643694163d136f5f58419",
+      "job-42247695/memcheck.xml": "b2f82b16bbf65aba1de8b49516f6b9753f2829a1cd5004ca89fa59bd1118b8b4",
+      "job-42247695/memcheck.log": "ed8c87a3b0d61f4a5584773d2aa639a786f82554a5bcee1be19b366c3b9428f6"
+    }
+  },
+  "accepted": {
+    "device_job": "42247538",
+    "device_tests": 333,
+    "sanitizer_job": "42247695",
+    "sanitizer_tests": 315,
+    "sanitizer_errors": 0,
+    "skips": 0,
+    "mpi": "pending",
+    "performance": "pending",
+    "runtime_changes": false,
+    "sanitizer_suppressions": false
+  }
+}
