@@ -1,0 +1,17 @@
+{
+  "job": "42263681",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1",
+  "A": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+  "B": "405f868ed380c78b6009da3001f4535cb9ae647b",
+  "state": "submitted",
+  "frozen_files": 8093,
+  "manifest_sha256": "1de15d5563d78a5c4e0f3c55ce577bc6082e5cacd194b96f663dec5e20004b9d",
+  "harness_sha256": {
+    "runtime.py": "8e77fa0bbbfcc777e658010baa24fa2475c0c383b974fbe221d1cdd9db687091",
+    "run.py": "a52ed0cdffe8e89d4f002b0b9b26eeb68947541f3042321fcbf96b3bafa456b7",
+    "bench_field_retirement.py": "05fceb5b06b1c0a9e7484cc2502ab85b785fb205b3929ca6e631385a5e080a40",
+    "bench_field_views.py": "8fce03103b1b4e8a606a7463b24c75e309dccc29f65828420e68501bd3796093",
+    "provenance.py": "51bdfb63b976875e760d1f32f243ef1d1160c8f0b4cd10b571a64a0adaf3c0cd",
+    "fixture/field_view_fixture.py": "4e01382775a46e1f7e8bad955bab13e0d67c6b54e9b9077a1919f5a6add2e00a"
+  }
+}

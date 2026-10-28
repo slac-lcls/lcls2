@@ -1,5 +1,16 @@
 # Issue159: review and integration validation in parallel
 
+
+## Latest action — verified review and field benchmark
+
+Claude's third review was independently verified. The [cold report](issue159_pr246_cold_20261028.md)
+now includes the read-wait/other-time breakdown and explicitly limits causal and
+order-effect conclusions. Cold-screen acceptance is unchanged. The remaining
+[field benchmark](issue159_pr246_fields_20261028.md) is submitted as job 42263681,
+with aligned A/B access and unaligned B-only delayed-consumer retirement under
+both input-window policies. Its results remain pending; no production changes,
+merge or Stage 5 implementation are included in this action.
+
 The user authorized independent review alongside validation on October 28.
 PR246 stays open; the main fix branch is unchanged. No Stage 5 implementation
 or PR merge is authorized by this validation work. The reviewer receives the

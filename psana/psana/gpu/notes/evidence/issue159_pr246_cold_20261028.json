@@ -1292,5 +1292,210 @@
     "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/pairs.json": "d1dd8b0fd63e2c51486e9865a9dcc6252a925d943bab94a9981c3ac204d85860",
     "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/provenance.json": "b1a400519b7038163b7045965b684ad141605e12800931433f5759de05474f45",
     "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/logs/screen-42255812.log": "7e299fae20894c864768dfe67649f46ee32a3c47525a7c6aca240463965eda5a"
+  },
+  "read_wait_breakdown": {
+    "review": "https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5688265591",
+    "aggregation": "Per sample, mean over four BD ranks; then mean and sample SD across four samples. Nonwait = rank loop_s - rank read_wait_s. Not a decomposition of max-rank headline loop time.",
+    "limits": "Host future.get wait includes transfer/scheduling and overlap effects; not pure disk latency or isolated alignment cost. Balanced AB/BA order reduces bias without guaranteeing cancellation.",
+    "samples": [
+      {
+        "arm": "A0",
+        "bulk": "off",
+        "repetition": 1,
+        "read_wait_s": 30.636415201750005,
+        "nonwait_s": 2.053682365060433,
+        "mean_bd_loop_s": 32.69009756681044
+      },
+      {
+        "arm": "B0",
+        "bulk": "off",
+        "repetition": 1,
+        "read_wait_s": 31.630033167500002,
+        "nonwait_s": 2.0654564245352995,
+        "mean_bd_loop_s": 33.6954895920353
+      },
+      {
+        "arm": "A0",
+        "bulk": "on",
+        "repetition": 1,
+        "read_wait_s": 30.465330490750027,
+        "nonwait_s": 3.5688273312749814,
+        "mean_bd_loop_s": 34.03415782202501
+      },
+      {
+        "arm": "B0",
+        "bulk": "on",
+        "repetition": 1,
+        "read_wait_s": 32.189137127250035,
+        "nonwait_s": 3.5754703947463327,
+        "mean_bd_loop_s": 35.76460752199637
+      },
+      {
+        "arm": "B0",
+        "bulk": "on",
+        "repetition": 2,
+        "read_wait_s": 30.47881849825002,
+        "nonwait_s": 3.7400701051918626,
+        "mean_bd_loop_s": 34.21888860344188
+      },
+      {
+        "arm": "A0",
+        "bulk": "on",
+        "repetition": 2,
+        "read_wait_s": 30.48635327350003,
+        "nonwait_s": 3.604372004225114,
+        "mean_bd_loop_s": 34.09072527772514
+      },
+      {
+        "arm": "B0",
+        "bulk": "off",
+        "repetition": 2,
+        "read_wait_s": 33.343094461,
+        "nonwait_s": 1.9826578624933617,
+        "mean_bd_loop_s": 35.32575232349336
+      },
+      {
+        "arm": "A0",
+        "bulk": "off",
+        "repetition": 2,
+        "read_wait_s": 34.63763097675,
+        "nonwait_s": 1.9852923799637239,
+        "mean_bd_loop_s": 36.62292335671373
+      },
+      {
+        "arm": "A0",
+        "bulk": "off",
+        "repetition": 3,
+        "read_wait_s": 33.125765276,
+        "nonwait_s": 2.0028187925013654,
+        "mean_bd_loop_s": 35.12858406850137
+      },
+      {
+        "arm": "B0",
+        "bulk": "off",
+        "repetition": 3,
+        "read_wait_s": 33.557570164750004,
+        "nonwait_s": 1.995415157969905,
+        "mean_bd_loop_s": 35.552985322719906
+      },
+      {
+        "arm": "A0",
+        "bulk": "on",
+        "repetition": 3,
+        "read_wait_s": 31.839383065750024,
+        "nonwait_s": 3.517658125967121,
+        "mean_bd_loop_s": 35.357041191717144
+      },
+      {
+        "arm": "B0",
+        "bulk": "on",
+        "repetition": 3,
+        "read_wait_s": 32.55394598600003,
+        "nonwait_s": 3.599121428299558,
+        "mean_bd_loop_s": 36.153067414299585
+      },
+      {
+        "arm": "B0",
+        "bulk": "on",
+        "repetition": 4,
+        "read_wait_s": 31.579792439000094,
+        "nonwait_s": 3.59788538073807,
+        "mean_bd_loop_s": 35.177677819738165
+      },
+      {
+        "arm": "A0",
+        "bulk": "on",
+        "repetition": 4,
+        "read_wait_s": 31.477248290499965,
+        "nonwait_s": 3.591431293981323,
+        "mean_bd_loop_s": 35.06867958448129
+      },
+      {
+        "arm": "B0",
+        "bulk": "off",
+        "repetition": 4,
+        "read_wait_s": 33.67357411024999,
+        "nonwait_s": 1.9629904282731,
+        "mean_bd_loop_s": 35.63656453852309
+      },
+      {
+        "arm": "A0",
+        "bulk": "off",
+        "repetition": 4,
+        "read_wait_s": 31.954813219000002,
+        "nonwait_s": 2.006361214061384,
+        "mean_bd_loop_s": 33.96117443306139
+      }
+    ],
+    "summary": [
+      {
+        "bulk": "off",
+        "arm": "A0",
+        "n": 4,
+        "read_wait_s": {
+          "mean": 32.588656168375,
+          "sample_std": 1.702917656561859
+        },
+        "nonwait_s": {
+          "mean": 2.0120386878967267,
+          "sample_std": 0.029250646807745365
+        },
+        "mean_bd_loop_s": {
+          "mean": 34.60069485627173,
+          "sample_std": 1.6760512624010335
+        }
+      },
+      {
+        "bulk": "off",
+        "arm": "B0",
+        "n": 4,
+        "read_wait_s": {
+          "mean": 33.051067975875,
+          "sample_std": 0.9571969057787932
+        },
+        "nonwait_s": {
+          "mean": 2.001629968317917,
+          "sample_std": 0.04459220871865525
+        },
+        "mean_bd_loop_s": {
+          "mean": 35.052697944192914,
+          "sample_std": 0.9142867650632855
+        }
+      },
+      {
+        "bulk": "on",
+        "arm": "A0",
+        "n": 4,
+        "read_wait_s": {
+          "mean": 31.067078780125012,
+          "sample_std": 0.6985785698226917
+        },
+        "nonwait_s": {
+          "mean": 3.570572188862135,
+          "sample_std": 0.03821200668638826
+        },
+        "mean_bd_loop_s": {
+          "mean": 34.637650968987145,
+          "sample_std": 0.6749418864186255
+        }
+      },
+      {
+        "bulk": "on",
+        "arm": "B0",
+        "n": 4,
+        "read_wait_s": {
+          "mean": 31.700423512625044,
+          "sample_std": 0.9081505522665441
+        },
+        "nonwait_s": {
+          "mean": 3.6281368272439556,
+          "sample_std": 0.0754096705022883
+        },
+        "mean_bd_loop_s": {
+          "mean": 35.328560339869,
+          "sample_std": 0.8414443848394468
+        }
+      }
+    ]
   }
 }

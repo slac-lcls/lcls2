@@ -1,5 +1,16 @@
 # Issue 159: alignment-safe GPU reads
 
+
+## Latest action — verified review and field benchmark
+
+Claude's third review was independently verified. The [cold report](issue159_pr246_cold_20261028.md)
+now includes the read-wait/other-time breakdown and explicitly limits causal and
+order-effect conclusions. Cold-screen acceptance is unchanged. The remaining
+[field benchmark](issue159_pr246_fields_20261028.md) is submitted as job 42263681,
+with aligned A/B access and unaligned B-only delayed-consumer retirement under
+both input-window policies. Its results remain pending; no production changes,
+merge or Stage 5 implementation are included in this action.
+
 Updated 2026-10-28. Status: PR #187 comparison completed; A frozen; stage-2
 measured overhead accepted by Mona for now; stage-3 focused validation and warm
 screen complete; stage-4 safe field views implemented, focused checks passed, and first staged screen failed cache preparation; retry 41602068 also failed its pre-timing cache gate; cold screen 41604951 completed all 16 samples. This document records the agreed scope, staged implementation,
