@@ -1,14 +1,6 @@
-import pyrogue as pr
-import os
-import sys
+# Importing this module makes the epix-quad python tree importable process-wide.
+# A process that uses more than one firmware package should use
+# psdaq.utils.firmware_packages.isolated() instead.
+from psdaq.utils.firmware_packages import enable
 
-submoduledir = os.environ["SUBMODULEDIR"]
-
-top_level = submoduledir + "/epix-quad/"
-
-sys.path.append("%s/firmware/python".format(top_level))
-
-pr.addLibraryPath(top_level + 'firmware/submodules/axi-pcie-core/python')
-pr.addLibraryPath(top_level + 'firmware/submodules/surf/python')
-pr.addLibraryPath(top_level + 'firmware/python')
-pr.addLibraryPath(top_level + 'software/python')
+enable('epix-quad')

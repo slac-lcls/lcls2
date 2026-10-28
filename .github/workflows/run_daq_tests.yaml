@@ -57,6 +57,7 @@ jobs:
                  psdaq/psdaq/tests/test_daqmgr_spawn_console.py \
                  psdaq/psdaq/tests/test_daqmgr_strict_job_info.py \
                  psdaq/psdaq/tests/test_subproc.py \
+                 psdaq/psdaq/tests/test_firmware_packages.py \
                  psdaq/psdaq/tests/test_configdb.py \
                  psdaq/psdaq/tests/test_json2xtc.py \
                  psdaq/psdaq/tests/test_daqstat.py
