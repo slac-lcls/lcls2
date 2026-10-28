@@ -839,6 +839,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "reducer")        continue;  // GPU DRP
         if (kwargs.first == "readerHist")     continue;  // GPU DRP
         if (kwargs.first == "raw")            continue;  // GPU DRP, raw data format
+        if (kwargs.first == "calibSerNo")     continue;  // GPU DRP, EpixUHRemu and EpixUHRsim
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_l1_verify")  continue;  // GPU DRP Simulator

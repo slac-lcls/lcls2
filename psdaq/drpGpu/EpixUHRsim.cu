@@ -1,4 +1,5 @@
 #include "EpixUHRsim.hh"
+#include "EpixUHRcalib.hh"
 
 #include "ReaderKernels.cuh"
 
@@ -57,18 +58,9 @@ public:
       auto raw = m_raw.data() + i * EpixUHRsim::NPixels;
 
       for (unsigned j = 0; j < EpixUHRsim::NPixels; ++j) {
-        auto datum = uint16_t((float(rand()) / float(RAND_MAX)) * (1 << EpixUHRsim::RangeOffset));
-        auto range = (float(rand()) / float(RAND_MAX));
-        unsigned gain;
-        if      (range <= 0.25)  gain = 0;
-        else if (range <= 0.5)   gain = 1;
-        else if (range <= 0.75)  gain = 2;
-        else if (range <= 1.0)   gain = 3;
-        else {
-          printf("*** Bad range value %f\n", range);
-          gain = 3;
-        }
-        raw[j] = (gain << EpixUHRsim::RangeOffset) | datum;
+        auto datum = uint16_t(rand() % (1 << EpixUHRsim::DataBits));
+        auto gain  = unsigned(rand() % EpixUHRsim::NRanges);
+        raw[j] = (gain << EpixUHRsim::RangeOffset) | (datum << EpixUHRsim::DataOffset);
         ++nGainEvts[gain];
         //if (j < 4) {
         //  printf("i %u, j %u: raw %04x, dat %u, rng %u\n", i, j, raw[j], datum, gain);
@@ -107,7 +99,7 @@ public:
 
       for (unsigned j = 0; j < EpixUHRsim::NPixels; ++j) {
         auto gain  = (raw[j] >> EpixUHRsim::RangeOffset) & ((1 << EpixUHRsim::RangeBits) - 1);
-        auto datum = raw[j] & ((1 << EpixUHRsim::RangeOffset) - 1);
+        auto datum = (raw[j] >> EpixUHRsim::DataOffset)  & ((1 << EpixUHRsim::DataBits)  - 1);
         ref[j] = (float(datum) - pedestals[gain][j]) * gains[gain][j];
         //if (j < 4) {
         //  printf("***SimDet::calcRef: i %u, j %u: raw %04x, dat %u, rng %u, ped %f, gn %f, ref %f\n",
@@ -220,23 +212,25 @@ unsigned EpixUHRsim::beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohm
     logging::error("Gpu::EpixUHRsim::beginrun failed for %s\n", m_para->device);
   }
 
-  // Load the calibration constants onto the GPU
-  std::vector<f32vec_t> peds(NRanges);
-  std::vector<f32vec_t> gains(NRanges);
-  auto pool = m_pool->getAs<MemPoolGpu>();
-  auto peds_d  = m_pedsVec_d;
-  auto gains_d = m_gainsVec_d;
+  // Load the calibration constants onto the GPU: a real panel's pedestals if given its
+  // serial, else random ones.
+  std::vector<float> pedsFlat(NRanges * NPixels);
+  std::vector<float> gainsFlat(NRanges * NPixels, 1.0);
+  auto const serNo = m_para->kwargs.find("calibSerNo");
+  if (serNo != m_para->kwargs.end()) {
+    if (fetchEpixUHRconstants("pedestals", serNo->second, info, EpixUHRgainModes, NRanges, pedsFlat))  rc = 1;
+    if (fetchEpixUHRconstants("gain_factors", serNo->second, info, EpixUHRgainModes, NRanges, gainsFlat))  rc = 1;
+  } else {
+    for (auto& ped : pedsFlat)  ped = (float(rand()) / float(RAND_MAX)) * ((1 << DataBits) - 1);
+    for (auto& gn : gainsFlat)  gn  = (float(rand()) / float(RAND_MAX)) * 2.0;
+  }
+  chkError(cudaMemcpy(m_pedsVec_d,  pedsFlat.data(),  pedsFlat.size()  * sizeof(*m_pedsVec_d),  cudaMemcpyDefault));
+  chkError(cudaMemcpy(m_gainsVec_d, gainsFlat.data(), gainsFlat.size() * sizeof(*m_gainsVec_d), cudaMemcpyDefault));
+
+  std::vector<f32vec_t> peds(NRanges), gains(NRanges);
   for (unsigned range = 0; range < NRanges; ++range) {
-    peds[range].resize(NPixels);
-    gains[range].resize(NPixels);
-    for (unsigned pixel = 0; pixel < NPixels; ++pixel) {
-      peds[range][pixel]  = (float(rand()) / float(RAND_MAX)) * ((1 << RangeOffset) - 1);
-      gains[range][pixel] = (float(rand()) / float(RAND_MAX)) * ((1 << RangeOffset) - 1); // What's appropriate here?
-    }
-    chkError(cudaMemcpy(peds_d,  peds[range].data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
-    chkError(cudaMemcpy(gains_d, gains[range].data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
-    peds_d  += NPixels;
-    gains_d += NPixels;
+    peds[range].assign (&pedsFlat [range * NPixels], &pedsFlat [(range + 1) * NPixels]);
+    gains[range].assign(&gainsFlat[range * NPixels], &gainsFlat[(range + 1) * NPixels]);
   }
 
   auto& simDet = *static_cast<SimDet*>(m_det);

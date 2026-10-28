@@ -1,4 +1,5 @@
 #include "EpixUHR3x2.hh"
+#include "EpixUHRcalib.hh"
 
 #include "ReaderKernels.cuh"
 
@@ -32,6 +33,9 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   // Python-driven bits.  The data description and handling in the GPU case are
   // different, so only that portion is borrowed.
   _initialize<Drp::EpixUHR3x2>(para, pool);
+
+  // The f/w sends the panel as one 336x576 image, so psana must not reassemble it
+  static_cast<Drp::EpixUHR3x2*>(m_det)->setRawAlgVersion(1, 0, 0);
 
   // What format the panel's data arrives in, which is a property of its firmware:
   //
@@ -150,20 +154,21 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
   // With the fp16 firmware there is nothing to upload: the panel's data arrives
   // already calibrated.
   if (m_u16) {
-    // @todo: Fetch calibration constants.  Fabricating them -- pedestal 0, gain 1 --
-    //        makes the calibrated values numerically equal to the raw ADC counts, so
-    //        this proves the path but not the science.  See the "Fetch calibration
-    //        constants" item in TODO.md; EpixUHRemu and Jungfrau do the same.
-    std::vector<float> peds (NPixels, 0.0);
-    std::vector<float> gains(NPixels, 1.0);
-    auto peds_d  = m_peds_d;
-    auto gains_d = m_gains_d;
-    for (unsigned range = 0; range < NRanges; ++range) {
-      chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
-      chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
-      peds_d  += NPixels;
-      gains_d += NPixels;
+    // The panel's serial, which Drp::EpixUHR3x2 read from it at Connect.
+    std::vector<float> peds (NRanges * NPixels, 0.0);
+    std::vector<float> gains(NRanges * NPixels, 1.0);
+    if (m_para->serNo.empty()) {
+      logging::error("Gpu::EpixUHR3x2: no serial number to fetch pedestals for");
+      rc = 1;
     }
+    else {
+      if (fetchEpixUHRconstants("pedestals", m_para->serNo, runInfo, EpixUHRgainModes, NRanges, peds))
+        rc = 1;
+      if (fetchEpixUHRconstants("gain_factors", m_para->serNo, runInfo, EpixUHRgainModes, NRanges, gains))
+        rc = 1;
+    }
+    chkError(cudaMemcpy(m_peds_d,  peds.data(),  peds.size()  * sizeof(*m_peds_d),  cudaMemcpyDefault));
+    chkError(cudaMemcpy(m_gains_d, gains.data(), gains.size() * sizeof(*m_gains_d), cudaMemcpyDefault));
   }
 
   return rc;
@@ -184,9 +189,8 @@ void EpixUHR3x2::event(Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64
   // @todo: Deal with prescaled raw for the panel here?
 }
 
-// Copies the panel's u16 pixels into the raw block, uncalibrated, walking the ASIC
-// sub-frames exactly as the calibrating policies do.  Shared by CALIB mode, where the
-// raw block is the whole payload, and by prescaling, where it accompanies the
+// Copies the panel's u16 image into the raw block, uncalibrated.  Shared by CALIB mode,
+// where the raw block is the whole payload, and by prescaling, where it accompanies the
 // calibrated data.
 //
 // pyld.raw being set is what says this event has a raw block to fill, in either mode:
@@ -199,31 +203,20 @@ void _copyRaw(const EventPayload& pyld, unsigned tid, unsigned stride)
 {
   if (!pyld.raw)  return;               // No raw block this event: nothing to fill
 
-  // The array offline sees is a fixed [NumAsics][AsicPixels], as the CPU DRP writes,
-  // so a missing or short ASIC leaves zeros in its region rather than shrinking the
-  // array.  Damage::MissingData in event() carries the fact.
+  // The array offline sees is a fixed [NumRows][NumCols], so a short image leaves
+  // zeros rather than shrinking it.  Damage::MissingData says so.
+  auto const& sub = (*pyld.subFrames)[EpixUHR3x2::DataTdest];
+  auto const __restrict__ src = (uint16_t const*)sub.data(pyld.data);
   auto const __restrict__ dst = (uint16_t*)pyld.raw;
-  auto const rawCnt    = pyld.rawCnt / sizeof(*dst);
-  auto const strideCnt = rawCnt / EpixUHR3x2::NumAsics;
-  for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {
-    auto const& sub = (*pyld.subFrames)[EpixUHR3x2::FirstDataTdest + k];
-    auto const  off = k * strideCnt;
-    auto const __restrict__ src = (uint16_t const*)sub.data(pyld.data);
-    auto const  cnt = sub.size / sizeof(*src);
-    auto const  nElem = cnt > strideCnt ? strideCnt : cnt;
-    // One pass over the whole ASIC region: copy what arrived, zero the rest.  A
-    // withheld ASIC has nElem == 0 and so is zeroed entirely.  Branchless in the
-    // common case where nElem == strideCnt.
-    for (auto i = tid; i < strideCnt; i += stride)
-      dst[off + i] = i < nElem ? src[i] : 0;
-  }
+  auto const rawCnt = pyld.rawCnt / sizeof(*dst);
+  auto const cnt    = sub.size / sizeof(*src);
+  auto const nElem  = cnt > rawCnt ? rawCnt : cnt;
+  for (auto i = tid; i < rawCnt; i += stride)
+    dst[i] = i < nElem ? src[i] : 0;
 }
 
 // Normal running, i.e. the BEAM config alias: the panel's data is calibrated fp16
-// from firmware, so the per-element work is a width conversion.  The policy also
-// owns the placement of each ASIC's sub-frame within the calibrated buffer,
-// because sub-frame tdests are not necessarily a contiguous run and only the
-// Detector knows the mapping.
+// from firmware, so the per-element work is a width conversion.
 //
 // Named for the alias rather than for what it produces: "Calib" would be
 // ambiguous, since the CALIB alias selects the mode that records *un*calibrated
@@ -237,29 +230,18 @@ struct EpixUHR3x2Beam
     // and for any payload whose size or layout the Reader did not recognise
     if (!pyld.hasData)  return;
 
-    auto const strideCnt = pyld.outCnt / EpixUHR3x2::NumAsics;
-    for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {
-      auto const& sub = (*pyld.subFrames)[EpixUHR3x2::FirstDataTdest + k];
-      auto const  off = k * strideCnt;
-      auto const  cnt = sub.size / sizeof(__half);
-      if (cnt == 0) {                   // Withheld ASIC: clear the hole it leaves
-        for (auto i = tid; i < strideCnt; i += stride)  pyld.out[off + i] = 0.f;
-        continue;
-      }
-      auto const __restrict__ src = (__half const*)sub.data(pyld.data);
-      auto const              nElem = cnt > strideCnt ? strideCnt : cnt;
-      for (auto i = tid; i < nElem; i += stride)  pyld.out[off + i] = __half2float(src[i]);
-    }
+    auto const& sub = (*pyld.subFrames)[EpixUHR3x2::DataTdest];
+    auto const __restrict__ src = (__half const*)sub.data(pyld.data);
+    auto const cnt   = sub.size / sizeof(*src);
+    auto const nElem = cnt > pyld.outCnt ? pyld.outCnt : cnt;
+    for (auto i = tid; i < pyld.outCnt; i += stride)
+      pyld.out[i] = i < nElem ? __half2float(src[i]) : 0.f;
   }
 };
 
 // The u16 payload's policy: calibrate each pixel on the GPU into the calibrated
-// buffer, where a Reducer then finds it, rather than converting fp16.
-//
-// Same sub-frame walk as EpixUHR3x2Beam, so the two differ only in the per-element
-// work.  The gain bit selects which pedestal/gain plane applies, exactly as it does
-// for the detectors whose range bits sit above the data -- pedGainCalibrate() is told
-// where both fields are rather than assuming an order.
+// buffer, where a Reducer then finds it, rather than converting fp16.  The gain bit
+// selects which pedestal/gain plane applies.
 struct EpixUHR3x2U16
 {
   float const* peds;
@@ -274,29 +256,15 @@ struct EpixUHR3x2U16
   {
     if (!pyld.hasData)  return;         // A transition, or nothing intelligible
 
-    auto const strideCnt = pyld.outCnt / EpixUHR3x2::NumAsics;
-    for (unsigned k = 0; k < EpixUHR3x2::NumAsics; ++k) {
-      auto const& sub = (*pyld.subFrames)[EpixUHR3x2::FirstDataTdest + k];
-      auto const  off = k * strideCnt;
-      auto const __restrict__ src = (uint16_t const*)sub.data(pyld.data);
-      auto const  cnt = sub.size / sizeof(*src);
-      if (cnt == 0) {                   // Withheld ASIC: clear the hole it leaves
-        for (auto i = tid; i < strideCnt; i += stride)  pyld.out[off + i] = 0.f;
-        continue;
-      }
-      auto const  nElem = cnt > strideCnt ? strideCnt : cnt;
-      // pgOffset places this ASIC's pixels within the pedestal/gain plane, whose
-      // stride is the whole frame
-      pedGainCalibrate(&pyld.out[off], src, nElem, rangeOffset, rangeBits,
-                       dataOffset, dataBits,
-                       peds, gains, pyld.outCnt, off, nullptr, tid, stride);
-      // Clear the tail a short ASIC leaves, so a partial frame does not show stale
-      // data from a previous event.  Every thread strides over the whole region and
-      // skips what was just calibrated, rather than starting at tid + nElem, which
-      // would leave holes.
-      for (auto i = tid; i < strideCnt; i += stride)
-        if (i >= nElem)  pyld.out[off + i] = 0.f;
-    }
+    auto const& sub = (*pyld.subFrames)[EpixUHR3x2::DataTdest];
+    auto const __restrict__ src = (uint16_t const*)sub.data(pyld.data);
+    auto const cnt   = sub.size / sizeof(*src);
+    auto const nElem = cnt > pyld.outCnt ? pyld.outCnt : cnt;
+    pedGainCalibrate(pyld.out, src, nElem, rangeOffset, rangeBits,
+                     dataOffset, dataBits,
+                     peds, gains, pyld.outCnt, 0, nullptr, tid, stride);
+    // Clear the tail of a short image, so it does not show a previous event's data
+    for (auto i = nElem + tid; i < pyld.outCnt; i += stride)  pyld.out[i] = 0.f;
   }
 };
 

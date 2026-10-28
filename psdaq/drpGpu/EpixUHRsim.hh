@@ -15,15 +15,15 @@ public:
   EpixUHRsim(Parameters& para, MemPoolGpu& pool);
   virtual ~EpixUHRsim() override;
 
-public:  // ePixUHR parameters:
-  static const unsigned NumAsics   {   6 };
-  static const unsigned NumRows    { 168 };  // elemRows    in drp/EpixUHR3x2.cc
-  static const unsigned NumCols    { 192 };  // elemRowSize in drp/EpixUHR3x2.cc
-  static const unsigned AsicPixels { NumRows*NumCols };
-  static const unsigned NPixels    { NumAsics*AsicPixels };
-  static const unsigned RangeOffset{  14 };
-  static const unsigned RangeBits  {   2 };
-  static const unsigned NRanges    {   4 };
+public:  // ePixUHR3x2 parameters:
+  static const unsigned NumRows    { 336 };
+  static const unsigned NumCols    { 576 };
+  static const unsigned NPixels    { NumRows*NumCols };
+  static const unsigned RangeOffset{   0 };  // Gain in bit 0, an 11-bit value in bits 1-11
+  static const unsigned RangeBits  {   1 };
+  static const unsigned DataOffset {   1 };
+  static const unsigned DataBits   {  11 };
+  static const unsigned NRanges    { 1 << RangeBits };
 public:
   unsigned configure  (const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
   unsigned beginrun   (XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& info) override;
@@ -32,6 +32,8 @@ public:
 public:
   unsigned     rangeOffset() const override { return RangeOffset; }
   unsigned     rangeBits()   const override { return RangeBits; }
+  unsigned     dataOffset()  const override { return DataOffset; }
+  unsigned     dataBits()    const override { return DataBits; }
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
 
