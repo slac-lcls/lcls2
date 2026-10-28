@@ -48,6 +48,17 @@ class epixuhr3x2_raw_0_1_0(eb.epix_base):
         """overrides lcls2/psana/psana/detector/epix_base.py epix_base.calib"""
         return ueu.calib_v02(self, evt, **kwa)
 
+class epixuhr3x2_raw_1_0_0(epixuhr3x2_raw_0_1_0):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def raw(self, evt, sh_seg=(336,576)) -> Array3d:
+        return ueu.raw_v100(self, evt, sh_seg=sh_seg)
+
+    def calib(self, evt, **kwa) -> Array3d:
+        """overrides lcls2/psana/psana/detector/epix_base.py epix_base.calib"""
+        return ueu.calib_v02(self, evt, **kwa)
+
 #    def image(self, evt, **kwa) -> Array2d: # see in areadetector.py
 #        """temporary re-implement AreaDetector.image
 #           NOW HIDDEN: returns raw[0,:] 2-d temporary image for a single panel raw data (1, 336, 576)"""

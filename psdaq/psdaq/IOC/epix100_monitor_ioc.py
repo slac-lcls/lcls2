@@ -220,6 +220,21 @@ class EpixMonitoringIOC(EpixMonitoringIOCBase):
     temp2 = temp_pv(name="TEMP2",
                     alarm_group="temp2",
                     doc="Ambient Temp.")
+    humidity = humidity_pv(name="HUMIDITY",
+                           alarm_group="humidity",
+                           doc="Humidity")
+    ana_in_v = voltage_pv(name="ANA_IN_V",
+                          alarm_group="ana_in_v",
+                          doc="Analog Voltage")
+    dig_in_v = voltage_pv(name="DIG_IN_V",
+                          alarm_group="dig_in_v",
+                          doc="Digital Voltage")
+    asic_ana_cur = current_pv(name="ASIC_ANA_CUR",
+                              alarm_group="asic_ana_cur",
+                              doc="ASIC Analog Current")
+    asic_dig_cur = current_pv(name="ASIC_DIG_CUR",
+                              alarm_group="asic_dig_cur",
+                              doc="ASIC Digital Current")
     asic_gr_cur = current_pv(name="ASIC_GR_CUR",
                              alarm_group="asic_gr_cur",
                              doc="Guard Ring Current")
@@ -239,7 +254,7 @@ def main():
     setup_logging(args)
 
     # Start the server
-    ioc = EpixMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, regvc=args.regvc, **ioc_options)
+    ioc = EpixMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, reglane=args.lane, regvc=args.regvc, **ioc_options)
     run(ioc.pvdb, **run_options, startup_hook=ioc.__ainit__)
 
 

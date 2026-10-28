@@ -48,9 +48,9 @@ class Storage_epixm320_v01():
 
         logger.info(f'Storage_epixm320_v01 {det_raw._info_calibconst()}\n')
 
-        gain = det_raw._gain()      # - 4d gains     (12, <nsegs>, 336, 576)
-        peds = det_raw._pedestals() # - 4d pedestals  (8, <nsegs>, 336, 576)
-        offs = det_raw._offset()    # - 4d offsets    (4, <nsegs>, 336, 576)
+        gain = det_raw._gain()      # - 4d gains     (3, <nsegs>, 192, 384) for ('AHL_H', 'AHL_L', 'SH')
+        peds = det_raw._pedestals() # - 4d pedestals (3, <nsegs>, 192, 384) for ('SH', 'SL', 'AHL')
+        offs = det_raw._offset()    # - 4d offsets   (1, <nsegs>, 192, 384) for ('AHL',)
 
         #logger.info('Storage_epixm320_v01 calib constants from DB:'\
         #     +info_ndarr(peds, '\n  peds')\
@@ -66,11 +66,11 @@ class Storage_epixm320_v01():
         self.mask = mask
         #logger.info(info_ndarr(self.mask, '\n  mask'))
 
-        igm_SH_gain = 1
-        igm_SH_peds = 1
+        igm_SH_gain = 2
+        igm_SH_peds = 0
 
         gain_SH = gain[igm_SH_gain, :]
-        peds_SH = gain[igm_SH_peds, :]
+        peds_SH = peds[igm_SH_peds, :]
 
         self.gfac = ndu.divide_protected(np.ones_like(gain_SH), gain_SH) * mask
         self.peds = peds_SH
@@ -80,7 +80,7 @@ class Storage_epixm320_v01():
                     +info_ndarr(self.gfac, '\n  gfac')\
                     +info_ndarr(self.mask, '\n  mask'))
 
-        
+
         if False:
              # =================
              # STAF FROM EPIXUHR

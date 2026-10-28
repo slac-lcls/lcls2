@@ -681,6 +681,18 @@ class EpixQuadMonitoringIOC(EpixMonitoringIOCBase):
     nct_fpga_temp = temp_pv(name="NCT_FPGA_TEMP",
                             alarm_group="nct_fpga_temp",
                             doc="NCT218 Remote Temp.")
+    ana_in_v = voltage_pv(name="ANA_IN_V",
+                          alarm_group="ana_in_v",
+                          doc="Analog Voltage")
+    dig_in_v = voltage_pv(name="DIG_IN_V",
+                          alarm_group="dig_in_v",
+                          doc="Digital Voltage")
+    asic_ana_cur = current_pv(name="ASIC_ANA_CUR",
+                              alarm_group="asic_ana_cur",
+                              doc="ASIC Analog Current")
+    asic_dig_cur = current_pv(name="ASIC_DIG_CUR",
+                              alarm_group="asic_dig_cur",
+                              doc="ASIC Digital Current")
     asic_a0_2v5_cur = current_pv(name="ASIC_A0_2V5_CUR",
                                  alarm_group="asic_a0_2v5_cur",
                                  doc="ASIC_A0_2V5 Curr.")
@@ -820,7 +832,7 @@ def main():
     setup_logging(args)
 
     # Start the server
-    ioc = EpixQuadMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, regvc=args.regvc, has_microblaze=args.microblaze, **ioc_options)
+    ioc = EpixQuadMonitoringIOC(dev=args.dev, lane=args.lane, vc=args.vc, reglane=args.lane, regvc=args.regvc, has_microblaze=args.microblaze, **ioc_options)
     run(ioc.pvdb, **run_options, startup_hook=ioc.__ainit__)
 
 
