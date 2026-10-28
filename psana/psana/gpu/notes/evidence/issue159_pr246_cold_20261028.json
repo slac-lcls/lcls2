@@ -171,17 +171,1126 @@
   "manifest_sha256": "f432a66f1ba0b913309240278e7b2dab8696f58368f72c329e3b8872f58370f2",
   "review": "https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5686938706",
   "acknowledgment": "https://github.com/slac-lcls/lcls2/pull/246#issuecomment-6476232774",
-  "results_available": false,
+  "results_available": true,
   "status_update": {
-    "state": "RUNNING",
+    "state": "COMPLETED",
+    "exit_code": "0:0",
     "node": "sdfampere015",
     "start": "2026-10-28T10:48:40-07:00",
-    "phase": "private staging; no timed samples yet",
-    "preflight_passed": [
-      "8086 frozen hashes",
-      "compute-node external dependencies match",
-      "six-rank runtime provenance A/B",
-      "reader adapter and GDS probe A/B"
-    ]
+    "end": "2026-10-28T11:27:07-07:00",
+    "elapsed": "00:38:27"
+  },
+  "results": {
+    "summary": [
+      {
+        "bulk": "off",
+        "cache": "cold",
+        "candidate_hz": 281.6992940166874,
+        "comparison": "B0-vs-A0",
+        "median_paired_loop_change_pct": 2.1676358496436676,
+        "paired_change_range": [
+          -3.5514469534505877,
+          4.9382427048787925
+        ],
+        "paired_change_std_pct": 3.6526976146587855,
+        "pairs": 4,
+        "reference_hz": 288.98845898662745,
+        "variant_statistics": {
+          "A0": {
+            "ddof": 1,
+            "events_per_s": {
+              "mean": 289.0042266364627,
+              "median": 289.06917226382836,
+              "samples": [
+                305.3375015602875,
+                272.5410604579066,
+                284.2388803232545,
+                293.89946420440225
+              ],
+              "std": 13.958075162086525
+            },
+            "loop_s": {
+              "mean": 34.66231989173684,
+              "median": 34.60345798952039,
+              "samples": [
+                32.7506446109619,
+                36.691718976944685,
+                35.181675316998735,
+                34.02524066204205
+              ],
+              "std": 1.6781500756116199
+            },
+            "n": 4
+          },
+          "B0": {
+            "ddof": 1,
+            "events_per_s": {
+              "mean": 284.89270955703876,
+              "median": 281.7020094471035,
+              "samples": [
+                296.0978410197742,
+                282.57661919134114,
+                280.82739970286576,
+                280.068978314174
+              ],
+              "std": 7.543526429840062
+            },
+            "loop_s": {
+              "mean": 35.11895077303052,
+              "median": 35.498846509028226,
+              "samples": [
+                33.77262044721283,
+                35.38863204116933,
+                35.60906097688712,
+                35.705489626852795
+              ],
+              "std": 0.9072980347472805
+            },
+            "n": 4
+          }
+        },
+        "mean_loop_change_pct": 1.3173696472708718
+      },
+      {
+        "bulk": "on",
+        "cache": "cold",
+        "candidate_hz": 281.5523421538927,
+        "comparison": "B0-vs-A0",
+        "median_paired_loop_change_pct": 1.2798747892204365,
+        "paired_change_range": [
+          0.2559902569721384,
+          5.010641781054903
+        ],
+        "paired_change_std_pct": 2.2196460536258478,
+        "pairs": 4,
+        "reference_hz": 288.7597309234902,
+        "variant_statistics": {
+          "A0": {
+            "ddof": 1,
+            "events_per_s": {
+              "mean": 288.2863383778482,
+              "median": 288.8196560644334,
+              "samples": [
+                293.201976295832,
+                292.979891466044,
+                282.3040650866939,
+                284.65942066282275
+              ],
+              "std": 5.631313126144326
+            },
+            "loop_s": {
+              "mean": 34.69767892494565,
+              "median": 34.630867565982044,
+              "samples": [
+                34.10618211491965,
+                34.132035307819024,
+                35.42279845289886,
+                35.129699824145064
+              ],
+              "std": 0.6787885200932581
+            },
+            "n": 4
+          },
+          "B0": {
+            "ddof": 1,
+            "events_per_s": {
+              "mean": 282.8245781229743,
+              "median": 281.5721300788155,
+              "samples": [
+                279.2116792383312,
+                291.8915249618251,
+                276.26252737244096,
+                283.9325809192998
+              ],
+              "std": 6.820330968959452
+            },
+            "loop_s": {
+              "mean": 35.37287625670433,
+              "median": 35.51737457944546,
+              "samples": [
+                35.815120725892484,
+                34.25930232577957,
+                36.19745354214683,
+                35.219628432998434
+              ],
+              "std": 0.8444011024193514
+            },
+            "n": 4
+          }
+        },
+        "mean_loop_change_pct": 1.9459437999273632
+      }
+    ],
+    "samples": [
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "off",
+        "repetition": 1,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 32.7506446109619,
+        "events_per_s": 305.3375015602875,
+        "sample_wall_s": 39.504016884136945,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "e62218e7b0310d44b425317cd942dc863f50dbf15f0633ffea434644bc66ea8c",
+        "pre_residency_max": 6.509866125254121e-08,
+        "post_residency_min": 0.975126322324694,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 30.541977281,
+            "requests": 12600
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 30.600217806000014,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 30.680957661000008,
+            "requests": 12400
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 30.722508058999992,
+            "requests": 12400
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "off",
+        "repetition": 1,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 33.77262044721283,
+        "events_per_s": 296.0978410197742,
+        "sample_wall_s": 40.460031715920195,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "82c2e9b705cd8857fa74ac2e35e511a415d716d09d4b87816e85cbb94d8d3c5d",
+        "pre_residency_max": 5.858879512728709e-07,
+        "post_residency_min": 0.9988260472544019,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.710383027000002,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.554150212999996,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.71902574100001,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.536573688999997,
+            "requests": 12400
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "on",
+        "repetition": 1,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 34.10618211491965,
+        "events_per_s": 293.201976295832,
+        "sample_wall_s": 40.860452509950846,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "a6c2d21acdf0a405dd732ae716e67dc592268d857f237fd1d6670824119e9254",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9858852813979629,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.336992349999985,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.414824011000015,
+            "requests": 12400
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.630827211000017,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.47867839100009,
+            "requests": 12600
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "on",
+        "repetition": 1,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.815120725892484,
+        "events_per_s": 279.2116792383312,
+        "sample_wall_s": 42.210979474009946,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "8a7b861dfab4062ffe2110000cba0c5835685949ae6df626735777a412a7b686",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.8945984320727043,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.150357080000134,
+            "requests": 12400
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.30719627700007,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.12438698799998,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.174608163999956,
+            "requests": 12500
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "on",
+        "repetition": 2,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 34.25930232577957,
+        "events_per_s": 291.8915249618251,
+        "sample_wall_s": 40.8119356110692,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "895b4c9bcadc07ef22507577ee9b871b29256beec17a2d1c81b94fac18ce8927",
+        "pre_residency_max": 2.67834648931549e-06,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.51695420400007,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.546678636999918,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.459131361999994,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.3925097900001,
+            "requests": 12500
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "on",
+        "repetition": 2,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 34.132035307819024,
+        "events_per_s": 292.979891466044,
+        "sample_wall_s": 40.70653937291354,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "5556fd211968297a9a4f3cc1de088129e3d4aa2ed7b1be54f7c45888f578cfe6",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.561238309000018,
+            "requests": 12400
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.504099172999965,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.512550330999982,
+            "requests": 12600
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 30.367525281000145,
+            "requests": 12400
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "off",
+        "repetition": 2,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.38863204116933,
+        "events_per_s": 282.57661919134114,
+        "sample_wall_s": 41.70120897400193,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "772388b3a7b2759c7e725c6a650bad8a75db892eca99ad83bc4522fc7dc34e58",
+        "pre_residency_max": 1.562367870060989e-06,
+        "post_residency_min": 0.9296321880070169,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.313203828000006,
+            "requests": 12600
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.380313277,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.365092594,
+            "requests": 12400
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.313768145,
+            "requests": 12400
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "off",
+        "repetition": 2,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 36.691718976944685,
+        "events_per_s": 272.5410604579066,
+        "sample_wall_s": 43.221003744984046,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "c3fd5e2ac64cbbdc539be5e01c8bbec28914686bca45dd4ad4e7d663022b17f4",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9944218044506044,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 34.620583016999994,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 34.724792226000005,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 34.5821763,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 34.62297236400001,
+            "requests": 12500
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "off",
+        "repetition": 3,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.181675316998735,
+        "events_per_s": 284.2388803232545,
+        "sample_wall_s": 41.810170664219186,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "c7f3605d10287b330db9887f413d57996c20631c04a51d317ba1eea33ff44a48",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.14085941400001,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.238631827999995,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 32.99758257300001,
+            "requests": 12400
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.125987288999994,
+            "requests": 12500
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "off",
+        "repetition": 3,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.60906097688712,
+        "events_per_s": 280.82739970286576,
+        "sample_wall_s": 42.266931660007685,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "6190846b516465587f28cbf282bbdf49b371a2d1c673a495f263c387f4f18040",
+        "pre_residency_max": 4.921454753902655e-06,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.61253319500001,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.397927705,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.65393983399999,
+            "requests": 12600
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.565879925,
+            "requests": 12400
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "on",
+        "repetition": 3,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.42279845289886,
+        "events_per_s": 282.3040650866939,
+        "sample_wall_s": 41.96180495293811,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "88b2315105771b89a62428f55f933afe8854fc711d8f914a13e233ff1c7df0c6",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9649768253280068,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.899844147999982,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.881543149000045,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.731192245999907,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.84495272000016,
+            "requests": 12500
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "on",
+        "repetition": 3,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 36.19745354214683,
+        "events_per_s": 276.26252737244096,
+        "sample_wall_s": 42.70932083297521,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "79ffaf24c3e000f116fe4a10a518151155d20077259ec0d821ea1c46b4ec05f8",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.52018777700012,
+            "requests": 12400
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.58424096400005,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.62713813099993,
+            "requests": 12600
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 32.48421707200001,
+            "requests": 12500
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "on",
+        "repetition": 4,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.219628432998434,
+        "events_per_s": 283.9325809192998,
+        "sample_wall_s": 41.76915457285941,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "951a4099abed463163a7210f8c3bd0c75b11b89c56d45b00ebf70c3894acf228",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 82550652960,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.45202267100015,
+            "requests": 12300
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.48003285100021,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.62529274700012,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 85235227040,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.761821486999896,
+            "requests": 12700
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "on",
+        "repetition": 4,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.129699824145064,
+        "events_per_s": 284.65942066282275,
+        "sample_wall_s": 41.75842900504358,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "9d7b3fc6fb21d413f8cd7ef030f648c134aad911285d9533ef00825f27caa195",
+        "pre_residency_max": 3.1247331770810508e-06,
+        "post_residency_min": 0.9345697912656996,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.51811346099988,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.495066384999912,
+            "requests": 12600
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.304477464999994,
+            "requests": 12500
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344113152,
+            "read_wait_s": 31.59133585100007,
+            "requests": 12400
+          }
+        ]
+      },
+      {
+        "variant": "B0",
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "bulk": "off",
+        "repetition": 4,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 35.705489626852795,
+        "events_per_s": 280.068978314174,
+        "sample_wall_s": 42.26190909720026,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "52f69f430ff62a6caff9e05e5ade94ee91de82648912d22a3ba1a69937a26716",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9999975262508723,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.61035391499999,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.72610558799998,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.76627678,
+            "requests": 12400
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 33.591560157999986,
+            "requests": 12600
+          }
+        ]
+      },
+      {
+        "variant": "A0",
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "bulk": "off",
+        "repetition": 4,
+        "events": 10000,
+        "unique_timestamps": 10000,
+        "loop_s": 34.02524066204205,
+        "events_per_s": 293.89946420440225,
+        "sample_wall_s": 40.75747552700341,
+        "bytes": 335571760000,
+        "requests": 50000,
+        "log_sha256": "4f37e6df2e289e8b7e7f986877b9247e08d6e1011db28323b1988515bb664e61",
+        "pre_residency_max": 0.0,
+        "post_residency_min": 0.9676170053798495,
+        "bd_counters": [
+          {
+            "rank": 2,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 32.008698225,
+            "requests": 12500
+          },
+          {
+            "rank": 3,
+            "budget_limit": 6442450944,
+            "bytes": 83892940000,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.94477661699999,
+            "requests": 12500
+          },
+          {
+            "rank": 4,
+            "budget_limit": 6442450944,
+            "bytes": 84564083520,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.933640928000017,
+            "requests": 12600
+          },
+          {
+            "rank": 5,
+            "budget_limit": 6442450944,
+            "bytes": 83221796480,
+            "cpu_bd_reads": 0,
+            "peak_owned_and_held": 1344073728,
+            "read_wait_s": 31.932137106000003,
+            "requests": 12400
+          }
+        ]
+      }
+    ],
+    "pairs": [
+      {
+        "A_loop_s": 32.7506446109619,
+        "B_loop_s": 33.77262044721283,
+        "bulk": "off",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 3.1204754849584404,
+        "reference": "A0",
+        "repetition": 1
+      },
+      {
+        "A_loop_s": 34.10618211491965,
+        "B_loop_s": 35.815120725892484,
+        "bulk": "on",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 5.010641781054903,
+        "reference": "A0",
+        "repetition": 1
+      },
+      {
+        "A_loop_s": 34.132035307819024,
+        "B_loop_s": 34.25930232577957,
+        "bulk": "on",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 0.37286677109289457,
+        "reference": "A0",
+        "repetition": 2
+      },
+      {
+        "A_loop_s": 36.691718976944685,
+        "B_loop_s": 35.38863204116933,
+        "bulk": "off",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": -3.5514469534505877,
+        "reference": "A0",
+        "repetition": 2
+      },
+      {
+        "A_loop_s": 35.181675316998735,
+        "B_loop_s": 35.60906097688712,
+        "bulk": "off",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 1.2147962143288948,
+        "reference": "A0",
+        "repetition": 3
+      },
+      {
+        "A_loop_s": 35.42279845289886,
+        "B_loop_s": 36.19745354214683,
+        "bulk": "on",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 2.1868828073479785,
+        "reference": "A0",
+        "repetition": 3
+      },
+      {
+        "A_loop_s": 35.129699824145064,
+        "B_loop_s": 35.219628432998434,
+        "bulk": "on",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 0.2559902569721384,
+        "reference": "A0",
+        "repetition": 4
+      },
+      {
+        "A_loop_s": 34.02524066204205,
+        "B_loop_s": 35.705489626852795,
+        "bulk": "off",
+        "cache": "cold",
+        "candidate": "B0",
+        "comparison": "B0-vs-A0",
+        "loop_change_pct": 4.9382427048787925,
+        "reference": "A0",
+        "repetition": 4
+      }
+    ],
+    "preflights": 4,
+    "timed_samples": 16,
+    "events_per_sample": 10000,
+    "max_pre_residency_fraction": 4.921454753902655e-06,
+    "stage_removed": "/lscratch/monarin/jf-issue159-42255812",
+    "final_hashes_passed": true,
+    "final_external_dependencies_match": true,
+    "acceptance": "Mona accepts the observed small cold slowdown for now; no optimization or repeat cold campaign required for PR246. Separate field-view benchmark remains pending."
+  },
+  "result_artifact_sha256": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/summary.json": "69b88a3181a269c920b184c0360653d0814f1db26487194b8fb55636a20db061",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/results.json": "2433af4fd2a3f475efe4cb469d83b54b0f4599c0f085470c2e2d977604b8fe80",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/pairs.json": "d1dd8b0fd63e2c51486e9865a9dcc6252a925d943bab94a9981c3ac204d85860",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/provenance.json": "b1a400519b7038163b7045965b684ad141605e12800931433f5759de05474f45",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/logs/screen-42255812.log": "7e299fae20894c864768dfe67649f46ee32a3c47525a7c6aca240463965eda5a"
   }
 }

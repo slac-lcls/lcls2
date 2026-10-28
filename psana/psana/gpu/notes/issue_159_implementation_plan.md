@@ -68,9 +68,12 @@ path, cumulative-budget and reporting tests, and user documentation. Focused
 validation passed 377 CPU tests and 302 device / 302 memcheck cases (zero errors).
 The inherited host scalar transport finding is tracked as #247. Claude's follow-up
 review accepted all six dispositions at `405f868ed`. The authorized
-[matched cold screen](issue159_pr246_cold_20261028.md) is submitted as job 42255812
-with fresh builds at A `8cf05e86a` and B `405f868ed`; performance results and the
-separate field-view benchmark remain pending. Stage 5 still waits for acceptance.
+[matched cold screen](issue159_pr246_cold_20261028.md) completed as job 42255812
+with fresh builds at A `8cf05e86a` and B `405f868ed`. Mona accepts the mean loop
+increases of 1.32% bulk-off and 1.95% bulk-on for now; no optimization or repeat
+cold screen is required for this integration. The separate field-view benchmark
+remains the technical gate before accepting and merging PR246. Stage 5 follows
+as a separate implementation PR after integration is accepted.
 Measure bulk-on unaligned field retirement separately before considering any
 change to its current host-wait behavior.
 

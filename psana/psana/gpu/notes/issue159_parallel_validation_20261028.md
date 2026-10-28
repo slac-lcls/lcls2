@@ -15,8 +15,11 @@ The new empty-field guard changes the B candidate: freeze the reviewed follow-up
 head and verify a separate install before timing. Earlier results below remain
 at their stated revisions. Claude's follow-up review accepted all six dispositions. Mona authorized the
 [matched cold screen](issue159_pr246_cold_20261028.md), submitted as job 42255812
-with fresh independent builds at A `8cf05e86a` and B `405f868ed`. Results, the
-separate field-view benchmark, PR merge and Stage 5 remain pending. The scalar transport issue is tracked as
+with fresh independent builds at A `8cf05e86a` and B `405f868ed`. It completed
+on sdfampere015 with four preflights and all 16 cold samples passing. Mean loop
+increases were 1.32% bulk-off and 1.95% bulk-on; Mona accepts them for now without
+optimization or a repeat cold screen. The separate field-view benchmark, PR
+merge and Stage 5 remain pending. The scalar transport issue is tracked as
 [#247](https://github.com/slac-lcls/lcls2/issues/247).
 
 ## MPI/reporting completion update
@@ -162,8 +165,9 @@ regressions before proceeding; there is no new arbitrary pass/fail percentage.
 
 ## Current remaining gates
 
-Claude's follow-up review is complete. The matched cold screen is submitted as
-job 42255812; its results and the separate field-view benchmark remain pending. The original focused device gate passed 333 GPU tests and 315 selected
+Claude's follow-up review is complete. Job 42255812 completed the matched cold
+screen, and Mona accepted its small slowdown. The separate field-view benchmark,
+including bulk-on unaligned retirement timing, is the remaining technical gate. The original focused device gate passed 333 GPU tests and 315 selected
 sanitizer checks; the review delta passed the focused checks recorded above.
 The combined MPI/reporting gate passed 16 field cases and two real pixel checks,
 with the separate inherited host scalar-shape finding documented in the MPI
