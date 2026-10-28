@@ -1,0 +1,175 @@
+{
+  "submission": {
+    "job": "42255812",
+    "recorded_at": "2026-10-28T10:49:25-07:00",
+    "scheduler": "JobId=42255812 JobName=issue159-pr246-cold\n   UserId=monarin(12682) GroupId=xu(1106) MCS_label=N/A\n   Priority=14043 Nice=0 Account=lcls:data@ampere QOS=normal\n   JobState=RUNNING Reason=None Dependency=(null)\n   Requeue=1 Restarts=0 BatchFlag=1 Reboot=0 ExitCode=0:0\n   RunTime=00:00:45 TimeLimit=01:30:00 TimeMin=N/A\n   SubmitTime=2026-10-28T10:48:01 EligibleTime=2026-10-28T10:48:01\n   AccrueTime=2026-10-28T10:48:01\n   StartTime=2026-10-28T10:48:40 EndTime=2026-10-28T12:18:40 Deadline=N/A\n   PreemptEligibleTime=2026-10-28T10:48:40 PreemptTime=None\n   SuspendTime=None SecsPreSuspend=0 LastSchedEval=2026-10-28T10:48:40 Scheduler=Backfill\n   Partition=ampere AllocNode:Sid=sdfiana025.sdf.slac.stanford.edu:133415\n   ReqNodeList=(null) ExcNodeList=(null)\n   NodeList=sdfampere015\n   BatchHost=sdfampere015\n   NumNodes=1 NumCPUs=112 NumTasks=1 CPUs/Task=112 ReqB:S:C:T=0:0:*:*\n   ReqTRES=cpu=112,mem=700G,node=1,billing=112,gres/gpu=4,gres/gpu:a100=4\n   AllocTRES=cpu=112,mem=700G,node=1,billing=112,gres/gpu=4,gres/gpu:a100=4\n   Socks/Node=* NtasksPerN:B:S:C=0:0:*:* CoreSpec=*\n   MinCPUsNode=112 MinMemoryNode=700G MinTmpDiskNode=0\n   Features=(null) DelayBoot=00:00:00\n   OverSubscribe=NO Contiguous=0 Licenses=(null) LicensesAlloc=(null) Network=(null)\n   Command=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/run.sbatch\n   SubmitLine=sbatch --parsable /sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/run.sbatch\n   WorkDir=/sdf/home/m/monarin/lcls2_worktree/psana2-gpu\n   StdErr=\n   StdIn=/dev/null\n   StdOut=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/logs/driver-42255812.log\n   TresPerNode=gres/gpu:a100:4\n   TresPerTask=cpu=112\n\n"
+  },
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1",
+  "plan": {
+    "commits": {
+      "A0": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+      "B0": "405f868ed380c78b6009da3001f4535cb9ae647b"
+    },
+    "labels": {
+      "A0": "updated unfixed target PR187+PR208",
+      "B0": "reviewed alignment fix Stages1-4 including empty-field correction"
+    },
+    "cache": "cold",
+    "timed_samples": 16,
+    "events_per_sample": 10000,
+    "pairs_per_bulk": 4,
+    "standard_deviation": "sample, ddof=1; separate A/B and bulk settings",
+    "template": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1",
+    "note": "Fresh independent exact-commit native builds. Byte-identical measurement helpers for A/B, including benchmark-only zero-shift N+1 reader wrapper. Same dependencies; no A/A. Private lscratch staged once, evicted before every sample with <=1% residency for every measured file. Four separate 200-event pixel/address preflights. Bulk on/off, batch20, depth1, 6GiB/BD, KvikIO8threads/1MiB, compatibility ON. No calibration/user kernel/field API in timed loop.",
+    "requested_node": "Any exclusive Ampere node; preferred012 unavailable due to long-running allocation",
+    "remaining_gate": "separate field-view benchmark including bulk-on unaligned retirement; PR merge and Stage5 still pending"
+  },
+  "builds": {
+    "complete": true,
+    "builds": {
+      "A": {
+        "commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+        "source": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/source",
+        "install": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/install",
+        "commands": [
+          {
+            "command": [
+              "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+              "-m",
+              "mesonbuild.mesonmain",
+              "setup",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/build",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/source",
+              "--prefix",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/install",
+              "-Dconda_prefix=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311",
+              "-Dbuild_daq=false",
+              "-Dbuildtype=release",
+              "-Db_lto=false",
+              "-Dpython.bytecompile=-1"
+            ],
+            "seconds": 5.74810342118144,
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+              "-m",
+              "mesonbuild.mesonmain",
+              "compile",
+              "-C",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/build",
+              "-j4"
+            ],
+            "seconds": 95.08064655819908,
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+              "-m",
+              "mesonbuild.mesonmain",
+              "install",
+              "-C",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/A/build",
+              "--no-rebuild"
+            ],
+            "seconds": 3.956051103770733,
+            "returncode": 0
+          }
+        ],
+        "unit_returncode": 0
+      },
+      "B": {
+        "commit": "405f868ed380c78b6009da3001f4535cb9ae647b",
+        "source": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/source",
+        "install": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install",
+        "commands": [
+          {
+            "command": [
+              "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+              "-m",
+              "mesonbuild.mesonmain",
+              "setup",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/build",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/source",
+              "--prefix",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install",
+              "-Dconda_prefix=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311",
+              "-Dbuild_daq=false",
+              "-Dbuildtype=release",
+              "-Db_lto=false",
+              "-Dpython.bytecompile=-1"
+            ],
+            "seconds": 4.662938021123409,
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+              "-m",
+              "mesonbuild.mesonmain",
+              "compile",
+              "-C",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/build",
+              "-j4"
+            ],
+            "seconds": 91.28729032306,
+            "returncode": 0
+          },
+          {
+            "command": [
+              "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+              "-m",
+              "mesonbuild.mesonmain",
+              "install",
+              "-C",
+              "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/build",
+              "--no-rebuild"
+            ],
+            "seconds": 3.7203073487617075,
+            "returncode": 0
+          }
+        ],
+        "unit_returncode": 0
+      }
+    }
+  },
+  "unit_counts": {
+    "A": {
+      "tests": 666,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    "B": {
+      "tests": 995,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    }
+  },
+  "native_files_per_install": 28,
+  "activation_order": [
+    "A0",
+    "B0",
+    "A0"
+  ],
+  "external_libraries_match": true,
+  "external_library_count": 228,
+  "packages": {
+    "kvikio-cu12": "26.10.0",
+    "libkvikio-cu12": "26.10.0",
+    "cupy-cuda12x": "14.0.1",
+    "numpy": "2.3.5",
+    "mpi4py": "4.1.1",
+    "meson": "1.9.2",
+    "Cython": "3.2.2"
+  },
+  "mpi_library": "Open MPI v5.0.8, package: Open MPI conda@69bcf91866a2 Distribution, ident: 5.0.8, repo rev: v5.0.8, May 30, 2025\u0000",
+  "frozen_files": 8086,
+  "manifest_sha256": "f432a66f1ba0b913309240278e7b2dab8696f58368f72c329e3b8872f58370f2",
+  "review": "https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5686938706",
+  "acknowledgment": "https://github.com/slac-lcls/lcls2/pull/246#issuecomment-6476232774",
+  "results_available": false
+}

@@ -66,9 +66,11 @@ Claude's initial review at `e7c700ba2` found no blockers. The
 [review follow-up](issue159_review_followup_20261028.md) adds the empty-field fast
 path, cumulative-budget and reporting tests, and user documentation. Focused
 validation passed 377 CPU tests and 302 device / 302 memcheck cases (zero errors).
-The inherited host scalar transport finding is tracked as #247. Follow-up review
-and matched performance remain pending; Stage 5 still waits for acceptance.
-The next B performance candidate must include the reviewed empty-field change.
+The inherited host scalar transport finding is tracked as #247. Claude's follow-up
+review accepted all six dispositions at `405f868ed`. The authorized
+[matched cold screen](issue159_pr246_cold_20261028.md) is submitted as job 42255812
+with fresh builds at A `8cf05e86a` and B `405f868ed`; performance results and the
+separate field-view benchmark remain pending. Stage 5 still waits for acceptance.
 Measure bulk-on unaligned field retirement separately before considering any
 change to its current host-wait behavior.
 

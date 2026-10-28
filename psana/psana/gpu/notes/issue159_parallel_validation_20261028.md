@@ -13,8 +13,10 @@ Claude completed the initial review at `e7c700ba2` without blockers. The
 tests and 302 CUDA tests plus 302 memcheck cases with zero sanitizer errors.
 The new empty-field guard changes the B candidate: freeze the reviewed follow-up
 head and verify a separate install before timing. Earlier results below remain
-at their stated revisions. Claude's follow-up review is next; performance,
-PR merge and Stage 5 remain pending. The scalar transport issue is tracked as
+at their stated revisions. Claude's follow-up review accepted all six dispositions. Mona authorized the
+[matched cold screen](issue159_pr246_cold_20261028.md), submitted as job 42255812
+with fresh independent builds at A `8cf05e86a` and B `405f868ed`. Results, the
+separate field-view benchmark, PR merge and Stage 5 remain pending. The scalar transport issue is tracked as
 [#247](https://github.com/slac-lcls/lcls2/issues/247).
 
 ## MPI/reporting completion update
@@ -160,8 +162,8 @@ regressions before proceeding; there is no new arbitrary pass/fail percentage.
 
 ## Current remaining gates
 
-Claude's follow-up review and the matched cold/field performance screen remain
-pending. The original focused device gate passed 333 GPU tests and 315 selected
+Claude's follow-up review is complete. The matched cold screen is submitted as
+job 42255812; its results and the separate field-view benchmark remain pending. The original focused device gate passed 333 GPU tests and 315 selected
 sanitizer checks; the review delta passed the focused checks recorded above.
 The combined MPI/reporting gate passed 16 field cases and two real pixel checks,
 with the separate inherited host scalar-shape finding documented in the MPI
