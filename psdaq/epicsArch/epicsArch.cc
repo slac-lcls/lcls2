@@ -16,6 +16,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 
@@ -32,7 +33,7 @@ using ms_t = std::chrono::milliseconds;
 namespace Drp {
 
 Pgp::Pgp(const Parameters& para, MemPool& pool, Detector* det) :
-    PgpReader(para, pool, MAX_RET_CNT_C, 32),
+    PgpReader(para, pool, std::min(MAX_RET_CNT_C, pool.dmaCount()), 32),
     m_det(det),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
@@ -278,6 +279,7 @@ void EaDrp::_worker()
     if (prctl(PR_SET_NAME, "epicsArch/Worker", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Worker");
 
     m_terminate.store(false, std::memory_order_release);
 
@@ -376,7 +378,7 @@ void EaDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
 // ---
 
 EpicsArchApp::EpicsArchApp(Parameters& para, const std::string& pvCfgFile) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
     m_para       (para),
     m_pool       (para),
     m_unconfigure(false)
@@ -779,10 +781,17 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")          continue;  // DrpBase
             if (kwargs.first == "directIO")          continue;  // DrpBase
             if (kwargs.first == "pva_addr")          continue;  // DrpBase
+            if (kwargs.first == "pinThreads")        continue;
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
+
+        // Report an uncaught exception from any thread, not just its type name
+        initExceptionReporting(para.alias);
+
+        // Before any thread that pins itself is created
+        Pds::setThreadPinning(para.kwargs, 2, 0);
 
         // Set up signal handler
         initShutdownSignals(para.alias, [](){ exit(0); });

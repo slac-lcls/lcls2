@@ -59,6 +59,24 @@ static std::vector<T> split_segs(const std::string& inStr,
     return segs;
 }
 
+// Total length of the config JSON, summed over segments when it arrives as a list.
+// Returns 0 if the object is not the string or list of strings expected, so that an
+// unexpected shape falls through to the translation rather than failing here.
+static size_t _jsonSize(PyObject* obj)
+{
+    if (PyList_Check(obj)) {
+        size_t size = 0;
+        for (Py_ssize_t i = 0; i < PyList_Size(obj); ++i)
+            size += _jsonSize(PyList_GetItem(obj, i));   // Borrowed reference
+        return size;
+    }
+    if (!PyUnicode_Check(obj))  return 0;
+
+    Py_ssize_t size = 0;
+    if (!PyUnicode_AsUTF8AndSize(obj, &size))  { PyErr_Clear();  return 0; }
+    return size_t(size);
+}
+
 namespace Drp {
 
 PyObject* BEBDetector::_check(PyObject* obj) {
@@ -230,6 +248,20 @@ unsigned BEBDetector::configure(const std::string& config_alias,
         segSerNos = split_segs<std::string>(m_para->serNo); // Underscore delimited created during connect
     }
 
+    // The translation below grows an Xtc until it runs out of room, and Xtc::alloc
+    // aborts on the allocation that does not fit, so the abort reports how far it got
+    // rather than what was needed -- and raising maxTrSize just moves the failure.
+    // The JSON's own length is a lower bound on the Xtc's: each key becomes a Name,
+    // which is sizeof(Name) bytes whatever the key's length.
+    size_t jsonSize = _jsonSize(mybytes);
+    if (jsonSize > m_para->maxTrSize) {
+        logging::critical("Config JSON for %s is %zu B, which cannot be translated into "
+                          "a %zu B buffer: raise maxTrSize past %zu B.  The Xtc is larger "
+                          "than the JSON, so this is a lower bound",
+                          m_para->detName.c_str(), jsonSize, m_para->maxTrSize, jsonSize);
+        throw "**** Config json too large for buffer\n";
+    }
+
     char* buffer = new char[m_para->maxTrSize];
     const void* end = buffer + m_para->maxTrSize;
     Xtc& jsonxtc = *new (buffer, end) Xtc(TypeId(TypeId::Parent, 0));
@@ -261,9 +293,12 @@ unsigned BEBDetector::configure(const std::string& config_alias,
     else if ( Pds::translateJson2Xtc( mybytes, jsonxtc, end, NamesId(nodeId,ConfigNamesIndex) ) )
         return -1;
 
+    // Unreachable in practice: Xtc::alloc aborts on the first allocation that would
+    // exceed `end`, so an oversized config dies in the translation above.  Kept as a
+    // backstop in case a translator ever grows the extent without going through alloc.
     if (jsonxtc.extent>m_para->maxTrSize) {
-        logging::critical("Config json output too large (%zu) for buffer (%zu)",
-                          jsonxtc.extent, m_para->maxTrSize);
+        logging::critical("Config json output too large (%u) for buffer (%zu): JSON was "
+                          "%zu B", jsonxtc.extent, m_para->maxTrSize, jsonSize);
         throw "**** Config json output too large for buffer\n";
     }
 

@@ -214,7 +214,9 @@ class Storage_v02(): # Storage):
           + info_ndarr(cbits_lo,  '\n  cbits_lo')\
           + info_ndarr(self.mask, '\n  mask')\
           + info_ndarr(self.peds, '\n  peds')\
-          + info_ndarr(self.gfac, '\n  gfac')
+          + info_ndarr(self.gfac, '\n  gfac')\
+          +'\n  det.raw._data_bit_mask:    %s' % oct(det_raw._data_bit_mask)\
+          +'\n  det_raw._data_gain_bitnum: %d' % det_raw._data_gain_bitnum
         logger.info(s)
 
 
@@ -785,7 +787,7 @@ def calib_epix10ka_any(det_raw, evt, cmpars=None, **kwa): #cmpars=(7,2,100)):
 
 
 def grindex_array(raw, gbit=14):
-    """gbit (starting from 0) =14 for epix10ka, =15 for epixuhr"""
+    """gbit (starting from 0) =14 for epix10ka"""
     return np.right_shift(np.bitwise_and(raw, 1<<gbit), gbit) #, dtype=np.uint8)
     #return (raw & 1<<gbit) >> gbit
 

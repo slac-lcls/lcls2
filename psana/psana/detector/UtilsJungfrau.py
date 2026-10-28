@@ -37,11 +37,6 @@ import psana.detector.utils_psana as up
 import psana.detector.UtilsCommonMode as ucm
 import psana.pycalgos.utilsdetector as ud
 
-from mpi4py import MPI
-comm = MPI.COMM_WORLD
-rank = comm.Get_rank()
-size = comm.Get_size()
-
 info_ndarr = ndau.info_ndarr
 
 BW1 =  0o40000 # 16384 or 1<<14 (15-th bit starting from 1)
@@ -869,6 +864,12 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
         #kwa.setdefault('cversion', 3)
         det_raw._odc = odc = DetCache(det_raw, evt, **kwa) # cache.add_detcache(det_raw, evt, **kwa)
         logger.info('calib_jungfrau **kwa: %s' % str(kwa))
+        if odc.cversion != CALIB_PYT_V0 and odc.cmps is not None:
+            logger.warning('calib_jungfrau_versions:'\
+                          f'\n    calib jungfrau with cversion={odc.cversion} is intended to run fast C++ version'\
+                           ' and currently DOES NOT APPLY COMMON-MODE CORRECTION'\
+                           '\n    to enable common mode correction, initialize calib(...) with cversion=0'\
+                          f' and the desired cmpars, currently: {str(odc.cmps)}')
         logger.info(det_raw._info_calibconst()) # is called in AreaDetector
 
     if odc.poff is None: return arr
@@ -883,7 +884,7 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
     ccons, poff, gfac, mask, cmps, inds, outa, cversion =\
         odc.ccons, odc.poff, odc.gfac, odc.mask, odc.cmps, odc.inds, odc.outa, odc.cversion
 
-    if first_entry:
+    #if first_entry:
         # NOTE: This block is intentionally disabled to avoid expensive full-array
         # stats/log construction that can add seconds on event 0. Re-enable only
         # for deep debugging.
@@ -900,7 +901,7 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
         #         logger.debug(info_gainbits_statistics(arr))
         #         logger.debug(info_gainrange_statistics(arr))
         #         logger.debug(info_gainrange_fractions(arr))
-        pass
+        # pass
 
     if cversion == CALIB_CPP_V3:   # ccons.shape = (4, <NPIXELS>, 2)
         ud.calib_jungfrau_v3(arr, ccons, size_blk, outa)

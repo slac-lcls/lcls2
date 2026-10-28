@@ -27,7 +27,6 @@ segids = None
 seglist = [0]
 cfg = None
 
-
 class EpixBoard(pyrogue.Root):
     def __init__(self, srp, **kwargs):
         super().__init__(name="ePixBoard", description="ePix 100a Board", **kwargs)
@@ -48,7 +47,7 @@ def epix100_init(
 
     assert lanemask == 1, "Epix100 KCU firmware requires camera to be on lane 0"
 
-    logging.debug("epix100_init")
+    logging.debug(f"epix100_init (i2c setup:{timebase}))")
 
     base = {}
 
@@ -108,6 +107,33 @@ def epix100_init(
 
     epix100_unconfig(base)
 
+    if timebase == "186M":
+        clockrange = (180.,190.)
+    elif timebase == "119M":
+        clockrange = (115.,125.)
+    else:
+        clockrange = None
+
+    if clockrange is not None:
+        # check timing reference clock, program if necessary
+        if timebase == "119M":
+            rate = pbase.DevPcie.Hsio.TimingRx.GtRxAlignCheck[0].TxClkFreq.get()
+        else:
+            rate = pbase.DevPcie.Hsio.TimingRx.GtRxAlignCheck[1].TxClkFreq.get()
+
+        print(f"check clock rate: {rate}")
+        if (rate < clockrange[0] or rate > clockrange[1]):
+            print(f"programming clock: {rate}")
+            if timebase == "119M":
+                pbase.DevPcie.I2CBus.programSi570(119.)
+                pbase.DevPcie.Hsio.TimingRx.ConfigLclsTimingV1()
+            else:
+                pbase.DevPcie.I2CBus.programSi570(1300/7.)
+                pbase.DevPcie.Hsio.TimingRx.ConfigLclsTimingV2()
+                
+            time.sleep(1)
+
+
     pbase.DevPcie.Hsio.TimingRx.TimingFrameRx.ModeSelEn.set(1)
     if timebase == "119M":
         logging.info("Using timebase 119M")
@@ -159,7 +185,9 @@ def epix100_connectionInfo(base, alloc_json_str):
     d["serno"] = epixhrid
 
     # Check that the timing link is up from XPM-side
-    if rxId != 0xFFFFFFFE:
+    # cpo and cheolhong are removing this workaround because
+    # of the progress on making timing links more robust - 09/18/26
+    if rxId != 0xFFFFFFFE and 0:
         from p4p.client.thread import Context
         from p4p.nt.scalar import ntint
         xpm: int = (rxId >> 16) & 0xFF

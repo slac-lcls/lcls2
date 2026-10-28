@@ -17,7 +17,7 @@ unset PYTHONPATH
 source /sdf/group/lcls/ds/ana/sw/conda2-v6/inst/etc/profile.d/conda.sh
 export CONDA_ENVS_DIRS=/sdf/group/lcls/ds/ana/sw/conda2/inst/envs
 export DIR_PSDM=/sdf/group/lcls/ds/ana/
-export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_03122026
+export SUBMODULEDIR=/sdf/group/lcls/ds/ana/sw/conda2-v4/rel/lcls2_submodules_10122026
 
 conda activate ${DAQ_CONDA_ENVIRONMENT}
 
@@ -65,8 +65,6 @@ export HDF5_USE_FILE_LOCKING=FALSE
 # for libfabric. decreases performance a little, but allows forking
 export RDMAV_FORK_SAFE=1
 export RDMAV_HUGEPAGES_SAFE=1
-
-PS_PARALLEL='none'
 
 # needed by JupyterLab
 export JUPYTERLAB_WORKSPACES_DIR=${HOME}

@@ -19,6 +19,7 @@
 #include "xtcdata/xtc/ShapesData.hh"
 #include "xtcdata/xtc/NamesLookup.hh"
 #include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include <getopt.h>
 #include <Python.h>
@@ -486,7 +487,7 @@ public:
 
 
 Pgp::Pgp(Parameters& para, DrpBase& drp, Detector* det) :
-    PgpReader(para, drp.pool, MAX_RET_CNT_C, 32),
+    PgpReader(para, drp.pool, std::min(MAX_RET_CNT_C, drp.pool.dmaCount()), 32),
     m_para(para), m_drp(drp), m_det(det),
     m_config(0), m_terminate(false), m_running(false),
     m_available(0), m_current(0), m_next(0), m_nDmaRet(0)
@@ -593,6 +594,7 @@ void Pgp::worker(std::shared_ptr<MetricExporter> exporter)
     if (prctl(PR_SET_NAME, "drp_bld/Worker", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Worker");
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
@@ -946,7 +948,7 @@ unsigned BldDrp::unconfigure()
 
 
 BldApp::BldApp(Parameters& para) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
     m_para       (para),
     m_pool       (para),
     m_unconfigure(false)
@@ -1297,10 +1299,17 @@ int main(int argc, char* argv[])
         if (kwargs.first == "pva_addr")       continue;  // DrpBase
         if (kwargs.first == "interface")      continue;
         if (kwargs.first == "timeout")        continue;
+        if (kwargs.first == "pinThreads")     continue;
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+
+    // Report an uncaught exception from any thread, not just its type name
+    initExceptionReporting(para.alias);
+
+    // Before any thread that pins itself is created
+    Pds::setThreadPinning(para.kwargs, 2, 0);
 
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });

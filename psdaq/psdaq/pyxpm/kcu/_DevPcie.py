@@ -11,6 +11,7 @@
 
 import pyrogue as pr
 import pyrogue.protocols
+import logging
 import time
 import xpm
 import kcu
@@ -326,6 +327,9 @@ class DevPcie(pr.Device):
             print(f'MMCM lock : {self.XpmApp.mmcmLock.get()}')
             self.XpmApp.mmcmRst.set(0)
             print(f'MMCM reset : {self.XpmApp.mmcmRst.get()}')
+#            self.XpmApp.monStreamPeriod.set(156250000)
+            logging.info('monStreamPeriod {}'.format(self.XpmApp.monStreamPeriod.get()))
+
 
         #  Reset the Tx and Rx PLLs
         for i in range(8):
@@ -334,9 +338,12 @@ class DevPcie(pr.Device):
             time.sleep(0.01)
             self.XpmApp.txPllReset.set(0)
             time.sleep(0.01)
-            self.XpmApp.rxPllReset.set(1)
+            # self.XpmApp.rxPllReset.set(1)
+            # time.sleep(0.01)
+            # self.XpmApp.rxPllReset.set(0)
+            self.XpmApp.rxReset.set(1)
             time.sleep(0.01)
-            self.XpmApp.rxPllReset.set(0)
+            self.XpmApp.rxReset.set(0)            
         self.XpmApp.link.set(0)
         self.DevReset.clearTimingPhyReset.set(1)
 

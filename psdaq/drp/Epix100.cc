@@ -68,7 +68,10 @@ static struct sigaction old_actions[64];
 static void sigHandler(int signal)
 {
   psignal(signal, "epix100 received signal");
-  epix->monStreamEnable();
+    // Deliberately no monStreamEnable() here: it calls into CPython, and a
+    // signal is delivered on whichever thread the kernel picks, which need not
+    // hold the GIL -- so the call faults and the SIGSEGV buries the signal that
+    // prompted it.  It runs in shutdown() instead, where the GIL is held.
 
   sigaction(signal,&old_actions[signal],NULL);
   raise(signal);
@@ -77,7 +80,8 @@ static void sigHandler(int signal)
 Epix100::Epix100(Parameters* para, MemPool* pool) :
     BEBDetector   (para, pool),
     m_env_sem     (Pds::Semaphore::FULL),
-    m_env_empty   (true)
+    m_env_empty   (true),
+    m_monStreamOn (true)      // The stream is on until Enable disables it
 {
     _init(para->detName.c_str());  // an argument is required here
     epix = this;
@@ -87,15 +91,16 @@ Epix100::Epix100(Parameters* para, MemPool* pool) :
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-#define REGISTER(t) {                               \
-        if (sigaction(t, &sa, &old_actions[t]) > 0) \
-            printf("Couldn't set up #t handler\n"); \
+#define REGISTER(t) {                                       \
+        if (sigaction(t, &sa, &old_actions[t]) < 0)         \
+            printf("Couldn't set up %s handler\n", #t);      \
     }
 
     REGISTER(SIGINT);
+    REGISTER(SIGTERM);           // What Slurm sends to stop a task
+    REGISTER(SIGQUIT);
     REGISTER(SIGABRT);
-    REGISTER(SIGKILL);
-    REGISTER(SIGSEGV);
+    REGISTER(SIGSEGV);           // SIGKILL cannot be caught, so don't try
 
 #undef REGISTER
 }
@@ -194,16 +199,32 @@ void Epix100::_event(XtcData::Xtc& xtc, const void* bufEnd, uint64_t l1count, st
     }
 #endif
 
-    if (subframes[3].num_elem() != expectedsize) {
+    static unsigned sizecount = 0;
+    if (subframes[3].num_elem() < expectedsize) {
+        // this is serious
         printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
         // raise damage here
+        xtc.damage.increase(XtcData::Damage::MissingData);
+        // copy but don't bother unscrambling
+        // note: aframe can be smaller than num_elem in the subframe since it is not sized to include the env and calib rows
+        // (only the actual data pixels) while expectedsize does include the calib and env rows.
+        // In the case we get the full image data rows but only partial env/calib rows copying the full subframe would
+        // exceed the allocated size of aframe.
+        memcpy(aframe.data(), subframes[3].data(), std::min(subframes[3].num_elem(), aframe.num_elem()*sizeof(uint16_t)));
     }
+    else {
+        if (sizecount < 10 && subframes[3].num_elem() > expectedsize) {
+            // this is known but not understood
+            printf("*** incorrect size %zd %d\n",subframes[3].num_elem(),expectedsize);
+            sizecount++;
+        }
 
-    uint16_t* indata = (uint16_t*)(subframes[3].data()+headersize);
-    // unscramble asics like lcls1's pds/epix100a/Epix100aServer.cc
-    for(unsigned i=0; i<nasicrows; i++) {
-        memcpy(aframe.data()+(nasicrows+i+0)*ncols, indata+(2*i+0)*ncols, ncols*sizeof(uint16_t));
-        memcpy(aframe.data()+(nasicrows-i-1)*ncols, indata+(2*i+1)*ncols, ncols*sizeof(uint16_t));
+        uint16_t* indata = (uint16_t*)(subframes[3].data()+headersize);
+        // unscramble asics like lcls1's pds/epix100a/Epix100aServer.cc
+        for(unsigned i=0; i<nasicrows; i++) {
+            memcpy(aframe.data()+(nasicrows+i+0)*ncols, indata+(2*i+0)*ncols, ncols*sizeof(uint16_t));
+            memcpy(aframe.data()+(nasicrows-i-1)*ncols, indata+(2*i+1)*ncols, ncols*sizeof(uint16_t));
+        }
     }
 
     // feels like we need to unscramble environmental/calibration rows too?
@@ -223,10 +244,17 @@ bool     Epix100::scanEnabled()
 
 void     Epix100::shutdown()
 {
+    // Re-enable the monitor stream here rather than from sigHandler(), which
+    // may not call CPython: the caller, _disconnect(), holds the GIL.  Not
+    // done in the dtor, which has no such guarantee.
+    if (m_module && !m_monStreamOn) {
+        monStreamEnable();
+    }
 }
 
 void     Epix100::monStreamEnable()
 {
+    m_monStreamOn = true;
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
     sprintf(func_name,"%s_disable",m_para->detType.c_str());
@@ -239,6 +267,7 @@ void     Epix100::monStreamEnable()
 
 void     Epix100::monStreamDisable()
 {
+    m_monStreamOn = false;
     PyObject* pDict = _check(PyModule_GetDict(m_module));
     char func_name[64];
     sprintf(func_name,"%s_enable",m_para->detType.c_str());

@@ -38,7 +38,7 @@ def dic_ctype_fmt(**kwargs):
             'pixel_max'   : kwargs.get('fmt_max',    '%d'),
             'pixel_min'   : kwargs.get('fmt_min',    '%d'),
             'pixel_mask'  : kwargs.get('fmt_mask',   '%2d'),
-            'pixel_gain'  : kwargs.get('fmt_gain',   '%.3f'),
+            'pixel_gain'  : kwargs.get('fmt_gain',   '%.6f'),
             'pixel_offset': kwargs.get('fmt_offset', '%.3f'),
             'pixel_status': kwargs.get('fmt_status', '%d'),
             'status_extra': kwargs.get('fmt_status', '%d')}
@@ -632,8 +632,12 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = obdet.raw._sorted_segment_inds
     kwa['segment_numbers'] = obdet.raw._segment_numbers
+    kwa['shape_raw'] = obdet.raw._shape_as_daq()
     kwa['shape_as_daq'] =\
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
+    kwa['dark_factor']  = getattr(obdet.raw, '_dark_factor', None)
+    kwa['gain_state_to_factor'] = getattr(obdet.raw, '_dic_gain_state_to_factor', None)
+    #kwa['gain_states'] = str(getattr(obdet.raw, '_gain_states', 'NONDEF-det.raw._gain_states')).replace("'", '')
     #print('XXXX dir(obdet.raw)',  dir(obdet.raw))
     return kwa
 
@@ -718,6 +722,133 @@ def deploy_constants(dic_consts, **kwa):
                 logger.info('constants are not deployed')
                 exit()
         else:
+            logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
+
+
+def calib_file_name(fprefix, ctype, gainmode, fmt='%s-%s-%s.data'):
+    return fmt % (fprefix, ctype, gainmode)
+
+
+def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
+
+    from psana.pscalib.calib.MDBUtils import data_from_file
+    from psana.pscalib.calib.MDBWebUtils import add_data_and_two_docs
+
+    CTYPE_DTYPE = cc.dic_calib_name_to_dtype # {'pedestals': np.float32,...}
+    repoman  = kwa.get('repoman', None)
+    expname  = kwa.get('exp', None)
+    detname  = kwa.get('det', None)
+    dettype  = kwa.get('dettype', None)
+    deploy   = kwa.get('deploy', False)
+    dirrepo  = kwa.get('dirrepo', './work')
+    dirmode  = kwa.get('dirmode',  0o2775)
+    filemode = kwa.get('filemode', 0o664)
+    group    = kwa.get('group', 'ps-users')
+    tstamp   = kwa.get('tstamp', '2010-01-01T00:00:00')
+    tsshort  = kwa.get('tsshort', '20100101000000')
+    runnum   = kwa.get('run_orig', None)
+    uniqueid = kwa.get('longname', 'not-def-id')
+    shortname= kwa.get('shortname', 'not-def-shortname')
+    shape_raw= kwa.get('shape_raw', (4, 192, 384))
+    shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
+    segind   = kwa.get('segind', 0)
+
+    fmt_peds   = kwa.pop('fmt_peds', '%.3f')
+    fmt_offs   = kwa.pop('fmt_offs', '%.3f')
+    fmt_rms    = kwa.pop('fmt_rms',  '%.3f')
+    fmt_status = kwa.pop('fmt_status', '%4i')
+    fmt_max    = kwa.pop('fmt_max', '%i')
+    fmt_min    = kwa.pop('fmt_min', '%i')
+    fmt_gain   = kwa.pop('fmt_gain', '%.6f')
+
+    CTYPE_FMT = {'pedestals'   : fmt_peds,
+                 'pixel_rms'   : fmt_rms,
+                 'pixel_status': fmt_status,
+                 'pixel_max'   : fmt_max,
+                 'pixel_min'   : fmt_min,
+                 'pixel_offset': fmt_offs,
+                 'status_extra': fmt_status,
+                 'pixel_gain'  : fmt_gain}
+
+    gain_state_to_factor = kwa.pop('gain_state_to_factor' ,None)
+
+    repoman = set_repoman_and_logger(kwa)
+
+    segid = uniqueid.split('_')[1]
+    logger.info('\n\n\ndeploy_constants'\
+               +'\n  segment id: %s' % segid\
+               +'\n  gainmodes : %s' % str(gainmodes)
+               +'\n  shape_raw : %s' % str(shape_raw))
+
+    for ctype in ctypes:
+
+      dir_ct = repoman.makedir_ctype(segid, ctype)
+      fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
+      logger.info('=========================== combine calib array for %s' % ctype
+                 +'\n  shortname:%s\n  tsshort:%s\n  expname:%s\n  runnum:%d\n  dir_ct:%s\n  fprefix:%s\n'%\
+                  (shortname, tsshort, expname, runnum, dir_ct, fprefix))
+      dic_nda = {}
+
+      for gm in gainmodes:
+
+        fname = calib_file_name(fprefix, ctype, gm)
+        fmt = CTYPE_FMT.get(ctype,'%.5f')
+        #save_ndarray_in_textfile(nda, fname, filemode, fmt)
+        #save_2darray_in_textfile(nda, fname, filemode, fmt)
+
+        logger.info('extract constants from repo file: %s' % fname)
+
+        dtype = 'ndarray'
+        kwa['iofname'] = fname
+        kwa['ctype'] = ctype
+        kwa['dtype'] = dtype
+        kwa['extpars'] = {'content':'extended parameters dict->json->str',}
+        _ = kwa.pop('exp',None) # remove parameters from kwargs - they passed as positional arguments
+        _ = kwa.pop('det',None)
+
+        try:
+          data = data_from_file(fname, ctype, dtype, True)
+          logger.info(info_ndarr(data, 'constants loaded from file', last=5, vfmt=fmt))
+        except AssertionError as err:
+          logger.warning(err)
+          shape_seg = shape_as_daq[-2:] if dettype != 'epixm320' else shape_raw # (4, 192, 384)
+          vtype = cc.dic_calib_name_to_dtype[ctype]
+          logger.warning(f'using default constants for gm: {gm} ctype:{ctype} vtype:{vtype} segment shape: {str(shape_seg)}')
+
+          if ctype == 'pixel_gain':
+             gfactor = 1 if gain_state_to_factor is None else\
+                       gain_state_to_factor[gm]
+             data = np.ones(shape_seg, vtype) * gfactor
+          else:
+             data = np.zeros(shape_seg, vtype) # np.uint16)
+
+          logger.info(info_ndarr(data, 'substitute array with', last=5, vfmt=fmt))
+        dic_nda[gm] = reshape_to_3d(data)
+
+      nda = np.stack([dic_nda[gm] for gm in gainmodes])
+      fname = calib_file_name(fprefix, ctype, 'comb')
+      fmt = CTYPE_FMT.get(ctype,'%.5f')
+      save_ndarray_in_textfile(nda, fname, filemode, fmt)
+      logger.info(info_ndarr(nda, 'constants combined for %s' % ctype))  # shape:(3, 4, 192, 384)
+      logger.info('saved in file: %s' % fname)
+
+      kwa['gain_modes'] = str(gainmodes).replace("'", '').replace(' ', '')
+
+      if ctype != 'pixel_gain':
+         _ = kwa.pop('gain_state_to_factor',None)
+      if not ctype in ('pedestals', 'pixel_rms', 'pixel_status', 'pixel_min', 'pixel_max'):
+         _ = kwa.pop('dark_factor',None)
+
+      logger.info('deployment metadata %s' % info_dict(kwa, fmt='%s: %s', sep='  ')) #fmt='%12s: %s'
+      if deploy:
+            detname = kwa['longname']
+            resp = add_data_and_two_docs(nda, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
+            if resp:
+                logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
+            else:
+                logger.info('constants are not deployed')
+                exit()
+      else:
             logger.warning('TO DEPLOY CONSTANTS IN DB ADD OPTION -D')
 
 

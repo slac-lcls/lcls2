@@ -30,30 +30,21 @@
 #define AVER_Get 0x1200
 
 /**
- * struct AxiVersion - Represents AXI version data.
- * @firmwareVersion: Firmware version number.
- * @scratchPad: General purpose scratch pad register.
- * @upTimeCount: Counter for the uptime in ticks.
- * @fdValue: Factory default values.
- * @userValues: User-defined values for customization.
- * @deviceId: Unique identifier for the device.
- * @gitHash: Hash of the git commit for software tracking.
- * @dnaValue: Device DNA value for identification.
- * @buildString: String containing build information.
+ * @brief Represents AXI version data.
  *
  * This structure is used to hold version information and metadata related to
  * the AXI interface, including both software and hardware identifiers.
  */
 struct AxiVersion {
-   uint32_t firmwareVersion;
-   uint32_t scratchPad;
-   uint32_t upTimeCount;
-   uint8_t  fdValue[8];
-   uint32_t userValues[64];
-   uint32_t deviceId;
-   uint8_t  gitHash[160];
-   uint8_t  dnaValue[16];
-   uint8_t  buildString[256];
+   uint32_t firmwareVersion;   /**< Firmware version number. */
+   uint32_t scratchPad;        /**< General purpose scratch pad register. */
+   uint32_t upTimeCount;       /**< Counter for the uptime in ticks. */
+   uint8_t  fdValue[8];        /**< Factory default values. */
+   uint32_t userValues[64];    /**< User-defined values for customization. */
+   uint32_t deviceId;          /**< Unique identifier for the device. */
+   uint8_t  gitHash[160];      /**< Hash of the git commit for software tracking. */
+   uint8_t  dnaValue[16];      /**< Device DNA value for identification. */
+   uint8_t  buildString[256];  /**< String containing build information. */
 };
 
 #ifndef DMA_IN_KERNEL
@@ -68,15 +59,16 @@ struct AxiVersion {
    #include <sys/fcntl.h>
 
    /**
-    * axiVersionGet - Reads the AXI version information.
-    * @fd: File descriptor for the device.
-    * @aVer: Pointer to AxiVersion structure to fill with data.
+    * @brief Reads the AXI version information.
     *
     * This function invokes an IOCTL call to read the AXI version information
     * from the hardware and fills the provided AxiVersion structure with the
     * data read.
     *
-    * Return: The number of bytes read on success or an error code on failure.
+    * @param fd   File descriptor for the device.
+    * @param aVer Pointer to AxiVersion structure to fill with data.
+    *
+    * @return The number of bytes read on success or an error code on failure.
     */
    static inline ssize_t axiVersionGet(int32_t fd, struct AxiVersion *aVer) {
       return(ioctl(fd, AVER_Get, aVer));

@@ -1,12 +1,11 @@
 import os
 import sys
-#from time import time
-#from psana.detector.NDArrUtils import info_ndarr
 import numpy as np
 from amitypes import Array1d, Array2d, Array3d
 import psana.detector.epix_base as eb
 import logging
 from psana.detector.detector_impl import DetectorImpl
+import psana.detector.UtilsEpixm320 as uem
 logger = logging.getLogger(__name__)
 
 is_none = eb.ut.is_none
@@ -43,8 +42,13 @@ class epixm320_raw_0_0_0(eb.epix_base):
         self._data_bit_mask = M15 # for epixm320 data on 2024-03-20 Dawood - epixM has 15 data bits.
         self._data_gain_bit = B16 # gain switching bit
         self._gain_bit_shift = 10
-        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
-        self._gain_modes = ('AHL', 'SH', 'SL')
+        #self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
+        self._gains_def = (853, 42.6, 853) # ADU/keV Philip on 2026-10-23
+        self._gain_states      = ('AHL_H', 'AHL_L', 'SH')
+        self._gain_states_dark = ('SH', 'SL', 'AHL')
+        self._gain_states_offs = ('AHL',)
+        self._gain_modes = self._gain_states_dark
+        self._dic_gain_state_to_factor = dict(zip(self._gain_states, self._gains_def)) # {'AHL_H':-100.7,, ...} # 3 total
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epixm320.data'
         self._dataDebug = None
         self._segment_numbers = [0,1,2,3]
@@ -64,7 +68,6 @@ class epixm320_raw_0_0_0(eb.epix_base):
         """not used in epixm"""
         return None
 
-
     def _segment_ids(self):
         """Re-impliment epix_base._segment_ids for epixm320
         returns list of detector segment ids using ASIC numbers, e.g.
@@ -78,6 +81,9 @@ class epixm320_raw_0_0_0(eb.epix_base):
         id = self._uniqueid.split('_')[1] # 0016778240-0176075265-0452984854-4021594881-1962934296-0177446913-0402653206
         return ['%s-ASIC-%02d' % (id,i) for i in self._segment_numbers]
 
+    def calib(self, evt, **kwa) -> Array3d: # already defined in epix_base and AreaDetectorRaw
+        """uses version = kwa.get('version', 1)"""
+        return uem.calib_versions(self, evt, **kwa)
 
 #    def raw(self, evt) -> Array3d: # see in areadetector.py
 #        if evt is None: return None
@@ -85,42 +91,9 @@ class epixm320_raw_0_0_0(eb.epix_base):
 #        if segs is None: return None
 #        return segs[0].raw # shape=(4, 192, 384)
 
-
-    def calib(self, evt) -> Array3d: # already defined in epix_base and AreaDetectorRaw
-        """  """
-        #logger.debug('%s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
-        #print('TBD: %s.%s' % (self.__class__.__name__, sys._getframe().f_code.co_name))
-        if is_none(evt, 'evt is None - return None', logger.debug): return None
-
-        #t0_sec = time()
-        raw = self.raw(evt)
-        if is_none(raw, 'self.raw(evt) is None - return None'): return None
-
-        # Subtract pedestals
-        peds = self._pedestals()
-        if is_none(peds, 'det.raw._pedestals() is None - return det.raw.raw(evt)', logger.debug):
-            return raw
-        #print(info_ndarr(peds,'XXX peds', first=1000, last=1005))
-
-        gr1 = (raw & self._data_gain_bit) > 0
-
-        #print(info_ndarr(gr1,'XXX gr1', first=1000, last=1005))
-        pedgr = np.select((gr1,), (peds[1,:],), default=peds[0,:])
-        arrf = np.array(raw & self._data_bit_mask, dtype=np.float32)
-        arrf -= pedgr
-
-        #print('XXX time for calib: %.6f sec' % (time()-t0_sec)) # 4ms on drp-neh-cmp001
-        mask = self._mask()
-
-        #print(info_ndarr(mask,'XXX mask', first=1000, last=1005)) # IT WORKS mask is available
-
-        return arrf if is_none(mask, 'det.raw._mask() is None - return raw-peds', logger.info) else\
-               arrf * mask
-
 #    def image(self, evt, **kwargs) -> Array2d: # see in areadetector.py
 #        if evt is None: return None
 #        return self.raw(evt)[0].reshape(768,384)
-
 
 def _to_u32(data):
     return (data[3] << 24) | (data[2] << 16) | (data[1] << 8) | data[0]
@@ -129,6 +102,8 @@ def _to_u32(data):
 class epixm320_raw_0_1_0(epixm320_raw_0_0_0):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._store_ = None
+        self._count_calib = 0
 
     # Below are the header methods.  The layout is:
     #   ADD_FIELD(rsvd_0,  UINT32, 1);
@@ -146,6 +121,7 @@ class epixm320_raw_0_1_0(epixm320_raw_0_0_0):
     #   ADD_FIELD(rsvd_36, UINT32, 1);
     #   ADD_FIELD(rsvd_40, UINT32, 1);
     #   ADD_FIELD(rsvd_44, UINT32, 1);
+
     def frameNo(self, evt) -> Array1d:
         segments = self._segments(evt)
         if segments is None: return None

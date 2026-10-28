@@ -80,6 +80,9 @@ public:
   CoreRegisters() : _swRegs(nullptr), _fwRegs(nullptr) {}
   void initialize(bool sim, void* regs);
 
+  volatile uint8_t* registers() const
+  { return _fwRegs ? _fwRegs->registers() : _swRegs; }
+
   uint32_t dmaDataBytes() const
   { return _fwRegs ? _fwRegs->dmaDataBytes()
                    : _readSwReg(_swRegs, GpuAsyncReg_DmaDataBytes); }
@@ -91,9 +94,6 @@ public:
   void     setWriteEnable(uint32_t val)
   { if    (_fwRegs)  _fwRegs->setWriteEnable(val);
     else             _writeSwReg(_swRegs, GpuAsyncReg_WriteEnableV1, val); }
-  void     setWriteCount(uint32_t val)
-  { if    (_fwRegs)  _fwRegs->setWriteCount(val);
-    else             _writeSwReg(_swRegs, GpuAsyncReg_WriteCountV1, val); }
   uint32_t axisDeMuxSelect() const
   { return _fwRegs ? _fwRegs->axisDeMuxSelect()
                    : _readSwReg(_swRegs, GpuAsyncReg_AxisDeMuxSelect); }
@@ -125,7 +125,7 @@ private:
     *(uint32_t*)((uint8_t*)baseptr + offset) = value;
   }
 private:
-  uint32_t*                         _swRegs;
+  uint8_t*                          _swRegs;
   std::unique_ptr<GpuAsyncCoreRegs> _fwRegs;
 };
 
@@ -145,6 +145,21 @@ void dmaTgtSet(CoreRegisters&, DmaTgt_t);
  * \param fd The file descriptor of the PGP PCIe device
  */
 void dmaIdxReset(CoreRegisters&);
+
+/**
+ * PCI address of a CUDA device, lower case to match the sysfs names.
+ * \param device The CUDA device number
+ * \returns The address, or an empty string if CUDA would not supply one
+ */
+std::string pciAddrOfGpu(int device);
+
+/**
+ * NUMA node a CUDA device is attached to.  The CUDA counterpart of
+ * Pds::numaNodeOfPciDev(), which cannot live beside it because service/ has no CUDA.
+ * \param device The CUDA device number
+ * \returns The NUMA node, or -1 if unknown
+ */
+int numaNodeOfGpu(int device);
 
 /**
  * Class for timing various things

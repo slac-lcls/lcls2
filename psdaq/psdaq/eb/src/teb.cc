@@ -13,6 +13,7 @@
 #include "psdaq/service/kwargs.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/Dl.hh"
 #include "psdaq/service/Fifo.hh"
 #include "psalg/utils/SysLog.hh"
@@ -56,8 +57,6 @@ using string_t = std::string;
 using ms_t     = std::chrono::milliseconds;
 using us_t     = std::chrono::microseconds;
 
-static const int CORE_0 = -1;           // devXXX: 18, devXX:  7, accXX:  9
-static const int CORE_1 = -1;           // devXXX: 19, devXX: 19, accXX: 21
 
 static volatile sig_atomic_t lRunning = 1;
 
@@ -85,7 +84,7 @@ namespace Pds {
       int      resetCounters();
       int      startConnection(std::string& tebPort, std::string& mrqPort);
       int      connect(const std::shared_ptr<MetricExporter>);
-      int      configure(Trigger* object, unsigned prescale);
+      int      configure(Trigger* object);
       void     unconfigure();
       void     disconnect();
       void     shutdown();
@@ -112,13 +111,11 @@ namespace Pds {
     private:
       //uint64_t                     _trimmed;
       Trigger*                     _trigger;
-      unsigned                     _prescale;
       unsigned                     _iMeb;
       unsigned                     _rogReserved[MAX_MRQS];
       uint64_t                     _lastMonPid;
       uint64_t                     _monThrottle;
     private:
-      unsigned                     _wrtCounter;
       uint64_t                     _pidPrv;
     private:
       uint64_t                     _eventCount;
@@ -246,6 +243,7 @@ void Teb::disconnect()
   EbAppBase::disconnect();
 
   _monBufLists.clear();
+  _iMeb = 0;                            // The next connect may have fewer MEBs
 }
 
 void Teb::unconfigure()
@@ -334,17 +332,14 @@ int Teb::connect(const MetricExporter_t exporter)
   return 0;
 }
 
-int Teb::configure(Trigger* trigger,
-                   unsigned prescale)
+int Teb::configure(Trigger* trigger)
 {
   _monitorCount = 0; // Cleared here to stay in sync with MEB
   _nMonCount    = 0;
   for (unsigned i = 0; i < MAX_MEBS; ++ i)
     _mebCount[i] = 0;
 
-  _trigger    = trigger;                // The trigger object
-  _prescale   = prescale - 1;           // Be zero based
-  _wrtCounter = _prescale;              // Reset prescale counter
+  _trigger = trigger;                   // The trigger object
 
   // MRQ links need no configuration
 
@@ -415,7 +410,7 @@ void Teb::_queueMrqBuffers()
                      src, immData, rc);
       break;
     }
-    if (ImmData::idx(immData) > _prms.numMebEvBufs[src]) [[unlikely]] {
+    if (ImmData::idx(immData) >= _prms.numMebEvBufs[src]) [[unlikely]] {
       logging::error("Ignoring out-of-bounds buffer index %08x, max %08x from MEB %u (immData = %08lx, rc = %zd)",
                      ImmData::idx(immData), _prms.numMebEvBufs[src], src, immData, rc);
       break;
@@ -428,16 +423,11 @@ void Teb::run()
 {
   logging::info("TEB thread started");
 
-  int rc = pinThread(pthread_self(), _prms.core[0]);
-  if (rc && _prms.verbose)
-  {
-    logging::error("%s:\n  Error pinning thread to core %d:\n  %m",
-                   __PRETTY_FUNCTION__, _prms.core[0]);
-  }
   logging::info("TEB is starting with process ID %lu", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "Teb", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Teb");
 
   _batch.start = nullptr;
   _batch.end   = nullptr;
@@ -449,6 +439,7 @@ void Teb::run()
 
   resetCounters();
 
+  int rc    = 0;
   int rcPrv = 0;
   while (true)
   {
@@ -509,10 +500,11 @@ void Teb::_monitor(ResultDgram* rdg)
 
       dsts &= ~(1 << iMeb);
 
-      if (_monBufLists[iMeb].count() > _rogReserved[iMeb])
+      auto& monBufList = _monBufLists.at(iMeb);
+      if (monBufList.count() > _rogReserved[iMeb])
       {
         unsigned buffer;
-        _monBufLists[iMeb].pop(buffer);
+        monBufList.pop(buffer);
 
         rdg->monBufNo(buffer);
 
@@ -732,7 +724,7 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
     // Combining a flushing dgram (i.e., a non-SlowUpdate transition) into an
     // expired batch can lead to downstream problems since the transition's
     // pulseId may fall outside the batch duration (epoch)
-    if (expired)                        // Post just the batch
+    if (_batch.start != dgram)          // Post just the batch
     {
       _post(_batch);                    // The batch end is the previous Dgram
 
@@ -741,15 +733,18 @@ void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 
     if (flush)                          // Post the batch + transition
     {
-      // Make the batch big enough to contain the variable payload dgram
-      // Add one dgram buffer at the end for automatic EOL flag
-      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
-      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
-      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+//      // Make the batch big enough to contain the variable payload dgram
+//      // Add one dgram buffer at the end for automatic EOL flag
+//      unsigned sz  = sizeof(*dgram) + dgram->xtc.extent;
+//      unsigned ndg = (sz - 1)/ sizeof(ResultDgram);
+//      char*    end = (char*)dgram + (ndg+1)*sizeof(ResultDgram);
+//
+//      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
+//      _batch.dsts |= dsts;
+//      _batch.start->setEOL();              // Force the processing to see only one dg
 
-      _batch.end   = (const EbDgram*)end;  // Append dgram to batch
+      _batch.end   = dgram;             // Append dgram to batch
       _batch.dsts |= dsts;
-      _batch.start->setEOL();              // Force the processing to see only one dg
 
       _post(_batch);
 
@@ -793,6 +788,25 @@ void Teb::_post(const EbBatch& batch)
     fprintf(stderr, "TEB posts          %9lu result  [%8u] @ "
             "%16p,         pid %014lx, ofs %08zx, sz %6zd, dst %016lx\n",
             _batchCount, batch.idx, batch.start, pid, offset, extent, destns);
+  }
+  else
+  {
+    auto dgram = batch.end;
+    auto svc   = dgram->service();
+    if (svc != TransitionId::L1Accept) {
+      if (svc != TransitionId::SlowUpdate) {
+        logging::info("Teb       sent %12s @ %u.%09u (%014lx), ofs %08zx, sz %6zd, dst %016lx",
+                      TransitionId::name(svc),
+                      dgram->time.seconds(), dgram->time.nanoseconds(),
+                      dgram->pulseId(), offset, extent, destns);
+      }
+      else {
+        logging::debug("Teb       sent %12s @ %u.%09u (%014lx), ofs %08zx, sz %6zd, dst %016lx",
+                       TransitionId::name(svc),
+                       dgram->time.seconds(), dgram->time.nanoseconds(),
+                       dgram->pulseId(), offset, extent, destns);
+      }
+    }
   }
 
   // uint64_t pid = batch.start->pulseId();
@@ -887,7 +901,7 @@ private:
   void _disconnect();
   int  _configure(const json& msg);
   void _unconfigure();
-  int  _setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale);
+  int  _setupTrigger(const json& body, Trigger*& trigger);
   void _buildContract(const json& top);
   int  _parseConnectionParams(const json& msg);
   void _printParams(const EbParams& prms, Trigger* trigger) const;
@@ -1019,7 +1033,7 @@ void TebApp::_buildContract(const json& top)
     size_t      found   = alias.rfind('_');
     std::string detName = alias.substr(0, found);
 
-    if (buildAll || buildDets.find(detName))
+    if (buildAll || buildDets.find(detName) != std::string::npos)
     {
       unsigned group(it.value()["det_info"]["readout"]);
       _prms.contractors[group] |= 1ull << drpId;
@@ -1027,7 +1041,7 @@ void TebApp::_buildContract(const json& top)
   }
 }
 
-int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescale)
+int TebApp::_setupTrigger(const json& body, Trigger*& trigger)
 {
   int               rc = 0;
   const std::string configAlias  {body["config_alias"]};
@@ -1052,17 +1066,6 @@ int TebApp::_setupTrigger(const json& body, Trigger*& trigger, unsigned& prescal
     return -1;
   }
 
-# define _FETCH(key, item)                                              \
-  if (top.find(key) != top.end())  item = top[key];                     \
-  else { logging::error("Key '%s' not found in configDb %s/%s/%s_0",    \
-                        key, _prms.instrument.c_str(),                  \
-                        configAlias.c_str(), triggerConfig.c_str());    \
-         rc = -1; }
-
-  _FETCH("prescale", prescale);
-
-# undef _FETCH
-
   logging::info("Trigger loaded from %s using configDb %s/%s/%s_0",
                 soname.c_str(), _prms.instrument.c_str(),
                 configAlias.c_str(), triggerConfig.c_str());
@@ -1079,8 +1082,7 @@ void TebApp::_disconnect()
 int TebApp::_configure(const json& msg)
 {
   Trigger* trigger {nullptr};
-  unsigned prescale{0};
-  if (_setupTrigger(msg["body"], trigger, prescale)) {
+  if (_setupTrigger(msg["body"], trigger)) {
     logging::error("Failed to set up Trigger)");
     return -1;
   }
@@ -1091,7 +1093,7 @@ int TebApp::_configure(const json& msg)
     return -1;
   }
 
-  int rc = _teb->configure(trigger, prescale);
+  int rc = _teb->configure(trigger);
   if (rc)  logging::error("Teb::configure() failed");
 
   _printParams(_prms, trigger);
@@ -1337,7 +1339,7 @@ void TebApp::_printParams(const EbParams& prms, Trigger* trigger) const
   logging::info("");
   logging::info("Parameters of TEB ID %d (%s:%s):",                   prms.id,
                                                                       prms.ifAddr.c_str(), prms.ebPort.c_str());
-  logging::info("  Thread core numbers:          %d, %d",             prms.core[0], prms.core[1]);
+  logCpuAllocation("  CPU allocation");
   logging::info("  Instrument:                   %s",                 prms.instrument.c_str());
   logging::info("  Partition:                    %u",                 prms.partition);
   logging::info("  Alias:                        %s",                 prms.alias.c_str());
@@ -1389,10 +1391,9 @@ void usage(const char *name, const char *desc, const EbParams& prms)
           "Prometheus config file directory");
   fprintf(stderr, " %-23s %s\n",                      "-k <key=value>[, ...]",
           "Keyword arguments");
-  fprintf(stderr, " %-23s %s (default: %u)\n",        "-1 <core>",
-          "Core number for pinning App thread to",    CORE_0);
-  fprintf(stderr, " %-23s %s (default: %u)\n",        "-2 <core>",
-          "Core number for pinning other threads to", CORE_1);
+  fprintf(stderr, "\n Hot threads are pinned across the CPUs this process was granted,\n"
+                  " which Slurm's cores: sets, or taskset -c <list> for a standalone run.\n"
+                  " Use -k pinThreads=no to leave placement to the scheduler.\n\n");
 
   fprintf(stderr, " %-23s %s\n", "-v", "enable debugging output (repeat for increased detail)");
   fprintf(stderr, " %-23s %s\n", "-h", "display this help output");
@@ -1408,11 +1409,9 @@ int main(int argc, char **argv)
 
   prms.instrument = {};
   prms.partition  = NO_PARTITION;
-  prms.core[0]    = CORE_0;
-  prms.core[1]    = CORE_1;
   prms.verbose    = 0;
 
-  while ((op = getopt(argc, argv, "C:p:P:A:E:R:1:2:u:M:k:h?v")) != -1)
+  while ((op = getopt(argc, argv, "C:p:P:A:E:R:u:M:k:h?v")) != -1)
   {
     switch (op)
     {
@@ -1422,8 +1421,6 @@ int main(int argc, char **argv)
       case 'A':  prms.ifAddr        = optarg;                       break;
       case 'E':  prms.ebPort        = optarg;                       break;
       case 'R':  prms.mrqPort       = optarg;                       break;
-      case '1':  prms.core[0]       = atoi(optarg);                 break;
-      case '2':  prms.core[1]       = atoi(optarg);                 break;
       case 'u':  prms.alias         = optarg;                       break;
       case 'M':  prms.prometheusDir = optarg;                       break;
       case 'k':  kwargs_str         = kwargs_str.empty()
@@ -1479,10 +1476,17 @@ int main(int argc, char **argv)
     if (kwargs.first == "script_path")  continue;
     if (kwargs.first == "mon_throttle") continue;
     if (kwargs.first == "eb_timeout")   continue; // EbAppBase
+    if (kwargs.first == "pinThreads")   continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }
+
+  // Report an uncaught exception from any thread, not just its type name
+  initExceptionReporting(prms.alias);
+
+  // Before any thread that pins itself is created
+  Pds::setThreadPinning(prms.kwargs, 1, 0);
 
   // Set up signal handler
   initShutdownSignals(prms.alias, [](){ lRunning = 0; });

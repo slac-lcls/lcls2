@@ -167,6 +167,14 @@ public:
         return m_ring_buffer[index & m_buffer_mask];
     }
 
+    // Inspect the nth entry from the front, for walking the queue in a dump.
+    // Valid for n < guess_size() when called from the consumer thread.
+    const T& at(int64_t n) const
+    {
+        int64_t index = m_read_index.load(std::memory_order_relaxed);
+        return m_ring_buffer[(index + n) & m_buffer_mask];
+    }
+
     // Inspect the back of the queue
     T& back()
     {

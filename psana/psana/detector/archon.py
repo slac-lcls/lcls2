@@ -8,7 +8,7 @@ from psana.detector.detector_impl import DetectorImpl
 from amitypes import Array2d
 from psana.detector.areadetector import AreaDetectorRaw, sgs
 #from psana.detector.NDArrUtils import info_ndarr #, shape_nda_as_3d, reshape_to_3d # shape_as_3d, shape_as_3d
-
+import psana.detector.Utils as ut
 
 class archon_raw_1_0_0(AreaDetectorRaw):
     def __init__(self, *args, **kwargs): # **kwargs intercepted by AreaDetectorRaw
@@ -27,6 +27,7 @@ class archon_raw_1_0_0(AreaDetectorRaw):
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-archon.data'
         self._geo = self._det_geo()
         self._shape = None
+        #self._counter_none = 0
 
     def _common_mode_v0(self, frame):
         # courtesy of Phil Hartz
@@ -72,8 +73,14 @@ class archon_raw_1_0_0(AreaDetectorRaw):
     def raw(self, evt) -> Array2d:
         segs = self._segments(evt)
         if segs is None: return None
+        #if ut.is_none(segs, 'det.raw._segments(evt) is None - return None',\
+        #              logger.warning if self._counter_none<2 else None):
+        #    self._counter_none += 1
+        #    return None
         r = segs[0].value
         if self._shape is None: self._shape = r.shape
+        #if ut.is_none(self._shape, 'det.raw._shape is None - self._shape = r.shape',\
+        #              logger.warning if self._counter_none<2 else None): self._shape = r.shape
         return r
 
     def calib(self, evt) -> Array2d:

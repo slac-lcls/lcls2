@@ -1,5 +1,5 @@
 import numpy as np
-import dgramCreate as dc
+import psalg.utils.dgramCreate as dc
 import os, subprocess
 
 try:

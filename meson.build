@@ -22,6 +22,10 @@ numpy_dep = dependency('numpy')
 
 # Have to set the linker flags manually, as nvcc's linker conflicts with
 # the gcc linker args that conda sets.
+# Only applies when a Conda environment is actually in use (conda_prefix set).
+# In a manylinux container build, conda_base is empty and these flags are
+# skipped entirely so we fall back to the compiler's default system paths.
+if conda_base != ''
 add_project_link_arguments(
   [
     '-Wl,-O2',
@@ -54,10 +58,32 @@ add_project_link_arguments(
   ],
   language: 'cuda'
 )
+endif
 
+# EPICS is only relevant to DAQ libraries. Without this guard, every shared
+# library in the project (including xtcdata/psalg/psana, which never touch
+# EPICS) gets an EPICS path baked into its RPATH even when build_daq=false.
 epics_lib = join_paths(get_option('epics_base'), 'lib', get_option('epics_host_arch'))
-libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir')) + ':' + epics_lib
+if get_option('build_daq')
+  libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir')) + ':' + epics_lib
+else
+  libdir_install_rpath = join_paths(get_option('prefix'), get_option('libdir'))
+endif
 bindir_install_rpath = join_paths(get_option('prefix'), get_option('bindir'))
+
+# The vendored aes-stream-drivers headers in psdaq/psdaq/aes-stream-drivers include
+# their siblings with angle brackets -- DataDriver.h does #include <AxisDriver.h> --
+# so that directory has to be on the search path.  Doing it here rather than editing
+# the headers keeps them byte-identical to upstream, so syncing them stays a plain
+# copy with nothing to re-apply afterwards.
+#
+# -isystem rather than -I because they are third-party: their warnings are not ours
+# to fix.  Has to precede the subdir() calls below, since add_project_arguments()
+# cannot follow a target declaration.
+add_project_arguments(
+  '-isystem', meson.current_source_dir() / 'psdaq/psdaq/aes-stream-drivers',
+  language: ['cpp', 'cuda'],
+)
 
 subdir('xtcdata')
 subdir('psalg')

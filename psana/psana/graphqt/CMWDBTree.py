@@ -61,6 +61,7 @@ class CMWDBTree(QWTree):
         #pattern = 'cspad'
         pattern = self._pattern
         dbnames = dbu.database_names()
+        assert dbnames is not None
 
         s = 'CMWDBTree.fill_tree_model_web dbnames: %s\nnumber of dbs: %d' % (str(dbnames), len(dbnames))
         logger.debug(s)

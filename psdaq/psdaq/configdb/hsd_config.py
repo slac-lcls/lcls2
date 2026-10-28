@@ -1,14 +1,13 @@
 from psdaq.utils import enable_l2si_drp
 import l2si_drp
-from psdaq.configdb.barrier import Barrier
+from psdaq.configdb.barrier import *
 from psdaq.configdb.get_config import get_config
 from psdaq.configdb.scan_utils import *
 from p4p.client.thread import Context
-import os
-import socket
 import json
 import time
 import logging
+import datetime
 
 ocfg = None
 partitionDelay = None
@@ -22,29 +21,13 @@ configVersion = [3,3,0]
 barrier_global = Barrier()
 args = {}
 
-def supervisor_info(json_msg):
-    nworker = 0
-    supervisor=None
-    mypid = os.getpid()
-    myhostname = socket.gethostname()
-    for drp in json_msg['body']['drp'].values():
-        proc_info = drp['proc_info']
-        host = proc_info['host']
-        pid = proc_info['pid']
-        if host==myhostname and drp['active']:
-            if supervisor is None:
-                # we are supervisor if our pid is the first entry
-                supervisor = pid==mypid
-            else:
-                # only count workers for second and subsequent entries on this host
-                nworker+=1
-    return supervisor,nworker
-
 def hsd_init(prefix, dev='dev/datadev_0'):
     global args
     global epics_prefix
     epics_prefix = prefix
 
+    args['dev'] = dev
+    
     if True:   # Until SUBMODULES is updated
         root = l2si_drp.DrpPgpIlvRoot(pollEn=False,devname=dev)
         root.__enter__()
@@ -77,7 +60,7 @@ def hsd_connect(msg):
     root = args['root']
 
     alloc_json = json.loads(msg)
-    supervisor,nworker = supervisor_info(alloc_json)
+    supervisor,nworker = supervisor_info(alloc_json,args['dev'])
     print(f'hsd_connect: supervisor [{supervisor}] nworker [{nworker}]')
     
     barrier_global.init(supervisor,nworker)
@@ -129,9 +112,24 @@ def hsd_connect(msg):
     for i in range(4):
         getattr(root,f'TxLinkId[{i}]').set(linkId | i<<16)
 
+    #
+    # Check that the hsdioc process is alive
+    #
+    if True:
+        ctxt = Context('pva',nt=False)
+        seconds = ctxt.get(epics_prefix+':FEXOOR').timeStamp.secondsPastEpoch
+        dt  = datetime.datetime.fromtimestamp(seconds, tz=datetime.timezone.utc)
+        now = datetime.datetime.now(datetime.timezone.utc)
+        diff = now-dt
+        diff_s = diff.total_seconds()
+        print(f'FEXOOR latency is {diff_s} seconds')
+        if diff_s > 100:
+            raise ValueError(f'hsdioc process may be dead.')
+    
     # Retrieve connection information from EPICS
     # May need to wait for other processes here {PVA Server, hsdioc}, so poll
     ctxt = Context('pva')
+
     for i in range(50):
         values = ctxt.get(epics_prefix+':PADDR_U')
         if values!=0:
@@ -219,10 +217,14 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     partitionDelay = monTiming.l0delay
     print('partitionDelay {:}'.format(partitionDelay))
 
-    # fetch the freesz
-    rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
+    # fetch the freesz (wait for a non-zero update)
+    while True:
+        rawBuffSize = ctxt.get(epics_prefix+':MONRAWBUF').freesz
+        if rawBuffSize>0:
+            break
     fexBuffSize = ctxt.get(epics_prefix+':MONFEXBUF').freesz
-
+    print(f'rawBuffSize {rawBuffSize}  fexBuffSize {fexBuffSize}')
+    
     ocfg = cfg
     user_to_expert(cfg)
 
@@ -276,7 +278,7 @@ def hsd_config(connect_str,prefix,cfgtype,detname,detsegm,rog):
     fwbld = ctxt.get(epics_prefix+':FWBUILD'  ).value
     cfg['firmwareVersion'] = fwver
     cfg['firmwareBuild'  ] = fwbld
-    print(f'fwver: {fwver}')
+    print(f'fwver: {fwver:x}')
     print(f'fwbld: {fwbld}')
 
     ctxt.close()
@@ -342,26 +344,26 @@ def user_to_expert(cfg):
                       format(partitionDelay,raw['start_ns'],raw_start))
                 raise ValueError('raw_start is too small by {:} ns'.
                                  format(-raw_start/0.16*14./13))
-            if raw_start > 0x3fff:
+            if raw_start > 0xfffff:
                 print('partitionDelay {:}  raw_start_ns {:}  raw_start {:}'.
                       format(partitionDelay,raw['start_ns'],raw_start))
                 raise ValueError('start_ns is too large by {:} ns'.
-                                 format((raw_start-0x3fff)/0.16*14./13))
+                                 format((raw_start-0xfffff)/0.16*14./13))
 
             d['expert.raw_start'] = raw_start
 
         if (hasRaw and 'gate_ns' in raw):
             raw_gate     = int(raw['gate_ns']*0.160*13/14) # in "160" MHz clks
             raw_nsamples = raw_gate*40
-            # raw_gate register is 14 bits
+            # raw_gate register is 20 bits
             if raw_gate < 0:
                 raise ValueError('raw_gate computes to < 0')
             if raw_gate > rawBuffSize:
-                raise ValueError(f'raw_gate ({raw_gate}/{40*raw_gate}sam) computes to > rawBuffSize ({rawBuffSize})')
+                raise ValueError(f'raw_gate ({raw_nsamples}sam) computes to > rawBuffSize ({rawBuffSize})')
 
             d['expert.raw_gate'] = raw_gate
 
-        hasFex = 'fex' in cfg['user']
+        hasFex = 'fex' in cfg['user'] and cfg['user']['fex']['prescale']>0
         fex = cfg['user']['fex']
         if (hasFex and 'start_ns' in fex):
             fex_start      = int((fex['start_ns']*1300/7000 - partitionDelay*200)*160/200)
@@ -371,22 +373,24 @@ def user_to_expert(cfg):
                       format(partitionDelay,fex['start_ns'],fex_start))
                 raise ValueError('fex_start is too small by {:} ns'.
                                  format(-fex_start/0.16*14./13))
-            if fex_start > 0x3fff:
+            if fex_start > 0xfffff:
                 print('partitionDelay {:}  fex_start_ns {:}  fex_start {:}'.
                       format(partitionDelay,fex['start_ns'],fex_start))
                 raise ValueError('start_ns is too large by {:} ns'.
-                                 format((fex_start-0x3fff)/0.16*14./13))
+                                 format((fex_start-0xfffff)/0.16*14./13))
 
             d['expert.fex_start'] = fex_start
 
         if (hasFex and 'gate_ns' in fex):
             fex_gate     = int(fex['gate_ns']*0.160*13/14) # in "160" MHz clks
             fex_nsamples = fex_gate*40
-            # fex_gate register is 14 bits
+            # fex_gate register is 20 bits
             if fex_gate < 0:
                 raise ValueError('fex_gate computes to < 0')
-            if fex_gate > 4000:
-                raise ValueError('fex_gate computes to > 4000; fex_nsamples > 160000')
+            if fex_gate > 0xfffff:
+                raise ValueError(f'fex_gate ({fex_nsamples}sam) computes to > 0xfffff ({0xfffff})')
+            if fex_gate > fexBuffSize:
+                logging.warning(f'fex_gate ({fex_nsamples}sam) computes to > fexBuffSize ({fexBuffSize})')
 
             d['expert.fex_gate'] = fex_gate
 
@@ -502,3 +506,16 @@ if __name__ == '__main__':
                                      'proc_info': {'host':socket.gethostname(),
                                                    'pid' : os.getpid()}}}}}
     hsd_connect(json.dumps(alloc))
+    print(f'connect complete')
+
+    #  To lookup configuration
+    conn = {'body': {'control' : {'0': {'active': 1,
+                                        'control_info': {'cfg_dbase': 'https://psdmint.sdf.slac.stanford.edu/ws-auth/configdb/ws/configDB',
+                                                         'instrument': 'xpp',
+                                                         'pv_base': 'DAQ:FEH',
+                                                         'slow_update_rate': 1,
+                                                         'xpm_master': 4}}}}}
+    print(f'conn {conn}')
+    
+    hsd_config(json.dumps(conn),pargs.P,'BEAM','hsd',2,0)
+    

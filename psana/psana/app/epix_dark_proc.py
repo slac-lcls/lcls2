@@ -118,7 +118,7 @@ def argument_parser():
     h_comment = 'DEPLOY: comment added to constants metadata, default = %s' % str(d_comment)
     h_dbsuffix= 'DEPLOY: suffix of the PRIVATE detector db name to deploy constants, default = %s' % str(d_dbsuffix)
 
-    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epix10ka')
+    parser = ArgumentParser(usage=USAGE, description='Proceses dark run xtc data for epixuhr, epixuhr3x2, epixm320,...')
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
     parser.add_argument('-d', '--det',     default=d_det,        type=str,   help=h_det)
     parser.add_argument('-n', '--nrecs',   default=d_nrecs,      type=int,   help=h_nrecs)

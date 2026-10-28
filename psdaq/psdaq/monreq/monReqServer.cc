@@ -12,6 +12,7 @@
 #include "psdaq/service/Fifo.hh"
 #include "psdaq/service/GenericPoolW.hh"
 #include "psdaq/service/Collection.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/fast_monotonic_clock.hh"
 #include "psalg/utils/SysLog.hh"
@@ -34,8 +35,6 @@
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
 #endif
 
-static const int      CORE_0               = -1; // devXXX: 18, devXX:  7, accXX:  9
-static const int      CORE_1               = -1; // devXXX: 19, devXX: 19, accXX: 21
 static const unsigned EPOCH_DURATION       = 8;  // 1 per xferBuffer
 static const unsigned NUMBEROF_XFERBUFFERS = 8;  // Value corresponds to ctrb:maxEvents
 
@@ -536,17 +535,13 @@ void Meb::run()
 {
   logging::info("MEB thread started");
 
-  int rc = pinThread(pthread_self(), _prms.core[0]);
-  if (rc != 0)
-  {
-    logging::error("%s:\n  Error from pinThread:\n  %s",
-                   __PRETTY_FUNCTION__, strerror(rc));
-  }
   logging::info("MEB is starting with process ID %lu", syscall(SYS_gettid));
   if (prctl(PR_SET_NAME, "Meb", 0, 0, 0) == -1) {
     perror("prctl");
   }
+  Pds::pinHotThread("Meb");
 
+  int rc    = 0;
   int rcPrv = 0;
   while (lRunning)
   {
@@ -1047,7 +1042,6 @@ void MebApp::_printParams(const MebParams& prms) const
   logging::info("");
   logging::info("Parameters of MEB ID %u (%s:%s):",                 prms.id,
                                                                     prms.ifAddr.c_str(), prms.ebPort.c_str());
-  logging::info("  Thread core numbers:        %d, %d",             prms.core[0], prms.core[1]);
   logging::info("  Instrument:                 %s",                 prms.instrument.c_str());
   logging::info("  Partition:                  %u",                 prms.partition);
   logging::info("  Alias:                      %s",                 prms.alias.c_str());
@@ -1098,8 +1092,6 @@ int main(int argc, char** argv)
   std::string    kwargs_str;
 
   prms.partition = NO_PARTITION;
-  prms.core[0]   = CORE_0;
-  prms.core[1]   = CORE_1;
   prms.verbose   = 0;
 
   prms.maxBufferSize = 0;               // Filled in @ connect
@@ -1108,7 +1100,7 @@ int main(int argc, char** argv)
   prms.ldist         = false;
 
   int c;
-  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:1:2:u:M:k:vh")) != -1)
+  while ((c = getopt(argc, argv, "p:P:n:t:q:dA:C:u:M:k:vh")) != -1)
   {
     errno = 0;
     char* endPtr;
@@ -1134,8 +1126,6 @@ int main(int argc, char** argv)
         break;
       case 'A':  prms.ifAddr        = optarg;                      break;
       case 'C':  prms.collSrv       = optarg;                      break;
-      case '1':  prms.core[0]       = atoi(optarg);                break;
-      case '2':  prms.core[1]       = atoi(optarg);                break;
       case 'u':  prms.alias         = optarg;                      break;
       case 'M':  prms.prometheusDir = optarg;                      break;
       case 'k':  kwargs_str         = kwargs_str.empty()
@@ -1211,10 +1201,17 @@ int main(int argc, char** argv)
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
     if (kwargs.first == "eb_timeout")   continue; // EbAppBase
+    if (kwargs.first == "pinThreads")   continue;
     logging::critical("Unrecognized kwarg '%s=%s'",
                       kwargs.first.c_str(), kwargs.second.c_str());
     return 1;
   }
+
+  // Report an uncaught exception from any thread, not just its type name
+  initExceptionReporting(prms.alias);
+
+  // Before any thread that pins itself is created
+  Pds::setThreadPinning(prms.kwargs, 1, 0);
 
   // Set up signal handler
   initShutdownSignals(prms.alias, [](){ lRunning = 0; });

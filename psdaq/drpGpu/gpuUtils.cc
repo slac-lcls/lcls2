@@ -1,5 +1,6 @@
 #include "gpuUtils.hh"
 
+#include "psdaq/service/Affinity.hh"   // numaNodeOfPciDev
 #include "psalg/utils/SysLog.hh"
 
 #include <string>
@@ -38,15 +39,13 @@ bool CudaContext::init(int device, bool quiet) {
         return false;
     }
 
-    // Spew device name
-    char name[256];
-    if (chkError(cuDeviceGetName(name, sizeof(name), device_)))
-        return false;
-    logging::info("Selected GPU device %d: %s", device, name);
-
-    cudaDeviceProp deviceProp;
-    chkError(cudaGetDeviceProperties(&deviceProp, device_));
-    logging::info("Compute Capability: %d.%d", deviceProp.major, deviceProp.minor);
+    // Spew device name, compute capability and PCIe bus ID
+    cudaDeviceProp prop;
+    chkError(cudaGetDeviceProperties(&prop, device_));
+    char pciBusId[16];
+    chkError(cudaDeviceGetPCIBusId(pciBusId, sizeof(pciBusId), device_));
+    logging::info("GPU device %d: %s, CC: %d.%d, Bus-Id: %s",
+                  device, prop.name, prop.major, prop.minor, pciBusId);
 
     // Report memory totals
     size_t global_mem = 0;
@@ -96,7 +95,7 @@ void CudaContext::listDevices() {
 void CoreRegisters::initialize(bool sim, void* regs)
 {
   if (!sim) _fwRegs = std::make_unique<GpuAsyncCoreRegs>(regs);
-  else      _swRegs = static_cast<uint32_t*>(regs);
+  else      _swRegs = static_cast<uint8_t*>(regs);
 }
 
 // -------------------------------------------------------------------
@@ -175,6 +174,24 @@ void Drp::Gpu::dmaIdxReset(CoreRegisters& coreRegs)
     // Toggle the writeEnable register to reset the DMA buffer index
     coreRegs.setWriteEnable(0);
     coreRegs.setWriteEnable(1);
+}
+
+std::string Drp::Gpu::pciAddrOfGpu(int device)
+{
+    // 13 is the minimum for "0000:00:00.0"; CUDA fails rather than truncate
+    char pciBusId[16] = {0};
+    if (chkError(cudaDeviceGetPCIBusId(pciBusId, sizeof(pciBusId), device)))
+        return std::string();
+
+    // CUDA returns the domain upper case, where the sysfs names are lower
+    for (auto p = pciBusId; *p; ++p)  *p = tolower(*p);
+    return std::string(pciBusId);
+}
+
+int Drp::Gpu::numaNodeOfGpu(int device)
+{
+    auto pciAddr = pciAddrOfGpu(device);
+    return pciAddr.empty() ? -1 : Pds::numaNodeOfPciDev(pciAddr);
 }
 
 // -------------------------------------------------------------------

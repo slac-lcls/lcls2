@@ -29,6 +29,7 @@
 #include "psdaq/service/EbDgram.hh"
 #include "psdaq/service/Json2Xtc.hh"
 #include "psdaq/eb/src/TebContributor.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psalg/utils/trim.hh"
 
@@ -364,10 +365,13 @@ void PvMonitor::_event(EbDgram* dgram, const void* bufEnd)
     CreateData  cd     (dgram->xtc, bufEnd, m_det.namesLookup(), namesId);
     void*       data = cd.get_ptr();    // Fetch a pointer to the next part of contiguous memory
     Name&       nm   = cd.nameindex().names().get(RawDef::field);
+    size_t      payloadSize = (char*)bufEnd - (char*)data;
+    uint32_t    shape[MaxRank];
+    // Write the data into the L1 Xtc for both scalars and arrays.  Scalars
+    // are then (re)written in place by set_value() below.
+    size_t      size = getData(data, payloadSize, shape);
+
     if (nm.rank()) {                    // Handle vectors and arrays, etc.
-        size_t   payloadSize = (char*)bufEnd - (char*)data;
-        uint32_t shape[MaxRank];
-        size_t   size = getData(data, payloadSize, shape); // Write the data into the L1 Xtc
         if (size > payloadSize) {       // Check actual size vs available size
             logging::debug("Truncated: Buffer of size %zu is too small for payload of size %zu for %s\n",
                            payloadSize, size, name().c_str());
@@ -470,7 +474,7 @@ void PvMonitor::timeout(EbDgram* dgram)
 // ---
 
 Pgp::Pgp(const Parameters& para, MemPool& pool, Detector* det) :
-    PgpReader(para, pool, MAX_RET_CNT_C, 32),
+    PgpReader(para, pool, std::min(MAX_RET_CNT_C, pool.dmaCount()), 32),
     m_det(det),
     m_available(0), m_current(0), m_nDmaRet(0)
 {
@@ -969,6 +973,7 @@ void PvDrp::_reader()
     if (prctl(PR_SET_NAME, "drp/Reader", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Reader");
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
@@ -1032,6 +1037,7 @@ void PvDrp::_collector()
     if (prctl(PR_SET_NAME, "drp/Collector", 0, 0, 0) == -1) {
         perror("prctl");
     }
+    Pds::pinHotThread("Collector");
 
     const ms_t tmo{ m_para.kwargs.find("match_tmo_ms") != m_para.kwargs.end() ?
                     std::stoul(m_para.kwargs.at("match_tmo_ms"))              :
@@ -1049,10 +1055,11 @@ void PvDrp::_collector()
         if (transitionId == TransitionId::L1Accept) {
             // Time out events based on age measured using a local clock
             // to avoid skew-related false time outs
-            auto dt{fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) - it.t0};
-            ms_t age{std::chrono::duration_cast<ms_t>(dt)};
             bool timedOut{false};
             for (auto& pvMonitor: m_det.pvMonitors()) {
+                // Recomputed per PV so that one event's total wait is bounded by tmo
+                auto dt{fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) - it.t0};
+                ms_t age{std::chrono::duration_cast<ms_t>(dt)};
                 EbDgram* pvDg{nullptr};
                 if (age < tmo) [[likely]] // Not yet timed out and not terminating
                     pvMonitor->pvQueue.popW(pvDg, (tmo-age).count());
@@ -1076,7 +1083,9 @@ void PvDrp::_collector()
                                    evtDg->time.seconds(), evtDg->time.nanoseconds());
                 }
             }
-            // Monitor event age for timeout issues
+            // Monitor event age, including all PV waits, for timeout issues
+            auto dt{fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE) - it.t0};
+            ms_t age{std::chrono::duration_cast<ms_t>(dt)};
             m_age = age.count();
             if (timedOut) [[unlikely]] {
                 logging::debug("Event timed out!! "
@@ -1166,7 +1175,7 @@ void PvDrp::_sendToTeb(const EbDgram& dgram, uint32_t index)
 // ---
 
 PvApp::PvApp(PvParameters& para) :
-    CollectionApp(para.collectionHost, para.partition, "drp", para.alias),
+    CollectionApp(para.collectionHost, para.partition, "drp", para.alias, para.device),
     m_para       (para),
     m_pool       (para),
     m_unconfigure(false)
@@ -1554,6 +1563,9 @@ int main(int argc, char* argv[])
         return 1;
     }
 
+    // Report an uncaught exception from any thread, not just its type name
+    initExceptionReporting(para.alias);
+
     // Set up signal handler
     initShutdownSignals(para.alias, [](){ exit(0); });
 
@@ -1572,6 +1584,7 @@ int main(int argc, char* argv[])
             if (kwargs.first == "batching")       continue;  // DrpBase
             if (kwargs.first == "directIO")       continue;  // DrpBase
             if (kwargs.first == "pva_addr")       continue;  // DrpBase
+            if (kwargs.first == "pinThreads")     continue;
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "data_vsn")       continue;
@@ -1579,6 +1592,9 @@ int main(int argc, char* argv[])
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
         }
+
+        // Before any thread that pins itself is created
+        Pds::setThreadPinning(para.kwargs, 3, 0);
 
         Drp::PvApp(para).run();
         return 0;

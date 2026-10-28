@@ -182,19 +182,33 @@ class DgramManager(object):
             time.sleep(0.01)
         assert not status, "shmem connect failure %d" % status
         # wait for first configure datagram - blocking
-        view = self.shmem_cli.get(self.shmem_kwargs)
-        assert view
-        # Release shmem buffer after copying Transition data
-        # cpo: copy L1Accepts too because some shmem
-        # applications like AMI's pickN can hold references
-        # to dgrams for a long time, consuming the shmem buffers
-        # and creating a deadlock situation. could revisit this
-        # later and only deep-copy arrays inside pickN, for example
-        # but would be more fragile.
-        barray = bytes(view[: dgSize(view)])
-        self.shmem_cli.freeByIndex(
-            self.shmem_kwargs["index"], self.shmem_kwargs["size"]
-        )
+        # Note: there is a race condition where L1Accept events
+        # may arrive in the client's event queue before the
+        # Configure transition arrives on the transition socket.
+        # poll() in ShmemClient::get() prioritizes transitions,
+        # but only when both are ready simultaneously. If only
+        # the event queue has data, an L1Accept is returned.
+        # We must loop here, discarding any non-Configure
+        # datagrams, to ensure we get the actual Configure.
+        while True:
+            view = self.shmem_cli.get(self.shmem_kwargs)
+            assert view
+            # Release shmem buffer after copying Transition data
+            # cpo: copy L1Accepts too because some shmem
+            # applications like AMI's pickN can hold references
+            # to dgrams for a long time, consuming the shmem buffers
+            # and creating a deadlock situation. could revisit this
+            # later and only deep-copy arrays inside pickN, for example
+            # but would be more fragile.
+            svc = _service(view)
+            barray = bytes(view[: dgSize(view)])
+            self.shmem_cli.freeByIndex(
+                self.shmem_kwargs["index"], self.shmem_kwargs["size"]
+            )
+            if svc == TransitionId.Configure:
+                break
+            else:
+                print(f'_connect_shmem_cli: discarding svc {svc} while waiting for Configure ({TransitionId.Configure})')
         view = memoryview(barray)
         return view
 

@@ -1,5 +1,5 @@
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling<1.32"]
 build-backend = "hatchling.build"
 
 [project]
@@ -71,6 +71,7 @@ epics_exporter = "psdaq.cas.epics_exporter:main"
 hsd_epics_exporter = "psdaq.cas.hsd_epics_exporter:main"
 hsd_input_select = "psdaq.cas.hsd_input_select:main"
 fixed_rate_table = "psdaq.seq.fixed_rate_table:main"
+pattern_stats = "psdaq.seq.pattern_stats:main"
 periodicgenerator = "psdaq.seq.periodicgenerator:main"
 rixgenerator = "psdaq.seq.rixgeneratory:main"
 seqplot = "psdaq.seq.seqplot:main"
@@ -80,10 +81,18 @@ ued_seq_setup = "psdaq.seq.ued_seq_setup:main"
 bos = "psdaq.bos.bos:main"
 prometheus2pvs = "psdaq.cas.prometheus2pvs:main"
 prometheusIOC = "psdaq.cas.prometheusIOC:main"
+daqmgr = "psalg.slurm.main:_do_main"
+cnf2py = "psalg.slurm.cnftopy:_do_main"
+daqstat = "psalg.slurm.daqstat:_do_main"
+daqlog_header = "psalg.slurm.daqlog_header:_do_main"
+gen_gres_conf = "psalg.slurm.gen_gres_conf:main"
 jungfrau_pedestal_scan = "psdaq.cas.jungfrau_pedestal_scan:main"
 jungfrau_gain_mode = "psdaq.configdb.jungfrau_gain_mode:change_gain_mode"
 jungfrau_protection = "psdaq.configdb.jungfrau_protection:change_protection_settings"
 detector_protection_monitor = "psdaq.trigger.detector_protection_monitor:main"
+epix100_monitor_ioc = "psdaq.IOC.epix100_monitor_ioc:main"
+epixquad_monitor_ioc = "psdaq.IOC.epixquad_monitor_ioc:main"
+epixm320k_monitor_ioc = "psdaq.IOC.epixm320k_monitor_ioc:main"
 
 [tool.hatch.build]
 artifacts = []

@@ -190,7 +190,6 @@ protected:
     XtcData::TransitionId::Value m_lastTid;
     uint32_t m_lastData[6];
     std::vector<uint32_t> m_dmaIndices;
-    unsigned m_dmaRetCnt;
     unsigned m_count;
     uint64_t m_dmaBytes;
     uint64_t m_dmaSize;

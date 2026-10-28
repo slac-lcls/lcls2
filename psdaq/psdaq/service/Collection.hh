@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <vector>
 #include <zmq.h>
 #include <nlohmann/json.hpp>
 
@@ -53,7 +54,7 @@ std::string getNicIp(bool forceEnet);
 class CollectionApp
 {
 public:
-    CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias);
+    CollectionApp(const std::string& managerHostname, int platform, const std::string& level, const std::string& alias, const std::string& device=std::string());
     virtual ~CollectionApp() {};
     void run();
     enum {zmq_base_port = 29980};
@@ -77,6 +78,7 @@ protected:
 private:
     std::string m_level;
     std::string m_alias;
+    std::string m_device;
     ZmqContext m_context;
     ZmqSocket m_pushSocket;
     ZmqSocket m_subSocket;
@@ -91,5 +93,9 @@ nlohmann::json createAsyncErrMsg(const std::string& alias, const std::string& er
 nlohmann::json createAsyncWarnMsg(const std::string& alias, const std::string& warnMsg);
 
 bool checkResourceLimits();
+
+// Report an exception that escapes any thread, rather than letting std::terminate
+// print only its mangled type.  Call once per process, as early as possible.
+void initExceptionReporting(const std::string& alias);
 
 void initShutdownSignals(const std::string& alias, void (*shutdownAction)());

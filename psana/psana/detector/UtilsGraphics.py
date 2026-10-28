@@ -38,12 +38,14 @@ def arr_median_limits(arr, amin=None, amax=None, nneg=None, npos=None, fraclo=0.
         qlo = np.quantile(arr, fraclo, method='linear')
         qhi = np.quantile(arr, frachi, method='linear')
         logger.debug('quantile(%.3f):%.1f quantile(%.3f):%.1f' % (fraclo, qlo, frachi, qhi))
+        if qhi == qlo: qhi += 1
         return qlo, qhi
     else:
         med = np.median(arr)
         spr = np.median(np.abs(arr-med))
         _amin, _amax = med-nneg*spr, med+npos*spr
         logger.debug('median:%.1f spread:%.1f amin:%.1f amax:%.1f' % (med, spr, _amin, _amax))
+        if _amin == _amax: _amax += 1
         return _amin, _amax
 
 

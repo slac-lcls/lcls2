@@ -9,6 +9,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>                   // stat()
 #include "psdaq/service/kwargs.hh"
+#include "psdaq/service/Affinity.hh"
 #include "psdaq/service/EbDgram.hh"
 #include "DrpBase.hh"
 #include "RunInfoDef.hh"
@@ -158,7 +159,7 @@ void MemPool::_initialize(const Parameters& para)
                       ? m_nDmaBuffers
                       : std::stoul(para.kwargs.at("pebbleBufCount"));
     if (m_nbuffers < m_nDmaBuffers) {
-        logging::critical("nPebbleBuffers (%u) must be > nDmaBuffers (%u)",
+        logging::critical("nPebbleBuffers (%u) must be >= nDmaBuffers (%u)",
                           m_nbuffers, m_nDmaBuffers);
         abort();
     }
@@ -464,8 +465,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     dmaErrors     (maxRetCnt),
     m_lastComplete(0),
     m_lastTid     (TransitionId::Unconfigure),
-    m_dmaIndices  (maxRetCnt),
-    m_dmaRetCnt   (dmaFreeCnt),
+    m_dmaIndices  (dmaFreeCnt),
     m_count       (0),
     m_dmaBytes    (0),
     m_dmaSize     (0),
@@ -763,7 +763,7 @@ void PgpReader::freeDma(PGPEvent* event)
             auto idx = event->buffers[i].index;
             if (idx < m_pool.dmaCount()) [[likely]] {
                 m_dmaIndices[m_count++] = idx;
-                if (m_count >= m_dmaRetCnt) {
+                if (m_count == m_dmaIndices.size()) {
                     // Return buffers.  An index could be reused as soon as dmaRetIndexes() completes
                     if (!m_pool.freeDma(m_count, m_dmaIndices.data())) {
                         m_count = 0;    // Reset only on success
@@ -1177,8 +1177,6 @@ DrpBase::DrpBase(Parameters& para, MemPool& pool_, Detector& det, ZmqContext& co
     m_tPrms.detName    = para.detName;
     m_tPrms.detSegment = para.detSegment;
     m_tPrms.maxEntries = m_para.kwargs["batching"] == "no" ? 1 : Pds::Eb::MAX_ENTRIES; // Default to "yes"
-    m_tPrms.core[0]    = -1;
-    m_tPrms.core[1]    = -1;
     m_tPrms.verbose    = para.verbose;
     m_tPrms.kwargs     = para.kwargs;
     m_tebContributor   = std::make_unique<TebContributor>(m_tPrms, pool.nbuffers());
@@ -1566,7 +1564,7 @@ int DrpBase::setupTriggerPrimitives(const json& body)
         buildDets = top["buildDets"];
 
     // In the following, _0 is added in prints to show the required segment number
-    if (!(buildAll || buildDets.find(m_para.detName))) {
+    if (!(buildAll || buildDets.find(m_para.detName) != std::string::npos)) {
         logging::info("This DRP is not contributing trigger input data: "
                       "buildAll is False and '%s' was not found in ConfigDb %s/%s/%s_0",
                       m_para.detName.c_str(), m_para.instrument.c_str(), configAlias.c_str(), triggerConfig.c_str());
@@ -1763,7 +1761,7 @@ void DrpBase::printParams() const
     logging::info("");
     logging::info("Parameters of Contributor ID %d (%s:%s):",           m_tPrms.id,
                                                                         m_tPrms.ifAddr.c_str(), m_tPrms.port.c_str());
-    logging::info("  Thread core numbers:          %d, %d",             m_tPrms.core[0], m_tPrms.core[1]);
+    Pds::logCpuAllocation("  CPU allocation");
     logging::info("  Instrument:                   %s",                 m_tPrms.instrument.c_str());
     logging::info("  Partition:                    %u",                 m_tPrms.partition);
     logging::info("  Alias (detName, detSeg):      %s ('%s', %u)",      m_tPrms.alias.c_str(), m_tPrms.detName.c_str(), m_tPrms.detSegment);
@@ -1847,14 +1845,27 @@ std::vector<XtcData::VarDef>& Drp::Detector::rawDef() {
     abort();
 }
 
+XtcData::Shape Drp::Detector::shapeCube(unsigned rawDefIndex, unsigned valueIndex, XtcData::DescData& rawData)
+{
+    return rawData.shape(rawDef()[rawDefIndex].NameVec[valueIndex]);
+}
+
 //
 //  This is generic but without calibration
 //
-void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex,
-                              double* dst, DescData& rawData)
+unsigned Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigned subIndex, 
+                                  double* dst, unsigned bin, DescData& rawData)
 {
     NamesId namesId(nodeId, rawNamesIndex()+rawDefIndex);
     Name& name = m_namesLookup[namesId].names().get(valueIndex);
+    unsigned arraySize = name.rank() ? Shape(rawData.shape(name)).num_elements(name.rank()) : 1;
+    double* dsto = dst+bin*arraySize;
+
+#if 0    
+    printf("addToCube  rawDef %u  idx %u  dst %p  dsto %p  bin %u  arraySz %u\n",
+	   rawDefIndex, valueIndex, dst, dsto, bin, arraySize);
+#endif
+    
     if (name.rank()==0) {
 
         /*
@@ -1866,7 +1877,7 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
         */
 #define ADD_VALUE(T) {                                           \
             double v = double(rawData.get_value<T>(valueIndex)); \
-            *dst += v;                                           \
+            *dsto += v;                                           \
         break; }
 
         switch(name.type()) {
@@ -1885,7 +1896,7 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
     }
     else {
         uint32_t* shape = rawData.shape(name);
-        Array<double_t> calArrT((char*)dst, shape, name.rank());
+        Array<double_t> calArrT((char*)dsto, shape, name.rank());
 
 #define ADD_ARRAY(T) {                                           \
             Array<T> rawArrT = rawData.get_array<T>(valueIndex); \
@@ -1907,5 +1918,6 @@ void Drp::Detector::addToCube(unsigned rawDefIndex, unsigned valueIndex, unsigne
         }
 #undef ADD_ARRAY
     }
+    return arraySize*sizeof(double_t);
 }
 
