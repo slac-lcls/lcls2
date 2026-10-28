@@ -84,6 +84,9 @@ for the worked examples.
 | [User kernels](docs/user_kernels.md) | Inputs, constants, scratch, publication, results and external science examples |
 | [GPU XTC parser](docs/gpu_xtc_parser.md) | Configure tables, device locators and segment-preserving field access |
 | [Limits and open work](docs/limitations.md) | Supported scope, configuration restrictions and unresolved issues |
+| [Performance overview](docs/performance/README.md) | Latest measured findings and links to workload-specific reports |
+| [Benchmark hardware](docs/performance/hardware.md) | Dated NVMe/PCIe inventory and local-NVMe versus Lustre cache semantics |
+| [Performance history](docs/performance/history.md) | Major changes, PRs and measured revisions |
 | [Read/staging performance](docs/performance/read_staging.md) | Latest full JF and partial JF+feespec cold/warm, bulk off/on matrices |
 | [User-kernel performance](docs/performance/user_kernels.md) | Matched scheduling comparison and calibration/integration scaling |
 | [CPU/GPU complexity](docs/complexity.md) | Measured code size and responsibility comparison |
@@ -108,6 +111,6 @@ Current design and API pages describe the source, not development stages. The
 performance pages identify their measured revisions and workloads; those rates
 are not universal guarantees. Completed stage plans, handoffs and older reports
 live in [Git history](https://github.com/slac-lcls/lcls2/tree/fa40ec52a/psana/psana/gpu/docs).
-New measurements replace the relevant current report while preserving compact
-provenance. [AMI integration](docs/proposals/ami_integration.md) remains a separate
+New studies update the performance overview and history while retaining dated
+reports, measured revisions and compact provenance. [AMI integration](docs/proposals/ami_integration.md) remains a separate
 proposal, not an implemented interface.
