@@ -2780,14 +2780,23 @@
   "integrations": {
     "A": {
       "commit": "c157b490ccb42940632ac83fce2a33e98335e9ce",
+      "published_commit": "c157b490ccb42940632ac83fce2a33e98335e9ce",
+      "published_source_url": "https://github.com/slac-lcls/lcls2/commit/c157b490ccb42940632ac83fce2a33e98335e9ce",
+      "published_tree_identical": true,
       "tree": "ec33eac52355b1722bf8b23f621c72514c100a81"
     },
     "B": {
       "commit": "0cf2b6348e5785e6b254f616811bf9c48d86e1cd",
+      "published_commit": "c1ab81fa2aa3ec50f3952d9f41a51cd2ed94f7c4",
+      "published_source_url": "https://github.com/slac-lcls/lcls2/commit/c1ab81fa2aa3ec50f3952d9f41a51cd2ed94f7c4",
+      "published_tree_identical": true,
       "tree": "33e45ad035e6043de29c01d9a6e5383e1067274b"
     },
     "C": {
       "commit": "701f5ebb1877d8a0ffb96f47ce37172983b8eec7",
+      "published_commit": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+      "published_source_url": "https://github.com/slac-lcls/lcls2/commit/8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+      "published_tree_identical": true,
       "tree": "7f8ddb3d7a32fc7cd4dda6561c761bb3c9eede85"
     }
   },

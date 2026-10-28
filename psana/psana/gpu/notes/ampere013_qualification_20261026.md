@@ -42,8 +42,7 @@ Final evidence review:
 
 The automatic follow-up saved `followup/result.md` and `followup/result.json`
 under the campaign root. The manual disk-counter and variability review above
-was completed at approximately 10:00 PDT. The earlier completion estimate was
-09:50–10:00 PDT.
+was completed at approximately 10:00 PDT.
 
 ## Frozen workload
 
@@ -126,17 +125,10 @@ Campaign root:
 
 Before submission: shell syntax, Slurm request validation, all 2,175 hashes and
 the 16-sample schedule passed. Runtime validation subsequently passed as recorded
-above. Slurm's earlier dry-run estimate was not a reservation; the submitted
-job initially reported no start time.
-
-Status commands:
-
-```bash
-squeue --start -j 42001989
-sacct -j 42001989 --format=JobID,State,Elapsed,NodeList,ExitCode
-```
+above.
 
 Completion review confirmed `provenance.json` has `complete: true`, the two
 pixel preflights and all 16 timed samples passed, and all cache gates and
 before/after hash and dependency checks succeeded. The measured summary is
-preserved above; new PR integration builds and comparisons remain next.
+preserved above. Subsequent PR integration comparisons completed on Ada and
+Perlmutter; see the [completed report](../docs/performance/pr187_pr208.md).

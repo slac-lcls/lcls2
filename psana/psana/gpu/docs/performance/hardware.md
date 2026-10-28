@@ -44,6 +44,7 @@ that is separate evidence from this inventory.
 
 | Observation | SDF Ada 016, job 42114353 | Perlmutter nid008517, job 60415698 |
 | --- | --- | --- |
+| Observation date | October 27, 2026 | October 28, 2026 |
 | GPU | Ten L40S installed; GPU0 used, 46,068 MiB reported | Four A100-SXM4-80GB installed; GPU0 used |
 | Host RAM | About 755 GiB; 700 GiB requested | About 251 GiB; allocation details in inventory |
 | Input stage | XFS `/lscratch` on six-drive RAID0 (`md0`), about 23.04 TB filesystem | Private files on Lustre `/pscratch`; no usable local NVMe/SSD stage |

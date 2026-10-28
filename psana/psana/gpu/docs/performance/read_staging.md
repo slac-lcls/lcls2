@@ -1,6 +1,6 @@
 # JF and JF+feespec read/staging performance
 
-For the October 27 PR187/208 comparisons, see the [revision report](pr187_pr208.md).
+For the October 27–28 PR187/208 comparisons, see the [revision report](pr187_pr208.md).
 Use the [overview](README.md) and [hardware inventory](hardware.md) to select
 comparable measurements. The scaling tables below retain their historical scope.
 
