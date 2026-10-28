@@ -2,7 +2,6 @@
 
 #include <cstddef>
 #include <vector>
-#include <thread>
 #include <atomic>
 #include <string>
 #include <map>
@@ -16,7 +15,6 @@
 #include "RingQueue_HtoD.hh"
 #include "ReducerAlgo.hh"
 #include "StageHist.hh"
-#include "drp/spscqueue.hh"
 #include "psdaq/service/Dl.hh"
 #include <nlohmann/json.hpp>
 #include "psdaq/service/fast_monotonic_clock.hh"
@@ -57,35 +55,19 @@ public:
                 size_t                collectionId);
   bool setup(XtcData::Xtc& xtc, const void* be);
   bool startup();
-  void shutdown();
   void dump() const;
   void reportHistograms() const;
-  bool start(unsigned worker, unsigned index) {
-#ifdef HOST_LAUNCHED_REDUCERS
-    m_inputQueues[worker].push(index);  return true;
-#else
-    //printf("*** Reducer::start: wkr %u, idx %u\n", worker, index);
-    if (m_algo->hasGraph()) { return m_inputQueues2[worker].h->push(index);    }
-    else                    { m_inputQueues[worker].push(index);  return true; }
-#endif
-  }
-  bool receive(unsigned worker, ReducerTuple* items) {
-#ifdef HOST_LAUNCHED_REDUCERS
-    return m_outputQueues[worker].pop(*items);
-#else
-    return m_algo->hasGraph() ? m_outputQueues2[worker].h->pop(items)
-                               : m_outputQueues[worker].pop(*items);
-#endif
-  }
+  bool start(unsigned worker, unsigned index)
+    { return m_inputQueues[worker].h->push(index); }
+  bool receive(unsigned worker, ReducerTuple* items)
+    { return m_outputQueues[worker].h->pop(items); }
   void event(XtcData::Xtc& xtc, const void* bufEnd, size_t dataSize)
     { if (m_algo)  m_algo->event(xtc, bufEnd, dataSize); }
 private:
   bool        _setupAlgo(Detector&);
   int         _setupGraph(unsigned instance);
   cudaGraph_t _recordGraph(unsigned instance);
-  void        _worker(unsigned instance);
 private:
-  using timePoint_t = std::chrono::time_point<Pds::fast_monotonic_clock>;
   MemPoolGpu&                                     m_pool;
   Pds::Dl                                         m_dl;
   ReducerAlgo*                                    m_algo;
@@ -93,19 +75,14 @@ private:
   cuda::std::atomic<unsigned> const&              m_terminate_d;
   std::vector<unsigned*>                          m_retCode_d;
   std::vector<unsigned*>                          m_state_d;
-  std::vector<SPSCQueue<unsigned> >               m_inputQueues;
-  std::vector<SPSCQueue<ReducerTuple> >           m_outputQueues;
-  std::vector<Ptr<RingQueueHtoD<unsigned> > >     m_inputQueues2;
-  std::vector<Ptr<RingQueueDtoH<ReducerTuple> > > m_outputQueues2;
-  std::vector<std::thread>                        m_threads;
+  std::vector<Ptr<RingQueueHtoD<unsigned> > >     m_inputQueues;
+  std::vector<Ptr<RingQueueDtoH<ReducerTuple> > > m_outputQueues;
   std::vector<cudaStream_t>                       m_streams;
-  std::vector<timePoint_t>                        m_t0;
   std::vector<cudaGraphExec_t>                    m_graphExecs;
   std::vector<unsigned*>                          m_indices_d;
   std::vector<StageHist*>                         m_hist_d;      // nullptrs unless readerHist=1
   std::vector<StageTime*>                         m_time_d;
   uint64_t                                        m_timePrev[2];
-  uint64_t                                        m_reduce_us;
   Parameters const&                               m_para;
   ReducerMetrics                                  m_metrics;
 };

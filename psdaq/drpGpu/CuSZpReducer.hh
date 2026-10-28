@@ -1,5 +1,8 @@
 #pragma once
 
+// Not built: it predates the graph-only ReducerAlgo interface and still has the removed
+// hasGraph()/reduce() methods.  It needs a recordGraph() before it can be re-enabled.
+
 #include "ReducerAlgo.hh"
 
 #include <cuSZp.h>

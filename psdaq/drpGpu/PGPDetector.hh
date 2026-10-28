@@ -39,6 +39,7 @@ struct TebReceiverMetrics
   uint64_t recCtr          {0};
   uint64_t reducerStarts   {0};
   uint64_t reducerReceives {0};
+  uint64_t reducerErrors   {0};         // Events whose Reducer returned a non-zero code
   uint64_t freeCtr         {0};
 };
 

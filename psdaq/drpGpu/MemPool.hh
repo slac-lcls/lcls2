@@ -119,27 +119,6 @@
 //
 //#define HOST_REARMS_DMA                 // Commented out => need CAP_SYS_ADMIN
 
-// The HOST_LAUNCHED_REDUCERS macro is used to determine when the Reducer GPU
-// code is launched.  Without this macro defined, Reducers constructed using a
-// CUDA graph are launched at startup time using the Reducer::startup() method.
-// Reducers launched this way remain present on the GPU for the duration of a
-// Configure/Unconfigure cycle.  The idea behind this is to amortise the launch
-// overhead and to pay it at a non-critical time.
-// Reducers composed of raw kernels are handled as if the macro were defined.
-// With it defined, Reducers, whether constructed using a graph or composed of
-// raw kernels are launched upon reception of a TEB result (in
-// TebReceiver::complete()).  The Reducer runs for as long as it takes for it to
-// process one event and then exits.  This means that the launch overhead is
-// paid in the real-time loop.
-//
-// Retiring this macro, and ReducerAlgo::hasGraph() with it, is a to-do.  Whoever
-// does it should grep for both names first: every ReducerAlgo, PassthruShim
-// included, assumes the graph path, and the #ifdef blocks in Reducer.cu are what
-// make hasGraph() == false a silent hang rather than a compile error.  Nothing in
-// those files points back here.
-//#define HOST_LAUNCHED_REDUCERS
-
-
 namespace Drp {
   namespace Gpu {
 

@@ -43,7 +43,8 @@ void LcReducer::recordGraph(cudaStream_t       stream,
                             float const* const calibBuffers_d,
                             size_t       const calibBufsCnt,
                             uint8_t*     const dataBuffers_d,
-                            size_t       const dataBufsCnt)
+                            size_t       const dataBufsCnt,
+                            unsigned*    const retCode)
 {
   m_compressor.updateGraph(stream,
                            state_d,
@@ -52,21 +53,6 @@ void LcReducer::recordGraph(cudaStream_t       stream,
                            calibBufsCnt * sizeof(*calibBuffers_d),
                            (uint8_t*)dataBuffers_d,
                            dataBufsCnt * sizeof(*dataBuffers_d));
-}
-
-void LcReducer::reduce(cudaGraphExec_t graph,
-                       cudaStream_t    stream,
-                       unsigned        index,
-                       size_t*         dataSize,
-                       unsigned*       retCode)
-{
-  chkFatal(cudaGraphLaunch(graph, stream));
-
-  auto maxSize = m_pool.reduceBufsStride();
-  auto buffer  = &m_pool.reduceBuffers_d()[index * maxSize];
-  auto pSize   = buffer - sizeof(*dataSize);
-  chkError(cudaMemcpyAsync((void*)dataSize, pSize, sizeof(*dataSize), cudaMemcpyDeviceToHost, stream));
-  *retCode = 0;                         // @todo: TBD
 }
 
 unsigned LcReducer::configure(Xtc& xtc, const void* bufEnd)

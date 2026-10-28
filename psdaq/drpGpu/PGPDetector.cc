@@ -23,6 +23,8 @@ using namespace Drp::Gpu;
 using namespace Pds::Eb;
 using json    = nlohmann::json;
 using logging = psalg::SysLog;
+
+static constexpr uint64_t MaxReducerErrorLogs{10};  // DRP_redErrors counts the rest
 using us_t    = std::chrono::microseconds;
 
 struct drp_domain{ static constexpr char const* name{"PGPDrp"}; };
@@ -88,11 +90,13 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.recCtr = 0;
   m_metrics.reducerStarts = 0;
   m_metrics.reducerReceives = 0;
+  m_metrics.reducerErrors = 0;
   m_metrics.freeCtr = 0;
   exporter->add("DRP_cmpCtr",    labels, MetricType::Counter, [&](){ return m_metrics.cmpCtr; });
   exporter->add("DRP_recCtr",    labels, MetricType::Counter, [&](){ return m_metrics.recCtr; });
   exporter->add("DRP_redStarts", labels, MetricType::Counter, [&](){ return m_metrics.reducerStarts; });
   exporter->add("DRP_redRcvs",   labels, MetricType::Counter, [&](){ return m_metrics.reducerReceives; });
+  exporter->add("DRP_redErrors", labels, MetricType::Counter, [&](){ return m_metrics.reducerErrors; });
   exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
 
   return 0;
@@ -335,6 +339,11 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
         abort();
       }
       dataSize = rt.dataSize;
+
+      if (rt.retCode) [[unlikely]] {
+        if (m_metrics.reducerErrors++ < MaxReducerErrorLogs)
+          logging::error("Reducer reported code %u for index %u", rt.retCode, rt.index);
+      }
 
       // More data than the Reducer reserved through payloadSize() means it has
       // written past its region and into the next buffer.  In pass-through the
@@ -944,7 +953,6 @@ unsigned PGPDrp::unconfigure()
   chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
   //printf("*** PGPDrp::unconfigure 2\n");
 
-  if (m_reducer)  m_reducer->shutdown();
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   //printf("*** PGPDrp::unconfigure 3\n");
 
