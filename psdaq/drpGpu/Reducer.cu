@@ -706,7 +706,7 @@ void Reducer::_worker(unsigned worker)
     //printf("*** dt %lu us, in %zu / out %zu = %f\n", dt, calibBufsSz, cmpSize1, ratio);
 
     if (retCode)
-      logging::error("Reducer found mismatch errors", retCode);
+      logging::error("Reducer found %u mismatched elements in pebble %u", retCode, idx);
 
     // Signal completion to the recorder
     outputQueue.push({idx, dataSize});

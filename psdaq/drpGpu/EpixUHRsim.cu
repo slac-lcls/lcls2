@@ -167,9 +167,15 @@ EpixUHRsim::EpixUHRsim(Drp::Parameters& para, MemPoolGpu& pool) :
   chkError(cudaMalloc(&m_pedsVec_d,  NRanges * NPixels * sizeof(*m_pedsVec_d)));
   chkError(cudaMalloc(&m_gainsVec_d, NRanges * NPixels * sizeof(*m_gainsVec_d)));
 
-  // Generate fake raw event data and load it onto the device
+  // Generate fake raw event data and load it onto the device.  sim_l1_verify matches by
+  // pebble index modulo nEvents, so nEvents must divide the pebble count.
   auto& simDet = *static_cast<SimDet*>(m_det);
-  auto  nEvents{10};                    // @todo: TBR
+  constexpr unsigned nEvents{16};
+  if (pool.nbuffers() % nEvents) {
+    logging::critical("Pebble count %u is not a multiple of the simulator's %u events",
+                      pool.nbuffers(), nEvents);
+    abort();
+  }
   simDet.generateEvents(nEvents);
 }
 

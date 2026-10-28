@@ -95,7 +95,7 @@ void _reduce(unsigned* const        __restrict__ state,
 #endif
     float const* const __restrict__ calib = &calibBuffers[idx * calibBufsCnt];
     float*       const __restrict__ data  = (float*)(&dataBuffers[idx * dataBufsCnt]);
-    //float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
+    float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
     //if (tid == 0)  printf("### NoOpReducer: calibCnt %lu, dataCnt %lu, stride %u, idx %u, calib %p:%p, data %p:%p\n",
     //                      calibBufsCnt, dataBufsCnt, stride, idx, &calib[0],&calib[calibBufsCnt], &data[0], &data[calibBufsCnt]);
     for (unsigned i = tid; i < calibBufsCnt; i += stride) {
@@ -107,11 +107,11 @@ void _reduce(unsigned* const        __restrict__ state,
       //    printf("### NoOpReducer: blk %d, thr %d, idx %u, cnt %lu, ref %p: i %u, calib %f, ref %f\n",
       //           blockIdx.x, threadIdx.x, idx%refBufCnt, calibBufsCnt, &ref[i], i, calib[i], ref ? ref[i] : 0.f);
       //}
-      //if (ref && (calib[i] != ref[i])) {
-      //  printf("### NoOpReducer: blk %d, thr %d, Mismatch @ %u: calib %f != ref %f\n",
-      //         blockIdx.x, threadIdx.x, i, calib[i], ref[i]);
-      //  atomicAdd(&lErrCnt, 1);
-      //}
+      if (ref && (calib[i] != ref[i])) {
+        //printf("### NoOpReducer: blk %d, thr %d, Mismatch @ %u: calib %f != ref %f\n",
+        //       blockIdx.x, threadIdx.x, i, calib[i], ref[i]);
+        atomicAdd(&lErrCnt, 1);
+      }
       data[i] = calib[i];
       //atomicAdd(&lOutSz, sizeof(*data)); // @todo: Not working
     }
@@ -129,7 +129,7 @@ void _reduce(unsigned* const        __restrict__ state,
         *extent = calibBufsCnt * sizeof(*data);
         //*extent  = lOutSz;              // @todo: This returns crazy values: why?
         //lOutSz   = 0;                   // Reset for next time
-        *retCode = lErrCnt != 0;
+        *retCode = lErrCnt;             // Count of mismatched elements
         lErrCnt  = 0;                   // Reset for next time
 
 #ifndef HOST_LAUNCHED_REDUCERS
