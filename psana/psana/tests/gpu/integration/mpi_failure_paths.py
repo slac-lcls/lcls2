@@ -227,9 +227,11 @@ def case_follower_import(rank, eb_ranks):
     elif raised.startswith('WRONG TYPE'):
         failures.append(f'raised the wrong exception type: {raised}')
 
-    # The message has to name the way to run without sharing, or a MIG user
-    # has no path forward: their instances share a PCI bus id, so discovery
-    # groups them as peers and the import necessarily fails.
+    # The message has to name the way to run without sharing, or a user whose
+    # system cannot do IPC between ranks discovery grouped as peers has
+    # nothing to try. (It is not a MIG remedy -- on MIG the peer count and
+    # budget stay wrong -- so the message describes the cost, not a supported
+    # MIG configuration.)
     checks['message_names_the_opt_out'] = (
         raised is not None and 'PSANA_GPU_SHARE_CONSTANTS=0' in raised)
     if not checks['message_names_the_opt_out']:

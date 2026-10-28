@@ -20,6 +20,14 @@ the node's cards and each shares with nobody::
         python mpi_calib_pixel_exact.py
     PS_EB_NODES=2 mpirun -n 9 python mpi_calib_pixel_exact.py
 
+``--budget-gb`` takes the explicit budget path: discovery validates
+``budget x peers`` against the device's capacity and folds it into
+``usable_bytes``. Pixels cannot show that, so ``--expect-budget-honoured``
+checks the figure reached the placement::
+
+    CUDA_VISIBLE_DEVICES=0 mpirun -n 4 python mpi_calib_pixel_exact.py \\
+        --budget-gb 2 --expect-budget-honoured
+
 ``hybrid_det`` is what makes the comparison self-contained: the detector is
 routed to the GPU *and* the CPU interface stays available, so each rank checks
 its own events against psana's own calibration with no reference file, no
@@ -64,6 +72,18 @@ def main():
     ap.add_argument('--batch-size', type=int, default=5)
     ap.add_argument('--expect-events', type=int, default=0,
                     help='assert the job calibrated exactly this many events')
+    ap.add_argument('--expect-eb-ranks', type=int, default=0,
+                    help='assert this many ranks took the eb role. Worth '
+                         'stating because PS_EB_NODES is capped at the host '
+                         'count for mfx experiments, so a case name claiming '
+                         'a topology the allocation cannot provide would '
+                         'otherwise pass')
+    ap.add_argument('--expect-bd-ranks', type=int, default=0,
+                    help='assert this many ranks took the bd role')
+    ap.add_argument('--budget-gb', type=float, default=0,
+                    help='pass gpu_memory_budget_gb (the explicit path)')
+    ap.add_argument('--expect-budget-honoured', action='store_true',
+                    help='assert usable_bytes == budget x peers')
     args = ap.parse_args()
 
     from mpi4py import MPI
@@ -81,6 +101,9 @@ def main():
         status_bits=full if 'pixel_status' in planes else 0,
         stextra_bits=full if 'status_extra' in planes else 0)
 
+    # Only when asked: naming the kwarg always would route every case down
+    # the explicit path.
+    budget = {'gpu_memory_budget_gb': args.budget_gb} if args.budget_gb else {}
     ds = DataSource(exp=args.exp, run=args.run, dir=args.dir,
                     detectors=['jungfrau'],
                     # hybrid, not gpu_det: keeps det.raw.calib() usable so the
@@ -89,7 +112,7 @@ def main():
                     gpu_fn=GpuTask(user, inputs=user.inputs,
                                    calibconst=user.calibconst),
                     max_events=args.max_events, batch_size=args.batch_size,
-                    n_gpu_streams=2, gpu_bulk_read=True)
+                    n_gpu_streams=2, gpu_bulk_read=True, **budget)
 
     failures, stamps = [], []
     info = {'rank': rank, 'host': MPI.Get_processor_name(),
@@ -100,6 +123,18 @@ def main():
     for run in ds.runs():
         info['role'] = run.comms.node_type()
         det = run.Detector('jungfrau')
+
+        # What discovery decided. Via the public accessor where it has the
+        # field; peers and usable_bytes are not on it.
+        device = getattr(run, 'gpu_device', None)
+        placement = getattr(run, '_gpu_placement', None)
+        if device is not None:
+            info.update(pci=device.pci_bus_id, peers=device.peers,
+                        owner=device.is_owner)
+        if placement is not None:
+            info.update(usable=int(placement.usable_bytes),
+                        sharing=placement.sharing)
+
         for evt in run.events():
             stamp = int(evt.timestamp)
 
@@ -163,12 +198,58 @@ def summarise(rows, args):
     if everything and len(everything) != len(set(everything)):
         failures.append('an event was delivered to more than one BD rank')
 
+    # The ROLES psana actually assigned, not the ones the case name implies.
+    # For mfx experiments PS_EB_NODES is capped at the number of distinct
+    # hosts -- the cap is in datasource.py _force_mfx_overrides, which returns
+    # early unless the experiment name starts with 'mfx' -- so a single-node
+    # allocation gets one EB however many are requested, and a case asserting
+    # a two-EB topology there would pass while testing nothing it was named
+    # for. Asserted from what the ranks reported.
+    roles = {}
+    for r in members:
+        roles[r.get('role')] = roles.get(r.get('role'), 0) + 1
+    if args.expect_eb_ranks and roles.get('eb', 0) != args.expect_eb_ranks:
+        failures.append(
+            f"expected {args.expect_eb_ranks} eb rank(s), psana assigned "
+            f"{roles.get('eb', 0)}; PS_EB_NODES was "
+            f"{members[0].get('eb_nodes') if members else '?'} and is capped "
+            'at the host count for mfx experiments')
+    if args.expect_bd_ranks and roles.get('bd', 0) != args.expect_bd_ranks:
+        failures.append(f"expected {args.expect_bd_ranks} bd rank(s), psana "
+                        f"assigned {roles.get('bd', 0)}")
+
+    # Honoured, not merely accepted: a job that ignored the ceiling would
+    # still calibrate correctly, so pixels cannot show this. The one check
+    # here that reads an internal.
+    if args.expect_budget_honoured:
+        want = int(args.budget_gb * 1024 ** 3)
+        for r in workers:
+            if 'usable' not in r or 'peers' not in r:
+                failures.append(f"rank {r['rank']} reported no placement, so "
+                                'the budget cannot be checked')
+                continue
+            expected = want * r['peers']
+            if r['usable'] != expected:
+                failures.append(
+                    f"rank {r['rank']} on {r.get('pci')} has usable_bytes "
+                    f"{r['usable'] / 1024 ** 3:.2f} GiB, expected "
+                    f"{expected / 1024 ** 3:.2f} GiB "
+                    f"({args.budget_gb:.2f} x {r['peers']} peers); the "
+                    'explicit budget was accepted but not applied')
+
     emit('SUMMARY', {
         'ranks': len(members),
+        'roles': roles,
+        'eb_nodes': members[0].get('eb_nodes') if members else None,
         'gpu_workers': len(workers),
         'hosts': sorted({r['host'] for r in workers if r.get('host')}),
         'events_total': total,
         'events_by_rank': {r['rank']: r.get('events') for r in workers},
+        'budget_gb': args.budget_gb or None,
+        'usable_gib_by_rank': {r['rank']: round(r['usable'] / 1024 ** 3, 2)
+                               for r in workers if 'usable' in r},
+        'peers_by_rank': {r['rank']: r['peers']
+                          for r in workers if 'peers' in r},
         'callback_calls_by_rank': {r['rank']: r.get('callback_calls')
                                    for r in workers},
         'planes': sorted({p for r in members for p in r.get('planes', [])}),

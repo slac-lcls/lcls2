@@ -70,15 +70,22 @@ arrays are allowed; missing keys, unsupported values and undeclared access fail
 explicitly. Gains are not implicitly inverted; offsets and masks are not
 implicitly prepared. Empty declarations cause no task-constant upload.
 
-Each BD owns a requested snapshot, uploaded once per run. BeginStep drains
-prior work and applies the host transition but does not reupload constants: it
-does not fetch the DB, so one constant set per run is the supported model.
-Original calibration arrays retain their physical segment axis. Map dense rows
-using `segment_ids` rather than assuming a dense row number is a physical ID.
+Each BD owns a requested snapshot, uploaded once at run setup. psana does not
+replace or refresh it during the run: BeginStep drains prior work and applies
+the host transition but does not reupload constants, because it does not fetch
+the DB. **Mutating the host-side calibration dictionary after setup does not
+update the GPU snapshot.** One constant set per run is the supported model;
+dynamic mid-run updates are deferred (#168). Original calibration arrays retain
+their physical segment axis. Map dense rows using `segment_ids` rather than
+assuming a dense row number is a physical ID.
 
-Inputs/constants are read-only by contract. Psana cannot intercept arbitrary
-native writes. To modify values, allocate and register an owned destination
-before submitting the copy or kernel:
+Inputs and constants are read-only **by contract, not by enforcement**. CuPy
+arrays have no NumPy-style WRITEABLE flag and psana cannot intercept native
+writes, so nothing stops a kernel writing into an array from
+`batch.calibconst()` — it just corrupts the snapshot for every later batch and,
+when constants are shared over CUDA IPC, for every peer rank on the GPU. Write
+results into separate outputs. To modify values, allocate and register an owned
+destination before submitting the copy or kernel:
 
 ```python
 raw = batch.input("jungfrau.raw")

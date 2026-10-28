@@ -44,8 +44,10 @@ def log_gpu_mem(label: str, rank=None) -> None:
         # Only report if CuPy is already loaded. Importing it here would
         # create a context on CUDA's default device -- before this rank has
         # selected its own -- and that context's memory then skews the free
-        # figure discovery samples. Since `usable` is a job-wide MIN, one
-        # rank's stray context lowers every rank's budget. A diagnostic that
+        # figure discovery samples. Since `usable` is a MIN over the device
+        # group, one rank's stray context lowers every peer's budget on that
+        # card -- and a context on the default device lands on a card this
+        # rank may not even own. A diagnostic that
         # perturbs the thing being diagnosed is worse than silence, and this
         # is enabled precisely when someone is chasing memory.
         cp = sys.modules.get('cupy')

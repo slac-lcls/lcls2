@@ -130,6 +130,26 @@ class ProducerContext:
         return self._inputs.field(detector, algorithm, field)
 
     def calibconst(self, detector, key):
+        """Device array for a declared calibration constant.
+
+        The array is the run's snapshot. psana uploads every requested
+        constant once, at run setup, and does not replace or refresh it
+        during the run -- including at BeginStep, which drains prior work and
+        applies the host transition but does not fetch the calibration DB.
+        Mutating the host-side calibration dictionary after setup does not
+        update this array. One constant set per run is the supported model;
+        dynamic mid-run updates are deferred (#168).
+
+        Treat it as read-only. Write results into separate outputs -- see
+        ``keepalive`` and ``publish``. This is an API contract, not enforced
+        immutability: CuPy arrays carry no NumPy-style WRITEABLE flag and
+        psana cannot intercept native writes. A kernel that writes here
+        corrupts the values every later batch reads and, when constants are
+        shared over CUDA IPC, the values every peer rank on the GPU reads.
+
+        Raises KeyError if ``(detector, key)`` was not declared in the task's
+        ``calibconst``.
+        """
         self._require_active()
         return self._inputs.calibconst(detector, key)
 

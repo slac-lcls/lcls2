@@ -205,9 +205,10 @@ def test_discovery_releases_the_cached_pool_before_sizing():
     """Discovery runs per run, so run N+1 must not be sized against run N.
 
     CuPy's pool keeps what the previous run allocated until it is asked to
-    release it, and `usable` is a job-wide MIN -- so one rank holding a stale
-    pool drags every rank's limit down, not just its own. The release has to
-    happen before memGetInfo is sampled, which is what this pins.
+    release it, and `usable` is a MIN over the device group -- so one rank
+    holding a stale pool drags every peer on its card down, not just itself.
+    The release has to happen before memGetInfo is sampled, which is what this
+    pins.
     """
     order = []
     GIB = 1024 ** 3
@@ -390,9 +391,11 @@ def test_non_gpu_role_joins_every_collective_in_order():
     assert kinds.count('allgather') == 1
     assert kinds.count('split') == 2
     operations = [entry[1] for entry in log if entry[0] == 'allreduce']
-    assert operations == ['SUM', 'MIN', 'MAX'], (
-        'a non-GPU role must make the same reductions, in the same order: '
-        'MPI pairs collectives by call order, not by operation')
+    assert operations == ['SUM', 'MAX'], (
+        'a non-GPU role must make the same psana_comm reductions, in the same '
+        'order: MPI pairs collectives by call order, not by operation. The '
+        'capacity MIN is not among them because it runs on device_comm, '
+        'which this rank does not hold')
     assert placement.device_comm is None
     assert placement.n_device_peers == 1
 

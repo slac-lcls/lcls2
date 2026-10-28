@@ -200,6 +200,12 @@ class BatchInputContext:
         return self._fields.get(selector)  # None only for an empty selection.
 
     def calibconst(self, detector, key):
+        """Device array for a declared calibration constant.
+
+        Uploaded once at run setup and never replaced during the run, so it
+        is read-only by contract. ``ProducerContext.calibconst`` is what a
+        user callback reaches and carries the full contract.
+        """
         self._require_active()
         selector = (detector, key)
         if selector not in self._constants:

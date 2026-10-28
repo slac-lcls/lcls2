@@ -8,12 +8,12 @@ raised the same concern from reading the code rather than from a measurement.
 Two things go wrong if a run does not clean up after itself.
 
 **Budget collapse.** ``usable_bytes`` comes from ``memGetInfo``, reduced with
-``MPI.MIN`` across the job. CuPy's pool keeps whatever run N allocated until
-asked to release it, so run N+1 measures a card that still looks full -- and
-because the reduction is a job-wide minimum, one rank's stale pool lowers
-*every* rank's limit on *every* device. A four-peer 40 GiB card holding 9 GiB
-per rank from run 1 leaves ~4 GiB free, so run 2's per-rank limit is ~0.9 GiB
-instead of ~9, and setup either aborts or runs with tiny subbatches.
+``MPI.MIN`` over the device group. CuPy's pool keeps whatever run N allocated
+until asked to release it, so run N+1 measures a card that still looks full --
+and because the reduction is a minimum, one rank's stale pool lowers *every*
+peer's limit on that card. A four-peer 40 GiB card holding 9 GiB per rank from
+run 1 leaves ~4 GiB free, so run 2's per-rank limit is ~0.9 GiB instead of ~9,
+and setup either aborts or runs with tiny subbatches.
 
 **Communicator leak.** Discovery builds a ``device_comm`` per run. A job over
 many runs that never frees them reaches the MPI communicator limit.
@@ -241,7 +241,8 @@ def main():
 def summarise(rows, requested):
     """Job-wide view. Per-rank checks cannot see whether the budget collapse
     happened on a rank other than this one -- and because the reduction is a
-    job-wide MIN, one rank's stale pool is enough to lower everybody."""
+    MIN over the device group, one rank's stale pool is enough to lower every
+    peer sharing its card."""
     members = [r for r in rows if r]
     workers = [r for r in members if r.get('role') == 'bd']
     failures = [f for r in members for f in r.get('failures', [])]

@@ -611,6 +611,63 @@ def test_mpi_transport_unpacking():
         assert bytes(gpu) == expected_gpu
 
 
+def test_bd_drains_eb_traffic_before_the_collective_manager_close(monkeypatch):
+    """The EB drain must precede gpu_manager.close(), not follow it.
+
+    close() is COLLECTIVE for shared constants: it barriers on device_comm
+    while releasing the owner's allocation. A consumer that stops early --
+    max_events, or closing the generator -- leaves this rank owing the EB a
+    receive for an outstanding look-ahead request. Closing first therefore
+    lets this rank enter a barrier while the EB is blocked sending to it and
+    a peer waits on that EB: a circular wait, broken only by the bounded
+    barrier's timeout.
+
+    Drives the REAL BigDataNode.start() and asserts on ORDER, because both
+    operations happen either way and only their sequence decides whether the
+    job hangs.
+    """
+    from psana.psexp import node as node_module
+    from psana.psexp.node import BigDataNode
+
+    order = []
+
+    class _Manager:
+        def close(self):
+            # Stands in for the collective release; barriers on real MPI.
+            order.append('manager.close')
+
+    def fake_batch_envelopes(self):
+        try:
+            yield 'envelope'
+        finally:
+            # The real one keeps receiving to EB termination. What matters is
+            # that it unwinds before any collective.
+            order.append('drain')
+
+    # Events() is the pipeline start() wraps; yield one item then stop, which
+    # is what a consumer hitting max_events does.
+    def fake_events(*args, **kwargs):
+        yield 'event'
+
+    monkeypatch.setattr(BigDataNode, '_batch_envelopes', fake_batch_envelopes)
+    monkeypatch.setattr(node_module, 'Events', fake_events)
+
+    bd = BigDataNode.__new__(BigDataNode)
+    bd.configs = None
+    bd.dm = None
+    bd.shared_state = None
+    bd.dsparms = SimpleNamespace(max_retries=0, use_smds=None)
+
+    manager = _Manager()
+    stream = bd.start(gpu_manager=manager)
+    assert next(stream) == 'event'
+    stream.close()                      # consumer stops early
+
+    assert order == ['drain', 'manager.close'], (
+        f'teardown ran {order}; the EB drain must come first, or this rank '
+        'enters a collective barrier while still owing the EB a receive')
+
+
 def test_mpi_batch_source_posts_lookahead_before_yield(monkeypatch):
     from psana.psexp import node as node_module
     from psana.psexp.node import BigDataNode

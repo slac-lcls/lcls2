@@ -105,6 +105,62 @@ class CallbackRunState:
         return self.esm
 
 
+class GpuDevice(object):
+    """Which physical GPU this rank holds, for a framework sharing the process.
+
+    A read-only view of what ``discover_peers`` decided, so an external
+    framework -- GLINT, chiefly -- can follow psana's choice instead of
+    guessing. Guessing is the failure this exists to prevent: ``cuda:0`` is
+    the first device in *this rank's mask*, which under
+    ``srun --gpus-per-task=1`` is a different physical card on every rank, so
+    a framework that assumes it lands on a GPU psana is not using.
+
+    Identify by ``pci_bus_id``, never by the ordinal. The ordinal is an index
+    into this rank's ``CUDA_VISIBLE_DEVICES`` and means nothing outside it:
+    with a mask of ``1,0`` ordinal 0 IS physical card 1 (measured on
+    sdfampere015). The bus id comes from ``cudaDeviceGetPCIBusId`` and names
+    the card itself, which is also how GLINT #256 checks identity, so the two
+    agree by construction.
+
+    ``peers`` is normally greater than one and that is deliberate: several BD
+    workers share a device so the calibration constants can be shared over
+    CUDA IPC. A caller that treats two ranks on one GPU as a configuration
+    error -- as GLINT does unless ``--share-gpu`` is given -- must expect
+    this.
+
+    Deliberately carries no handle, no communicator and no setter. Placement
+    is decided once, collectively, inside discovery; a second route to
+    influence it would be a second way to get it wrong.
+    """
+
+    __slots__ = ('pci_bus_id', 'ordinal', 'peers', 'hostname', 'is_owner')
+
+    def __init__(self, placement):
+        # object.__setattr__, because __setattr__ below refuses: the fields
+        # are set once here and then frozen.
+        set_ = object.__setattr__
+        set_(self, 'pci_bus_id', str(placement.device_pci))
+        set_(self, 'ordinal', int(placement.device_ordinal))
+        set_(self, 'peers', int(placement.n_device_peers))
+        set_(self, 'hostname', str(placement.hostname))
+        set_(self, 'is_owner', bool(placement.is_owner))
+
+    def __setattr__(self, name, value):
+        raise AttributeError(
+            f'GpuDevice is read-only; cannot set {name!r}. Placement is '
+            'decided once, collectively, inside discover_peers -- a rank '
+            'that changed its view would diverge from what its peer group '
+            'agreed, without moving any device.')
+
+    def __delattr__(self, name):
+        raise AttributeError('GpuDevice is read-only')
+
+    def __repr__(self):
+        return (f'GpuDevice(pci_bus_id={self.pci_bus_id!r}, '
+                f'ordinal={self.ordinal}, peers={self.peers}, '
+                f'hostname={self.hostname!r}, is_owner={self.is_owner})')
+
+
 class Run(object):
     def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, begingrun_dgrams):
         self.expt, self.runnum, self.timestamp = (expt, runnum, timestamp)
@@ -521,6 +577,24 @@ class Run(object):
             proxy_evt=proxy_evt,
             gpu=envelope.gpu_state,
         )
+
+    @property
+    def gpu_device(self):
+        """The physical GPU this rank holds, or None.
+
+        For an external framework that must put its own work on the same
+        device psana selected. ``None`` whenever there is nothing to follow:
+        a CPU-role rank (smd0, EB, srv), the serial path, or a job with no
+        GPU detector. A caller must handle ``None`` rather than defaulting to
+        device 0 -- that default is the bug this exists to prevent.
+
+        Read-only, and a fresh view each call: placement belongs to
+        discovery.
+        """
+        placement = getattr(self, '_gpu_placement', None)
+        if placement is None:
+            return None
+        return GpuDevice(placement)
 
     def _setup_envstore(self):
         assert hasattr(self, "configs")
