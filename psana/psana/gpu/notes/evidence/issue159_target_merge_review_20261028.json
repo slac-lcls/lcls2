@@ -1,0 +1,43 @@
+{
+  "branch_head": "e5569ff3566cc6b5861c802653e6080c0e0087b0",
+  "target": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+  "trial_tree": "88d0fd3ff4a8de45f8a0da7e27f7fd1a5da8f14b",
+  "clean_merge": true,
+  "alignment_patch_preserved": true,
+  "production_delta": [
+    "psana/psana/gpu/gpu_detector.py",
+    "psana/psana/gpu/gpu_input.py",
+    "psana/psana/gpu/gpu_stream.py"
+  ],
+  "branch_unchanged": true,
+  "review_date": "2026-10-28",
+  "recommendation": "Merge current target before Stage 5; review only, active branch not merged.",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1",
+  "target_tree": "7f8ddb3d7a32fc7cd4dda6561c761bb3c9eede85",
+  "equivalent_prior_integration": "701f5ebb1877d8a0ffb96f47ce37172983b8eec7",
+  "pr187_head": "6687ca5b7059792d3fc57b2b1603f565acd25bac",
+  "pr208_head": "f2e6143a9c1058c09e71a33b41d9106be426ae50",
+  "validation": {
+    "fresh_native_build": "passed",
+    "cpu_unit_tests": 990,
+    "cpu_unit_seconds": 14.21,
+    "reporting_integration_probes": 3,
+    "reporting_seconds": 0.17,
+    "device_tests": "not run in this review",
+    "mpi_hardware_tests": "not run in this review",
+    "checked_production_module_origins": 146
+  },
+  "notes": [
+    "Initial review-script path filter included recursive benchmark scripts; corrected to direct production modules before building. No source fix was needed.",
+    "Trial merge is staged but uncommitted in a detached scratch worktree."
+  ],
+  "evidence_files": {
+    "metadata/unit-trial.xml": "9f361fa3515c92961a8426a216dc847664e532197bd337d1482b64bbf142ee1f",
+    "metadata/reporting-trial.xml": "d574bec427f44d3b3afe91ae0b945831f5560cc8938b45969dc884b14491405c",
+    "metadata/unit-origins-trial.json": "371fde3f13547afe1c06195c09c041890d2874cdf4ff43aeaa43db6d32b00a8b",
+    "metadata/reporting-origins-trial.json": "74269ba59811375f0bf0699f94c57f332ad06f704b7b02e96cee1a2a35b6b783",
+    "metadata/test_reporting_integration.py": "b4d727725dabcd062ec92fa0614065392671ebd71aa7b37525fe4d6eaee2e90e",
+    "logs/units.log": "418287f7df5eed0da7868303206cc2bdbfb1b1b39bcc2a8761c54eb7d73c27ae",
+    "logs/reporting.log": "61ca266d920fafef052343603b50fecd4732b9b475dffd38709cbf8c33c80949"
+  }
+}

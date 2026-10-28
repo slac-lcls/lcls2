@@ -1,6 +1,6 @@
 # Issue 159: alignment-safe GPU reads
 
-Updated 2026-10-22. Status: PR #187 comparison completed; A frozen; stage-2
+Updated 2026-10-28. Status: PR #187 comparison completed; A frozen; stage-2
 measured overhead accepted by Mona for now; stage-3 focused validation and warm
 screen complete; stage-4 safe field views implemented, focused checks passed, and first staged screen failed cache preparation; retry 41602068 also failed its pre-timing cache gate; cold screen 41604951 completed all 16 samples. This document records the agreed scope, staged implementation,
 dependency expectations, and acceptance gates.
@@ -27,6 +27,17 @@ their own CUDA warmup procedure; disk-cache policy is a separate control.
 The [Stage 4 cold screen](issue159_stage4_cold_20261022.md) is the first run
 under this policy. Cold results cannot establish unchanged warm performance;
 that limitation stays explicit without blocking cold-screen progress.
+
+## Target update review — October 28
+
+PR187 and PR208 have merged into `features/psana2-gpu` at `8cf05e86a`.
+[Integration review](issue159_target_merge_review_20261028.md) recommends a
+normal merge **before Stage 5**. An isolated merge/build passed 990 CPU unit
+tests plus three field-copy/accounting probes, with the alignment production
+patch preserved exactly. The active branch has not yet integrated this update.
+Keep old frozen A intact; establish a new unfixed target reference, rerun focused
+CUDA/MPI checks for the changed dependency, and then implement Stage 5.
+No accessor-design change or additional A/A campaign is required.
 
 ## Goal summary
 
@@ -439,7 +450,10 @@ The scoped one-time cache reset is applied in
 completed on `sdfampere030`: all eight warm samples passed with 100% pre/post
 residency, 2,084 hashes verified and private-stage cleanup complete. Bulk-off
 paired loop changes were -0.03%/+1.79%; bulk-on changes were -1.89%/-8.19%.
-The next implementation stage is Stage 4, safe field views; it has not started.
-Preserve frozen integrated A for final cumulative
-comparison. No additional A/A measurement is planned; keep #187 repairs in
-Seema's task.
+Stage 4 safe field views are now implemented and passed the focused checks
+and incremental cold screen documented above. The next implementation stage is
+Stage 5. First integrate the now-merged PR187/PR208 target following the
+[October 28 review](issue159_target_merge_review_20261028.md), retaining the old
+frozen A and establishing a matching updated reference for final cumulative
+comparison. No additional A/A measurement is planned. PR187's accepted fixes
+arrive through the dependency merge, not through alignment-specific patches.
