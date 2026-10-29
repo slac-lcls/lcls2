@@ -72,14 +72,47 @@ preserved and is not counted as acceptance.
 - The smalldata test passed its file-data portion but received no shared-memory
   events, so `/oneint` was missing. Preserve the failure and retry with full
   system access; do not classify it as the historical MODE/SRV-core error.
-- The byhand MPI test stopped in `user_loops.py` on a calibration HTTP connection
-  reset (`RemoteDisconnected`). The other four byhand tests passed. Retry the
+- The byhand MPI test stopped in `user_loops.py` during a calibration HTTP lookup:
+  the remote end closed the connection without a response (`RemoteDisconnected`). The other four byhand tests passed. Retry the
   group without skipping calibration or changing assertions.
 
 The historical BeginStep constant failures and MPI-lookahead attribute failure
 from Stage 2 did not reproduce on this integrated runtime. The original Stage 2
 triage remains [recorded](issue159_stage2_20261019.md); this is current evidence,
 not a claim that all historical failures were alignment defects.
+
+### PR260 review clarification: preserved calibration traceback
+
+Claude's review of `3f6b8d1ab` found no blockers and requested the source of the
+HTTP failure attribution. The traceback is in the original
+`attempt01/job-42394606/byhand.log`, under **Captured stderr call**, lines 70–177.
+Its SHA-256 still matches the value committed before review:
+`e26b78c0fff1d7f6678fe9229978ceddbf836b007453a4f8197ce21dcc0ba9ab`.
+The log contains one NUL byte, so default `rg` treats it as binary. Use text mode:
+
+```bash
+stage6_artifacts=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029
+rg -a -n -C 3 'Captured stderr|RemoteDisconnected|_setup_run_calibconst|ConnectionError' "$stage6_artifacts/attempt01/job-42394606/byhand.log"
+```
+
+Selected original lines (intervening lines omitted):
+
+```text
+70: ----------------------------- Captured stderr call -----------------------------
+95: http.client.RemoteDisconnected: Remote end closed connection without response
+132:   File "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/source/psana/psana/tests/user_loops.py", line 72, in <module>
+138:     self._setup_run_calibconst()
+140:     calib_const = wu.calib_constants_all_types(
+154:   File "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/python3.11/site-packages/psana/pscalib/calib/MDBWebUtils.py", line 292, in find_docs
+177: requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))
+```
+
+The pytest failure summary contains only the subprocess `CalledProcessError`;
+the captured stderr in the full log supplies the calibration lookup traceback.
+This establishes a connection closure during that lookup, not its underlying
+cause or a proven TCP reset. The evidence JSON now records the locator and
+excerpt. The original log is unchanged; no new test run is needed for this
+clarification. The unexplained smalldata failure remains separately described.
 
 ## New validation results
 

@@ -229,6 +229,30 @@
         "state": "FAILED",
         "exit_code": "1:0",
         "elapsed": "00:05:34"
+      },
+      "byhand_failure_evidence": {
+        "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/job-42394606/byhand.log",
+        "sha256": "e26b78c0fff1d7f6678fe9229978ceddbf836b007453a4f8197ce21dcc0ba9ab",
+        "nul_bytes": 1,
+        "captured_stderr_lines": [
+          70,
+          177
+        ],
+        "traceback_lines": [
+          78,
+          177
+        ],
+        "excerpt_lines": {
+          "70": "----------------------------- Captured stderr call -----------------------------",
+          "95": "http.client.RemoteDisconnected: Remote end closed connection without response",
+          "132": "  File \"/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/source/psana/psana/tests/user_loops.py\", line 72, in <module>",
+          "138": "    self._setup_run_calibconst()",
+          "140": "    calib_const = wu.calib_constants_all_types(",
+          "154": "  File \"/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/python3.11/site-packages/psana/pscalib/calib/MDBWebUtils.py\", line 292, in find_docs",
+          "177": "requests.exceptions.ConnectionError: ('Connection aborted.', RemoteDisconnected('Remote end closed connection without response'))"
+        },
+        "search_command": "rg -a -n -C 3 'Captured stderr|RemoteDisconnected|_setup_run_calibconst|ConnectionError' /sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/job-42394606/byhand.log",
+        "interpretation": "Captured stderr shows calibration HTTP lookup failing because the remote end closed the connection without a response. It does not establish why the connection closed or prove a TCP reset. The unchanged byhand group passed in attempt02."
       }
     },
     "attempt02": {
