@@ -1445,9 +1445,12 @@ def issue_2026_10_24(args):
     """ISSUE: https://github.com/slac-lcls/lcls2/issues/234
               after lcls2_091526 find no calibration constants for the archon in rix101214125. det.raw.calib then raises KeyError: 'pedestals'.
        datinfo -k exp=rix101214125,run=352 -d archon
-       det_dark_proc -k exp=rix101214125,run=325 -d archon -o work1
-       det_dark_proc -k exp=rix101214125,run=113 -d archon -o work1
-       FIX: re-calibrate dark constants for new detector name for exp=rix101214125,run=113,325
+       det_dark_proc -k exp=rix101214125,run=325 -d archon -o work -n10000 -D
+       det_dark_proc -k exp=rix101214125,run=113 -d archon -o work -n10000 -D
+       det_dark_proc -k exp=rix101214125,run=7   -d archon -o work -n10000 -D
+       dark data for runs 28, 46 138 are missing in
+          /sdf/data/lcls/ds/rix/rix101214125/xtc/
+       FIX: re-calibrate dark constants for new detector name for exp=rix101214125,run=7,113,325
     """
     import traceback
     from psana import DataSource
