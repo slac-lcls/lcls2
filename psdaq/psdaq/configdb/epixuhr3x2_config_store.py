@@ -32,7 +32,7 @@ def ePixUHR3x2_cdict():
     top.define_enum("boolEnum", {"False": 0, "True": 1})
     top.set("expert.Core.Si5345Pll.enable", 1, "boolEnum")
 
-    for n in range(1, 7):
+    for n in range(6):
         top.set(f"expert.FebFpga.App.Asic[{n}].enable", 1, "boolEnum")
         top.set(f"expert.FebFpga.App.Asic[{n}].TpsDacGain", 1, "UINT8")
         top.set(f"expert.FebFpga.App.Asic[{n}].TpsDac", 34, "UINT8")
@@ -162,7 +162,7 @@ def ePixUHR3x2_cdict():
                     f"{pathpix}{pixelmap[1:]}.csv", dtype="uint16", delimiter=","
                 ),
             )
-    for n in range(1, 7):
+    for n in range(6):
         base = f"user.FebFpga.App.Asic[{n}]."
         top.set(base + "PixelBitMapSel", 5, "pixelMapEnum")
         top.set(base + "SetGainValue", 48, "UINT8")
@@ -383,8 +383,8 @@ def ePixUHR3x2_cdict():
     # DaqPauseCount is RO
     top.set("expert.FebFpga.App.TriggerRegisters.daqPauseEn", 0, "boolEnum")
 
-    # --- FebFpga.App.FramerAsic[1...6] --- #
-    for i in range(1, 7):
+    # --- FebFpga.App.FramerAsic[0...5] --- #
+    for i in range(6):
         top.set(f"expert.FebFpga.App.FramerAsic[{i}].enable", 1, "boolEnum")
         top.set(f"expert.FebFpga.App.FramerAsic[{i}].DisableLane", 0x0, "UINT8")
         top.set(f"expert.FebFpga.App.FramerAsic[{i}].EnumerateDisLane", 0x0, "UINT8")
@@ -394,8 +394,8 @@ def ePixUHR3x2_cdict():
         "HighGain": 1,
     }
     top.define_enum("TestForcedGainBitEnum", forcedGainBitEnum)
-    # --- FebFpga.App.DescrambleAsic[1...6] --- #
-    for i in range(1, 7):
+    # --- FebFpga.App.DescrambleAsic[0...5] --- #
+    for i in range(6):
         top.set(f"expert.FebFpga.App.DescrambleAsic[{i}].enable", 1, "boolEnum")
         top.set(f"expert.FebFpga.App.DescrambleAsic[{i}].DarkTileSub", 0, "UINT8") # Actually UINT1
         top.set(f"expert.FebFpga.App.DescrambleAsic[{i}].GainEqualization", 0, "UINT8") # Actually UINT1
@@ -700,8 +700,8 @@ def ePixUHR3x2_cdict():
     top.set("expert.FebFpga.App.AsicGtClk.gtTxDataPathRst", 0, "boolEnum")
     top.set("expert.FebFpga.App.AsicGtClk.gtTxUserClkRst", 0, "boolEnum")
 
-    # --- FebFpga.App.AsicGtData[1...6] --- #
-    for i in range(1, 7):
+    # --- FebFpga.App.AsicGtData[0...5] --- #
+    for i in range(6):
         top.set(f"expert.FebFpga.App.AsicGtData[{i}].enable", 1, "boolEnum")
         top.set(f"expert.FebFpga.App.AsicGtData[{i}].gtStableRst", 0, "boolEnum")
         top.set(f"expert.FebFpga.App.AsicGtData[{i}].gtRxPllDataPathRst", 0, "boolEnum")
