@@ -158,6 +158,10 @@ int main(int argc, char* argv[])
             if (kwargs.first == "imgArray")          continue;
             if (kwargs.first == "segNums")           continue;
         }
+        if (para.detType == "epixuhr3x2") {
+            if (kwargs.first == "emulator")          continue;  // EpixUHR3x2
+            if (kwargs.first == "use_cpu")           continue;  // EpixUHR3x2
+        }
         if (para.detType == "jungfrau") {
             if (kwargs.first == "segNums")           continue;
             if (kwargs.first == "slsHosts")          continue;

@@ -32,6 +32,8 @@ EpixUHR3x2::EpixUHR3x2(Parameters& para, MemPoolGpu& pool) :
   // Use the CPU-side Drp::EpixUHR3x2 for panel setup, configuration and the
   // Python-driven bits.  The data description and handling in the GPU case are
   // different, so only that portion is borrowed.
+  // Route the panel's data to the GPU unless the .cnf says otherwise
+  para.kwargs.emplace("use_cpu", "0");
   _initialize<Drp::EpixUHR3x2>(para, pool);
 
   // The f/w sends the panel as one 336x576 image, so psana must not reassemble it

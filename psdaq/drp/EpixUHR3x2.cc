@@ -120,17 +120,28 @@ namespace Drp {
         return "186M";
       }();
 
-      // Argument string: "ssisissi"
+      // The h/w emulator lacks the ASICs; use_cpu=0 routes data to the GPU
+      auto flag = [&](const char* key, int dflt) {
+        auto it = m_para->kwargs.find(key);
+        return it != m_para->kwargs.end() ? std::stoi(it->second) : dflt;
+      };
+      int emulator = flag("emulator", 0);
+      int use_cpu  = flag("use_cpu",  1);
+
+      // Argument string: "ssissiii"
       // - s   : for `arg` (Not sure what this is for, but leaving for similarity sake)
       // - si  : for dev and lanemask
       // - ssi : for xpmpv, timebase, verbosity
-      m_root = _check(PyObject_CallFunction(init_func, "ssissi",
+      // - ii  : for emulator, use_cpu
+      m_root = _check(PyObject_CallFunction(init_func, "ssissiii",
                                             detname.c_str(),
                                             data_fpga.c_str(),
                                             data_lane_mask,
                                             xpmpv,
                                             timebase,
-                                            m_para->verbose));
+                                            m_para->verbose,
+                                            emulator,
+                                            use_cpu));
 
       if (m_root) {
         PyObject* o_virtChan = PyDict_GetItemString(m_root, "virtChan");

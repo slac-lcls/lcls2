@@ -150,7 +150,9 @@ def epixuhr3x2_init(
     lanemask=0x1,
     xpmpv=None,
     timebase="186M",
-    verbosity=0
+    verbosity=0,
+    emulator=False,
+    use_cpu=True,
 ):
     """Initialize the rogue device accessor objects.
 
@@ -180,7 +182,6 @@ def epixuhr3x2_init(
     # ... gets passed around via this horrible global variable strategy ...
     base = {}
     #  Connect to the camera and the PCIe card
-    emulator: bool = True  # Changed per Gabriel: False to initialize nonexistent ASICs
     detectorRoot = epixUhrDev.Root(
         # This specifies datadev for config and data C1100's
         ReadoutSystems = [devReadoutSystem], # List, as you could hvae multiple in 1 proc
@@ -215,6 +216,7 @@ def epixuhr3x2_init(
         readout_system_num=rosNum,
         logger_name=LOGGER_NAME,
         emulator=emulator,
+        use_cpu=use_cpu,
     )
     base["manager"] = manager
 
