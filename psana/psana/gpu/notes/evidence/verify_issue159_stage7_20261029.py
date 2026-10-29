@@ -58,7 +58,7 @@ changes = git('diff', '--name-only', B, BASE).splitlines()
 allowed_prefixes = ('psana/psana/gpu/notes/', 'psana/psana/gpu/docs/', 'psana/psana/tests/')
 allowed_script = 'psana/psana/gpu/scripts/bench_field_retirement.py'
 assert all(p.startswith(allowed_prefixes) or p == allowed_script for p in changes)
-# The complete tree diff above also checks native sources, build files and pins.
+# The tree diff above shows no native-source, build-file or dependency-pin change.
 # Independently check production GPU Python blobs against the measured installation.
 install = Path(cold['builds']['builds']['B']['install']) / 'lib/python3.11/site-packages/psana/gpu'
 gpu_blobs = {}

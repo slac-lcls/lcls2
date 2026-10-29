@@ -138,7 +138,7 @@ to invent a full breakdown. CUDA stream elapsed intervals can include host
 submission gaps.
 
 The delayed-consumer retirement case exposes the accepted limitation: an
-unaligned retained copy makes `finish_slot()` wait roughly **7.10 ms** on SDF
+unaligned retained copy makes `EventPool.finish_retire_next()` wait roughly **7.10 ms** on SDF
 (**7.098 ms** on Perlmutter), whereas aligned deferred retirement returns in
 about 11–13 µs and pays the remaining wait during drain. This is the remaining
 consumer wait, not a 7 ms image-copy kernel. The copy was materialized before
