@@ -5,6 +5,11 @@ experiment/run path. Start with the executable example in the [README](../README
 Psana calls `function(batch, stream)` once per nonempty selected execution
 subbatch. Public event iteration consumes results after that submission.
 
+Prefer this batched path for routine full-detector processing. Parsed per-event
+field copy properties support inspection and snapshots, with a host transfer
+on first CPU access and a device allocation/copy on each GPU-copy access; see [field copy costs and lifetime](gpu_xtc_parser.md#copy-property-costs-and-lifetime).
+Published task outputs have the separate delivery contract described below.
+
 ## Declare dependencies
 
 ```python

@@ -76,6 +76,12 @@ performs no calibration; user kernels consume the prepared array.
 
 ## Public event fields
 
+Use batched `GpuTask` inputs for routine full-detector processing on each event;
+see [user kernels](user_kernels.md). Per-event fields are useful for occasional
+CPU inspection, small metadata, or independent GPU snapshots. Accessing full
+images through these properties adds a host transfer on first CPU access and
+an independent device allocation/copy on each GPU-copy access.
+
 ```python
 field = evt.gpu.detector("jungfrau").field("raw", "raw")
 segments = field.on_cpu              # independent arrays by physical segment ID
@@ -123,6 +129,38 @@ Unlike task descriptors, the first public materialization may copy the small
 locator row to the CPU to determine dtype/shape. Copying a locator is not CPU
 parsing of XTC bytes. Event input access and published task output access are
 distinct APIs with distinct lifetimes.
+
+### Copy-property costs and lifetime
+
+Both copy properties resolve the original packed input through the safe field
+view path. They do not use the dense gathered task buffer. Payload copies below
+are per nonempty present segment, excluding locator metadata:
+
+| Field state | First `.on_cpu` on a result | Each `.on_gpu` call |
+| --- | --- | --- |
+| Aligned input | 1 D2H | 1 independent D2D |
+| Unaligned, no aligned copy yet | 1 alignment D2D + 1 D2H | 1 alignment D2D + 1 independent D2D |
+| Aligned field copy cached | 1 D2H | 1 independent D2D |
+
+`.on_cpu` blocks until its current-stream D2H completes and caches independent
+NumPy arrays on that `GpuFieldResult`. Repeated access returns the same host
+snapshot, including any caller mutations, with no additional payload transfer.
+It remains accessible after input retirement if populated beforehand; a first
+read after retirement raises. All-segment and segment-selected field results
+have separate host caches while sharing matching aligned device materializations.
+Cached or empty access does not necessarily synchronize.
+
+Every `.on_gpu` call allocates independent device output and submits its copy on
+CuPy's current stream. Mutating it does not modify input, the aligned field cache,
+or another copy. These returned arrays are caller-owned and outside the framework
+byte budget, though they still consume GPU memory. They survive safe input
+retirement; callers must establish normal stream ordering before reading them on
+another stream. Ownership alone is not a cross-stream readiness guarantee.
+
+Empty fields preserve dtype and shape without alignment materialization. Absent
+segments are omitted from the mapping. Direct byte D2H and single-copy unaligned
+GPU optimizations are deferred; the table describes current behavior. These
+contracts concern parsed input fields, not published task-result accessors.
 
 ## Task field descriptors
 
