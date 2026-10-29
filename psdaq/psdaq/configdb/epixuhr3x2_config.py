@@ -89,7 +89,7 @@ def supervisor_info(json_msg):
 
 
 class ReadoutSystemDefn(TypedDict):
-    """The multi-panel ePixUHR setup is split into readout systems as defined here.
+    r"""The multi-panel ePixUHR setup is split into readout systems as defined here.
 
     Per system (analgous to a panel, or single C1100 for data) you provide:
     - name: Must be of format ROS[\d] -- Using the config C1100 lane makes sense
