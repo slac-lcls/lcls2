@@ -304,9 +304,10 @@ The UUID is **never** read from CUDA. `getDeviceProperties()['uuid']` is a
 containing a zero byte yields a short, wrong value — measured on sdfampere014,
 where `c9ef90546100fd2e...` arrived as five bytes.
 
-MIG instances of one card share a bus id, so they group together here; sharing
-across them then fails at the IPC import, which aborts the job with a message
-naming `PSANA_GPU_SHARE_CONSTANTS=0`. See [Limits](#limits).
+MIG instances of one card share a bus id, so they group together here as peers
+although their memory is separate; sharing across them then fails at the IPC
+import, which aborts the job. MIG is unsupported and no environment variable
+makes it correct — see [Limits](#limits).
 
 ### Non-GPU roles participate
 
@@ -327,8 +328,7 @@ operation. It is identical for both roles:
 | `allgather` | hostnames, to colour the node split |
 | `Split` | node communicator |
 | `allreduce` SUM | `discovery/job-agreement` — a selection failure anywhere |
-| `allreduce` MIN | `discovery/budget` — free memory, job-wide |
-| `allreduce` MAX | `discovery/max-peers` — the busiest device |
+| `allreduce` MAX | `discovery/budget-verdict` — an explicit budget over-commits some device |
 
 Every role also splits the node communicator, which is not a `psana_comm`
 call and so pairs only with itself:
@@ -347,6 +347,7 @@ hold, which therefore cannot pair with anything of theirs:
 | `node_gpu_comm` | `allreduce` SUM, `discovery/node-agreement` |
 | `node_gpu_comm` | `allgather` of `(host, pci)` keys, then `Split` |
 | `device_comm` | `allreduce` MIN, `discovery/sharing-permitted` |
+| `device_comm` | `allreduce` MIN, `discovery/budget` — free memory on *this* card |
 
 The last one agrees `PSANA_GPU_SHARE_CONSTANTS` across the device group. It
 is read from each rank's own environment, so one rank acting on its own
@@ -367,11 +368,16 @@ variable: the multi-node harness set `CUDA_VISIBLE_DEVICES` without
 ```
 
 `usable_bytes` is 90% of *free* device memory, reduced with `MPI.MIN` over
-`psana_comm`. `cudaMemGetInfo` is not time-invariant -- peers sample it at
+`device_comm`. `cudaMemGetInfo` is not time-invariant -- peers sample it at
 slightly different moments while each other's CUDA contexts are still settling
 -- so limits derived independently sum to slightly more than the device. The
-minimum gives every peer one figure. (The Jungfrau shared caches do not enter
-this: `MPISharedMemory` is host memory, not device.)
+minimum gives every peer on one card one figure. (The Jungfrau shared caches do
+not enter this: `MPISharedMemory` is host memory, not device.)
+
+Over the **device group**, not the job. Capacity is a property of a card and is
+spent by that card's peers alone, so a job-wide minimum charged every rank for
+the busiest card in the job: 4 peers on an idle 80 GiB card alongside a loaded
+40 GiB card were sized at 10 GiB each rather than 20.
 
 `shared_bytes` is subtracted once, as device overhead, not per rank. The owner's
 limit adds it back, because `_OwnedBlock` already charges it to the owner's
@@ -387,15 +393,30 @@ already `usable / peers`, which is correct for a private copy per rank.
 
 An explicit `gpu_memory_budget_gb` is validated against the group total,
 since `N` ranks each claiming the whole device must not pass silently. The
-claim is checked against the **busiest** device in the job, reduced with
-`MPI.MAX`, rather than against this rank's own peer count: in an uneven 4+3
-layout a budget that over-commits the 4-peer device but fits the 3-peer one
-would otherwise be rejected on one device and accepted on the other, putting
-ranks on different paths. Rejecting job-wide is also the right answer — if any
-device cannot honour the budget, the job cannot run with it.
+**claim is per device and the verdict is job-wide**, which are two separate
+steps:
 
-Non-GPU roles apply the same check: both reductions are job-wide, so they can
-reach the same verdict instead of continuing while their peers abort.
+1. each device's peers check `budget x n_device_peers` against **their own**
+   `usable_bytes` — both figures reduced over the same `device_comm`;
+2. the outcome is reduced with `MPI.MAX` over `psana_comm`
+   (`discovery/budget-verdict`), so a budget that over-commits any card stops
+   every rank.
+
+Validating per device matters because capacity and peer count can come from
+different cards. With an explicit 9 GiB per worker, a 40 GiB card holding 4
+workers claims 36 GiB and a 20 GiB card holding 1 claims 9 — both fit. A
+job-wide capacity `MIN` paired with a job-wide peer `MAX` evaluates `9 x 4 > 20`
+and aborts a placement no device objects to. Combining the two reductions
+across devices is the bug; combining the *verdict* is required, because a
+device that carried on while another aborted would leave ranks on different
+collective paths, racing the abort rather than agreeing on it.
+
+Non-GPU roles hold `psana_comm` but not `device_comm`, so they cannot evaluate
+any device's claim. They join the verdict `MAX` with a neutral 0 and raise with
+the workers, instead of continuing while their peers abort. The two messages
+differ: a rank on the offending device reports the figures to fix, while a rank
+on a device that fits says so, since its own numbers add up and reporting them
+as the cause would read as a contradiction.
 
 ## Shared constants
 
@@ -505,6 +526,21 @@ allocation is written once at setup and never rewritten or replaced while the
 run is live, so a reference a callback keeps across events and steps is safe
 and keeps its values.
 
+Two consequences worth stating, because a user can only discover them by
+being surprised:
+
+- **Host mutation does not propagate.** `refresh()` runs once, at run setup.
+  Changing `dsparms.calibconst` after that does not update the device copy —
+  BeginStep drains and applies the host transition but does not fetch the
+  calibration DB, so there is nothing for a rescan to find. One constant set
+  per run is the supported model; dynamic mid-run updates are deferred (#168).
+- **Read-only is a contract, not enforcement.** CuPy arrays carry no
+  NumPy-style WRITEABLE flag and psana cannot intercept native writes, so
+  nothing stops a kernel writing into a constant. Doing so corrupts the
+  snapshot for every later batch on this rank *and* for every peer rank that
+  imported it over IPC — one writer, n corrupted readers, with no diagnostic.
+  That blast radius is why the contract is stated rather than left implicit.
+
 It is **not** valid after the run. Teardown frees the owner's allocation and
 closes the importers' mappings, so a reference held past that point dangles.
 Copy with `.get()` to outlive the run.
@@ -540,9 +576,14 @@ reset — the limits are set for one device copy, so every rank holding a full
 copy needs them returned — was the source of two separate defects.
 
 The abort names `PSANA_GPU_SHARE_CONSTANTS=0`, which is the deliberate way to
-run where IPC cannot work. **MIG needs it:** instances of one card share a PCI
-bus id, so discovery groups ranks on different instances as peers and the
-import necessarily fails.
+run where IPC cannot work, at n times the device memory for constants.
+
+**It is not a MIG mode.** Instances of one card share a PCI bus id, so
+discovery groups ranks on different instances as peers and the import
+necessarily fails; the opt-out gets past that failure but leaves the peer count
+and every rank's budget wrong, because the grouping it is working around is
+still in effect. MIG is unsupported and deferred — see [Limits](#limits) and
+issue #155.
 
 ## Bounded collectives
 
@@ -582,16 +623,19 @@ to do.
 
 ## Limits
 
-- **MIG: needs `PSANA_GPU_SHARE_CONSTANTS=0`, untested.** No MIG hardware is
-  advertised on S3DF. Grouping keys on the PCI bus id, which instances of one
-  card share, so ranks on different instances look like peers. Sharing is then
-  attempted, the IPC import fails — CUDA IPC cannot span instances, which have
-  separate memory — and the job aborts with a message naming the opt-out.
+- **MIG is unsupported, and there is no flag that makes it work.** No MIG
+  hardware is advertised on S3DF. Grouping keys on the PCI bus id, which
+  instances of one card share, so ranks on different instances look like
+  peers. Sharing is then attempted, the IPC import fails — CUDA IPC cannot
+  span instances, which have separate memory — and the job aborts.
 
-  With sharing disabled the job runs: every rank holds its own copy. The peer
-  count is still inflated by however many instances were merged, so each
-  rank's limit is `usable / inflated_peers` and a large constant set can
-  exhaust it, which is why MIG is listed as untested rather than supported.
+  `PSANA_GPU_SHARE_CONSTANTS=0` gets past that abort and the job runs, but it
+  does **not** correct the peer count or the budget: two single-worker
+  instances with 9 GiB usable each should budget 9 GiB apiece, and being
+  counted as two peers gives them 4.5 GiB. So it is not a MIG configuration,
+  supported or otherwise. Treat MIG as unsupported; the work is deferred per
+  issue #155, which records it as follow-up before any MIG deployment rather
+  than a blocker for the current non-MIG scope.
 
   Separating instances needs an identity neither CUDA nor plain NVML
   enumeration provides: `getDeviceProperties()['uuid']` is truncated at the
@@ -604,9 +648,10 @@ to do.
   shared copy per node. Grouping across nodes is tested; sharing across them is
   impossible.
 - **MPI only.** `RunSerial` has no peers, so sharing does nothing there.
-- **The automatic budget takes the job-wide minimum**, so one busy GPU, or a
-  mix of 40 GB and 80 GB cards, lowers every rank's limit. Correct for
-  validating an explicit budget, pessimistic for automatic sizing.
+- **The automatic budget takes the minimum over each device group**, so the
+  busiest peer on a card sets the figure for its peers. A mix of 40 GB and
+  80 GB cards no longer drags the roomier card down, but one rank holding a
+  stale pool still lowers its own card's peers.
 - **No throughput claim.** The benefit measured is device memory, not
   events/s; whether reclaimed VRAM converts into throughput depends on the
   configuration being memory-bound.

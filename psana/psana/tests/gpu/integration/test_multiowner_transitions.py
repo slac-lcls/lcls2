@@ -76,7 +76,19 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
         assert order == ['consumer'] * len(windows) + ['dispatch']
         np.testing.assert_array_equal(copied.get(), expected[0])
         assert cp.asnumpy(copied_gain) == cp.asnumpy(old_gain) == 1
-        assert cp.asnumpy(constants.get('camera', 'gain')) == (2 if service == TransitionId.BeginStep else 1)
+        # The device array keeps its setup value, whatever the transition.
+        #
+        # This used to expect 2 on BeginStep, because the old contract
+        # re-read the constants at every step and `dispatch` above mutates
+        # the host array in place. One constant set per run replaced that:
+        # psana does not re-read the calibration DB at BeginStep, so the
+        # mutation models something that cannot happen to a real job, and the
+        # device copy established at setup is what every later event sees.
+        #
+        # That is also what makes an array returned by get() safe to hold for
+        # the whole run -- it is never rewritten or replaced while the run is
+        # live.
+        assert cp.asnumpy(constants.get('camera', 'gain')) == 1
     finally:
         constants.close()
         for _ in m.event_pool.flush():

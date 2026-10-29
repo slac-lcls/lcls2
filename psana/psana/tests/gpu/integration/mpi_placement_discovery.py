@@ -230,12 +230,17 @@ def main():
         failures.append(f'{placement.n_device_peers} peers reported but '
                         f'{expected_peers} ranks share this host and device')
 
-    # usable_bytes is reduced with MPI.MIN over the whole communicator, so
-    # every rank in the job must hold the same figure -- including across
-    # nodes, where free memory genuinely differs.
-    if len(set(all_budgets)) != 1:
-        failures.append(f'usable_bytes differs across ranks: '
-                        f'{sorted(set(all_budgets))}')
+    # usable_bytes is reduced with MPI.MIN over device_comm, so every peer on
+    # one card must hold the same figure -- otherwise their shares do not sum
+    # to the device. Checked per device rather than job-wide: free memory
+    # genuinely differs between cards, and charging every rank for the busiest
+    # one left roomier cards partly unused.
+    peer_budgets = device_comm.allgather(placement.usable_bytes)
+    info['peer_budgets'] = sorted(set(peer_budgets))
+    if len(set(peer_budgets)) != 1:
+        failures.append(f'usable_bytes differs among peers on one device: '
+                        f'{sorted(set(peer_budgets))}')
+    info['job_budgets'] = sorted(set(all_budgets))
 
     if args.expect_devices and len(distinct_devices) != args.expect_devices:
         failures.append(f'{len(distinct_devices)} distinct devices discovered, '

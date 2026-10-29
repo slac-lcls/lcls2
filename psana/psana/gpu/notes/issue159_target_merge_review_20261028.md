@@ -119,3 +119,27 @@ alignment implementation against the older, already superseded dependency.
 Waiting until after Stage 5 would make us repeat integration checks and risk
 confounding accessor costs with changed budget/teardown behavior. Merging now
 makes later validation apply to the actual target branch.
+
+## Integration PR handoff — October 28
+
+Following the user's approval, the reviewed target was merged on
+`integrate/issue159-pr187-pr208`, based on fix-branch commit `87bce00cb`.
+Merge commit `31c4c2f214de14628820cfdfdf309b74367620e6` has parents
+`87bce00cb465b1b1766e631d07227521222caba5` and
+`8cf05e86a7511f84a24f82b9c9720bc2308c471d`. No conflicts or manual production
+edits were needed. Its tree differs from the tested trial tree only in the three
+review/plan/evidence note files added by `87bce00cb`; production, tests, and build
+inputs match exactly. The existing 990-unit/three-probe results therefore apply
+to the same code; they were not rerun or relabeled as a new hardware campaign.
+
+Worktree:
+`/sdf/scratch/users/m/monarin/gpu-validation/issue159-pr187-pr208-pr-20261028/source`
+
+The PR targets `fix/gpu-unaligned-reads-159`, which remains unchanged. Stage 5
+waits for independent agent review and acceptance of this integration. Reviewer
+focus: shared owner/importer/private budget interactions, early-exit ordering
+with retained field consumers, and PR208's retained-versus-borrowed reporting.
+Focused CUDA/MPI validation remains pending before Stage 5; the source-equivalent
+CPU checks do not establish GPU lifetime or collective teardown correctness.
+Keep the original frozen A unchanged and use the updated target for subsequent
+matched acceptance, as specified above.

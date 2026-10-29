@@ -571,11 +571,27 @@ class RunParallel(Run):
                     self.ana_t_gauge.set(ana_rate)
                     st = time.time()
         finally:
-            # Order matters: SharedRequestedConstants.close() barriers on
-            # device_comm, so the manager must close before the communicator
-            # is freed. Freeing it is not optional -- discovery creates one
-            # per run, and a job over many runs would otherwise accumulate
-            # them until it hits the MPI communicator limit.
+            # Close the batch iterator FIRST. BigDataNode.start()'s own finally
+            # drains whatever EB traffic this rank still owes -- a look-ahead
+            # request is outstanding whenever the consumer stopped early -- and
+            # it must run before any collective. gpu_manager.close() barriers
+            # on device_comm while releasing shared constants, so closing the
+            # manager while this rank still owes the EB a receive lets it enter
+            # a barrier that a peer cannot reach: the EB is blocked sending to
+            # this rank, and that peer is waiting on the EB. Only the bounded
+            # barrier's timeout breaks it.
+            #
+            # close() on an already-exhausted generator is a no-op, so this is
+            # free on the normal path.
+            close_iter = getattr(evt_iter, 'close', None)
+            if close_iter is not None:
+                close_iter()
+            # Then the manager. Order still matters against the communicator:
+            # SharedRequestedConstants.close() barriers on device_comm, so the
+            # manager must close before device_comm is freed. Freeing it is not
+            # optional -- discovery creates one per run, and a job over many
+            # runs would otherwise accumulate them until it hits the MPI
+            # communicator limit.
             if gpu_manager is not None:
                 gpu_manager.close()
             # Drop the inspection handle too. It is only there for tests, but

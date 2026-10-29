@@ -1,5 +1,25 @@
 # Issue 159: alignment-safe GPU reads
 
+
+## Current status — October 29
+
+Claude's [final field review](https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5689634175) found no correctness or coverage blocker
+and supports the accepted deferral of per-event API optimization. The technical
+gates are satisfied: CPU, CUDA, memcheck, MPI/reporting, accepted cold batched
+input/gather A/B and field access/retirement measurements.
+
+Both requested follow-ups are complete. [SDF job 42263681](issue159_pr246_fields_20261028.md)
+finished **0:0** on sdfampere016, with all timed processes/preflights and both
+8,093-file hash checks passing; independently recomputed results match the
+review. [#256](https://github.com/slac-lcls/lcls2/issues/256) tracks the deferred unaligned-copy retirement wait and
+slot-wide accumulation/admission-planning limitation. Perlmutter and SDF results
+remain separate. No new performance campaign or production change is required
+for these documentation follow-ups.
+
+PR246 remains open for the final follow-up check and merge decision. Stage 5
+will be a separate implementation PR; it has not started. Historical validation
+and planning details follow and do not override this current status.
+
 Updated 2026-10-28. Status: PR #187 comparison completed; A frozen; stage-2
 measured overhead accepted by Mona for now; stage-3 focused validation and warm
 screen complete; stage-4 safe field views implemented, focused checks passed, and first staged screen failed cache preparation; retry 41602068 also failed its pre-timing cache gate; cold screen 41604951 completed all 16 samples. This document records the agreed scope, staged implementation,
@@ -34,10 +54,48 @@ PR187 and PR208 have merged into `features/psana2-gpu` at `8cf05e86a`.
 [Integration review](issue159_target_merge_review_20261028.md) recommends a
 normal merge **before Stage 5**. An isolated merge/build passed 990 CPU unit
 tests plus three field-copy/accounting probes, with the alignment production
-patch preserved exactly. The active branch has not yet integrated this update.
+patch preserved exactly. The update is now committed on the separate
+`integrate/issue159-pr187-pr208` branch for review; the main fix branch has not
+yet integrated it.
 Keep old frozen A intact; establish a new unfixed target reference, rerun focused
 CUDA/MPI checks for the changed dependency, and then implement Stage 5.
 No accessor-design change or additional A/A campaign is required.
+
+## Review workflow — October 28
+
+Substantial steps use a separate branch/worktree and a PR targeting
+`fix/gpu-unaligned-reads-159`. Keep dependency integration and implementation
+stages in separate PRs. Each PR records its scope, validation evidence, known
+limitations, and the specific ownership/budget/performance interactions to review.
+Pause progression to the next substantial step until another agent has reviewed
+the PR, findings are resolved, and the step is accepted and merged. Do not
+self-merge or start Stage 5 while this dependency-integration PR is awaiting
+review. Small corrections and review fixes can stay in the current step's PR.
+The main fix branch remains the eventual issue159 PR source targeting
+`features/psana2-gpu`.
+
+Independent review and validation now run in parallel; see the
+[review prompt](issue159_review_prompt_20261028.md) and
+[validation plan/results](issue159_parallel_validation_20261028.md).
+The integrated runtime passed 333 GPU tests and 315 selected memcheck checks
+with zero sanitizer errors. [MPI/reporting validation](issue159_mpi_reporting_20261028.md)
+passed 16 combined field cases and two real-data pixel comparisons. The report
+separately records an inherited host calibration scalar-shape limitation; the
+focused scalar IPC test injects the intended shapes at the GPU-manager boundary.
+Claude's initial review at `e7c700ba2` found no blockers. The
+[review follow-up](issue159_review_followup_20261028.md) adds the empty-field fast
+path, cumulative-budget and reporting tests, and user documentation. Focused
+validation passed 377 CPU tests and 302 device / 302 memcheck cases (zero errors).
+The inherited host scalar transport finding is tracked as #247. Claude's follow-up
+review accepted all six dispositions at `405f868ed`. The authorized
+[matched cold screen](issue159_pr246_cold_20261028.md) completed as job 42255812
+with fresh builds at A `8cf05e86a` and B `405f868ed`. Mona accepts the mean loop
+increases of 1.32% bulk-off and 1.95% bulk-on for now; no optimization or repeat
+cold screen is required for this integration. The separate field-view benchmark has also completed and its disposition
+is supported by Claude's review; #256 tracks the deferred optimization. Stage 5 follows
+as a separate implementation PR after integration is accepted.
+Measure bulk-on unaligned field retirement separately before considering any
+change to its current host-wait behavior.
 
 ## Goal summary
 

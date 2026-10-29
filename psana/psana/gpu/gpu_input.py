@@ -829,7 +829,8 @@ class GpuFieldResult:
             source = dgram.data_gpu
             if offset < 0 or offset + nbytes > int(source.nbytes):
                 raise RuntimeError("GPU locator is outside the input buffer")
-            if (source.data.ptr + offset) % dtype.itemsize == 0:
+            # Empty fields have no typed loads and need no aligned backing.
+            if nbytes == 0 or (source.data.ptr + offset) % dtype.itemsize == 0:
                 values[segment] = source[offset:offset + nbytes].view(dtype).reshape(shape)
             else:
                 values[segment], ready = self._materialize(
