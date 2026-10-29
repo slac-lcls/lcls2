@@ -70,7 +70,7 @@ def epix100_cdict(data_from_yaml):
     
     for entry in entry_list:
         temp_path=f"expert.{'.'.join(entry[0][1:])}"
-        configdb_path = re.sub("\[(.*?)\]", "_\\1", temp_path)
+        configdb_path = re.sub(r"\[(.*?)\]", r"_\1", temp_path)
         info = retrieve_rogue_information(entry[0], tree_dict)
         if info['class'] == 'LinkVariable':
             print(f"Skipping {configdb_path}: Linked Variable")
