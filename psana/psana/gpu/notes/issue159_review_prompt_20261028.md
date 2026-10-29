@@ -1,5 +1,10 @@
 # Review prompt: issue159 Stages 1–4, then PR246
 
+> Historical PR246 review prompt. PR246 merged at `019855bc1` on October 29.
+> Its direct-byte-D2H Stage 5 expectation has been superseded. For the current
+> plan review, use [the revised Stage 5 prompt](issue159_stage5_revised_plan_20261029.md).
+> Existing Stages 1–4 reviews and acceptance are not reopened by that plan change.
+
 ## Follow-up review after the initial verdict
 
 Claude's initial review covered head `e7c700ba2` and found no blocking correctness
