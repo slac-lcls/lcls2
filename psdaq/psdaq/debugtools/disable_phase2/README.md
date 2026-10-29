@@ -106,6 +106,53 @@ and DRP/control logs. Raw evidence remains on SLAC storage:
   candidate-inhibit-132228/
 ```
 
+## Recorded follow-up: tmo101907427 run 275
+
+Later on 2026-10-28, the same candidate launch recorded run 275 after the
+operator restored group 2 to event code 136. Control logs show two pause/resume
+operations followed by the final stop: three Enable/Disable intervals within
+one BeginStep/EndStep, then EndRun (17:12:44–17:13:17 local time).
+
+All 11 full XTC streams and their 11 SMD counterparts were read through their
+complete datagram boundaries. Every file contains three Enables and three
+Disables, with identical transition timestamps across streams. Every Disable
+has zero damage and the full group mask `0x25`; there are no duplicate or
+unpaired Disables. EndStep and EndRun are present in all files. The Disable
+timestamps (DAQ epoch seconds.nanoseconds) are:
+
+- `1162080775.157645594`
+- `1162080785.579961059`
+- `1162080795.611422279`
+
+This checks recorded transition delivery and pause/resume. It is **not a full
+recorded-event integrity pass**:
+
+- The group 2 streams contain zero L1Accept events. The event-bearing streams
+  carry mask `0x21` (groups 0 and 5), consistent with no group 2 events after
+  restoring code 136. This run therefore does not test group 2's final events.
+- `epics_0` (s007), `timing_0` (s008), and `im5k4_0` (s009) each record
+  103, 63, and 59 events in the three enabled intervals (225 total).
+- The full XTC `im5k4_0` stream marks all 225 events with damage `0x0040`
+  (TimedOut), including events before the first pause. Its SMD top-level
+  damage field is zero, so the full XTC check is essential. The other two
+  event-bearing full XTC streams have zero top-level event damage. The camera
+  timeout cause has not been established; it is not attributed to this fix.
+- Event acquisition resumes after each pause, but independent accepted-event
+  counters were not captured for this run, so complete final-event retention
+  is not established. This was one step, not a next-step test.
+
+The installed `xtcreader -s` independently confirmed 225 damaged events in
+s009 and zero events in s000. The run interval's TEB/MEB and participating DRP
+logs contained no `<E>`/`<C>`, pulse-ID regression, or out-of-bounds markers;
+that does not negate the damage recorded in s009. Control completed all
+transitions and returned to Unallocated. A later read confirmed group 2 code
+136, inhibit 0 disabled, interval/limit 1/1; these post-run settings do not
+measure the inhibit state at the earlier Disable insertion times.
+
+The `recorded_run275` entry in [tmo-20261028.json](tmo-20261028.json) records
+file hashes, stream identities, transition results, event counts, and damage.
+Detailed local evidence is in the existing evidence root's `run275/` directory.
+
 ## Reproduction method
 
 Use an agreed hardware test window and separate launch/build configuration.
@@ -182,9 +229,10 @@ backpressure as well as programmable inhibition. Before operational adoption:
 
 - Verify Disable delivery with genuine receiver backpressure and confirm
   transition-buffer capacity/overflow behavior with the firmware owner.
-- In a separately authorized recording test, verify the final accepted events,
-  the next step, and exactly one Disable per step in each stream with the
-  expected readout-group mask. Check damage and event-builder errors.
+- Extend the recorded test with events in every group: verify final accepted
+  events and the next step, and check exactly one Disable per enabled interval
+  in each stream with the expected group mask. Resolve or account for the
+  camera damage in run 275 and check event-builder errors.
 - Inspect for stray late transitions after a failed baseline and restart.
   Duplicate/retry behavior was not tested because this harness never retries.
 - Validate other hutch topologies, including MFX, separately.

@@ -517,5 +517,298 @@
         "InhLimit0": 1
       }
     }
-  ]
+  ],
+  "recorded_run275": {
+    "experiment": "tmo101907427",
+    "run": 275,
+    "control_launch": "28_13:19:50",
+    "disable_mode": "0x000",
+    "disable_timestamps": [
+      "1162080775.157645594",
+      "1162080785.579961059",
+      "1162080795.611422279"
+    ],
+    "all_22_files_matching_transition_sequences": true,
+    "all_disable_group_masks": "0x25",
+    "all_disable_damage": 0,
+    "event_group_mask": "0x21",
+    "interpretation": "Recorded transition delivery passed; event integrity remains partial: no group 2 events, im5k4_0 TimedOut damage, and no independent accepted-event counter comparison.",
+    "post_run_group2_settings": {
+      "capture_time": 1793232956.274264,
+      "pvs": {
+        "DAQ:NEH:XPM:2:PART:2:L0Select_EventCode": 136,
+        "DAQ:NEH:XPM:2:PART:2:InhEnable0": 0,
+        "DAQ:NEH:XPM:2:PART:2:InhInterval0": 1,
+        "DAQ:NEH:XPM:2:PART:2:InhLimit0": 1
+      }
+    },
+    "streams": [
+      {
+        "stream": "000",
+        "alias": "atm_piranha_ip1_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s000-c000.xtc2",
+          "sha256": "1d95826fad570dcaa0479cefd4232343aa7f17e2b1319f353081945df7ef6cb5",
+          "bytes": 75153
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s000-c000.smd.xtc2",
+          "sha256": "d358996e9b1b479826f119c23f0393d2fefba685a6f94c4d53858570afe9a0d1",
+          "bytes": 77249
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "001",
+        "alias": "mbes_hsd_1",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s001-c000.xtc2",
+          "sha256": "29d2f20d68be8c451f93bdd05eed878edf1c4cfb32e4a8c9cffee2a149f759b8",
+          "bytes": 35128
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s001-c000.smd.xtc2",
+          "sha256": "e57ced367ad94c95ba9e2f3cdf57dfbaa540567e08e810a346ee9510ac01e280",
+          "bytes": 37224
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "002",
+        "alias": "bld_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s002-c000.xtc2",
+          "sha256": "be362dcdf9ac72a25650c69d844852582ee28123db1f29c7ab537522979ffd48",
+          "bytes": 29736
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s002-c000.smd.xtc2",
+          "sha256": "d7db5c16895baeb2d688182aa58b637ea7d11a49bceb58a2d0806015d1ca5f3e",
+          "bytes": 31832
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "003",
+        "alias": "fzp_opal_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s003-c000.xtc2",
+          "sha256": "078ac5af5e847af795b3faa377639b89807895aca0d3b4a63194c307bf525bc0",
+          "bytes": 36104
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s003-c000.smd.xtc2",
+          "sha256": "fbab3b9e689ce2137df9bdec443d99eb27a33df6f9e17d0761f90622a069e669",
+          "bytes": 38200
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "004",
+        "alias": "fzp_piranha_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s004-c000.xtc2",
+          "sha256": "c8dd259fe1c75b5926b90377c383b044148f0abb0a80d3c78eca49d210d44b77",
+          "bytes": 56832
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s004-c000.smd.xtc2",
+          "sha256": "660f0955c10b692edf1bb222180bca7fd56d8ff48d6eec1315dd9b5a1a9a6527",
+          "bytes": 58928
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "005",
+        "alias": "mbes_hsd_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s005-c000.xtc2",
+          "sha256": "0f4acd9b8650819e3f5247af2fba7f41c29ea2bf3c533e5f8b69d6b33b1bed6c",
+          "bytes": 35128
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s005-c000.smd.xtc2",
+          "sha256": "5978bb9662a0e6bf85638c096601fdc1f2f83f4bed02a1a6490489b767fe9a28",
+          "bytes": 37224
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "006",
+        "alias": "laser_wav8_ip1_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s006-c000.xtc2",
+          "sha256": "b7dc47fc83f50276c99bb6b9fcad3788beca478bd3f7c448980b242f27b6649d",
+          "bytes": 96314
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s006-c000.smd.xtc2",
+          "sha256": "4cf2e0433749a6d2b028fe8a284d9d962b50afa15491264c6cc637ce271ae7fa",
+          "bytes": 98410
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "007",
+        "alias": "epics_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s007-c000.xtc2",
+          "sha256": "37076c504d853f2a22b91b180a6516a14db8ffc769e4024472e8288f648efb4e",
+          "bytes": 384736
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s007-c000.smd.xtc2",
+          "sha256": "ddaf091dc66a6db4c86cf403a44a148cfb1bf1bc1b2d6c88dcc1baab81253010",
+          "bytes": 398532
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          103,
+          63,
+          59
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "008",
+        "alias": "timing_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s008-c000.xtc2",
+          "sha256": "1c07f138895a96efb428b48da2a8ee0fbd0b8cfe84d41dbdd1a87ee0f618ad20",
+          "bytes": 149733
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s008-c000.smd.xtc2",
+          "sha256": "28d4878e2d9a3dbe9c36b994b132c8fe00a0d12615ffabe52ebe68d40b79923d",
+          "bytes": 76004
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          103,
+          63,
+          59
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "009",
+        "alias": "im5k4_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s009-c000.xtc2",
+          "sha256": "b30f638cf9d5688f92c4b49c8c2c7d0eaaff05a95e140eaa8a2101abcd623d0f",
+          "bytes": 14292
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s009-c000.smd.xtc2",
+          "sha256": "ebbcf0a0c0f4598420f8aebe953cab7e7b05d9a0a977a6c005b44476c769cbc0",
+          "bytes": 28088
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          103,
+          63,
+          59
+        ],
+        "full_xtc_event_damage": {
+          "0x0040": 225
+        },
+        "smd_top_level_event_damage": {}
+      },
+      {
+        "stream": "010",
+        "alias": "itof_hsd_0",
+        "full_xtc": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/tmo101907427-r0275-s010-c000.xtc2",
+          "sha256": "7139d3f69ef20666c42c6902a46acf91d01512f993314f21bac2bdc82f8471bc",
+          "bytes": 35128
+        },
+        "smd": {
+          "file": "/sdf/data/lcls/ds/tmo/tmo101907427/xtc/smalldata/tmo101907427-r0275-s010-c000.smd.xtc2",
+          "sha256": "70df5122213144617e2fefc6110b49de68013d2481c5fdb814661e71a9bf63b3",
+          "bytes": 37224
+        },
+        "enable_count": 3,
+        "disable_count": 3,
+        "endrun_count": 1,
+        "events_per_enabled_interval": [
+          0,
+          0,
+          0
+        ],
+        "full_xtc_event_damage": {},
+        "smd_top_level_event_damage": {}
+      }
+    ]
+  }
 }
