@@ -33,6 +33,23 @@ its own Git configuration and object storage; the existing shared checkout's
 remotes and worktrees were not renamed or reset. Generated builds, frozen
 validation inputs and run artifacts remain on scratch at their recorded paths.
 
+## Completed branch cleanup
+
+After migration, Mona authorized cleanup of the agreed redundant branches.
+Eleven branch names in the old shared local repository and eleven upstream
+branches were deleted, including the redundant upstream fix branch. The active
+`monarin/lcls2:fix/gpu-unaligned-reads-159` branch remains the integration branch.
+Four archives with unique history were first preserved and verified as tags in
+`monarin/lcls2` under `archive/issue159-cleanup-20261029/`.
+
+The [cleanup record](evidence/issue159_branch_cleanup_20261029.json) lists every
+deleted name and original commit, plus archive tags and retained worktrees.
+The four completed step worktrees are now detached at their original commits;
+no worktree directory, frozen build or validation artifact was removed. The old
+main fix worktree's uncommitted changes remain untouched. Open documentation
+PR branches and other contributors' branches remain. Use the personal fork for
+future work; the upstream fix branch no longer exists.
+
 ## Prompt for Claude
 
 Continue as the reviewer for issue159, using the new personal-fork workflow.
