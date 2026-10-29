@@ -12,6 +12,11 @@ change APIs, add tests, launch jobs, or claim that the remaining work is complet
 After this plan is accepted, execute the bounded check below in a separate PR
 into `fix/gpu-unaligned-reads-159` if changes are needed.
 
+Claude [reviewed planning head `ee39d266c`](https://github.com/slac-lcls/lcls2/pull/258#pullrequestreview-5700826456)
+on October 29 and found no blockers. The documentation follow-up records the
+verified coverage gaps, ownership/cache details and superseded walkthrough
+promise below. Stage 5 implementation and tests have not started.
+
 ## Starting point and what changes
 
 PR246 merged into the main fix branch at
@@ -52,6 +57,15 @@ event to the batched task/output path. State costs in concrete terms: device
 allocation/copy for `.on_gpu`, host transfer and synchronization for `.on_cpu`,
 and possible first-access materialization for `on_gpu_view()`.
 
+On first nonempty `.on_cpu` access, the caller blocks until the current-stream
+D2H transfer completes. This is not a device-wide synchronization guarantee;
+cached or empty access does not necessarily synchronize. The host cache belongs
+to each `GpuFieldResult`: all-segment and segment-selected requests have separate
+host caches, even though they share the root lease's aligned device copy for a
+matching field/segment. Final `.on_gpu` copies are caller-owned allocations
+outside the framework's byte budget; they still consume device memory. The
+internal aligned field materialization remains framework-budgeted.
+
 ## Bounded Stage 5 compatibility check
 
 First inventory existing tests and actual call sites. Record what is already
@@ -66,6 +80,20 @@ proof that no external consumers exist. Useful files to inspect:
 - `tests/gpu/integration/test_gpu_field_views_device.py`,
   `test_gpu_input_copy_device.py` and existing related result-lifetime tests.
 - User docs `gpu/docs/gpu_xtc_parser.md` and `gpu/docs/user_kernels.md`.
+
+The review identified these concrete starting points for the coverage inventory:
+
+- `tests/gpu/unit/test_gpu_input.py` already checks aligned field CPU values,
+  segment selection, shape and dtype. `tests/gpu/integration/test_pixel_exact.py`
+  checks real-data CPU fields, a scalar field and cached host access after input
+  slots retire. Preserve and reuse that coverage.
+- Missing focused coverage includes exact unaligned `.on_cpu` / `.on_gpu` data,
+  scalar and empty accessor cases, field-level `.on_gpu` mutation independence,
+  and logical accessor copy counts. Existing `on_gpu_view()` tests establish
+  related alignment behavior but do not exercise these copy properties.
+- Tests of other result classes do not establish `GpuFieldResult` compatibility.
+  Confirm the remaining gaps during the audit before adding tests; this list is
+  a review finding, not a claim of completed Stage 5 validation.
 
 The required behavior, using representative aligned/unaligned fields:
 
