@@ -1,0 +1,3933 @@
+{
+  "schema_version": 2,
+  "title": "Follow a psana event",
+  "subtitle": "From small-data metadata to user analysis",
+  "baseline": {
+    "repo": "https://github.com/slac-lcls/lcls2",
+    "branch": "features/psana2-gpu",
+    "commit": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8",
+    "inspected": "2026-10-15",
+    "status": "implemented-reference",
+    "issues_checked": "2026-10-15",
+    "source_paths": [
+      "psana/psana/datasource.py",
+      "psana/psana/event.py",
+      "psana/psana/eventbuilder.pyx",
+      "psana/psana/gpu/context.py",
+      "psana/psana/gpu/gpu_batch.py",
+      "psana/psana/gpu/gpu_d2h.py",
+      "psana/psana/gpu/gpu_events.py",
+      "psana/psana/gpu/gpu_input_group.py",
+      "psana/psana/gpu/gpu_input_window.py",
+      "psana/psana/gpu/gpu_kvikio_read.py",
+      "psana/psana/gpu/gpu_producer.py",
+      "psana/psana/gpu/gpu_stream.py",
+      "psana/psana/gpu/gpu_task.py",
+      "psana/psana/gpu/gpu_task_batch.py",
+      "psana/psana/gpu/gpudgram/batch.py",
+      "psana/psana/gpu/gpudgram/parser.py",
+      "psana/psana/parallelreader.pyx",
+      "psana/psana/psexp/event_manager.py",
+      "psana/psana/psexp/eventbuilder_manager.py",
+      "psana/psana/psexp/events.py",
+      "psana/psana/psexp/mpi_ds.py",
+      "psana/psana/psexp/node.py",
+      "psana/psana/psexp/run.py",
+      "psana/psana/psexp/serial_ds.py",
+      "psana/psana/psexp/smdreader_manager.py",
+      "psana/psana/psexp/step.py",
+      "psana/psana/smdreader.pyx"
+    ]
+  },
+  "scope": "Describes features/psana2-gpu at inspected commit 410ebba1ce4d (2026-10-15). Your checkout may differ. Verify behavior in its source; proposals are labeled separately.",
+  "nodes": [
+    {
+      "id": "setup",
+      "title": "Choose a run",
+      "tag": "DataSource / Run",
+      "role": "All psana ranks; setup specializes by role",
+      "serial": "One process uses SerialDataSource and RunSerial.",
+      "summary": "The public DataSource factory chooses the experiment/run implementation. File discovery, Configure and BeginRun establish detector metadata before steady-state event delivery.",
+      "inputs": [
+        "DataSource(exp=…, run=…) arguments",
+        "Configure, BeginRun and calibration metadata"
+      ],
+      "outputs": [
+        "Configured run and detector interfaces",
+        "Stream/file mapping and CPU/GPU selection"
+      ],
+      "flow": [
+        "User script calls DataSource(), then ds.runs().",
+        "MPIDataSource creates role-specific run behavior; Communicators defines SMD0, EB, BD and optional small-data service ranks.",
+        "RunSerial constructs Events for CPU mode or GpuEventManager for GPU mode. Direct files, shared memory and DRP have separate paths outside this map."
+      ],
+      "ownership": "The run owns configuration and calibration context. MPI CPU calibration distribution can use shared host memory; that is separate from GPU constant storage.",
+      "sources": [
+        {
+          "path": "psana/psana/datasource.py",
+          "symbol": "DataSource",
+          "needle": "def DataSource("
+        },
+        {
+          "path": "psana/psana/psexp/mpi_ds.py",
+          "symbol": "MPIDataSource",
+          "needle": "class MPIDataSource"
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "RunSerial",
+          "needle": "class RunSerial"
+        },
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "Communicators",
+          "needle": "class Communicators"
+        }
+      ],
+      "notes": [],
+      "map_title": "Choose a run",
+      "call_paths": [
+        {
+          "title": "Construct the DataSource",
+          "when": "Experiment/run entry point; MPI and serial constructors are alternatives.",
+          "roots": [
+            {
+              "label": "DataSource()",
+              "note": "Select a DataSource implementation.",
+              "source": {
+                "path": "psana/psana/datasource.py",
+                "symbol": "DataSource",
+                "needle": "def DataSource(*args, **kwargs):"
+              },
+              "children": [
+                {
+                  "label": "MPIDataSource.__init__()",
+                  "note": "MPI mode: configure communicators and stream setup.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "MPIDataSource.__init__",
+                    "needle": "    def __init__(self, comms, *args, **kwargs):",
+                    "scope": "class MPIDataSource(DataSourceBase):"
+                  }
+                },
+                {
+                  "label": "SerialDataSource.__init__()",
+                  "note": "Serial mode: discover files and configure local reading.",
+                  "source": {
+                    "path": "psana/psana/psexp/serial_ds.py",
+                    "symbol": "SerialDataSource.__init__",
+                    "needle": "    def __init__(self, *args, **kwargs):",
+                    "scope": "class SerialDataSource(DataSourceBase):"
+                  },
+                  "children": [
+                    {
+                      "label": "SerialDataSource._setup_run()",
+                      "note": "Open/configure the run input.",
+                      "source": {
+                        "path": "psana/psana/psexp/serial_ds.py",
+                        "symbol": "SerialDataSource._setup_run",
+                        "needle": "    def _setup_run(self):",
+                        "scope": "class SerialDataSource(DataSourceBase):"
+                      },
+                      "children": [
+                        {
+                          "label": "SerialDataSource._get_configs()",
+                          "note": "Create SmdReaderManager and read Configure.",
+                          "source": {
+                            "path": "psana/psana/psexp/serial_ds.py",
+                            "symbol": "SerialDataSource._get_configs",
+                            "needle": "    def _get_configs(self):",
+                            "scope": "class SerialDataSource(DataSourceBase):"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Yield a configured run",
+          "when": "The user subsequently advances ds.runs(); this is a separate call from DataSource construction.",
+          "roots": [
+            {
+              "label": "MPIDataSource.runs()",
+              "note": "MPI alternative.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "MPIDataSource.runs",
+                "needle": "    def runs(self):",
+                "scope": "class MPIDataSource(DataSourceBase):"
+              },
+              "children": [
+                {
+                  "label": "MPIDataSource._start_run()",
+                  "note": "Locate BeginRun.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "MPIDataSource._start_run",
+                    "needle": "    def _start_run(self):",
+                    "scope": "class MPIDataSource(DataSourceBase):"
+                  }
+                },
+                {
+                  "label": "RunParallel.__init__()",
+                  "note": "Construct role-specific run state and initialize calibration.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel.__init__",
+                    "needle": "    def __init__(",
+                    "scope": "class RunParallel(Run):"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "SerialDataSource.runs()",
+              "note": "Serial alternative.",
+              "source": {
+                "path": "psana/psana/psexp/serial_ds.py",
+                "symbol": "SerialDataSource.runs",
+                "needle": "    def runs(self):",
+                "scope": "class SerialDataSource(DataSourceBase):"
+              },
+              "children": [
+                {
+                  "label": "SerialDataSource._start_run()",
+                  "note": "Locate BeginRun.",
+                  "source": {
+                    "path": "psana/psana/psexp/serial_ds.py",
+                    "symbol": "SerialDataSource._start_run",
+                    "needle": "    def _start_run(self):",
+                    "scope": "class SerialDataSource(DataSourceBase):"
+                  }
+                },
+                {
+                  "label": "RunSerial.__init__()",
+                  "note": "Set up environment and calibration; create Events or GpuEventManager.",
+                  "source": {
+                    "path": "psana/psana/psexp/run.py",
+                    "symbol": "RunSerial.__init__",
+                    "needle": "    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams):",
+                    "scope": "class RunSerial(Run):"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "smd",
+      "title": "Read small data",
+      "tag": "SMD reader",
+      "role": "SMD0 rank",
+      "serial": "SmdReaderManager and the builder run locally; no SMD0 rank or MPI transfer.",
+      "summary": "Read small-data streams and choose a coherent timestamp window. SMD carries event metadata and locations of full bigdata datagrams; full detector payloads are read later by BD.",
+      "inputs": [
+        "Per-stream small-data XTC files",
+        "Configured stream ordering"
+      ],
+      "outputs": [
+        "SMD chunk: per-stream byte views",
+        "Transition history sent to the selected EB"
+      ],
+      "flow": [
+        "Smd0.start() drives SmdReaderManager.chunks().",
+        "SmdReader uses ParallelReader and build_batch_view() to expose a complete timestamp window.",
+        "SMD0 tracks sent transition bytes per EB and prepends missing history before fresh chunk data. This is a send record, not a processing acknowledgment."
+      ],
+      "ownership": "Reader/repack buffers own chunk bytes while transport uses them. History is maintained separately from payload reads.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "Smd0",
+          "needle": "class Smd0"
+        },
+        {
+          "path": "psana/psana/psexp/smdreader_manager.py",
+          "symbol": "SmdReaderManager",
+          "needle": "class SmdReaderManager"
+        },
+        {
+          "path": "psana/psana/smdreader.pyx",
+          "symbol": "SmdReader.build_batch_view",
+          "needle": "def build_batch_view("
+        },
+        {
+          "path": "psana/psana/parallelreader.pyx",
+          "symbol": "ParallelReader",
+          "needle": "class ParallelReader"
+        },
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "StepHistory",
+          "needle": "class StepHistory"
+        }
+      ],
+      "notes": [],
+      "map_title": "Read small data",
+      "call_paths": [
+        {
+          "title": "MPI: produce and send an SMD chunk",
+          "when": "Runs in SMD0 when that rank advances run.events(); MPI sends cross a process boundary.",
+          "roots": [
+            {
+              "label": "RunParallel.events()",
+              "note": "Drive this rank.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.events",
+                "needle": "    def events(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "RunParallel._events_impl()",
+                  "note": "Advance role-specific iterator.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel._events_impl",
+                    "needle": "    def _events_impl(self):",
+                    "scope": "class RunParallel(Run):"
+                  },
+                  "children": [
+                    {
+                      "label": "RunParallel.start()",
+                      "note": "SMD0 branch.",
+                      "source": {
+                        "path": "psana/psana/psexp/mpi_ds.py",
+                        "symbol": "RunParallel.start",
+                        "needle": "    def start(self, gpu_manager=None):",
+                        "scope": "class RunParallel(Run):"
+                      },
+                      "children": [
+                        {
+                          "label": "Smd0.start()",
+                          "note": "Serve requesting EBs.",
+                          "source": {
+                            "path": "psana/psana/psexp/node.py",
+                            "symbol": "Smd0.start",
+                            "needle": "    def start(self):",
+                            "scope": "class Smd0(object):"
+                          },
+                          "children": [
+                            {
+                              "label": "SmdReaderManager.chunks()",
+                              "note": "Iterator produces coherent chunk windows.",
+                              "source": {
+                                "path": "psana/psana/psexp/smdreader_manager.py",
+                                "symbol": "SmdReaderManager.chunks",
+                                "needle": "    def chunks(self):",
+                                "scope": "class SmdReaderManager(object):"
+                              },
+                              "children": [
+                                {
+                                  "label": "SmdReaderManager.build_batch()",
+                                  "note": "Try a timestamp window; refill if needed.",
+                                  "source": {
+                                    "path": "psana/psana/psexp/smdreader_manager.py",
+                                    "symbol": "SmdReaderManager.build_batch",
+                                    "needle": "    def build_batch(self):",
+                                    "scope": "class SmdReaderManager(object):"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "SmdReader.build_batch_view()",
+                                      "note": "Choose the aligned window.",
+                                      "source": {
+                                        "path": "psana/psana/smdreader.pyx",
+                                        "symbol": "SmdReader.build_batch_view",
+                                        "needle": "    def build_batch_view(self, batch_size=1000, intg_stream_id=-1, intg_delta_t=0, max_events=0, ignore_transition=True):",
+                                        "scope": "cdef class SmdReader:"
+                                      }
+                                    },
+                                    {
+                                      "label": "SmdReaderManager.force_read()",
+                                      "note": "If a complete window is unavailable.",
+                                      "source": {
+                                        "path": "psana/psana/psexp/smdreader_manager.py",
+                                        "symbol": "SmdReaderManager.force_read",
+                                        "needle": "    def force_read(self):",
+                                        "scope": "class SmdReaderManager(object):"
+                                      },
+                                      "children": [
+                                        {
+                                          "label": "SmdReader.force_read()",
+                                          "note": "Refill underlying stream buffers.",
+                                          "source": {
+                                            "path": "psana/psana/smdreader.pyx",
+                                            "symbol": "SmdReader.force_read",
+                                            "needle": "    def force_read(self):",
+                                            "scope": "cdef class SmdReader:"
+                                          },
+                                          "children": [
+                                            {
+                                              "label": "ParallelReader.force_read()",
+                                              "note": "Parallel stream read.",
+                                              "source": {
+                                                "path": "psana/psana/parallelreader.pyx",
+                                                "symbol": "ParallelReader.force_read",
+                                                "needle": "    cdef void force_read(self):",
+                                                "scope": "cdef class ParallelReader:"
+                                              }
+                                            }
+                                          ]
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "label": "StepHistory.get_buffer()",
+                              "note": "Find history missing for the selected EB.",
+                              "source": {
+                                "path": "psana/psana/psexp/node.py",
+                                "symbol": "StepHistory.get_buffer",
+                                "needle": "    def get_buffer(self, client_id, smd0=False):",
+                                "scope": "class StepHistory(object):"
+                              }
+                            },
+                            {
+                              "label": "StepHistory.extend_buffers()",
+                              "note": "Record new transitions.",
+                              "source": {
+                                "path": "psana/psana/psexp/node.py",
+                                "symbol": "StepHistory.extend_buffers",
+                                "needle": "    def extend_buffers(self, views, client_id, as_event=False):",
+                                "scope": "class StepHistory(object):"
+                              }
+                            },
+                            {
+                              "label": "SmdReader.repack_parallel()",
+                              "note": "Pack missing history plus fresh data.",
+                              "source": {
+                                "path": "psana/psana/smdreader.pyx",
+                                "symbol": "SmdReader.repack_parallel",
+                                "needle": "    def repack_parallel(self, step_views, eb_node_id, only_steps=0, intg_stream_id=-1):",
+                                "scope": "cdef class SmdReader:"
+                              }
+                            },
+                            {
+                              "label": "smd_comm.Isend(...)",
+                              "note": "Transfer bytes to the EB; no direct Python call into the EB.",
+                              "kind": "library"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Serial: obtain a local chunk",
+          "when": "Events (CPU) or GpuEventManager._next_batch (GPU) advances the local SMD manager.",
+          "roots": [
+            {
+              "label": "SmdReaderManager.__next__()",
+              "note": "Return a BatchIterator over this window.",
+              "source": {
+                "path": "psana/psana/psexp/smdreader_manager.py",
+                "symbol": "SmdReaderManager.__next__",
+                "needle": "    def __next__(self):",
+                "scope": "class SmdReaderManager(object):"
+              },
+              "children": [
+                {
+                  "label": "SmdReaderManager.build_batch()",
+                  "note": "Use the same window selection/refill logic.",
+                  "source": {
+                    "path": "psana/psana/psexp/smdreader_manager.py",
+                    "symbol": "SmdReaderManager.build_batch",
+                    "needle": "    def build_batch(self):",
+                    "scope": "class SmdReaderManager(object):"
+                  }
+                },
+                {
+                  "label": "BatchIterator.__init__()",
+                  "note": "Construct a local EventBuilder; no MPI send.",
+                  "source": {
+                    "path": "psana/psana/psexp/smdreader_manager.py",
+                    "symbol": "BatchIterator.__init__",
+                    "needle": "    def __init__(self, views, configs, dsparms, callback_run_state=None):",
+                    "scope": "class BatchIterator(object):"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "eb",
+      "title": "Build aligned events",
+      "tag": "EventBuilder",
+      "role": "EB rank",
+      "serial": "BatchIterator / EventBuilderManager perform local building.",
+      "summary": "Align datagrams by timestamp, apply supported selection/destination logic, and construct a coherent communication batch for a BD.",
+      "inputs": [
+        "SMD stream views and catch-up transitions"
+      ],
+      "outputs": [
+        "CPU/SMD event packet",
+        "Optional GPUBAT1 L1 event/read descriptors"
+      ],
+      "flow": [
+        "EventBuilderNode drives EventBuilderManager and Cython EventBuilder.",
+        "GPU split includes transitions in the CPU/SMD packet; GPUBAT1 describes L1 events and bigdata locations, not transitions.",
+        "A separate step_batch updates EB-local history. It is not a third separately transmitted transition packet. EB prepends history missing for the destination BD."
+      ],
+      "ownership": "The EB owns serialized send buffers until MPI send completion. GPU descriptors refer to bigdata locations, not device allocations.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "EventBuilderNode",
+          "needle": "class EventBuilderNode"
+        },
+        {
+          "path": "psana/psana/psexp/eventbuilder_manager.py",
+          "symbol": "EventBuilderManager",
+          "needle": "class EventBuilderManager"
+        },
+        {
+          "path": "psana/psana/eventbuilder.pyx",
+          "symbol": "EventBuilder._build_fast_batch_gpu_split",
+          "needle": "cdef _build_fast_batch_gpu_split("
+        },
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "repack_for_bd",
+          "needle": "def repack_for_bd("
+        }
+      ],
+      "notes": [
+        "The fast GPU builder appends BeginStep and then ends the batch. A trailing BeginStep after earlier L1 events is possible; see the transition walkthrough."
+      ],
+      "map_title": "Build aligned events",
+      "call_paths": [
+        {
+          "title": "MPI: receive, construct and drive the builder",
+          "when": "Runs in the EB process; ordinary no-callback building is expanded below.",
+          "roots": [
+            {
+              "label": "RunParallel.start()",
+              "note": "EB role dispatch.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.start",
+                "needle": "    def start(self, gpu_manager=None):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "EventBuilderNode.start()",
+                  "note": "Receive SMD chunks and send coherent BD batches.",
+                  "source": {
+                    "path": "psana/psana/psexp/node.py",
+                    "symbol": "EventBuilderNode.start",
+                    "needle": "    def start(self):",
+                    "scope": "class EventBuilderNode(object):"
+                  },
+                  "children": [
+                    {
+                      "label": "EventBuilderNode._request_data()",
+                      "note": "Request/receive one SMD chunk.",
+                      "source": {
+                        "path": "psana/psana/psexp/node.py",
+                        "symbol": "EventBuilderNode._request_data",
+                        "needle": "    def _request_data(self, smd_comm):",
+                        "scope": "class EventBuilderNode(object):"
+                      }
+                    },
+                    {
+                      "label": "EventBuilderManager.__init__()",
+                      "note": "Split stream views and construct the Cython builder.",
+                      "source": {
+                        "path": "psana/psana/psexp/eventbuilder_manager.py",
+                        "symbol": "EventBuilderManager.__init__",
+                        "needle": "    def __init__(self, view, configs, dsparms, callback_run_state=None):",
+                        "scope": "class EventBuilderManager(object):"
+                      },
+                      "children": [
+                        {
+                          "label": "EventBuilder.__init__()",
+                          "note": "Capture configuration, batch size and routing.",
+                          "source": {
+                            "path": "psana/psana/eventbuilder.pyx",
+                            "symbol": "EventBuilder.__init__",
+                            "needle": "    def __init__(self, views, configs, *args, **kwargs):",
+                            "scope": "cdef class EventBuilder:"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "label": "EventBuilderManager.batches_with_gpu()",
+                      "note": "Advance one batch at a time.",
+                      "source": {
+                        "path": "psana/psana/psexp/eventbuilder_manager.py",
+                        "symbol": "EventBuilderManager.batches_with_gpu",
+                        "needle": "    def batches_with_gpu(self):",
+                        "scope": "class EventBuilderManager(object):"
+                      },
+                      "children": [
+                        {
+                          "label": "EventBuilder.build()",
+                          "note": "Choose fast/proxy path.",
+                          "source": {
+                            "path": "psana/psana/eventbuilder.pyx",
+                            "symbol": "EventBuilder.build",
+                            "needle": "    def build(self, as_proxy_events=False):",
+                            "scope": "cdef class EventBuilder:"
+                          },
+                          "children": [
+                            {
+                              "label": "EventBuilder._build_fast_batch()",
+                              "note": "CPU fast-path alternative.",
+                              "source": {
+                                "path": "psana/psana/eventbuilder.pyx",
+                                "symbol": "EventBuilder._build_fast_batch",
+                                "needle": "    cdef tuple _build_fast_batch(self, unsigned target_batch):",
+                                "scope": "cdef class EventBuilder:"
+                              },
+                              "children": [
+                                {
+                                  "label": "EventBuilder._gather_event()",
+                                  "note": "Align stream datagrams by timestamp.",
+                                  "source": {
+                                    "path": "psana/psana/eventbuilder.pyx",
+                                    "symbol": "EventBuilder._gather_event",
+                                    "needle": "    cdef int _gather_event(self, list pydgrams, short* out_service, uint64_t* out_timestamp):",
+                                    "scope": "cdef class EventBuilder:"
+                                  }
+                                }
+                              ]
+                            },
+                            {
+                              "label": "EventBuilder._build_fast_batch_gpu_split()",
+                              "note": "GPU routing branch: construct CPU/SMD and GPUBAT1 packets.",
+                              "source": {
+                                "path": "psana/psana/eventbuilder.pyx",
+                                "symbol": "EventBuilder._build_fast_batch_gpu_split",
+                                "needle": "    cdef _build_fast_batch_gpu_split(self, unsigned target_batch):",
+                                "scope": "cdef class EventBuilder:"
+                              },
+                              "children": [
+                                {
+                                  "label": "EventBuilder._gather_event()",
+                                  "note": "Align datagrams by timestamp; repeat for the batch.",
+                                  "source": {
+                                    "path": "psana/psana/eventbuilder.pyx",
+                                    "symbol": "EventBuilder._gather_event",
+                                    "needle": "    cdef int _gather_event(self, list pydgrams, short* out_service, uint64_t* out_timestamp):",
+                                    "scope": "cdef class EventBuilder:"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "label": "EventBuilderNode._send_to_dest()",
+                      "note": "Send to selected BD with missing history.",
+                      "source": {
+                        "path": "psana/psana/psexp/node.py",
+                        "symbol": "EventBuilderNode._send_to_dest",
+                        "needle": "    def _send_to_dest(",
+                        "scope": "class EventBuilderNode(object):"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Serial: local batch iterator",
+          "when": "No EB process. Callback/proxy-specific details remain in the linked implementation.",
+          "roots": [
+            {
+              "label": "BatchIterator.next_with_gpu()",
+              "note": "Called by the GPU manager; CPU __next__ also delegates here.",
+              "source": {
+                "path": "psana/psana/psexp/smdreader_manager.py",
+                "symbol": "BatchIterator.next_with_gpu",
+                "needle": "    def next_with_gpu(self):",
+                "scope": "class BatchIterator(object):"
+              },
+              "children": [
+                {
+                  "label": "EventBuilder.build()",
+                  "note": "Use the same Cython builder and return batch dictionaries.",
+                  "source": {
+                    "path": "psana/psana/eventbuilder.pyx",
+                    "symbol": "EventBuilder.build",
+                    "needle": "    def build(self, as_proxy_events=False):",
+                    "scope": "cdef class EventBuilder:"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "transport",
+      "title": "Deliver a batch",
+      "tag": "BigDataNode / Events",
+      "role": "BD CPU process",
+      "serial": "No BigDataNode: local reader/builder hands batches to Events or GpuEventManager.",
+      "summary": "Receive one coherent EB communication unit, unpack its CPU and GPU portions, and select the batch processor. A GPU BD is still a CPU process orchestrating reads and CUDA work.",
+      "inputs": [
+        "MPI message: CPU/SMD packet + GPU packet + footer"
+      ],
+      "outputs": [
+        "BatchEnvelope(smd, gpu)",
+        "CPU EventManager or GPU manager iteration"
+      ],
+      "flow": [
+        "BigDataNode.start() supplies BatchEnvelope objects to Events.",
+        "Events.__next__() calls EventManager for CPU-only processing, or GpuEventManager.process_batch(smd, gpu) for GPU processing.",
+        "BD requests further work from its EB; communication batches and execution-slot depth are different controls."
+      ],
+      "ownership": "The receive/batch envelope retains serialized packet storage while managers create views from it.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/node.py",
+          "symbol": "BigDataNode",
+          "needle": "class BigDataNode"
+        },
+        {
+          "path": "psana/psana/psexp/events.py",
+          "symbol": "BatchEnvelope",
+          "needle": "class BatchEnvelope"
+        },
+        {
+          "path": "psana/psana/psexp/events.py",
+          "symbol": "Events",
+          "needle": "class Events"
+        }
+      ],
+      "notes": [],
+      "map_title": "Deliver a batch",
+      "call_paths": [
+        {
+          "title": "MPI: refill and process the next batch",
+          "when": "The BD receives bytes; the EB is a different process, not a callee.",
+          "roots": [
+            {
+              "label": "RunParallel.events()",
+              "note": "Start/resume public iteration.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.events",
+                "needle": "    def events(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "RunParallel._events_impl()",
+                  "note": "Drive the BD iterator.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel._events_impl",
+                    "needle": "    def _events_impl(self):",
+                    "scope": "class RunParallel(Run):"
+                  },
+                  "children": [
+                    {
+                      "label": "RunParallel.start()",
+                      "note": "BD role.",
+                      "source": {
+                        "path": "psana/psana/psexp/mpi_ds.py",
+                        "symbol": "RunParallel.start",
+                        "needle": "    def start(self, gpu_manager=None):",
+                        "scope": "class RunParallel(Run):"
+                      },
+                      "children": [
+                        {
+                          "label": "BigDataNode.start()",
+                          "note": "Construct Events with _batch_envelopes as its batch source.",
+                          "source": {
+                            "path": "psana/psana/psexp/node.py",
+                            "symbol": "BigDataNode.start",
+                            "needle": "    def start(self, gpu_manager=None):",
+                            "scope": "class BigDataNode(object):"
+                          },
+                          "children": [
+                            {
+                              "label": "Events.__next__()",
+                              "note": "Advance current processor; on exhaustion receive next batch.",
+                              "source": {
+                                "path": "psana/psana/psexp/events.py",
+                                "symbol": "Events.__next__",
+                                "needle": "    def __next__(self):",
+                                "scope": "class Events:"
+                              },
+                              "children": [
+                                {
+                                  "label": "BigDataNode._batch_envelopes()",
+                                  "note": "Iterator handoff: receive, unpack and pre-request the following batch.",
+                                  "source": {
+                                    "path": "psana/psana/psexp/node.py",
+                                    "symbol": "BigDataNode._batch_envelopes",
+                                    "needle": "    def _batch_envelopes(self):",
+                                    "scope": "class BigDataNode(object):"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "BigDataNode._unpack_batch()",
+                                      "note": "Separate SMD and optional GPUBAT1 packet.",
+                                      "source": {
+                                        "path": "psana/psana/psexp/node.py",
+                                        "symbol": "BigDataNode._unpack_batch",
+                                        "needle": "    def _unpack_batch(self, chunk):",
+                                        "scope": "class BigDataNode(object):"
+                                      }
+                                    },
+                                    {
+                                      "label": "yield BatchEnvelope(smd, gpu)",
+                                      "note": "Return ownership of packet bytes to Events.",
+                                      "kind": "handoff"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "label": "EventManager.__init__()",
+                                  "note": "CPU-only alternative: create batch processor.",
+                                  "source": {
+                                    "path": "psana/psana/psexp/event_manager.py",
+                                    "symbol": "EventManager.__init__",
+                                    "needle": "    def __init__(",
+                                    "scope": "class EventManager(object):"
+                                  }
+                                },
+                                {
+                                  "label": "GpuEventManager.process_batch()",
+                                  "note": "GPU alternative: create/advance batch generator.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_events.py",
+                                    "symbol": "GpuEventManager.process_batch",
+                                    "needle": "    def process_batch(self, smd_batch, gpu_batch=None):",
+                                    "scope": "class GpuEventManager:"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Serial: local handoff",
+          "when": "No BigDataNode or MPI transport.",
+          "roots": [
+            {
+              "label": "Events.__next__()",
+              "note": "CPU: consume BatchIterator and construct EventManager.",
+              "source": {
+                "path": "psana/psana/psexp/events.py",
+                "symbol": "Events.__next__",
+                "needle": "    def __next__(self):",
+                "scope": "class Events:"
+              }
+            },
+            {
+              "label": "GpuEventManager._next_batch()",
+              "note": "GPU: consume BatchIterator.next_with_gpu from the local SMD manager.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._next_batch",
+                "needle": "    def _next_batch(self):",
+                "scope": "class GpuEventManager:"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "cpu",
+      "title": "Materialize CPU dgrams",
+      "tag": "EventManager",
+      "role": "BD CPU process",
+      "serial": "Same EventManager, reached through the local Events iterator.",
+      "summary": "Decode SMD offsets, read required bigdata windows, and assemble each event’s datagrams in configured stream positions. Missing stream entries can be None.",
+      "inputs": [
+        "CPU/SMD event packet",
+        "Bigdata files and stream configuration"
+      ],
+      "outputs": [
+        "EventEnvelope with dgrams",
+        "Transition envelopes in packet order"
+      ],
+      "flow": [
+        "EventManager._get_offset_and_size() reads SMD bigdata descriptors.",
+        "_fill_bd_chunk() uses positional file reads for contiguous bigdata windows.",
+        "_get_next_dgrams() selects full payload or SMD-backed datagrams. GPU mode also uses this path for retained CPU and hybrid inputs."
+      ],
+      "ownership": "Datagram views retain their backing Python buffers. Bigdata buffers and packet views are host storage, separate from GPU input windows and leases.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager",
+          "needle": "class EventManager"
+        },
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager._get_offset_and_size",
+          "needle": "def _get_offset_and_size("
+        },
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager._fill_bd_chunk",
+          "needle": "def _fill_bd_chunk("
+        },
+        {
+          "path": "psana/psana/psexp/event_manager.py",
+          "symbol": "EventManager._get_next_dgrams",
+          "needle": "def _get_next_dgrams("
+        }
+      ],
+      "notes": [],
+      "map_title": "Read CPU payloads",
+      "call_paths": [
+        {
+          "title": "Construct the CPU batch processor",
+          "when": "Called by Events.__next__ for CPU-only iteration, or by GpuEventManager._process_batch for retained CPU/hybrid streams.",
+          "roots": [
+            {
+              "label": "EventManager.__init__()",
+              "note": "One processor per SMD event packet.",
+              "source": {
+                "path": "psana/psana/psexp/event_manager.py",
+                "symbol": "EventManager.__init__",
+                "needle": "    def __init__(",
+                "scope": "class EventManager(object):"
+              },
+              "children": [
+                {
+                  "label": "EventManager._get_offset_and_size()",
+                  "note": "Decode SMD descriptors and transition/file positions.",
+                  "source": {
+                    "path": "psana/psana/psexp/event_manager.py",
+                    "symbol": "EventManager._get_offset_and_size",
+                    "needle": "    def _get_offset_and_size(self):",
+                    "scope": "class EventManager(object):"
+                  },
+                  "children": [
+                    {
+                      "label": "EventManager._get_bd_offset_and_size()",
+                      "note": "For event payloads: record offsets and contiguous-read limits.",
+                      "source": {
+                        "path": "psana/psana/psexp/event_manager.py",
+                        "symbol": "EventManager._get_bd_offset_and_size",
+                        "needle": "    def _get_bd_offset_and_size(",
+                        "scope": "class EventManager(object):"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "label": "EventManager._init_bd_chunks()",
+                  "note": "Initialize host read-buffer state when bigdata files exist.",
+                  "source": {
+                    "path": "psana/psana/psexp/event_manager.py",
+                    "symbol": "EventManager._init_bd_chunks",
+                    "needle": "    def _init_bd_chunks(self):",
+                    "scope": "class EventManager(object):"
+                  }
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Iterate datagrams",
+          "when": "The same Events/manager caller repeatedly advances EventManager.",
+          "roots": [
+            {
+              "label": "EventManager.__next__()",
+              "note": "Produce one EventEnvelope.",
+              "source": {
+                "path": "psana/psana/psexp/event_manager.py",
+                "symbol": "EventManager.__next__",
+                "needle": "    def __next__(self):",
+                "scope": "class EventManager(object):"
+              },
+              "children": [
+                {
+                  "label": "EventManager._get_next_dgrams()",
+                  "note": "Choose SMD-backed or full payload data per stream.",
+                  "source": {
+                    "path": "psana/psana/psexp/event_manager.py",
+                    "symbol": "EventManager._get_next_dgrams",
+                    "needle": "    def _get_next_dgrams(self):",
+                    "scope": "class EventManager(object):"
+                  },
+                  "children": [
+                    {
+                      "label": "EventManager._open_new_bd_file()",
+                      "note": "Conditional chunk rollover.",
+                      "source": {
+                        "path": "psana/psana/psexp/event_manager.py",
+                        "symbol": "EventManager._open_new_bd_file",
+                        "needle": "    def _open_new_bd_file(self, i_smd, new_chunk_id):",
+                        "scope": "class EventManager(object):"
+                      }
+                    },
+                    {
+                      "label": "EventManager._fill_bd_chunk()",
+                      "note": "When the required bytes are not buffered.",
+                      "source": {
+                        "path": "psana/psana/psexp/event_manager.py",
+                        "symbol": "EventManager._fill_bd_chunk",
+                        "needle": "    def _fill_bd_chunk(self, i_smd):",
+                        "scope": "class EventManager(object):"
+                      },
+                      "children": [
+                        {
+                          "label": "EventManager._read()",
+                          "note": "Read the host window; retry short reads.",
+                          "source": {
+                            "path": "psana/psana/psexp/event_manager.py",
+                            "symbol": "EventManager._read",
+                            "needle": "    def _read(self, fd, size, offset):",
+                            "scope": "class EventManager(object):"
+                          },
+                          "children": [
+                            {
+                              "label": "os.pread(fd, size, offset)",
+                              "note": "Positional read into host storage.",
+                              "kind": "library"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "label": "dgram.Dgram(config, view, offset)",
+                      "note": "Create a datagram view backed by the selected host buffer.",
+                      "kind": "library"
+                    }
+                  ]
+                },
+                {
+                  "label": "EventEnvelope()",
+                  "note": "Return dgrams to the run/manager.",
+                  "source": {
+                    "path": "psana/psana/event.py",
+                    "symbol": "EventEnvelope",
+                    "needle": "class EventEnvelope:"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "controller",
+      "title": "Plan GPU work",
+      "tag": "GpuEventManager",
+      "role": "BD CPU process",
+      "serial": "RunSerial owns the same manager and supplies local batches.",
+      "summary": "Coordinate CPU materialization, GPU read planning, byte-budget admission, execution submission and ordered event delivery. This is host orchestration, not a GPU-resident scheduler.",
+      "inputs": [
+        "CPU/SMD packet and GPUBAT1 descriptors",
+        "Device budget and execution-pool configuration"
+      ],
+      "outputs": [
+        "Complete-event execution subbatches",
+        "Read requests, task submissions and joined event envelopes"
+      ],
+      "flow": [
+        "process_batch() adapts MPI packets; serial iteration obtains batch dictionaries locally. Both reach _process_batch().",
+        "The manager handles transitions, splits GPU work to fit the current byte budget and issues the first subbatch read before CPU materialization.",
+        "It maps CPU envelopes and GPU event metadata by timestamp, synthesizing metadata for GPU-only events before attaching GPU state.",
+        "Slot retirement and completion tokens protect reuse. An execution slot is not an input read group."
+      ],
+      "ownership": "The manager coordinates the reader, parser/input groups, execution pool, requested constants and publication staging. Yielding an event alone does not prove its asynchronous consumers finished.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager",
+          "needle": "class GpuEventManager"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager._process_batch",
+          "needle": "def _process_batch("
+        },
+        {
+          "path": "psana/psana/gpu/gpu_batch.py",
+          "symbol": "GpuBatchView",
+          "needle": "class GpuBatchView"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_batch.py",
+          "symbol": "GpuSubbatchView",
+          "needle": "class GpuSubbatchView"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager._handle_steps",
+          "needle": "def _handle_steps("
+        }
+      ],
+      "notes": [
+        "Current transition handling scans transitions before this packet’s L1 submission. #153 tracks ordered transition/step support.",
+        "Memory admission covers participating allocations, not arbitrary user scratch or all CUDA/KvikIO overhead."
+      ],
+      "map_title": "Plan GPU work",
+      "call_paths": [
+        {
+          "title": "Entry from public iteration",
+          "when": "MPI and serial paths converge on _process_batch; the manager owns no MPI transport.",
+          "roots": [
+            {
+              "label": "RunParallel.events()",
+              "note": "User advances run.events() on a BD.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.events",
+                "needle": "    def events(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "RunParallel._events_impl()",
+                  "note": "Drive the run iterator.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel._events_impl",
+                    "needle": "    def _events_impl(self):",
+                    "scope": "class RunParallel(Run):"
+                  },
+                  "children": [
+                    {
+                      "label": "RunParallel.start()",
+                      "note": "Select the BD role.",
+                      "source": {
+                        "path": "psana/psana/psexp/mpi_ds.py",
+                        "symbol": "RunParallel.start",
+                        "needle": "    def start(self, gpu_manager=None):",
+                        "scope": "class RunParallel(Run):"
+                      },
+                      "children": [
+                        {
+                          "label": "BigDataNode.start()",
+                          "note": "Construct and iterate Events.",
+                          "source": {
+                            "path": "psana/psana/psexp/node.py",
+                            "symbol": "BigDataNode.start",
+                            "needle": "    def start(self, gpu_manager=None):",
+                            "scope": "class BigDataNode(object):"
+                          },
+                          "children": [
+                            {
+                              "label": "Events.__next__()",
+                              "note": "Refill the GPU batch iterator, then advance it.",
+                              "source": {
+                                "path": "psana/psana/psexp/events.py",
+                                "symbol": "Events.__next__",
+                                "needle": "    def __next__(self):",
+                                "scope": "class Events:"
+                              },
+                              "children": [
+                                {
+                                  "label": "GpuEventManager.process_batch()",
+                                  "note": "Adapt the coherent SMD/GPU packet.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_events.py",
+                                    "symbol": "GpuEventManager.process_batch",
+                                    "needle": "    def process_batch(self, smd_batch, gpu_batch=None):",
+                                    "scope": "class GpuEventManager:"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "GpuEventManager._process_batch()",
+                                      "note": "Common processing path (expanded below).",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpu_events.py",
+                                        "symbol": "GpuEventManager._process_batch",
+                                        "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                                        "scope": "class GpuEventManager:"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "RunSerial.events()",
+              "note": "User advances the serial GPU event iterator.",
+              "source": {
+                "path": "psana/psana/psexp/run.py",
+                "symbol": "RunSerial.events",
+                "needle": "    def events(self):",
+                "scope": "class RunSerial(Run):"
+              },
+              "children": [
+                {
+                  "label": "Run.events()",
+                  "note": "Iterate the run-owned manager.",
+                  "source": {
+                    "path": "psana/psana/psexp/run.py",
+                    "symbol": "Run.events",
+                    "needle": "    def events(self):",
+                    "scope": "class Run(object):"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager.__next__()",
+                      "note": "Start/resume the internal generator.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager.__next__",
+                        "needle": "    def __next__(self):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "GpuEventManager._events()",
+                          "note": "Fetch local batches and drive processing.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_events.py",
+                            "symbol": "GpuEventManager._events",
+                            "needle": "    def _events(self):",
+                            "scope": "class GpuEventManager:"
+                          },
+                          "children": [
+                            {
+                              "label": "GpuEventManager._next_batch()",
+                              "note": "Fetch local batch dictionaries.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_events.py",
+                                "symbol": "GpuEventManager._next_batch",
+                                "needle": "    def _next_batch(self):",
+                                "scope": "class GpuEventManager:"
+                              }
+                            },
+                            {
+                              "label": "GpuEventManager._process_batch()",
+                              "note": "Common processing path.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_events.py",
+                                "symbol": "GpuEventManager._process_batch",
+                                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                                "scope": "class GpuEventManager:"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Per communication batch",
+          "when": "Current inspected ordering, including the transition limitation tracked by #153.",
+          "roots": [
+            {
+              "label": "GpuEventManager._process_batch()",
+              "note": "Decode GPUBAT1 and correlate CPU/GPU identities.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._process_batch",
+                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._handle_steps()",
+                  "note": "Currently dispatches packet transitions before this packet’s L1 submission.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._handle_steps",
+                    "needle": "    def _handle_steps(self, step_dict):",
+                    "scope": "class GpuEventManager:"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._split_subbatches()",
+                  "note": "Admit complete-event slices against byte budget.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._split_subbatches",
+                    "needle": "    def _split_subbatches(self, gpu_view) -> list:",
+                    "scope": "class GpuEventManager:"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._retire_issue_and_yield()",
+                  "note": "First read is issued before CPU materialization.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._retire_issue_and_yield",
+                    "needle": "    def _retire_issue_and_yield(self, subbatch):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager._issue_gpu_read()",
+                      "note": "Choose bulk groups or per-dgram reads.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._issue_gpu_read",
+                        "needle": "    def _issue_gpu_read(self, subbatch, slot_id):",
+                        "scope": "class GpuEventManager:"
+                      }
+                    }
+                  ]
+                },
+                {
+                  "label": "EventManager.__init__()",
+                  "note": "Create/iterate retained CPU inputs while the first GPU read is outstanding.",
+                  "source": {
+                    "path": "psana/psana/psexp/event_manager.py",
+                    "symbol": "EventManager.__init__",
+                    "needle": "    def __init__(",
+                    "scope": "class EventManager(object):"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._wait_gpu_read()",
+                  "note": "For each execution: finish its input reads.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._wait_gpu_read",
+                    "needle": "    def _wait_gpu_read(self, pending):",
+                    "scope": "class GpuEventManager:"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._submit_gpu()",
+                  "note": "Submit parsing/task work and queue publications; later slices first retire/issue again.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._submit_gpu",
+                    "needle": "    def _submit_gpu(self, subbatch, gpu_read, event_envelopes):",
+                    "scope": "class GpuEventManager:"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._flush_event_pool()",
+                  "note": "At EndRun/event limit; ordinary slot retirement delivers earlier results.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._flush_event_pool",
+                    "needle": "    def _flush_event_pool(self):",
+                    "scope": "class GpuEventManager:"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "input",
+      "title": "Read and parse on device",
+      "tag": "KvikIO / InputWindow",
+      "role": "BD host issues I/O; GPU holds input",
+      "serial": "Same device input path without MPI batch transport.",
+      "summary": "Use bigdata locations to issue reads into device storage, then parse XTC layout into event/field views. CUDA kernels do not open files.",
+      "inputs": [
+        "Bigdata read descriptors and file mapping",
+        "Configure-derived parser metadata"
+      ],
+      "outputs": [
+        "Device-resident raw datagrams",
+        "InputWindow owners and parsed field locations"
+      ],
+      "flow": [
+        "KvikioGpuReader submits I/O from the CPU. Direct GDS versus a fallback depends on the runtime; this map does not claim GDS is active.",
+        "Optional bulk grouping coalesces compatible reads. One execution subbatch may consume multiple input groups, and one group can serve multiple executions.",
+        "The parser makes InputWindow-backed views; slot streams wait for input readiness before accessing data."
+      ],
+      "ownership": "Reader/parser allocations are held by InputWindow and planned/execution/input uses. Closing a planning window and completing all dependent consumers are distinct lifetime events.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_kvikio_read.py",
+          "symbol": "KvikioGpuReader",
+          "needle": "class KvikioGpuReader"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_input_window.py",
+          "symbol": "InputWindow",
+          "needle": "class InputWindow"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_input_group.py",
+          "symbol": "InputGroupPool",
+          "needle": "class InputGroupPool"
+        },
+        {
+          "path": "psana/psana/gpu/gpudgram/parser.py",
+          "symbol": "GpuEventBatch",
+          "needle": "class GpuEventBatch"
+        },
+        {
+          "path": "psana/psana/gpu/gpudgram/batch.py",
+          "symbol": "GpuXtcBatchPool",
+          "needle": "class GpuXtcBatchPool"
+        }
+      ],
+      "notes": [],
+      "map_title": "Read device inputs",
+      "call_paths": [
+        {
+          "title": "1. Initialize the reader and parser",
+          "when": "MPI: on the first advance of run.events(), after run calibration setup. Serial: while constructing RunSerial. Neither allocates the raw read payloads yet.",
+          "roots": [
+            {
+              "label": "RunParallel.events()",
+              "note": "MPI BD entry.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.events",
+                "needle": "    def events(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "RunParallel._events_impl()",
+                  "note": "Create the GPU manager before starting batch transport.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel._events_impl",
+                    "needle": "    def _events_impl(self):",
+                    "scope": "class RunParallel(Run):"
+                  },
+                  "children": [
+                    {
+                      "label": "RunParallel._make_gpu_event_manager()",
+                      "note": "Construct GpuEventManager.",
+                      "source": {
+                        "path": "psana/psana/psexp/mpi_ds.py",
+                        "symbol": "RunParallel._make_gpu_event_manager",
+                        "needle": "    def _make_gpu_event_manager(self):",
+                        "scope": "class RunParallel(Run):"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "RunSerial.__init__()",
+              "note": "Serial alternative: construct GpuEventManager after calibration setup.",
+              "source": {
+                "path": "psana/psana/psexp/run.py",
+                "symbol": "RunSerial.__init__",
+                "needle": "    def __init__(self, expt, runnum, timestamp, dsparms, dm, smdr_man, configs, begingrun_dgrams):",
+                "scope": "class RunSerial(Run):"
+              }
+            },
+            {
+              "label": "GpuEventManager.__init__()",
+              "note": "One manager for this BD/run (or the serial run).",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager.__init__",
+                "needle": "    def __init__(",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._setup_gpu_pipeline()",
+                  "note": "Create the budget, execution pool and Configure-derived parser before input I/O.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._setup_gpu_pipeline",
+                    "needle": "    def _setup_gpu_pipeline(self):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "EventPool.__init__()",
+                      "note": "Create execution slots and their CUDA streams.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_stream.py",
+                        "symbol": "EventPool.__init__",
+                        "needle": "    def __init__(self, n: int = 2, *, budget=None):",
+                        "scope": "class EventPool:"
+                      }
+                    },
+                    {
+                      "label": "GpuXtcBatchPool.__init__()",
+                      "note": "Upload Configure/field tables once per BD; initialize parser-slot bookkeeping.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpudgram/batch.py",
+                        "symbol": "GpuXtcBatchPool.__init__",
+                        "needle": "    def __init__(",
+                        "scope": "class GpuXtcBatchPool:"
+                      }
+                    },
+                    {
+                      "label": "GpuEventManager._setup_input_io()",
+                      "note": "Create one reader serving all selected GPU streams.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._setup_input_io",
+                        "needle": "    def _setup_input_io(self):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "KvikioGpuReader.__init__()",
+                          "note": "Store budget, I/O mode, empty file cache and None raw-buffer slots; reused across batches.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                            "symbol": "KvikioGpuReader.__init__",
+                            "needle": "    def __init__(self, task_size=None, n_slots=2, budget=None, *, bulk_read=True):",
+                            "scope": "class KvikioGpuReader:"
+                          }
+                        },
+                        {
+                          "label": "InputGroupPool.__init__()",
+                          "note": "Bulk-on only: track read groups and their planned consumers.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_input_group.py",
+                            "symbol": "InputGroupPool.__init__",
+                            "needle": "    def __init__(self, reader):",
+                            "scope": "class InputGroupPool:"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "2. Reach the batch dispatcher",
+          "when": "These are iterator-driven calls. The first GPU read overlaps CPU event materialization.",
+          "roots": [
+            {
+              "label": "RunParallel.events()",
+              "note": "User advances run.events() on a BD.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.events",
+                "needle": "    def events(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "RunParallel._events_impl()",
+                  "note": "Drive the run iterator.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel._events_impl",
+                    "needle": "    def _events_impl(self):",
+                    "scope": "class RunParallel(Run):"
+                  },
+                  "children": [
+                    {
+                      "label": "RunParallel.start()",
+                      "note": "Select the BD role.",
+                      "source": {
+                        "path": "psana/psana/psexp/mpi_ds.py",
+                        "symbol": "RunParallel.start",
+                        "needle": "    def start(self, gpu_manager=None):",
+                        "scope": "class RunParallel(Run):"
+                      },
+                      "children": [
+                        {
+                          "label": "BigDataNode.start()",
+                          "note": "Construct and iterate Events.",
+                          "source": {
+                            "path": "psana/psana/psexp/node.py",
+                            "symbol": "BigDataNode.start",
+                            "needle": "    def start(self, gpu_manager=None):",
+                            "scope": "class BigDataNode(object):"
+                          },
+                          "children": [
+                            {
+                              "label": "Events.__next__()",
+                              "note": "Refill the GPU batch iterator, then advance it.",
+                              "source": {
+                                "path": "psana/psana/psexp/events.py",
+                                "symbol": "Events.__next__",
+                                "needle": "    def __next__(self):",
+                                "scope": "class Events:"
+                              },
+                              "children": [
+                                {
+                                  "label": "GpuEventManager.process_batch()",
+                                  "note": "Adapt the coherent SMD/GPU packet.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_events.py",
+                                    "symbol": "GpuEventManager.process_batch",
+                                    "needle": "    def process_batch(self, smd_batch, gpu_batch=None):",
+                                    "scope": "class GpuEventManager:"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "GpuEventManager._process_batch()",
+                                      "note": "Dispatch the read/wait/submit sequence below.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpu_events.py",
+                                        "symbol": "GpuEventManager._process_batch",
+                                        "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                                        "scope": "class GpuEventManager:"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "RunSerial.events()",
+              "note": "User advances the serial GPU event iterator.",
+              "source": {
+                "path": "psana/psana/psexp/run.py",
+                "symbol": "RunSerial.events",
+                "needle": "    def events(self):",
+                "scope": "class RunSerial(Run):"
+              },
+              "children": [
+                {
+                  "label": "Run.events()",
+                  "note": "Iterate the run-owned manager.",
+                  "source": {
+                    "path": "psana/psana/psexp/run.py",
+                    "symbol": "Run.events",
+                    "needle": "    def events(self):",
+                    "scope": "class Run(object):"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager.__next__()",
+                      "note": "Start/resume the internal generator.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager.__next__",
+                        "needle": "    def __next__(self):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "GpuEventManager._events()",
+                          "note": "Fetch local batches and drive processing.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_events.py",
+                            "symbol": "GpuEventManager._events",
+                            "needle": "    def _events(self):",
+                            "scope": "class GpuEventManager:"
+                          },
+                          "children": [
+                            {
+                              "label": "GpuEventManager._next_batch()",
+                              "note": "Fetch local GPU and SMD batches.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_events.py",
+                                "symbol": "GpuEventManager._next_batch",
+                                "needle": "    def _next_batch(self):",
+                                "scope": "class GpuEventManager:"
+                              }
+                            },
+                            {
+                              "label": "GpuEventManager._process_batch()",
+                              "note": "Same read/wait/submit sequence.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_events.py",
+                                "symbol": "GpuEventManager._process_batch",
+                                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                                "scope": "class GpuEventManager:"
+                              }
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "3. Issue reads, then wait for completion",
+          "when": "Repeat for each admitted execution subbatch. Bulk reads issue only newly needed groups; earlier resident groups can be reused.",
+          "roots": [
+            {
+              "label": "GpuEventManager._process_batch()",
+              "note": "Issue the first read, materialize CPU inputs, then wait and submit.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._process_batch",
+                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._retire_issue_and_yield()",
+                  "note": "Deliver/retire the previous occupant before reusing a slot.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._retire_issue_and_yield",
+                    "needle": "    def _retire_issue_and_yield(self, subbatch):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager._issue_gpu_read()",
+                      "note": "Select one of these alternatives.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._issue_gpu_read",
+                        "needle": "    def _issue_gpu_read(self, subbatch, slot_id):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "GpuEventManager._issue_group_reads()",
+                          "note": "Bulk on: reserve byte growth and acquire new groups.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_events.py",
+                            "symbol": "GpuEventManager._issue_group_reads",
+                            "needle": "    def _issue_group_reads(self, subbatch, slot_id):",
+                            "scope": "class GpuEventManager:"
+                          },
+                          "children": [
+                            {
+                              "label": "InputGroupPool.issue()",
+                              "note": "Retain group ownership.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_input_group.py",
+                                "symbol": "InputGroupPool.issue",
+                                "needle": "    def issue(self, batch_id, group, *, slot_id=None):",
+                                "scope": "class InputGroupPool:"
+                              },
+                              "children": [
+                                {
+                                  "label": "KvikioGpuReader.issue_group()",
+                                  "note": "Submit one planned contiguous group.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                    "symbol": "KvikioGpuReader.issue_group",
+                                    "needle": "    def issue_group(self, group, *, slot_id):",
+                                    "scope": "class KvikioGpuReader:"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "KvikioGpuReader._submit_read()",
+                                      "note": "Shared callee of issue_group and issue_batch; this is where resources are acquired lazily.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                        "symbol": "KvikioGpuReader._submit_read",
+                                        "needle": "    def _submit_read(self, desc_table, ranges, total_nbytes, slot, plan):",
+                                        "scope": "class KvikioGpuReader:"
+                                      },
+                                      "children": [
+                                        {
+                                          "label": "KvikioGpuReader._ensure_slot_buffer()",
+                                          "note": "Allocate/grow the device raw buffer only when the request needs capacity.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                            "symbol": "KvikioGpuReader._ensure_slot_buffer",
+                                            "needle": "    def _ensure_slot_buffer(self, slot: int, total_nbytes: int):",
+                                            "scope": "class KvikioGpuReader:"
+                                          }
+                                        },
+                                        {
+                                          "label": "KvikioGpuReader._file_for_identity()",
+                                          "note": "Reuse a cached file handle or open it on first use.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                            "symbol": "KvikioGpuReader._file_for_identity",
+                                            "needle": "    def _file_for_identity(self, identity):",
+                                            "scope": "class KvikioGpuReader:"
+                                          },
+                                          "children": [
+                                            {
+                                              "label": "kvikio.CuFile(path, \"r\")",
+                                              "note": "Open on the CPU for this resolved file/chunk identity.",
+                                              "kind": "library"
+                                            }
+                                          ]
+                                        },
+                                        {
+                                          "label": "cu_file.pread(dst, ...)",
+                                          "note": "Submit reads into the device buffer; return futures. GDS/fallback depends on runtime.",
+                                          "kind": "library"
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "label": "KvikioGpuReader.issue_batch()",
+                          "note": "Bulk off: derive per-datagram requests from this subbatch.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                            "symbol": "KvikioGpuReader.issue_batch",
+                            "needle": "    def issue_batch(self, gpu_view, bd_dm, slot_id=None) -> \"PendingBatch\":",
+                            "scope": "class KvikioGpuReader:"
+                          },
+                          "children": [
+                            {
+                              "label": "KvikioGpuReader._submit_read()",
+                              "note": "Shared callee of issue_group and issue_batch; this is where resources are acquired lazily.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                "symbol": "KvikioGpuReader._submit_read",
+                                "needle": "    def _submit_read(self, desc_table, ranges, total_nbytes, slot, plan):",
+                                "scope": "class KvikioGpuReader:"
+                              },
+                              "children": [
+                                {
+                                  "label": "KvikioGpuReader._ensure_slot_buffer()",
+                                  "note": "Allocate/grow the device raw buffer only when the request needs capacity.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                    "symbol": "KvikioGpuReader._ensure_slot_buffer",
+                                    "needle": "    def _ensure_slot_buffer(self, slot: int, total_nbytes: int):",
+                                    "scope": "class KvikioGpuReader:"
+                                  }
+                                },
+                                {
+                                  "label": "KvikioGpuReader._file_for_identity()",
+                                  "note": "Reuse a cached file handle or open it on first use.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                                    "symbol": "KvikioGpuReader._file_for_identity",
+                                    "needle": "    def _file_for_identity(self, identity):",
+                                    "scope": "class KvikioGpuReader:"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "kvikio.CuFile(path, \"r\")",
+                                      "note": "Open on the CPU for this resolved file/chunk identity.",
+                                      "kind": "library"
+                                    }
+                                  ]
+                                },
+                                {
+                                  "label": "cu_file.pread(dst, ...)",
+                                  "note": "Submit reads into the device buffer; return futures. GDS/fallback depends on runtime.",
+                                  "kind": "library"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "label": "EventManager.__init__()",
+                  "note": "First subbatch only: CPU materialization happens while reads are in flight.",
+                  "source": {
+                    "path": "psana/psana/psexp/event_manager.py",
+                    "symbol": "EventManager.__init__",
+                    "needle": "    def __init__(",
+                    "scope": "class EventManager(object):"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._wait_gpu_read()",
+                  "note": "Wait before submitting this execution.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._wait_gpu_read",
+                    "needle": "    def _wait_gpu_read(self, pending):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "InputGroupPool.read()",
+                      "note": "Bulk-on alternative: wait each new group.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_input_group.py",
+                        "symbol": "InputGroupPool.read",
+                        "needle": "    def read(self, key):",
+                        "scope": "class InputGroupPool:"
+                      },
+                      "children": [
+                        {
+                          "label": "KvikioGpuReader.wait_batch()",
+                          "note": "Drain futures and validate byte counts.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                            "symbol": "KvikioGpuReader.wait_batch",
+                            "needle": "    def wait_batch(self, pending: \"PendingBatch\") -> KvikioBatchRead:",
+                            "scope": "class KvikioGpuReader:"
+                          },
+                          "children": [
+                            {
+                              "label": "future.get()",
+                              "note": "Host wait for I/O completion.",
+                              "kind": "library"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "label": "KvikioGpuReader.wait_batch()",
+                      "note": "Bulk-off alternative: drain the batch futures.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                        "symbol": "KvikioGpuReader.wait_batch",
+                        "needle": "    def wait_batch(self, pending: \"PendingBatch\") -> KvikioBatchRead:",
+                        "scope": "class KvikioGpuReader:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "4. Submit device parsing and hand off to execution",
+          "when": "Called after _wait_gpu_read. Bulk and per-dgram branches reach the same parser; kernel launches enqueue work on the chosen execution stream.",
+          "roots": [
+            {
+              "label": "GpuEventManager._process_batch()",
+              "note": "For this ready subbatch.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._process_batch",
+                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._submit_gpu()",
+                  "note": "Choose a parsing branch.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._submit_gpu",
+                    "needle": "    def _submit_gpu(self, subbatch, gpu_read, event_envelopes):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager._submit_group_gpu()",
+                      "note": "Bulk on.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._submit_group_gpu",
+                        "needle": "    def _submit_group_gpu(self, subbatch, pending, event_envelopes):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "InputGroupPool.parse_groups()",
+                          "note": "Parse newly read groups together.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_input_group.py",
+                            "symbol": "InputGroupPool.parse_groups",
+                            "needle": "    def parse_groups(self, keys, parser, stream):",
+                            "scope": "class InputGroupPool:"
+                          },
+                          "children": [
+                            {
+                              "label": "GpuXtcBatchPool.parse_groups()",
+                              "note": "Call parse(), then construct InputWindows; shared groups can serve later executions.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpudgram/batch.py",
+                                "symbol": "GpuXtcBatchPool.parse_groups",
+                                "needle": "    def parse_groups(self, reads, stream, *, batch_id):",
+                                "scope": "class GpuXtcBatchPool:"
+                              },
+                              "children": [
+                                {
+                                  "label": "GpuXtcBatchPool.parse()",
+                                  "note": "Shared parser callee from parse_groups / parse_window.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpudgram/batch.py",
+                                    "symbol": "GpuXtcBatchPool.parse",
+                                    "needle": "    def parse(self, slot_id, data_gpu, desc_table, stream, *, input_bases_gpu=None):",
+                                    "scope": "class GpuXtcBatchPool:"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "stream.wait_event(_config_ready)",
+                                      "note": "CUDA dependency: Configure upload must be ready.",
+                                      "kind": "library"
+                                    },
+                                    {
+                                      "label": "GpuEventBatch.__init__()",
+                                      "note": "Enqueue XTC walking and record walk completion.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpudgram/parser.py",
+                                        "symbol": "GpuEventBatch.__init__",
+                                        "needle": "    def __init__(",
+                                        "scope": "class GpuEventBatch:"
+                                      },
+                                      "children": [
+                                        {
+                                          "label": "_walk_kernel()(...)",
+                                          "note": "CUDA launch: walk datagram children and collect ShapesData references.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpudgram/parser.py",
+                                            "symbol": "_walk_kernel",
+                                            "needle": "def _walk_kernel():"
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "label": "GpuEventBatch._locate_configured()",
+                                      "note": "For configured field handles.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpudgram/parser.py",
+                                        "symbol": "GpuEventBatch._locate_configured",
+                                        "needle": "    def _locate_configured(self, handles, stream_handles, handle_table, backing,",
+                                        "scope": "class GpuEventBatch:"
+                                      },
+                                      "children": [
+                                        {
+                                          "label": "_init_locators_kernel()(...)",
+                                          "note": "CUDA launch: initialize locator rows.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpudgram/parser.py",
+                                            "symbol": "_init_locators_kernel",
+                                            "needle": "def _init_locators_kernel():"
+                                          }
+                                        },
+                                        {
+                                          "label": "_locate_fields_kernel()(...)",
+                                          "note": "CUDA launch: fill configured field locations.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpudgram/parser.py",
+                                            "symbol": "_locate_fields_kernel",
+                                            "needle": "def _locate_fields_kernel():"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "label": "InputWindow.__init__()",
+                                  "note": "Retain the read/parser owners and parser-ready event until consumers release them.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_input_window.py",
+                                    "symbol": "InputWindow.__init__",
+                                    "needle": "    def __init__(self, batch_id, window_id, batch, desc_table, *, release=None,",
+                                    "scope": "class InputWindow:"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "label": "EventPool.submit()",
+                          "note": "Use the already parsed InputWindows.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_stream.py",
+                            "symbol": "EventPool.submit",
+                            "needle": "    def submit(",
+                            "scope": "class EventPool:"
+                          }
+                        }
+                      ]
+                    },
+                    {
+                      "label": "GpuEventManager._submit_per_dgram_gpu()",
+                      "note": "Bulk off.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._submit_per_dgram_gpu",
+                        "needle": "    def _submit_per_dgram_gpu(self, subbatch, gpu_read, event_envelopes):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "EventPool.submit()",
+                          "note": "Parse this execution’s read before constructing task inputs.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_stream.py",
+                            "symbol": "EventPool.submit",
+                            "needle": "    def submit(",
+                            "scope": "class EventPool:"
+                          },
+                          "children": [
+                            {
+                              "label": "GpuXtcBatchPool.parse_window()",
+                              "note": "Call parse(), then wrap the result in an InputWindow.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpudgram/batch.py",
+                                "symbol": "GpuXtcBatchPool.parse_window",
+                                "needle": "    def parse_window(self, gpu_read, stream, *, batch_id, defer_retirement=False):",
+                                "scope": "class GpuXtcBatchPool:"
+                              },
+                              "children": [
+                                {
+                                  "label": "GpuXtcBatchPool.parse()",
+                                  "note": "Shared parser callee from parse_groups / parse_window.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpudgram/batch.py",
+                                    "symbol": "GpuXtcBatchPool.parse",
+                                    "needle": "    def parse(self, slot_id, data_gpu, desc_table, stream, *, input_bases_gpu=None):",
+                                    "scope": "class GpuXtcBatchPool:"
+                                  },
+                                  "children": [
+                                    {
+                                      "label": "stream.wait_event(_config_ready)",
+                                      "note": "CUDA dependency: Configure upload must be ready.",
+                                      "kind": "library"
+                                    },
+                                    {
+                                      "label": "GpuEventBatch.__init__()",
+                                      "note": "Enqueue XTC walking and record walk completion.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpudgram/parser.py",
+                                        "symbol": "GpuEventBatch.__init__",
+                                        "needle": "    def __init__(",
+                                        "scope": "class GpuEventBatch:"
+                                      },
+                                      "children": [
+                                        {
+                                          "label": "_walk_kernel()(...)",
+                                          "note": "CUDA launch: walk datagram children and collect ShapesData references.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpudgram/parser.py",
+                                            "symbol": "_walk_kernel",
+                                            "needle": "def _walk_kernel():"
+                                          }
+                                        }
+                                      ]
+                                    },
+                                    {
+                                      "label": "GpuEventBatch._locate_configured()",
+                                      "note": "For configured field handles.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpudgram/parser.py",
+                                        "symbol": "GpuEventBatch._locate_configured",
+                                        "needle": "    def _locate_configured(self, handles, stream_handles, handle_table, backing,",
+                                        "scope": "class GpuEventBatch:"
+                                      },
+                                      "children": [
+                                        {
+                                          "label": "_init_locators_kernel()(...)",
+                                          "note": "CUDA launch: initialize locator rows.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpudgram/parser.py",
+                                            "symbol": "_init_locators_kernel",
+                                            "needle": "def _init_locators_kernel():"
+                                          }
+                                        },
+                                        {
+                                          "label": "_locate_fields_kernel()(...)",
+                                          "note": "CUDA launch: fill configured field locations.",
+                                          "source": {
+                                            "path": "psana/psana/gpu/gpudgram/parser.py",
+                                            "symbol": "_locate_fields_kernel",
+                                            "needle": "def _locate_fields_kernel():"
+                                          }
+                                        }
+                                      ]
+                                    }
+                                  ]
+                                },
+                                {
+                                  "label": "InputWindow.__init__()",
+                                  "note": "Retain the read/parser owners and parser-ready event until consumers release them.",
+                                  "source": {
+                                    "path": "psana/psana/gpu/gpu_input_window.py",
+                                    "symbol": "InputWindow.__init__",
+                                    "needle": "    def __init__(self, batch_id, window_id, batch, desc_table, *, release=None,",
+                                    "scope": "class InputWindow:"
+                                  }
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "EventPool.submit()",
+              "note": "After parsing, use the windows to construct event inputs.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_stream.py",
+                "symbol": "EventPool.submit",
+                "needle": "    def submit(",
+                "scope": "class EventPool:"
+              },
+              "children": [
+                {
+                  "label": "InputWindow.wait_ready()",
+                  "note": "Place parser-readiness dependencies on the slot stream.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_input_window.py",
+                    "symbol": "InputWindow.wait_ready",
+                    "needle": "    def wait_ready(self, stream):",
+                    "scope": "class InputWindow:"
+                  }
+                },
+                {
+                  "label": "prepared inputs → task callback",
+                  "note": "Continue in “Run the user task”; leases retain raw/parser storage.",
+                  "kind": "handoff"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "execute",
+      "title": "Run the user task",
+      "tag": "EventPool / GpuTask",
+      "role": "BD host dispatches on a slot CUDA stream",
+      "serial": "Same pool/task contract.",
+      "summary": "An execution slot owns one CUDA stream. Prepared inputs and declared constants feed an external GpuTask callback once per nonempty selected execution subbatch.",
+      "inputs": [
+        "Ready input windows and event identities",
+        "Declared task inputs and requested constants"
+      ],
+      "outputs": [
+        "Published named GPU arrays",
+        "Producer-completion event and leases"
+      ],
+      "flow": [
+        "EventPool.submit() waits on input readiness and constructs BatchInputContext.",
+        "dispatch_task() invokes function(batch, stream). Inputs and outputs have a leading event-row dimension; this is not one callback per pixel.",
+        "The task owns its algorithm. Framework raw-input access and constants do not imply built-in detector calibration.",
+        "select_task_events() omits rows without GPU datagrams. Missing detector/segment policy is an explicit limitation, not assumed CPU-equivalent behavior."
+      ],
+      "ownership": "Producer owners and input leases survive until registered consumer completion. Slots may overlap, but reuse waits for all relevant consumers, including escaped input-view work.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_stream.py",
+          "symbol": "EventPool",
+          "needle": "class EventPool"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_task.py",
+          "symbol": "GpuTask",
+          "needle": "class GpuTask"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_task_batch.py",
+          "symbol": "BatchInputContext",
+          "needle": "class BatchInputContext"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_producer.py",
+          "symbol": "dispatch_task",
+          "needle": "def dispatch_task("
+        }
+      ],
+      "notes": [
+        "Dense raw preparation is currently Jungfrau-specific; generic field selectors are separate. #170 tracks missing-input behavior discussion."
+      ],
+      "map_title": "Run the user task",
+      "call_paths": [
+        {
+          "title": "Setup: slots and declared inputs",
+          "when": "GpuEventManager construction invokes this before batches are processed.",
+          "roots": [
+            {
+              "label": "GpuEventManager.__init__()",
+              "note": "One manager for this BD/run (or the serial run).",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager.__init__",
+                "needle": "    def __init__(",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._setup_gpu_pipeline()",
+                  "note": "Create the budget, execution pool and Configure-derived parser before input I/O.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._setup_gpu_pipeline",
+                    "needle": "    def _setup_gpu_pipeline(self):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "EventPool.__init__()",
+                      "note": "Create n_gpu_streams execution slots.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_stream.py",
+                        "symbol": "EventPool.__init__",
+                        "needle": "    def __init__(self, n: int = 2, *, budget=None):",
+                        "scope": "class EventPool:"
+                      }
+                    },
+                    {
+                      "label": "prepare_task_inputs()",
+                      "note": "When a task exists, create its declared dense-input preparers.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_task.py",
+                        "symbol": "prepare_task_inputs",
+                        "needle": "def prepare_task_inputs(task, configs, bindings, *, n_slots, budget):"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "One callback per selected execution subbatch",
+          "when": "Bulk and per-dgram submit helpers both delegate to EventPool.submit; the device-input panel expands parsing.",
+          "roots": [
+            {
+              "label": "GpuEventManager._process_batch()",
+              "note": "For a read-complete subbatch.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._process_batch",
+                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._submit_gpu()",
+                  "note": "Choose _submit_group_gpu or _submit_per_dgram_gpu.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._submit_gpu",
+                    "needle": "    def _submit_gpu(self, subbatch, gpu_read, event_envelopes):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager._submit_group_gpu()",
+                      "note": "Bulk-on alternative; parse input groups before pool submission.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._submit_group_gpu",
+                        "needle": "    def _submit_group_gpu(self, subbatch, pending, event_envelopes):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "EventPool.submit()",
+                          "note": "Prepare the slot and retain owners.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_stream.py",
+                            "symbol": "EventPool.submit",
+                            "needle": "    def submit(",
+                            "scope": "class EventPool:"
+                          },
+                          "children": [
+                            {
+                              "label": "InputWindow.wait_ready()",
+                              "note": "Wait on each input window’s readiness event.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_input_window.py",
+                                "symbol": "InputWindow.wait_ready",
+                                "needle": "    def wait_ready(self, stream):",
+                                "scope": "class InputWindow:"
+                              }
+                            },
+                            {
+                              "label": "select_task_events()",
+                              "note": "When a task exists: select GPU rows matching delivery envelopes.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_task_batch.py",
+                                "symbol": "select_task_events",
+                                "needle": "def select_task_events(events, envelopes):"
+                              }
+                            },
+                            {
+                              "label": "preparer.prepare_batch(...)",
+                              "note": "For declared dense inputs, gather selected rows on the slot stream.",
+                              "kind": "library"
+                            },
+                            {
+                              "label": "BatchInputContext.__init__()",
+                              "note": "Bind selected inputs, constants and event identity.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_task_batch.py",
+                                "symbol": "BatchInputContext.__init__",
+                                "needle": "    def __init__(self, events, task, prepared, bindings, constants, stream,",
+                                "scope": "class BatchInputContext:"
+                              }
+                            },
+                            {
+                              "label": "dispatch_task()",
+                              "note": "Invoke only for a nonempty selection.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_producer.py",
+                                "symbol": "dispatch_task",
+                                "needle": "def dispatch_task(task, inputs, bindings, stream, owners, publications, batches, lease):"
+                              },
+                              "children": [
+                                {
+                                  "label": "task.function(batch, stream)",
+                                  "note": "User callback enqueues kernels on the supplied stream.",
+                                  "kind": "user",
+                                  "children": [
+                                    {
+                                      "label": "ProducerContext.publish()",
+                                      "note": "Called by user code to retain/register named output groups.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpu_producer.py",
+                                        "symbol": "ProducerContext.publish",
+                                        "needle": "    def publish(self, name, array, event_indices=None):",
+                                        "scope": "class ProducerContext:"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "label": "result_ready.record(stream)",
+                              "note": "Record producer completion after submitted work.",
+                              "kind": "library"
+                            }
+                          ]
+                        }
+                      ]
+                    },
+                    {
+                      "label": "GpuEventManager._submit_per_dgram_gpu()",
+                      "note": "Bulk-off alternative; pool submission parses its read.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._submit_per_dgram_gpu",
+                        "needle": "    def _submit_per_dgram_gpu(self, subbatch, gpu_read, event_envelopes):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "EventPool.submit()",
+                          "note": "Prepare the slot and retain owners.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_stream.py",
+                            "symbol": "EventPool.submit",
+                            "needle": "    def submit(",
+                            "scope": "class EventPool:"
+                          },
+                          "children": [
+                            {
+                              "label": "InputWindow.wait_ready()",
+                              "note": "Wait on each input window’s readiness event.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_input_window.py",
+                                "symbol": "InputWindow.wait_ready",
+                                "needle": "    def wait_ready(self, stream):",
+                                "scope": "class InputWindow:"
+                              }
+                            },
+                            {
+                              "label": "select_task_events()",
+                              "note": "When a task exists: select GPU rows matching delivery envelopes.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_task_batch.py",
+                                "symbol": "select_task_events",
+                                "needle": "def select_task_events(events, envelopes):"
+                              }
+                            },
+                            {
+                              "label": "preparer.prepare_batch(...)",
+                              "note": "For declared dense inputs, gather selected rows on the slot stream.",
+                              "kind": "library"
+                            },
+                            {
+                              "label": "BatchInputContext.__init__()",
+                              "note": "Bind selected inputs, constants and event identity.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_task_batch.py",
+                                "symbol": "BatchInputContext.__init__",
+                                "needle": "    def __init__(self, events, task, prepared, bindings, constants, stream,",
+                                "scope": "class BatchInputContext:"
+                              }
+                            },
+                            {
+                              "label": "dispatch_task()",
+                              "note": "Invoke only for a nonempty selection.",
+                              "source": {
+                                "path": "psana/psana/gpu/gpu_producer.py",
+                                "symbol": "dispatch_task",
+                                "needle": "def dispatch_task(task, inputs, bindings, stream, owners, publications, batches, lease):"
+                              },
+                              "children": [
+                                {
+                                  "label": "task.function(batch, stream)",
+                                  "note": "User callback enqueues kernels on the supplied stream.",
+                                  "kind": "user",
+                                  "children": [
+                                    {
+                                      "label": "ProducerContext.publish()",
+                                      "note": "Called by user code to retain/register named output groups.",
+                                      "source": {
+                                        "path": "psana/psana/gpu/gpu_producer.py",
+                                        "symbol": "ProducerContext.publish",
+                                        "needle": "    def publish(self, name, array, event_indices=None):",
+                                        "scope": "class ProducerContext:"
+                                      }
+                                    }
+                                  ]
+                                }
+                              ]
+                            },
+                            {
+                              "label": "result_ready.record(stream)",
+                              "note": "Record producer completion after submitted work.",
+                              "kind": "library"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "constants",
+      "title": "Supply requested constants",
+      "tag": "RequestedConstants",
+      "role": "One current device copy per BD",
+      "serial": "One local device copy per requested selector.",
+      "summary": "Upload only constants declared by the external task and expose them through batch.calibconst(detector, key). Preserve shape and dtype.",
+      "inputs": [
+        "Host dsparms.calibconst arrays",
+        "Task declaration of (detector, key) pairs"
+      ],
+      "outputs": [
+        "Admitted per-BD device arrays"
+      ],
+      "flow": [
+        "Manager setup constructs RequestedConstants and performs the initial refresh.",
+        "BeginStep dispatch updates host transition state and refreshes changed requested arrays after draining prior consumers. BeginStep does not itself fetch new values from the calibration database.",
+        "#168 proposes restoring CUDA-IPC sharing between peer BDs on the same GPU. It is not implemented at this baseline."
+      ],
+      "ownership": "RequestedConstants retains host snapshots and device allocations. Replacement can need old/new overlap; escaped participating aliases retain budget charges. Cross-BD shared ownership is future design work.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_task.py",
+          "symbol": "RequestedConstants",
+          "needle": "class RequestedConstants"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_events.py",
+          "symbol": "GpuEventManager._dispatch_transition",
+          "needle": "def _dispatch_transition("
+        }
+      ],
+      "notes": [
+        "#153 must correct packet-relative transition ordering even though earlier in-flight work is drained."
+      ],
+      "map_title": "Requested constants",
+      "call_paths": [
+        {
+          "title": "Initialize requested device constants",
+          "when": "The run’s host calibration setup precedes GPU manager setup; this tree describes the inspected implementation.",
+          "roots": [
+            {
+              "label": "GpuEventManager.__init__()",
+              "note": "One manager for this BD/run (or the serial run).",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager.__init__",
+                "needle": "    def __init__(",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._setup_gpu_pipeline()",
+                  "note": "Create the budget, execution pool and Configure-derived parser before input I/O.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._setup_gpu_pipeline",
+                    "needle": "    def _setup_gpu_pipeline(self):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "RequestedConstants.__init__()",
+                      "note": "Capture the task’s declared selectors.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_task.py",
+                        "symbol": "RequestedConstants.__init__",
+                        "needle": "    def __init__(self, requests, budget):",
+                        "scope": "class RequestedConstants:"
+                      }
+                    },
+                    {
+                      "label": "RequestedConstants.refresh()",
+                      "note": "Snapshot requested host arrays and upload changed/missing values.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_task.py",
+                        "symbol": "RequestedConstants.refresh",
+                        "needle": "    def refresh(self, source, *, before_upload=None):",
+                        "scope": "class RequestedConstants:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Access inside the callback",
+          "when": "Device arrays are retrieved through the existing task context.",
+          "roots": [
+            {
+              "label": "EventPool.submit()",
+              "note": "Before dispatching the task.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_stream.py",
+                "symbol": "EventPool.submit",
+                "needle": "    def submit(",
+                "scope": "class EventPool:"
+              },
+              "children": [
+                {
+                  "label": "BatchInputContext.__init__()",
+                  "note": "Capture references to declared constants.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_task_batch.py",
+                    "symbol": "BatchInputContext.__init__",
+                    "needle": "    def __init__(self, events, task, prepared, bindings, constants, stream,",
+                    "scope": "class BatchInputContext:"
+                  },
+                  "children": [
+                    {
+                      "label": "RequestedConstants.get()",
+                      "note": "Resolve each declared selector’s device array.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_task.py",
+                        "symbol": "RequestedConstants.get",
+                        "needle": "    def get(self, detector, key):",
+                        "scope": "class RequestedConstants:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "task.function(batch, stream)",
+              "note": "User requests a declared selector.",
+              "kind": "user",
+              "children": [
+                {
+                  "label": "ProducerContext.calibconst()",
+                  "note": "Delegate to the batch inputs.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_producer.py",
+                    "symbol": "ProducerContext.calibconst",
+                    "needle": "    def calibconst(self, detector, key):",
+                    "scope": "class ProducerContext:"
+                  },
+                  "children": [
+                    {
+                      "label": "BatchInputContext.calibconst()",
+                      "note": "Return the selector already bound when BatchInputContext was constructed.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_task_batch.py",
+                        "symbol": "BatchInputContext.calibconst",
+                        "needle": "    def calibconst(self, detector, key):",
+                        "scope": "class BatchInputContext:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Inspected BeginStep refresh path",
+          "when": "This is the current code, not a promise that steps change run calibration. #153 tracks the ordering defect.",
+          "roots": [
+            {
+              "label": "GpuEventManager._process_batch()",
+              "note": "Current batch dispatcher.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._process_batch",
+                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._handle_steps()",
+                  "note": "Drain earlier execution/input consumers for BeginStep.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._handle_steps",
+                    "needle": "    def _handle_steps(self, step_dict):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager._dispatch_transition()",
+                      "note": "Apply host transition and advance local step generation.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._dispatch_transition",
+                        "needle": "    def _dispatch_transition(self, service, dgrams):",
+                        "scope": "class GpuEventManager:"
+                      },
+                      "children": [
+                        {
+                          "label": "Run._handle_transition()",
+                          "note": "Update host environment/configuration.",
+                          "source": {
+                            "path": "psana/psana/psexp/run.py",
+                            "symbol": "Run._handle_transition",
+                            "needle": "    def _handle_transition(self, dgrams):",
+                            "scope": "class Run(object):"
+                          }
+                        },
+                        {
+                          "label": "RequestedConstants.refresh()",
+                          "note": "Compare requested host bytes; upload only if changed. No calibration database fetch.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_task.py",
+                            "symbol": "RequestedConstants.refresh",
+                            "needle": "    def refresh(self, source, *, before_upload=None):",
+                            "scope": "class RequestedConstants:"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "publish",
+      "title": "Publish results to host",
+      "tag": "PublicationD2H",
+      "role": "BD host + CUDA copy stream",
+      "serial": "Same publication path.",
+      "summary": "Enqueue copies of named task publications. A copy stream waits for producer completion; one terminal completion token covers all copies for the execution.",
+      "inputs": [
+        "Published contiguous GPU arrays",
+        "Producer-ready token"
+      ],
+      "outputs": [
+        "Timestamp-keyed HostResult rows",
+        "Copy completion registered with producer lease"
+      ],
+      "flow": [
+        "GpuEventManager schedules PublicationD2H.enqueue() after task submission.",
+        "Bounded pinned staging enables asynchronous output copies; cap/oversize pressure can choose blocking ordinary-host copies.",
+        "evt.gpu.get(name).on_cpu waits if necessary and materializes an independent cached NumPy row. That access does not rerun the user task."
+      ],
+      "ownership": "The producer lease protects source arrays through copy completion. Staging blocks cannot be reused while copies or host-result aliases still need them. Input device views use separate leases.",
+      "sources": [
+        {
+          "path": "psana/psana/gpu/gpu_d2h.py",
+          "symbol": "PublicationD2H",
+          "needle": "class PublicationD2H"
+        },
+        {
+          "path": "psana/psana/gpu/gpu_d2h.py",
+          "symbol": "HostResult",
+          "needle": "class HostResult"
+        },
+        {
+          "path": "psana/psana/gpu/context.py",
+          "symbol": "SlotLease",
+          "needle": "class SlotLease"
+        },
+        {
+          "path": "psana/psana/gpu/context.py",
+          "symbol": "GPUResult",
+          "needle": "class GPUResult"
+        }
+      ],
+      "notes": [],
+      "map_title": "Copy results to host",
+      "call_paths": [
+        {
+          "title": "Setup and automatic output copy",
+          "when": "Manager construction creates the publication manager only when a task exists; the copy stream is created lazily at the first nonempty payload.",
+          "roots": [
+            {
+              "label": "GpuEventManager.__init__()",
+              "note": "During run GPU setup.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager.__init__",
+                "needle": "    def __init__(",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "PublicationD2H.__init__()",
+                  "note": "Initialize the pinned-memory budget/cache.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_d2h.py",
+                    "symbol": "PublicationD2H.__init__",
+                    "needle": "    def __init__(self, pinned_bytes=DEFAULT_PINNED_BYTES):",
+                    "scope": "class PublicationD2H:"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "GpuEventManager._process_batch()",
+              "note": "After each input read completes.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._process_batch",
+                "needle": "    def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._submit_gpu()",
+                  "note": "Submit task work, then queue its publications.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._submit_gpu",
+                    "needle": "    def _submit_gpu(self, subbatch, gpu_read, event_envelopes):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "PublicationD2H.enqueue()",
+                      "note": "Validate groups and attach host-result tokens.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_d2h.py",
+                        "symbol": "PublicationD2H.enqueue",
+                        "needle": "    def enqueue(self, record):",
+                        "scope": "class PublicationD2H:"
+                      },
+                      "children": [
+                        {
+                          "label": "copy_stream.wait_event(producer_done)",
+                          "note": "CUDA dependency: wait for producer completion.",
+                          "kind": "library"
+                        },
+                        {
+                          "label": "PublicationD2H._destination()",
+                          "note": "Select bounded pinned staging or ordinary host memory.",
+                          "source": {
+                            "path": "psana/psana/gpu/gpu_d2h.py",
+                            "symbol": "PublicationD2H._destination",
+                            "needle": "    def _destination(self, shape, dtype, nbytes):",
+                            "scope": "class PublicationD2H:"
+                          }
+                        },
+                        {
+                          "label": "pub.array.get(out=host, stream=..., blocking=...)",
+                          "note": "Copy each publication; pageable fallback blocks.",
+                          "kind": "library"
+                        },
+                        {
+                          "label": "event.record(copy_stream)",
+                          "note": "Arm the terminal copy-completion token.",
+                          "kind": "library"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "User reads an output row",
+          "when": "Copies were already scheduled before delivery.",
+          "roots": [
+            {
+              "label": "evt.gpu.get(name)",
+              "note": "evt.gpu.get(name): return the named GPUResult.",
+              "source": {
+                "path": "psana/psana/gpu/context.py",
+                "symbol": "GpuEventState.get",
+                "needle": "    def get(self, key: str) -> GPUResult:",
+                "scope": "class GpuEventState:"
+              }
+            },
+            {
+              "label": "GPUResult.on_cpu",
+              "note": "Property access: use cache or materialize the pending host row.",
+              "source": {
+                "path": "psana/psana/gpu/context.py",
+                "symbol": "GPUResult.on_cpu",
+                "needle": "    def on_cpu(self):",
+                "scope": "class GPUResult:"
+              },
+              "children": [
+                {
+                  "label": "HostResult.get()",
+                  "note": "Wait for completion if necessary and cache an independent NumPy row.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_d2h.py",
+                    "symbol": "HostResult.get",
+                    "needle": "    def get(self):",
+                    "scope": "class HostResult:"
+                  }
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "event",
+      "title": "Create the public Event",
+      "tag": "EventEnvelope → Event",
+      "role": "BD / user analysis process",
+      "serial": "RunSerial uses the common Run materialization boundary.",
+      "summary": "Convert an internal handoff into one public Event containing CPU datagrams and optional GPU state. CPU-only and GPU-assisted processing meet at this API boundary.",
+      "inputs": [
+        "EventEnvelope(dgrams, gpu_state)",
+        "Run context"
+      ],
+      "outputs": [
+        "Public Event with event identity",
+        "Detector-accessible dgrams and optional evt.gpu"
+      ],
+      "flow": [
+        "CPU Run iteration handles non-L1 transitions before yielding the next Event.",
+        "Run._materialize_event() constructs Event exactly at the public boundary.",
+        "GPU manager attaches results and input state to the envelope; GPU-only metadata allows Event identity without full CPU detector payloads."
+      ],
+      "ownership": "Event and GPU state retain access owners/tokens according to their APIs. Advancing the iterator is not a substitute for CUDA completion or documented input-view scope.",
+      "sources": [
+        {
+          "path": "psana/psana/event.py",
+          "symbol": "EventEnvelope",
+          "needle": "class EventEnvelope"
+        },
+        {
+          "path": "psana/psana/event.py",
+          "symbol": "Event",
+          "needle": "class Event:"
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run._materialize_event",
+          "needle": "def _materialize_event("
+        },
+        {
+          "path": "psana/psana/psexp/mpi_ds.py",
+          "symbol": "RunParallel._events_impl",
+          "needle": "def _events_impl("
+        }
+      ],
+      "notes": [],
+      "map_title": "Public Event",
+      "call_paths": [
+        {
+          "title": "Public iteration and materialization",
+          "when": "Serial and MPI are alternative entry paths; envelope production is expanded in the processing panels.",
+          "roots": [
+            {
+              "label": "RunSerial.events()",
+              "note": "Serial: delegate to common Run iteration.",
+              "source": {
+                "path": "psana/psana/psexp/run.py",
+                "symbol": "RunSerial.events",
+                "needle": "    def events(self):",
+                "scope": "class RunSerial(Run):"
+              },
+              "children": [
+                {
+                  "label": "Run.events()",
+                  "note": "Advance Events (CPU) or GpuEventManager (GPU).",
+                  "source": {
+                    "path": "psana/psana/psexp/run.py",
+                    "symbol": "Run.events",
+                    "needle": "    def events(self):",
+                    "scope": "class Run(object):"
+                  },
+                  "children": [
+                    {
+                      "label": "Run._handle_transition()",
+                      "note": "Consume non-L1 envelopes; GPU manager normally handled transitions already.",
+                      "source": {
+                        "path": "psana/psana/psexp/run.py",
+                        "symbol": "Run._handle_transition",
+                        "needle": "    def _handle_transition(self, dgrams):",
+                        "scope": "class Run(object):"
+                      }
+                    },
+                    {
+                      "label": "Run._materialize_event()",
+                      "note": "For an L1 envelope.",
+                      "source": {
+                        "path": "psana/psana/psexp/run.py",
+                        "symbol": "Run._materialize_event",
+                        "needle": "    def _materialize_event(self, envelope, proxy_evt=None):",
+                        "scope": "class Run(object):"
+                      },
+                      "children": [
+                        {
+                          "label": "Event.__init__()",
+                          "note": "Attach dgrams, run context and optional GPU state.",
+                          "source": {
+                            "path": "psana/psana/event.py",
+                            "symbol": "Event.__init__",
+                            "needle": "    def __init__(self, dgrams, run=None, proxy_evt=None, gpu=None):",
+                            "scope": "class Event:"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "label": "RunParallel.events()",
+              "note": "MPI alternative.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel.events",
+                "needle": "    def events(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "RunParallel._events_impl()",
+                  "note": "Advance the role-specific start() iterator.",
+                  "source": {
+                    "path": "psana/psana/psexp/mpi_ds.py",
+                    "symbol": "RunParallel._events_impl",
+                    "needle": "    def _events_impl(self):",
+                    "scope": "class RunParallel(Run):"
+                  },
+                  "children": [
+                    {
+                      "label": "Run._handle_transition()",
+                      "note": "Consume non-L1 envelopes.",
+                      "source": {
+                        "path": "psana/psana/psexp/run.py",
+                        "symbol": "Run._handle_transition",
+                        "needle": "    def _handle_transition(self, dgrams):",
+                        "scope": "class Run(object):"
+                      }
+                    },
+                    {
+                      "label": "Run._materialize_event()",
+                      "note": "For an L1 envelope.",
+                      "source": {
+                        "path": "psana/psana/psexp/run.py",
+                        "symbol": "Run._materialize_event",
+                        "needle": "    def _materialize_event(self, envelope, proxy_evt=None):",
+                        "scope": "class Run(object):"
+                      },
+                      "children": [
+                        {
+                          "label": "Event.__init__()",
+                          "note": "Same public API boundary.",
+                          "source": {
+                            "path": "psana/psana/event.py",
+                            "symbol": "Event.__init__",
+                            "needle": "    def __init__(self, dgrams, run=None, proxy_evt=None, gpu=None):",
+                            "scope": "class Event:"
+                          }
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "GPU envelope attachment before public materialization",
+          "when": "Slot retirement yields completed executions; this can happen while making room for later work.",
+          "roots": [
+            {
+              "label": "GpuEventManager._yield_ready()",
+              "note": "For each completed execution’s event envelope.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager._yield_ready",
+                "needle": "    def _yield_ready(self, ready, device_released=False):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._attach_gpu()",
+                  "note": "Attach output tokens and input access owners.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._attach_gpu",
+                    "needle": "    def _attach_gpu(self, envelope, gpu_results, leases=None,",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventState.__init__()",
+                      "note": "Retain timestamp-matched GPU state.",
+                      "source": {
+                        "path": "psana/psana/gpu/context.py",
+                        "symbol": "GpuEventState.__init__",
+                        "needle": "    def __init__(self, gpu_results: dict, detector_names=None,",
+                        "scope": "class GpuEventState:"
+                      }
+                    },
+                    {
+                      "label": "EventEnvelope()",
+                      "note": "Return the internal handoff to Run.",
+                      "source": {
+                        "path": "psana/psana/event.py",
+                        "symbol": "EventEnvelope",
+                        "needle": "class EventEnvelope:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "analysis",
+      "title": "Analyze and release",
+      "tag": "User event loop",
+      "role": "BD user code; optional SRV output",
+      "serial": "User loop runs in the single local process.",
+      "summary": "User analysis consumes Events, detector methods, or named GPU task results. Optional small-data output is downstream; it is not required to create an Event.",
+      "inputs": [
+        "Public Event",
+        "Detector objects created by run.Detector()"
+      ],
+      "outputs": [
+        "User analysis results",
+        "Optional smalldata records"
+      ],
+      "flow": [
+        "CPU example: for evt in run.events(): det.raw.raw(evt). Exact detector methods depend on the detector.",
+        "GPU publications: evt.gpu.get(name).on_cpu. Parsed input field views retain separate context-managed device access.",
+        "CPU run.steps()/step.events() expose step boundaries. Working GPU step iteration is still missing at this baseline (#153).",
+        "Use documented explicit/context-managed close for early exit; a bare break does not close a retained generator. MPI run.terminate() coordinates intentional run termination."
+      ],
+      "ownership": "A scoped GPU input view must pair entry with exit so completion is recorded. User-retained independent NumPy results have their own lifetime. Teardown must respect pending reads and consumers.",
+      "sources": [
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.events",
+          "needle": "def events("
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.Detector",
+          "needle": "def Detector("
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.terminate",
+          "needle": "def terminate("
+        },
+        {
+          "path": "psana/psana/psexp/step.py",
+          "symbol": "Step",
+          "needle": "class Step"
+        },
+        {
+          "path": "psana/psana/gpu/context.py",
+          "symbol": "GpuEventState",
+          "needle": "class GpuEventState"
+        },
+        {
+          "path": "psana/psana/psexp/mpi_ds.py",
+          "symbol": "RunParallel.steps",
+          "needle": "def steps("
+        },
+        {
+          "path": "psana/psana/psexp/run.py",
+          "symbol": "Run.steps",
+          "needle": "def steps("
+        }
+      ],
+      "notes": [],
+      "map_title": "Analyze and release",
+      "call_paths": [
+        {
+          "title": "User event loop",
+          "when": "Public calls made by an analysis script; detector-specific algorithms are outside this generic tree.",
+          "roots": [
+            {
+              "label": "user analysis script",
+              "note": "Construct a detector, then advance run.events().",
+              "kind": "user",
+              "children": [
+                {
+                  "label": "Run.Detector()",
+                  "note": "Create the detector interface for this run.",
+                  "source": {
+                    "path": "psana/psana/psexp/run.py",
+                    "symbol": "Run.Detector",
+                    "needle": "    def Detector(self, name, accept_missing=False, **kwargs):",
+                    "scope": "class Run(object):"
+                  }
+                },
+                {
+                  "label": "for evt in run.events()",
+                  "note": "Iterator handoff from the public Event panel.",
+                  "kind": "user",
+                  "children": [
+                    {
+                      "label": "det.raw.raw(evt)",
+                      "note": "CPU example: detector-specific field access; method depends on detector.",
+                      "kind": "user"
+                    },
+                    {
+                      "label": "evt.gpu.get(name)",
+                      "note": "GPU example: get a named task publication.",
+                      "source": {
+                        "path": "psana/psana/gpu/context.py",
+                        "symbol": "GpuEventState.get",
+                        "needle": "    def get(self, key: str) -> GPUResult:",
+                        "scope": "class GpuEventState:"
+                      }
+                    },
+                    {
+                      "label": "result.on_cpu",
+                      "note": "Retrieve the independent host result row.",
+                      "source": {
+                        "path": "psana/psana/gpu/context.py",
+                        "symbol": "GPUResult.on_cpu",
+                        "needle": "    def on_cpu(self):",
+                        "scope": "class GPUResult:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "title": "Deterministic GPU cleanup",
+          "when": "Explicitly close a started iterator (for example with contextlib.closing). A bare break on a retained generator does not perform these calls.",
+          "roots": [
+            {
+              "label": "RunSerial.events()",
+              "note": "Serial generator finally block.",
+              "source": {
+                "path": "psana/psana/psexp/run.py",
+                "symbol": "RunSerial.events",
+                "needle": "    def events(self):",
+                "scope": "class RunSerial(Run):"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager.close()",
+                  "note": "Terminal cleanup for the run’s GPU iterator.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager.close",
+                    "needle": "    def close(self):",
+                    "scope": "class GpuEventManager:"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "RunParallel._events_impl()",
+              "note": "MPI generator finally block.",
+              "source": {
+                "path": "psana/psana/psexp/mpi_ds.py",
+                "symbol": "RunParallel._events_impl",
+                "needle": "    def _events_impl(self):",
+                "scope": "class RunParallel(Run):"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager.close()",
+                  "note": "Drain local GPU resources; transport has its own cleanup.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager.close",
+                    "needle": "    def close(self):",
+                    "scope": "class GpuEventManager:"
+                  }
+                }
+              ]
+            },
+            {
+              "label": "GpuEventManager.close()",
+              "note": "Shared manager cleanup sequence.",
+              "source": {
+                "path": "psana/psana/gpu/gpu_events.py",
+                "symbol": "GpuEventManager.close",
+                "needle": "    def close(self):",
+                "scope": "class GpuEventManager:"
+              },
+              "children": [
+                {
+                  "label": "GpuEventManager._flush_event_pool()",
+                  "note": "Finish execution and registered consumers.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._flush_event_pool",
+                    "needle": "    def _flush_event_pool(self):",
+                    "scope": "class GpuEventManager:"
+                  }
+                },
+                {
+                  "label": "GpuEventManager._close_resources()",
+                  "note": "Release reader/parser/constants and publication resources.",
+                  "source": {
+                    "path": "psana/psana/gpu/gpu_events.py",
+                    "symbol": "GpuEventManager._close_resources",
+                    "needle": "    def _close_resources(self):",
+                    "scope": "class GpuEventManager:"
+                  },
+                  "children": [
+                    {
+                      "label": "GpuEventManager._drain_pending_gpu_read()",
+                      "note": "Finish pre-issued reads.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_events.py",
+                        "symbol": "GpuEventManager._drain_pending_gpu_read",
+                        "needle": "    def _drain_pending_gpu_read(self):",
+                        "scope": "class GpuEventManager:"
+                      }
+                    },
+                    {
+                      "label": "InputGroupPool.close()",
+                      "note": "Bulk on: release planned uses and drain windows.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_input_group.py",
+                        "symbol": "InputGroupPool.close",
+                        "needle": "    def close(self):",
+                        "scope": "class InputGroupPool:"
+                      }
+                    },
+                    {
+                      "label": "GpuXtcBatchPool.close()",
+                      "note": "Drain/release parser windows.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpudgram/batch.py",
+                        "symbol": "GpuXtcBatchPool.close",
+                        "needle": "    def close(self):",
+                        "scope": "class GpuXtcBatchPool:"
+                      }
+                    },
+                    {
+                      "label": "KvikioGpuReader.close()",
+                      "note": "Drain any remaining futures and close file handles.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_kvikio_read.py",
+                        "symbol": "KvikioGpuReader.close",
+                        "needle": "    def close(self):",
+                        "scope": "class KvikioGpuReader:"
+                      }
+                    },
+                    {
+                      "label": "RequestedConstants.close()",
+                      "note": "If a task requested constants.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_task.py",
+                        "symbol": "RequestedConstants.close",
+                        "needle": "    def close(self):",
+                        "scope": "class RequestedConstants:"
+                      }
+                    },
+                    {
+                      "label": "PublicationD2H.close()",
+                      "note": "If a task exists: materialize retained host rows and release staging.",
+                      "source": {
+                        "path": "psana/psana/gpu/gpu_d2h.py",
+                        "symbol": "PublicationD2H.close",
+                        "needle": "    def close(self):",
+                        "scope": "class PublicationD2H:"
+                      }
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "edges": [
+    {
+      "id": "configure",
+      "source": "setup",
+      "target": "smd",
+      "kind": "call",
+      "label": "Run setup selects local SMD reader or MPI role loop.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "chunk",
+      "source": "smd",
+      "target": "eb",
+      "kind": "mpi",
+      "label": "SMD chunk and missing transition history; serial: local byte views.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "batch",
+      "source": "eb",
+      "target": "transport",
+      "kind": "mpi",
+      "label": "Coherent CPU/SMD + optional GPU packet; serial: local batch handoff.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "cpu-dispatch",
+      "source": "transport",
+      "target": "cpu",
+      "kind": "call",
+      "label": "Events selects EventManager in CPU mode; GPU controller uses EventManager for its CPU side.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "gpu-dispatch",
+      "source": "transport",
+      "target": "controller",
+      "kind": "call",
+      "label": "Events calls GpuEventManager.process_batch(); serial RunSerial owns the manager.",
+      "views": [
+        "overview",
+        "gpu"
+      ]
+    },
+    {
+      "id": "cpu-envelope",
+      "source": "cpu",
+      "target": "event",
+      "kind": "data",
+      "label": "CPU envelopes; in GPU mode the manager correlates these with GPU event identity.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    },
+    {
+      "id": "gpu-envelope",
+      "source": "controller",
+      "target": "event",
+      "kind": "data",
+      "label": "Joined GPU-assisted envelopes (GPU internals collapsed in overview).",
+      "views": [
+        "overview"
+      ]
+    },
+    {
+      "id": "issue",
+      "source": "controller",
+      "target": "input",
+      "kind": "io",
+      "label": "Host planner issues descriptor-driven bigdata reads through KvikIO.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "ready",
+      "source": "input",
+      "target": "execute",
+      "kind": "cuda",
+      "label": "Input readiness and parsed-window dependencies precede slot work.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "constant-use",
+      "source": "constants",
+      "target": "execute",
+      "kind": "ownership",
+      "label": "Declared device constants remain owned through task consumers.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "copy",
+      "source": "execute",
+      "target": "publish",
+      "kind": "cuda",
+      "label": "Copy stream waits for task producer; terminal copy event protects reuse.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "result",
+      "source": "publish",
+      "target": "event",
+      "kind": "data",
+      "label": "Timestamp-keyed host tokens attach to GPU event state via the controller.",
+      "views": [
+        "gpu"
+      ]
+    },
+    {
+      "id": "yield",
+      "source": "event",
+      "target": "analysis",
+      "kind": "call",
+      "label": "Run yields the public Event to user analysis.",
+      "views": [
+        "overview",
+        "cpu",
+        "gpu"
+      ]
+    }
+  ],
+  "views": {
+    "overview": {
+      "title": "One event, several representations",
+      "note": "Read left to right across the first row, then follow the CPU or GPU branch into the common Event boundary. GPU work is collapsed here.",
+      "positions": {
+        "setup": [
+          20,
+          35
+        ],
+        "smd": [
+          280,
+          35
+        ],
+        "eb": [
+          540,
+          35
+        ],
+        "transport": [
+          800,
+          35
+        ],
+        "cpu": [
+          800,
+          300
+        ],
+        "controller": [
+          540,
+          300
+        ],
+        "event": [
+          280,
+          300
+        ],
+        "analysis": [
+          20,
+          300
+        ]
+      },
+      "size": [
+        1060,
+        470
+      ],
+      "routes": {
+        "cpu-envelope": [
+          [
+            900,
+            430
+          ],
+          [
+            380,
+            430
+          ]
+        ],
+        "gpu-dispatch": [
+          [
+            900,
+            210
+          ],
+          [
+            640,
+            210
+          ]
+        ]
+      }
+    },
+    "cpu": {
+      "title": "CPU: offsets become datagrams",
+      "note": "SMD0 and EB move small-data metadata. BD reads full payloads directly from bigdata storage and preserves transition order.",
+      "positions": {
+        "setup": [
+          20,
+          35
+        ],
+        "smd": [
+          280,
+          35
+        ],
+        "eb": [
+          540,
+          35
+        ],
+        "transport": [
+          800,
+          35
+        ],
+        "cpu": [
+          800,
+          300
+        ],
+        "event": [
+          410,
+          300
+        ],
+        "analysis": [
+          20,
+          300
+        ]
+      },
+      "size": [
+        1060,
+        470
+      ],
+      "routes": {}
+    },
+    "gpu": {
+      "title": "GPU: host orchestration, explicit lifetimes",
+      "note": "Follow the middle row right to left. Constants feed the task; CPU materialization is the lower-right side lane. Input windows and execution slots have distinct lifetimes.",
+      "positions": {
+        "setup": [
+          20,
+          35
+        ],
+        "smd": [
+          280,
+          35
+        ],
+        "eb": [
+          540,
+          35
+        ],
+        "transport": [
+          800,
+          35
+        ],
+        "constants": [
+          20,
+          265
+        ],
+        "execute": [
+          280,
+          265
+        ],
+        "input": [
+          540,
+          265
+        ],
+        "controller": [
+          800,
+          265
+        ],
+        "analysis": [
+          20,
+          510
+        ],
+        "publish": [
+          280,
+          510
+        ],
+        "event": [
+          540,
+          510
+        ],
+        "cpu": [
+          800,
+          510
+        ]
+      },
+      "size": [
+        1060,
+        710
+      ],
+      "routes": {
+        "cpu-dispatch": [
+          [
+            1030,
+            77
+          ],
+          [
+            1030,
+            552
+          ]
+        ],
+        "yield": [
+          [
+            640,
+            665
+          ],
+          [
+            120,
+            665
+          ]
+        ]
+      }
+    }
+  },
+  "tour": [
+    {
+      "node": "setup",
+      "title": "Choose offline run and event T",
+      "text": "T denotes one L1 event timestamp, not a buffer index. Configure and BeginRun establish the context before this event enters steady-state processing."
+    },
+    {
+      "node": "smd",
+      "title": "Locate T in small data",
+      "text": "SMD0 reads stream metadata containing T and its bigdata locations. Other events share the chunk. In serial execution this reader is local."
+    },
+    {
+      "node": "eb",
+      "title": "Align streams at T",
+      "text": "EventBuilder gathers matching timestamp contributions. CPU mode keeps SMD descriptors; GPU mode additionally creates GPUBAT1 entries for selected inputs. A missing stream can be represented without inventing a payload."
+    },
+    {
+      "node": "transport",
+      "title": "Assign T’s batch to a BD",
+      "text": "MPI sends one coherent batch to a BD. The BD is a CPU process even when it controls a GPU. Serial execution skips this transport hop."
+    },
+    {
+      "node": "cpu",
+      "title": "Materialize retained CPU inputs",
+      "text": "EventManager reads full CPU payloads from bigdata offsets. Hybrid detector streams can have both CPU and GPU input; an exclusive GPU detector need not have its raw payload materialized here."
+    },
+    {
+      "node": "controller",
+      "title": "Plan an execution containing T",
+      "text": "The GPU controller selects complete-event execution slices under its byte budget. T belongs to an execution subbatch; that is not necessarily one EB packet or one read group. CPU-only processing goes directly to the Event boundary."
+    },
+    {
+      "node": "input",
+      "title": "Bring T’s GPU input into device storage",
+      "text": "Host-submitted KvikIO reads complete and parsing exposes fields. The input owner may serve more than one execution. A slot waits on readiness before consuming these bytes."
+    },
+    {
+      "node": "constants",
+      "title": "Bind declared constants",
+      "text": "The task receives its requested per-BD device constants. Sharing them through CUDA-IPC is proposed in #168, not implemented in this baseline."
+    },
+    {
+      "node": "execute",
+      "title": "Run the external callback",
+      "text": "The task sees selected rows including T and publishes named arrays. Work is enqueued on this execution slot’s stream. Completion, not callback return alone, controls downstream dependencies."
+    },
+    {
+      "node": "publish",
+      "title": "Copy T’s published row",
+      "text": "The copy stream waits for the producer, then copies publication groups. HostResult retains T’s row and its completion token; copies need not be one operation per event."
+    },
+    {
+      "node": "event",
+      "title": "Join the event’s representations",
+      "text": "The manager associates CPU datagrams, GPU metadata and results by event identity. Run materializes one public Event; GPU-only metadata supplies identity when full CPU payloads are absent."
+    },
+    {
+      "node": "analysis",
+      "title": "Consume T and release safely",
+      "text": "User code accesses detector data or evt.gpu results. Device input views follow scoped lease rules. Slot/storage reuse waits for registered consumers; yielding the next event is not proof that T’s GPU work is finished."
+    }
+  ],
+  "kinds": {
+    "call": "Call / iterator handoff",
+    "mpi": "MPI / serial local transfer",
+    "data": "Data association",
+    "io": "File I/O submission",
+    "cuda": "CUDA dependency",
+    "ownership": "Ownership dependency"
+  },
+  "granularities": [
+    [
+      "SMD chunk",
+      "Reader timestamp window sent from SMD0 to an EB."
+    ],
+    [
+      "EB communication batch",
+      "Event-aligned CPU/SMD packet plus optional GPUBAT1 descriptors sent to one BD."
+    ],
+    [
+      "Execution subbatch",
+      "Complete-event slice admitted to one execution slot under the current byte budget."
+    ],
+    [
+      "Input read group",
+      "Compatible/coalesced file ranges and their input storage; may cross execution cuts."
+    ]
+  ],
+  "lifetimes": [
+    [
+      "Raw input",
+      "Reader/parser allocation → InputWindow → planned and input leases",
+      "Release only after planned uses and registered consumers retire."
+    ],
+    [
+      "Task publication",
+      "Task owners → producer lease → D2H completion",
+      "Producer storage stays alive until every registered consumer completes."
+    ],
+    [
+      "Host result",
+      "Pinned block → HostResult tokens → independent NumPy row",
+      "Reuse staging only when copies and outstanding row tokens permit it."
+    ],
+    [
+      "Device input view",
+      "Event input state → scoped view → external completion",
+      "Pair scope entry/exit; record consumer completion before slot/input reuse."
+    ]
+  ],
+  "transitions": {
+    "title": "Transitions belong at their event positions",
+    "intro": "Example: Step 1 contains L1 A and B; Step 2 begins afterward. Missing history prefixes are legitimate catch-up state. Fresh transitions keep their packet position.",
+    "cpu": [
+      {
+        "label": "BeginStep 1",
+        "text": "Update run/scan environment before A."
+      },
+      {
+        "label": "L1 A → L1 B",
+        "text": "Deliver events with Step 1 state."
+      },
+      {
+        "label": "EndStep 1",
+        "text": "Finish the step; keep the run available."
+      },
+      {
+        "label": "BeginStep 2",
+        "text": "Update state before the next step’s events."
+      }
+    ],
+    "gpu": [
+      {
+        "label": "Packet: [L1 A, L1 B, BeginStep 2]",
+        "text": "Fast GPU EB can append BeginStep and then stop. A/B precede it in the CPU/SMD packet; GPUBAT1 contains L1 only."
+      },
+      {
+        "label": "Current: scan and dispatch transitions first",
+        "text": "GpuEventManager._handle_steps() drains previous work and dispatches BeginStep 2 before submitting this packet’s A/B."
+      },
+      {
+        "label": "Effect: state can advance too early",
+        "text": "Draining previously submitted work does not protect A/B, which have not been submitted yet. Fixed-state calculations may still work; step-dependent state is not safe to assume."
+      },
+      {
+        "label": "Proposed contract under #153",
+        "text": "Preserve missing history → preceding L1 range → transition → next L1 range, with explicit state lifetimes. This is a requirement, not implemented behavior."
+      }
+    ],
+    "notes": [
+      "CPU run.events() processes/swallow transitions in order; run.steps() exposes Step objects.",
+      "Current MPI GPU steps() returns immediately. Serial GPU processing consumes transitions internally, so working GPU step iteration is also missing.",
+      "SlowUpdate already reaches the host transition/envstore path; event-relative ordering still needs verification. Do not describe SlowUpdate as wholly absent.",
+      "The ClearReadout service-zero ambiguity and empty-step behavior are also tracked in #153.",
+      "The run initializes calibration constants once. The inspected manager checks requested host bytes again at BeginStep but does not fetch the database. Run-scoped CUDA-IPC sharing is tracked separately in #168."
+    ]
+  },
+  "issues": [
+    {
+      "number": 153,
+      "title": "Ordered GPU transitions and working step iteration",
+      "state": "OPEN",
+      "note": "P1 follow-up; current limitations, not a completed feature."
+    },
+    {
+      "number": 168,
+      "title": "Restore CUDA-IPC sharing of requested constants",
+      "state": "OPEN",
+      "note": "P2 follow-up; current device copies are per BD."
+    },
+    {
+      "number": 170,
+      "title": "Discuss CPU-compatible missing GPU input behavior",
+      "state": "OPEN",
+      "note": "P2 follow-up; no-GPU rows and missing segments need an explicit contract."
+    }
+  ],
+  "serial_note": "Serial offline experiment processing uses local SmdReaderManager / EventBuilder machinery. There is no SMD0 → EB → BD MPI transport. RunSerial owns Events in CPU mode or GpuEventManager in GPU mode. The shared diagram stages describe responsibilities, not extra serial processes.",
+  "attribution": {
+    "name": "Cong Wang’s interactive LCLS-II DAQ design documentation",
+    "url": "https://carbonscott.github.io/lcls2/dev/design/",
+    "source": "https://github.com/carbonscott/lcls2/tree/e49563c40bbbbbf0ef96ed3520079c42388a14a2/docs/design",
+    "note": "Inspired by its single content model, typed relationships, clickable component details and event tour. This smaller viewer is an original implementation for offline HTML sharing; it does not copy Cong’s viewer code or DAQ prose."
+  },
+  "documentation_url": "https://github.com/slac-lcls/lcls2/blob/features/psana2-gpu/psana/docs/README.md"
+}
