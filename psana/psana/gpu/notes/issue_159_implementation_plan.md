@@ -1,13 +1,19 @@
 # Issue 159: alignment-safe GPU reads
 
 
-## Current decision — October 29: Stage 6 correctness reconciliation
+## Current decision — October 29: Stage 7 performance reconciliation
 
 PR260 merged Stage 6 at `3feab5b24`. Intermediate work now lives in
 `monarin/lcls2`, on `fix/gpu-unaligned-reads-159`; see the
 [personal-fork workflow and Claude handoff](issue159_personal_fork_handoff_20261029.md).
 Future stage PRs target the fork. The final milestone PR still targets upstream
-`slac-lcls/lcls2:features/psana2-gpu`. Stage 7 has not started.
+`slac-lcls/lcls2:features/psana2-gpu`.
+
+[Stage 7 performance reconciliation](issue159_stage7_performance_20261029.md)
+verifies runtime equivalence to measured B `405f868ed`, recomputes the accepted
+cold/SDF field statistics and preserves historical unaligned Jungfrau coverage.
+Evidence checks passed; independent review is pending on a separate fork PR.
+No new performance campaign is needed under the reviewed reuse policy.
 
 **Reviewed plan:** complete #159 as an alignment correctness fix.
 Stage 5 verifies existing `GpuFieldResult.on_cpu` / `.on_gpu` compatibility and
@@ -35,7 +41,7 @@ PR246 merged at `019855bc12f94b6daaadce04dbe2ee6ef38b869b`, with the reviewed
 cold/field performance gates are complete. SDF field job 42263681 and Perlmutter
 job 60467642 both completed; their results are recorded separately. The revised
 Stage 5 audit is recorded in the follow-up and merged. Final #159
-requirement reconciliation is the current Stage 6 work.
+requirement reconciliation is recorded in the merged Stage 6 report.
 
 [#256](https://github.com/slac-lcls/lcls2/issues/256) tracks retirement waits and
 slot-wide retained-copy pressure; [#257](https://github.com/slac-lcls/lcls2/issues/257)
@@ -80,8 +86,8 @@ branch at `019855bc1`.
 The matching unfixed reference is `8cf05e86a`; preserve original frozen A as
 historical evidence. Integrated CUDA/MPI and cold/field measurements are complete.
 The revised compatibility-only Stage 5 plan has received a no-blocker review;
-its documentation follow-up merged in PR258. Stage 5 tests/guidance now await
-independent review on their separate branch.
+its documentation follow-up merged in PR258. Stage 5 tests/guidance were
+reviewed and merged in PR259; Stage 6 reconciliation merged in PR260.
 
 ## Review workflow — October 28
 
@@ -259,8 +265,8 @@ renaming a stage; preserve completed evidence and fill only actual gaps.
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Implemented; 399 CPU / 323 CUDA / 305 memcheck checks passed; field overhead measured; [screen 41494246](issue159_stage4_20261021.md) failed its pre-timing cache gate; [remedy follow-up](issue159_cache_fallout_20261022.md): existing method passed on sdfampere036/042; NUMA alternative failed in 41596700; retain existing preparation; retry 41602068 failed on sdfampere038 at 79.69% residency, with zero timed samples; [cold screen 41604951](issue159_stage4_cold_20261022.md) completed 16 samples: median paired loop changes -0.143% bulk-off / -0.012% bulk-on, no repeatable slowdown; field overhead remains recorded for review |
 | 5. Accessor compatibility | Audit existing field `.on_cpu` / `.on_gpu` tests/callers; add only missing correctness regressions and usage guidance | Exact values, existing caching/independence, stream/lifetime safety and current copy counts; no accessor optimization or API changes | [Compatibility checks](issue159_stage5_compatibility_20261029.md): 393 CPU / 60 CUDA / 60 memcheck passed; runtime unchanged; reviewed and merged in PR259 at `a4293d71f` |
 | 6. Integrated correctness reconciliation | Map final requirements to exact-revision CPU/CUDA/memcheck/MPI/pixel evidence; run missing or affected checks, including required core groups | Explicit coverage/disposition for every required check; no GPU/data skip counted as device acceptance | [Reconciliation](issue159_stage6_correctness_20261029.md): 1,646 core / five byhand / five real-pixel cases passed; five non-GPU skips disclosed; reviewed and merged in PR260 at `3feab5b24` |
-| 7. Final performance reconciliation | Reuse accepted same-runtime cold/field evidence; measure affected paths only if runtime/dependency changes, failures or unresolved concerns justify it | Provenance matches candidate; accepted costs/limits retained; no new unsupported throughput claim | Accepted cold and field results available; no unconditional repeat campaign |
-| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | Pending after Stage 5 and requirement reconciliation |
+| 7. Final performance reconciliation | Reuse accepted same-runtime cold/field evidence; measure affected paths only if runtime/dependency changes, failures or unresolved concerns justify it | Provenance matches candidate; accepted costs/limits retained; no new unsupported throughput claim | [Evidence reconciled](issue159_stage7_performance_20261029.md): runtime unchanged, 89 selected hashes verified, cold/SDF statistics reproduced; independent review pending; no repeat campaign |
+| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | Pending Stage 7 review and merge |
 
 ## Regression matrix
 
