@@ -90,7 +90,9 @@ even after GC and dropping the independent output. The lease had already cleared
 its retained-copy/cache references. Repeated copies reproduced the retention;
 it was not confined to first-use compilation.
 
-Diagnostic jobs 42390755 / 42390831 / 42390891 recorded the reference chain.
+Default-backtrace retention was reproduced in separate diagnostic jobs
+42390755 / 42390831 / 42390891, which recorded the reference chain; that
+default-mode control was not part of comparison job 42390945.
 Job **42390945** compared normal execution and sanitizer backtrace modes on the
 same node/process environment: native, `--show-backtrace device`, and
 `--show-backtrace no` all released each copy immediately, including repeated
