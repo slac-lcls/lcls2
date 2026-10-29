@@ -1,7 +1,7 @@
 # Issue 159: alignment-safe GPU reads
 
 
-## Current decision — October 29: Stage 7 performance reconciliation
+## Current decision — October 29: final milestone review
 
 PR260 merged Stage 6 at `3feab5b24`. Intermediate work now lives in
 `monarin/lcls2`, on `fix/gpu-unaligned-reads-159`; see the
@@ -12,8 +12,12 @@ Future stage PRs target the fork. The final milestone PR still targets upstream
 [Stage 7 performance reconciliation](issue159_stage7_performance_20261029.md)
 verifies runtime equivalence to measured B `405f868ed`, recomputes the accepted
 cold/SDF field statistics and preserves historical unaligned Jungfrau coverage.
-Evidence checks passed; independent review is pending on a separate fork PR.
+Claude reviewed Stage 7 without blockers; both wording corrections landed and
+[personal-fork PR1](https://github.com/monarin/lcls2/pull/1) merged at `86a1eba3f`.
 No new performance campaign is needed under the reviewed reuse policy.
+The [final milestone review](issue159_final_review_20261029.md) confirms the
+upstream target is still `8cf05e86a`, maps the cumulative code/test changes and
+groups final documentation and review fixes into one upstream milestone PR.
 
 **Reviewed plan:** complete #159 as an alignment correctness fix.
 Stage 5 verifies existing `GpuFieldResult.on_cpu` / `.on_gpu` compatibility and
@@ -91,17 +95,16 @@ reviewed and merged in PR259; Stage 6 reconciliation merged in PR260.
 
 ## Review workflow — October 28
 
-Substantial steps use a separate branch/worktree and a PR targeting
-`fix/gpu-unaligned-reads-159`. Keep dependency integration and implementation
-stages in separate PRs. Each PR records its scope, validation evidence, known
-limitations, and the specific ownership/budget/performance interactions to review.
-Pause progression to the next substantial step until another agent has reviewed
-the PR, findings are resolved, and the step is accepted and merged. Do not
-self-merge a stage PR or execute this revised Stage 5 before its plan is reviewed
-and accepted. PR246 dependency integration is already merged. Small corrections
-and review fixes can stay in the current step's PR.
-The main fix branch remains the eventual issue159 PR source targeting
-`features/psana2-gpu`.
+**October 29 update:** group related changes into a meaningful reviewable
+milestone; do not create a PR for each stage, note or small correction.
+Intermediate work uses the personal fork. Final reconciliation/documentation
+and review fixes share the final upstream alignment PR. Substantial independent
+dependency integration may still need a separate review. The earlier per-stage
+workflow is superseded for future work. Each milestone PR records scope,
+validation evidence, limitations and the ownership/budget/performance details
+that need review. Keep review fixes on that PR. Independent review and Mona's
+merge authorization still apply; grouping work does not remove either gate.
+The fix branch is now the source for the final upstream alignment milestone.
 
 Independent review and validation now run in parallel; see the
 [review prompt](issue159_review_prompt_20261028.md) and
@@ -265,8 +268,8 @@ renaming a stage; preserve completed evidence and fill only actual gaps.
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Implemented; 399 CPU / 323 CUDA / 305 memcheck checks passed; field overhead measured; [screen 41494246](issue159_stage4_20261021.md) failed its pre-timing cache gate; [remedy follow-up](issue159_cache_fallout_20261022.md): existing method passed on sdfampere036/042; NUMA alternative failed in 41596700; retain existing preparation; retry 41602068 failed on sdfampere038 at 79.69% residency, with zero timed samples; [cold screen 41604951](issue159_stage4_cold_20261022.md) completed 16 samples: median paired loop changes -0.143% bulk-off / -0.012% bulk-on, no repeatable slowdown; field overhead remains recorded for review |
 | 5. Accessor compatibility | Audit existing field `.on_cpu` / `.on_gpu` tests/callers; add only missing correctness regressions and usage guidance | Exact values, existing caching/independence, stream/lifetime safety and current copy counts; no accessor optimization or API changes | [Compatibility checks](issue159_stage5_compatibility_20261029.md): 393 CPU / 60 CUDA / 60 memcheck passed; runtime unchanged; reviewed and merged in PR259 at `a4293d71f` |
 | 6. Integrated correctness reconciliation | Map final requirements to exact-revision CPU/CUDA/memcheck/MPI/pixel evidence; run missing or affected checks, including required core groups | Explicit coverage/disposition for every required check; no GPU/data skip counted as device acceptance | [Reconciliation](issue159_stage6_correctness_20261029.md): 1,646 core / five byhand / five real-pixel cases passed; five non-GPU skips disclosed; reviewed and merged in PR260 at `3feab5b24` |
-| 7. Final performance reconciliation | Reuse accepted same-runtime cold/field evidence; measure affected paths only if runtime/dependency changes, failures or unresolved concerns justify it | Provenance matches candidate; accepted costs/limits retained; no new unsupported throughput claim | [Evidence reconciled](issue159_stage7_performance_20261029.md): runtime unchanged, 89 selected hashes verified, cold/SDF statistics reproduced; independent review pending; no repeat campaign |
-| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | Pending Stage 7 review and merge |
+| 7. Final performance reconciliation | Reuse accepted same-runtime cold/field evidence; measure affected paths only if runtime/dependency changes, failures or unresolved concerns justify it | Provenance matches candidate; accepted costs/limits retained; no new unsupported throughput claim | [Evidence reconciled](issue159_stage7_performance_20261029.md): runtime unchanged, 89 selected hashes verified, cold/SDF statistics reproduced; reviewed and merged in personal-fork PR1 at `86a1eba3f`; no repeat campaign |
+| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | [Final review prepared](issue159_final_review_20261029.md); target unchanged, code/test equivalence confirmed; final upstream review/merge pending |
 
 ## Regression matrix
 

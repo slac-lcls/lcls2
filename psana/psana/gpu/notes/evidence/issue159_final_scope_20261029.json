@@ -1,0 +1,582 @@
+{
+  "target": "8cf05e86a7511f84a24f82b9c9720bc2308c471d",
+  "candidate_before_final_documentation": "86a1eba3f3533cb9212d0643ad380906c1a7588d",
+  "stage7_merge": "86a1eba3f3533cb9212d0643ad380906c1a7588d",
+  "target_is_ancestor": true,
+  "production_gpu_identical_to": "405f868ed380c78b6009da3001f4535cb9ae647b",
+  "tests_identical_to": "71f5c04a27b7b369a1919454378abc4120abbd66",
+  "counts_before_final_documentation": {
+    "user_docs": {
+      "files": 3,
+      "added": 106,
+      "deleted": 4
+    },
+    "production": {
+      "files": 4,
+      "added": 151,
+      "deleted": 16
+    },
+    "historical_evidence": {
+      "files": 31,
+      "added": 63520,
+      "deleted": 0
+    },
+    "notes": {
+      "files": 28,
+      "added": 4801,
+      "deleted": 0
+    },
+    "benchmark_tools": {
+      "files": 8,
+      "added": 641,
+      "deleted": 1
+    },
+    "tests": {
+      "files": 16,
+      "added": 1474,
+      "deleted": 11
+    }
+  },
+  "files": [
+    {
+      "path": "psana/psana/gpu/docs/gpu_xtc_parser.md",
+      "added": 70,
+      "deleted": 2,
+      "group": "user_docs"
+    },
+    {
+      "path": "psana/psana/gpu/docs/performance/read_staging.md",
+      "added": 23,
+      "deleted": 0,
+      "group": "user_docs"
+    },
+    {
+      "path": "psana/psana/gpu/docs/user_kernels.md",
+      "added": 13,
+      "deleted": 2,
+      "group": "user_docs"
+    },
+    {
+      "path": "psana/psana/gpu/gpu_detector.py",
+      "added": 27,
+      "deleted": 3,
+      "group": "production"
+    },
+    {
+      "path": "psana/psana/gpu/gpu_events.py",
+      "added": 5,
+      "deleted": 1,
+      "group": "production"
+    },
+    {
+      "path": "psana/psana/gpu/gpu_input.py",
+      "added": 117,
+      "deleted": 11,
+      "group": "production"
+    },
+    {
+      "path": "psana/psana/gpu/gpu_stream.py",
+      "added": 2,
+      "deleted": 1,
+      "group": "production"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_branch_cleanup_20261029.json",
+      "added": 135,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_branch_layout_20261019.json",
+      "added": 813,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_cache_diagnosis_20261020.json",
+      "added": 1167,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_cache_fallout_20261022.json",
+      "added": 2687,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_cold_rate_history_20261022.json",
+      "added": 4894,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_frozen_A_20261019.json",
+      "added": 26,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_mpi_reporting_20261028.json",
+      "added": 9941,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_parallel_validation_20261028.json",
+      "added": 190,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_pr246_cold_20261028.json",
+      "added": 1501,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_pr246_fields_20261028.json",
+      "added": 1565,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_review_followup_20261028.json",
+      "added": 141,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_short_screen_20261019.json",
+      "added": 8506,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage2_initial_20261019.json",
+      "added": 697,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage2_optimized_20261019.json",
+      "added": 673,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage2_triage_20261019.json",
+      "added": 139,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage3_20261019.json",
+      "added": 1552,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage3_cache_reset_harness.patch",
+      "added": 22,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage3_cache_reset_retry_20261020.json",
+      "added": 63,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage3_rebuild_20261020.json",
+      "added": 4328,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage3_screen_20261020.json",
+      "added": 5252,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage4_20261021.json",
+      "added": 7699,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage4_cold_20261022.json",
+      "added": 1600,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage5_20261029.json",
+      "added": 218,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage6_20261029.json",
+      "added": 539,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_stage7_20261029.json",
+      "added": 410,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/issue159_target_merge_review_20261028.json",
+      "added": 43,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/lscratch_numa_012_027_20261022.json",
+      "added": 975,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/pr187_staging_comparison_20261019.json",
+      "added": 7242,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/prepost_stack_cold_20261022.json",
+      "added": 257,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/prepost_stack_cold_replay012_20261022.json",
+      "added": 50,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/evidence/verify_issue159_stage7_20261029.py",
+      "added": 195,
+      "deleted": 0,
+      "group": "historical_evidence"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_cache_diagnosis_20261020.md",
+      "added": 142,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_cache_fallout_20261022.md",
+      "added": 163,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_callpath_and_lifetime_walkthrough.md",
+      "added": 364,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_cold_rate_history_20261022.md",
+      "added": 152,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_mpi_reporting_20261028.md",
+      "added": 154,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_parallel_validation_20261028.md",
+      "added": 196,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_personal_fork_handoff_20261029.md",
+      "added": 115,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_pr246_cold_20261028.md",
+      "added": 167,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_pr246_fields_20261028.md",
+      "added": 134,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_pr246_perlmutter_fields_20261028.md",
+      "added": 147,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_review_followup_20261028.md",
+      "added": 91,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_review_prompt_20261028.md",
+      "added": 107,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_short_screen_20261019.md",
+      "added": 144,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage2_20261019.md",
+      "added": 198,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage3_20261019.md",
+      "added": 142,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage3_cache_reset_retry_20261020.md",
+      "added": 89,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage3_rebuild_20261020.md",
+      "added": 136,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage4_20261021.md",
+      "added": 186,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage4_cold_20261022.md",
+      "added": 116,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage5_compatibility_20261029.md",
+      "added": 131,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage5_revised_plan_20261029.md",
+      "added": 210,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage6_correctness_20261029.md",
+      "added": 194,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_stage7_performance_20261029.md",
+      "added": 235,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue159_target_merge_review_20261028.md",
+      "added": 145,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/issue_159_implementation_plan.md",
+      "added": 550,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/lscratch_numa_012_027_20261022.md",
+      "added": 152,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/pr187_staging_comparison_20261019.md",
+      "added": 106,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/notes/prepost_stack_cold_20261022.md",
+      "added": 135,
+      "deleted": 0,
+      "group": "notes"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/bench_field_retirement.py",
+      "added": 123,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/bench_field_views.py",
+      "added": 105,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/bench_input_lease.py",
+      "added": 64,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/check_runtime_provenance.py",
+      "added": 80,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/feespec_bulk_benchmark/common.py",
+      "added": 23,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/feespec_bulk_benchmark/test_cache_repair.py",
+      "added": 32,
+      "deleted": 1,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/jf_scaling/alignment_adapter.py",
+      "added": 98,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/gpu/scripts/unaligned_gather_benchmark.py",
+      "added": 116,
+      "deleted": 0,
+      "group": "benchmark_tools"
+    },
+    {
+      "path": "psana/psana/tests/gpu/field_view_fixture.py",
+      "added": 62,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/mpi_issue159_fields.py",
+      "added": 326,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_batched_gather.py",
+      "added": 12,
+      "deleted": 4,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gather_alignment.py",
+      "added": 87,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_field_accessors_device.py",
+      "added": 117,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_field_views_device.py",
+      "added": 142,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_input_copy_device.py",
+      "added": 122,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/integration/test_gpu_task_device.py",
+      "added": 3,
+      "deleted": 1,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_field_views.py",
+      "added": 346,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_input.py",
+      "added": 4,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_input_copy_lifetime.py",
+      "added": 191,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_input_window.py",
+      "added": 18,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_memory_report.py",
+      "added": 38,
+      "deleted": 0,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/gpu/unit/test_gpu_retirement.py",
+      "added": 2,
+      "deleted": 2,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/run_loop_callback.py",
+      "added": 2,
+      "deleted": 3,
+      "group": "tests"
+    },
+    {
+      "path": "psana/psana/tests/test_xtc.py",
+      "added": 2,
+      "deleted": 1,
+      "group": "tests"
+    }
+  ]
+}

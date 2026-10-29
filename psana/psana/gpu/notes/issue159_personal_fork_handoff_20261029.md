@@ -6,6 +6,16 @@ stages. The existing upstream PR260 was merged first at
 `3feab5b2443bd65195628c017c2b57fb15afd6aa`. Its final head was `7d112827a`,
 including the preserved calibration traceback requested by Claude.
 
+## October 29 update: group work into milestones
+
+Mona requested fewer, larger PRs. Group related implementation, tests,
+documentation and review fixes around a meaningful outcome. Do not create a
+separate PR for each stage or small correction. Intermediate review stays in
+this fork; the completed alignment fix now proceeds as one upstream milestone.
+This supersedes the original per-stage instructions in the historical prompt
+below. Stage 7 merged as personal-fork PR1 at `86a1eba3f`; see the
+[final review map](issue159_final_review_20261029.md).
+
 ## Repository routing
 
 | Purpose | Repository / branch |
