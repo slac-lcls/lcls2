@@ -1,29 +1,39 @@
 # Issue 159: alignment-safe GPU reads
 
 
-## Current status — October 29
+## Current decision — October 29: compatibility-only Stage 5
 
-Claude's [final field review](https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5689634175) found no correctness or coverage blocker
-and supports the accepted deferral of per-event API optimization. The technical
-gates are satisfied: CPU, CUDA, memcheck, MPI/reporting, accepted cold batched
-input/gather A/B and field access/retirement measurements.
+**Reviewed plan:** complete #159 as an alignment correctness fix.
+Stage 5 verifies existing `GpuFieldResult.on_cpu` / `.on_gpu` compatibility and
+adds only missing tests and usage guidance. Direct byte D2H, optional single-copy
+GPU optimization and API expansion/removal/renaming are deferred. Batched tasks
+are the primary path for routine detector processing; per-event fields remain
+available for specialized uses with their transfer/copy costs documented.
 
-Both requested follow-ups are complete. [SDF job 42263681](issue159_pr246_fields_20261028.md)
-finished **0:0** on sdfampere016, with all timed processes/preflights and both
-8,093-file hash checks passing; independently recomputed results match the
-review. [#256](https://github.com/slac-lcls/lcls2/issues/256) tracks the deferred unaligned-copy retirement wait and
-slot-wide accumulation/admission-planning limitation. Perlmutter and SDF results
-remain separate. No new performance campaign or production change is required
-for these documentation follow-ups.
+Read the [revised Stage 5 plan and review prompt](issue159_stage5_revised_plan_20261029.md)
+for the compatibility matrix, evidence-reuse rules, deferred work and completion
+sequence. This revision supersedes earlier direct-D2H and unconditional final
+performance-rerun requirements. It does not waive correctness, lifetime or budget
+requirements, and does not claim any new implementation or tests have run.
+Claude [reviewed planning head `ee39d266c`](https://github.com/slac-lcls/lcls2/pull/258#pullrequestreview-5700826456)
+and found no blockers. His documentation clarifications are recorded in the
+linked note and historical walkthrough. Execution waits for acceptance of this
+planning PR; Stage 5 tests and implementation have not started.
 
-PR246 remains open for the final follow-up check and merge decision. Stage 5
-will be a separate implementation PR; it has not started. Historical validation
-and planning details follow and do not override this current status.
+PR246 merged at `019855bc12f94b6daaadce04dbe2ee6ef38b869b`, with the reviewed
+`405f868ed` runtime and finalized PR187/208. Its CPU/CUDA/memcheck/MPI and accepted
+cold/field performance gates are complete. SDF field job 42263681 and Perlmutter
+job 60467642 both completed; their results are recorded separately. The revised
+Stage 5 audit and final #159 requirement reconciliation remain to be done.
 
-Updated 2026-10-28. Status: PR #187 comparison completed; A frozen; stage-2
-measured overhead accepted by Mona for now; stage-3 focused validation and warm
-screen complete; stage-4 safe field views implemented, focused checks passed, and first staged screen failed cache preparation; retry 41602068 also failed its pre-timing cache gate; cold screen 41604951 completed all 16 samples. This document records the agreed scope, staged implementation,
-dependency expectations, and acceptance gates.
+[#256](https://github.com/slac-lcls/lcls2/issues/256) tracks retirement waits and
+slot-wide retained-copy pressure; [#257](https://github.com/slac-lcls/lcls2/issues/257)
+tracks the long-term field-copy API policy. #247 remains the separate host scalar
+transport issue. The final #159 PR will target `features/psana2-gpu`; neither
+PR246 nor this planning PR closes #159.
+
+Historical measurements and dependency plans below remain provenance. Current
+scope is defined here, in the revised stage table and the linked Stage 5 note.
 
 ## Performance policy update — October 22
 
@@ -48,18 +58,18 @@ The [Stage 4 cold screen](issue159_stage4_cold_20261022.md) is the first run
 under this policy. Cold results cannot establish unchanged warm performance;
 that limitation stays explicit without blocking cold-screen progress.
 
-## Target update review — October 28
+## Target update review — October 28 (completed via PR246)
 
 PR187 and PR208 have merged into `features/psana2-gpu` at `8cf05e86a`.
 [Integration review](issue159_target_merge_review_20261028.md) recommends a
 normal merge **before Stage 5**. An isolated merge/build passed 990 CPU unit
 tests plus three field-copy/accounting probes, with the alignment production
-patch preserved exactly. The update is now committed on the separate
-`integrate/issue159-pr187-pr208` branch for review; the main fix branch has not
-yet integrated it.
-Keep old frozen A intact; establish a new unfixed target reference, rerun focused
-CUDA/MPI checks for the changed dependency, and then implement Stage 5.
-No accessor-design change or additional A/A campaign is required.
+patch preserved exactly. PR246 has now merged this update into the main fix
+branch at `019855bc1`.
+The matching unfixed reference is `8cf05e86a`; preserve original frozen A as
+historical evidence. Integrated CUDA/MPI and cold/field measurements are complete.
+The revised compatibility-only Stage 5 plan has received a no-blocker review;
+its documentation follow-up is in PR258.
 
 ## Review workflow — October 28
 
@@ -69,8 +79,9 @@ stages in separate PRs. Each PR records its scope, validation evidence, known
 limitations, and the specific ownership/budget/performance interactions to review.
 Pause progression to the next substantial step until another agent has reviewed
 the PR, findings are resolved, and the step is accepted and merged. Do not
-self-merge or start Stage 5 while this dependency-integration PR is awaiting
-review. Small corrections and review fixes can stay in the current step's PR.
+self-merge a stage PR or execute this revised Stage 5 before its plan is reviewed
+and accepted. PR246 dependency integration is already merged. Small corrections
+and review fixes can stay in the current step's PR.
 The main fix branch remains the eventual issue159 PR source targeting
 `features/psana2-gpu`.
 
@@ -92,10 +103,9 @@ review accepted all six dispositions at `405f868ed`. The authorized
 with fresh builds at A `8cf05e86a` and B `405f868ed`. Mona accepts the mean loop
 increases of 1.32% bulk-off and 1.95% bulk-on for now; no optimization or repeat
 cold screen is required for this integration. The separate field-view benchmark has also completed and its disposition
-is supported by Claude's review; #256 tracks the deferred optimization. Stage 5 follows
-as a separate implementation PR after integration is accepted.
-Measure bulk-on unaligned field retirement separately before considering any
-change to its current host-wait behavior.
+is supported by Claude's review; #256 tracks the deferred optimization. Stage 5 now follows
+the compatibility-only plan above. Delayed unaligned retirement was measured on
+both SDF and Perlmutter; its optimization remains deferred in #256.
 
 ## Goal summary
 
@@ -168,10 +178,10 @@ stack. Keep alignment commits above the recorded integration base.
   add charges. Copies are private per BD, not IPC allocations.
 - **Semantics:** retain dtype, original shape, physical segment IDs, scalar shape
   `()`, and omission of absent segments. Missing segments allocate nothing.
-- **Copy accessors:** `.on_cpu` copies source bytes directly into aligned host
-  storage, then interprets dtype/shape, preserving host independence and caching.
-  `.on_gpu` initially uses the safe field path and makes an independent device
-  copy; first unaligned access may make two copies. Measure before optimizing.
+- **Copy accessors:** retain the current safe field-resolution path for `.on_cpu`
+  and `.on_gpu`. Verify host independence/caching and independent device results,
+  including current first-unaligned two-copy cases. Direct byte D2H is deferred;
+  an intermediate device alignment copy is allowed by the revised #159 scope.
 - **Documentation:** keep `on_gpu_view()` and explain at completion that first
   unaligned access may allocate/copy; it returns borrowed storage, not an
   unconditional zero-copy view of packed input.
@@ -179,7 +189,9 @@ stack. Keep alignment commits above the recorded integration base.
 Deferred: gathered-raw-buffer reuse; execution-slot ownership in field results;
 API renaming/removal; migration of event-loop work into batched tasks; new generic
 typed task-field convenience APIs; expanded dense-gather types; optional direct
-`.on_gpu` copy optimization. These do not block the correctness fix.
+`.on_gpu` copy optimization and direct byte D2H for `.on_cpu`. API-policy review
+is tracked in #257; retained-copy optimization is #256. These do not block the
+correctness fix.
 
 ## PR #187 anticipation
 
@@ -221,12 +233,10 @@ selection, and teardown still require integrated validation.
 
 ## Revised implementation stages
 
-Each stage keeps its implementation and focused regressions together. Stages
-2-5 can proceed on the pinned dependency while Seema works; final integrated
-acceptance depends on a sufficiently stable dependency and documented baseline.
-Performance checks now accompany the stages; stage 7 is final confirmation,
-not the first opportunity to detect a regression. Keep stages in separate
-reviewable commits so a measured change can be isolated.
+Stages 0–4 and dependency integration are implemented and reviewed. Remaining
+work uses the revised October 29 scope below. Each substantial step uses a
+separate reviewed PR into the main fix branch. No new campaign is implied by
+renaming a stage; preserve completed evidence and fill only actual gaps.
 
 | Stage | Work and likely files | Exit gate | Status |
 | --- | --- | --- | --- |
@@ -235,10 +245,10 @@ reviewable commits so a measured change can be isolated.
 | 2. Safe dense gather | `gpu_detector.py`; extend gather regressions; benchmark aligned fast path and fallback | Bit-exact results and unchanged invalid-row handling; no extra gather allocations/launches; aligned microbenchmark and short warm staging screen document overhead for acceptance | Implemented; Mona accepted the +0.98%/+1.30% bulk-on cost for now and authorized stage 3; broad-suite failures remain tracked |
 | 3. Copy retention | Minimal parent/child input-lease retention in `gpu_input.py`; ownership tests and event-loop timing | Correct delayed/open-child lifetime and failure handling; no copy-specific allocation, event or synchronization when copies are unused; no unexplained event-loop overhead | Implemented: focused checks passed; native isolation repaired; private-cache reset remedy applied after the two cache-gated attempts; screen 41400127 completed all eight warm samples with 100% pre/post residency; focused stage checks complete |
 | 4. Safe field views | `gpu_input.py`, budget propagation through `context.py` / manager as needed; direct, first-copy and cached-view measurements | Correct alignment/streams/semantics/accounting; aligned path remains zero-copy; one materialization per cached field/segment; no repeat copy on hits; direct-access overhead checked | Implemented; 399 CPU / 323 CUDA / 305 memcheck checks passed; field overhead measured; [screen 41494246](issue159_stage4_20261021.md) failed its pre-timing cache gate; [remedy follow-up](issue159_cache_fallout_20261022.md): existing method passed on sdfampere036/042; NUMA alternative failed in 41596700; retain existing preparation; retry 41602068 failed on sdfampere038 at 79.69% residency, with zero timed samples; [cold screen 41604951](issue159_stage4_cold_20261022.md) completed 16 samples: median paired loop changes -0.143% bulk-off / -0.012% bulk-on, no repeatable slowdown; field overhead remains recorded for review |
-| 5. Copy accessors | Direct byte D2H for `.on_cpu`; independent `.on_gpu` through safe field resolution; separate accessor timings | Copies preserve independence and survive retirement; copy counts verified; no device alignment materialization for `.on_cpu`; first unaligned `.on_gpu` two-copy cost recorded separately | Pending |
-| 6. Integrated correctness | Sanitizer, field/gather/raw/ownership/pixel-exact tests, serial and MPI lifecycle coverage on integrated #187, required core groups | Correctness gates pass; inherited dependency/environment blockers are explicitly separated and resolved or accepted by Mona | Pending |
-| 7. Final performance | Repeat cold staged campaign against unchanged integrated base (four pairs per bulk setting; 16 samples); field/API benchmarks separately; incremental comparisons to locate any remaining slowdown | Complete paired samples and correctness/cache/provenance gates; no unexplained repeatable safe-path regression; fallback costs reported separately | Pending |
-| 8. Documentation and review | API copy caveat, concise evidence report, final dependency reconciliation and fix-only review diff | Reviewable #159 change and reproducible validation; no unsubstantiated completion/performance claims | Pending |
+| 5. Accessor compatibility | Audit existing field `.on_cpu` / `.on_gpu` tests/callers; add only missing correctness regressions and usage guidance | Exact values, existing caching/independence, stream/lifetime safety and current copy counts; no accessor optimization or API changes | Claude reviewed `ee39d266c`: no blockers; documentation clarifications recorded; execution not started |
+| 6. Integrated correctness reconciliation | Map final requirements to exact-revision CPU/CUDA/memcheck/MPI/pixel evidence; run missing or affected checks, including required core groups | Explicit coverage/disposition for every required check; no GPU/data skip counted as device acceptance | PR246 gates complete; final requirement reconciliation pending |
+| 7. Final performance reconciliation | Reuse accepted same-runtime cold/field evidence; measure affected paths only if runtime/dependency changes, failures or unresolved concerns justify it | Provenance matches candidate; accepted costs/limits retained; no new unsupported throughput claim | Accepted cold and field results available; no unconditional repeat campaign |
+| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | Pending after Stage 5 and requirement reconciliation |
 
 ## Regression matrix
 
@@ -256,9 +266,10 @@ reviewable commits so a measured change can be isolated.
   allocator overwrite happening by chance.
 - Streams: delay materialization on one stream while a second acquires its cached
   view; prove copy-ready ordering and completion tracking for both consumers.
-- Accessors: host results without intermediate device materialization; independent
-  device copies; modification isolation; survival after event retirement; expected
-  initial one-/two-copy cases.
+- Accessors: existing safe host results (intermediate device materialization is
+  permitted), host caching, independent device copies per call, modification
+  isolation and survival after safe event retirement; verify expected current
+  one-/two-copy cases. Add coverage only for gaps found by the Stage 5 audit.
 - Budget/failures: actual rounded backing charge once, cache reuse, retention until
   consumers finish, release when reclaimable, insufficient capacity, allocation or
   copy/context-entry failure, and no partially initialized cache publication.
@@ -321,11 +332,13 @@ validation. No numerical regression tolerance has been agreed.
    hit must not recopy, recharge backing, or re-record materialization readiness;
    required consumer tracking and cross-stream waits still apply. Test small
    scalar fields as well as large arrays so Python/event overhead is visible.
-   Keep `.on_cpu` direct byte D2H and retain the agreed independent `.on_gpu`
-   semantics; defer the optional two-copy optimization until measurements
-   justify a separate change.
-5. **Use short screens, then full confirmation.** For stages that
-   affect event processing, run cold/bulk-off and cold/bulk-on with four balanced
+   Preserve current safe `.on_cpu`/`.on_gpu` semantics. Direct byte D2H and
+   optional single-copy GPU optimization are deferred under the revised Stage 5
+   scope; copy-count checks are correctness diagnostics, not a new timing gate.
+5. **Reuse evidence; measure material runtime changes.** Do not repeat accepted
+   screens for documentation/test-only work. When a runtime/dependency change
+   or unresolved concern justifies an event-processing comparison, run
+   cold/bulk-off and cold/bulk-on with four balanced
    A/B pairs each (16 10k-event samples), preceded by correctness preflights.
    A new B0/B1 alignment comparison, when required, is a separate matched
    comparison under the same cold policy.
@@ -371,7 +384,9 @@ difference to alignment. Hash frozen source/native libraries/harness/input files
 - A-aligned versus B-aligned gather for uint16 and float32.
 - B-aligned versus B-unaligned gather with identical values/shapes.
 - A versus B aligned direct field access; B first unaligned access versus cache hits.
-- First unaligned `.on_gpu` two-copy cost and direct `.on_cpu` cost.
+- Existing accessor copy-count/independence diagnostics fill Stage 5 coverage
+  gaps; direct `.on_cpu` D2H optimization and a new accessor timing campaign are
+  deferred. Measure an affected accessor only if a runtime correction requires it.
 - Warm compilation/allocations; separate CUDA kernel duration from host API latency.
   Record copy/allocation/launch counts in separate diagnostics, not timed controls.
 
@@ -508,10 +523,10 @@ The scoped one-time cache reset is applied in
 completed on `sdfampere030`: all eight warm samples passed with 100% pre/post
 residency, 2,084 hashes verified and private-stage cleanup complete. Bulk-off
 paired loop changes were -0.03%/+1.79%; bulk-on changes were -1.89%/-8.19%.
-Stage 4 safe field views are now implemented and passed the focused checks
-and incremental cold screen documented above. The next implementation stage is
-Stage 5. First integrate the now-merged PR187/PR208 target following the
-[October 28 review](issue159_target_merge_review_20261028.md), retaining the old
-frozen A and establishing a matching updated reference for final cumulative
-comparison. No additional A/A measurement is planned. PR187's accepted fixes
-arrive through the dependency merge, not through alignment-specific patches.
+Stage 4 safe field views and subsequent integrated correctness/performance
+checks are complete, and PR246 merged finalized PR187/208 at `019855bc1`.
+PR258 records the reviewed Stage 5 plan and its documentation follow-up.
+After acceptance, audit existing accessor compatibility, add only missing tests
+and usage guidance, reconcile final correctness/performance requirements and
+prepare the final alignment-fix PR. No optimization, API redesign, new A/A run
+or unconditional cold-screen repeat is part of the revised plan.

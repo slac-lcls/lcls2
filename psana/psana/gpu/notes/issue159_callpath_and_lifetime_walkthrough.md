@@ -1,10 +1,16 @@
 # Issue 159: call paths, buffers, and event lifetime through Stage 4
 
+**Scope update — October 29:** this remains a historical Stage 4 walkthrough.
+The [revised Stage 5 plan](issue159_stage5_revised_plan_20261029.md) supersedes
+its former direct-byte D2H proposal. Stage 5 now verifies existing accessor
+compatibility and documents costs; direct D2H optimization is deferred.
+
 This walkthrough describes the implementation on `fix/gpu-unaligned-reads-159`
 through runtime commit `ef0a453d4`, using the integrated PR #187 base
 `90c05965c`. Stage 2 makes the dense gather safe, Stage 3 retains field-copy
 storage through asynchronous consumers, and Stage 4 supplies safe public field
-views. The direct-byte `.on_cpu` optimization planned for Stage 5 is not present.
+views. The formerly proposed direct-byte `.on_cpu` optimization is not present
+and is no longer required by Stage 5.
 
 The main result is that packed XTC bytes stay unchanged. We neither insert zero
 padding into the input nor reject an otherwise valid field because its address
@@ -291,14 +297,22 @@ locator metadata and any earlier dense gather on the separate task path.
 `.on_gpu` internally enters `on_gpu_view` and calls `value.copy()` on the current
 stream. Its returned arrays are independent of the input lease; the internal
 alignment allocation remains pipeline-budgeted, while the independent result
-is caller-owned storage. Independent storage does not remove the caller's
+is caller-owned storage outside the framework byte budget (and still consumes
+device memory). Independent storage does not remove the caller's
 normal responsibility for ordering later cross-stream work.
 
 `.on_cpu` currently enters the same safe-view context and calls `value.get()`.
 It caches independent NumPy values; subsequent `.on_cpu` accesses to that same
 `GpuFieldResult` reuse the cache, including after event retirement if it was
-populated beforehand. Stage 5 is intended to avoid the intermediate alignment
-D2D for a first unaligned CPU request by copying bytes directly to host storage.
+populated beforehand. A segment-selected `GpuFieldResult` has its own host cache,
+while sharing the matching aligned device copy on the root lease. First nonempty
+CPU access blocks until its current-stream D2H transfer completes; cached or
+empty access does not necessarily synchronize.
+
+The former Stage 5 proposal to avoid the intermediate alignment D2D by copying
+bytes directly to host storage is superseded by the October 29 compatibility
+plan. The current safe path and the copy counts above remain the behavior to
+verify; direct byte D2H is a deferred optimization.
 
 The naming caveat we agreed to record is therefore explicit: **`on_gpu_view`
 means borrowed access, not guaranteed zero-copy access.**
