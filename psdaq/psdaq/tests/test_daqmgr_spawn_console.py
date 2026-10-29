@@ -5,8 +5,8 @@ import pytest
 
 def test_spawn_console_detaches_xterm_with_devnull(monkeypatch):
     pytest.importorskip("typer")
-    import psdaq.slurm.main as main
-    from psdaq.slurm.main import Runner
+    import psalg.slurm.main as main
+    from psalg.slurm.main import Runner
 
     calls = []
 

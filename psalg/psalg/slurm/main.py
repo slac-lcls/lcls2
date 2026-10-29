@@ -3,12 +3,12 @@ from typing_extensions import Annotated
 import time
 import asyncio
 import socket
-from psdaq.slurm.utils import SbatchManager, run_slurm, run_slurm_with_retries, build_sbatch_env
-from psdaq.slurm.subproc import SubprocHelper
+from psalg.slurm.utils import SbatchManager, run_slurm_with_retries, build_sbatch_env
+from psalg.slurm.subproc import SubprocHelper
 import os
 import sys
 from subprocess import DEVNULL, Popen
-from psdaq.slurm.config import Config
+from psalg.slurm.config import Config
 import tempfile
 
 LOCALHOST = socket.gethostname()

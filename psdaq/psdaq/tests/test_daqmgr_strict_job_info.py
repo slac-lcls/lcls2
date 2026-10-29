@@ -1,7 +1,7 @@
 import pytest
 from subprocess import CalledProcessError
 
-from psdaq.slurm.utils import SbatchManager
+from psalg.slurm.utils import SbatchManager
 
 
 def create_manager(tmp_path, monkeypatch):
@@ -24,7 +24,7 @@ def test_get_job_info_returns_empty_on_failure_by_default(tmp_path, monkeypatch)
     def fail_slurm(*args, **kwargs):
         raise RuntimeError("squeue unavailable")
 
-    monkeypatch.setattr("psdaq.slurm.utils.run_slurm_with_retries", fail_slurm)
+    monkeypatch.setattr("psalg.slurm.utils.run_slurm_with_retries", fail_slurm)
 
     assert manager.get_job_info() == {}
 
@@ -35,7 +35,7 @@ def test_get_job_info_reraises_on_failure_when_strict(tmp_path, monkeypatch):
     def fail_slurm(*args, **kwargs):
         raise RuntimeError("squeue unavailable")
 
-    monkeypatch.setattr("psdaq.slurm.utils.run_slurm_with_retries", fail_slurm)
+    monkeypatch.setattr("psalg.slurm.utils.run_slurm_with_retries", fail_slurm)
 
     with pytest.raises(RuntimeError, match="squeue unavailable"):
         manager.get_job_info(strict=True)
@@ -51,7 +51,7 @@ def test_get_job_info_strict_error_includes_slurm_stderr(tmp_path, monkeypatch):
             stderr=b"slurm controller unavailable",
         )
 
-    monkeypatch.setattr("psdaq.slurm.utils.run_slurm_with_retries", fail_slurm)
+    monkeypatch.setattr("psalg.slurm.utils.run_slurm_with_retries", fail_slurm)
 
     with pytest.raises(RuntimeError, match="slurm controller unavailable"):
         manager.get_job_info(strict=True)
@@ -74,7 +74,7 @@ class FailingSbatchManager:
 
 def test_runner_exists_propagates_strict_lookup_failure():
     pytest.importorskip("typer")
-    from psdaq.slurm.main import Runner
+    from psalg.slurm.main import Runner
 
     runner = object.__new__(Runner)
     runner.config = {"bld_0": {"cmd": "drp"}}
@@ -86,7 +86,7 @@ def test_runner_exists_propagates_strict_lookup_failure():
 
 def test_runner_start_does_not_submit_when_strict_lookup_fails():
     pytest.importorskip("typer")
-    from psdaq.slurm.main import Runner
+    from psalg.slurm.main import Runner
 
     runner = object.__new__(Runner)
     runner.config = {"bld_0": {"cmd": "drp"}}
