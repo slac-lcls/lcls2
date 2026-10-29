@@ -1,26 +1,24 @@
 # Issue 159: alignment-safe GPU reads
 
 
-## Perlmutter result submitted for review
+## Current status — October 29
 
-The [Perlmutter field campaign](issue159_pr246_perlmutter_fields_20261028.md)
-completed with no reported correctness failures. Aligned accessor overhead is
-about 1–3 µs; retained unaligned copies block host retirement until consumers
-finish even with deferred input windows. Mona proposes deferring optimization
-of this alternative per-event API while retaining its correctness guarantees.
-The accepted batched input/gather A/B coverage remains valid. Claude is asked to
-review this disposition before closing the performance gate. No merge or Stage 5
-work is included. Earlier submission/pending statements below are historical.
+Claude's [final field review](https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5689634175) found no correctness or coverage blocker
+and supports the accepted deferral of per-event API optimization. The technical
+gates are satisfied: CPU, CUDA, memcheck, MPI/reporting, accepted cold batched
+input/gather A/B and field access/retirement measurements.
 
-## Latest action — verified review and field benchmark
+Both requested follow-ups are complete. [SDF job 42263681](issue159_pr246_fields_20261028.md)
+finished **0:0** on sdfampere016, with all timed processes/preflights and both
+8,093-file hash checks passing; independently recomputed results match the
+review. [#256](https://github.com/slac-lcls/lcls2/issues/256) tracks the deferred unaligned-copy retirement wait and
+slot-wide accumulation/admission-planning limitation. Perlmutter and SDF results
+remain separate. No new performance campaign or production change is required
+for these documentation follow-ups.
 
-Claude's third review was independently verified. The [cold report](issue159_pr246_cold_20261028.md)
-now includes the read-wait/other-time breakdown and explicitly limits causal and
-order-effect conclusions. Cold-screen acceptance is unchanged. The remaining
-[field benchmark](issue159_pr246_fields_20261028.md) is submitted as job 42263681,
-with aligned A/B access and unaligned B-only delayed-consumer retirement under
-both input-window policies. Its results remain pending; no production changes,
-merge or Stage 5 implementation are included in this action.
+PR246 remains open for the final follow-up check and merge decision. Stage 5
+will be a separate implementation PR; it has not started. Historical validation
+and planning details follow and do not override this current status.
 
 Updated 2026-10-28. Status: PR #187 comparison completed; A frozen; stage-2
 measured overhead accepted by Mona for now; stage-3 focused validation and warm
@@ -93,8 +91,8 @@ review accepted all six dispositions at `405f868ed`. The authorized
 [matched cold screen](issue159_pr246_cold_20261028.md) completed as job 42255812
 with fresh builds at A `8cf05e86a` and B `405f868ed`. Mona accepts the mean loop
 increases of 1.32% bulk-off and 1.95% bulk-on for now; no optimization or repeat
-cold screen is required for this integration. The separate field-view benchmark
-remains the technical gate before accepting and merging PR246. Stage 5 follows
+cold screen is required for this integration. The separate field-view benchmark has also completed and its disposition
+is supported by Claude's review; #256 tracks the deferred optimization. Stage 5 follows
 as a separate implementation PR after integration is accepted.
 Measure bulk-on unaligned field retirement separately before considering any
 change to its current host-wait behavior.

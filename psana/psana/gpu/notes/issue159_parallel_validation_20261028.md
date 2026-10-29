@@ -1,26 +1,24 @@
 # Issue159: review and integration validation in parallel
 
 
-## Perlmutter result submitted for review
+## Current status — October 29
 
-The [Perlmutter field campaign](issue159_pr246_perlmutter_fields_20261028.md)
-completed with no reported correctness failures. Aligned accessor overhead is
-about 1–3 µs; retained unaligned copies block host retirement until consumers
-finish even with deferred input windows. Mona proposes deferring optimization
-of this alternative per-event API while retaining its correctness guarantees.
-The accepted batched input/gather A/B coverage remains valid. Claude is asked to
-review this disposition before closing the performance gate. No merge or Stage 5
-work is included. Earlier submission/pending statements below are historical.
+Claude's [final field review](https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5689634175) found no correctness or coverage blocker
+and supports the accepted deferral of per-event API optimization. The technical
+gates are satisfied: CPU, CUDA, memcheck, MPI/reporting, accepted cold batched
+input/gather A/B and field access/retirement measurements.
 
-## Latest action — verified review and field benchmark
+Both requested follow-ups are complete. [SDF job 42263681](issue159_pr246_fields_20261028.md)
+finished **0:0** on sdfampere016, with all timed processes/preflights and both
+8,093-file hash checks passing; independently recomputed results match the
+review. [#256](https://github.com/slac-lcls/lcls2/issues/256) tracks the deferred unaligned-copy retirement wait and
+slot-wide accumulation/admission-planning limitation. Perlmutter and SDF results
+remain separate. No new performance campaign or production change is required
+for these documentation follow-ups.
 
-Claude's third review was independently verified. The [cold report](issue159_pr246_cold_20261028.md)
-now includes the read-wait/other-time breakdown and explicitly limits causal and
-order-effect conclusions. Cold-screen acceptance is unchanged. The remaining
-[field benchmark](issue159_pr246_fields_20261028.md) is submitted as job 42263681,
-with aligned A/B access and unaligned B-only delayed-consumer retirement under
-both input-window policies. Its results remain pending; no production changes,
-merge or Stage 5 implementation are included in this action.
+PR246 remains open for the final follow-up check and merge decision. Stage 5
+will be a separate implementation PR; it has not started. Historical validation
+and planning details follow and do not override this current status.
 
 The user authorized independent review alongside validation on October 28.
 PR246 stays open; the main fix branch is unchanged. No Stage 5 implementation
@@ -40,8 +38,8 @@ at their stated revisions. Claude's follow-up review accepted all six dispositio
 with fresh independent builds at A `8cf05e86a` and B `405f868ed`. It completed
 on sdfampere015 with four preflights and all 16 cold samples passing. Mean loop
 increases were 1.32% bulk-off and 1.95% bulk-on; Mona accepts them for now without
-optimization or a repeat cold screen. The separate field-view benchmark, PR
-merge and Stage 5 remain pending. The scalar transport issue is tracked as
+optimization or a repeat cold screen. The separate field-view benchmark is now complete; PR merge and Stage 5
+remain pending. The scalar transport issue is tracked as
 [#247](https://github.com/slac-lcls/lcls2/issues/247).
 
 ## MPI/reporting completion update
@@ -54,8 +52,8 @@ scalar check starts at the GPU-manager input boundary; the real-data pixel
 checks use unchanged calibration setup. No production code changed.
 
 The planning sections below describe the original coverage plan. Combined
-MPI/reporting is now complete within that stated scope. Independent review and
-the matched cold/field performance screen remain pending.
+MPI/reporting, independent review and the matched cold/field performance
+screens are now complete within their stated scopes.
 
 ## Fixed code under test
 
@@ -189,7 +187,9 @@ regressions before proceeding; there is no new arbitrary pass/fail percentage.
 
 Claude's follow-up review is complete. Job 42255812 completed the matched cold
 screen, and Mona accepted its small slowdown. The separate field-view benchmark,
-including bulk-on unaligned retirement timing, is the remaining technical gate. The original focused device gate passed 333 GPU tests and 315 selected
+including delayed unaligned retirement, has also passed with accepted deferral
+tracked in #256. The technical gates are satisfied; final follow-up review and
+merge remain pending. The original focused device gate passed 333 GPU tests and 315 selected
 sanitizer checks; the review delta passed the focused checks recorded above.
 The combined MPI/reporting gate passed 16 field cases and two real pixel checks,
 with the separate inherited host scalar-shape finding documented in the MPI

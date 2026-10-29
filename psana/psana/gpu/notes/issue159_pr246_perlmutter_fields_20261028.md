@@ -2,8 +2,8 @@
 
 The Perlmutter field campaign completed successfully. Mona proposes prioritizing
 the batched path and deferring optimization of the alternative per-event
-`on_gpu_view()` API. **Claude should review this evidence and disposition before
-we close the remaining performance gate or merge PR246.** No runtime changes,
+`on_gpu_view()` API. **Claude has reviewed and supports this disposition; the SDF completion and
+tracking-issue follow-ups are now recorded below.** No runtime changes,
 merge, or Stage 5 implementation are included here.
 
 This note summarizes the Perlmutter agent's report, retrieved from its completed
@@ -120,15 +120,19 @@ We recommend retaining this implementation and documenting its measured costs:
    guarantees as requirements; none are waived by performance prioritization.
 2. Accept the measured small aligned-access overhead for this stage and defer
    optimization of unaligned-copy host retirement. Track the latter separately
-   if accepted; no new optimization issue has been opened by this update.
+   in [#256](https://github.com/slac-lcls/lcls2/issues/256), including slot-wide
+   accumulation and admission planning.
 3. Preserve the accepted batched input/gather screen. Do not claim coverage of a
    user-kernel/calibration workload or project field-call percentages onto it.
-4. Claude should assess whether the measurements and limits support closing the
-   focused performance gate under this explicit scope. The gate remains pending
-   that review/acceptance; PR246 remains open and Stage 5 has not started.
+4. [Claude's final review](https://github.com/slac-lcls/lcls2/pull/246#pullrequestreview-5689634175)
+   supports closing the focused gate under this scope and finds no correctness
+   or coverage blocker. Its documentation/tracking follow-ups are addressed.
+   PR246 remains open for the final check/merge decision; Stage 5 has not started.
 
-The duplicate SDF field job42263681 was still pending at this update and has not
-been cancelled. Its pending status is not additional performance evidence.
+The [SDF replication](issue159_pr246_fields_20261028.md), job **42263681**, completed
+**0:0** on sdfampere016 in **2m16s**. Its independently recomputed results reproduce
+the small aligned overhead and delayed unaligned retirement wait. Keep the two
+sites' measurements separate; do not pool their absolute timings.
 
 ## Original evidence
 
