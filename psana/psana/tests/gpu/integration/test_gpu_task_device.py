@@ -60,7 +60,9 @@ def test_serial_datasource_stages_dense_inputs_and_exact_constants(monkeypatch):
     monkeypatch.setattr(Run, '_setup_run_calibconst', setup)
     task = GpuTask(unused, ['jungfrau.raw'], [('jungfrau', 'pixel_gain')])
     ds = DataSource(exp='mfx100848724', run=51, dir='/sdf/data/lcls/ds/prj/public01/xtc',
-                    detectors=['jungfrau'], max_events=1, gpu_det='jungfrau', gpu_fn=task)
+                    # MFX defaults to one event; this checks explicit GPU batching.
+                    detectors=['jungfrau'], max_events=1, batch_size=20,
+                    gpu_det='jungfrau', gpu_fn=task)
     run = next(ds.runs())
     manager = run._evt_iter
     try:
