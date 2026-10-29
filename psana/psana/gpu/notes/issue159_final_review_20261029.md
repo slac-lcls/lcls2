@@ -74,7 +74,7 @@ Routine detector processing should use batched tasks.
 ## Tests, tools and evidence
 
 The cumulative diff also contains 16 test/fixture files (+1,474/-11), eight
-benchmark/tool files (+641/-1), and three user guides (+106/-4). Test setup
+benchmark/tool files (+641/-1), and two user guides (+83/-4). Test setup
 corrections scope `PS_SMD_N_EVENTS` to the CLI/test that needs it and explicitly
 request batch size 20 in the GPU task test; production defaults are unchanged.
 Benchmark additions cover isolated gather, field access/retirement, input
@@ -127,3 +127,16 @@ and these accepted limitations. Verify the target has not moved materially
 before merge. Final merge needs Mona's authorization; only after that merge
 should issue159 be closed. No automatic closure is assumed for a PR targeting
 a non-default feature branch.
+
+## Final review follow-up
+
+Claude reviewed PR262 at `f74ba6ab0` against unchanged target `8cf05e86a` and
+found no blockers. Codex independently rechecked production/test equivalence
+and the cumulative path scope. Both non-blocking documentation suggestions
+were addressed on the same PR: the October 19–22 cold-rate history moved from
+`docs/performance/read_staging.md` to the existing cold-rate investigation note,
+and the personal-fork handoff now names PR262 as the current merge gate.
+The read-staging guide is now identical to the target; user-documentation totals
+above reflect that removal. The scope JSON remains the explicitly dated
+pre-final-documentation inventory. No runtime or tests changed, so existing
+validation remains applicable; no new test run is claimed.

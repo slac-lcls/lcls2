@@ -115,11 +115,12 @@ hashes/origin audits verified. Production runtime is unchanged by Stages 5–6.
 See the [implementation plan](issue_159_implementation_plan.md) and
 [revised completion sequence](issue159_stage5_revised_plan_20261029.md).
 
-Next is Stage 7: consolidate accepted performance evidence under the existing
-change triggers. Do not launch another A/A or unconditional cold campaign.
-Stage 8 will inspect the then-current upstream target and prepare the final
-milestone PR after review. Issue159 remains open until that final PR is accepted
-and merged. Deferred retirement/admission work is upstream #256, field API policy
-is #257, and host scalar transport is #247; none is silently folded into Stage 7.
-This handoff changes workflow only and does not authorize new implementation or
-merging a future stage PR.
+Stage 7 is complete: personal-fork PR1 merged at `86a1eba3f` after Claude's
+review and the two wording corrections. Stage 8 verified the unchanged upstream
+target and opened the complete alignment milestone as
+[upstream PR262](https://github.com/slac-lcls/lcls2/pull/262). Claude's final
+review found no blockers; its documentation follow-ups remain on that PR.
+The remaining step is Mona's authorization to merge PR262, followed by manually
+closing issue159. Deferred retirement/admission work is upstream #256, field API
+policy is #257, and host scalar transport is #247. No new GPU campaign or
+intermediate PR is required for these documentation corrections.

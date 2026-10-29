@@ -150,3 +150,29 @@ Sources: [read/staging report](../docs/performance/read_staging.md),
 [Stage 3 warm screen](issue159_stage3_cache_reset_retry_20261020.md),
 [Stage 4 cold screen](issue159_stage4_cold_20261022.md), and
 [compact historical evidence](evidence/issue159_cold_rate_history_20261022.json).
+
+## Archived October 19–22 follow-up
+
+Moved from the read-staging performance guide during PR262 review. This is the
+October 22 investigation status; current alignment acceptance is recorded in
+[Stage 7](issue159_stage7_performance_20261029.md).
+
+This historical audit records later cold 4BD/1GPU rates: ~261 Hz before PR187 on October 19 and
+~177 Hz for both Stage 3 and Stage 4 on October 22. Payload/reference hashes and
+read counts match the campaigns here. Increased read-future waits dominate the
+extra loop time. These different-node observations do not locate a causal
+commit; matched incremental success must not be read as preservation of the
+September absolute rates. A common-harness old/current cold comparison remains
+needed to resolve the gap.
+
+The requested [fresh pre/post-stack cold comparison](prepost_stack_cold_20261022.md)
+completed as job **41614567** on sdfampere027, using separate native builds, four
+pairs per bulk setting and recorded external-library fingerprints. These
+pre/post commits have identical source trees; this checks build/runtime and
+current absolute throughput before a possible later cumulative comparison.
+Both arms reproduced about 177 Hz. A subsequent
+[storage/NUMA inspection](lscratch_numa_012_027_20261022.md) found
+Gen4 ×4 Kioxia SSDs on the earlier 391 Hz node 012, versus Gen3 ×4 WD SSDs on 027,
+with matching physical NUMA attachments. This hardware difference is consistent
+with most of the absolute throughput gap and must be controlled in future
+cross-node comparisons.
