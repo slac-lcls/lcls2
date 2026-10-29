@@ -27,7 +27,8 @@ class EpixUHR3x2_Manager:
         nasics: int = 6,
         readout_system_num: int = 0,
         logger_name: str = "ePixUHR3x2",
-        emulator: bool = True,
+        use_gpu: int = 1,
+        emulator: int = 1,
     ):
         self._root: epixUhrDev.Root = root
         self._nasics: int = nasics
@@ -42,7 +43,8 @@ class EpixUHR3x2_Manager:
         }
 
         self._ros_num: int = readout_system_num
-        self._emulator: bool = emulator
+        self._use_gpu: bool = bool(use_gpu)
+        self._emulator: bool = bool(emulator)
 
     @property
     def emulator(self) -> bool:
@@ -84,8 +86,8 @@ class EpixUHR3x2_Manager:
         Args:
             use_cpu (bool): If True, data will be routed to the CPU.
         """
-        target_val: int = 0x0 if use_cpu else 0x1
-        kick_val: int = 0x1 if use_cpu else 0x0
+        target_val: int = int(self._use_gpu)
+        kick_val: int = int(not self._use_gpu)
         if hasattr(self.ReadoutSystem, "DataDestination"):
             self.ReadoutSystem.DataDestination.set(kick_val)
             time.sleep(0.01)
@@ -676,11 +678,9 @@ class EpixUHR3x2_Manager:
 
         self.initialize_timing(timebase=timebase)
 
-        # Force use of CPU data path. Seems to not determine that sometimes.
-        # Per Gabriel: set use_cpu=False for GPU use
-        # self._kick_data_path(use_cpu=True)
-        # self._kick_data_path(use_cpu=False)
-        self._kick_data_path(use_cpu=True)
+        # Force use of the correct data path. Seems to not determine that sometimes.
+        # Selection of GPU/CPU is done when constructing the Manager
+        self._kick_data_path()
 
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()
