@@ -28,7 +28,7 @@ class EpixUHR3x2_Manager:
         readout_system_num: int = 0,
         logger_name: str = "ePixUHR3x2",
         use_gpu: int = 1,
-        emulator: int = 1,
+        emulator: int = 0,
     ):
         self._root: epixUhrDev.Root = root
         self._nasics: int = nasics
@@ -80,11 +80,10 @@ class EpixUHR3x2_Manager:
         time.sleep(0.1)
         logger.info("Stopping run.")
 
-    def _kick_data_path(self, use_cpu: bool = True):
+    def _kick_data_path(self):
         """The data path may read as one or the other, but this may not be correct.
 
-        Args:
-            use_cpu (bool): If True, data will be routed to the CPU.
+        The data path selection is determined at construction.
         """
         target_val: int = int(self._use_gpu)
         kick_val: int = int(not self._use_gpu)

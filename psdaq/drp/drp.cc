@@ -163,6 +163,9 @@ int main(int argc, char* argv[])
             if (kwargs.first == "slsHosts")          continue;
         }
         if (para.detType == "epixuhr3x2") {
+            // The CPU drp sets useGpu to false - no need to expose via cnf
+            para.kwargs.emplace("useGpu", "0");
+
             if (kwargs.first == "useGpu")            continue;
             if (kwargs.first == "isEmulator")        continue;
         }
