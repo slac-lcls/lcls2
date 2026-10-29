@@ -1,0 +1,218 @@
+{
+  "base": "1a3efd86b2a58f771eb377677c422993543ed5e8",
+  "tested_commit": "4a4df550bf27444789833a38e0dd658fe8196467",
+  "runtime_changed": false,
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029",
+  "cpu": {
+    "host": "sdfiana025",
+    "job": null,
+    "complete": true,
+    "unit": {
+      "returncode": 0,
+      "seconds": 6.425703513901681,
+      "command": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/cpu/unit-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/cpu/unit.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/unit/test_gpu_field_views.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/unit/test_gpu_input_copy_lifetime.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/unit/test_gpu_input_window.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/unit/test_gpu_retirement.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/unit/test_gpu_input.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/unit/test_gpu_memory_report.py"
+      ],
+      "counts": {
+        "tests": 393,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "gpu": {
+    "host": "sdfampere002",
+    "job": "42391066",
+    "complete": true,
+    "device": {
+      "returncode": 0,
+      "seconds": 6.630091805011034,
+      "command": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/job-42391066/device-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/job-42391066/device.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/python/psana/tests/gpu/integration/test_gpu_field_accessors_device.py"
+      ],
+      "counts": {
+        "tests": 60,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "memcheck": {
+      "returncode": 0,
+      "seconds": 5.879436464048922,
+      "command": [
+        "/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--show-backtrace",
+        "device",
+        "--error-exitcode",
+        "99",
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/job-42391066/memcheck-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/job-42391066/memcheck.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/python/psana/tests/gpu/integration/test_gpu_field_accessors_device.py"
+      ],
+      "counts": {
+        "tests": 60,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "initial_gpu_attempt": {
+    "host": "sdfampere014",
+    "job": "42390626",
+    "complete": false,
+    "device": {
+      "returncode": 0,
+      "seconds": 8.330691354814917,
+      "command": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/job-42390626/device-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/job-42390626/device.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/integration/test_gpu_field_accessors_device.py"
+      ],
+      "counts": {
+        "tests": 60,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "memcheck": {
+      "returncode": 1,
+      "seconds": 6.9815620658919215,
+      "command": [
+        "/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "99",
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/job-42390626/memcheck-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/job-42390626/memcheck.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/integration/test_gpu_field_accessors_device.py"
+      ],
+      "counts": {
+        "tests": 60,
+        "failures": 7,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "error": "AssertionError({'returncode': 1, 'seconds': 6.9815620658919215, 'command': ['/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer', '--tool', 'memcheck', '--error-exitcode', '99', '/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python', '-B', '/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/run_tests.py', '-q', '-p', 'no:cacheprovider', '--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/job-42390626/memcheck-tmp', '--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/job-42390626/memcheck.xml', '/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/tests/gpu/integration/test_gpu_field_accessors_device.py'], 'counts': {'tests': 60, 'failures': 7, 'errors': 0, 'skipped': 0}})"
+  },
+  "verified_files": 988,
+  "sanitizer_errors": 0,
+  "gpu_identity": "0, GPU-2ffbbab3-51e7-f2a6-31de-fc601f6aa552, 00000000:C1:00.0, NVIDIA A100-SXM4-40GB, 575.57.08",
+  "scheduler": {
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:16"
+  },
+  "origin_audits": {
+    "cpu": {
+      "modules_checked": 131,
+      "wrong_modules": {},
+      "wrong_libraries": [],
+      "native_libraries": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libshmemcli.so",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libxtc.so"
+      ],
+      "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/cpu/unit-origins.json"
+    },
+    "cuda": {
+      "modules_checked": 125,
+      "wrong_modules": {},
+      "wrong_libraries": [],
+      "native_libraries": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libshmemcli.so",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libxtc.so"
+      ],
+      "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/job-42391066/device-origins.json"
+    },
+    "memcheck": {
+      "modules_checked": 125,
+      "wrong_modules": {},
+      "wrong_libraries": [],
+      "native_libraries": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libshmemcli.so",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libxtc.so"
+      ],
+      "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt02/job-42391066/memcheck-origins.json"
+    }
+  },
+  "tested_hashes": {
+    "psana/psana/gpu/gpu_input.py": "d5db40307e3393dc358cc9c0c14ce43dd78ce1b4600acd44527a797eec3a0802",
+    "psana/psana/tests/gpu/field_view_fixture.py": "4e01382775a46e1f7e8bad955bab13e0d67c6b54e9b9077a1919f5a6add2e00a",
+    "psana/psana/tests/gpu/unit/test_gpu_field_views.py": "8e5440402f31d03764f6bb2d38e894525ec01a4ec6ba6b9bb1fa37d9ab701fc7",
+    "psana/psana/tests/gpu/integration/test_gpu_field_accessors_device.py": "f0f355f47f164ed8dafae84468af3a432e7470c5790e421cb97a4a69c0b4bc2a"
+  },
+  "diagnostic_logs": {
+    "diagnostic-42390755.log": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/logs/diagnostic-42390755.log",
+      "sha256": "8afaaac57b0a72b62210da746008c27f6c2e7336564e13254754a691d18034ad",
+      "content": "========= COMPUTE-SANITIZER\nCUDA_DEVICE 0000:C1:00.0 14.0.1\nOUTPUT [1157159078456920585 1735880461161533969 2314601843866147353\n 2893323226570760737 3472044609275374121 4050765991979987505]\nAFTER_RETIRE 512 False\nREF ('dict', ['9'])\nGC 86\nAFTER_GC 512 False\nAFTER_OUTPUT 512 False\nAFTER_NULL_SYNC 512 False\n.\n1 passed in 0.65s\n========= ERROR SUMMARY: 0 errors\n"
+    },
+    "refs-42390831.log": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/logs/refs-42390831.log",
+      "sha256": "37eeb218d4de70b37fd7dcae9acb15e8e1bb926a9031d50c12a6f34e775f64ca",
+      "content": "========= COMPUTE-SANITIZER\nCUDA_DEVICE 0000:41:00.0 14.0.1\nOUTPUT [1157159078456920585 1735880461161533969 2314601843866147353\n 2893323226570760737 3472044609275374121 4050765991979987505]\nAFTER_RETIRE 512 False\nREF 0 ('dict', ['9'])\nREF 1 (\"<class 'mappingproxy'>\", 1)\nREF 2 (\"<class 'psana.gpu.gpu_input.GpuFieldData'>\", 1)\nREF 3 ('frame', '/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/python/psana/gpu/gpu_input.py', 'on_gpu', 855)\nREF 4 (\"<class 'cell'>\", None)\nREF 5 (\"<class 'cell'>\", None)\nREF 6 (\"<class 'cell'>\", None)\nREF 7 (\"<class 'cell'>\", None)\nREF 8 (\"<class 'cell'>\", None)\nREF 3 (\"<class 'cell'>\", None)\nREF 4 (\"<class 'cell'>\", None)\nREF 2 (\"<class 'cell'>\", None)\nREF 3 (\"<class 'cell'>\", None)\nREF 1 (\"<class 'cell'>\", None)\nREF 2 (\"<class 'cell'>\", None)\nREF 0 (\"<class 'cell'>\", None)\nREF 1 (\"<class 'cell'>\", None)\nGC 86\nAFTER_GC 512 False\nAFTER_OUTPUT 512 False\nAFTER_NULL_SYNC 512 False\n.\n1 passed in 0.62s\n========= ERROR SUMMARY: 0 errors\n"
+    },
+    "frames-42390891.log": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/logs/frames-42390891.log",
+      "sha256": "881140427ac35ccbf873f1c8b0c68d7c2bfbbcb42433ddaffd0e0b9d236aeb03",
+      "content": "========= COMPUTE-SANITIZER\nCUDA_DEVICE 0000:C1:00.0 14.0.1\nOUTPUT [1157159078456920585 1735880461161533969 2314601843866147353\n 2893323226570760737 3472044609275374121 4050765991979987505]\nAFTER_RETIRE 512 False\nFRAME_REFS []\nFRAME_BACK test_retention\nGC 86\nAFTER_GC 512 False\nLATER 0 512 False FIRST 512\nLATER 1 512 False FIRST 512\nLATER 2 512 False FIRST 512\nTRACE None None (None, None, None)\nAFTER_OUTPUT 512 False\nAFTER_NULL_SYNC 512 False\n.\n1 passed in 0.48s\n========= ERROR SUMMARY: 0 errors\n"
+    },
+    "backtrace-42390945.log": {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/attempt01/logs/backtrace-42390945.log",
+      "sha256": "ab6ecff108d5b1ff27faa6fb4c1477224f3fabb262e6d0c97e8d0f9e9cd4d04c",
+      "content": "BACKTRACE_MODE native\nCUDA_DEVICE 0000:81:00.0 14.0.1\nOUTPUT [1157159078456920585 1735880461161533969 2314601843866147353\n 2893323226570760737 3472044609275374121 4050765991979987505]\nAFTER_RETIRE 0 True\nGC 86\nAFTER_GC 0 True\nLATER 0 0 True FIRST 0\nLATER 1 0 True FIRST 0\nLATER 2 0 True FIRST 0\nTRACE None None (None, None, None)\nAFTER_OUTPUT 0 True\nAFTER_NULL_SYNC 0 True\n.\n1 passed in 0.34s\nBACKTRACE_MODE device\n========= COMPUTE-SANITIZER\nCUDA_DEVICE 0000:81:00.0 14.0.1\nOUTPUT [1157159078456920585 1735880461161533969 2314601843866147353\n 2893323226570760737 3472044609275374121 4050765991979987505]\nAFTER_RETIRE 0 True\nGC 86\nAFTER_GC 0 True\nLATER 0 0 True FIRST 0\nLATER 1 0 True FIRST 0\nLATER 2 0 True FIRST 0\nTRACE None None (None, None, None)\nAFTER_OUTPUT 0 True\nAFTER_NULL_SYNC 0 True\n.\n1 passed in 0.35s\n========= ERROR SUMMARY: 0 errors\nBACKTRACE_MODE no\n========= COMPUTE-SANITIZER\nCUDA_DEVICE 0000:81:00.0 14.0.1\nOUTPUT [1157159078456920585 1735880461161533969 2314601843866147353\n 2893323226570760737 3472044609275374121 4050765991979987505]\nAFTER_RETIRE 0 True\nGC 86\nAFTER_GC 0 True\nLATER 0 0 True FIRST 0\nLATER 1 0 True FIRST 0\nLATER 2 0 True FIRST 0\nTRACE None None (None, None, None)\nAFTER_OUTPUT 0 True\nAFTER_NULL_SYNC 0 True\n.\n1 passed in 0.35s\n========= ERROR SUMMARY: 0 errors\n"
+    }
+  },
+  "diagnostic_probe": "import gc\nimport weakref\nfrom types import FrameType\nfrom field_view_fixture import field_case, retire\n\ndef describe(ref):\n    if isinstance(ref, FrameType):\n        return ('frame', ref.f_code.co_filename, ref.f_code.co_name, ref.f_lineno)\n    if isinstance(ref, dict):\n        return ('dict', [str(k) for k in ref.keys()][:15])\n    return (str(type(ref)), len(ref) if hasattr(ref, '__len__') else None)\n\ndef inspect_refs(obj):\n    refs0=gc.get_referrers(obj)\n    mapping=next(x for x in refs0 if isinstance(x,dict))\n    proxy=next(x for x in gc.get_referrers(mapping) if type(x).__name__=='mappingproxy')\n    container=next(x for x in gc.get_referrers(proxy) if type(x).__name__=='GpuFieldData')\n    frame=next(x for x in gc.get_referrers(container) if isinstance(x,FrameType))\n    print('FRAME_REFS',[(describe(x), repr(x)[:300]) for x in gc.get_referrers(frame)],flush=True)\n    print('FRAME_BACK',frame.f_back.f_code.co_name if frame.f_back else None,flush=True)\n\ndef test_retention():\n    import cupy as cp\n    case = field_case(cp, type_id=3, shapes=((6,),), base_shift=1, offset=8)\n    stream = cp.cuda.Stream(non_blocking=True)\n    with stream:\n        output = case.result.on_gpu\n    stream.synchronize()\n    print('OUTPUT',output.only().get(),flush=True)\n    ref=weakref.ref(case.result._views.only())\n    retire(case)\n    print('AFTER_RETIRE',case.budget.committed(),ref() is None,flush=True)\n    if ref() is not None: inspect_refs(ref())\n    print('GC', gc.collect(),flush=True)\n    print('AFTER_GC',case.budget.committed(),ref() is None,flush=True)\n    for i in range(3):\n        later=field_case(cp,type_id=3,shapes=((6,),),base_shift=1,offset=8)\n        with stream: later_output=later.result.on_gpu\n        stream.synchronize()\n        later_ref=weakref.ref(later.result._views.only())\n        retire(later)\n        print('LATER',i,later.budget.committed(),later_ref() is None,'FIRST',case.budget.committed(),flush=True)\n    import sys\n    print('TRACE',sys.gettrace(),sys.getprofile(),sys.exc_info(),flush=True)\n    del output\n    print('AFTER_OUTPUT',case.budget.committed(),ref() is None,flush=True)\n    cp.cuda.get_current_stream().synchronize()\n    print('AFTER_NULL_SYNC',case.budget.committed(),ref() is None,flush=True)\n",
+  "diagnostic_comparison_launcher": "import os,json,subprocess\nfrom pathlib import Path\nroot=Path(__file__).resolve().parent\nenv=json.loads((root/'metadata/runtime-env.json').read_text())\nenv.update(CUDA_VISIBLE_DEVICES=os.environ['CUDA_VISIBLE_DEVICES'],REQUIRE_CUDA='1',ORIGIN_REPORT=str(root/'diagnostic-origins.json'))\ncmd=['/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer','--tool','memcheck','--error-exitcode','99',env['PATH'].split(':')[0]+'/python','-B',str(root/'run_tests.py'),'-s','-q','-p','no:cacheprovider',str(root/'diagnostic.py')]\nfor mode in ('native','device','no'):\n    print('BACKTRACE_MODE',mode,flush=True)\n    testcmd=cmd[5:] if mode=='native' else cmd[:5]+['--show-backtrace',mode]+cmd[5:]\n    assert subprocess.run(testcmd,cwd=root/'work',env=env).returncode==0\n\n",
+  "manifest_sha256": {
+    "attempt01": "d44a6fc4725220d7e5e489328fd45ef2c3781022b497ee4436a25b0d4bc4a2f4",
+    "attempt02": "8912ea8c47ad214204c0474e2e315522e544407449828c29d2b3bbf3d1ba2b8b"
+  }
+}

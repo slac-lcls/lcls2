@@ -250,3 +250,97 @@ def test_many_events_exhaust_shared_budget_until_slot_retirement(backend):
     del values
     retire(later)
     assert budget.committed() == 0
+
+
+@pytest.mark.parametrize('accessor', ['on_cpu', 'on_gpu'])
+@pytest.mark.parametrize('state', ['aligned', 'unaligned', 'primed'])
+def test_copy_accessor_counts_and_independence(backend, monkeypatch, accessor, state):
+    case = field_case(backend.cp, offset=8 if state == 'aligned' else 1)
+    if state == 'primed':
+        with case.result.on_gpu_view(backend.stream):
+            pass
+    transfers = []
+    original_get, original_copy = Array.get, Array.copy
+
+    def get(array):
+        transfers.append('host')
+        return original_get(array)
+
+    def copy(array, *args, **kwargs):
+        transfers.append('device')
+        return original_copy(array, *args, **kwargs)
+
+    monkeypatch.setattr(Array, 'get', get)
+    monkeypatch.setattr(Array, 'copy', copy)
+    source_before = case.sources[0].data_gpu.tobytes()
+    first = getattr(case.result, accessor)
+    second = getattr(case.result, accessor)
+    assert first.only().tobytes() == case.expected[9].tobytes()
+    assert second.only().tobytes() == case.expected[9].tobytes()
+    assert transfers == (['host'] if accessor == 'on_cpu' else ['device', 'device'])
+    assert len(backend.copies) == int(state != 'aligned')
+    assert case.budget.committed() == (0 if state == 'aligned' else 30)
+    first.only()[...] = 0
+    assert case.sources[0].data_gpu.tobytes() == source_before
+    with case.result.on_gpu_view(backend.stream) as borrowed:
+        assert borrowed.only().tobytes() == case.expected[9].tobytes()
+    del borrowed
+    if accessor == 'on_cpu':
+        assert first is second  # Mutable host snapshot, cached on this result.
+    else:
+        assert first.only().data.ptr != second.only().data.ptr
+        assert second.only().tobytes() == case.expected[9].tobytes()
+    retire(case)
+    # Owned outputs still live, but they hold no internal alignment-copy charge.
+    assert case.budget.committed() == 0 and case.owner.released
+    assert first.only().tobytes() == bytes(first.only().nbytes)
+    if accessor == 'on_cpu':
+        assert case.result.on_cpu is first
+    else:
+        with pytest.raises(RuntimeError, match='retiring'):
+            case.result.on_gpu
+
+
+@pytest.mark.parametrize('accessor', ['on_cpu', 'on_gpu'])
+@pytest.mark.parametrize('absent', [(), (9,)])
+def test_copy_accessor_empty_and_absent_need_no_alignment_storage(backend, accessor, absent):
+    case = field_case(backend.cp, type_id=3, shapes=((0, 3),),
+                      offset=1, absent=absent, limit=0)
+    values = getattr(case.result, accessor)
+    assert values.segment_ids == (() if absent else (9,))
+    if not absent:
+        assert values.only().shape == (0, 3)
+        assert values.only().dtype == np.dtype('u8')
+    assert not backend.copies and not case.budget.allocation_snapshot()
+    retire(case)
+    assert case.owner.released
+
+
+@pytest.mark.parametrize('selected_first', [False, True])
+def test_cpu_cache_is_per_selection_but_alignment_copy_is_shared(backend, selected_first):
+    case = field_case(backend.cp, shapes=((2, 3), (5,), ()), absent=(17,))
+    selected = case.detector.field('raw', 'value', segment=4)
+    order = (selected, case.result) if selected_first else (case.result, selected)
+    for result in order:
+        result.on_cpu
+    all_host, selected_host = case.result.on_cpu, selected.on_cpu
+    assert all_host.segment_ids == (9, 4)
+    assert len(backend.copies) == 2
+    assert selected._views.only().data.ptr == case.result._views[4].data.ptr
+    assert not np.shares_memory(all_host[4], selected_host.only())
+    selected_host.only()[...] = 0
+    assert all_host[4].tobytes() == case.expected[4].tobytes()
+    assert case.result._views[4].tobytes() == case.expected[4].tobytes()
+    retire(case)
+    assert selected.on_cpu is selected_host and case.result.on_cpu is all_host
+    assert case.budget.committed() == 0
+
+
+@pytest.mark.parametrize('accessor', ['on_cpu', 'on_gpu'])
+@pytest.mark.parametrize('offset', [1, 8])
+def test_first_copy_accessor_after_retirement_fails(backend, accessor, offset):
+    case = field_case(backend.cp, offset=offset)
+    retire(case)
+    with pytest.raises(RuntimeError, match='retiring'):
+        getattr(case.result, accessor)
+    assert not backend.copies and case.budget.committed() == 0
