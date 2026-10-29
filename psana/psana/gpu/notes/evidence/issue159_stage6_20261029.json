@@ -1,0 +1,515 @@
+{
+  "base": "a4293d71ff1886bdb993b195d7be5ad0d9725700",
+  "tested_commit": "71f5c04a27b7b369a1919454378abc4120abbd66",
+  "runtime_changed": false,
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029",
+  "attempts": {
+    "attempt01": {
+      "status": {
+        "job": "42394606",
+        "host": "sdfampere010",
+        "complete": true,
+        "core": {
+          "command": [
+            "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+            "-B",
+            "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/run_tests.py",
+            "-v",
+            "-ra",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/job-42394606/core-tmp",
+            "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/job-42394606/core.xml",
+            "psana/psana/tests/"
+          ],
+          "returncode": 1,
+          "seconds": 213.5762114590034,
+          "counts": {
+            "tests": 1651,
+            "failures": 4,
+            "errors": 0,
+            "skipped": 5
+          },
+          "nonpassing": [
+            {
+              "nodeid": "gpu.integration.test_gpu_d2h_device::test_serial_public_delivery_exact_keys_retained_events_and_input_access[0]",
+              "results": [
+                {
+                  "kind": "failure",
+                  "message": "assert (False)\n +  where False = any(<generator object test_serial_public_delivery_exact_keys_retained_events_and_input_access.<locals>.<genexpr> at 0x7fd5fc7ef3e0>)"
+                }
+              ]
+            },
+            {
+              "nodeid": "gpu.integration.test_gpu_d2h_device::test_serial_public_delivery_exact_keys_retained_events_and_input_access[4096]",
+              "results": [
+                {
+                  "kind": "failure",
+                  "message": "assert (False)\n +  where False = any(<generator object test_serial_public_delivery_exact_keys_retained_events_and_input_access.<locals>.<genexpr> at 0x7fd5fc7ed9a0>)"
+                }
+              ]
+            },
+            {
+              "nodeid": "gpu.integration.test_gpu_task_device::test_serial_datasource_stages_dense_inputs_and_exact_constants",
+              "results": [
+                {
+                  "kind": "failure",
+                  "message": "AssertionError: assert (GpuTask(function=<function unused at 0x7fd605e2bf60>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) is GpuTask(function=<function unused at 0x7fd605e2bf60>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) and 1 == 20)\n +  where GpuTask(function=<function unused at 0x7fd605e2bf60>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) = <psana.gpu.gpu_events.GpuEventManager object at 0x7fd5d75a8350>._gpu_task\n +  and   1 = DsParms(batch_size=1, max_events=1, max_retries=0, live=False, timestamps=array([], dtype=uint64), intg_det='', intg_delta_t=0, use_calib_cache=False, cached_detectors=[], fetch_calib_cache_max_retries=60, skip_calib_load=[], dbsuffix='', smd_callback=0, smd_files=['/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2'], use_smds=[False, False, False, False, False], gpu_det='jungfrau', hybrid_det=None, n_gpu_streams=2, gpu_d2h_pinned_bytes=67108864, gpu_d2h_chunk_size=0, gpu_memory_budget_gb=0, gpu_bulk_read=True, gpu_bulk_target_bytes=1048576, gpu_stream_ids=[0, 1, 2, 3, 4], hybrid_stream_ids=[], gpu_fn=GpuTask(function=<function unused at 0x7fd605e2bf60>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),))).batch_size\n +    where DsParms(batch_size=1, max_events=1, max_retries=0, live=False, timestamps=array([], dtype=uint64), intg_det='', intg_delta_t=0, use_calib_cache=False, cached_detectors=[], fetch_calib_cache_max_retries=60, skip_calib_load=[], dbsuffix='', smd_callback=0, smd_files=['/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2'], use_smds=[False, False, False, False, False], gpu_det='jungfrau', hybrid_det=None, n_gpu_streams=2, gpu_d2h_pinned_bytes=67108864, gpu_d2h_chunk_size=0, gpu_memory_budget_gb=0, gpu_bulk_read=True, gpu_bulk_target_bytes=1048576, gpu_stream_ids=[0, 1, 2, 3, 4], hybrid_stream_ids=[], gpu_fn=GpuTask(function=<function unused at 0x7fd605e2bf60>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),))) = <psana.psexp.serial_ds.SerialDataSource object at 0x7fd605c199d0>.dsparms"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_calib_xtc::test_calib_pickle_roundtrip",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "calibration pickle not present"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_psalg::test_hexanode",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "roentdek library not found"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_smalldata::test_smalldata",
+              "results": [
+                {
+                  "kind": "failure",
+                  "message": "KeyError: \"Unable to synchronously open object (object 'oneint' doesn't exist)\""
+                }
+              ]
+            },
+            {
+              "nodeid": "test_timetool::test_timetool_psana",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "calibration constants not in database in march 2025?"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_xtc.Test::test_serial_loop_callback",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "Skipping this test for now \u2013 needs fix."
+                }
+              ]
+            },
+            {
+              "nodeid": "test_xtc.Test::test_serial_steps_w_ts_filter",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "Skipping this test for now \u2013 needs fix."
+                }
+              ]
+            }
+          ],
+          "origin_audits": {
+            "processes": 38,
+            "wrong": []
+          },
+          "gpu_integration_counts": {
+            "tests": 555,
+            "passed": 552
+          },
+          "pytest_summary": [
+            "= 4 failed, 1642 passed, 5 skipped, 7 deselected, 261 warnings in 210.77s (0:03:30) ="
+          ]
+        },
+        "byhand": {
+          "command": [
+            "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+            "-B",
+            "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/run_tests.py",
+            "-v",
+            "-ra",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/job-42394606/byhand-tmp",
+            "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/job-42394606/byhand.xml",
+            "psana/psana/tests/byhand_geometry_cache.py",
+            "psana/psana/tests/byhand_mpi.py",
+            "psana/psana/tests/byhand_run_steps.py"
+          ],
+          "returncode": 1,
+          "seconds": 94.64524591388181,
+          "counts": {
+            "tests": 5,
+            "failures": 1,
+            "errors": 0,
+            "skipped": 0
+          },
+          "nonpassing": [
+            {
+              "nodeid": "byhand_mpi.Test::test_mpi",
+              "results": [
+                {
+                  "kind": "failure",
+                  "message": "subprocess.CalledProcessError: Command '['mpirun', '-n', '3', 'python', '/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/source/psana/psana/tests/user_loops.py']' returned non-zero exit status 1."
+                }
+              ]
+            }
+          ],
+          "origin_audits": {
+            "processes": 33,
+            "wrong": []
+          },
+          "gpu_integration_counts": {
+            "tests": 0,
+            "passed": 0
+          },
+          "pytest_summary": [
+            "==================== 1 failed, 4 passed in 94.19s (0:01:34) ===================="
+          ]
+        },
+        "passed": false
+      },
+      "source": {
+        "head": "a4293d71ff1886bdb993b195d7be5ad0d9725700",
+        "worktree": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/source",
+        "install": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install",
+        "scope": "Full tracked repository snapshot; frozen GPU and test modules overlay unchanged native/non-GPU install, including subprocesses. Required broad groups run independently from frozen repository root.",
+        "frozen_source": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/source"
+      },
+      "environment": {
+        "HOME": "/sdf/home/m/monarin",
+        "USER": "monarin",
+        "LOGNAME": "monarin",
+        "PATH": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin:/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/bin:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin:/usr/bin:/bin",
+        "LD_LIBRARY_PATH": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/lib",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "LANG": "C.UTF-8",
+        "TMPDIR": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/tmp",
+        "PYTHONPATH": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/harness:/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/python3.11/site-packages",
+        "PS_PARALLEL": "mpi",
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+        "CUPY_CACHE_DIR": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt01/cupy-cache",
+        "PYTHONUNBUFFERED": "1",
+        "OMPI_MCA_pml": "ob1",
+        "OMPI_MCA_btl": "^smcuda",
+        "OMPI_MCA_rmaps_base_oversubscribe": "1",
+        "OMPI_MCA_rmaps_base_mapping_policy": "slot",
+        "OMPI_MCA_hwloc_base_binding_policy": "none",
+        "OMPI_MCA_plm": "isolated",
+        "OMPI_MCA_ras": "^slurm",
+        "KVIKIO_COMPAT_MODE": "ON",
+        "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/ws"
+      },
+      "gpu_identity": "0, GPU-1abfaa46-69e3-8481-bb31-6943f24ca4e4, 00000000:41:00.0, NVIDIA A100-SXM4-40GB, 575.57.08",
+      "hashes_verified": 3723,
+      "files": {
+        "metadata/source.json": "fa7ae42fd679cba0a595bd39b671164fdfcdda7b4df852f517631941fc882e3d",
+        "metadata/hashes.json": "8c3c905a7032d6a57aba60a574dc1c14af1f6633582ef75490044a86c8020d87",
+        "metadata/runtime-env.json": "5cd703e62f71ccf09b029bd1bdbfc5f1cc088678b2cf997eaeca0e7e95de545a",
+        "validate.py": "718861d11e8fc41a4efada9b6431b4c7991ae8c7a889ceeb9d83ee36c9ecf9db",
+        "run_tests.py": "8a92b63bb731f6bc84b15dac2302cbfa5979d100f8f71f1a7a3239f4c7e4e858",
+        "run.sbatch": "8361de48d0ab4a2016e15429ed5bf060963f87fa2af74e85251b270efb1838e2",
+        "harness/sitecustomize.py": "03ff72500af935c3ce32b40c4f312949c3b88601c1543d59f16b573d16ff29e5",
+        "logs/validation-42394606.log": "9338a46a4f90e64c4275b02cb832f3f41dddec584f0e92fbdfa17168341ca8f8",
+        "job-42394606/status.json": "5e121df0072d21e6499ecd06a3eef40668f95337f4ef6ab43762791d577e9a85",
+        "job-42394606/gpu.txt": "9d04a2505b8f722a8119fc6a77102129f26c35dadbd86629554388bf6e649664",
+        "job-42394606/core.log": "5956842cbba4f88e27812cb4e03ed2333c56d0eaec0036815b91d44d1daed5d3",
+        "job-42394606/core.xml": "6acc5166d41a0eb61c1e5406fdaa0e5fa1c0d318ffd67a6e63cf2b0c54cd3c7b",
+        "job-42394606/byhand.log": "e26b78c0fff1d7f6678fe9229978ceddbf836b007453a4f8197ce21dcc0ba9ab",
+        "job-42394606/byhand.xml": "4616e359a1a89a8c012891074837e93241423843a94ef535eaea4e4e4894b54d"
+      },
+      "scheduler": {
+        "state": "FAILED",
+        "exit_code": "1:0",
+        "elapsed": "00:05:34"
+      }
+    },
+    "attempt02": {
+      "status": {
+        "job": "42396585",
+        "host": "sdfampere002",
+        "complete": true,
+        "core": {
+          "command": [
+            "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+            "-B",
+            "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/run_tests.py",
+            "-v",
+            "-ra",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/job-42396585/core-tmp",
+            "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/job-42396585/core.xml",
+            "psana/psana/tests/"
+          ],
+          "returncode": 0,
+          "seconds": 185.15161273488775,
+          "counts": {
+            "tests": 1651,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 5
+          },
+          "nonpassing": [
+            {
+              "nodeid": "test_calib_xtc::test_calib_pickle_roundtrip",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "calibration pickle not present"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_psalg::test_hexanode",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "roentdek library not found"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_timetool::test_timetool_psana",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "calibration constants not in database in march 2025?"
+                }
+              ]
+            },
+            {
+              "nodeid": "test_xtc.Test::test_serial_loop_callback",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "Skipping this test for now \u2013 needs fix."
+                }
+              ]
+            },
+            {
+              "nodeid": "test_xtc.Test::test_serial_steps_w_ts_filter",
+              "results": [
+                {
+                  "kind": "skipped",
+                  "message": "Skipping this test for now \u2013 needs fix."
+                }
+              ]
+            }
+          ],
+          "origin_audits": {
+            "processes": 38,
+            "wrong": []
+          },
+          "gpu_integration_counts": {
+            "tests": 555,
+            "passed": 555
+          },
+          "pytest_summary": [
+            "=== 1646 passed, 5 skipped, 7 deselected, 261 warnings in 183.21s (0:03:03) ===="
+          ]
+        },
+        "byhand": {
+          "command": [
+            "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+            "-B",
+            "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/run_tests.py",
+            "-v",
+            "-ra",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/job-42396585/byhand-tmp",
+            "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/job-42396585/byhand.xml",
+            "psana/psana/tests/byhand_geometry_cache.py",
+            "psana/psana/tests/byhand_mpi.py",
+            "psana/psana/tests/byhand_run_steps.py"
+          ],
+          "returncode": 0,
+          "seconds": 157.6801246860996,
+          "counts": {
+            "tests": 5,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "nonpassing": [],
+          "origin_audits": {
+            "processes": 78,
+            "wrong": []
+          },
+          "gpu_integration_counts": {
+            "tests": 0,
+            "passed": 0
+          },
+          "pytest_summary": [
+            "======================== 5 passed in 157.19s (0:02:37) ========================="
+          ]
+        },
+        "pixels": {
+          "command": [
+            "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+            "-B",
+            "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/run_tests.py",
+            "-v",
+            "-ra",
+            "-p",
+            "no:cacheprovider",
+            "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/job-42396585/pixels-tmp",
+            "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/job-42396585/pixels.xml",
+            "-m",
+            "slow",
+            "psana/psana/tests/gpu/integration/test_pixel_exact.py"
+          ],
+          "returncode": 0,
+          "seconds": 221.60477041406557,
+          "counts": {
+            "tests": 5,
+            "failures": 0,
+            "errors": 0,
+            "skipped": 0
+          },
+          "nonpassing": [],
+          "origin_audits": {
+            "processes": 1,
+            "wrong": []
+          },
+          "gpu_integration_counts": {
+            "tests": 5,
+            "passed": 5
+          },
+          "pytest_summary": [
+            "========== 5 passed, 1 deselected, 227 warnings in 217.22s (0:03:37) ==========="
+          ]
+        },
+        "passed": true
+      },
+      "source": {
+        "head": "71f5c04a27b7b369a1919454378abc4120abbd66",
+        "worktree": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/source",
+        "install": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install",
+        "scope": "Full tracked repository snapshot; frozen GPU and test modules overlay unchanged native/non-GPU install, including subprocesses. Required broad groups run independently from frozen repository root.",
+        "frozen_source": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/source"
+      },
+      "environment": {
+        "HOME": "/sdf/home/m/monarin",
+        "USER": "monarin",
+        "LOGNAME": "monarin",
+        "PATH": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin:/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/bin:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin:/usr/bin:/bin",
+        "LD_LIBRARY_PATH": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/lib",
+        "PYTHONNOUSERSITE": "1",
+        "PYTHONDONTWRITEBYTECODE": "1",
+        "OMP_NUM_THREADS": "1",
+        "OPENBLAS_NUM_THREADS": "1",
+        "LANG": "C.UTF-8",
+        "TMPDIR": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/tmp",
+        "PYTHONPATH": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/harness:/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/python3.11/site-packages",
+        "PS_PARALLEL": "mpi",
+        "PYTEST_DISABLE_PLUGIN_AUTOLOAD": "1",
+        "CUPY_CACHE_DIR": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/attempt02/cupy-cache",
+        "PYTHONUNBUFFERED": "1",
+        "OMPI_MCA_pml": "ob1",
+        "OMPI_MCA_btl": "^smcuda",
+        "OMPI_MCA_rmaps_base_oversubscribe": "1",
+        "OMPI_MCA_rmaps_base_mapping_policy": "slot",
+        "OMPI_MCA_hwloc_base_binding_policy": "none",
+        "OMPI_MCA_plm": "isolated",
+        "OMPI_MCA_ras": "^slurm",
+        "KVIKIO_COMPAT_MODE": "ON",
+        "LCLS_CALIB_HTTP": "https://pswww.slac.stanford.edu/ws"
+      },
+      "gpu_identity": "0, GPU-2ffbbab3-51e7-f2a6-31de-fc601f6aa552, 00000000:C1:00.0, NVIDIA A100-SXM4-40GB, 575.57.08",
+      "hashes_verified": 3723,
+      "files": {
+        "metadata/source.json": "3f108dba1374b50f03274e8063d2b12f3e50bb31f3c0d19e8dd3883de1a931b3",
+        "metadata/hashes.json": "b82f84e60614ea09a0223d31740958c5fd9614fc09c29e9d42ec87c900be5b02",
+        "metadata/runtime-env.json": "32eaf2a73008739ca8a13560aea1f08be5db09062dc1945ce88bda590dc5615b",
+        "validate.py": "5f640deb74f06f60b1dd53975262de29572e4ef1d560dc14b95db466744b8829",
+        "run_tests.py": "8a92b63bb731f6bc84b15dac2302cbfa5979d100f8f71f1a7a3239f4c7e4e858",
+        "run.sbatch": "27864d69307e3743099df602948426be73ec049ffef636d939111c2acbd4e0c6",
+        "harness/sitecustomize.py": "03ff72500af935c3ce32b40c4f312949c3b88601c1543d59f16b573d16ff29e5",
+        "logs/validation-42396585.log": "e3c27e313257fedf5279078f2571b2c65e1c007935468c7e6ef5f9dbe6bc88b4",
+        "job-42396585/status.json": "5341063b72880936f53af84519ed06ead4e3dbc0bca7d2c9fb699fe0ef7ebc08",
+        "job-42396585/gpu.txt": "af71ae8dcf7b4308ca2d8834d77f5f449cf6ff2124acb302f73a0190c8dd6172",
+        "job-42396585/core.log": "15a1644d84ee1b7c730fd69a3e96ee9d1f39bed7cf734b8b12807d31e86478c5",
+        "job-42396585/core.xml": "52eb014008979de852731f34b94b015978a20e59bf06bebd5a1a4aaca0594e25",
+        "job-42396585/byhand.log": "446575a71b7dccba323f61448928b28cad41e929c57d5c728f4cb6739424242d",
+        "job-42396585/byhand.xml": "b96ba9017d50d249caced853b5911fcd2c8a6896612233c3cc674f7012756307",
+        "job-42396585/pixels.log": "943f130303812e1c3052052feb422c445446ff1173cf7308971a3efc83751ba6",
+        "job-42396585/pixels.xml": "2b29131ec67a406279cea973d0208578994ed6c53a30f8060d95206777d3cf8f"
+      },
+      "scheduler": {
+        "state": "COMPLETED",
+        "exit_code": "0:0",
+        "elapsed": "00:09:28"
+      }
+    }
+  },
+  "reused_evidence": [
+    {
+      "file": "issue159_parallel_validation_20261028.json",
+      "jobs": [
+        "42247538",
+        "42247695"
+      ],
+      "runtime": "31c4c2f214de14628820cfdfdf309b74367620e6",
+      "scope": "333 CUDA and 315 selected memcheck cases. Unchanged gather/ownership; later empty-field behavior separately checked."
+    },
+    {
+      "file": "issue159_review_followup_20261028.json",
+      "jobs": [
+        "42254009"
+      ],
+      "runtime": "405f868ed",
+      "scope": "377 CPU, 302 CUDA and 302 memcheck; recorded runtime hashes match candidate. Includes empty-field fix."
+    },
+    {
+      "file": "issue159_mpi_reporting_20261028.json",
+      "jobs": [
+        "42250696"
+      ],
+      "runtime": "31c4c2f214de14628820cfdfdf309b74367620e6",
+      "scope": "16 combined MPI/reporting cases, 2 real pixel comparisons. Materialized fields nonempty; only later behavior change is empty-field fast path. Scalar constant fixture boundary documented in report; no host scalar transport claim."
+    },
+    {
+      "file": "issue159_stage5_20261029.json",
+      "jobs": [
+        "42391066"
+      ],
+      "tested_commit": "4a4df550bf27444789833a38e0dd658fe8196467",
+      "scope": "393 CPU, 60 CUDA and 60 memcheck; production/test bytes unchanged. Device-only sanitizer backtraces after documented instrumentation diagnosis."
+    }
+  ],
+  "production_delta_from_initial_integration": {
+    "base": "31c4c2f214de14628820cfdfdf309b74367620e6",
+    "behavior": "gpu_input.py empty-field guard; tested at 405f868ed. gpu_events.py reporting docstring only.",
+    "other_native_and_non_gpu_inputs": "unchanged"
+  },
+  "test_fixes": [
+    "Move run_loop_callback PS_SMD_N_EVENTS=1 from import time to CLI, and scope direct serial test setting with monkeypatch.",
+    "Request batch_size=20 explicitly in MFX GPU task setup test."
+  ],
+  "performance": "No new timing. Test/docs-only changes preserve accepted cold/field evidence; Stage 7 reconciliation remains separate.",
+  "dependency_versions": {
+    "python": "3.11.14 | packaged by conda-forge | (main, Oct 22 2025, 22:46:25) [GCC 14.3.0]",
+    "packages": {
+      "cupy-cuda12x": "14.0.1",
+      "kvikio-cu12": "26.10.0",
+      "numpy": "2.3.5",
+      "mpi4py": "4.1.1",
+      "h5py": "3.16.0",
+      "pytest": "9.1.1"
+    }
+  },
+  "reviewed_hash_matches": {
+    "psana/psana/gpu/gpu_input.py": true,
+    "psana/psana/gpu/gpu_events.py": true,
+    "psana/psana/tests/gpu/integration/test_gpu_field_views_device.py": true
+  }
+}
