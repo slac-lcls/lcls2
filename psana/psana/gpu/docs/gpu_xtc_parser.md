@@ -76,6 +76,12 @@ performs no calibration; user kernels consume the prepared array.
 
 ## Public event fields
 
+Use batched `GpuTask` inputs for routine full-detector processing on each event;
+see [user kernels](user_kernels.md). Per-event fields are useful for occasional
+CPU inspection, small metadata, or independent GPU snapshots. Accessing full
+images through these properties adds a host transfer on first CPU access and
+an independent device allocation/copy on each GPU-copy access.
+
 ```python
 field = evt.gpu.detector("jungfrau").field("raw", "raw")
 segments = field.on_cpu              # independent arrays by physical segment ID
@@ -89,15 +95,72 @@ with field.on_gpu_view(user_stream) as views:
 `GpuFieldData` preserves physical segment IDs and each field's shape. It does not
 implicitly stack ragged arrays. Explicit single-segment selection supports
 `.only()`. `.on_gpu` makes independent device copies; `.on_gpu_view(stream)`
-borrows input storage and registers consumer completion on context exit. Do not
+borrows aligned values and registers consumer completion on context exit. An
+aligned field directly views input storage. First access to an unaligned field
+copies only that field into aligned, budgeted device storage; later accesses
+reuse that copy, including single-segment selection. Alignment uses the actual
+buffer address plus the field offset. A cached copy carries readiness ordering
+when accessed on another stream. Thus `on_gpu_view` is borrowed access, not an
+unconditional zero-copy guarantee. Do not
 use escaped borrowed arrays after their access context ends. Input access must
 occur while the event's input lease is active; cached independent CPU values can
-survive retirement.
+survive retirement. Empty fields require no aligned copy, regardless of the
+source address.
+
+Aligned copies are charged to the owning BD's GPU budget and retained until the
+event's input lease retires and its borrowed consumers finish. Events delivered
+from one execution slot can therefore accumulate copies across the whole slot;
+exiting each view context does not release them immediately. These lazy copies
+are not included in the setup-time admission estimate. If a copy would exceed
+the remaining budget, access raises `GpuMemoryPressureError`; there is no
+automatic trim-and-retry inside field access. Reduce `batch_size` or
+`n_gpu_streams`, or increase `gpu_memory_budget_gb` within available device memory.
+In the current implementation, `.on_cpu` and `.on_gpu` also use this aligned
+intermediate for unaligned input. Live copies appear as `field-copy` ledger
+entries and contribute to `retained`, never to imported `borrowed` constants.
+
+Retiring a lease with copies synchronizes their completion and registered
+consumers on the host. This can reduce overlap even with bulk reads and deferred
+input-window retirement; fields using direct views do not add this copy-related
+wait. The first unaligned access may allocate and copy despite the
+`on_gpu_view` name.
 
 Unlike task descriptors, the first public materialization may copy the small
 locator row to the CPU to determine dtype/shape. Copying a locator is not CPU
 parsing of XTC bytes. Event input access and published task output access are
 distinct APIs with distinct lifetimes.
+
+### Copy-property costs and lifetime
+
+Both copy properties resolve the original packed input through the safe field
+view path. They do not use the dense gathered task buffer. Payload copies below
+are per nonempty present segment, excluding locator metadata:
+
+| Field state | First `.on_cpu` on a result | Each `.on_gpu` call |
+| --- | --- | --- |
+| Aligned input | 1 D2H | 1 independent D2D |
+| Unaligned, no aligned copy yet | 1 alignment D2D + 1 D2H | 1 alignment D2D + 1 independent D2D |
+| Aligned field copy cached | 1 D2H | 1 independent D2D |
+
+`.on_cpu` blocks until its current-stream D2H completes and caches independent
+NumPy arrays on that `GpuFieldResult`. Repeated access returns the same host
+snapshot, including any caller mutations, with no additional payload transfer.
+It remains accessible after input retirement if populated beforehand; a first
+read after retirement raises. All-segment and segment-selected field results
+have separate host caches while sharing matching aligned device materializations.
+Cached or empty access does not necessarily synchronize.
+
+Every `.on_gpu` call allocates independent device output and submits its copy on
+CuPy's current stream. Mutating it does not modify input, the aligned field cache,
+or another copy. These returned arrays are caller-owned and outside the framework
+byte budget, though they still consume GPU memory. They survive safe input
+retirement; callers must establish normal stream ordering before reading them on
+another stream. Ownership alone is not a cross-stream readiness guarantee.
+
+Empty fields preserve dtype and shape without alignment materialization. Absent
+segments are omitted from the mapping. Direct byte D2H and single-copy unaligned
+GPU optimizations are deferred; the table describes current behavior. These
+contracts concern parsed input fields, not published task-result accessors.
 
 ## Task field descriptors
 
@@ -114,6 +177,11 @@ of shape `(N, S, 8)` and `segment_ids` identifies the second axis:
 accepted the field. Check it before dereferencing; then check the locator's
 status, type/rank and bounds. `locator_ptr` addresses the configured field's row
 table, not the selected row. Different entries may refer to different owners.
+The actual `raw_ptr + offset` address may be unaligned even when the offset alone
+is divisible by the dtype size. Before a typed load, check the actual address
+against that type's alignment requirement; otherwise use byte-safe loads within
+the validated field bounds. Task descriptors expose the original packed input,
+not the aligned copies produced by public field views.
 These tables and device event identities upload together on first metadata
 access during the callback. The producer's leases retain all referenced storage.
 

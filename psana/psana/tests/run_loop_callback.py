@@ -24,9 +24,6 @@ else:
     size = 1
     ps_eb_nodes = 1
 
-# Keep SMD chunks small so multi-EB runs distribute work across EB ranks.
-os.environ["PS_SMD_N_EVENTS"] = "1"
-
 def smd_callback(run):
     edet = run.Detector('HX2:DVD:GCC:01:PMON,hello1')
     _ = run.Detector('motor2')
@@ -82,6 +79,8 @@ def run_test_loop_callback(xtc_dir, withstep=False):
 
 
 if __name__ == "__main__":
+    # Keep CLI multi-EB chunks small without changing other tests on import.
+    os.environ["PS_SMD_N_EVENTS"] = "1"
     root_dir = os.environ.get("TEST_XTC_DIR", ".")
     p = pathlib.Path(os.path.join(root_dir, "tmp_data_for_run_loop_callback"))
     generate_testdata(p)

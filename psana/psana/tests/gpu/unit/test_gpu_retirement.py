@@ -91,7 +91,7 @@ def test_field_view_exit_can_retry_failed_owner_completion(cuda, record_fails):
     owner = window()
     ready = Token()
     parent = InputSlotLease(ready, (owner,))
-    context = _GpuFieldViewContext(NS(_lease=parent, _slot_views=lambda: None), cuda)
+    context = _GpuFieldViewContext(NS(_lease=parent, _slot_views=lambda stream: None), cuda)
     context.__enter__()
     assert not owner.close()
     parent.wait_until_safe_to_reuse()
@@ -113,7 +113,7 @@ def test_field_host_copy_record_failure_returns_child_reference(cuda, monkeypatc
     parent = InputSlotLease(None, (owner,))
     result = GpuFieldResult(NS(segment_ids=(0,)), NS(), parent)
     monkeypatch.setattr(GpuFieldResult, '_slot_views',
-                        lambda self: {0: NS(get=lambda: np.arange(4))})
+                        lambda self, stream: {0: NS(get=lambda: np.arange(4))})
     cuda.fail = True
     with pytest.raises(RuntimeError, match='record failed'):
         result.on_cpu

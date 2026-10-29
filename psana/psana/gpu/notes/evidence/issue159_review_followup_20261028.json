@@ -1,0 +1,141 @@
+{
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1",
+  "source": {
+    "head": "e7c700ba2318d399f3911a4f48f2072c3331f533",
+    "worktree": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-pr187-pr208-pr-20261028/source",
+    "install": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install",
+    "scope": "Frozen GPU Python package from reviewed worktree plus unchanged native/non-GPU install. No relocated libraries or modified prior install."
+  },
+  "tested_source_sha256": {
+    "psana/psana/gpu/gpu_input.py": "d5db40307e3393dc358cc9c0c14ce43dd78ce1b4600acd44527a797eec3a0802",
+    "psana/psana/gpu/gpu_events.py": "51180a8b279f1e19d39e4337ba33658a7cd697c0713bc972b2b8f1df8b84f700",
+    "psana/psana/tests/gpu/field_view_fixture.py": "891f84cb5dd90869648cb23857a3223455c30c9ace5e76cf0638c7c6fc5f67ec",
+    "psana/psana/tests/gpu/unit/test_gpu_field_views.py": "75f9d357a4f290456a2f239dae995f22823f793174b287d9afe792dfee578878",
+    "psana/psana/tests/gpu/unit/test_gpu_memory_report.py": "5615c1265bcb11d10f4676335848ed795418340bbe2c22f8c2f8f35babdbc1f7",
+    "psana/psana/tests/gpu/integration/test_gpu_field_views_device.py": "f090344c12cb14800e64840ed95d7d32945c73e2309050750b7b672241aa0b37"
+  },
+  "manifest_sha256": "b1bce085e985bc3b60814f565f8d996ef0455773dcc5169d7cbb4c9c6112dd45",
+  "verified_files": 930,
+  "cpu": {
+    "host": "sdfiana025",
+    "job": null,
+    "complete": true,
+    "unit": {
+      "returncode": 0,
+      "seconds": 7.2768899612128735,
+      "command": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/cpu/unit-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/cpu/unit.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/unit/test_gpu_field_views.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/unit/test_gpu_input_copy_lifetime.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/unit/test_gpu_input_window.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/unit/test_gpu_retirement.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/unit/test_gpu_input.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/unit/test_gpu_memory_report.py"
+      ],
+      "counts": {
+        "tests": 377,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "gpu": {
+    "host": "sdfampere010",
+    "job": "42254009",
+    "complete": true,
+    "device": {
+      "returncode": 0,
+      "seconds": 8.731550988275558,
+      "command": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/job-42254009/device-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/job-42254009/device.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/integration/test_gpu_field_views_device.py"
+      ],
+      "counts": {
+        "tests": 302,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    },
+    "memcheck": {
+      "returncode": 0,
+      "seconds": 8.134434653446078,
+      "command": [
+        "/sdf/group/lcls/ds/tools/cuda12.8/bin/compute-sanitizer",
+        "--tool",
+        "memcheck",
+        "--error-exitcode",
+        "99",
+        "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+        "-B",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/run_tests.py",
+        "-q",
+        "-p",
+        "no:cacheprovider",
+        "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/job-42254009/memcheck-tmp",
+        "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/job-42254009/memcheck.xml",
+        "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/python/psana/tests/gpu/integration/test_gpu_field_views_device.py"
+      ],
+      "counts": {
+        "tests": 302,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "gpu_identity": "0, GPU-1abfaa46-69e3-8481-bb31-6943f24ca4e4, 00000000:41:00.0, NVIDIA A100-SXM4-40GB, 575.57.08",
+  "scheduler": {
+    "state": "COMPLETED",
+    "exit_code": "0:0",
+    "elapsed": "00:00:18"
+  },
+  "sanitizer_errors": 0,
+  "scope": "Focused CPU and CUDA checks only. Existing native install unchanged; frozen GPU Python package selected explicitly. No new MPI or performance run.",
+  "scalar_followup": "https://github.com/slac-lcls/lcls2/issues/247",
+  "cpu_origin_audit": {
+    "modules_checked": 131,
+    "wrong_modules": {},
+    "wrong_libraries": [],
+    "native_libraries": [
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libshmemcli.so",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libxtc.so"
+    ],
+    "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/cpu/unit-origins.json"
+  },
+  "device_origin_audit": {
+    "modules_checked": 125,
+    "wrong_modules": {},
+    "wrong_libraries": [],
+    "native_libraries": [
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libshmemcli.so",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libxtc.so"
+    ],
+    "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/job-42254009/device-origins.json"
+  },
+  "memcheck_origin_audit": {
+    "modules_checked": 125,
+    "wrong_modules": {},
+    "wrong_libraries": [],
+    "native_libraries": [
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libshmemcli.so",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/libxtc.so"
+    ],
+    "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-review-20261028-r1/job-42254009/memcheck-origins.json"
+  }
+}

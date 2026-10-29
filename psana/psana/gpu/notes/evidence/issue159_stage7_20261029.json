@@ -1,0 +1,410 @@
+{
+  "scope": "Stage 7 evidence reconciliation; no new GPU run or runtime change",
+  "candidate_base": "9706dfeebe678775686628dbe6eac9428931f977",
+  "measured_candidate": "405f868ed380c78b6009da3001f4535cb9ae647b",
+  "runtime_equivalent": true,
+  "changed_paths_since_measured_candidate": [
+    "psana/psana/gpu/docs/gpu_xtc_parser.md",
+    "psana/psana/gpu/docs/user_kernels.md",
+    "psana/psana/gpu/notes/evidence/issue159_branch_cleanup_20261029.json",
+    "psana/psana/gpu/notes/evidence/issue159_pr246_cold_20261028.json",
+    "psana/psana/gpu/notes/evidence/issue159_pr246_fields_20261028.json",
+    "psana/psana/gpu/notes/evidence/issue159_stage5_20261029.json",
+    "psana/psana/gpu/notes/evidence/issue159_stage6_20261029.json",
+    "psana/psana/gpu/notes/issue159_callpath_and_lifetime_walkthrough.md",
+    "psana/psana/gpu/notes/issue159_parallel_validation_20261028.md",
+    "psana/psana/gpu/notes/issue159_personal_fork_handoff_20261029.md",
+    "psana/psana/gpu/notes/issue159_pr246_cold_20261028.md",
+    "psana/psana/gpu/notes/issue159_pr246_fields_20261028.md",
+    "psana/psana/gpu/notes/issue159_pr246_perlmutter_fields_20261028.md",
+    "psana/psana/gpu/notes/issue159_review_prompt_20261028.md",
+    "psana/psana/gpu/notes/issue159_stage5_compatibility_20261029.md",
+    "psana/psana/gpu/notes/issue159_stage5_revised_plan_20261029.md",
+    "psana/psana/gpu/notes/issue159_stage6_correctness_20261029.md",
+    "psana/psana/gpu/notes/issue_159_implementation_plan.md",
+    "psana/psana/gpu/scripts/bench_field_retirement.py",
+    "psana/psana/tests/gpu/field_view_fixture.py",
+    "psana/psana/tests/gpu/integration/test_gpu_field_accessors_device.py",
+    "psana/psana/tests/gpu/integration/test_gpu_task_device.py",
+    "psana/psana/tests/gpu/unit/test_gpu_field_views.py",
+    "psana/psana/tests/run_loop_callback.py",
+    "psana/psana/tests/test_xtc.py"
+  ],
+  "production_gpu_install_sha256": {
+    "psana/psana/gpu/__init__.py": "da6d93d173326f88b021bb308bb5464130a1ee805df87369d556945faf9a60aa",
+    "psana/psana/gpu/context.py": "75c50444f02c0f3ac18c7a0d424c4fc34fafe36df59679dc41b0947297d36e06",
+    "psana/psana/gpu/examples/calibrate_jungfrau.py": "108752f0ed206f33c3dece53bbfbbbb61e2a5dd71882a7a89160b544470b49ae",
+    "psana/psana/gpu/examples/input_only.py": "438057f80f97b0db4ed4f03f73534e3887e6fe061ad20db9fd4518e29e9c30a8",
+    "psana/psana/gpu/examples/integrate_jungfrau.py": "f449a9954319bb2d22cf74eaa330879d680d443c5781dd4a3dd01d07fd01cc11",
+    "psana/psana/gpu/examples/jungfrau_azimuthal_integration.py": "7ade57503603fdcae9bd9252fee93f4022cbb529be123f1b30d6f49951e5ac84",
+    "psana/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "psana/psana/gpu/gpu_admission.py": "a3014eea980d6a2fa5b9bbf68703374c93596c5e23118b3fa6bafc4e1c96ea30",
+    "psana/psana/gpu/gpu_allocation.py": "37ac9eff85b5d280a15637631d5431451a2c468eff4d7fa90967062234867300",
+    "psana/psana/gpu/gpu_batch.py": "0aa3104cd512a4459877251341faf479d9f7133dd0103bea0d5ef026e4cfbda7",
+    "psana/psana/gpu/gpu_budget.py": "5a2174e41dd6bf8256c86937074d7e880e8b773522bac7e0906a884d8edc02ce",
+    "psana/psana/gpu/gpu_collectives.py": "f114d18540443863d5d3f27c7f0a2ee91aeeb34d05947c2e6e02baa7b81ea15b",
+    "psana/psana/gpu/gpu_d2h.py": "ce1c9c0e18d96dd3cdb3c067d52f455faa707a32f802b8bcac8bf6252db15622",
+    "psana/psana/gpu/gpu_detector.py": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072",
+    "psana/psana/gpu/gpu_events.py": "51180a8b279f1e19d39e4337ba33658a7cd697c0713bc972b2b8f1df8b84f700",
+    "psana/psana/gpu/gpu_file_epochs.py": "be93f79ed6874bf51f7cbab9090a64845fcc64e1e0f97c6d60f4fe1174cb25b7",
+    "psana/psana/gpu/gpu_group_schedule.py": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7",
+    "psana/psana/gpu/gpu_input.py": "d5db40307e3393dc358cc9c0c14ce43dd78ce1b4600acd44527a797eec3a0802",
+    "psana/psana/gpu/gpu_input_group.py": "354152ece8df1571b9ea5510ccbf2f0c1f06ff5952258a854b21faea99529504",
+    "psana/psana/gpu/gpu_input_window.py": "4abeb29362ca7a52de3ced0b74d65e60d3aa23b9f10c826f57a1d9f86c856db1",
+    "psana/psana/gpu/gpu_kvikio_read.py": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd",
+    "psana/psana/gpu/gpu_mpi.py": "37b6ea693851f1f96e451a0ce7751750d95256d2af00fcf713554d1474291247",
+    "psana/psana/gpu/gpu_mpi_benchmark.py": "3b1f393ca3f8dc23d5c447f04e1b66e0aaca4e65252a5010665eb5c2c218d95f",
+    "psana/psana/gpu/gpu_mpi_perf_compare.py": "cd0a4bb1a4260c9881fa66d6589dd26e038cc08bdf427f2ba72bb1907bbe79bb",
+    "psana/psana/gpu/gpu_performance_benchmark.py": "cd0a4bb1a4260c9881fa66d6589dd26e038cc08bdf427f2ba72bb1907bbe79bb",
+    "psana/psana/gpu/gpu_placement.py": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0",
+    "psana/psana/gpu/gpu_producer.py": "c235af13fc9726b8f925d7f7388a77d5ecec370349864e676b54739cdb68f49d",
+    "psana/psana/gpu/gpu_read_plan.py": "bd454ebc3151ce81b6468d908e130b71caf4268278369ebd3e4c54d4a30ca9fc",
+    "psana/psana/gpu/gpu_shared_constants.py": "6bc1b5fb04a6dedc83d67f90130e5d9bcdb7b1ed23556a08c9c77e3a72ef2d28",
+    "psana/psana/gpu/gpu_stream.py": "7acc1cb849ef0f51a2dc61c8dd98acbb2542cb7b6d815a3a57df37706ccbec1c",
+    "psana/psana/gpu/gpu_stream_read_plan.py": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8",
+    "psana/psana/gpu/gpu_task.py": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4",
+    "psana/psana/gpu/gpu_task_batch.py": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7",
+    "psana/psana/gpu/gpudgram/__init__.py": "3324988f088a49bedaf4a8f91df3421e514cb32c40ebb8c409e311eb04493291",
+    "psana/psana/gpu/gpudgram/batch.py": "41be73a2292cd667d3fe7798b3c28fc0e82758a5c036f38cadf0632872aad08c",
+    "psana/psana/gpu/gpudgram/config.py": "2b93897a0b5311f5a557ed4e8d0da3c85e413b4d482667ad2ace3e50d618b342",
+    "psana/psana/gpu/gpudgram/parser.py": "490d2df3d603dfbf81fb1b9d857b356c79e82383d47cda24f3ae1c5c5e195352"
+  },
+  "verified_artifact_sha256": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/__init__.py": "da6d93d173326f88b021bb308bb5464130a1ee805df87369d556945faf9a60aa",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/context.py": "75c50444f02c0f3ac18c7a0d424c4fc34fafe36df59679dc41b0947297d36e06",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/examples/calibrate_jungfrau.py": "108752f0ed206f33c3dece53bbfbbbb61e2a5dd71882a7a89160b544470b49ae",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/examples/input_only.py": "438057f80f97b0db4ed4f03f73534e3887e6fe061ad20db9fd4518e29e9c30a8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/examples/integrate_jungfrau.py": "f449a9954319bb2d22cf74eaa330879d680d443c5781dd4a3dd01d07fd01cc11",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/examples/jungfrau_azimuthal_integration.py": "7ade57503603fdcae9bd9252fee93f4022cbb529be123f1b30d6f49951e5ac84",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/examples/jungfrau_calibration.py": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_admission.py": "a3014eea980d6a2fa5b9bbf68703374c93596c5e23118b3fa6bafc4e1c96ea30",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_allocation.py": "37ac9eff85b5d280a15637631d5431451a2c468eff4d7fa90967062234867300",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_batch.py": "0aa3104cd512a4459877251341faf479d9f7133dd0103bea0d5ef026e4cfbda7",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_budget.py": "5a2174e41dd6bf8256c86937074d7e880e8b773522bac7e0906a884d8edc02ce",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_collectives.py": "f114d18540443863d5d3f27c7f0a2ee91aeeb34d05947c2e6e02baa7b81ea15b",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_d2h.py": "ce1c9c0e18d96dd3cdb3c067d52f455faa707a32f802b8bcac8bf6252db15622",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_events.py": "51180a8b279f1e19d39e4337ba33658a7cd697c0713bc972b2b8f1df8b84f700",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_file_epochs.py": "be93f79ed6874bf51f7cbab9090a64845fcc64e1e0f97c6d60f4fe1174cb25b7",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_group_schedule.py": "eee7f6c9d7b7563725926d82f480924d62fb0c43228e21deb392d476ed32f3a7",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_input.py": "d5db40307e3393dc358cc9c0c14ce43dd78ce1b4600acd44527a797eec3a0802",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_input_group.py": "354152ece8df1571b9ea5510ccbf2f0c1f06ff5952258a854b21faea99529504",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_input_window.py": "4abeb29362ca7a52de3ced0b74d65e60d3aa23b9f10c826f57a1d9f86c856db1",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_kvikio_read.py": "aaf846982556cb8ff72e4e0ddde04903561269ffc08d4b6183bd07e1a1a2bbcd",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_mpi.py": "37b6ea693851f1f96e451a0ce7751750d95256d2af00fcf713554d1474291247",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_mpi_benchmark.py": "3b1f393ca3f8dc23d5c447f04e1b66e0aaca4e65252a5010665eb5c2c218d95f",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_mpi_perf_compare.py": "cd0a4bb1a4260c9881fa66d6589dd26e038cc08bdf427f2ba72bb1907bbe79bb",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_performance_benchmark.py": "cd0a4bb1a4260c9881fa66d6589dd26e038cc08bdf427f2ba72bb1907bbe79bb",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_placement.py": "f14bd7b145604463f84289af57bed17818e1b67aa7f3629412654e67ed3caea0",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_producer.py": "c235af13fc9726b8f925d7f7388a77d5ecec370349864e676b54739cdb68f49d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_read_plan.py": "bd454ebc3151ce81b6468d908e130b71caf4268278369ebd3e4c54d4a30ca9fc",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_shared_constants.py": "6bc1b5fb04a6dedc83d67f90130e5d9bcdb7b1ed23556a08c9c77e3a72ef2d28",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_stream.py": "7acc1cb849ef0f51a2dc61c8dd98acbb2542cb7b6d815a3a57df37706ccbec1c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_stream_read_plan.py": "2874ec63900ce5dab860749f704f612ad2ebafd9b35d7519a9d25b6597f607e8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task.py": "291d53a994a1ebca4076c0a2e0f6f3baa886ce3d3753dff9a285338e273cc9f4",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_task_batch.py": "cf6242c263d84e214cac40899e0e2df825ff1137577f894714819fbc5c7de8e7",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpudgram/__init__.py": "3324988f088a49bedaf4a8f91df3421e514cb32c40ebb8c409e311eb04493291",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpudgram/batch.py": "41be73a2292cd667d3fe7798b3c28fc0e82758a5c036f38cadf0632872aad08c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpudgram/config.py": "2b93897a0b5311f5a557ed4e8d0da3c85e413b4d482667ad2ace3e50d618b342",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpudgram/parser.py": "490d2df3d603dfbf81fb1b9d857b356c79e82383d47cda24f3ae1c5c5e195352",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/summary.json": "69b88a3181a269c920b184c0360653d0814f1db26487194b8fb55636a20db061",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/results.json": "2433af4fd2a3f475efe4cb469d83b54b0f4599c0f085470c2e2d977604b8fe80",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/pairs.json": "d1dd8b0fd63e2c51486e9865a9dcc6252a925d943bab94a9981c3ac204d85860",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/job-42255812/provenance.json": "b1a400519b7038163b7045965b684ad141605e12800931433f5759de05474f45",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/logs/screen-42255812.log": "7e299fae20894c864768dfe67649f46ee32a3c47525a7c6aca240463965eda5a",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r1.json": "53c12fdf521e40084ab145aa140a56b4a7db5ce9f5f923991e6f08441dc8229a",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r2.json": "c5b95798872e6de3fb4a2b4ff9870b42accb7c510a5075a7ec8d097156a01497",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r2.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r3.json": "e225d47ecaabfa8ecba49fc58a48f0906128957ee7b28f8de6053018197d87f4",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r3.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r4.json": "ba18479bf6d8d36a7bd5e264ed55cc786d609c8248a1a4eea487512f70d28257",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-A-r4.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r1.json": "3938fd37b245562000d0174d0214c59158eed647b50ae1b58b59bdf90a4283f3",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r2.json": "a369c7c4d1d8493b9a5301129763cc0f495aff28b8928db05826c4dcc8574ab2",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r2.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r3.json": "8f40db06e1d1e64298351b8f6204ca3bafd19dc33102cae94b5de3d382fecdea",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r3.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r4.json": "e68766b7c4ea563c9459a880e9bc5325cbc94d8391db7b4d877c9a1113148565",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/access-B-r4.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/cpu.txt": "25d1ccd638a2ae61c9fec1a2248895163a1a356cc4f12c7a7671aaa46f0a8bd8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/gpu.txt": "e7dfd69e5ad77b373e0b070590e2370afb16985576cbc39e8c879eb665112ec8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/origin-A.json": "168b19dcdb401b1514bea8aae97438d96c597185f0b3c876f88d0e6bfd0116a8",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/origin-A.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/origin-B.json": "0bf5ebac2f4249fa96f475941ea956b134520ee9bce65fd25f3fdcfabcfb376c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/origin-B.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/preflight-A.json": "b419261c513a5949bd08811815e174116d541761c71cc0e57fbe803eb4b830bc",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/preflight-A.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/preflight-B.json": "8f2c895bf52496f539f0adbde94449e533c31361aedaea8f3447b4980529bb54",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/preflight-B.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r1.json": "fe8223f392b4e701b3346a2e785fe380f47a85c336f0294b8439c1269d632e99",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r2.json": "14b9e076b238ae7f39e215250569b08cbdc45cc6165794728c9948f6da21a076",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r2.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r3.json": "e82988a8aa7339f91d9e1f560aa34510176f71bec6cf840ac85d8ff415be954e",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r3.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r4.json": "665b9cd47cd3c746ec2b34add9baf5f8dbc8a4a940718e3f4be816583d33a462",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-A-r4.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r1.json": "5b1fc2c254272009c5d484c2cd00882b80b0077cc050373292479157af722f77",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r1.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r2.json": "d14d9b41a9b070d503ae38801426ffbb1165543f98aa62f7f6595e4912f9f3e9",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r2.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r3.json": "1d67cd0dfff02cb4309c52d75beef62d4e2e6e8fed936740330fd961533efcf4",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r3.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r4.json": "0a46230173a9f7039d0cda33ce9623808185596cf80d27f4d8d2003478686535",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/retire-B-r4.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/status.json": "2d011bec55bd3aa46f2d4761fcb97bc1a6288bb9159cb35814900adc1600d21c",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/job-42263681/topology.txt": "b71ca0bee9591d265bb15fb1d1f5db42ff1aef9e6fc5131be260da1f3f4171e6",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-cold-20261028-r1/screen/hashes.json": "f432a66f1ba0b913309240278e7b2dab8696f58368f72c329e3b8872f58370f2",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/pr246-fields-20261028-r1/hashes.json": "1de15d5563d78a5c4e0f3c55ce577bc6082e5cacd194b96f663dec5e20004b9d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage7-20261029/artifacts/perlmutter-report.md": "16e8c46fcc814941019e03f8f4959123800daf5e95398460d137fc8de9a53f22"
+  },
+  "cold": {
+    "job": 42255812,
+    "statistics": [
+      {
+        "bulk": "off",
+        "variants": {
+          "A0": {
+            "loop_s": {
+              "n": 4,
+              "mean": 34.66231989173684,
+              "sample_sd": 1.6781500756116199
+            },
+            "events_per_s": {
+              "n": 4,
+              "mean": 289.0042266364627,
+              "sample_sd": 13.958075162086526
+            }
+          },
+          "B0": {
+            "loop_s": {
+              "n": 4,
+              "mean": 35.11895077303052,
+              "sample_sd": 0.9072980347472805
+            },
+            "events_per_s": {
+              "n": 4,
+              "mean": 284.89270955703876,
+              "sample_sd": 7.543526429840062
+            }
+          }
+        },
+        "paired_loop_changes_pct": [
+          3.1204754849584404,
+          -3.5514469534505877,
+          1.2147962143288948,
+          4.9382427048787925
+        ],
+        "median_paired_loop_change_pct": 2.1676358496436676,
+        "mean_loop_change_pct": 1.3173696472708718
+      },
+      {
+        "bulk": "on",
+        "variants": {
+          "A0": {
+            "loop_s": {
+              "n": 4,
+              "mean": 34.69767892494565,
+              "sample_sd": 0.6787885200932581
+            },
+            "events_per_s": {
+              "n": 4,
+              "mean": 288.2863383778482,
+              "sample_sd": 5.631313126144326
+            }
+          },
+          "B0": {
+            "loop_s": {
+              "n": 4,
+              "mean": 35.37287625670433,
+              "sample_sd": 0.8444011024193514
+            },
+            "events_per_s": {
+              "n": 4,
+              "mean": 282.8245781229743,
+              "sample_sd": 6.820330968959452
+            }
+          }
+        },
+        "paired_loop_changes_pct": [
+          5.010641781054903,
+          0.37286677109289457,
+          2.1868828073479785,
+          0.2559902569721384
+        ],
+        "median_paired_loop_change_pct": 1.2798747892204365,
+        "mean_loop_change_pct": 1.9459437999273632
+      }
+    ],
+    "timed_samples": 16,
+    "events_per_sample": 10000,
+    "max_pre_residency_fraction": 4.921454753902655e-06
+  },
+  "sdf_fields": {
+    "job": 42263681,
+    "access_cases_verified": 14,
+    "retirement_cases_verified": 24,
+    "retirement_samples": 3840,
+    "delayed_pending": 1920,
+    "aligned_pairs": [
+      {
+        "shape": "scalar",
+        "access": "first",
+        "A": {
+          "process_medians": [
+            39.8845,
+            39.479,
+            39.4645,
+            43.513999999999996
+          ],
+          "mean": 40.585499999999996,
+          "sample_sd": 1.962013973786457
+        },
+        "B": {
+          "process_medians": [
+            40.7695,
+            44.049,
+            40.494,
+            39.6345
+          ],
+          "mean": 41.23675,
+          "sample_sd": 1.9361435251550945
+        },
+        "added_us": 0.6512500000000045,
+        "paired_changes_pct": [
+          2.218907094234601,
+          11.575774462372411,
+          2.6086736180618075,
+          -8.915521441375173
+        ],
+        "mean_paired_pct": 1.8719584333234118,
+        "slower_pairs": 3
+      },
+      {
+        "shape": "scalar",
+        "access": "cached",
+        "A": {
+          "process_medians": [
+            12.2,
+            12.5445,
+            12.819500000000001,
+            12.7345
+          ],
+          "mean": 12.574625000000001,
+          "sample_sd": 0.2749395009209611
+        },
+        "B": {
+          "process_medians": [
+            13.51,
+            13.379,
+            13.27,
+            13.15
+          ],
+          "mean": 13.32725,
+          "sample_sd": 0.1535911781320787
+        },
+        "added_us": 0.7526249999999983,
+        "paired_changes_pct": [
+          10.737704918032787,
+          6.652317748814229,
+          3.5141776200319663,
+          3.262790058502496
+        ],
+        "mean_paired_pct": 6.04174758634537,
+        "slower_pairs": 4
+      },
+      {
+        "shape": "4 MiB",
+        "access": "first",
+        "A": {
+          "process_medians": [
+            39.84,
+            41.324,
+            40.659,
+            40.309
+          ],
+          "mean": 40.533,
+          "sample_sd": 0.6250285326820403
+        },
+        "B": {
+          "process_medians": [
+            42.314,
+            40.7945,
+            41.659,
+            42.0545
+          ],
+          "mean": 41.7055,
+          "sample_sd": 0.6643684971459738
+        },
+        "added_us": 1.1724999999999994,
+        "paired_changes_pct": [
+          6.209839357429714,
+          -1.281337721420961,
+          2.4594800659140548,
+          4.330298444516112
+        ],
+        "mean_paired_pct": 2.92957003660973,
+        "slower_pairs": 3
+      },
+      {
+        "shape": "4 MiB",
+        "access": "cached",
+        "A": {
+          "process_medians": [
+            12.349,
+            13.280000000000001,
+            12.9595,
+            12.849499999999999
+          ],
+          "mean": 12.8595,
+          "sample_sd": 0.38623416903911234
+        },
+        "B": {
+          "process_medians": [
+            14.1145,
+            13.2945,
+            13.3345,
+            13.14
+          ],
+          "mean": 13.470875,
+          "sample_sd": 0.43720235112969497
+        },
+        "added_us": 0.6113749999999989,
+        "paired_changes_pct": [
+          14.296704186573805,
+          0.10918674698794373,
+          2.8936301554843835,
+          2.2607883575236576
+        ],
+        "mean_paired_pct": 4.890077361642447,
+        "slower_pairs": 4
+      }
+    ]
+  },
+  "perlmutter": {
+    "job": 60467642,
+    "report": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage7-20261029/artifacts/perlmutter-report.md",
+    "verification": "Original report hash only; remote raw samples not independently reprocessed in Stage 7"
+  },
+  "historical_large_gather": {
+    "job": 41319573,
+    "candidate": "7f29f0dc70d3f636f465805afd992c945d39da28",
+    "batch20_process_medians_ms": {
+      "micro-A0-r1": 4.0192512512207035,
+      "micro-A0-r2": 4.019071960449219,
+      "micro-B0-r1": 4.0849920272827145,
+      "micro-B0-r2": 4.0849151611328125,
+      "micro-B1-r1": 4.125209617614747,
+      "micro-B1-r2": 4.1243391036987305
+    },
+    "scope": "Historical kernel-only evidence; not a current cumulative cold comparison"
+  },
+  "decision": "Reuse accepted evidence; independent Stage 7 review pending",
+  "limits": [
+    "Full original manifests were not rehashed file-by-file in Stage 7",
+    "Field access host medians recomputed across processes, not from unavailable individual host timings",
+    "Historical shifted pipeline remains warm, two pairs; no current cold shifted-throughput claim"
+  ]
+}

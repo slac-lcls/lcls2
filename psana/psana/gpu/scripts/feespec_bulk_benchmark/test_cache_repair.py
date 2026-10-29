@@ -5,7 +5,7 @@ import mmap
 
 import pytest
 
-from common import cache_inputs, prefix_residency, rewarm_prefixes
+from common import cache_inputs, prefix_residency, rewarm_prefixes, reset_private_stage_cache
 from warm_cache import warm_missing_prefix
 
 
@@ -105,3 +105,34 @@ def test_repair_reads_only_missing_ranges_and_rejects_short_reads(monkeypatch):
                         dict(missing_ranges=[(16380,10)]))
     with pytest.raises(RuntimeError, match='short warm-prefix repair'):
         warm_missing_prefix('file',16390)
+
+
+@pytest.mark.parametrize('invalid', ['symlink', 'hardlink', 'escape', 'extent'])
+def test_private_reset_validates_every_target_before_discard(tmp_path, monkeypatch, invalid):
+    import os
+    paths, ranges = files(tmp_path, 1)
+    other = tmp_path/'other'
+    if invalid == 'symlink':
+        other.symlink_to(paths[0])
+    elif invalid == 'hardlink':
+        os.link(paths[0], other)
+    else:
+        other.write_bytes(bytes(4096))
+    ranges['../outside' if invalid == 'escape' else 'other'] = 8192 if invalid == 'extent' else 4096
+    monkeypatch.setattr('common.os.posix_fadvise', lambda *a: pytest.fail('discard before validation'))
+    with pytest.raises(ValueError):
+        reset_private_stage_cache(tmp_path, ranges=ranges)
+
+
+def test_private_reset_keeps_file_contents_and_checks_cold_gate(tmp_path, monkeypatch):
+    paths, ranges = files(tmp_path, 2)
+    before = [p.read_bytes() for p in paths]
+    discarded = []
+    monkeypatch.setattr('common.os.posix_fadvise', lambda fd, *a: discarded.append(fd))
+    states(monkeypatch, [0, 0])
+    result = reset_private_stage_cache(tmp_path, ranges=ranges)
+    assert len(discarded) == 2 and result['resident_fraction'] == 0
+    assert [p.read_bytes() for p in paths] == before
+    states(monkeypatch, [0, .02])
+    with pytest.raises(RuntimeError, match='Cold prefix residency too high'):
+        reset_private_stage_cache(tmp_path, ranges=ranges)

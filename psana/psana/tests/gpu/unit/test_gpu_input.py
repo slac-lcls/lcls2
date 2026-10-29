@@ -244,6 +244,10 @@ class _DeviceArray:
     def nbytes(self):
         return self.array.nbytes
 
+    @property
+    def data(self):
+        return SimpleNamespace(ptr=self.array.ctypes.data)
+
     def __getitem__(self, item):
         return _DeviceArray(self.array[item])
 

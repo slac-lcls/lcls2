@@ -1,0 +1,139 @@
+{
+  "job": 41319696,
+  "status": {
+    "A": {
+      "returncode": 1,
+      "seconds": 8.80208706855774
+    },
+    "B2": {
+      "returncode": 1,
+      "seconds": 7.2232911586761475
+    }
+  },
+  "groups": {
+    "A": {
+      "counts": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "6",
+          "skipped": "0",
+          "tests": "8",
+          "time": "4.001",
+          "timestamp": "2026-10-19T10:25:22.278659-07:00",
+          "hostname": "sdfampere013"
+        }
+      ],
+      "cases": [
+        {
+          "name": "gpu.integration.test_gpu_d2h_device::test_serial_public_delivery_exact_keys_retained_events_and_input_access[0]",
+          "failures": []
+        },
+        {
+          "name": "gpu.integration.test_gpu_d2h_device::test_serial_public_delivery_exact_keys_retained_events_and_input_access[4096]",
+          "failures": []
+        },
+        {
+          "name": "gpu.integration.test_gpu_task_device::test_serial_datasource_stages_dense_inputs_and_exact_constants",
+          "failures": [
+            "AssertionError: assert (GpuTask(function=<function unused at 0x7fb815eebec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) is GpuTask(function=<function unused at 0x7fb815eebec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) and 1 == 20)\n +  where GpuTask(function=<function unused at 0x7fb815eebec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) = <psana.gpu.gpu_events.GpuEventManager object at 0x7fb815c2cc50>._gpu_task\n +  and   1 = DsParms(batch_size=1, max_events=1, max_retries=0, live=False, timestamps=array([], dtype=uint64), intg_det='', intg_delta_t=0, use_calib_cache=False, cached_detectors=[], fetch_calib_cache_max_retries=60, skip_calib_load=[], dbsuffix='', smd_callback=0, smd_files=['/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2'], use_smds=[False, False, False, False, False], gpu_det='jungfrau', hybrid_det=None, n_gpu_streams=2, gpu_d2h_pinned_bytes=67108864, gpu_d2h_chunk_size=0, gpu_memory_budget_gb=0, gpu_bulk_read=True, gpu_bulk_target_bytes=1048576, gpu_stream_ids=[0, 1, 2, 3, 4], hybrid_stream_ids=[], gpu_fn=GpuTask(function=<function unused at 0x7fb815eebec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),))).batch_size\n +    where DsParms(batch_size=1, max_events=1, max_retries=0, live=False, timestamps=array([], dtype=uint64), intg_det='', intg_delta_t=0, use_calib_cache=False, cached_detectors=[], fetch_calib_cache_max_retries=60, skip_calib_load=[], dbsuffix='', smd_callback=0, smd_files=['/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2'], use_smds=[False, False, False, False, False], gpu_det='jungfrau', hybrid_det=None, n_gpu_streams=2, gpu_d2h_pinned_bytes=67108864, gpu_d2h_chunk_size=0, gpu_memory_budget_gb=0, gpu_bulk_read=True, gpu_bulk_target_bytes=1048576, gpu_stream_ids=[0, 1, 2, 3, 4], hybrid_stream_ids=[], gpu_fn=GpuTask(function=<function unused at 0x7fb815eebec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),))) = <psana.psexp.serial_ds.SerialDataSource object at 0x7fb8641b4c90>.dsparms"
+          ]
+        },
+        {
+          "name": "gpu.integration.test_gpu_task_lifecycle_device::test_transition_drains_task_publications_before_constant_change[6-0]",
+          "failures": [
+            "AssertionError: \nArrays are not equal\n\nMismatched elements: 900 / 900 (100%)\nMax absolute difference among violations: 1\nMax relative difference among violations: 0.5\n ACTUAL: array([[[  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,...\n DESIRED: array([[[  2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,..."
+          ]
+        },
+        {
+          "name": "gpu.integration.test_gpu_task_lifecycle_device::test_transition_drains_task_publications_before_constant_change[6-8192]",
+          "failures": [
+            "AssertionError: \nArrays are not equal\n\nMismatched elements: 900 / 900 (100%)\nMax absolute difference among violations: 1\nMax relative difference among violations: 0.5\n ACTUAL: array([[[  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,...\n DESIRED: array([[[  2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,..."
+          ]
+        },
+        {
+          "name": "gpu.integration.test_multiowner_transitions::test_transition_drains_pending_multiowner_consumers_before_dispatch[6]",
+          "failures": [
+            "AssertionError: assert array(1.) == 2\n +  where array(1.) = <function asnumpy at 0x7fb8640fbce0>(array(1.))\n +    where <function asnumpy at 0x7fb8640fbce0> = <module 'cupy' from '/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/cupy/__init__.py'>.asnumpy\n +    and   array(1.) = get('camera', 'gain')\n +      where get = <psana.gpu.gpu_task.RequestedConstants object at 0x7fb79072b050>.get"
+          ]
+        },
+        {
+          "name": "gpu.unit.test_core::test_mpi_batch_source_posts_lookahead_before_yield",
+          "failures": [
+            "AttributeError: <module 'psana.psexp.node' from '/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/A/install/lib/python3.11/site-packages/psana/psexp/node.py'> has no attribute 'MPI'"
+          ]
+        },
+        {
+          "name": "test_smalldata::test_smalldata",
+          "failures": [
+            "Exception: Smalldata requires at least one SRV core (MODE='PARALLEL'). Try setting PS_SRV_NODES=1 or more."
+          ]
+        }
+      ]
+    },
+    "B2": {
+      "counts": [
+        {
+          "name": "pytest",
+          "errors": "0",
+          "failures": "6",
+          "skipped": "0",
+          "tests": "8",
+          "time": "2.876",
+          "timestamp": "2026-10-19T10:25:30.915170-07:00",
+          "hostname": "sdfampere013"
+        }
+      ],
+      "cases": [
+        {
+          "name": "gpu.integration.test_gpu_d2h_device::test_serial_public_delivery_exact_keys_retained_events_and_input_access[0]",
+          "failures": []
+        },
+        {
+          "name": "gpu.integration.test_gpu_d2h_device::test_serial_public_delivery_exact_keys_retained_events_and_input_access[4096]",
+          "failures": []
+        },
+        {
+          "name": "gpu.integration.test_gpu_task_device::test_serial_datasource_stages_dense_inputs_and_exact_constants",
+          "failures": [
+            "AssertionError: assert (GpuTask(function=<function unused at 0x7fcfcc03bec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) is GpuTask(function=<function unused at 0x7fcfcc03bec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) and 1 == 20)\n +  where GpuTask(function=<function unused at 0x7fcfcc03bec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),)) = <psana.gpu.gpu_events.GpuEventManager object at 0x7fcf7e19cf90>._gpu_task\n +  and   1 = DsParms(batch_size=1, max_events=1, max_retries=0, live=False, timestamps=array([], dtype=uint64), intg_det='', intg_delta_t=0, use_calib_cache=False, cached_detectors=[], fetch_calib_cache_max_retries=60, skip_calib_load=[], dbsuffix='', smd_callback=0, smd_files=['/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2'], use_smds=[False, False, False, False, False], gpu_det='jungfrau', hybrid_det=None, n_gpu_streams=2, gpu_d2h_pinned_bytes=67108864, gpu_d2h_chunk_size=0, gpu_memory_budget_gb=0, gpu_bulk_read=True, gpu_bulk_target_bytes=1048576, gpu_stream_ids=[0, 1, 2, 3, 4], hybrid_stream_ids=[], gpu_fn=GpuTask(function=<function unused at 0x7fcfcc03bec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),))).batch_size\n +    where DsParms(batch_size=1, max_events=1, max_retries=0, live=False, timestamps=array([], dtype=uint64), intg_det='', intg_delta_t=0, use_calib_cache=False, cached_detectors=[], fetch_calib_cache_max_retries=60, skip_calib_load=[], dbsuffix='', smd_callback=0, smd_files=['/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2', '/sdf/data/lcls/ds/prj/public01/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2'], use_smds=[False, False, False, False, False], gpu_det='jungfrau', hybrid_det=None, n_gpu_streams=2, gpu_d2h_pinned_bytes=67108864, gpu_d2h_chunk_size=0, gpu_memory_budget_gb=0, gpu_bulk_read=True, gpu_bulk_target_bytes=1048576, gpu_stream_ids=[0, 1, 2, 3, 4], hybrid_stream_ids=[], gpu_fn=GpuTask(function=<function unused at 0x7fcfcc03bec0>, inputs=('jungfrau.raw',), calibconst=(('jungfrau', 'pixel_gain'),))) = <psana.psexp.serial_ds.SerialDataSource object at 0x7fcfcc513650>.dsparms"
+          ]
+        },
+        {
+          "name": "gpu.integration.test_gpu_task_lifecycle_device::test_transition_drains_task_publications_before_constant_change[6-0]",
+          "failures": [
+            "AssertionError: \nArrays are not equal\n\nMismatched elements: 900 / 900 (100%)\nMax absolute difference among violations: 1\nMax relative difference among violations: 0.5\n ACTUAL: array([[[  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,...\n DESIRED: array([[[  2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,..."
+          ]
+        },
+        {
+          "name": "gpu.integration.test_gpu_task_lifecycle_device::test_transition_drains_task_publications_before_constant_change[6-8192]",
+          "failures": [
+            "AssertionError: \nArrays are not equal\n\nMismatched elements: 900 / 900 (100%)\nMax absolute difference among violations: 1\nMax relative difference among violations: 0.5\n ACTUAL: array([[[  1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,\n           1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,...\n DESIRED: array([[[  2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,\n           2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,   2,..."
+          ]
+        },
+        {
+          "name": "gpu.integration.test_multiowner_transitions::test_transition_drains_pending_multiowner_consumers_before_dispatch[6]",
+          "failures": [
+            "AssertionError: assert array(1.) == 2\n +  where array(1.) = <function asnumpy at 0x7fcfcc47bce0>(array(1.))\n +    where <function asnumpy at 0x7fcfcc47bce0> = <module 'cupy' from '/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/lib/python3.11/site-packages/cupy/__init__.py'>.asnumpy\n +    and   array(1.) = get('camera', 'gain')\n +      where get = <psana.gpu.gpu_task.RequestedConstants object at 0x7fcef225cd90>.get"
+          ]
+        },
+        {
+          "name": "gpu.unit.test_core::test_mpi_batch_source_posts_lookahead_before_yield",
+          "failures": [
+            "AttributeError: <module 'psana.psexp.node' from '/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/B2/install/lib/python3.11/site-packages/psana/psexp/node.py'> has no attribute 'MPI'"
+          ]
+        },
+        {
+          "name": "test_smalldata::test_smalldata",
+          "failures": [
+            "Exception: Smalldata requires at least one SRV core (MODE='PARALLEL'). Try setting PS_SRV_NODES=1 or more."
+          ]
+        }
+      ]
+    }
+  },
+  "hashes_verified": {
+    "frozen_A": 3234,
+    "B2_candidate_and_harness": 1039
+  }
+}

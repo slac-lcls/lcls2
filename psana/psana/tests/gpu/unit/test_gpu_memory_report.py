@@ -12,6 +12,7 @@ module, so NumPy stands in for CuPy.
 from types import SimpleNamespace as NS
 
 import numpy as np
+import pytest
 
 from psana.gpu.gpu_allocation import owned_empty
 from psana.gpu.gpu_budget import _GpuBudget
@@ -295,3 +296,40 @@ def test_high_water_tracks_and_prints_both():
     line = emitted[0]
     assert 'constants=12.0 MiB' in line, line
     assert 'borrowed=384.0 MiB' in line, line
+
+
+@pytest.mark.parametrize('role', ['owner', 'importer', 'private'])
+def test_live_field_copies_are_retained_separately_from_constants(role):
+    budget = _GpuBudget(4096)
+    private = None
+    if role == 'owner':
+        budget.reserve(136)
+        constants = NS(shared_bytes=136, imported_bytes=0)
+    elif role == 'importer':
+        constants = NS(shared_bytes=136, imported_bytes=136)
+    else:
+        constants = NS()
+        private = owned_empty(np, 136, np.uint8, budget, 'task-constants')
+    field = owned_empty(np, 30, np.uint8, budget, 'field-copy')
+    m = manager(budget, constants=constants)
+    # A snapshot must not consume available admission credit or alter charges.
+    with budget.hold(100):
+        before = (budget.committed(), budget._held, budget.allocation_snapshot())
+        stats = m._snapshot_memory('live-field')
+        assert (budget.committed(), budget._held, budget.allocation_snapshot()) == before
+        assert stats.retained == 30 and stats.held == 100
+        assert stats.borrowed == (136 if role == 'importer' else 0)
+        assert stats.constants == (0 if role == 'importer' else 136)
+        assert stats.committed == stats.constants + 30
+        records = [a for a in stats.allocations if a['category'] == 'field-copy']
+        assert len(records) == 1 and records[0]['capacity'] == 30
+        del field
+        after = m._snapshot_memory('released-field')
+        assert after.retained == 0 and after.held == 100
+        assert after.borrowed == stats.borrowed and after.constants == stats.constants
+        assert after.committed == after.constants
+        assert not any(a['category'] == 'field-copy' for a in after.allocations)
+    if role == 'owner':
+        budget.release(136)
+    del private
+    assert budget.committed() == 0 and budget.allocation_snapshot() == ()

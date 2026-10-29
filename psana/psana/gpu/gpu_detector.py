@@ -332,6 +332,18 @@ def _batched_gather_kernel(dtype):
     if dtype not in (cp.dtype(cp.uint16), cp.dtype(cp.float32)):
         raise TypeError("unsupported canonical gather dtype")
     name = "gather_canonical_u16" if ctype == "unsigned short" else "gather_canonical_f32"
+    # Packed XTC fields need not satisfy the element type's alignment. Rebuild
+    # the object bits from bytes without reading beyond the validated field.
+    unaligned_load = """
+            value = static_cast<unsigned short>(src[0]) |
+                    (static_cast<unsigned short>(src[1]) << 8);
+""" if ctype == "unsigned short" else """
+            const unsigned int bits = static_cast<unsigned int>(src[0]) |
+                    (static_cast<unsigned int>(src[1]) << 8) |
+                    (static_cast<unsigned int>(src[2]) << 16) |
+                    (static_cast<unsigned int>(src[3]) << 24);
+            value = __uint_as_float(bits);
+"""
     return cp.RawKernel(f"""
 extern "C" __global__ void {name}(
     const unsigned long long* owners, unsigned long long n_owners,
@@ -377,9 +389,21 @@ extern "C" __global__ void {name}(
         }}
     }}
     if (pixel == 0) present[row] = valid ? 1 : 0;
-    if (pixel < pixels) {{
-        out[row * pixels + pixel] = valid ?
-            reinterpret_cast<const {ctype}*>(data + offset)[pixel] : ({ctype})0;
+    // Check the actual address, including a possibly sliced owner base.
+    // Alignment is uniform for all threads in this segment tile; keep the
+    // original typed-load path together to minimize aligned-input overhead.
+    if (((reinterpret_cast<unsigned long long>(data) + offset) & (sizeof({ctype}) - 1)) == 0) {{
+        if (pixel < pixels) {{
+            out[row * pixels + pixel] = valid
+                ? reinterpret_cast<const {ctype}*>(data + offset)[pixel] : ({ctype})0;
+        }}
+    }} else if (pixel < pixels) {{
+        {ctype} value = ({ctype})0;
+        if (valid) {{
+            const unsigned char* src = data + offset + pixel * sizeof({ctype});
+            {unaligned_load}
+        }}
+        out[row * pixels + pixel] = value;
     }}
 }}
 """, name, options=("--std=c++17",))
