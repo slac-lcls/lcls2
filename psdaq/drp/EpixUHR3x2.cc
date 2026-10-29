@@ -153,6 +153,9 @@ namespace Drp {
                                             use_gpu,
                                             is_emulator));
 
+      logging::info("Configured data path for %s (Emulator status: %s).",
+                    use_gpu ? "the GPU" : "the CPU",
+                    is_emulator ? "IS Emulator" : "NOT Emulator");
       if (m_root) {
         PyObject* o_virtChan = PyDict_GetItemString(m_root, "virtChan");
         if (o_virtChan) {
