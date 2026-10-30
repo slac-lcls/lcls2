@@ -1799,7 +1799,8 @@ static void local_mkdir (const char * path)
     struct stat64 buf;
 
     if (path && (stat64(path, &buf) != 0)) {
-        if (mkdir(path, 0777)) {
+        // EEXIST: another DRP on this node created it since the stat
+        if (mkdir(path, 0777) && errno != EEXIST) {
             logging::critical("mkdir %s: %m", path);
         }
     }
