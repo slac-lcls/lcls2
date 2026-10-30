@@ -1,7 +1,6 @@
 #pragma once
 
-// Not built: it predates the graph-only ReducerAlgo interface and still has the removed
-// hasGraph()/reduce() methods.  It needs a recordGraph() before it can be re-enabled.
+// Not built: it needs a recordGraph() to work with the graph-only ReducerAlgo interface.
 
 #include "ReducerAlgo.hh"
 

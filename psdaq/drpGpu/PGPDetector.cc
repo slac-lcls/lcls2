@@ -369,7 +369,6 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 //             result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
 //    }
 
-    // Release the GPU staging buffers for reuse
     drp.freeBuffers(index);             // Leaves event mask = 0
     nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);

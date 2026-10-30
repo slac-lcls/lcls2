@@ -448,7 +448,6 @@ MemPoolGpu::MemPoolGpu(Parameters& para) :
   // sets m_nbuffers and sizes pgpEvents to the smaller dmaCount.
   pgpEvents.resize(nbuffers());
 
-  // Set up staging buffer pointers
   chkError(cudaMalloc(&m_reduceBuffers_d,    nbuffers() * sizeof(*m_reduceBuffers_d)));
   chkMemory          ( m_reduceBuffers_d,    nbuffers(),  sizeof(*m_reduceBuffers_d), "reduceBuffers");
   chkError(cudaMemset( m_reduceBuffers_d, 0, nbuffers() * sizeof(*m_reduceBuffers_d)));
@@ -472,7 +471,6 @@ MemPoolGpu::~MemPoolGpu()
   if (m_panel->dmaBuffers_d)  chkError(cudaFree(m_panel->dmaBuffers_d));
   m_panel->dmaBuffers_d = nullptr;
 
-  // Free the staging buffers
   destroyTransitionBuffers();
   destroyReduceBuffers();
   destroyCalibBuffers();

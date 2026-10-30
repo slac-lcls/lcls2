@@ -267,7 +267,6 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
 
   if (*state == 0) {
     DBG(*stateMon = 2;)
-    // Get the staging buffer index
     unsigned idx;
     unsigned ns{8};
     while (!readerQueues[lReader]->pop(&idx)) {
