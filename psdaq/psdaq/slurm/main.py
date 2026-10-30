@@ -246,7 +246,7 @@ class Runner:
         if self.sbman.as_step:
             self.sbman.generate_as_step(self.sbjob, self.node_features)
             if self.submit(verbose=verbose) != 0:
-                print(f"Error: Submitting slurm job {job_name} failed")
+                print(f"Error: Submitting as-step slurm job for {self.configfilename} failed")
         else:
             config_ids = self._select_config_ids(unique_ids)
             for node, job_details in self.sbjob.items():
