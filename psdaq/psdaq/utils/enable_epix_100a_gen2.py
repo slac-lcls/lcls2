@@ -1,12 +1,6 @@
-import pyrogue as pr
-import os
-import sys
+# Importing this module makes the epix-100a-gen2 python tree importable process-wide.
+# A process that uses more than one firmware package should use
+# psdaq.utils.firmware_packages.isolated() instead.
+from psdaq.utils.firmware_packages import enable
 
-submoduledir = os.environ["SUBMODULEDIR"]
-
-top_level = submoduledir + "/epix-100a-gen2/"
-
-sys.path.append("%s/firmware/python".format(top_level))
-
-pr.addLibraryPath(top_level+'firmware/submodules/surf/python')
-pr.addLibraryPath(top_level+'software/python')
+enable('epix-100a-gen2')
