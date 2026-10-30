@@ -219,9 +219,9 @@ def bit_opers_3x2_raw(a):
        bits, in a 16 bit integer. The layout of this 16-bit word data is:
 
                            U U U U D D D D D D D D U U U G
-                           \_____/ \___________________/ |
-                              |              |            \
-                         Unused bits    11 data bits    Gain bit
+                           |_____| |___________________| |
+                              |              |           |
+                         Unused bits    11 data bits     Gain bit
     """
     return a & 0x0FFF
 
