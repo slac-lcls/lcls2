@@ -22,8 +22,10 @@ The evidence retains the complete schedule and the comparison `pairs` records,
 which name both tags and their repetition. `sample_mapping_audit` records audit
 checks, the original-runtime replay, and all 16 harness-file paths and hashes.
 The source list includes results, summary, provenance, frozen hashes and the
-campaign execution log. Harness code and full logs remain external artifacts;
-recording their hashes does not itself archive their contents in the repo.
+campaign execution log. The [harness archive](../scripts/pr187_pr208/README.md)
+now preserves the inspected code and its required helpers, with original paths
+and frozen-hash matches in its manifest. Full logs and installed runtimes
+remain external artifacts.
 
 ## Trace through the original code
 

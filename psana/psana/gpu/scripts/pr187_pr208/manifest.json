@@ -1,0 +1,463 @@
+{
+  "schema_version": 1,
+  "archived_date": "2026-10-30",
+  "campaigns": {
+    "ada": {
+      "job_id": "42114353",
+      "root": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2",
+      "frozen_manifest": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/hashes.json",
+      "frozen_manifest_sha256": "c9fb068211928f954aee28205391202ada27f265f6316830fe649cc8b397885c"
+    },
+    "perlmutter": {
+      "job_id": "60415698",
+      "root": "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01",
+      "frozen_manifest": "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/sweep-60415698/frozen-hashes.json",
+      "frozen_manifest_sha256": "d397c38891c9d06f011a6ecd272ef357857508f8677b8b2f19ee6bcc4496ac8a"
+    }
+  },
+  "files": [
+    {
+      "path": "ada/screen/calibration.py",
+      "bytes": 12049,
+      "sha256": "c4dd5e1f1b8c1e7ececb171e693bd5742231960bb809944adb11a5b67ebf2009",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/calibration.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/campaign.py",
+      "bytes": 18588,
+      "sha256": "48bb4265e82c075512262aae2f41c641928ce3a471dd8f4c575ec78bcae27e13",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/campaign.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/check_adapter.py",
+      "bytes": 1875,
+      "sha256": "4f309366228193ec300419120e777e7a0ed5aedfcf9f94432b080dd4188c1000",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/check_adapter.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/clean_runtime.py",
+      "bytes": 1521,
+      "sha256": "c929db807aaa6c519b23003dfffafb5ca99535971bc6eef85647a203c5ffb419",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/clean_runtime.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/external_inventory.py",
+      "bytes": 2176,
+      "sha256": "8b14c899cbb6c7723b86c2b01967c01177214534b5cca731a5a3940673d4800a",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/external_inventory.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/rank_exec.py",
+      "bytes": 421,
+      "sha256": "a6b2e5d8202bbdbcc1d7f9a1357c39916e5839ebacc6045dac555607fb9176d4",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/rank_exec.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/system_snapshot.py",
+      "bytes": 1794,
+      "sha256": "46f2dae775fbcedbeb4b8fb09f72951fd0efdb28bb3ded1e4e517d3b0bda9eb9",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/system_snapshot.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/screen/env.sh",
+      "bytes": 1810,
+      "sha256": "722102fb3ec6a6988a6192b21e6680dab69bb8e307bf8f1256947e8700d23e32",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/env.sh"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/run.sbatch",
+      "bytes": 2279,
+      "sha256": "51b549f2093d87115cab53242cee4c4659ab30c5d9f22310f4e31f68021801a3",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/run.sbatch"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/metadata/wait_gpu_idle.py",
+      "bytes": 1298,
+      "sha256": "4331233d76abbbc77d310aed4a480cb63ea2d4d0c9983bb90489421a2b58b76e",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/metadata/wait_gpu_idle.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/metadata/ampere_inventory.py",
+      "bytes": 7270,
+      "sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/metadata/ampere_inventory.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/metadata/check_local_storage.py",
+      "bytes": 1069,
+      "sha256": "41ab99dcc15fd96052eb3910a65897f3e0a963f9242573c2e634d67458987bd3",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/metadata/check_local_storage.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/metadata/network_monitor.py",
+      "bytes": 826,
+      "sha256": "438eb28a7d45fa5c71813dd28ab9fb0658830b3e0bf655ce52e07a58f4b5e469",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/metadata/network_monitor.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/jf_scaling/bench.py",
+      "bytes": 9254,
+      "sha256": "f17bb0b4d864232b333e57f266cc887a6cc7e87bfdc31bf5249c813688170154",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/jf_scaling/bench.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/jf_scaling/bench.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/jf_scaling/bench.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/jf_scaling/check_runtime_provenance.py",
+      "bytes": 3010,
+      "sha256": "3b0873a1e523ab62f0e70c14b2d68e57d52ee25855c1ca6894a1bbf7d21f15a8",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/jf_scaling/check_runtime_provenance.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/jf_scaling/check_runtime_provenance.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/jf_scaling/check_runtime_provenance.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/jf_scaling/alignment_adapter.py",
+      "bytes": 4907,
+      "sha256": "461d15f362975f0b57faed2af672e3d2aef97a93fb8e82a75c8290791cfb0468",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/jf_scaling/alignment_adapter.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/jf_scaling/alignment_adapter.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/jf_scaling/alignment_adapter.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/jf_scaling/contract.py",
+      "bytes": 2877,
+      "sha256": "f40bcaa0915699898d5dc70c0210e154c94cec4ebc666a2b8de76b73b604fc91",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/jf_scaling/contract.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/jf_scaling/contract.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/jf_scaling/contract.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/jf_scaling/feespec.py",
+      "bytes": 2230,
+      "sha256": "34410b96db7dc6d7798aa846473c761fbd19f53d6a947589184875bb6b865344",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/jf_scaling/feespec.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/jf_scaling/feespec.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/jf_scaling/feespec.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/feespec_bulk_benchmark/common.py",
+      "bytes": 10663,
+      "sha256": "7b30746508536a1e92bb6fc1b680772a248fce9af4673fe82a8a9271e89ce5f9",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/feespec_bulk_benchmark/common.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/feespec_bulk_benchmark/common.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/feespec_bulk_benchmark/common.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/feespec_bulk_benchmark/page_cache_residency.py",
+      "bytes": 2303,
+      "sha256": "1f7e6b94eed40844dbede2db7401ea50c71185c1675b747fba94defc623321ca",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/feespec_bulk_benchmark/page_cache_residency.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/feespec_bulk_benchmark/page_cache_residency.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/feespec_bulk_benchmark/page_cache_residency.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/feespec_bulk_benchmark/warm_cache.py",
+      "bytes": 2056,
+      "sha256": "fef4159df9b4d6189574ddb0e9eb9afda42f9e1576061135309f02ac7a89f1d3",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/feespec_bulk_benchmark/warm_cache.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/feespec_bulk_benchmark/warm_cache.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/feespec_bulk_benchmark/warm_cache.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/feespec_bulk_benchmark/memory_state.py",
+      "bytes": 2565,
+      "sha256": "0f5798f948101fa646562b72590fe40b768d2e95e621e82b99e9123a03e3135a",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/feespec_bulk_benchmark/memory_state.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/feespec_bulk_benchmark/memory_state.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/feespec_bulk_benchmark/memory_state.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "ada/harness/stage1_regression/input_adapter.py",
+      "bytes": 2909,
+      "sha256": "d0e66ef25f649c00077831dd72423048b70b4b4170af0946b9aaf8354763001e",
+      "original_paths": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/A/scripts/stage1_regression/input_adapter.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/B/scripts/stage1_regression/input_adapter.py",
+        "/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/screen/C/scripts/stage1_regression/input_adapter.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/analysis.py",
+      "bytes": 7535,
+      "sha256": "9cd040055288226fc6f72d18f7dd1920228a8594e7d2141b83be2616645332de",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/analysis.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/bootstrap.sh",
+      "bytes": 1581,
+      "sha256": "41390f9cc32148409fb00ea06e4424ef6c1650cd024a32adb41170d8369535dc",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/bootstrap.sh"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/calibration.py",
+      "bytes": 16178,
+      "sha256": "deebf4a4859204be5bf6f3e146e0c73f6c1a21662336bfecb6662810ef793268",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/calibration.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/campaign.py",
+      "bytes": 13590,
+      "sha256": "56368d87b8e22d20595828be72d52530c1d3c98ef04605e3a9b7590ac0488e30",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/campaign.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/clean_exec.py",
+      "bytes": 767,
+      "sha256": "39b4b78e84a074549c7e4b8192ec94139b19ff04e6f5782d95841b4f62d502a8",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/clean_exec.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/external_inventory.py",
+      "bytes": 1557,
+      "sha256": "5aa607e8e47572a401e38a6c238b097d08b3a3d543bec5d6df146ad2b66cbb9b",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/external_inventory.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/gpu_probe.py",
+      "bytes": 1298,
+      "sha256": "4d72ea54afa0e85b9e94e38df3e5b881e2dfa0de1b11c9907166af2c84e9380c",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/gpu_probe.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/inventory.py",
+      "bytes": 2984,
+      "sha256": "104c3fda14c057f4f3664636e1df743ecd6f169d11357a55dcb1bc08ccdbfc48",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/inventory.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/prepare.py",
+      "bytes": 5571,
+      "sha256": "a0ca78ce576befae990d28ce6aaa5cd04f9e5c8fc1db2c50dae5a027a731568d",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/prepare.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/rank_trace.py",
+      "bytes": 534,
+      "sha256": "7e94902def6838400057dee8f2887e78c5b9551ed2297fc00a839f09182e0011",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/rank_trace.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/runtime_audit.py",
+      "bytes": 2536,
+      "sha256": "d1cb2c4d9e0ad09270a906375ddc19daee6ea682e44ef115a7bc8d6f32391d32",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/runtime_audit.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/schedule.py",
+      "bytes": 1130,
+      "sha256": "3d67afd5a966200ffb90dfaa2a321833791d569c5390ce26816af6102b7c3486",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/schedule.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/startup_timing.py",
+      "bytes": 3989,
+      "sha256": "f6552b05bdc9a1d004593a12dd7fee67484bc778a1d59c4ede7014d99dda23b8",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/startup_timing.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/system_snapshot.py",
+      "bytes": 2034,
+      "sha256": "ca428e12691ea240fbd15eb7c312cf8427423141f2495f0986c0e238ef5d0d2b",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/system_snapshot.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/test_startup.py",
+      "bytes": 4522,
+      "sha256": "8d575b40275be2cfd81237b6828cd7795bc49af5fd8562f8e6e7d99a57313212",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/test_startup.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/scripts/traffic.py",
+      "bytes": 555,
+      "sha256": "2cd315a6607ff291d77e8a3bb57df9badd4b82e7778dd0227191970a7776c1e1",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/scripts/traffic.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/prepare.sbatch",
+      "bytes": 578,
+      "sha256": "6823bc79a1382271fb557db7082d9e6ab1aadbc6c8e611ae92e67a36f617d380",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/prepare.sbatch"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/pilot.sbatch",
+      "bytes": 545,
+      "sha256": "619aed2c58e6c00b9295473b84cffcf1aac18573403ed30c116ac5f2c454b686",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/pilot.sbatch"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/sweep.sbatch",
+      "bytes": 545,
+      "sha256": "d668888a8f25ca4ad744911b2f6b237ef72d9a731deb23425c8dd440f7d9facf",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/sweep.sbatch"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/harness/jf_scaling/check_runtime_provenance.py",
+      "bytes": 3002,
+      "sha256": "89506e59c60dca4cd47192cd8222d2d6ebf1e4fc474b9b206844912daec0aceb",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/harness/jf_scaling/check_runtime_provenance.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/harness/feespec_bulk_benchmark/common.py",
+      "bytes": 10663,
+      "sha256": "7b30746508536a1e92bb6fc1b680772a248fce9af4673fe82a8a9271e89ce5f9",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/harness/feespec_bulk_benchmark/common.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/harness/feespec_bulk_benchmark/page_cache_residency.py",
+      "bytes": 2303,
+      "sha256": "1f7e6b94eed40844dbede2db7401ea50c71185c1675b747fba94defc623321ca",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/harness/feespec_bulk_benchmark/page_cache_residency.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/harness/feespec_bulk_benchmark/warm_cache.py",
+      "bytes": 2056,
+      "sha256": "fef4159df9b4d6189574ddb0e9eb9afda42f9e1576061135309f02ac7a89f1d3",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/harness/feespec_bulk_benchmark/warm_cache.py"
+      ],
+      "frozen_manifest_match": true
+    },
+    {
+      "path": "perlmutter/harness/feespec_bulk_benchmark/memory_state.py",
+      "bytes": 2565,
+      "sha256": "0f5798f948101fa646562b72590fe40b768d2e95e621e82b99e9123a03e3135a",
+      "original_paths": [
+        "/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/attempt01/harness/feespec_bulk_benchmark/memory_state.py"
+      ],
+      "frozen_manifest_match": true
+    }
+  ]
+}
