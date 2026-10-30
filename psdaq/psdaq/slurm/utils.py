@@ -86,7 +86,7 @@ def run_slurm(*args, check=False, capture_output=False):
     if output.returncode != 0:
         cmd_str = " ".join(args)
         logger.error(f"Subprocess call '{cmd_str}' failed.\n"
-                     "Error: {output.stderr.decode('utf-8').strip()}")
+                     f"Error: {output.stderr.strip()}")
     return output
 
 
