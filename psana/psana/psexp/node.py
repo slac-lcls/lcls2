@@ -87,6 +87,39 @@ def get_cpu_id():
 #       2   5   8   11      0   1   2   3
 
 
+def check_mpi_layout(world_size, ps_eb_nodes, ps_srv_nodes):
+    """Check that an MPI layout gives every EventBuilder at least one BigData rank.
+
+    Ranks are assigned as: rank 0 is smd0, the last PS_SRV_NODES ranks are
+    smalldata servers, and the remaining ranks are split into PS_EB_NODES
+    groups by ``rank % PS_EB_NODES``. The first rank of each group is the
+    EventBuilder and the rest are BigData workers. If a group has no workers
+    its EventBuilder blocks forever waiting for a worker request and the
+    whole job hangs with no error, so refuse such a layout up front.
+
+    Returns (n_eb, n_bd). Raises ValueError with the layout spelled out.
+    """
+    n_bd_main = world_size - ps_srv_nodes - 1
+    n_eb = max(0, min(ps_eb_nodes, n_bd_main))
+    n_bd = max(0, n_bd_main - n_eb)
+    if n_eb < 1 or n_bd < n_eb:
+        required = 1 + ps_srv_nodes + 2 * ps_eb_nodes
+        raise ValueError(
+            "Bad MPI layout: %d EventBuilder rank(s) but only %d BigData rank(s). "
+            "Every EventBuilder needs at least one BigData rank, otherwise the "
+            "job hangs waiting for a worker that does not exist."
+            "\n\tMPI size:       %d"
+            "\n\tsmd0 ranks:     1"
+            "\n\tPS_EB_NODES:    %d"
+            "\n\tPS_SRV_NODES:   %d"
+            "\n\tBigData ranks:  %d  (MPI size - 1 - PS_EB_NODES - PS_SRV_NODES)"
+            "\nUse at least %d MPI ranks for these settings, or lower "
+            "PS_EB_NODES and/or PS_SRV_NODES."
+            % (n_eb, n_bd, world_size, ps_eb_nodes, ps_srv_nodes, n_bd, required)
+        )
+    return n_eb, n_bd
+
+
 class Communicators(object):
     # Reserved nodes are for external applications (e.g. smalldata
     # servers).  These nodes will do nothing for event/step iterators
@@ -144,6 +177,27 @@ class Communicators(object):
                 "" % (PS_SRV_NODES, self.world_size, PS_SRV_NODES + 3)
             )
 
+        self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+
+        # In the default (non colocated) mode the EB/BD split is fixed by the
+        # three numbers below, so a layout that leaves an EB without any BD
+        # can be rejected on every rank before any communicator is built.
+        if not self.colocate_non_marching:
+            n_eb, n_bd = check_mpi_layout(self.world_size, PS_EB_NODES, PS_SRV_NODES)
+            if self.world_rank == 0:
+                self.logger.info(
+                    "[MPI-role] layout: smd0=1 eb=%d bd=%d srv=%d (world=%d)",
+                    n_eb,
+                    n_bd,
+                    PS_SRV_NODES,
+                    self.world_size,
+                )
+
         self.psana_group = self.world_group.Excl(
             range(self.world_size - PS_SRV_NODES, self.world_size)
         )
@@ -155,13 +209,6 @@ class Communicators(object):
         self.node_comm = None
         self.node_leader_comm = None
         self._setup_node_comms()
-
-        self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
 
         self.bd_main_group = self.psana_group.Excl([0])
         self._bd_only_group = None
@@ -196,6 +243,14 @@ class Communicators(object):
 
             if self.bd_rank == 0:
                 self._nodetype = "eb"
+                if self.bd_size < 2:
+                    raise RuntimeError(
+                        "EventBuilder rank %d on %s has no BigData ranks in its "
+                        "group (bd_comm size %d). The job would hang waiting for "
+                        "a worker. Add MPI ranks on this host or lower "
+                        "PS_EB_NODES/PS_SRV_NODES."
+                        % (self.world_rank, self.hostname, self.bd_size)
+                    )
             else:
                 self._nodetype = "bd"
 
