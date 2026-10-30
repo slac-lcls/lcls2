@@ -17,4 +17,5 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed parallel psana hanging silently when the MPI layout leaves an EventBuilder with no BigData ranks. `Communicators` now rejects such layouts up front with the numbers spelled out. @amandashack [#249](https://github.com/slac-lcls/lcls2/pull/249)
 - Fixed `epix100_config`, `epixquad_config`, and `epixquad1kfps_config` so the PCIe firmware package is imported against its own copy of surf instead of the FEB package's copy. @ruck314 [#252](https://github.com/slac-lcls/lcls2/pull/252)
