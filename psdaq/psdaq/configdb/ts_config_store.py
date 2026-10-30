@@ -3,21 +3,14 @@ from psdaq.configdb.get_config import update_config
 import psdaq.configdb.tsdef as tsdef
 import psdaq.configdb.configdb as cdb
 
-def usual_cdict():
-    top = cdict()
-
-    top.setAlg('config', [2,0,1])
-
-    top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
-    top.set("firmwareVersion:RO",   0, 'UINT32')
-
+def _user_cdict(top, help_str):
+    """The user section, shared by BEAM and CALIB so that their values can differ."""
     top.define_enum('trigModeEnum', {'FixedRate':0,'EventCode':2})
     top.define_enum('fixedRateEnum', tsdef.fixedRateHzToMarker)
     top.define_enum('boolEnum', {'False':0, 'True':1})
 
     top.define_enum('linacEnum', {'Cu': 0, 'SC': 1})
 
-    help_str  = "-- user --"
     help_str += "\nLINAC        : Timing System source (Cu/SC)"
     help_str += "\n-- user.groupN (Cu mode) --"
     help_str += "\neventcode    : Trigger eventcode"
@@ -53,6 +46,17 @@ def usual_cdict():
         
         top.set(grp_prefix+'keepRawRate', 1., 'FLOAT')
 
+def beam_cdict():
+    top = cdict()
+
+    top.setAlg('config', [2,0,1])
+
+    top.set("firmwareBuild:RO"  , "-", 'CHARSTR')
+    top.set("firmwareVersion:RO",   0, 'UINT32')
+
+    _user_cdict(top, "-- user --")
+
+    for group in range(8):
         grp_prefix = 'expert.group'+str(group)+'.'
         for inhnum in range(4):
             top.set(grp_prefix+'inhibit'+str(inhnum)+'.enable', 0, 'boolEnum')
@@ -73,18 +77,10 @@ def calib_cdict():
     help_str  = "-- user --"
     help_str += "\n_cfgTypeRef\t: Unlisted parameters are inherited from this"
     help_str += "\n\t  Configuration Type"
-    help_str += "\n-- user.groupN (SC mode) --"
-    help_str += "\nfixed.rate\t: Fixed period trigger rate"
-    top.set('help:RO', help_str, 'CHARSTR')
+    _user_cdict(top, help_str)
 
-    top.define_enum('trigModeEnum', {'FixedRate':0,'EventCode':2})
-    top.define_enum('fixedRateEnum', tsdef.fixedRateHzToMarker)
-
-    # For now, only the ability to change the fixed-rate trigger rate is provided
     for group in range(8):
-        grp_prefix = 'user.SC.group'+str(group)+'.'
-        top.set(grp_prefix+'trigMode', 0, 'trigModeEnum') # default to fixed rate
-        top.set(grp_prefix+'fixed.rate', 2, 'fixedRateEnum') # default 100Hz
+        top.set('user.SC.group'+str(group)+'.fixed.rate', 2, 'fixedRateEnum') # default 100Hz
 
     return top
 
@@ -95,7 +91,7 @@ if __name__ == "__main__":
     args = cdb.createArgs().args
     create = not args.update
     db   = 'configdb' if args.prod else 'devconfigdb'
-    url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
+    url  = args.url or f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
@@ -105,7 +101,7 @@ if __name__ == "__main__":
     if args.alias == 'CALIB':
         top = calib_cdict()
     else:
-        top = usual_cdict()
+        top = beam_cdict()
     top.setInfo('ts', args.name, args.segm, args.id, 'No comment')
 
     if args.update:

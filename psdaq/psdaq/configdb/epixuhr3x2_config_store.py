@@ -25,10 +25,13 @@ elemCols = 192
 import os
 
 
-def ePixUHR3x2_cdict():
+ALG_VERSION = [3, 2, 0]  # A CALIB entry must match its BEAM entry's version
+
+
+def beam_cdict():
 
     top = cdict()
-    top.setAlg("config", [3, 2, 0])
+    top.setAlg("config", ALG_VERSION)
     top.define_enum("boolEnum", {"False": 0, "True": 1})
     top.set("expert.Core.Si5345Pll.enable", 1, "boolEnum")
 
@@ -862,6 +865,25 @@ def ePixUHR3x2_cdict():
     return top
 
 
+def calib_cdict():
+    """CALIB alias entry: everything is inherited from the BEAM entry.
+
+    The GPU DRP records raw and skips the pedestal fetch when the alias is CALIB;
+    the pedestal scan steps the gain modes itself.
+    """
+    top = cdict()
+    top.setAlg("config", ALG_VERSION)
+
+    top.set("_cfgTypeRef", "BEAM", "CHARSTR")
+
+    help_str  = "-- user --"
+    help_str += "\n_cfgTypeRef\t: Unlisted parameters are inherited from this"
+    help_str += "\n\t  Configuration Type"
+    top.set("help:RO", help_str, "CHARSTR")
+
+    return top
+
+
 if __name__ == "__main__":
     create = True  # True
     dbname = "configDB"  # this is the name of the database running on the server.  Only client care about this name.
@@ -869,9 +891,10 @@ if __name__ == "__main__":
     args = cdb.createArgs().args
 
     db = "configdb" if args.prod else "devconfigdb"
+    url = args.url or f"https://pswww.slac.stanford.edu/ws-auth/{db}/ws/"
 
     mycdb = cdb.configdb(
-        f"https://pswww.slac.stanford.edu/ws-auth/{db}/ws/",
+        url,
         args.inst,
         create,
         root=dbname,
@@ -879,11 +902,14 @@ if __name__ == "__main__":
         password=args.password,
     )
 
-    top = ePixUHR3x2_cdict()
+    if args.alias == "CALIB":
+        top = calib_cdict()
+    else:
+        top = beam_cdict()
     top.setInfo("epixuhrhw", args.name, args.segm, args.id, "No comment")
 
     # no  need for update, value are loaded at creation
-    if args.update:
+    if args.update and args.alias != "CALIB":
         cfg = mycdb.get_configuration(args.alias, args.name + "_%d" % args.segm)
         top = update_config(cfg, top.typed_json(), args.verbose)
 

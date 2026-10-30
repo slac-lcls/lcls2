@@ -9,7 +9,7 @@ import psdaq.configdb.configdb as cdb
 import os
 import io
 
-def usual_cdict():
+def beam_cdict():
     top = cdict()
 
     top.setAlg('tebConfig', [0,1,0])
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     if args.alias == 'CALIB':
         top = calib_cdict()
     else:
-        top = usual_cdict()
+        top = beam_cdict()
     top.setInfo('teb', args.name, args.segm, args.id, 'No comment')
 
     mycdb.modify_device(args.alias, top)
