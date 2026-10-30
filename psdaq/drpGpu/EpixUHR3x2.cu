@@ -154,8 +154,9 @@ unsigned EpixUHR3x2::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
 
   // In u16 mode the GPU applies pedestals and gains, so they have to be uploaded.
   // With the fp16 firmware there is nothing to upload: the panel's data arrives
-  // already calibrated.
-  if (m_u16) {
+  // already calibrated.  Nor in pass-through, which records raw, so a CALIB run can
+  // take the darks for a panel that has no constants yet.
+  if (m_u16 && !m_passthru) {
     // The panel's serial, which Drp::EpixUHR3x2 read from it at Connect.
     std::vector<float> peds (NRanges * NPixels, 0.0);
     std::vector<float> gains(NRanges * NPixels, 1.0);
