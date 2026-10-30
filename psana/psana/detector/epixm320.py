@@ -42,7 +42,8 @@ class epixm320_raw_0_0_0(eb.epix_base):
         self._data_bit_mask = M15 # for epixm320 data on 2024-03-20 Dawood - epixM has 15 data bits.
         self._data_gain_bit = B16 # gain switching bit
         self._gain_bit_shift = 10
-        self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
+        #self._gains_def = (-100.7, -21.3, -100.7) # ADU/Pulser
+        self._gains_def = (853, 42.6, 853) # ADU/keV Philip on 2026-10-23
         self._gain_states      = ('AHL_H', 'AHL_L', 'SH')
         self._gain_states_dark = ('SH', 'SL', 'AHL')
         self._gain_states_offs = ('AHL',)

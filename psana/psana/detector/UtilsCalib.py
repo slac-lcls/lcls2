@@ -632,6 +632,7 @@ def add_metadata_kwargs(obrun, obdet, **kwa):
     kwa['segment_ids'] = segment_ids
     kwa['segment_inds'] = obdet.raw._sorted_segment_inds
     kwa['segment_numbers'] = obdet.raw._segment_numbers
+    kwa['shape_raw'] = obdet.raw._shape_as_daq()
     kwa['shape_as_daq'] =\
     kwa['seggeo_shape'] = None if obdet.raw._seg_geo is None else obdet.raw._seg_geo.shape()
     kwa['dark_factor']  = getattr(obdet.raw, '_dark_factor', None)
@@ -748,6 +749,7 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
     runnum   = kwa.get('run_orig', None)
     uniqueid = kwa.get('longname', 'not-def-id')
     shortname= kwa.get('shortname', 'not-def-shortname')
+    shape_raw= kwa.get('shape_raw', (4, 192, 384))
     shape_as_daq = kwa.get('shape_as_daq', (4, 192, 384))
     segind   = kwa.get('segind', 0)
 
@@ -775,7 +777,8 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
     segid = uniqueid.split('_')[1]
     logger.info('\n\n\ndeploy_constants'\
                +'\n  segment id: %s' % segid\
-               +'\n  gainmodes : %s' % str(gainmodes))
+               +'\n  gainmodes : %s' % str(gainmodes)
+               +'\n  shape_raw : %s' % str(shape_raw))
 
     for ctype in ctypes:
 
@@ -808,7 +811,7 @@ def deploy_constants_ctypes_gainmodes(ctypes, gainmodes, **kwa):
           logger.info(info_ndarr(data, 'constants loaded from file', last=5, vfmt=fmt))
         except AssertionError as err:
           logger.warning(err)
-          shape_seg = shape_as_daq[-2:]
+          shape_seg = shape_as_daq[-2:] if dettype != 'epixm320' else shape_raw # (4, 192, 384)
           vtype = cc.dic_calib_name_to_dtype[ctype]
           logger.warning(f'using default constants for gm: {gm} ctype:{ctype} vtype:{vtype} segment shape: {str(shape_seg)}')
 

@@ -75,10 +75,12 @@ namespace Drp {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    // Don't call the BEBDetector version of _init. Call the new _init_dual_dev
-    // We also pass a config device and lane. Only ePixUHR currently uses this, so
-    // updating the BEBDetector function, or making it virtual seems less appropriate
-    _init_dual_dev(para->detName, m_para->device, m_para->laneMask);
+    // Don't call the BEBDetector version of _init. Call the overload so that selection
+    // of GPU or CPU path can be made, as well as choice of emulator or not.
+    // Those decisions must happen before CONFIGURE (at rogue startup)
+    // Only ePixUHR currently uses this, so updating the BEBDetector function
+    // or making it virtual seems less appropriate
+    _init_data_path_or_emu();
 
 #define REGISTER(t) {                                   \
       if (sigaction(t, &sa, &old_actions[t]) < 0)       \
@@ -94,11 +96,13 @@ namespace Drp {
 #undef REGISTER
   }
 
-  void EpixUHR3x2::_init_dual_dev(std::string detname,
-                                  std::string data_fpga,
-                                  size_t data_lane_mask) {
-    std::string detType { m_para->detType };
-    std::string module_name {"psdaq.configdb." + detType + "_config"};
+  void EpixUHR3x2::_init_data_path_or_emu() {
+    const std::string detname { m_para->detName };
+    const std::string data_fpga { m_para->device };
+    const size_t data_lane_mask { m_para->laneMask };
+    const std::string detType { m_para->detType };
+
+    const std::string module_name {"psdaq.configdb." + detType + "_config"};
 
     m_module = _check(PyImport_ImportModule(module_name.c_str()));
 
@@ -120,29 +124,38 @@ namespace Drp {
         return "186M";
       }();
 
-      // The h/w emulator lacks the ASICs; use_cpu=0 routes data to the GPU
-      auto flag = [&](const char* key, int dflt) {
-        auto it = m_para->kwargs.find(key);
-        return it != m_para->kwargs.end() ? std::stoi(it->second) : dflt;
-      };
-      int emulator = flag("emulator", 0);
-      int use_cpu  = flag("use_cpu",  1);
+      const int use_gpu = [&]() {
+        if (m_para->kwargs.count("useGpu")) {
+          return std::stoi(m_para->kwargs["useGpu"]);
+        }
+        return 1;
+      }();
+      const int is_emulator = [&]() {
+        if (m_para->kwargs.count("isEmulator")) {
+          return std::stoi(m_para->kwargs["isEmulator"]);
+        }
+        return 0;
+      }();
 
-      // Argument string: "ssissiii"
+      // Argument string: "s si ssi ii"
       // - s   : for `arg` (Not sure what this is for, but leaving for similarity sake)
       // - si  : for dev and lanemask
       // - ssi : for xpmpv, timebase, verbosity
-      // - ii  : for emulator, use_cpu
-      m_root = _check(PyObject_CallFunction(init_func, "ssissiii",
+      // - ii  : for use_gpu and is_emulator
+      m_root = _check(PyObject_CallFunction(init_func,
+                                            "ssissiii",
                                             detname.c_str(),
                                             data_fpga.c_str(),
                                             data_lane_mask,
                                             xpmpv,
                                             timebase,
                                             m_para->verbose,
-                                            emulator,
-                                            use_cpu));
+                                            use_gpu,
+                                            is_emulator));
 
+      logging::info("Configured data path for %s (Emulator status: %s).",
+                    use_gpu ? "the GPU" : "the CPU",
+                    is_emulator ? "IS Emulator" : "NOT Emulator");
       if (m_root) {
         PyObject* o_virtChan = PyDict_GetItemString(m_root, "virtChan");
         if (o_virtChan) {

@@ -33,9 +33,7 @@ protected:
                               std::vector< XtcData::Array<uint8_t> >&) override;
 
 private:
-    void           _init_dual_dev(std::string detname,
-                                  std::string data_fpga,
-                                  size_t data_lane_mask);
+    void           _init_data_path_or_emu();
     void           __event   (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&);
 public:

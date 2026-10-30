@@ -89,7 +89,7 @@ def supervisor_info(json_msg):
 
 
 class ReadoutSystemDefn(TypedDict):
-    """The multi-panel ePixUHR setup is split into readout systems as defined here.
+    r"""The multi-panel ePixUHR setup is split into readout systems as defined here.
 
     Per system (analgous to a panel, or single C1100 for data) you provide:
     - name: Must be of format ROS[\d] -- Using the config C1100 lane makes sense
@@ -151,8 +151,8 @@ def epixuhr3x2_init(
     xpmpv=None,
     timebase="186M",
     verbosity=0,
-    emulator=False,
-    use_cpu=True,
+    use_gpu=1,
+    is_emulator=0,
 ):
     """Initialize the rogue device accessor objects.
 
@@ -189,7 +189,7 @@ def epixuhr3x2_init(
         dualPcie       = False,
         defaultFile    = "",        # No config to load
         # Emulator doesn't have all registers - emuMode prevents erroneous r/w in root
-        emuMode        = emulator,
+        emuMode        = bool(is_emulator),
         justCtrl       = True,      # If False, data doesn't make it to DAQ
         loadPllCsv     = False,     # No config to load
         standAloneMode = False,     # Use LCLSII timing
@@ -215,8 +215,8 @@ def epixuhr3x2_init(
         nasics=6,
         readout_system_num=rosNum,
         logger_name=LOGGER_NAME,
-        emulator=emulator,
-        use_cpu=use_cpu,
+        use_gpu=use_gpu,
+        emulator=is_emulator,
     )
     base["manager"] = manager
 
@@ -430,6 +430,9 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
     manager.reset_asic_gt(asics=asics, emulator=manager.emulator)
 
     time.sleep(1)
+
+    # Setup the ASIC left-right, and up-down flips
+    manager.setup_asic_descramblers(asics=asics)
 
     # Configure any gain settings
     if cfg["user"]["Gain"]["SetSameGain4All"]:

@@ -27,8 +27,8 @@ class EpixUHR3x2_Manager:
         nasics: int = 6,
         readout_system_num: int = 0,
         logger_name: str = "ePixUHR3x2",
-        emulator: bool = False,
-        use_cpu: bool = True,
+        use_gpu: int = 1,
+        emulator: int = 0,
     ):
         self._root: epixUhrDev.Root = root
         self._nasics: int = nasics
@@ -43,8 +43,8 @@ class EpixUHR3x2_Manager:
         }
 
         self._ros_num: int = readout_system_num
-        self._emulator: bool = emulator
-        self._use_cpu: bool = use_cpu
+        self._use_gpu: bool = bool(use_gpu)
+        self._emulator: bool = bool(emulator)
 
     @property
     def emulator(self) -> bool:
@@ -80,14 +80,13 @@ class EpixUHR3x2_Manager:
         time.sleep(0.1)
         logger.info("Stopping run.")
 
-    def _kick_data_path(self, use_cpu: bool = True):
+    def _kick_data_path(self):
         """The data path may read as one or the other, but this may not be correct.
 
-        Args:
-            use_cpu (bool): If True, data will be routed to the CPU.
+        The data path selection is determined at construction.
         """
-        target_val: int = 0x0 if use_cpu else 0x1
-        kick_val: int = 0x1 if use_cpu else 0x0
+        target_val: int = int(self._use_gpu)
+        kick_val: int = int(not self._use_gpu)
         if hasattr(self.ReadoutSystem, "DataDestination"):
             self.ReadoutSystem.DataDestination.set(kick_val)
             time.sleep(0.01)
@@ -444,6 +443,23 @@ class EpixUHR3x2_Manager:
 
         logger.info("Done with SACI configuration")
 
+    def setup_asic_descramblers(self, asics: List[int]) -> None:
+        logger: logging.Logger = logging.getLogger(self._logger_name)
+        descrambler = self.FebFpga.App.Descrambler
+        for asic in asics:
+            asic_descrambler = descrambler.DescAsic[asic]
+
+            # For the top row of asics - ASIC[0...2] - set `MirrorCols`
+            # For the bottom row of asics - ASIC[3...5] - set `MirrorRows`
+            if asic < 3:
+                asic_descrambler.MirrorCols.set(True)
+                asic_descrambler.MirrorRows.set(False)
+            else:
+                asic_descrambler.MirrorCols.set(False)
+                asic_descrambler.MirrorRows.set(True)
+
+        logger.info("Done with ASIC Descrambler Mirroring Setup")
+
     def _init_framer_asic(self, asic: int) -> None:
         registers_and_vals: Dict[str, Any] = {
             "enable": False,
@@ -661,8 +677,9 @@ class EpixUHR3x2_Manager:
 
         self.initialize_timing(timebase=timebase)
 
-        # Force the data path; it does not always come up on the right one
-        self._kick_data_path(use_cpu=self._use_cpu)
+        # Force use of the correct data path. Seems to not determine that sometimes.
+        # Selection of GPU/CPU is done when constructing the Manager
+        self._kick_data_path()
 
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()

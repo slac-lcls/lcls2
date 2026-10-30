@@ -158,10 +158,10 @@ def loop_run_step_evt(ds, run, det, args):
       pulseid_old = 0
 
       dcfg = det.raw._config_object() if '_config_object' in dir(det.raw) else None
-      if dcfg is None: print('det.raw._config_object is MISSING')
-
+      if dcfg is None:
+          print('det.raw._config_object is MISSING')
+          logger.info(f'info_calibconst: {det.raw._info_calibconst()}')
       det.raw._calibconstants()  # prints cc.info_calibconst()
-      #logger.info(f'info_calibconst: {det.raw._info_calibconst()}')
 
       if do_loopsteps:
        for istep, step in enumerate(run.steps()):
@@ -184,9 +184,10 @@ def loop_run_step_evt(ds, run, det, args):
 
         if not do_loopevts: continue
         ievt, evt, segs = None, None, None
+        raw_was_none = False
         for ievt, evt in enumerate(step.events()):
           if ievt>args.evtmax: exit('exit by number of events limit --evtmax %d' % args.evtmax)
-          if not selected_record(ievt): continue
+          if (not selected_record(ievt)) and (not raw_was_none): continue
           if segs is None:
              segs = det.raw._segment_numbers if det is not None else None
              #tstamp = evt.timestamp   # like 4193682596073796843 relative to 1990-01-01
@@ -203,14 +204,14 @@ def loop_run_step_evt(ds, run, det, args):
              else:
                  print(' timing is None, pulseId is N/A')
              raw = det.raw.raw(evt)
-             print(info_ndarr(raw,'    det.raw.raw(evt)'))
+             print(info_ndarr(raw,'    ev: %05d det.raw.raw(evt)'%ievt))
+             raw_was_none = raw is None
              #print('gain mode statistics:' + ue.info_pixel_gain_mode_statistics(gmaps))
 
              if dcfg is not None and (is_epix10ka or is_epixhr2x2):
                s = '    gain mode fractions for: FH       FM       FL'\
                    '       AHL-H    AML-M    AHL-L    AML-L\n%s' % (29*' ')
                print(ue.info_pixel_gain_mode_fractions(det.raw, evt, msg=s))
-
           print(info_det_evt(det, evt, ievt), end='   \r')
         print(info_det_evt(det, evt, ievt), end='   \n')
 

@@ -1440,6 +1440,43 @@ def issue_2026_10_18(args):
     b = sgs.Create(segname='EPIXUHR3X2:V1', use_wide_pix_center=False)
     print(a is b, b.use_wide_pix_center)                                            # problem 2: True True
 
+
+def issue_2026_10_24(args):
+    """ISSUE: https://github.com/slac-lcls/lcls2/issues/234
+              after lcls2_091526 find no calibration constants for the archon in rix101214125. det.raw.calib then raises KeyError: 'pedestals'.
+       datinfo -k exp=rix101214125,run=352 -d archon
+       det_dark_proc -k exp=rix101214125,run=325 -d archon -o work -n10000 -D
+       det_dark_proc -k exp=rix101214125,run=113 -d archon -o work -n10000 -D
+       det_dark_proc -k exp=rix101214125,run=7   -d archon -o work -n10000 -D
+       dark data for runs 28, 46 138 are missing in
+          /sdf/data/lcls/ds/rix/rix101214125/xtc/
+       FIX: re-calibrate dark constants for new detector name for exp=rix101214125,run=7,113,325
+    """
+    import traceback
+    from psana import DataSource
+    import psana.pscalib.calib.MDBWebUtils as wu
+    from psana.detector.NDArrUtils import info_ndarr
+    ds = DataSource(exp='rix101214125', run=352)
+    run = next(ds.runs())
+    uid = run.dsparms.configinfo_dict['archon'].uniqueid      # 'archon_1'
+    det = run.Detector('archon')
+    print('CALIBCONST_KEYS', sorted(det.raw._calibconst.keys()))
+    print('CALIBCONST_INFO', det.raw._info_calibconst())
+    print('PRO_DETECTOR_NAME', repr(wu.pro_detector_name(uid)))
+    for ievt,evt in enumerate(run.events()):
+        if det.raw.raw(evt) is None:
+            continue
+        else:
+            print(info_ndarr(det.raw.raw(evt), 'ev: %03d raw' % ievt))
+        try:
+            c = det.raw.calib(evt)
+            print('CALIB_OK', (c.shape, str(c.dtype)))
+            im = det.raw.image(evt)
+            print('IMAGE_OK', (im.shape, str(im.dtype)))
+        except Exception as e:
+            print('CALIB_EXC', repr(e))
+            traceback.print_exc()
+        break
 #===
 
 def issue_2026_MM_DD(args):
@@ -1511,6 +1548,7 @@ def selector():
     elif TNAME in ('23',):issue_2026_10_07(args) # config and event loop for epixm
     elif TNAME in ('24',):issue_2026_10_15(args) # Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
     elif TNAME in ('25',):issue_2026_10_18(args) # Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
+    elif TNAME in ('26',):issue_2026_10_24(args) # Cong - after lcls2_091526 find no calibration constants for the archon in rix101214125
 
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:

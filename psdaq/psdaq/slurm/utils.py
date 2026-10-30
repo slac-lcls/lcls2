@@ -86,7 +86,7 @@ def run_slurm(*args, check=False, capture_output=False):
     if output.returncode != 0:
         cmd_str = " ".join(args)
         logger.error(f"Subprocess call '{cmd_str}' failed.\n"
-                     "Error: {output.stderr.decode('utf-8').strip()}")
+                     f"Error: {output.stderr.strip()}")
     return output
 
 
@@ -308,7 +308,7 @@ class SbatchManager:
             n_cube_workers = 0
             if ' -Q ' in cmd:
                 args = cmd.split()
-                n_cube_workers = int( re.match('^\d+', args[args.index('-Q')+1]).group() )
+                n_cube_workers = int( re.match(r'^\d+', args[args.index('-Q')+1]).group() )
             n_workers = self.get_n_cores(details) - n_cube_workers - DRP_N_RSV_CORES
             if n_workers < 1:
                 n_workers = 1
