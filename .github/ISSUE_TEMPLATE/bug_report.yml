@@ -32,15 +32,11 @@ body:
     validations:
       required: true
 
-  - type: dropdown
-    id: environment
+  - type: input
+    id: version
     attributes:
-      label: Environment
-      description: Which environment were you using?
-      options:
-        - Analysis
-        - DAQ
-        - Custom
+      label: Version
+      description: Which commit hash or release version were you using?
     validations:
       required: true
 
