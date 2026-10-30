@@ -209,6 +209,13 @@ for candidate in "$ROOT_DIR"/*; do
     [ -d "$candidate" ] || continue
     [[ "$(basename "$candidate")" == ${PREFIX}* ]] || continue
     [ -d "$candidate/.git" ] || continue
+    # TEMPORARY: txi/lcls2_090926 is on a local commit (4a9ff96) that was never pushed,
+    # so its sync fails every night. The team agreed to ignore this clone (2026-10-30).
+    # Remove this when the clone is retired.
+    if [ "${HUTCH_NAME}/$(basename "$candidate")" = "txi/lcls2_090926" ]; then
+        echo -e "${YELLOW}Skipping txi/lcls2_090926 (hard-coded skip)${NC}"
+        continue
+    fi
     CANDIDATES+=("$candidate")
 done
 
