@@ -1,10 +1,8 @@
 name: Build wheels and create release
 
-# Only build for release tags.
+# Manual only for now: Actions -> Run workflow. Pick a tag in "Use workflow
+# from" to build and publish; pick a branch to only build and test the wheels.
 on:
-  push:
-    tags:
-      - '*'
   workflow_dispatch:
 
 jobs:

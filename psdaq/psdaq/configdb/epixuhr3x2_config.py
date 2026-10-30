@@ -89,7 +89,7 @@ def supervisor_info(json_msg):
 
 
 class ReadoutSystemDefn(TypedDict):
-    """The multi-panel ePixUHR setup is split into readout systems as defined here.
+    r"""The multi-panel ePixUHR setup is split into readout systems as defined here.
 
     Per system (analgous to a panel, or single C1100 for data) you provide:
     - name: Must be of format ROS[\d] -- Using the config C1100 lane makes sense
@@ -150,7 +150,9 @@ def epixuhr3x2_init(
     lanemask=0x1,
     xpmpv=None,
     timebase="186M",
-    verbosity=0
+    verbosity=0,
+    use_gpu=1,
+    is_emulator=0,
 ):
     """Initialize the rogue device accessor objects.
 
@@ -180,7 +182,6 @@ def epixuhr3x2_init(
     # ... gets passed around via this horrible global variable strategy ...
     base = {}
     #  Connect to the camera and the PCIe card
-    emulator: bool = True  # Changed per Gabriel: False to initialize nonexistent ASICs
     detectorRoot = epixUhrDev.Root(
         # This specifies datadev for config and data C1100's
         ReadoutSystems = [devReadoutSystem], # List, as you could hvae multiple in 1 proc
@@ -188,7 +189,7 @@ def epixuhr3x2_init(
         dualPcie       = False,
         defaultFile    = "",        # No config to load
         # Emulator doesn't have all registers - emuMode prevents erroneous r/w in root
-        emuMode        = emulator,
+        emuMode        = bool(is_emulator),
         justCtrl       = True,      # If False, data doesn't make it to DAQ
         loadPllCsv     = False,     # No config to load
         standAloneMode = False,     # Use LCLSII timing
@@ -214,7 +215,8 @@ def epixuhr3x2_init(
         nasics=6,
         readout_system_num=rosNum,
         logger_name=LOGGER_NAME,
-        emulator=emulator,
+        use_gpu=use_gpu,
+        emulator=is_emulator,
     )
     base["manager"] = manager
 
@@ -355,7 +357,8 @@ def get_active_asics(asic_mask: int) -> List[int]:
     n: int = asic_mask
     while n:
         if n & 1:
-            result.append(pos)
+            # Setup the asics to be 0-indexed!
+            result.append(pos - 1)
         n >>= 1
         pos += 1
 
@@ -406,9 +409,10 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
     manager.setup_bypasses_for_disabled_asics(asic_mask=asic_mask)
 
     # Enable passThru, i.e., disable the gain expansion
-    for i in range(0, 6):
-        manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
-        manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
+    manager.ReadoutSystem.Float16.set(False)
+    # for i in range(0, 6):
+    #    manager.DataFpga.DataInterpreter.DataGainMultiplier[i].enable.set(True)
+    #    manager.DataFpga.DataInterpreter.DataGainMultiplier[i].passThru.set(0x1)
 
     # Setup BoardCtrl3x2Readout Registers - this also sets the debug timing outputs
     board_ctrl: Dict[str, Any] = cfg["expert"]["FebFpga"]["App"]["BoardCtrl3x2Readout"]
@@ -426,6 +430,9 @@ def epixuhr3x2_config(base, connect_str, cfgtype, detname, detsegm, rog):
     manager.reset_asic_gt(asics=asics, emulator=manager.emulator)
 
     time.sleep(1)
+
+    # Setup the ASIC left-right, and up-down flips
+    manager.setup_asic_descramblers(asics=asics)
 
     # Configure any gain settings
     if cfg["user"]["Gain"]["SetSameGain4All"]:

@@ -162,10 +162,16 @@ int main(int argc, char* argv[])
             if (kwargs.first == "segNums")           continue;
             if (kwargs.first == "slsHosts")          continue;
         }
+        if (para.detType == "epixuhr3x2") {
+            // useGpu is deliberately absent: the DRP type decides it, not the .cnf
+            if (kwargs.first == "isEmulator")        continue;
+        }
         logging::critical("Unrecognized kwarg '%s=%s'\n",
                           kwargs.first.c_str(), kwargs.second.c_str());
         return 1;
     }
+    if (para.detType == "epixuhr3x2")
+        para.kwargs.emplace("useGpu", "0");     // The CPU DRP reads the panel itself
 
     // Report an uncaught exception from any thread, not just its type name
     initExceptionReporting(para.alias);
