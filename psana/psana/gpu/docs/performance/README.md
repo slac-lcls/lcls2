@@ -9,14 +9,17 @@ branch head or a comparison of GPU models.
 
 - **PR187 — device peer discovery and CUDA-IPC constants sharing:** Ada raw
   read/gather comparisons changed by less than 1% in mean paired loop time.
-  Four-BD warm calibration B/A was 10.17% slower over 10,000 events, with most
-  of the difference before first-event delivery. Perlmutter's sharing on/off
-  study measured about **2 seconds of extra first-batch time**, nearly constant
-  between 1,000 and 10,000 events. At 10,000 events, the extra remaining loop
-  averaged **1.67 seconds**, comparable to the **1.97-second** first-batch
-  penalty. Blocks 1 and 6 drove that remaining-loop mean; all six blocks are
-  retained. Remaining-loop equivalence within ±5% is unresolved in the
-  cold-Lustre measurements.
+  Four-BD warm calibration B/A was 10.17% slower over 10,000 events; the logs
+  suggest most of the difference precedes first-event delivery, but this is
+  not an additive phase decomposition. Perlmutter measured about **2 seconds
+  of extra first-batch time relative to the same build with sharing disabled**,
+  or about **1.1 seconds relative to the pre-PR187 base**. B-off's faster first
+  batch comes with longer setup, so it does not establish an overall private-path
+  speedup. At 10,000 events, B-on versus the base showed mean increases of
+  **2.14 seconds in the remaining loop** and **3.34 seconds in total process
+  wall time**. Remaining-loop equivalence within ±5% is unresolved; the complete
+  cost cannot be attributed to startup alone. See the report's
+  [baseline comparison and interpretation](pr187_pr208.md#comparing-pr187-with-the-pre-pr-base).
 - **PR208 — owned/imported constants in memory reports:** Ada four-BD warm C/B
   mean loop change was +0.51%; ownership/reporting preflights passed. This is a
   diagnostic attribution change, not an allocation/admission change. The
