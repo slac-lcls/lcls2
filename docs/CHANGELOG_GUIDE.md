@@ -14,8 +14,9 @@ that fits.
 - **Removed** for now removed features.
 - **Fixed** for any bug fixes.
 
-Write entries for users, not as a list of commits: one short line saying what
-changed. Link the PR or issue if it helps, e.g. `(#123)`.
+Add one entry per PR, in the section that fits best.
+End with your GitHub handle and a link to the PR:
+`@<github-handle> [#<PR number>](<PR URL>)`.
 
 Example:
 
@@ -24,7 +25,7 @@ Example:
 
 ### Fixed
 
-- Updated the conda environment lock files so they work for everyone. (#123).
+- Fixed the conda environment lock files so they work for everyone. @mavaylon1 [#123](https://github.com/slac-lcls/lcls2/pull/123)
 ```
 
 ## Cutting a release
