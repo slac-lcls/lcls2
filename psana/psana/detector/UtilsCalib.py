@@ -398,12 +398,12 @@ class DarkProc():
         rms_min, rms_max = evaluate_limits(arr_rms, rmsnlo, rmsnhi, rms_lo, rms_hi, cmt='RMS')
         ave_min, ave_max = evaluate_limits(arr_av1, intnlo, intnhi, int_lo, int_hi, cmt='AVE')
 
-        arr_sta_rms_hi = np.select((arr_rms>rms_max,),       (self.arr1,), 0)
-        arr_sta_rms_lo = np.select((arr_rms<rms_min,),       (self.arr1,), 0)
-        arr_sta_int_hi = np.select((self.sta_int_hi>nevlm,), (self.arr1,), 0)
-        arr_sta_int_lo = np.select((self.sta_int_lo>nevlm,), (self.arr1,), 0)
-        arr_sta_ave_hi = np.select((arr_av1>ave_max,),       (self.arr1,), 0)
-        arr_sta_ave_lo = np.select((arr_av1<ave_min,),       (self.arr1,), 0)
+        arr_sta_rms_hi = np.select((arr_rms>rms_max,),       (self.arr1u64,), 0)
+        arr_sta_rms_lo = np.select((arr_rms<rms_min,),       (self.arr1u64,), 0)
+        arr_sta_int_hi = np.select((self.sta_int_hi>nevlm,), (self.arr1u64,), 0)
+        arr_sta_int_lo = np.select((self.sta_int_lo>nevlm,), (self.arr1u64,), 0)
+        arr_sta_ave_hi = np.select((arr_av1>ave_max,),       (self.arr1u64,), 0)
+        arr_sta_ave_lo = np.select((arr_av1<ave_min,),       (self.arr1u64,), 0)
 
         logger.info('bad pixel status:'\
                +'\n  status  1: %8d pixel rms       > %.3f' % (arr_sta_rms_hi.sum(), rms_max)\
