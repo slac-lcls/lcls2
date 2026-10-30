@@ -21,6 +21,9 @@ public:
     void write_image(XtcData::Xtc&, const void* bufEnd, std::vector< XtcData::Array<uint8_t> >&, XtcData::NamesId&);
 
     Pds::TimingHeader* getTimingHeader(uint32_t index) const override;
+    // The raw array's alg version, which selects psana's interpretation of it
+    void setRawAlgVersion(uint8_t major, uint8_t minor, uint8_t micro)
+    { m_rawAlgVersion[0] = major;  m_rawAlgVersion[1] = minor;  m_rawAlgVersion[2] = micro; }
 protected:
     nlohmann::json connectionInfo(const nlohmann::json& msg) override;
     void           _connectionInfo(PyObject*) override;
@@ -30,9 +33,7 @@ protected:
                               std::vector< XtcData::Array<uint8_t> >&) override;
 
 private:
-    void           _init_dual_dev(std::string detname,
-                                  std::string data_fpga,
-                                  size_t data_lane_mask);
+    void           _init_data_path_or_emu();
     void           __event   (XtcData::Xtc&, const void* bufEnd,
                               std::vector< XtcData::Array<uint8_t> >&);
 public:
@@ -46,6 +47,7 @@ protected:
     bool              m_descramble;
     bool              m_monStreamOn;    // Tracks the monitor stream's state
     unsigned          m_nprints;
+    uint8_t           m_rawAlgVersion[3] { 1, 0, 0 };
   };
 
 }

@@ -3,7 +3,7 @@
 ## Test groups
 
 **"Run Tests" step:**
-- `test_run_slurm_with_retries.py`, `test_sbatch_env_dump.py`, `test_sbatch_manager_output_path.py`, `test_daqmgr_spawn_console.py`, `test_daqmgr_strict_job_info.py`, `test_subproc.py` — despite the names, none touch real SLURM or spawn real subprocesses; all mocked/self-contained.
+- `test_run_slurm_with_retries.py`, `test_sbatch_env_dump.py`, `test_sbatch_manager_output_path.py`, `test_daqmgr_spawn_console.py`, `test_daqmgr_strict_job_info.py`, `test_subproc.py`, `test_slurm_config.py` — despite the names, none touch real SLURM or spawn real subprocesses; all mocked/self-contained.
 - `test_firmware_packages.py` — exercises `psdaq.utils.firmware_packages` against two fake firmware packages built in `tmp_path`; needs neither `SUBMODULEDIR` nor rogue.
 - `test_configdb.py` — always reports **skipped**, not passed or failed. It has an unconditional `pytest.skip()` to avoid a `pymongo` dependency that isn't in the CI environment. Included for completeness; expect a skip notice here, not coverage.
 - `test_daqstat.py` — needs a display for Qt to construct a `QApplication`, even for `--help`. The step sets `QT_QPA_PLATFORM=offscreen` to handle this on the headless runner.

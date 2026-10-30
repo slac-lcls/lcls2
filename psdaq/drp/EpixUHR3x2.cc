@@ -75,10 +75,12 @@ namespace Drp {
     sigemptyset(&sa.sa_mask);
     sa.sa_flags = SA_RESETHAND;
 
-    // Don't call the BEBDetector version of _init. Call the new _init_dual_dev
-    // We also pass a config device and lane. Only ePixUHR currently uses this, so
-    // updating the BEBDetector function, or making it virtual seems less appropriate
-    _init_dual_dev(para->detName, m_para->device, m_para->laneMask);
+    // Don't call the BEBDetector version of _init. Call the overload so that selection
+    // of GPU or CPU path can be made, as well as choice of emulator or not.
+    // Those decisions must happen before CONFIGURE (at rogue startup)
+    // Only ePixUHR currently uses this, so updating the BEBDetector function
+    // or making it virtual seems less appropriate
+    _init_data_path_or_emu();
 
 #define REGISTER(t) {                                   \
       if (sigaction(t, &sa, &old_actions[t]) < 0)       \
@@ -94,11 +96,13 @@ namespace Drp {
 #undef REGISTER
   }
 
-  void EpixUHR3x2::_init_dual_dev(std::string detname,
-                                  std::string data_fpga,
-                                  size_t data_lane_mask) {
-    std::string detType { m_para->detType };
-    std::string module_name {"psdaq.configdb." + detType + "_config"};
+  void EpixUHR3x2::_init_data_path_or_emu() {
+    const std::string detname { m_para->detName };
+    const std::string data_fpga { m_para->device };
+    const size_t data_lane_mask { m_para->laneMask };
+    const std::string detType { m_para->detType };
+
+    const std::string module_name {"psdaq.configdb." + detType + "_config"};
 
     m_module = _check(PyImport_ImportModule(module_name.c_str()));
 
@@ -120,18 +124,38 @@ namespace Drp {
         return "186M";
       }();
 
-      // Argument string: "ssisissi"
+      const int use_gpu = [&]() {
+        if (m_para->kwargs.count("useGpu")) {
+          return std::stoi(m_para->kwargs["useGpu"]);
+        }
+        return 1;
+      }();
+      const int is_emulator = [&]() {
+        if (m_para->kwargs.count("isEmulator")) {
+          return std::stoi(m_para->kwargs["isEmulator"]);
+        }
+        return 0;
+      }();
+
+      // Argument string: "s si ssi ii"
       // - s   : for `arg` (Not sure what this is for, but leaving for similarity sake)
       // - si  : for dev and lanemask
       // - ssi : for xpmpv, timebase, verbosity
-      m_root = _check(PyObject_CallFunction(init_func, "ssissi",
+      // - ii  : for use_gpu and is_emulator
+      m_root = _check(PyObject_CallFunction(init_func,
+                                            "ssissiii",
                                             detname.c_str(),
                                             data_fpga.c_str(),
                                             data_lane_mask,
                                             xpmpv,
                                             timebase,
-                                            m_para->verbose));
+                                            m_para->verbose,
+                                            use_gpu,
+                                            is_emulator));
 
+      logging::info("Configured data path for %s (Emulator status: %s).",
+                    use_gpu ? "the GPU" : "the CPU",
+                    is_emulator ? "IS Emulator" : "NOT Emulator");
       if (m_root) {
         PyObject* o_virtChan = PyDict_GetItemString(m_root, "virtChan");
         if (o_virtChan) {
@@ -215,7 +239,7 @@ namespace Drp {
                                   XtcData::ConfigIter& configo)
   {
     {
-      Alg alg("raw", 0, 1, 0);
+      Alg alg("raw", m_rawAlgVersion[0], m_rawAlgVersion[1], m_rawAlgVersion[2]);
 
       Names& configNames =
         configo.namesLookup()[NamesId(nodeId, ConfigNamesIndex+1)].names();
@@ -273,6 +297,21 @@ namespace Drp {
    *     A1   |   A3   |   A5   |
    *  --------+--------+--------+
    *     A0   |   A2   |   A4   |
+   *
+   * The firmware, beginning with v5.0.0, does the necessary ASIC rearrangements
+   * to produce a single "panel" output, with single header and timing information.
+   * Any disabled ASICs are zero-filled by the firmware.
+   *
+   * The mapping is then:
+   * - TDEST 0 <-> Trigger
+   * - TDEST 1 <-> Event
+   * - TDEST 2 <-> Timing
+   * - TDEST 3 <-> Panel data (with zero-filled disabled ASICs)
+   *
+   * For posterity the old arrangement is left below this line in the comment.
+   * ---------------------------------------------------------------------------
+   *
+   * Prior to v5.0.0, the data came in as:
    *
    * This is also how the data arrives:
    * - 3 streams on each unbatcher (two of them) -- If using bifurcation
@@ -333,52 +372,52 @@ namespace Drp {
                           uint64_t l1count,
                           std::vector<XtcData::Array<uint8_t>>& subframes)
   {
-    constexpr size_t elemRows { 168 };
-    constexpr size_t elemRowSize { 192 };
-    constexpr size_t numAsicPixels { elemRows * elemRowSize };
-    // 16-bit values -- but, 4 bits are unused if not gain-expanded
-    constexpr size_t numAsicBytes { numAsicPixels * 2 };
-    constexpr size_t numAsics { 6 };
+    constexpr unsigned asicRows   { 168 };
+    constexpr unsigned asicCols   { 192 };
+    constexpr unsigned panelRows  { 2 * asicRows };  // 336
+    constexpr unsigned panelCols  { 3 * asicCols };  // 576
+    constexpr size_t   panelBytes { size_t(panelRows) * panelCols * sizeof(uint16_t) };
+    constexpr unsigned panelTDEST { 3 };
 
-    unsigned shape[MaxRank] { 0 };
-    shape[0] = numAsics;
-    shape[1] = numAsicBytes / 2;
+    unsigned shape[MaxRank] { panelRows, panelCols };
 
     CreateData cd(xtc, bufEnd, m_namesLookup, m_evtNamesId[0]);
     logging::debug("Writing panel event src 0x%x", unsigned(m_evtNamesId[0]));
 
     Array<uint16_t> aframe = cd.allocate<uint16_t>(EpixUHR3x2RawDef::raw, shape);
-    // Zero the data in case of missing asics
-    std::memset(aframe.data(), 0, numAsicBytes * numAsics);
+    uint8_t* dest { reinterpret_cast<uint8_t*>(aframe.data()) };
 
-    uint16_t* dataPtr = reinterpret_cast<uint16_t*>(aframe.data());
+    // Zero the data in case of missing asics -- Presumably done by firmware
+    // std::memset(dest, 0, numAsicBytes * numAsics);
 
-    // Only process asics if they're enabled. This is captured as a mask (m_asics)
-    // on configure. The mask is a bit mask where 0b111111 = 63 indicates asics
-    // [1, 2, 3, 4, 5, 6]. For some reason, asics are numbered from 1 in the rogue
-    // software, so we match that convention
-    const unsigned tdestToBit[] = { 0, 1, 2, 3, 4, 5 };
+    if (panelTDEST >= subframes.size()) {
+      xtc.damage.increase(XtcData::Damage::MissingData);
+      std::memset(dest, 0, panelBytes);
+      if (m_nprints) {
+        --m_nprints;
+        logging::error("ePixUHR3x2: No panel subframe (nsub %zu) L1Count %lu",
+                       subframes.size(), l1count);
+      }
 
-    for (unsigned dataStream = 0; dataStream < 6; ++dataStream) {
-      unsigned bit { tdestToBit[dataStream] };
+      return;
+    }
 
-      if (m_asics & (1 << bit)) {
-        unsigned tdest { 3 + dataStream }; // First data at TDEST3
+    auto& data_subframe { subframes[panelTDEST] };
+    const auto*  src { reinterpret_cast<const uint8_t*>(data_subframe.data()) };
+    const size_t nbytes { data_subframe.num_elem() };
+    const size_t ncopy { std::min(nbytes, panelBytes) };
 
-        if (tdest < subframes.size()) {
-          auto& subframe = subframes[tdest];
-          auto subframesData = reinterpret_cast<uint8_t*>(subframe.data());
+    std::memcpy(dest, src, ncopy);
 
-          size_t asicOffset { bit * numAsicPixels };
-          uint16_t* dest = &dataPtr[asicOffset];
-
-          if (subframe.num_elem() != numAsicBytes) {
-            xtc.damage.increase(XtcData::Damage::MissingData);
-            std::memcpy(dest, subframesData, subframe.num_elem());
-          } else {
-            std::memcpy(dest, subframesData, numAsicBytes);
-          }
-        }
+    if (nbytes != panelBytes) {
+      xtc.damage.increase(XtcData::Damage::MissingData);
+      if (ncopy < panelBytes) {
+        std::memset(dest + ncopy, 0, panelBytes - ncopy);
+      }
+      if (m_nprints) {
+        --m_nprints;
+        logging::error("ePixUHR3x2: Panel size is %zu, expected %zu",
+                       nbytes, panelBytes);
       }
     }
   }
