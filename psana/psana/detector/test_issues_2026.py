@@ -1477,6 +1477,21 @@ def issue_2026_10_24(args):
             print('CALIB_EXC', repr(e))
             traceback.print_exc()
         break
+
+
+def issue_2026_10_30(args):
+    """ISSUE:
+             datinfo -k exp=rix102353327,run=38 -d alvium3rix1
+             det_dark_proc -k exp=rix102353327,run=38 -d alvium3rix1 -o work1 [-D]
+       PROBLEM:
+       FIX:
+    """
+    from psana.detector.NDArrUtils import info_ndarr
+    ds,run,det = ds_run_det(exp='rix102353327', run=38, detname='alvium3rix1', max_events=5) # **kwa)
+    for ievt,evt in enumerate(run.events()):
+        print(info_ndarr(det.raw.raw(evt),   'ev: %03d raw' % ievt))
+        print(info_ndarr(det.raw.calib(evt), '      calib'))
+
 #===
 
 def issue_2026_MM_DD(args):
@@ -1549,6 +1564,7 @@ def selector():
     elif TNAME in ('24',):issue_2026_10_15(args) # Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
     elif TNAME in ('25',):issue_2026_10_18(args) # Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
     elif TNAME in ('26',):issue_2026_10_24(args) # Cong - after lcls2_091526 find no calibration constants for the archon in rix101214125
+    elif TNAME in ('27',):issue_2026_10_30(args) # test alvium in pv_det.py
 
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
