@@ -16,3 +16,5 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 ### Removed
 
 ### Fixed
+
+- Fixed `epix100_config`, `epixquad_config`, and `epixquad1kfps_config` so the PCIe firmware package is imported against its own copy of surf instead of the FEB package's copy. @ruck314 [#252](https://github.com/slac-lcls/lcls2/pull/252)
