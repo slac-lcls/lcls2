@@ -21,11 +21,6 @@ enum { ConfigNamesIndex = Drp::NamesIndex::BASE,
        FexNamesIndex    = unsigned(EventNamesIndex)  + unsigned(MaxPnlsPerNode),
        ReducerNamesIndex };         // index for xtc NamesId
 
-// Not working:
-//typedef void CalibrateFn_t(float*    const calib,
-//                           uint16_t* const raw,
-//                           unsigned  const nElements);
-
 class Detector : public Drp::Detector
 {
 public:
@@ -48,10 +43,8 @@ public:
   using Drp::Detector::event;
   void shutdown() override;
 
-  // @todo: What to do about these?
-  //// Scan methods.  Default is to fail.
-  //unsigned configureScan(const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override {return 1;};
-  //unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override {return 1;};
+  unsigned configureScan(const nlohmann::json& scanKeys, XtcData::Xtc& xtc, const void* bufEnd) override;
+  unsigned stepScan     (const nlohmann::json& stepInfo, XtcData::Xtc& xtc, const void* bufEnd) override;
 
   Pds::TimingHeader* getTimingHeader(uint32_t index) const override
   {
@@ -158,7 +151,7 @@ public:
                            unsigned        threads,
                            const EventKernelArgs&) = 0;
 
-  virtual void issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
+  virtual void         issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
   virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only
   virtual unsigned     referenceBufCnt()  const { return 0; }       // Used in simulator mode only
 protected:
