@@ -3,6 +3,12 @@ on:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
+  pull_request:
+
+# A new push to a PR cancels that PR's run still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-lcls-ii:
