@@ -67,6 +67,9 @@ def epixuhr_gain_factors(serno, exp, run, modes):
         if ctype not in cons:
             continue
         nda, doc = cons[ctype]
+        if nda.ndim != 4 or nda.shape[-1] * nda.shape[-2] != shape[1]:
+            logging.error('epixuhr: %s of shape %s is not [modes][1][336][576]', ctype, nda.shape)
+            return None
         _log(ctype, doc, range(min(STATUS_MODES, nda.shape[0])))
         status = np.asarray(nda[:STATUS_MODES, 0], dtype=np.uint64).reshape(-1, shape[1])
         bad = np.bitwise_or.reduce(status, axis=0) & np.uint64(STATUS_BITS) != 0

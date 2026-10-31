@@ -57,7 +57,7 @@ def _select_for_run(docs, run):
         if rng is None or not (rng[0] <= run <= rng[1]):
             continue
         key = (rng[0], -rng[1], _tsec(doc))
-        if bestKey is None or key > bestKey:
+        if bestKey is None or key >= bestKey:   # On a tie the last, as psana's reversed scan picks
             best, bestKey = doc, key
     return best
 

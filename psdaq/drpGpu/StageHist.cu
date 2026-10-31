@@ -17,8 +17,8 @@ bool stageTimeMean(StageTime* const* time_d, unsigned n, uint64_t prev[2], doubl
     sum += sumCount[0];  count += sumCount[1];
   }
   auto const dSum{sum - prev[0]}, dCount{count - prev[1]};
+  if (!dCount)  return false;           // Keep prev: sum may already hold an uncounted event
   prev[0] = sum;  prev[1] = count;
-  if (!dCount)  return false;
   us = 1e-3 * double(dSum) / double(dCount);
   return true;
 }
