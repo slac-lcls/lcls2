@@ -276,7 +276,7 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
     return stageTimeMean(m_time_d.data(), m_time_d.size(), m_timePrev, us);
   });
 
-  return 0;
+  return m_algo ? m_algo->setupMetrics(exporter, labels) : 0;
 }
 
 bool Reducer::_setupAlgo(Detector& det)

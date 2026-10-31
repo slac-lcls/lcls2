@@ -99,6 +99,18 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   exporter->add("DRP_redErrors", labels, MetricType::Counter, [&](){ return m_metrics.reducerErrors; });
   exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
 
+  // Reduced size over input size, both excluding headers, for the events since the last scrape
+  m_metrics.reducedBytes = m_metrics.reducerInBytes = 0;
+  m_ratioPrev[0] = m_ratioPrev[1] = 0;
+  exporter->addFloat("DRP_redRatio", labels, [&](double& ratio){
+    uint64_t out = m_metrics.reducedBytes, in = m_metrics.reducerInBytes;
+    uint64_t dOut = out - m_ratioPrev[0], dIn = in - m_ratioPrev[1];
+    m_ratioPrev[0] = out;  m_ratioPrev[1] = in;
+    if (!dIn)  return false;
+    ratio = double(dOut) / double(dIn);
+    return true;
+  });
+
   return 0;
 }
 
@@ -266,6 +278,9 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 
   auto& drp = static_cast<PGPDrp&>(m_drp);
 
+  // The detector's data, one u16 or fp16 per calibrated float: DRP_redRatio's denominator
+  auto const inBytes = memPool.calibBufsSize() / sizeof(float) * sizeof(uint16_t);
+
   // Collect completion information from the reducer kernels in time order
   unsigned worker = 0;
   while (!m_terminate.load(std::memory_order_acquire)) {
@@ -358,6 +373,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
                           "payloadSize() is too small", dataSize, capacity, rt.index);
         abort();
       }
+      m_metrics.reducedBytes   += dataSize;
+      m_metrics.reducerInBytes += inBytes;
     }
     lStateMon = 5;
 
