@@ -76,8 +76,8 @@ public:
     }
     *index = tail;                                     // Caller now processes buffer at [tail]
     auto next = (tail+1) & m_capacityMask;
-    m_tail_d->store(next, memory_order_release);       // Orders the head cache for the next Reader stream
     m_tail_h->store(next, memory_order_release);       // Publish new tail
+    m_tail_d->store(next, memory_order_release);       // Last: admits the next Reader stream
     return true;
   }
 

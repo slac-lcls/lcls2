@@ -46,16 +46,22 @@ NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
       }
     }
   }
+
+  // Workers' graphs run concurrently, so each needs its own counters.  Allocated here
+  // because cudaMalloc isn't allowed while recordGraph()'s stream is capturing.
+  m_counters_d.resize(para.nworkers, nullptr);
+  for (auto& counters : m_counters_d) {
+    chkError(cudaMalloc(&counters, sizeof(*counters)));
+    chkError(cudaMemset( counters, 0, sizeof(*counters)));
+  }
 }
 
 NoOpReducer::~NoOpReducer()
 {
+  for (auto counters : m_counters_d)  chkError(cudaFree(counters));
 }
 
-static __device__ unsigned lErrCnt       = 0;
-//static __device__ unsigned lOutSz        = 0;
-static __device__ unsigned blockCount    = 0;
-static __shared__ bool     isLastBlockDone;
+static __shared__ bool isLastBlockDone;
 
 // GPU kernel for actually performing the data reduction
 // In this case, the calibrated data is just copied to the output buffer
@@ -68,6 +74,7 @@ void _reduce(unsigned* const        __restrict__ state,
              size_t    const                     dataBufsCnt,
              float     const* const __restrict__ refBuffers,
              unsigned  const                     refBufCnt,
+             NoOpCounters* const    __restrict__ counters,
              unsigned* const        __restrict__ retCode)
 {
   if (*state == 1) {
@@ -79,7 +86,7 @@ void _reduce(unsigned* const        __restrict__ state,
     float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
     for (unsigned i = tid; i < calibBufsCnt; i += stride) {
       if (ref && (calib[i] != ref[i])) {
-        atomicAdd(&lErrCnt, 1);
+        atomicAdd(&counters->errCnt, 1);
       }
       data[i] = calib[i];
       //atomicAdd(&lOutSz, sizeof(*data)); // @todo: Not working
@@ -88,7 +95,7 @@ void _reduce(unsigned* const        __restrict__ state,
     __syncthreads();    // Wait for all threads to complete so that thread 0 can't increment blockCount before they're done
     if (threadIdx.x == 0) {
       __threadfence();                                        // Ensure global memory is updated before the following
-      unsigned value = atomicInc(&blockCount, gridDim.x - 1); // Wraps to 0 for the next launch
+      unsigned value = atomicInc(&counters->blockCount, gridDim.x - 1); // Wraps to 0 for the next launch
       isLastBlockDone = (value == (gridDim.x - 1));           // Thread 0 determines if its block is the last block to be done
     }
     if (isLastBlockDone) {
@@ -98,8 +105,8 @@ void _reduce(unsigned* const        __restrict__ state,
         *extent = calibBufsCnt * sizeof(*data);
         //*extent  = lOutSz;              // @todo: This returns crazy values: why?
         //lOutSz   = 0;                   // Reset for next time
-        *retCode = lErrCnt;             // Count of mismatched elements
-        lErrCnt  = 0;                   // Reset for next time
+        *retCode = counters->errCnt;    // Count of mismatched elements
+        counters->errCnt = 0;           // Reset for next time
 
         // Advance to the next state
         *state = 2;
@@ -134,6 +141,12 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
   auto nThrs{tpSM/maxBpSM}; //{32}; // @todo: Find from green context
   auto nBlks{nSMs*maxBpSM}; //20*48;
   printf("*** NoOpReducer blocks %u * threads %u = %u threads\n", nBlks, nThrs, nBlks * nThrs);
+
+  if (m_nGraphs >= m_counters_d.size()) {
+    logging::critical("NoOpReducer: more graphs recorded than the %zu workers", m_counters_d.size());
+    abort();
+  }
+  auto const counters = m_counters_d[m_nGraphs++];      // Recorded once per worker, in order
   _reduce<<<nBlks, nThrs, 0, stream>>>(state_d,
                                        index_d,
                                        calibBuffers_d,
@@ -142,6 +155,7 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
                                        dataBufsCnt,
                                        m_refBufs_d,
                                        m_refBufCnt,
+                                       counters,
                                        retCode);
   chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
 }

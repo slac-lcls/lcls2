@@ -51,6 +51,7 @@ static void dumpStack()
 
 static void faultHandler(int sig)
 {
+  alarm(5);                             // backtrace() can deadlock on the unwinder's locks
   unsigned i = (sig == SIGBUS);
   if (write(STDERR_FILENO, lFaultMsg[i], lFaultLen[i])) {}
   dumpStack();
@@ -124,6 +125,7 @@ void initShutdownSignals(const std::string& alias, void (*shutdownAction)())
   sa.sa_flags = 0;                      // Not SA_RESTART: callers rely on EINTR to exit
 
   sigfillset(&sa.sa_mask);
+  sigdelset(&sa.sa_mask, SIGALRM);      // Default action kills a hung trace
   sa.sa_handler = faultHandler;
   for (auto sig : { SIGSEGV, SIGBUS })            sigaction(sig, &sa, nullptr);
 

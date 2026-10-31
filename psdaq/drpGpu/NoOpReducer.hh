@@ -2,9 +2,17 @@
 
 #include "ReducerAlgo.hh"
 
+#include <vector>
+
 
 namespace Drp {
   namespace Gpu {
+
+struct NoOpCounters
+{
+  unsigned errCnt;
+  unsigned blockCount;
+};
 
 class NoOpReducer : public ReducerAlgo
 {
@@ -27,8 +35,10 @@ public:
   unsigned configure(XtcData::Xtc&, const void* bufEnd) override;
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
-  float const* m_refBufs_d;
-  unsigned     m_refBufCnt;
+  float const*               m_refBufs_d;
+  unsigned                   m_refBufCnt;
+  std::vector<NoOpCounters*> m_counters_d;     // One per worker
+  unsigned                   m_nGraphs{0};
 };
 
   } // Gpu
