@@ -304,7 +304,7 @@ cuda_inc_dir = include_directories([
     ],
   )
 
-  SLEEKReducer_lib = shared_library('SLEEKReducer',
+  SleekReducer_lib = shared_library('SleekReducer',
     'SleekReducer.cu',
     include_directories: [drpgpu_inc_dir],
     install: true,
