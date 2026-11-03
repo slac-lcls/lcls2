@@ -14,7 +14,7 @@ import psana.detector.areadetector as ad
 AreaDetectorRaw, sgs, sys, is_none, is_true = ad.AreaDetectorRaw, ad.sgs, ad.sys, ad.ut.is_none, ad.ut.is_true
 
 
-class pv_raw_1_0_0(AreaDetectorRaw):
+class alvium_raw_1_0_0(AreaDetectorRaw):
     def __init__(self, *args, **kwargs): # **kwargs intercepted by AreaDetectorRaw
         super().__init__(*args, **kwargs)
         self._seg_geo =  None
@@ -27,7 +27,7 @@ class pv_raw_1_0_0(AreaDetectorRaw):
         #self._seg_geo = sgs.Create(segname=f'MTRX:{shape[0]}:{shape[1]}:{pixel_size_microns}:{pixel_size_microns}', detector=self)
         self._seg_geo = sgs.Create(segname='MTRXANY:V1', detector=self)
         self._seg_geo.init_matrix_parameters(shape=shape, pix_size_rcsd_um=pix_size_rcsd_um)
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-pv.data' # None
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-alvium.data' # None
 
     def _shape_as_daq(self):
         """this shape is taken from alvium.raw.raw..."""
@@ -50,10 +50,10 @@ class pv_raw_1_0_0(AreaDetectorRaw):
             return None
         #peds = self._calibconst['pedestals'][0]
         peds = self._pedestals() # - n-d pedestals
-        if is_none(peds, 'no pv pedestals', logger.warning):
+        if is_none(peds, 'no alvium pedestals', logger.warning):
             return raw
         if is_true(peds.shape != raw.shape,\
-                   f'incorrect pv pedestal shape: {peds.shape}, raw data shape: {raw.shape}',\
+                   f'incorrect alvium pedestal shape: {peds.shape}, raw data shape: {raw.shape}',\
                    logger_method=logger.warning):
             return raw
         arr = raw-peds
