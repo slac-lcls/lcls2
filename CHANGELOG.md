@@ -6,6 +6,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 ## [Unreleased]
 
 ### Added
+- add new detector alvium @msdubrovin [#271](https://github.com/slac-lcls/lcls2/pull/271)
 
 ### Changed
 
