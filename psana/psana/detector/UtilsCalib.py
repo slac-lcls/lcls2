@@ -718,7 +718,7 @@ def deploy_constants(dic_consts, **kwa):
         if deploy:
             detname = kwa['longname']
             resp = add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys)))
+            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys, ordered=False)))
             if resp:
                 #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
                 logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
