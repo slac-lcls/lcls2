@@ -145,7 +145,7 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
     logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_para->device);
   }
 
-  Alg alg("raw", 0, 0, 0);
+  Alg alg("raw", 1, 0, 0);               // 1.0.0: [336][576], as ePixUHR3x2 raw 1.0.0
   NamesId namesId(nodeId, EventNamesIndex);
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para->detName.c_str(), alg,

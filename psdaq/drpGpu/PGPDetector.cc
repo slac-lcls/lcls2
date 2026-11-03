@@ -822,8 +822,8 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
 
   // Split SM resources
   // The Reader and TrgInpGen each run a persistent graph, so each gets its own SMs
-  // rather than competing for one set.  The Reader's must match the SM count its
-  // _event grid is sized for in Reader::_recordGraph(); TrgInpGen needs only the minimum.
+  // rather than competing for one set.  The Reader sizes its _event grid from what its
+  // context actually gets; TrgInpGen needs only the minimum.
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
   const unsigned readerSMs{prop.maxThreadsPerMultiProcessor == 1536 ? 6u : 8u};
@@ -837,9 +837,17 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
     {.smCount=40,        .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
   const unsigned minSMs = initial_SM_resources.sm.minSmPartitionSize;
   const unsigned align  = initial_SM_resources.sm.smCoscheduledAlignment;
+  unsigned totalSMs{0};
   for (auto& group : group_params) {
     if (group.smCount < minSMs)  group.smCount = minSMs;
     if (align > 1)  group.smCount = ((group.smCount + align - 1) / align) * align;
+    totalSMs += group.smCount;
+  }
+  // The remainder goes to the recorder, so it must not be empty either
+  if (totalSMs + minSMs > unsigned(initial_SM_resources.sm.smCount)) {
+    logging::critical("Green contexts need %u SMs plus %u for the recorder, but the GPU has %d",
+                      totalSMs, minSMs, initial_SM_resources.sm.smCount);
+    abort();
   }
   chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 

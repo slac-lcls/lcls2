@@ -646,19 +646,13 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                             : m_pool.prescaleBuffers_d();
   auto const nRdrShft       = ffs(m_nReaders) - 1; // log2(nReaders)
 
-  // Determine how many processing resources to reserve for the Reader kernel
-  // @todo: The maybe should be done in PgpDetector in conjunction with the other components
+  // Size the grid to the SMs of the green context the Reader runs in
+  cudaDevResource ctxSMs{};
+  chkError(cudaExecutionCtxGetDevResource(m_ctx, &ctxSMs, cudaDevResourceTypeSm));
+  const unsigned nSMs = ctxSMs.sm.smCount;
   cudaDeviceProp prop;
-  chkError(cudaGetDeviceProperties(&prop, 0));
+  chkError(cudaGetDeviceProperties(&prop, m_pool.context().deviceNo()));
   const auto tpSM{prop.maxThreadsPerMultiProcessor};
-  unsigned nSMs;
-  switch (tpSM) {
-    case 1536:  nSMs = 6;  break;
-    case 2048:  nSMs = 8;  break;
-    default:
-      logging::critical("Unexpected number of threads per MultiProcessor %u", tpSM);
-      abort();
-  };
   // Slightly better times seem to be achieved when nPixels/stride is an integer
   // Adjusting nBlocks for this might lead to a partially used SM, but aim for
   // maximum occupancy of the SMs
