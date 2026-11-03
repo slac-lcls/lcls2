@@ -13,8 +13,8 @@ class QWRangeIntensity(QWRange):
 
 
     def set_edi_validators(self):
-        self.edi_from.setValidator(QRegExpValidator(QRegExp("[-+]?(\d*[.])?\d+|$"),self))
-        self.edi_to  .setValidator(QRegExpValidator(QRegExp("[-+]?(\d*[.])?\d+|$"),self))
+        self.edi_from.setValidator(QRegExpValidator(QRegExp(r"[-+]?(\d*[.])?\d+|$"),self))
+        self.edi_to  .setValidator(QRegExpValidator(QRegExp(r"[-+]?(\d*[.])?\d+|$"),self))
 
 
     def set_tool_tips(self):

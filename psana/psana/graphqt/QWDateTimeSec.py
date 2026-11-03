@@ -90,11 +90,11 @@ class QWDateTimeSec(QGroupBox):
 
         self.edi_sec_posix = QLineEdit('1400000000')
         #self.edi_sec_posix.setValidator(QIntValidator(0, 2000000000, parent=self))
-        self.edi_sec_posix.setValidator(QRegExpValidator(QRegExp('-?\d+'), parent=self))
+        self.edi_sec_posix.setValidator(QRegExpValidator(QRegExp(r'-?\d+'), parent=self))
 
         self.edi_sec_lcls2 = QLineEdit('0')
         #self.edi_sec_lcls2.setValidator(QIntValidator(-self.epoch_offset_sec, 2000000000, parent=self))
-        self.edi_sec_lcls2.setValidator(QRegExpValidator(QRegExp('-?\d+'), parent=self))
+        self.edi_sec_lcls2.setValidator(QRegExpValidator(QRegExp(r'-?\d+'), parent=self))
 
         self.set_date_time_fields() # current time by df
         self.set_tsec()

@@ -214,7 +214,7 @@ def cbits_config_segment_3x2(cob):
 
 
 def bit_opers_3x2_raw(a):
-    """bit operations for raw data - do not shift data, just apply 12-bit mask.
+    r"""bit operations for raw data - do not shift data, just apply 12-bit mask.
        The ePixUHR3x2, when not using "gain expansion" transmits the data as 12
        bits, in a 16 bit integer. The layout of this 16-bit word data is:
 

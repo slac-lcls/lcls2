@@ -1,4 +1,4 @@
-"""
+r"""
    This script creates a model set of sequencing instructions for the MFX Coyote experiment
    The sequencer instructions used are:
      ACRateSync( <timeslot mask>, <rate marker>, <num occurrences> )

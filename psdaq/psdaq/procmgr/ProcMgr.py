@@ -467,7 +467,7 @@ class ProcMgr:
             # --- evr (optional) ---
             self.evr = None
             if 'evr' in entry:
-                match = re.match('^(\d)\,(\d)(\d)?$', entry['evr'])
+                match = re.match(r'^(\d)\,(\d)(\d)?$', entry['evr'])
                 if match:
                     self.evr = match.group()
                 else:
@@ -1207,7 +1207,7 @@ class ProcMgr:
                         except EOFError:
                             response = b""
                         # search for error code after "return="
-                        m = re.search(b'(?<=return=)\d+', response)
+                        m = re.search(rb'(?<=return=)\d+', response)
                         if m is not None:
                             printError(int(m.group(0)), args)
 
