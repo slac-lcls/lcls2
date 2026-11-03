@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <string.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -49,18 +50,29 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
   if (test_tmo_env) {
     tmo = std::atoi(test_tmo_env);
   }
+  int lastErr = 0;
   auto start = std::chrono::steady_clock::now();
   while(1) {
     queue = mq_open(name, flags, perms, &mymq_attr);
     if (queue == (mqd_t)-1) {
+      int err = errno;
       if (!lwait) {
-        printf("Failed to open queue %s\n",name);
+        printf("Failed to open queue %s: %s\n",name,strerror(err));
         break;
       }
-      if (first) {
+      if (first && err == ENOENT) {
         first = false;
         printf("Waiting for queue %s to appear\n",name);
       }
+      // ENOENT is expected until the server is up; anything else won't clear on its own
+      if (err != ENOENT && err != lastErr) {
+        printf("Opening queue %s failed: %s\n",name,strerror(err));
+        if (err == EACCES)
+          printf("  Check the queue's owner and permissions: ls -l /dev/mqueue%s\n",name);
+        else if (err == EMFILE)
+          printf("  The open file limit (ulimit -n) was reached\n");
+      }
+      lastErr = err;
       if (tmo) {
         auto now = std::chrono::steady_clock::now();
         if (now - start >= std::chrono::seconds(tmo)) {
@@ -488,6 +500,7 @@ int ShmemClient::connect(const char* tag, int tr_index) {
   delete[] qname;
 
   if (error) {
+    fflush(stdout);                     // Keep buffered stdout ahead of stderr in logs
     fprintf(stderr, "Could not open at least one message queue!\n");
     fprintf(stderr, "tag %s, tr_index %d, ev_index %d\n",tag,tr_index,ev_index);
     return error;
