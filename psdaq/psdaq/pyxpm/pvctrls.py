@@ -6,6 +6,7 @@ import socket
 import struct
 import datetime
 import math
+import logging
 from p4p.nt import NTScalar
 from p4p.server.thread import SharedPV
 from psdaq.pyxpm.pvseq import *

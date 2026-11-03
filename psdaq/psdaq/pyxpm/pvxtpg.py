@@ -39,7 +39,7 @@ class PVMmcm(PVHandler):
 
     def update(self,timev):
         while self._dev.nready.get()==1 and self._cuMode:
-            logging.info('Waiting for phase lock: {}',self._dev)
+            logging.info(f'Waiting for phase lock {self._dev}')
             time.sleep(1)
         logging.info(f'Locked: {self._dev}')
 

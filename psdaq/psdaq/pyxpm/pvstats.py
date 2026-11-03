@@ -606,6 +606,7 @@ class PVStats(object):
 
         self._pathTimer = [PathTimer(name, xpm, i) for i in range(8)]
 
+        self._linkUpCb = None
 #        self._mmcm = []
 #        for i,m in enumerate(xpm.mmcms):
 #            self._mmcm.append(PVMmcmPhaseLock(name+':XTPG:MMCM%d'%i,m))
@@ -617,11 +618,12 @@ class PVStats(object):
         self._linkUpCb = cb
         
     def cuLinkUp(self):
-        self._linkUpCb()
-        pass
+        if self._linkUpCb:
+            self._linkUpCb()
 
     def usLinkUp(self):
-        self._linkUpCb()
+        if self._linkUpCb:
+            self._linkUpCb()
         self.updatePaddr()
 
     def updatePaddr(self):
