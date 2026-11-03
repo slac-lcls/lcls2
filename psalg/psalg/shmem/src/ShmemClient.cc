@@ -80,6 +80,7 @@ static mqd_t _openQueue(const char* name, unsigned flags, unsigned perms,
           break;
         }
       }
+      fflush(stdout);                   // Show the reason in logs while retrying indefinitely
       sleep(1);
     }
     else {
