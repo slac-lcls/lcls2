@@ -7,6 +7,8 @@
 #include "psdaq/aes-stream-drivers/GpuAsyncUser.h"
 
 #include <cuda_runtime.h>
+#include <string>
+#include <vector>
 
 namespace Drp {
   namespace Gpu {
@@ -151,6 +153,9 @@ public:
                            unsigned        threads,
                            const EventKernelArgs&) = 0;
 
+  // Messages for the operator from the last transition, e.g. calibration defaults used
+  std::vector<std::string> takeWarnings()  { return std::move(m_warnings); }
+
   virtual void         issuePhase2(XtcData::TransitionId::Value) {} // Used in simulator mode only
   virtual float const* referenceBuffers() const { return nullptr; } // Used in simulator mode only
   virtual unsigned     referenceBufCnt()  const { return 0; }       // Used in simulator mode only
@@ -163,6 +168,7 @@ protected:
 protected:
   Drp::Detector* m_det;
   bool           m_passthru{false};     // See setPassthru()
+  std::vector<std::string> m_warnings;  // See takeWarnings()
 };
 
   } // Gpu

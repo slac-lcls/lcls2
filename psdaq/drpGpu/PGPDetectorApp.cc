@@ -477,6 +477,9 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
         unsigned error = m_det->beginrun(xtc, bufEnd, phase1Info);
+        for (auto const& warning : m_det->takeWarnings()) {
+            reply(createAsyncWarnMsg(m_para.alias, warning));
+        }
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::beginrun()";
             body["err_info"] = errorMsg;
