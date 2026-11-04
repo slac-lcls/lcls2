@@ -330,6 +330,16 @@ void EventBuilder::_retire(EbEvent* event)
 {
   event->disconnect();
 
+  const EbDgram* creator = event->creator();
+  if (creator->pulseId() != event->sequence()) [[unlikely]]
+  {
+    fprintf(stderr, "%s:\n  Creator buffer overwritten before retirement: "
+            "event PID %014lx, buffer now holds %s PID %014lx, src %u @ %p, remaining %016lx, contract %016lx\n",
+            __PRETTY_FUNCTION__, event->sequence(), TransitionId::name(creator->service()),
+            creator->pulseId(), creator->xtc.src.value(), creator, event->_remaining, event->_contract);
+    throw "Fatal: creator buffer overwritten";
+  }
+
   process(event);
 
   auto age{fast_monotonic_clock::now(CLOCK_MONOTONIC) - event->_t0};
