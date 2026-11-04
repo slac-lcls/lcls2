@@ -32,6 +32,7 @@ EbEvent::EbEvent(uint64_t            contract,
                  const EbDgram*      cdg,
                  unsigned            immData,
                  const time_point_t& t0) :
+  _pid     (cdg->pulseId()),
   _contract(contract),
   _t0      (t0),
   _immData (immData),                   // May be 0 (invalid), else valid
@@ -84,10 +85,10 @@ EbEvent* EbEvent::_add(const EbDgram* cdg, unsigned immData)
   if (_remaining == remaining)          // Make sure some bit was taken down
   {
     fprintf(stderr, "%s:\n  Source %u didn't affect remaining %016lx "
-            "for %s @ %p, PID %014lx, RoGs %04hx, contract %016lx\n",
+            "for %s @ %p, PID %014lx, RoGs %04hx, contract %016lx, creator PID %014lx\n",
             __PRETTY_FUNCTION__, cdg->xtc.src.value(), remaining,
             TransitionId::name(cdg->service()), cdg, cdg->pulseId(),
-            cdg->readoutGroups(), _contract);
+            cdg->readoutGroups(), _contract, creator()->pulseId());
     throw "Fatal: _remaining == remaining";
   }
 
