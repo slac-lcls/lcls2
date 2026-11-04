@@ -125,8 +125,16 @@ def test_beginstep_updates_after_drain_and_endrun_finishes_once(
         return samples
 
     def transition(service):
-        dg = NS(timestamp=lambda: 999999, service=lambda: service)
-        return list(m._process_batch({}, {}, {0: ([(service, [dg])], [])}))
+        # Yielded rather than dispatched since #153 PR B step 4, so stand in
+        # for run.events() and keep `dispatch`'s released/drained assertions.
+        dg = NS(timestamp=lambda: 999999, service=lambda s=service: s)
+        out = []
+        for envelope in m._process_batch({}, {}, {0: ([(service, [dg])], [])}):
+            if envelope.gpu_state is None:
+                dispatch(envelope.dgrams)
+                continue
+            out.append(envelope)
+        return out
 
     try:
         assert process(case.packet) == list(range(99, 1000, 100))

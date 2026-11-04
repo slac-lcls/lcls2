@@ -14,7 +14,13 @@ pytestmark = [pytest.mark.gpu, pytest.mark.skipif(
     not _gpu_available(), reason='no CUDA device available')]
 
 
-@pytest.mark.parametrize('service', [TransitionId.BeginStep, TransitionId.EndRun])
+# EndRun only. This body's subject is draining active work before the
+# transition is handed over, and since #153 PR B step 4 a BeginStep no
+# longer drains -- each subbatch carries its own StepScope, so the next
+# step's work may be submitted while the previous step's is in flight.
+# test_gpu_steps_device.py::test_a_beginstep_does_not_drain_the_pool
+# covers that new contract.
+@pytest.mark.parametrize('service', [TransitionId.EndRun])
 def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypatch, service):
     import cupy as cp
     _, detector, _, specs, expected, owner = fixture_inputs(cp)
@@ -70,9 +76,14 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
         m.dsparms.calibconst['camera']['gain'][...] = 2
         order.append('dispatch')
     m.run = NS(_handle_transition=dispatch)
-    dg = NS(service=lambda: service)
+    dg = NS(service=lambda s=service: s)
     try:
-        assert list(m._handle_steps({0: ([(service, [dg])], [])})) == []
+        # Since #153 PR B step 4 the manager yields the transition rather
+        # than dispatching it, so the consumer stands in for run.events().
+        # The drain assertions above still hold -- they just run here.
+        for envelope in m._handle_steps({0: ([(service, [dg])], [])}):
+            assert envelope.gpu_state is None, 'a transition carries no GPU state'
+            dispatch(envelope.dgrams)
         assert order == ['consumer'] * len(windows) + ['dispatch']
         np.testing.assert_array_equal(copied.get(), expected[0])
         assert cp.asnumpy(copied_gain) == cp.asnumpy(old_gain) == 1

@@ -214,7 +214,45 @@ def test_parallel_iterator_close_drains_gpu_manager(monkeypatch):
              start=lambda **kwargs: iter((envelope,)),
              _handle_transition=lambda dgrams: False,
              _materialize_event=lambda env: env)
+    # Setup and teardown are shared with _steps_impl now, so the stand-in
+    # needs them bound; they are part of the contract _events_impl relies on.
+    run._open_gpu_manager = lambda: mpi_ds.RunParallel._open_gpu_manager(run)
+    run._close_gpu_manager = lambda it, mgr: mpi_ds.RunParallel._close_gpu_manager(
+        run, it, mgr)
     iterator = mpi_ds.RunParallel._events_impl(run)
     assert next(iterator) is envelope
     iterator.close()
     assert closed == [True]
+
+
+def test_parallel_steps_iterator_close_drains_gpu_manager(monkeypatch):
+    """The same ownership contract for steps() as for events().
+
+    RunParallel.steps() used to return immediately on a GPU BD rank, so there
+    was nothing to close. It now shares _events_impl's teardown, and an
+    abandoned steps() loop must release the manager (issue #153, GPU-140-03).
+    """
+    from psana.psexp import mpi_ds
+    from psana.psexp import TransitionId
+    monkeypatch.setattr(mpi_ds, 'nodetype', 'bd')
+    closed = []
+    manager = NS(close=lambda: closed.append(True))
+    begin = NS(timestamp=lambda: 900,
+               service=lambda: TransitionId.BeginStep,
+               env=lambda: TransitionId.BeginStep << 24)
+    envelope = NS(dgrams=[begin], gpu_state=None)
+    run = NS(dsparms=NS(gpu_enabled=True),
+             _make_gpu_event_manager=lambda: manager,
+             start=lambda **kwargs: iter((envelope,)),
+             _update_envstore_from_dgrams=lambda dgrams: None,
+             _materialize_event=lambda env: env,
+             _run_ctx=object(),
+             esm=None)
+    run._open_gpu_manager = lambda: mpi_ds.RunParallel._open_gpu_manager(run)
+    run._close_gpu_manager = lambda it, mgr: mpi_ds.RunParallel._close_gpu_manager(
+        run, it, mgr)
+    iterator = mpi_ds.RunParallel._steps_impl(run)
+    step = next(iterator)
+    assert step.evt is envelope, 'one BeginStep, so one Step'
+    iterator.close()
+    assert closed == [True], 'abandoning steps() must close the manager'

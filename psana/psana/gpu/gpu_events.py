@@ -242,6 +242,11 @@ class GpuEventManager:
             from .gpu_d2h import PublicationD2H, DEFAULT_PINNED_BYTES
             self._output_d2h = PublicationD2H(getattr(dsparms, 'gpu_d2h_pinned_bytes', DEFAULT_PINNED_BYTES))
         self._step_generation = 0
+        # Timestamp of the latest BeginStep applied. Paired with
+        # _step_generation so a replayed BeginStep -- smd0 and the EB prepend
+        # missing history to every recipient -- does not advance the
+        # generation twice (issue #153, GPU-148-01).
+        self._step_begin_ts = 0
         self.event_pool = None
         self.gpu_reader = None
         self.gpu_xtc_configs = None
@@ -501,14 +506,13 @@ class GpuEventManager:
                 )
             )
             # Configure may describe event algorithms for which psana has no
-            # CPU detector class.  Keep those fields available through the
+            # CPU detector class. Those fields stay available through the
             # detector-independent parser interface; only Configure payloads
-            # themselves are outside the event-field contract.
-            field_handles_by_name = {
-                key: handles
-                for key, handles in field_handles_by_name.items()
-                if key[0] != "config"
-            }
+            # themselves are outside the event-field contract, and
+            # detector_field_handles() now omits them at the source rather
+            # than leaving this caller to drop them afterwards -- filtering
+            # here was too late to stop a re-declared config field from
+            # aborting setup.
             for handles in field_handles_by_name.values():
                 xtc_field_handles.extend(handles.values())
 
@@ -655,8 +659,15 @@ class GpuEventManager:
             events.append(AdmissionEvent(streams, prepared_bytes))
         return events
 
-    def _split_subbatches(self, gpu_view) -> list:
-        """Admit complete events; fail before I/O when a minimum event cannot fit."""
+    def _split_subbatches(self, gpu_view, scope=None) -> list:
+        """Admit complete events; fail before I/O when a minimum event cannot fit.
+
+        `scope` is the StepScope planned for this view's events, attached to
+        every subbatch so submission does not have to re-read the manager's
+        generation after it has moved on (issue #153, GPU-148-01). One scope
+        for all of them: gpu_plan.plan_packet raises if a packet's events
+        straddle a step boundary, so there is nothing to split on here.
+        """
         if getattr(self, '_group_inputs', None) is not None:
             from .gpu_group_schedule import GroupReadSchedule
             self._group_schedule = GroupReadSchedule(
@@ -666,7 +677,7 @@ class GpuEventManager:
                 parser_bytes=self.gpu_xtc_parser.estimate_batch_bytes(1) + 24,
                 depth=self.event_pool.depth,
                 target_bytes=getattr(self.dsparms, "gpu_bulk_target_bytes", 1 << 20))
-            return [GpuSubbatchView(gpu_view, a, b)
+            return [GpuSubbatchView(gpu_view, a, b, scope=scope)
                     for a, b in self._group_schedule.execution_ranges]
         from .gpu_admission import plan_admission
         parser = getattr(self, 'gpu_xtc_parser', None)
@@ -678,7 +689,7 @@ class GpuEventManager:
             max_inflight=max(1, getattr(getattr(self, 'dsparms', None), 'n_gpu_streams', 1)),
         )
         self._last_admission_plan = plan
-        return [GpuSubbatchView(gpu_view, start, end)
+        return [GpuSubbatchView(gpu_view, start, end, scope=scope)
                 for start, end in plan.execution_ranges]
 
     def _input_allocation_requirements(self, read_view, slot):
@@ -755,9 +766,35 @@ class GpuEventManager:
                 self._has_gpu_batch_iter = hasattr(self._batch_iter, "next_with_gpu")
 
     def _dispatch_transition(self, service, dgrams):
-        self.run._handle_transition(dgrams)
+        # The CPU EnvStore update is NOT done here any more: the transition is
+        # yielded to the consumer instead, and every consumer already calls
+        # run._handle_transition() for each non-L1 envelope it receives --
+        # Run.events() (run.py), RunParallel._events_impl() (mpi_ds.py) and
+        # RunShmem.events(). Doing it here as well applied it before the
+        # events it follows had been delivered, which is the second half of
+        # GPU-148-01 (issue #153).
+        #
+        # What stays here is the generation bookkeeping, which must advance
+        # before the NEXT packet is planned.
         if service == TransitionId.BeginStep:
-            self._step_generation = getattr(self, '_step_generation', 0) + 1
+            # Advance on a NEW BeginStep only. Replayed history repeats one
+            # this BD already applied, and incrementing per record seen made
+            # the generation diverge between BDs (issue #153, GPU-148-01).
+            # Matches gpu_plan.plan_packet, which must agree with this.
+            #
+            # A dgram with no usable timestamp still advances the generation:
+            # first_timestamp() raises on one, and several tests dispatch
+            # fakes that carry no timestamp. Losing the replay guard for
+            # those is the safe direction -- it restores the old behaviour --
+            # whereas raising here would reject records the old code accepted.
+            try:
+                timestamp = utils.first_timestamp(dgrams)
+            except Exception:
+                timestamp = None
+            if timestamp is None or timestamp > getattr(self, '_step_begin_ts', 0):
+                self._step_generation = getattr(self, '_step_generation', 0) + 1
+                if timestamp is not None:
+                    self._step_begin_ts = timestamp
         # No constant refresh here. One constant set per run is the supported
         # model and BeginStep does not fetch the calibration DB, so a rescan
         # could only find the values already uploaded at setup. Re-uploading
@@ -768,6 +805,42 @@ class GpuEventManager:
         # The transition handling above stays: other GPU work depends on the
         # step generation and on _handle_steps having drained the execution
         # and input consumers.
+
+    def _packet_transitions(self, step_dict):
+        """Non-L1 records from the packet, in order, with their dgrams."""
+        return [
+            transition
+            for packet, _ in step_dict.values()
+            for transition in _iter_step_events(packet, self.configs)
+            # `is not None`, not truthiness: service 0 is ClearReadout and
+            # must fence reads.
+            if transition[0] is not None and not TransitionId.isEvent(transition[0])
+        ]
+
+    def _plan_packets(self, gpu_views, transitions):
+        """Step scope for each GPU view's events, before any is applied.
+
+        Returns {id(gpu_view): PacketPlan}. The generation carried forward is
+        the manager's own, so a transition-only packet still advances it for
+        the next one.
+        """
+        from .gpu_plan import plan_packet
+        # getattr: _task_submission() is likewise tolerant here, and several
+        # tests drive the manager with a SimpleNamespace run that carries no
+        # runnum. The scope's identity is its index; run only qualifies it.
+        # Doubly guarded: tests build the manager with __new__, so `run` may
+        # be absent entirely, not merely lack runnum.
+        runnum = getattr(getattr(self, 'run', None), 'runnum', None)
+        # getattr throughout: tests construct the manager without __init__,
+        # which is why _dispatch_transition reads the generation the same way.
+        plans = {}
+        for gpu_view in gpu_views:
+            plan = plan_packet(
+                gpu_view, transitions, run=runnum,
+                generation=getattr(self, '_step_generation', 0),
+                begin_ts=getattr(self, '_step_begin_ts', 0))
+            plans[id(gpu_view)] = plan
+        return plans
 
     def _handle_steps(self, step_dict):
         end_run_seen = False
@@ -788,7 +861,14 @@ class GpuEventManager:
                     continue
                 pending_transitions.append((service, dgrams))
 
-        needs_drain = any(service in (TransitionId.BeginStep, TransitionId.EndRun) for service, _ in pending_transitions)
+        # EndRun only. A BeginStep no longer drains: each subbatch carries its
+        # own StepScope (issue #153), so work from the previous step does not
+        # need to be finished before the next step's work is submitted. That
+        # removes the pipeline bubble at every step boundary, which is the
+        # point of #153's Design 1. EndRun still drains -- it ends the stream,
+        # and log_memory/log_high_water below report steady state.
+        needs_drain = any(service == TransitionId.EndRun
+                          for service, _ in pending_transitions)
         if needs_drain:
             yield from self._flush_event_pool()
             # Group input leases transfer completion to deferred windows. An
@@ -807,7 +887,72 @@ class GpuEventManager:
                     pass
             self._dispatch_transition(service, dgrams)
 
+        # Queued rather than dispatched. Each entry records how many
+        # submissions must have RETIRED before it may be yielded; until
+        # _reposition_transitions() is told otherwise, that is the count as of
+        # now -- nothing of this packet precedes it. A caller that goes on to
+        # submit events ahead of a transition repositions it there.
+        queued = self._queued_transitions = getattr(
+            self, '_queued_transitions', [])
+        base = getattr(self, '_submit_seq', 0)
+        first_new = len(queued)
+        for service, dgrams in pending_transitions:
+            queued.append((base, service, dgrams))
+        self._new_transitions = slice(first_new, len(queued))
+
+        # Nothing is in flight, so no retirement will release them later.
+        # getattr throughout: tests build the manager with __new__ and may
+        # set neither the pool nor its full surface.
+        if not getattr(getattr(self, 'event_pool', None), 'active_count', 0):
+            yield from self._release_transitions()
+
         return end_run_seen
+
+    def _reposition_transitions(self, placements, subbatches):
+        """Move this packet's queued transitions behind the events they follow.
+
+        `placements` is PacketPlan.transitions -- (service, dgrams, timestamp,
+        n_events_before) -- and `subbatches` the submissions about to be made.
+
+        Sequence numbers are absolute, not per packet, because the EventPool
+        is pipelined: a subbatch submitted now does not retire until a later
+        one, so its events are delivered after this returns. The queue
+        therefore outlives the packet.
+        """
+        queued = getattr(self, '_queued_transitions', None)
+        window = getattr(self, '_new_transitions', None)
+        if not queued or window is None:
+            return
+        entries = queued[window]
+        if len(entries) != len(placements):
+            # The caller decoded a different set than _handle_steps did; leave
+            # the conservative "due now" positions rather than guess.
+            return
+        base = getattr(self, '_submit_seq', 0)
+        for i, (_service, _dgrams, _ts, n_before) in enumerate(placements):
+            seq, service, dgrams = entries[i]
+            # Submissions wholly before this transition's position. A leading
+            # transition (n_before == 0) waits for none; a trailing one for all.
+            ahead = sum(1 for sb in subbatches
+                        if getattr(sb, '_end', 0) <= n_before)
+            queued[window.start + i] = (base + ahead, service, dgrams)
+        queued.sort(key=lambda entry: entry[0])
+        self._new_transitions = None
+
+    def _release_transitions(self):
+        """Yield transitions whose preceding events have all been delivered.
+
+        gpu_state is None: a transition carries no GPU result. Consumers
+        already handle this -- they call run._handle_transition() for any
+        non-L1 envelope and never touch gpu_state for one.
+        """
+        queued = getattr(self, '_queued_transitions', None)
+        if not queued:
+            return
+        retired = getattr(self, '_retire_seq', 0)
+        while queued and queued[0][0] <= retired:
+            _, _service, dgrams = queued.pop(0)
+            yield EventEnvelope(dgrams=list(dgrams), gpu_state=None)
 
     def _attach_gpu(self, envelope, gpu_results, leases=None,
                     pending_d2h=None, cached_cpu_results=None,
@@ -837,6 +982,7 @@ class GpuEventManager:
                     record = self._submit_per_dgram_gpu(subbatch, gpu_read, event_envelopes)
         finally:
             self._close_gpu_reservation()
+        self._submit_seq = getattr(self, '_submit_seq', 0) + 1
         output_d2h = getattr(self, '_output_d2h', None)
         if output_d2h is not None:
             try:
@@ -854,15 +1000,24 @@ class GpuEventManager:
         return self.event_pool.submit(
             subbatch, gpu_read, event_envelopes, getattr(self, "input_preparers", {}),
             xtc_parser=self.gpu_xtc_parser,
-            batch_id=getattr(self, "_input_batch_id", 0), **self._task_submission())
+            batch_id=getattr(self, "_input_batch_id", 0),
+            **self._task_submission(getattr(subbatch, 'scope', None)))
 
-    def _task_submission(self):
+    def _task_submission(self, scope=None):
         task = getattr(self, '_gpu_task', None)
         if task is None:
             return {}
+        # The subbatch's own scope, not self._step_generation: _handle_steps
+        # has already applied this packet's transitions by now, so the
+        # manager's generation has moved past a trailing BeginStep that these
+        # events precede (issue #153, GPU-148-01). Fall back to the manager
+        # only when nothing planned a scope.
+        generation = (scope.index if scope is not None
+                      else getattr(self, '_step_generation', 0))
         return dict(task=task, detector_bindings=self.gpu_detector_bindings,
                     task_constants=self._task_constants,
-                    run=self.run.runnum, step_generation=self._step_generation)
+                    run=self.run.runnum, step_generation=generation,
+                    step_scope=scope)
 
     def _submit_group_gpu(self, subbatch, pending, event_envelopes):
         inputs = self._group_inputs
@@ -882,7 +1037,7 @@ class GpuEventManager:
             return self.event_pool.submit(
                 subbatch, None, event_envelopes, getattr(self, "input_preparers", {}),
                 batch_id=self._input_batch_id, input_windows=windows, input_uses=uses,
-                **self._task_submission())
+                **self._task_submission(getattr(subbatch, 'scope', None)))
         finally:
             error = None
             for use in transferred:
@@ -926,6 +1081,10 @@ class GpuEventManager:
     def _yield_ready(self, ready, device_released=False):
         if ready is None:
             return
+        # One submission has now retired. Counted before its events are
+        # yielded so a transition positioned after them is released by the
+        # trailing _release_transitions() below, in the same call.
+        self._retire_seq = getattr(self, '_retire_seq', 0) + 1
         # Log after the first batch: slot buffers have grown to their
         # initial sizes so this shows the steady-state allocation.
         if not self._first_batch_logged and ready.event_envelopes:
@@ -952,6 +1111,9 @@ class GpuEventManager:
                 ).get(ts)),
                 device_released=device_released,
             )
+        # In record order: any transition that followed these events is due
+        # now that they have been delivered.
+        yield from self._release_transitions()
 
     def _issue_gpu_read(self, subbatch, slot_id):
         """Issue and own the single read allowed ahead of CPU processing."""
@@ -1025,6 +1187,16 @@ class GpuEventManager:
         with closing(self.event_pool.flush()) as slots:
             for slot_data in slots:
                 yield from self._yield_ready(slot_data)
+        # Every submission has retired, so nothing is still waiting on one.
+        # Release the rest unconditionally, or a transition queued behind a
+        # submission that the flush consumed would never be delivered -- the
+        # EndRun envelope among them, since EndRun drains before it is
+        # queued.
+        queued = getattr(self, '_queued_transitions', None)
+        if queued:
+            self._retire_seq = max(getattr(self, '_retire_seq', 0),
+                                   max(seq for seq, _, _ in queued))
+            yield from self._release_transitions()
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
         n_events = self._n_events
@@ -1033,21 +1205,19 @@ class GpuEventManager:
                 self._input_batch_id = getattr(self, "_input_batch_id", 0) + 1
                 gpu_views = [GpuBatchView(packet, validate=True)
                              for packet, _ in gpu_batch_dict.values()]
+                transitions = self._packet_transitions(step_dict)
                 if getattr(getattr(self, "dsparms", None), "gpu_bulk_read", False):
                     if len(gpu_views) > 1:
                         raise ValueError("bulk reads require one coherent GPUBAT1 packet")
-                    transitions = [
-                        transition
-                        for packet, _ in step_dict.values()
-                        for transition in _iter_step_events(packet, self.configs)
-                        # `is not None`, not truthiness: service 0 is
-                        # ClearReadout and must fence reads.
-                        if transition[0] is not None and not TransitionId.isEvent(transition[0])
-                    ]
                     self._gpu_read_files = self._gpu_file_epochs.resolve(
                         [d for view in gpu_views for d in view.iter_read_descs(self.dm)],
                         transitions,
                     )
+                # Resolved BEFORE _handle_steps, which applies the packet's
+                # transitions and so advances the generation. Events recorded
+                # before a trailing BeginStep belong to the step that was open
+                # when they arrived, not to the one it opens (GPU-148-01).
+                packet_plans = self._plan_packets(gpu_views, transitions)
                 end_run_seen = yield from self._handle_steps(step_dict)
 
                 # ── Phase 3: GPU path — split batch into subbatches ──────────
@@ -1061,7 +1231,20 @@ class GpuEventManager:
                 for gpu_view in gpu_views:
                     if not gpu_view.has_work:
                         continue
-                    all_subbatches.extend(self._split_subbatches(gpu_view))
+                    plan = packet_plans.get(id(gpu_view))
+                    all_subbatches.extend(self._split_subbatches(
+                        gpu_view, plan.scope if plan is not None else None))
+
+                # _handle_steps queued this packet's transitions as "due now".
+                # Reposition them behind the events they actually follow,
+                # before any submission advances _submit_seq.
+                for gpu_view in gpu_views:
+                    plan = packet_plans.get(id(gpu_view))
+                    if plan is not None:
+                        self._reposition_transitions(
+                            plan.transitions,
+                            [sb for sb in all_subbatches
+                             if sb._parent is gpu_view])
 
                 if all_subbatches:
                     first_pending = (
