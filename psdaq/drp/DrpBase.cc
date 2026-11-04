@@ -477,6 +477,10 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nTmgHdrError(0),
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0),
+    m_nLaneStalls (0),
+    m_stallEvtCtr (0),
+    m_stallChecks (0),
+    m_stallReported(false),
     m_dmaOverrun  (false)
 {
     // Ensure there are more DMA buffers than the size of the batch used to free them
@@ -489,6 +493,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_pfd.fd = pool.fd();
     m_pfd.events = POLLIN;
     m_t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
+    m_tStallCheck = m_t0;
 
     pool.resetCounters();
     memset(m_lastData, 0, 24);
@@ -730,6 +735,40 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     }
 
     return nullptr;                     // Event is still incomplete
+}
+
+// Called while no DMAs arrive.  With every DMA buffer held by events still missing a
+// lane, the reader stalls without any other error, so name the missing lanes once.
+void PgpReader::checkLaneStall()
+{
+    static const unsigned  StallChecks = 10;      // Partial for this many periods...
+    static const ms_t      Period{100};           // ...of this length is a stall
+
+    if (__builtin_popcount(m_para.laneMask) < 2)  return;
+
+    auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC_COARSE);
+    if (now - m_tStallCheck < Period)  return;
+    m_tStallCheck = now;
+
+    uint32_t evtCtr = (m_lastComplete + 1) & EvtCtrMask;
+    const PGPEvent& event = m_pool.pgpEvents[evtCtr & (m_pool.nDmaBuffers() - 1)];
+    if (event.mask == 0 || event.mask == m_para.laneMask || evtCtr != m_stallEvtCtr) {
+        m_stallEvtCtr   = evtCtr;               // Nothing partial yet, or progress was made
+        m_stallChecks   = 0;
+        m_stallReported = false;
+        return;
+    }
+    if (++m_stallChecks < StallChecks || m_stallReported)  return;
+
+    unsigned lane = __builtin_ctz(event.mask);  // Any lane that arrived has the header
+    const auto* th = reinterpret_cast<const Pds::TimingHeader*>(m_pool.dmaBuffers[event.buffers[lane].index]);
+    logging::error("PGPReader: Stalled for over %lld ms on evtCounter %u (pulseId %014lx): "
+                   "lanes 0x%02x of 0x%02x arrived, missing 0x%02x; %ld DMA buffers in user, %ld in hw",
+                   (long long)(StallChecks * Period.count()), evtCtr, th->pulseId(),
+                   event.mask, m_para.laneMask, m_para.laneMask & ~event.mask,
+                   (long)nPgpInUser(), (long)nPgpInHw());
+    m_stallReported = true;
+    ++m_nLaneStalls;
 }
 
 std::chrono::nanoseconds PgpReader::age(const TimeStamp& time) const {

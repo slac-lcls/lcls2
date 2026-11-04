@@ -518,6 +518,8 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                   [&](){return m_pgp.nPgpJumps();});
     exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                   [&](){return m_pgp.nNoTrDgrams();});
+    exporter->add("drp_num_lane_stalls", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nLaneStalls();});
 
     exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
     exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
@@ -596,6 +598,7 @@ void PGPDrp::reader()
                         m_batch.l1count += pendingL1;
                         pendingL1 = 0;
                     }
+                    m_pgp.checkLaneStall();
                 }
             }
         }
