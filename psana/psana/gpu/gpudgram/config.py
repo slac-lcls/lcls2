@@ -642,6 +642,16 @@ class GpuStreamConfigTable:
                 or names.det_name != det_name
                 or names.segment not in segments
                 or (alg_names is not None and names.alg_name not in alg_names)
+                # Configure payloads are outside the event-field contract, and
+                # the only caller discards every "config" key immediately after
+                # this call (gpu_events.py). Skipping them here rather than
+                # after means a dataset that re-declares a config field cannot
+                # abort setup over handles nobody reads. A gain-mode scan does
+                # exactly that: mfx100852324 r0077 describes jungfrau segments
+                # 11-31 twice under "config" within one stream, which made the
+                # whole run unopenable with gpu_det -- in serial and MPI alike,
+                # before a single event was read.
+                or names.alg_name == "config"
             ):
                 continue
             for field in names.fields:
