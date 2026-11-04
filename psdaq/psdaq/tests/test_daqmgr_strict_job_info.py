@@ -101,3 +101,15 @@ def test_runner_start_does_not_submit_when_strict_lookup_fails():
 
     with pytest.raises(RuntimeError, match="job lookup failed"):
         runner.start()
+
+
+def test_runner_cancel_calls_scancel(monkeypatch):
+    import psalg.slurm.main as main
+
+    calls = []
+    monkeypatch.setattr(main, "run_slurm", lambda *args, **kwargs: calls.append(args))
+
+    runner = main.Runner.__new__(main.Runner)
+    runner._cancel(["101", "102"])
+
+    assert calls == [("scancel", "101", "102")]

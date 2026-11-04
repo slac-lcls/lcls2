@@ -4,6 +4,7 @@
 
 **"Run Tests" step:**
 - `test_run_slurm_with_retries.py`, `test_sbatch_env_dump.py`, `test_sbatch_manager_output_path.py`, `test_daqmgr_spawn_console.py`, `test_daqmgr_strict_job_info.py`, `test_subproc.py` — despite the names, none touch real SLURM or spawn real subprocesses; all mocked/self-contained.
+- `test_slurm_compat.py` — checks that the deprecated `psdaq.slurm.*` modules alias their `psalg.slurm.*` counterparts (moved in #206) and that importing `psdaq.slurm` emits a `DeprecationWarning`. Pure-Python, no SLURM.
 - `test_configdb.py` — always reports **skipped**, not passed or failed. It has an unconditional `pytest.skip()` to avoid a `pymongo` dependency that isn't in the CI environment. Included for completeness; expect a skip notice here, not coverage.
 - `test_daqstat.py` — needs a display for Qt to construct a `QApplication`, even for `--help`. The step sets `QT_QPA_PLATFORM=offscreen` to handle this on the headless runner.
 

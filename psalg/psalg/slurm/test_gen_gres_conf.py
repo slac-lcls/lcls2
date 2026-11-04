@@ -30,7 +30,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
-from psdaq.slurm import gen_gres_conf as G
+from psalg.slurm import gen_gres_conf as G
 
 
 # ---------------------------------------------------------------- fake trees
