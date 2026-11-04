@@ -41,8 +41,13 @@ class CalibSource:
         from psana import DataSource
         try:
             if self.shmem:
-                ds = DataSource(shmem=self.shmem, skip_calib_load='all', dir=self.xtc_dir)
-                self.log.debug(f"Running in shmem mode using id={self.shmem}")
+                ds = DataSource(
+                    shmem=self.shmem,
+                    skip_calib_load='all',
+                    dir=self.xtc_dir,
+                    shmem_transitions_only=True,
+                )
+                self.log.debug(f"Running in shmem mode (transitions-only) using id={self.shmem}")
             else:
                 ds = DataSource(exp=self.expcode, run=self.run, dir=self.xtc_dir, skip_calib_load='all')
                 self.log.debug(f"Running in normal mode using expcode={self.expcode}, run={self.run}")
@@ -68,7 +73,17 @@ class CalibSource:
             # Attach the retrieved calibconst to be used in Detector caching
             run._calib_const = loaded_data.get('calib_const') or {}
             run.dsparms.calibconst = run._calib_const
-            self.on_run_begin(run)
+            # on_run_begin needs exactly one L1Accept (via det._run.events()) to
+            # populate the image cache. Briefly drop transitions-only mode so the
+            # shmem reader can hand us one, then restore it so we go back to
+            # taking no event-queue share from AMI/other shmem clients.
+            if self.shmem:
+                ds.dm.set_transitions_only(False)
+            try:
+                self.on_run_begin(run)
+            finally:
+                if self.shmem:
+                    ds.dm.set_transitions_only(True)
 
 def update_calib(latest_run, latest_info, log, output_dir, check_before_update=False):
     """
