@@ -64,7 +64,8 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         """
         # Avoid extra raw() copy here; calib immediately consumes raw per-event data.
         # This keeps perf while raw() defaults to copy=True for safety elsewhere.
-        if self.raw(evt, copy=False) is None: return None
+        nda_raw = self.raw(evt, copy=False)
+        if nda_raw is None: return None
 
         # The calib_jungfrau_version introduced in b9d213236a92984349490ea925e691949dbd12f2
         # (known first bad commmit) has been found to have an issue with shape mismatched:
@@ -77,7 +78,7 @@ class jungfrau_raw_0_1_0(AreaDetectorRaw):
         # Current hack to revert to old calib method:
         #kwa['cversion'] = 0
         #return uj.calib_jungfrau(self, evt, **kwa) # !!! cversion=0
-        return uj.calib_jungfrau_versions(self, evt, **kwa)
+        return uj.calib_jungfrau_versions(self, evt, nda_raw=nda_raw, **kwa)
 
 class jungfrau_raw_0_2_0(jungfrau_raw_0_1_0):
     def __init__(self, *args, **kwa):
