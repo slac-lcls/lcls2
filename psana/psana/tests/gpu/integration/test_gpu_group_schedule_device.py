@@ -76,7 +76,9 @@ def test_production_groups_match_pixels_and_keep_batched_parser_launches(
 
 @pytest.mark.gpu
 @pytest.mark.skipif(not available(), reason='no CUDA device')
-@pytest.mark.parametrize('transition', ['BeginStep', 'EndRun'])
+# EndRun only: a BeginStep no longer drains the pool since #153 PR B
+# step 4, and this body asserts the drained state.
+@pytest.mark.parametrize('transition', ['EndRun'])
 def test_group_transition_drains_deferred_field_consumer(tmp_path, mixed_packet, monkeypatch, transition):
     from types import SimpleNamespace as NS
     from psana.psexp import TransitionId
@@ -128,10 +130,14 @@ def test_group_transition_drains_deferred_field_consumer(tmp_path, mixed_packet,
     m.run = NS(_handle_transition=dispatch)
     monkeypatch.setattr(m, '_dispatch_transition', lambda service, dgrams: dispatch(dgrams))
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
-    dg = NS(service=lambda: service)
+    dg = NS(service=lambda s=service: s)
     try:
         consume(m._process_batch({}, {0: (case.packet, [])}, {}))
-        consume(m._handle_steps({0: ([(service, [dg])], [])}))
+        # Transitions are yielded now (step 4) and carry no gpu_state, which
+        # consume() dereferences; _dispatch_transition is monkeypatched above
+        # so `dispatched` is still recorded.
+        consume(e for e in m._handle_steps({0: ([(service, [dg])], [])})
+                if e.gpu_state is not None)
         assert delivered == list(range(1000))
         assert dispatched == [service]
         assert int(observed.get()[0]) == held[0][1]

@@ -198,36 +198,57 @@ def test_controller_retained_view_blocks_next_batch_and_close_until_released(io,
     assert_closed(m, io)
 
 
-def test_controller_transitions_drain_consumers_before_dispatch(io, monkeypatch, mixed_packet):
+def test_controller_yields_transitions_after_the_events_they_follow(io, monkeypatch, mixed_packet):
+    """Transitions are delivered downstream, in record order.
+
+    Since #153 PR B step 4 the manager no longer calls
+    run._handle_transition() -- it yields the transition as an envelope with
+    gpu_state None and the consumer dispatches it exactly once, after the
+    events that preceded it. That ordering is the second half of GPU-148-01.
+    """
     from psana.psexp import TransitionId
     from psana.gpu import gpu_events
     from test_gpu_input_group import Token as Completion
     m = build(io, monkeypatch)
     packet = mixed_packet(n_events=12, fast_size=10, slow_size=1024**2, interval=3)
-    tokens, delivered, transitions = [], [], []
+    tokens, order = [], []
 
     def consume(envelopes):
         for envelope in envelopes:
-            delivered.append(envelope.dgrams[0].timestamp())
+            if envelope.gpu_state is None:
+                # A transition. What is asserted is its POSITION in the
+                # stream, below -- not token readiness, which only becomes
+                # true after this consumer releases each event, including the
+                # one delivered in this same iteration.
+                order.append(('transition', envelope.dgrams[0].service()))
+                continue
+            order.append(('event', envelope.dgrams[0].timestamp()))
             token = Completion(False)
             child = envelope.gpu_state._input_lease.acquire_view()
             child.register_consumer_done(token)
             child.wait_until_safe_to_reuse()
             tokens.append(token)
 
-    def dispatch(dgrams):
-        assert not m.event_pool.active_count
-        assert all(t.ready for t in tokens)
-        transitions.append(dgrams[0].service())
-
-    m.run._handle_transition = dispatch
+    dispatched = []
+    m.run._handle_transition = lambda dgrams: dispatched.append(dgrams)
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
     consume(m._process_batch({}, {0: (packet, [])}, {}))
     for service in (TransitionId.BeginStep, TransitionId.EndRun):
-        dg = NS(timestamp=lambda: 3000, service=lambda: service)
+        # Bind `service` per iteration: a bare `lambda: service` closes over
+        # the loop variable, so both dgrams would report the last one.
+        dg = NS(timestamp=lambda: 3000, service=lambda s=service: s)
         consume(m._process_batch({}, {}, {0: ([(service, [dg])], [])}))
-    assert delivered == list(range(1000, 1012))
-    assert transitions == [TransitionId.BeginStep, TransitionId.EndRun]
+
+    # Every event, in order, then the two transitions -- never interleaved
+    # the other way round. The BeginStep is released when the EndRun packet
+    # flushes the pool: it stays queued until the submissions it follows have
+    # retired, which is the ordering guarantee under test.
+    assert [ts for kind, ts in order if kind == 'event'] == list(range(1000, 1012))
+    assert [svc for kind, svc in order if kind == 'transition'] == [
+        TransitionId.BeginStep, TransitionId.EndRun]
+    assert order[-2:] == [('transition', TransitionId.BeginStep),
+                          ('transition', TransitionId.EndRun)]
+    assert dispatched == [], 'the manager must not dispatch; the consumer does'
     assert m._done
     m.close()
     assert_closed(m, io)
@@ -250,8 +271,10 @@ def test_transition_completion_failure_preserves_owner_and_retries(io, monkeypat
     windows, dispatched = [], []
     m.run._handle_transition = lambda dgrams: dispatched.append(dgrams)
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
-    dg = NS(timestamp=lambda: 3000, service=lambda: TransitionId.BeginStep)
-    steps = {0: ([(TransitionId.BeginStep, [dg])], [])}
+    # EndRun, not BeginStep: since #153 PR B step 4 only EndRun drains the
+    # pool, and this test is about a FAILED drain preserving its owners.
+    dg = NS(timestamp=lambda: 3000, service=lambda: TransitionId.EndRun)
+    steps = {0: ([(TransitionId.EndRun, [dg])], [])}
     with pytest.raises(RuntimeError, match='injected wait failure'):
         for envelope in m._handle_steps(steps):
             delivered.append(envelope)
@@ -264,8 +287,11 @@ def test_transition_completion_failure_preserves_owner_and_retries(io, monkeypat
     assert not dispatched and windows and all(not w.released for w in windows)
     assert m._group_inputs.live_keys and not m._closed
     token.fail = False
-    assert list(m._handle_steps(steps)) == []
-    assert len(dispatched) == 1 and all(w.released for w in windows)
+    # The retry succeeds and the transition is yielded, not dispatched.
+    retried = list(m._handle_steps(steps))
+    assert [e.gpu_state for e in retried] == [None]
+    assert not dispatched, 'the manager must not dispatch; the consumer does'
+    assert all(w.released for w in windows)
     m.close()
     assert len(delivered) == 12
     assert_closed(m, io)
@@ -290,4 +316,178 @@ def test_hybrid_cpu_envelopes_keep_their_payload(io, mixed_packet, monkeypatch):
     yielded.extend(m.finish())
     assert [e.dgrams[0] for e in yielded] == cpu
     assert all(e.gpu_state is not None for e in yielded)
+    m.close()
+
+
+def test_packet_plan_scopes_events_before_a_trailing_beginstep(io, monkeypatch,
+                                                               mixed_packet):
+    """Events recorded before a trailing BeginStep keep the previous scope.
+
+    GPU-148-01, against the real manager rather than a fixture: _handle_steps
+    applies the packet's transitions and advances the generation, so a plan
+    resolved afterwards would put these events in the step the BeginStep
+    opens. _process_batch therefore has to plan BEFORE it dispatches.
+
+    Timestamps matter here. mixed_packet numbers its events from 1000, and the
+    trailing BeginStep is at 3000 -- after them -- which is what makes it
+    "trailing" to the planner.
+    """
+    from psana.psexp import TransitionId
+    from psana.gpu import gpu_events
+    m = build(io, monkeypatch)
+    m._step_generation, m._step_begin_ts = 0, 0
+    packet = mixed_packet(n_events=6, fast_size=10, slow_size=1024**2,
+                          interval=3)
+    begin = NS(timestamp=lambda: 3000,
+               service=lambda: TransitionId.BeginStep)
+    captured = []
+    original = gpu_events.GpuEventManager._plan_packets
+
+    def capture(self, gpu_views, transitions):
+        plans = original(self, gpu_views, transitions)
+        captured.extend(plans.values())
+        return plans
+
+    monkeypatch.setattr(gpu_events.GpuEventManager, '_plan_packets', capture)
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda packet, configs: iter(packet))
+
+    list(m._process_batch({}, {0: (packet, [])},
+                          {0: ([(TransitionId.BeginStep, [begin])], [])}))
+
+    assert len(captured) == 1
+    assert captured[0].scope.index == 0, (
+        'events before a trailing BeginStep belong to the step already open')
+    assert captured[0].next_generation == 1, 'the BeginStep still advances'
+    # And the manager's own state moved on, so the NEXT packet's events are
+    # planned in scope 1.
+    assert m._step_generation == 1
+    assert m._step_begin_ts == 3000
+    list(m.finish())
+    m.close()
+
+
+def test_a_replayed_beginstep_does_not_advance_the_generation_twice(io,
+                                                                   monkeypatch,
+                                                                   mixed_packet):
+    """Prepended history repeats a BeginStep this BD already applied.
+
+    smd0 and the EB prepend missing history to every recipient, so the same
+    BeginStep arrives again. _dispatch_transition used to increment per
+    record seen, which made the generation diverge between BDs.
+    """
+    from psana.psexp import TransitionId
+    from psana.gpu import gpu_events
+    m = build(io, monkeypatch)
+    m._step_generation, m._step_begin_ts = 1, 3000
+    replayed = NS(timestamp=lambda: 3000,
+                  service=lambda: TransitionId.BeginStep)
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda packet, configs: iter(packet))
+
+    list(m._process_batch({}, {},
+                          {0: ([(TransitionId.BeginStep, [replayed])], [])}))
+
+    assert m._step_generation == 1, 'a replayed BeginStep must not re-advance'
+    assert m._step_begin_ts == 3000
+    m.close()
+
+
+def test_submission_uses_the_subbatch_scope_not_the_advanced_generation(
+        io, monkeypatch, mixed_packet):
+    """The whole point of GPU-148-01: submit the scope, not the manager state.
+
+    The manager's _step_generation has already advanced to 1 by submission
+    time, because _handle_steps applied the trailing BeginStep. Every
+    subbatch of this packet must still be submitted with step_generation 0 --
+    the step its events were actually recorded in.
+    """
+    from psana.psexp import TransitionId
+    from psana.gpu import gpu_events
+    m = build(io, monkeypatch)
+    m._step_generation, m._step_begin_ts = 0, 0
+    m.run = NS(runnum=77, _handle_transition=lambda _: None)
+
+    packet = mixed_packet(n_events=6, fast_size=10, slow_size=1024**2,
+                          interval=3)
+    begin = NS(timestamp=lambda: 3000,
+               service=lambda: TransitionId.BeginStep)
+    submitted = []
+    # Record the scope each submission would carry, then let the real
+    # _submit_gpu run: it owns the read reservation, and skipping it leaves a
+    # pre-issued read outstanding so the next subbatch fails.
+    #
+    # The scope is read here rather than from _task_submission() because that
+    # returns {} unless a task is configured, and a stub task is not viable --
+    # _event_memory walks task.inputs through metadata_bytes(). What matters
+    # is which scope reaches submission; _task_submission's use of it is
+    # covered directly below.
+    original_submit = gpu_events.GpuEventManager._submit_gpu
+
+    def capture(self, subbatch, gpu_read, envelopes):
+        submitted.append(getattr(subbatch, 'scope', None))
+        return original_submit(self, subbatch, gpu_read, envelopes)
+
+    monkeypatch.setattr(gpu_events.GpuEventManager, '_submit_gpu', capture)
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda packet, configs: iter(packet))
+
+    list(m._process_batch({}, {0: (packet, [])},
+                          {0: ([(TransitionId.BeginStep, [begin])], [])}))
+
+    assert submitted, 'expected at least one submission'
+    assert m._step_generation == 1, 'the manager did advance'
+    assert all(s is not None for s in submitted)
+    assert [s.index for s in submitted] == [0] * len(submitted), (
+        'events before a trailing BeginStep must submit with the old scope')
+    assert all(s.run == 77 and s.begin_ts == 0 for s in submitted)
+
+    # And _task_submission turns that scope into the submitted
+    # step_generation, rather than re-reading the manager's advanced one.
+    m._gpu_task = NS(inputs=(), calibconst=())
+    m.gpu_detector_bindings, m._task_constants = {}, None
+    assert m._task_submission(submitted[0])['step_generation'] == 0
+    assert m._task_submission(submitted[0])['step_scope'] is submitted[0]
+    assert m._task_submission(None)['step_generation'] == 1, (
+        'with no scope it falls back to the manager')
+    m._gpu_task = None
+    list(m.finish())
+    m.close()
+
+
+def test_every_subbatch_of_a_packet_carries_the_same_scope(io, monkeypatch,
+                                                           mixed_packet):
+    """A packet splits into several subbatches on bytes, never on steps.
+
+    plan_packet raises if a packet's events straddle a BeginStep, so all of
+    its subbatches share one scope. Pinned here because _split_subbatches
+    attaches that scope to each, and a future byte-split change must not
+    silently leave some without one.
+    """
+    from psana.psexp import TransitionId
+    from psana.gpu import gpu_events
+    m = build(io, monkeypatch)
+    m._step_generation, m._step_begin_ts = 2, 500
+    packet = mixed_packet(n_events=12, fast_size=10, slow_size=1024**2,
+                          interval=3)
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda packet, configs: iter(packet))
+
+    captured = []
+    original = gpu_events.GpuEventManager._split_subbatches
+
+    def capture(self, gpu_view, scope=None):
+        subbatches = original(self, gpu_view, scope)
+        captured.extend(subbatches)
+        return subbatches
+
+    monkeypatch.setattr(gpu_events.GpuEventManager, '_split_subbatches',
+                        capture)
+    list(m._process_batch({}, {0: (packet, [])}, {}))
+
+    assert len(captured) > 1, 'expected a byte split, or this proves nothing'
+    assert all(sb.scope is not None for sb in captured)
+    assert len({(sb.scope.index, sb.scope.begin_ts) for sb in captured}) == 1
+    assert captured[0].scope.index == 2, 'no transitions, so the scope stands'
+    list(m.finish())
     m.close()

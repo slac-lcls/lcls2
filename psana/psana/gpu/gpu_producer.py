@@ -117,6 +117,17 @@ class ProducerContext:
         self._require_active()
         return self._inputs.step_generation
 
+    @property
+    def step_scope(self):
+        """The step these events were recorded in: run, index, begin_ts.
+
+        step_generation is this scope's index; this exposes the run and the
+        triggering BeginStep's timestamp alongside it (issue #153). None when
+        no scope was planned for the submission.
+        """
+        self._require_active()
+        return getattr(self._inputs, 'step_scope', None)
+
     def input(self, name):
         self._require_active()
         return self._inputs.input(name)

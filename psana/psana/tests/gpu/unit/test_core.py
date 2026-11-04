@@ -13,6 +13,7 @@ from psana.tests.gpu.calibration_reference import _compute_calib_constants_cpu
 from psana.gpu.context import GpuEventState
 from psana.gpu.gpu_events import GpuEventManager
 from psana.gpu.gpu_stream import EventPool
+from psana import utils
 from psana.event import Event, EventEnvelope
 from psana.psexp import TransitionId
 from psana.psexp.ds_base import DsParms
@@ -496,6 +497,20 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
     assert record.input_leases_by_ts == {}
 
 
+def _yielded_services(events, step_dict):
+    """Services of the transition envelopes `_handle_steps` yields.
+
+    Since #153 PR B step 4 the manager no longer calls
+    run._handle_transition() itself -- it yields the transition downstream, in
+    record order, and the consumer dispatches it exactly once. So the
+    assertion moved from a dispatch log to the envelopes delivered.
+    """
+    # _transition_batch's fake dgrams are bare ints with no env(), so read
+    # the service from the dgram directly rather than via first_service.
+    return [envelope.dgrams[0]
+            for envelope in events._handle_steps(step_dict)]
+
+
 def test_beginstep_flushes_before_dispatch(monkeypatch, fake_transition_decode):
     log = []
     events = _new_gpu_events(log)
@@ -504,13 +519,16 @@ def test_beginstep_flushes_before_dispatch(monkeypatch, fake_transition_decode):
         TransitionId.BeginStep,
         TransitionId.Disable,
     )
-    assert list(events._handle_steps(step_dict)) == []
-    assert log == [
-        "flush",
-        ("transition", TransitionId.Enable),
-        ("transition", TransitionId.BeginStep),
-        ("transition", TransitionId.Disable),
+    # BeginStep no longer drains the pool: each subbatch carries its own
+    # StepScope, so the next step's work may be submitted while the previous
+    # step's is still in flight. That bubble removal is the point of Design 1.
+    assert _yielded_services(events, step_dict) == [
+        TransitionId.Enable,
+        TransitionId.BeginStep,
+        TransitionId.Disable,
     ]
+    assert log == [], 'the manager must not dispatch; the consumer does'
+    assert events.event_pool.flush_calls == 0, 'BeginStep must not flush'
 
 
 def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
@@ -522,12 +540,12 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
         TransitionId.EndStep,
     )
 
-    assert list(events._handle_steps(step_dict)) == []
-    assert log == [
-        ("transition", TransitionId.Enable),
-        ("transition", TransitionId.Disable),
-        ("transition", TransitionId.EndStep),
+    assert _yielded_services(events, step_dict) == [
+        TransitionId.Enable,
+        TransitionId.Disable,
+        TransitionId.EndStep,
     ]
+    assert log == []
     assert events.event_pool.flush_calls == 0
 
 
@@ -543,8 +561,8 @@ def test_an_absent_record_is_not_dispatched(fake_transition_decode):
     events = _new_gpu_events(log)
     step_dict = _transition_batch(None, TransitionId.Enable)
 
-    assert list(events._handle_steps(step_dict)) == []
-    assert log == [("transition", TransitionId.Enable)]
+    assert _yielded_services(events, step_dict) == [TransitionId.Enable]
+    assert log == []
 
 
 def test_an_absent_record_alone_is_not_dispatched_and_does_not_flush(
@@ -559,7 +577,7 @@ def test_an_absent_record_alone_is_not_dispatched_and_does_not_flush(
     log = []
     events = _new_gpu_events(log)
 
-    assert list(events._handle_steps(_transition_batch(None))) == []
+    assert _yielded_services(events, _transition_batch(None)) == []
     assert log == []
     assert events.event_pool.flush_calls == 0
 
@@ -571,9 +589,9 @@ def test_reset_is_dispatched(fake_transition_decode):
     log = []
     events = _new_gpu_events(log)
 
-    assert list(events._handle_steps(_transition_batch(
-        TransitionId.Reset))) == []
-    assert log == [("transition", TransitionId.Reset)]
+    assert _yielded_services(events, _transition_batch(
+        TransitionId.Reset)) == [TransitionId.Reset]
+    assert log == []
 
 
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
@@ -605,14 +623,24 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     results = list(events._events())
 
     assert request_count == 1
-    assert len(results) == 1
+    # Two envelopes now: the flushed L1, then EndRun yielded in record order
+    # rather than dispatched inside _handle_steps.
+    assert len(results) == 2
     assert results[0].dgrams[0].timestamp() == timestamp
+    assert results[1].dgrams[0] == TransitionId.EndRun, (
+        'the fake dgram is a bare service int; see _transition_batch')
+    assert results[1].gpu_state is None, 'a transition carries no GPU result' 
     # on_gpu returns a copy — verify the value not identity
     copy = results[0].gpu_state.get("jungfrau.calib").on_gpu
     np.testing.assert_array_equal(copy, gpu_result)
     assert events.event_pool.yield_count == 1
-    assert ("transition", TransitionId.EndRun) in log
-    assert log[-1] == "close"
+    # EndRun still flushes -- several times, as before step 4: _handle_steps
+    # drains, then _events() drains again on end_run_seen. What changed is
+    # that no ("transition", ...) entry appears: the manager yields the
+    # EndRun envelope instead of dispatching it itself.
+    assert "flush" in log and log[-1] == "close"
+    assert not any(isinstance(entry, tuple) for entry in log), (
+        f'the manager must not dispatch transitions any more: {log}')
 
 
 def _step_batch_bytes(records, n_streams):
