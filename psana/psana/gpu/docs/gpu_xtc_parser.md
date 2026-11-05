@@ -117,7 +117,11 @@ automatic trim-and-retry inside field access. Reduce `batch_size` or
 `n_gpu_streams`, or increase `gpu_memory_budget_gb` within available device memory.
 In the current implementation, `.on_cpu` and `.on_gpu` also use this aligned
 intermediate for unaligned input. Live copies appear as `field-copy` ledger
-entries and contribute to `retained`, never to imported `borrowed` constants.
+entries and are reported separately as `field_copies`, using charged allocation
+capacity rather than logical field bytes. This category appears in snapshots,
+ownership logs and high-water reports. It is subtracted once from `retained`,
+which remains unattributed budget-charged storage; it is never part of imported
+`borrowed` constants. Reporting does not change charges or release timing.
 
 Retiring a lease with copies synchronizes their completion and registered
 consumers on the host. This can reduce overlap even with bulk reads and deferred

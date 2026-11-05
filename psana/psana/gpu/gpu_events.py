@@ -98,6 +98,8 @@ class _GpuMemStats:
                      charged for: the 'task-constants' ledger entries, plus
                      an IPC owner's un-pooled block, which reserve() charges
                      without a ledger record
+        field_copies aligned field copies, using charged allocation capacities
+                     from the field-copy ledger entries (not logical payload)
         cupy_pool    CuPy memory-pool total committed bytes
         device_used  bytes in use according to CUDA (total - free)
         device_total total device memory
@@ -105,13 +107,11 @@ class _GpuMemStats:
     Budget categories, from the allocation ledger:
         committed    bytes currently reserved against the budget
         held         bytes an admission hold has reserved for future use
-        retained     the RESIDUAL: committed minus every category above, so
+        retained     the RESIDUAL: committed minus identified budgeted storage, so
                      it is owned storage this snapshot cannot attribute --
                      a persistent unexplained residual can indicate a leak.
-                     Live aligned field copies legitimately appear here;
-                     inspect their 'field-copy' ledger entries and expect
-                     them to clear after lease retirement and final alias release.
-                     Omitting a category
+                     Field copies are attributed separately and clear after
+                     safe retirement and final alias release. Omitting a category
                      makes identified memory look unattributed; subtracting
                      one twice hides a leak, so a negative raw value is
                      logged at DEBUG before the clamp to 0.
@@ -133,6 +133,7 @@ class _GpuMemStats:
     xtc_config: int = 0
     xtc_slots: int = 0
     constants: int = 0
+    field_copies: int = 0
     committed: int = 0
     held: int = 0
     retained: int = 0
@@ -154,10 +155,11 @@ class _GpuMemStats:
     def log(self):
         """Emit a structured INFO log summarising the snapshot."""
         _log.info("GPU ownership [%s] committed=%s held=%s retained=%s failed=%s "
-                  "constants=%s borrowed=%s pool_used=%s",
+                  "constants=%s field_copies=%s borrowed=%s pool_used=%s",
                   self.label, self._mb(self.committed), self._mb(self.held),
                   self._mb(self.retained), self._mb(self.failed),
-                  self._mb(self.constants), self._mb(self.borrowed),
+                  self._mb(self.constants), self._mb(self.field_copies),
+                  self._mb(self.borrowed),
                   self._mb(self.cupy_used))
         _log.info(
             "GPU mem [%s] raw_input=%s  xtc_config=%s  xtc_slots=%s  "
@@ -295,8 +297,11 @@ class GpuEventManager:
             s.constants += sum(
                 int(a['capacity']) for a in s.allocations
                 if a.get('category') == 'task-constants')
+            s.field_copies = sum(
+                int(a['capacity']) for a in s.allocations
+                if a.get('category') == 'field-copy')
             raw = (s.committed - s.raw_input - s.xtc_config - s.xtc_slots
-                   - sum(s.input_bytes.values()) - s.constants)
+                   - sum(s.input_bytes.values()) - s.constants - s.field_copies)
             if raw < 0:
                 # The clamp below would hide this. A negative residual means
                 # a category was counted twice -- likely constants in both
@@ -305,9 +310,9 @@ class GpuEventManager:
                 _log.debug(
                     'GPU mem [%s] residual is negative (%s): categories sum '
                     'to more than committed, so one is counted twice and '
-                    'retained is understated. constants=%s committed=%s',
+                    'retained is understated. constants=%s field_copies=%s committed=%s',
                     label, _fmt_mib(raw), _fmt_mib(s.constants),
-                    _fmt_mib(s.committed))
+                    _fmt_mib(s.field_copies), _fmt_mib(s.committed))
             s.retained = max(0, raw)
             s.failed = sum(backing_capacity(a) for _, arrays, _ in budget._failed_allocations for a in arrays)
         # Query CuPy pool and CUDA device info only when a GPU is active.
@@ -343,6 +348,7 @@ class GpuEventManager:
         s.log()
         hw = self._high_water
         for category in ('committed', 'held', 'retained', 'failed', 'constants',
+                         'field_copies',
                          'borrowed', 'cupy_used'):
             hw[category] = max(hw.get(category, 0), getattr(s, category))
         hw["raw_input"] = max(hw.get("raw_input", 0), s.raw_input)
@@ -359,11 +365,12 @@ class GpuEventManager:
         # the empty `borrowed` field went unnoticed.
         _log.info(
             "GPU mem high-water raw_input=%s xtc_config=%s xtc_slots=%s "
-            "constants=%s borrowed=%s cupy_pool=%s device_used=%s pinned=%s",
+            "constants=%s field_copies=%s borrowed=%s cupy_pool=%s device_used=%s pinned=%s",
             _fmt_mib(hw.get("raw_input", 0)),
             _fmt_mib(hw.get("xtc_config", 0)),
             _fmt_mib(hw.get("xtc_slots", 0)),
             _fmt_mib(hw.get("constants", 0)),
+            _fmt_mib(hw.get("field_copies", 0)),
             _fmt_mib(hw.get("borrowed", 0)),
             _fmt_mib(hw.get("cupy_pool", 0)),
             _fmt_mib(hw.get("device_used", 0)),

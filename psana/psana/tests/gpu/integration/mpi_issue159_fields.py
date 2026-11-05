@@ -24,7 +24,7 @@ def snapshot(manager, label):
     assert before == (budget.limit(), budget.committed(), budget._held)
     return dict(label=label, limit=budget.limit(), committed=value.committed,
                 held=value.held, constants=value.constants, borrowed=value.borrowed,
-                retained=value.retained, failed=value.failed,
+                retained=value.retained, field_copies=value.field_copies, failed=value.failed,
                 field_allocations=[a for a in value.allocations
                                    if a['category'] == 'field-copy'],
                 constant_allocations=[a for a in value.allocations
@@ -115,7 +115,8 @@ def arm_fields(event, manager):
             assert len(current['field_allocations']) == 2
             assert sum(a['capacity'] for a in current['field_allocations']) == charge
             assert current['committed'] - baseline['committed'] == charge
-            assert current['retained'] - baseline['retained'] == charge
+            assert current['field_copies'] - baseline['field_copies'] == charge
+            assert current['retained'] == baseline['retained']
             assert (current['constants'], current['borrowed'], current['held']) == (
                 baseline['constants'], baseline['borrowed'], baseline['held'])
         pending = [not e.done for e in done]

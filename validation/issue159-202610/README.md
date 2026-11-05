@@ -27,3 +27,8 @@ python3 validation/issue159-202610/evidence/verify_issue159_stage7_20261029.py /
 It requires the preserved SDF scratch artifacts named in the evidence. This is
 an evidence check, not a new GPU run. Current correctness/performance acceptance
 and limitations are unchanged by relocating documentation.
+
+The [field-copy reporting follow-up](field_copy_reporting_20261105.md) records
+the later diagnostic-only runtime change, focused tests and qualified reuse of
+the earlier device/performance evidence. Historical `retained` figures have not
+been rewritten to pretend that this category existed in those runs.
