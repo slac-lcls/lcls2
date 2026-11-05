@@ -1,0 +1,17 @@
+{
+  "scope": "Step 2: persistent callback input component; production integration deferred to step 3",
+  "branch": "tests/smd-callback-chunk-state",
+  "base_sha": "516f25d4a",
+  "phase": "ready_for_independent_review",
+  "review_loop": "active for remainder of session",
+  "round": 0,
+  "round_limit": 3,
+  "checks": {
+    "focused": "18 passed",
+    "core": "91 passed, 5 skipped, 2 deselected, 16 expected failures",
+    "byhand": "4 passed",
+    "compile_and_whitespace": "passed"
+  },
+  "unresolved_ids": [],
+  "artifacts": "/tmp/smd-callback-step02"
+}
