@@ -64,7 +64,8 @@ class Test:
         subprocess.check_call(['python',run_early_termination], env=env)
 
     @pytest.mark.skip(reason="Skipping this test for now – needs fix.")
-    def test_serial_loop_callback(self, tmp_path):
+    def test_serial_loop_callback(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("PS_SMD_N_EVENTS", "1")
         setup_input_files(tmp_path, n_files=2, slow_update_freq=4, n_motor_steps=3, n_events_per_step=10, gen_run2=False)
         xtc_dir = os.path.join(str(tmp_path), ".tmp")
         run_test_loop_callback(xtc_dir)

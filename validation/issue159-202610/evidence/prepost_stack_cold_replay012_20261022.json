@@ -1,0 +1,50 @@
+{
+  "job": 41631223,
+  "status_at_submission": "pending_resources",
+  "submitted_local": "2026-10-22 15:28 PDT",
+  "requested_node": "sdfampere012",
+  "reference_job": 41614567,
+  "reference_node": "sdfampere027",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1",
+  "output_directory": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/screen/job-41631223",
+  "command": [
+    "sbatch",
+    "--parsable",
+    "--nodelist=sdfampere012",
+    "--job-name=prepost-cold-replay012",
+    "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/run.sbatch"
+  ],
+  "batch_sha256": "a0565b1c340ea1e916154b2dac6bda51b21a8616f7528d9e95c24884ecccc844",
+  "hash_manifest_sha256": "0a4e230e8f555d3c54cf91e6b21223ea70fd426ee374faa124c008650e6933d8",
+  "frozen_hashes_verified": 2107,
+  "settings_changed": [
+    "Slurm requested node",
+    "Slurm job name"
+  ],
+  "rebuild": false,
+  "physical_gpu": 0,
+  "bds": 4,
+  "timed_samples": 16,
+  "events_per_sample": 10000,
+  "pairs_per_bulk": 4,
+  "cache": "cold",
+  "std_ddof": 1,
+  "builds": {
+    "A": {
+      "commit": "9b32dda19b46807f7a4db62fb2351ba87b359e47",
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/A/source",
+      "build": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/A/build",
+      "install": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/A/install",
+      "seconds": 95.33014607429504,
+      "complete": true
+    },
+    "B": {
+      "commit": "410ebba1ce4d8b2a9d8d7fab56f6dc1fa26a6ef8",
+      "source": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/B/source",
+      "build": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/B/build",
+      "install": "/sdf/scratch/users/m/monarin/gpu-validation/prepost-stack-cold-20261022-r1/B/install",
+      "seconds": 95.98575162887573,
+      "complete": true
+    }
+  }
+}

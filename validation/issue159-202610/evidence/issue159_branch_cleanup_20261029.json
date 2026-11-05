@@ -1,0 +1,135 @@
+{
+  "complete": true,
+  "local_deleted": {
+    "integrate/issue159-pr187-pr208": "c182dc7584ac211a4f9fdd54796c455052196ffa",
+    "docs/issue159-stage5-compatibility": "5255bea21b3b03ec8602a58414c5af60eb961fc8",
+    "test/issue159-stage5-accessors": "a68727274ff1c5f52714a0f4904b822110a0f47b",
+    "test/issue159-stage6-correctness": "7d112827ad88b5c797d57c0de2bb844bb1c5203f",
+    "pr-187": "b0103a3ad0fcceb51cf024c9e5cd7784ff26b729",
+    "pr245-review": "c3ba675faf24a86ce2c949e1316d57912f10e28e",
+    "features/gpuxtc-scaffold": "1a13d9c058e3dff9c2722b045520674fb2737973",
+    "features/psana2-gpu-d2h-pipeline": "d62334d13c4d87da6275786f38666603f0c38572",
+    "archive/psana2-gpu-before-review-stack-20261014": "9b32dda19b46807f7a4db62fb2351ba87b359e47",
+    "backup/gpu-unaligned-159-before-pr187-20261019": "c157b490ccb42940632ac83fce2a33e98335e9ce",
+    "baseline/gpu-unaligned-159-pr187-20261019": "90c05965cf34869388cc526a50e7e822b50a6eba"
+  },
+  "upstream_deleted": {
+    "integrate/issue159-pr187-pr208": "c182dc7584ac211a4f9fdd54796c455052196ffa",
+    "test/issue159-stage6-correctness": "7d112827ad88b5c797d57c0de2bb844bb1c5203f",
+    "fix/gpu-unaligned-reads-159": "3feab5b2443bd65195628c017c2b57fb15afd6aa",
+    "archive/monarin/20260929/codex/psana2-gpu-bulk-batched-integration": "6e5b8d0d096c769f9538064635db72a0b72d4bca",
+    "archive/monarin/20260929/codex/psana2-gpu-user-kernels": "61b215df9832d541b84dba5b9b19b02577f8c19e",
+    "archive/monarin/20260929/codex/psana2-gpu-xtc-parser": "8f94e3c7bc4643309d022cb5c1dd7e85805d3ac4",
+    "codex/update-build-psana": "7058d9961d6eb79eabf2d2f9cdf54df7ad293a8e",
+    "archive/features/psana2-gpu-legacy-20260604": "700021ae2a732d224876483a67cc18bd989d35fe",
+    "archive/monarin/20260929/codex/psana2-gpu-batched-locators": "bf65ad3fbfa9060b98170c6ccbdd55d55a4bc78b",
+    "archive/monarin/20260929/features/psana2-gpu-eb-topology-bench": "a6f75a109dd8a5150efc8b4125da44d888f38e67",
+    "archive/monarin/20260929/features/psana2-gpu-multiowner-baseline": "3caca1adf3175e4f9caf86c2ac8f76c83b4a34cc"
+  },
+  "archives": {
+    "archive/features/psana2-gpu-legacy-20260604": {
+      "tag": "archive/issue159-cleanup-20261029/psana2-gpu-legacy-20260604",
+      "sha": "700021ae2a732d224876483a67cc18bd989d35fe"
+    },
+    "archive/monarin/20260929/codex/psana2-gpu-batched-locators": {
+      "tag": "archive/issue159-cleanup-20261029/psana2-gpu-batched-locators",
+      "sha": "bf65ad3fbfa9060b98170c6ccbdd55d55a4bc78b"
+    },
+    "archive/monarin/20260929/features/psana2-gpu-eb-topology-bench": {
+      "tag": "archive/issue159-cleanup-20261029/psana2-gpu-eb-topology-bench",
+      "sha": "a6f75a109dd8a5150efc8b4125da44d888f38e67"
+    },
+    "archive/monarin/20260929/features/psana2-gpu-multiowner-baseline": {
+      "tag": "archive/issue159-cleanup-20261029/psana2-gpu-multiowner-baseline",
+      "sha": "3caca1adf3175e4f9caf86c2ac8f76c83b4a34cc"
+    }
+  },
+  "worktrees_preserved": [
+    {
+      "branch": "integrate/issue159-pr187-pr208",
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-pr187-pr208-pr-20261028/source",
+      "head": "c182dc7584ac211a4f9fdd54796c455052196ffa",
+      "detached": true
+    },
+    {
+      "branch": "test/issue159-stage5-accessors",
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-20261029/source",
+      "head": "a68727274ff1c5f52714a0f4904b822110a0f47b",
+      "detached": true
+    },
+    {
+      "branch": "docs/issue159-stage5-compatibility",
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage5-plan-20261029/source",
+      "head": "5255bea21b3b03ec8602a58414c5af60eb961fc8",
+      "detached": true
+    },
+    {
+      "branch": "test/issue159-stage6-correctness",
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-stage6-20261029/source",
+      "head": "7d112827ad88b5c797d57c0de2bb844bb1c5203f",
+      "detached": true
+    }
+  ],
+  "tracking_refs_removed": [
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/integrate/issue159-pr187-pr208"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/test/issue159-stage6-correctness"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/fix/gpu-unaligned-reads-159"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/monarin/20260929/codex/psana2-gpu-bulk-batched-integration"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/monarin/20260929/codex/psana2-gpu-user-kernels"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/monarin/20260929/codex/psana2-gpu-xtc-parser"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/codex/update-build-psana"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/features/psana2-gpu-legacy-20260604"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/monarin/20260929/codex/psana2-gpu-batched-locators"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/monarin/20260929/features/psana2-gpu-eb-topology-bench"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/archive/monarin/20260929/features/psana2-gpu-multiowner-baseline"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/docs/issue159-stage5-compatibility"
+    },
+    {
+      "repository": "/sdf/home/m/monarin/lcls2",
+      "ref": "refs/remotes/origin/test/issue159-stage5-accessors"
+    }
+  ],
+  "archives_verified": true,
+  "protected_old_worktree_unchanged": true,
+  "fork_head_before_cleanup": "f68417d906b2faa41f929ce772f80ca37be7ce1d",
+  "date": "2026-10-29",
+  "upstream_repository": "slac-lcls/lcls2",
+  "archive_repository": "monarin/lcls2",
+  "active_branch": "monarin/lcls2:fix/gpu-unaligned-reads-159",
+  "scope": "Branch references only. Worktree directories, frozen builds and validation artifacts preserved. Open PR branches and other contributors branches excluded."
+}

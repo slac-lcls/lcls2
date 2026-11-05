@@ -1,0 +1,26 @@
+{
+  "commit": "90c05965cf34869388cc526a50e7e822b50a6eba",
+  "tag": "freeze/issue159-A-pr187-20261019",
+  "reference": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/A",
+  "source": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-ab-1gpu4bd-20261019-r1/B/source",
+  "install": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-ab-1gpu4bd-20261019-r1/B/install",
+  "dependency_root": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1",
+  "prior_job": "41310953",
+  "prior_campaign": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-ab-1gpu4bd-20261019-r1",
+  "verified_prior_artifacts": 1861,
+  "frozen_artifacts": 3234,
+  "hash_manifest": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/metadata/frozen-A-hashes.json",
+  "hash_manifest_sha256": "047ad26e9b82c1359062738e026029e2fd173d43b7ef64bed46611890afbe3f8",
+  "validation_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1",
+  "scope": "Stage 2 dense gather only; field-view safety remains pending",
+  "validation_jobs": [
+    41318425,
+    41318678,
+    41318829,
+    41319168,
+    41319573,
+    41319696
+  ],
+  "initial_candidate_commit": "7f4288a5dd312d1628090883eb4a0615ea1cf584",
+  "candidate_commit": "7f29f0dc70d3f636f465805afd992c945d39da28"
+}

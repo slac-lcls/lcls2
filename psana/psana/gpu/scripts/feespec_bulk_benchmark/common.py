@@ -101,6 +101,29 @@ def rewarm_prefixes(paths, interleave):
             warm_missing_prefix(path, length)
 
 
+def reset_private_stage_cache(directory, *, ranges):
+    """Discard a caller-owned private stage's cache once before warm timing.
+
+    The caller must supply fresh private copies, never shared source data.
+    Validate every target before discarding anything; ordinary warm preparation
+    and post-timing checks do not call this function.
+    """
+    import stat
+    directory = Path(directory)
+    if directory.is_symlink() or not directory.is_dir() or not ranges:
+        raise ValueError('expected a private stage directory and measured ranges')
+    for name, length in ranges.items():
+        if Path(name).name != name:
+            raise ValueError('staged filenames must not escape the private directory')
+        info = (directory / name).lstat()
+        if (not stat.S_ISREG(info.st_mode) or info.st_nlink != 1
+                or info.st_uid != os.getuid()):
+            raise ValueError('expected owned regular staged copies with no extra links')
+        if not 0 < length <= info.st_size:
+            raise ValueError('invalid measured input extent')
+    return cache_inputs(directory, 'cold', ranges=ranges)
+
+
 def cache_inputs(directory, mode, prepare=True, include_jf=False, ranges=None):
     if ranges is not None:
         if mode not in ('cold', 'warm'):

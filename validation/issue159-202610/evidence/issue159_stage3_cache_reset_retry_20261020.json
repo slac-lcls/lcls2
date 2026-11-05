@@ -1,0 +1,63 @@
+{
+  "job": 41400127,
+  "node": "sdfampere030",
+  "status": "completed",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3",
+  "preflight": {
+    "harness_commit": "688205b9e6c231b866ba1b50f9f674de93685635",
+    "validation": {
+      "tests": 38,
+      "passed": 38,
+      "source": "isolated frozen B0 scripts"
+    },
+    "builds": {
+      "A0": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/B2/install",
+      "B0": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2/B/install"
+    },
+    "runtime_validation_job": 41397249
+  },
+  "plan": {
+    "commits": {
+      "A0": "7f29f0dc70d3f636f465805afd992c945d39da28",
+      "B0": "f425e601e450a292cda440fe9b67820b5dc7b4eb"
+    },
+    "timed_samples": 8,
+    "correctness_preflights": 4,
+    "comparisons": [
+      "stage3/stage2"
+    ],
+    "cache": "warm",
+    "events": 10000,
+    "batch": 20,
+    "depth": 1,
+    "workers": 8,
+    "task_bytes": 1048576,
+    "budget_gib_per_bd": 6,
+    "source": "/sdf/data/lcls/drpsrcf/ffb/users/monarin/jf-feespec-bulk-38995226/xtc",
+    "frozen_integrated_A": "90c05965cf34869388cc526a50e7e822b50a6eba",
+    "note": "Incremental no-field staging screen. Cumulative integrated-A confirmation remains stage 7. Both cases aligned; identical allocation adapter and harness.",
+    "prior_failed_job": 41349323,
+    "prior_failed_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261019-r1",
+    "repair": "One private-stage cache reset after pixel preflights and before first timed warmup; unchanged builds, warm preparation and 99% pre/post gates.",
+    "prior_cache_failed_jobs": [
+      41397249,
+      41397802
+    ],
+    "cache_diagnostic_job": 41398320,
+    "validation_job": 41397249,
+    "prior_artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r2"
+  },
+  "frozen_inputs": 2084,
+  "hashes": {
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/hashes.json": "6316635983773a48f9e3a9732ede855c391460e1a174e528fe9d659e6d641cde",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/run.sbatch": "3f0e5696d818f1487dbc35d00f7aa0006c9e3a92e4e45951d1a53ffe2fc47964",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/screen/alignment_screen.py": "0c0b6adcee2902d5922b2a993687bf94c84dac2dbb1274d0364827161fd9ef5d",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/screen/B0/scripts/feespec_bulk_benchmark/common.py": "7b30746508536a1e92bb6fc1b680772a248fce9af4673fe82a8a9271e89ce5f9",
+    "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage3-20261020-r3/metadata/harness.patch": "fb2a27075b2a33eb00771fef9bc1c8845f77c43997cc1134ed83045ad157a2c8"
+  },
+  "elapsed": "00:30:28",
+  "exit_code": "0:0",
+  "timed_samples": 8,
+  "results_file": "issue159_stage3_screen_20261020.json",
+  "results_sha256": "4f84c78cec7cac7f19016d11e98deb0fb60032e04be6b3b3aea806082fa90749"
+}

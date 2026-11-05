@@ -12,6 +12,7 @@ module, so NumPy stands in for CuPy.
 from types import SimpleNamespace as NS
 
 import numpy as np
+import pytest
 
 from psana.gpu.gpu_allocation import owned_empty
 from psana.gpu.gpu_budget import _GpuBudget
@@ -295,3 +296,128 @@ def test_high_water_tracks_and_prints_both():
     line = emitted[0]
     assert 'constants=12.0 MiB' in line, line
     assert 'borrowed=384.0 MiB' in line, line
+
+
+@pytest.mark.parametrize('role', ['owner', 'importer', 'private'])
+def test_live_field_copies_are_attributed_separately_from_constants(role):
+    budget = _GpuBudget(4096)
+    private = None
+    if role == 'owner':
+        budget.reserve(136)
+        constants = NS(shared_bytes=136, imported_bytes=0)
+    elif role == 'importer':
+        constants = NS(shared_bytes=136, imported_bytes=136)
+    else:
+        constants = NS()
+        private = owned_empty(np, 136, np.uint8, budget, 'task-constants')
+    field = owned_empty(np, 30, np.uint8, budget, 'field-copy')
+    m = manager(budget, constants=constants)
+    # A snapshot must not consume available admission credit or alter charges.
+    with budget.hold(100):
+        before = (budget.committed(), budget._held, budget.allocation_snapshot())
+        stats = m._snapshot_memory('live-field')
+        assert (budget.committed(), budget._held, budget.allocation_snapshot()) == before
+        assert stats.field_copies == 30
+        assert stats.retained == 0 and stats.held == 100
+        assert stats.borrowed == (136 if role == 'importer' else 0)
+        assert stats.constants == (0 if role == 'importer' else 136)
+        assert stats.committed == stats.constants + 30
+        records = [a for a in stats.allocations if a['category'] == 'field-copy']
+        assert len(records) == 1 and records[0]['capacity'] == 30
+        alias = field[:1]
+        del field
+        aliased = m._snapshot_memory('retained-alias')
+        assert aliased.field_copies == 30 and aliased.retained == 0
+        del alias
+        after = m._snapshot_memory('released-field')
+        assert after.field_copies == 0
+        assert after.retained == 0 and after.held == 100
+        assert after.borrowed == stats.borrowed and after.constants == stats.constants
+        assert after.committed == after.constants
+        assert not any(a['category'] == 'field-copy' for a in after.allocations)
+    if role == 'owner':
+        budget.release(136)
+    del private
+    assert budget.committed() == 0 and budget.allocation_snapshot() == ()
+
+
+@pytest.mark.parametrize('with_budget', [False, True])
+def test_field_copy_category_is_zero_before_allocation(with_budget):
+    stats = manager(_GpuBudget(4096) if with_budget else None)._snapshot_memory('empty')
+    assert stats.field_copies == stats.retained == stats.committed == 0
+
+
+def test_field_copy_capacities_leave_unknown_storage_in_residual():
+    # Real ledger tokens represent two rounded device blocks without a GPU.
+    budget = _GpuBudget(4096)
+    small = budget.reserve_allocation(512, requested=1, category='field-copy')
+    large = budget.reserve_allocation(1024, requested=600, category='field-copy')
+    other = budget.reserve_allocation(96, requested=96, category='unattributed')
+    for charge in (small, large, other):
+        charge.commit()
+    m = manager(budget)
+    try:
+        with budget.hold(128):
+            before = (budget.committed(), budget._held, budget.allocation_snapshot())
+            first = m._snapshot_memory('two-copies')
+            assert first.field_copies == 1536  # not 601 logical bytes
+            assert first.retained == 96 and first.committed == 1632
+            assert (budget.committed(), budget._held, budget.allocation_snapshot()) == before
+            small.release()
+            second = m._snapshot_memory('one-copy')
+            assert second.field_copies == 1024 and second.retained == 96
+            large.release()
+            last = m._snapshot_memory('no-copies')
+            assert last.field_copies == 0 and last.retained == 96
+            assert last.committed == 96 and last.held == 128
+    finally:
+        small.release()
+        large.release()
+        other.release()
+    assert budget.committed() == 0
+
+
+def test_field_copy_logs_and_peak_survive_release(monkeypatch):
+    import psana.gpu.gpu_events as ge
+    emitted = []
+    monkeypatch.setattr(ge._log, 'info', lambda fmt, *args: emitted.append(fmt % args))
+    budget = _GpuBudget(8 * MIB)
+    m = manager(budget)
+    m._high_water = {}
+    m.log_memory('before')
+    assert m._high_water['field_copies'] == 0
+    field = owned_empty(np, 2 * MIB, np.uint8, budget, 'field-copy')
+    m.log_memory('live')
+    assert m._high_water['field_copies'] == 2 * MIB
+    del field
+    m.log_memory('released')
+    m.log_high_water()
+    live = next(line for line in emitted if 'GPU ownership [live]' in line)
+    released = next(line for line in emitted if 'GPU ownership [released]' in line)
+    assert 'field_copies=2.0 MiB' in live and 'retained=0.0 MiB' in live
+    assert 'field_copies=0.0 MiB' in released and 'committed=0.0 MiB' in released
+    assert 'field_copies=2.0 MiB' in emitted[-1]  # peak, not current allocation
+    assert m._high_water['field_copies'] == 2 * MIB
+    assert m._high_water['retained'] == 0
+
+
+def test_mpi_snapshot_serializes_field_category_without_changing_budget():
+    # Exercise the MPI driver's reporting helper without launching MPI/CUDA.
+    import importlib.util
+    from pathlib import Path
+    path = Path(__file__).resolve().parents[1] / 'integration/mpi_issue159_fields.py'
+    spec = importlib.util.spec_from_file_location('issue159_reporting_driver', path)
+    driver = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(driver)
+    budget = _GpuBudget(4096)
+    field = owned_empty(np, 30, np.uint8, budget, 'field-copy')
+    m = manager(budget)
+    try:
+        before = (budget.committed(), budget._held, budget.allocation_snapshot())
+        row = driver.snapshot(m, 'cpu-reporting-check')
+        assert row['field_copies'] == 30 and row['retained'] == 0
+        assert row['field_copies'] == sum(a['capacity'] for a in row['field_allocations'])
+        assert (budget.committed(), budget._held, budget.allocation_snapshot()) == before
+    finally:
+        del field
+    assert budget.committed() == 0

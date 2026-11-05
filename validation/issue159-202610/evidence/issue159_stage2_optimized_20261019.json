@@ -1,0 +1,673 @@
+{
+  "job": 41319573,
+  "candidate_commit": "7f29f0dc70d3f636f465805afd992c945d39da28",
+  "status": {
+    "B-focused": {
+      "returncode": 0,
+      "seconds": 7.887316465377808
+    },
+    "B-memcheck": {
+      "returncode": 0,
+      "seconds": 5.806421518325806
+    },
+    "micro-A0-r1": {
+      "returncode": 0,
+      "seconds": 9.9754159450531
+    },
+    "micro-B0-r1": {
+      "returncode": 0,
+      "seconds": 10.295796632766724
+    },
+    "micro-B1-r1": {
+      "returncode": 0,
+      "seconds": 10.119947910308838
+    },
+    "micro-B1-r2": {
+      "returncode": 0,
+      "seconds": 10.013996601104736
+    },
+    "micro-B0-r2": {
+      "returncode": 0,
+      "seconds": 10.193979501724243
+    },
+    "micro-A0-r2": {
+      "returncode": 0,
+      "seconds": 10.1112380027771
+    },
+    "B-core": {
+      "returncode": 1,
+      "seconds": 145.90730381011963
+    },
+    "B-byhand": {
+      "returncode": 0,
+      "seconds": 131.60766625404358
+    },
+    "complete": true
+  },
+  "tests": {
+    "B-memcheck": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "23",
+        "time": "1.097",
+        "timestamp": "2026-10-19T10:23:50.118815-07:00",
+        "hostname": "sdfampere012"
+      }
+    ],
+    "B-core": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "8",
+        "skipped": "5",
+        "tests": "914",
+        "time": "140.782",
+        "timestamp": "2026-10-19T10:24:56.363173-07:00",
+        "hostname": "sdfampere012"
+      }
+    ],
+    "B-focused": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "54",
+        "time": "2.649",
+        "timestamp": "2026-10-19T10:23:42.770551-07:00",
+        "hostname": "sdfampere012"
+      }
+    ],
+    "B-byhand": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "5",
+        "time": "127.043",
+        "timestamp": "2026-10-19T10:27:22.350644-07:00",
+        "hostname": "sdfampere012"
+      }
+    ]
+  },
+  "microbenchmarks": {
+    "micro-A0-r1": {
+      "device": 0,
+      "pci_bus": "0000:C1:00.0",
+      "cupy": "14.0.1",
+      "runtime": 12090,
+      "driver": 12090,
+      "module": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-ab-1gpu4bd-20261019-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "module_sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac",
+      "measurements": [
+        {
+          "batch": 1,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 33554432,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            0.25886719226837157,
+            0.25871360301971436,
+            0.2588160037994385,
+            0.2594815969467163,
+            0.25876479148864745,
+            0.2588160037994385,
+            0.2588160037994385,
+            0.2588160037994385
+          ],
+          "median_gather_ms": 0.2588160037994385,
+          "useful_payload_gb_per_s": 129.64589325010203,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 16777216,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        },
+        {
+          "batch": 20,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 671088640,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            4.022016143798828,
+            4.02421760559082,
+            4.01899528503418,
+            4.018175888061523,
+            4.018380737304687,
+            4.026623916625977,
+            4.018892669677735,
+            4.019507217407226
+          ],
+          "median_gather_ms": 4.0192512512207035,
+          "useful_payload_gb_per_s": 166.96857152092218,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 335544320,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        }
+      ]
+    },
+    "micro-A0-r2": {
+      "device": 0,
+      "pci_bus": "0000:C1:00.0",
+      "cupy": "14.0.1",
+      "runtime": 12090,
+      "driver": 12090,
+      "module": "/sdf/scratch/users/m/monarin/gpu-validation/pr187-ab-1gpu4bd-20261019-r1/B/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "module_sha256": "c1a118c3d1477c1693f1e55c3a11c197c2ded5a61ec570a94f9ad1d8a396faac",
+      "measurements": [
+        {
+          "batch": 1,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 33554432,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            0.2593280076980591,
+            0.25927679538726806,
+            0.2589695930480957,
+            0.2590208053588867,
+            0.25886719226837157,
+            0.2589184045791626,
+            0.2589695930480957,
+            0.21386239528656006
+          ],
+          "median_gather_ms": 0.2589695930480957,
+          "useful_payload_gb_per_s": 129.56900308279933,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 16777216,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        },
+        {
+          "batch": 20,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 671088640,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            4.029849624633789,
+            4.018227386474609,
+            4.01868782043457,
+            4.019456100463867,
+            4.063743972778321,
+            4.018380737304687,
+            4.020223999023438,
+            4.018022537231445
+          ],
+          "median_gather_ms": 4.019071960449219,
+          "useful_payload_gb_per_s": 166.9760199877066,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 335544320,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        }
+      ]
+    },
+    "micro-B0-r1": {
+      "device": 0,
+      "pci_bus": "0000:C1:00.0",
+      "cupy": "14.0.1",
+      "runtime": 12090,
+      "driver": 12090,
+      "module": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/B2/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "module_sha256": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072",
+      "measurements": [
+        {
+          "batch": 1,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 33554432,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            0.263321590423584,
+            0.2631680011749268,
+            0.26306560039520266,
+            0.26311678886413575,
+            0.2631680011749268,
+            0.26306560039520266,
+            0.2631680011749268,
+            0.26301438808441163
+          ],
+          "median_gather_ms": 0.2631423950195313,
+          "useful_payload_gb_per_s": 127.5143520583579,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 16777216,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        },
+        {
+          "batch": 20,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 671088640,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            4.085350418090821,
+            4.0887809753417965,
+            4.089190292358398,
+            4.0856575012207035,
+            4.083404922485352,
+            4.0826366424560545,
+            4.084633636474609,
+            4.082892990112304
+          ],
+          "median_gather_ms": 4.0849920272827145,
+          "useful_payload_gb_per_s": 164.28150545165195,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 335544320,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        }
+      ]
+    },
+    "micro-B0-r2": {
+      "device": 0,
+      "pci_bus": "0000:C1:00.0",
+      "cupy": "14.0.1",
+      "runtime": 12090,
+      "driver": 12090,
+      "module": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/B2/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "module_sha256": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072",
+      "measurements": [
+        {
+          "batch": 1,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 33554432,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            0.27089920043945315,
+            0.26311678886413575,
+            0.2626559972763062,
+            0.2599423885345459,
+            0.26004478931427,
+            0.26004478931427,
+            0.2598912000656128,
+            0.2598912000656128
+          ],
+          "median_gather_ms": 0.26004478931427,
+          "useful_payload_gb_per_s": 129.0332795688081,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 16777216,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        },
+        {
+          "batch": 20,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 0,
+          "address_residue": 0,
+          "payload_bytes": 671088640,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            4.092262268066406,
+            4.082534408569336,
+            4.082483291625977,
+            4.085145568847656,
+            4.0858112335205075,
+            4.0825855255126955,
+            4.084684753417969,
+            4.085504150390625
+          ],
+          "median_gather_ms": 4.0849151611328125,
+          "useful_payload_gb_per_s": 164.2845967488579,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 335544320,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        }
+      ]
+    },
+    "micro-B1-r1": {
+      "device": 0,
+      "pci_bus": "0000:C1:00.0",
+      "cupy": "14.0.1",
+      "runtime": 12090,
+      "driver": 12090,
+      "module": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/B2/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "module_sha256": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072",
+      "measurements": [
+        {
+          "batch": 1,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 1,
+          "address_residue": 1,
+          "payload_bytes": 33554432,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            0.27304959297180176,
+            0.26562559604644775,
+            0.2653183937072754,
+            0.2656768083572388,
+            0.2653696060180664,
+            0.2654207944869995,
+            0.26557440757751466,
+            0.2657792091369629
+          ],
+          "median_gather_ms": 0.2656000018119812,
+          "useful_payload_gb_per_s": 126.33445696944405,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 16777216,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        },
+        {
+          "batch": 20,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 1,
+          "address_residue": 1,
+          "payload_bytes": 671088640,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            4.125593566894532,
+            4.124006271362305,
+            4.126105499267578,
+            4.124825668334961,
+            4.130201721191407,
+            4.12410888671875,
+            4.123955154418946,
+            4.126515197753906
+          ],
+          "median_gather_ms": 4.125209617614747,
+          "useful_payload_gb_per_s": 162.67988834662725,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 335544320,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        }
+      ]
+    },
+    "micro-B1-r2": {
+      "device": 0,
+      "pci_bus": "0000:C1:00.0",
+      "cupy": "14.0.1",
+      "runtime": 12090,
+      "driver": 12090,
+      "module": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/B2/install/lib/python3.11/site-packages/psana/gpu/gpu_detector.py",
+      "module_sha256": "a5ab89434e7b064b82dcc1c3468116179e174711e18449599dbe9a4f1c2bd072",
+      "measurements": [
+        {
+          "batch": 1,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 1,
+          "address_residue": 1,
+          "payload_bytes": 33554432,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            0.2773504018783569,
+            0.26557440757751466,
+            0.26659839153289794,
+            0.27064321041107176,
+            0.26552319526672363,
+            0.2653696060180664,
+            0.26557440757751466,
+            0.2653183937072754
+          ],
+          "median_gather_ms": 0.26557440757751466,
+          "useful_payload_gb_per_s": 126.34663221532853,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 16777216,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        },
+        {
+          "batch": 20,
+          "segments": 32,
+          "panel_shape": [
+            512,
+            1024
+          ],
+          "dtype": "uint16",
+          "base_shift": 1,
+          "address_residue": 1,
+          "payload_bytes": 671088640,
+          "warmup_launches": 256,
+          "samples": 8,
+          "iterations_per_sample": 20,
+          "gather_ms": [
+            4.131532669067383,
+            4.124057769775391,
+            4.1242622375488285,
+            4.123955154418946,
+            4.1244159698486325,
+            4.126105499267578,
+            4.126976013183594,
+            4.123904037475586
+          ],
+          "median_gather_ms": 4.1243391036987305,
+          "useful_payload_gb_per_s": 162.71422478286615,
+          "throughput_definition": "input pixel bytes per second; not physical DRAM traffic",
+          "validated_pixels": 335544320,
+          "kernel_attributes": {
+            "max_threads_per_block": 1024,
+            "shared_size_bytes": 0,
+            "const_size_bytes": 0,
+            "local_size_bytes": 0,
+            "num_regs": 30,
+            "ptx_version": 80,
+            "binary_version": 80,
+            "cache_mode_ca": 0,
+            "max_dynamic_shared_size_bytes": 49152,
+            "preferred_shared_memory_carveout": -1
+          }
+        }
+      ]
+    }
+  },
+  "logs": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/job-41319573",
+  "scope": "Optimized dense-gather stage validation complete: 54 focused passes, 23 selected memcheck passes/zero errors, core 901 passed/8 failed/5 skipped/7 deselected, byhand 5 passed. Stage acceptance and staged four-BD performance remain pending.",
+  "candidate_hash_manifest": "/sdf/scratch/users/m/monarin/gpu-validation/issue159/stage2-20261019-r1/metadata/candidate-hashes-r5.json",
+  "provenance_note": "Validation runner itself rechecks the prior candidate manifest r3. The new B2 r5 manifest (1039 artifacts) is independently verified during validation and by the follow-up triage job.",
+  "independent_hash_verification": {
+    "frozen-A-hashes.json": {
+      "verified_files": 3234,
+      "manifest_sha256": "047ad26e9b82c1359062738e026029e2fd173d43b7ef64bed46611890afbe3f8",
+      "verified_at": "2026-10-19T17:29:32.394730+00:00"
+    },
+    "candidate-hashes-r5.json": {
+      "verified_files": 1039,
+      "manifest_sha256": "a764537fa820356b70379db29436da23cd03ab3e3676de667de94bc001c36248",
+      "verified_at": "2026-10-19T17:29:32.622371+00:00"
+    }
+  }
+}

@@ -444,13 +444,20 @@ class GpuDetectorFieldBinding:
 class InputSlotLease:
     """Event/execution references to independently owned parsed inputs."""
 
-    def __init__(self, result_ready, owners=(), *, planned_uses=None):
+    def __init__(self, result_ready, owners=(), *, planned_uses=None, budget=None):
         from threading import RLock
         self.result_ready = result_ready
         self._consumer_done = []
         self._lock = RLock()
         self._closed = False
         self._callbacks = []
+        self._retained_copies = None
+        self._copy_done = None
+        self._budget = budget
+        self._field_copies = None
+        self._view_children = 0
+        self._view_parent = None
+        self._view_returned = False
         self._owners = tuple(dict.fromkeys(owners))
         self._uses = []
         try:
@@ -482,7 +489,7 @@ class InputSlotLease:
             # Reserve its owners before exposing any zero-copy arrays.
             if not self._owners:
                 return self
-            child = InputSlotLease(self.result_ready)
+            child = InputSlotLease(self.result_ready, budget=self._budget)
             child._owners = self._owners
             try:
                 for use in self._uses:
@@ -490,7 +497,41 @@ class InputSlotLease:
             except BaseException:
                 child.wait_until_safe_to_reuse()
                 raise
+            # Children opened before the first copy must protect that copy too.
+            # Share the lock and point directly at the root for nested views.
+            parent = self._view_parent or self
+            child._lock = self._lock
+            child._view_parent = parent
+            parent._view_children += 1
             return child
+
+    def retain_copy(self, array):
+        """Retain a field allocation independently of public cached views.
+
+        Call before submitting work into the allocation, then register its
+        completion on the submitting lease (or drain that stream on failure).
+        This method allocates no device storage and creates no CUDA event.
+        Retention lists are allocated only when a copy is actually requested.
+        """
+        with self._lock:
+            self.require_active()
+            parent = self._view_parent or self
+            parent.require_active()
+            if parent._retained_copies is None:
+                parent._retained_copies = []
+                parent._copy_done = []
+            parent._retained_copies.append(array)
+
+    def _release_copies(self):
+        # The caller holds the shared root/child lock. Open children may still
+        # submit consumers after the parent closes; their tokens arrive later.
+        if self._closed and not self._view_children and self._retained_copies is not None:
+            for event in self._copy_done:
+                event.synchronize()
+            # A failed wait leaves every allocation and charge available for
+            # retry. Never infer completion from dropping a public field view.
+            self._retained_copies = None
+            self._copy_done = None
 
     def register_consumer_done(self, event):
         with self._lock:
@@ -501,12 +542,15 @@ class InputSlotLease:
         with self._lock:
             if not self._closed:
                 self._closed = True
+                self._field_copies = None
                 callbacks, self._callbacks = self._callbacks, []
                 for ref in callbacks:
                     callback = ref()
                     if callback is not None:
                         callback()
                 events = ([self.result_ready] if self.result_ready is not None else []) + self._consumer_done
+                if self._retained_copies is not None:
+                    self._copy_done.extend(events)
                 for use in self._uses:
                     for event in events:
                         use.register_consumer_done(event)
@@ -518,6 +562,18 @@ class InputSlotLease:
                     event.synchronize()
             self._uses.clear()
             self._owners = ()
+            parent = self._view_parent
+            if parent is not None:
+                if not self._view_returned:
+                    if parent._retained_copies is not None:
+                        parent._copy_done.extend(self._consumer_done)
+                    parent._view_children -= 1
+                    self._view_returned = True
+                if parent._retained_copies is not None:
+                    parent._release_copies()
+                self._view_parent = None
+            elif self._retained_copies is not None:
+                self._release_copies()
             self._consumer_done.clear()
             self.result_ready = None
 
@@ -583,7 +639,7 @@ class _GpuFieldViewContext:
                 ready = self._lease.result_ready
                 if ready is not None:
                     stream.wait_event(ready)
-                return self._result._slot_views()
+                return self._result._slot_views(stream)
             except BaseException:
                 self._closing = True
                 if self._lease is not parent:
@@ -635,6 +691,7 @@ class GpuFieldResult:
         "_segment_ids",
         "_device_released",
         "_views",
+        "_views_ready",
         "_cpu_cache",
         "__weakref__",
     )
@@ -658,12 +715,14 @@ class GpuFieldResult:
         )
         self._device_released = bool(device_released)
         self._views = None
+        self._views_ready = ()
         self._cpu_cache = None
         if lease is not None and hasattr(lease, 'on_retire'):
             lease.on_retire(self._retire)
 
     def _retire(self):
         self._views = None
+        self._views_ready = ()
         self.event_dgrams = None
 
     @property
@@ -687,12 +746,49 @@ class GpuFieldResult:
         row_gpu = locators.rows_gpu[dgram.dgram_index]
         return np.asarray(row_gpu.get() if hasattr(row_gpu, "get") else row_gpu)
 
-    def _slot_views(self):
+    def _materialize(self, source, offset, nbytes, shape, dtype, segment, stream):
+        """Copy bytes before forming a typed view; caller holds the lease lock."""
+        import cupy as cp
+        from .gpu_allocation import owned_empty
+
+        lease = self._lease._view_parent or self._lease
+        key = (self.binding.det_name, self.binding.alg_name,
+               self.binding.field_name, segment)
+        if lease._field_copies is not None and key in lease._field_copies:
+            return lease._field_copies[key]
+
+        ready = cp.cuda.Event(disable_timing=True)
+        with stream:
+            array = owned_empty(cp, shape, dtype, lease._budget, 'field-copy')
+        lease.retain_copy(array)
+        try:
+            if nbytes:
+                cp.cuda.runtime.memcpyAsync(
+                    array.data.ptr, source.data.ptr + offset, nbytes,
+                    cp.cuda.runtime.memcpyDeviceToDevice, stream.ptr)
+            stream.record(ready)
+        except BaseException:
+            # Submission may have succeeded even if completion recording did
+            # not. Keep source and destination until this stream can drain;
+            # failed drains remain retryable through the existing input lease.
+            lease.register_consumer_done(stream)
+            stream.synchronize()
+            raise
+        lease.register_consumer_done(ready)
+        if lease._field_copies is None:
+            lease._field_copies = {}
+        lease._field_copies[key] = (array, ready)
+        return array, ready
+
+    def _slot_views(self, stream):
         self._require_device_storage("GPU field access")
         if self._views is not None:
+            for ready in self._views_ready:
+                stream.wait_event(ready)
             return self._views
 
         values = {}
+        readiness = []
         for dgram, segment, handle in self.binding.iter_sources(
             self.event_dgrams,
             segment_ids=self._segment_ids,
@@ -730,14 +826,19 @@ class GpuFieldResult:
                     f"GPU locator byte count {nbytes} does not match "
                     f"shape {shape} and dtype {dtype}"
                 )
-            if offset < 0 or offset + nbytes > int(dgram.data_gpu.nbytes):
+            source = dgram.data_gpu
+            if offset < 0 or offset + nbytes > int(source.nbytes):
                 raise RuntimeError("GPU locator is outside the input buffer")
-            values[segment] = (
-                dgram.data_gpu[offset:offset + nbytes]
-                .view(dtype)
-                .reshape(shape)
-            )
+            # Empty fields have no typed loads and need no aligned backing.
+            if nbytes == 0 or (source.data.ptr + offset) % dtype.itemsize == 0:
+                values[segment] = source[offset:offset + nbytes].view(dtype).reshape(shape)
+            else:
+                values[segment], ready = self._materialize(
+                    source, offset, nbytes, shape, dtype, segment, stream)
+                stream.wait_event(ready)
+                readiness.append(ready)
 
+        self._views_ready = tuple(readiness)
         self._views = GpuFieldData(self.binding, values)
         return self._views
 
@@ -754,7 +855,12 @@ class GpuFieldResult:
         return GpuFieldData(self.binding, copied)
 
     def on_gpu_view(self, stream=None):
-        """Return a context manager for zero-copy segment views."""
+        """Borrow aligned segment values for work submitted on ``stream``.
+
+        Aligned input is viewed directly. First access to an unaligned field
+        copies that field into budgeted device storage, reused until retirement.
+        This is borrowed access, not an unconditional zero-copy guarantee.
+        """
         self._require_device_storage("on_gpu_view")
         if self._lease is None:
             raise RuntimeError("on_gpu_view requires an input SlotLease")

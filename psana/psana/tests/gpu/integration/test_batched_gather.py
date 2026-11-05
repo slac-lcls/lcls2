@@ -61,7 +61,7 @@ def _xtc(kind, payload=b"", src=0):
     return struct.pack("<IHHI", src, 0, kind, 12 + len(payload)) + payload
 
 
-def _input(cp, pool, producer, selections, dtype):
+def _input(cp, pool, producer, selections, dtype, base_shift=0):
     pieces, descriptors, events, expected = [], [], [], []
     offset = 0
     for i, streams in enumerate(selections):
@@ -90,7 +90,8 @@ def _input(cp, pool, producer, selections, dtype):
         if set(streams) & {0, 1}:
             expected.append(canonical)
     with producer:
-        data = cp.asarray(np.frombuffer(b"".join(pieces), dtype=np.uint8))
+        data = cp.asarray(np.frombuffer(bytes(base_shift) + b"".join(pieces),
+                                        dtype=np.uint8))[base_shift:]
     # Keep the host upload source alive until the copy finishes in this fixture.
     producer.synchronize()
     desc = np.asarray(descriptors, dtype=np.uint64).reshape(-1, DESC_NCOLS)
@@ -101,7 +102,9 @@ def _input(cp, pool, producer, selections, dtype):
 
 @pytest.mark.parametrize("passthrough", [False, True])
 @pytest.mark.parametrize("cross_stream", [False, True])
-def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, passthrough, cross_stream):
+@pytest.mark.parametrize("base_shift", [0, 1, 2, 3])
+def test_canonical_tail_reuse_missing_sources_and_launch_count(
+        monkeypatch, passthrough, cross_stream, base_shift):
     import cupy as cp
     from psana.gpu.gpu_budget import _GpuBudget
 
@@ -123,7 +126,7 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, pass
     original_map_ptr = None
     for selections in ([(1, 0), (0,), (1,), (2,), (1, 0)],
                        [(0,), (1,)], [], [(1, 0)] * 7):
-        batch, events, expected = _input(cp, pool, producer, selections, dtype)
+        batch, events, expected = _input(cp, pool, producer, selections, dtype, base_shift)
         assert batch._locators == {}
         # The new hot path must not request per-segment locator objects.
         def unexpected(*args, **kwargs):
@@ -150,6 +153,11 @@ def test_canonical_tail_reuse_missing_sources_and_launch_count(monkeypatch, pass
             elif len(selections) == 2:
                 assert pointer == original_map_ptr
                 assert batch.configured_locations().capacity > batch.n_dgrams
+        # Retire completed fixture consumers before the next iteration grows
+        # storage. Old result/event aliases legitimately retain old charges.
+        prepared = actual = result = target = None
+        batch.retire()
+        events = ()
         memory = detector.memory_bytes()
         assert budget.committed() == pool.memory_bytes()['total'] + memory['total']
 

@@ -1,0 +1,975 @@
+{
+  "job": 41630382,
+  "status": "completed_exit_0",
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/lscratch-numa-20261022-r1",
+  "inspection": "Read-only live topology on October 22; no I/O benchmark and no system setting changes.",
+  "nodes": {
+    "sdfampere012": {
+      "raw_path": "/sdf/scratch/users/m/monarin/gpu-validation/lscratch-numa-20261022-r1/sdfampere012-41630382.json",
+      "sha256": "c503c3655d31d37239607938dba90d39cadbb2575015fc7e074f34611ea41dd7",
+      "time": 1792707639.7983255,
+      "md": {
+        "attrs": {
+          "md/chunk_size": "524288",
+          "md/level": "raid0",
+          "md/raid_disks": "2",
+          "queue/max_hw_sectors_kb": "128",
+          "queue/max_sectors_kb": "128",
+          "queue/read_ahead_kb": "4096",
+          "queue/rotational": "0",
+          "size": "30005334016"
+        },
+        "path": "/sys/devices/virtual/block/md0",
+        "pci_chain": [],
+        "slaves": [
+          "nvme0n1",
+          "nvme3n1"
+        ]
+      },
+      "drives": {
+        "nvme0n1": {
+          "attrs": {
+            "device/firmware_rev": "0106",
+            "device/model": "KCM6XRUL7T68",
+            "device/numa_node": "5",
+            "queue/max_hw_sectors_kb": "128",
+            "queue/max_sectors_kb": "128",
+            "queue/read_ahead_kb": "4096",
+            "queue/rotational": "0",
+            "queue/scheduler": "[none] mq-deadline kyber bfq",
+            "size": "15002931888"
+          },
+          "path": "/sys/devices/pci0000:c0/0000:c0:03.3/0000:c4:00.0/nvme/nvme0/nvme0n1",
+          "pci_chain": [
+            {
+              "attributes": {
+                "class": "0x010802",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x0007",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1e0f"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.3/0000:c4:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.3"
+            }
+          ],
+          "slaves": []
+        },
+        "nvme3n1": {
+          "attrs": {
+            "device/firmware_rev": "0106",
+            "device/model": "KCM6XRUL7T68",
+            "device/numa_node": "5",
+            "queue/max_hw_sectors_kb": "128",
+            "queue/max_sectors_kb": "128",
+            "queue/read_ahead_kb": "4096",
+            "queue/rotational": "0",
+            "queue/scheduler": "[none] mq-deadline kyber bfq",
+            "size": "15002931888"
+          },
+          "path": "/sys/devices/pci0000:c0/0000:c0:03.4/0000:c5:00.0/nvme/nvme3/nvme3n1",
+          "pci_chain": [
+            {
+              "attributes": {
+                "class": "0x010802",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x0007",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1e0f"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.4/0000:c5:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.4"
+            }
+          ],
+          "slaves": []
+        }
+      },
+      "gpus": {
+        "0000:01:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "24-31,88-95",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "3",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "24-31,88-95",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "3",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:00/0000:00:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0"
+        },
+        "0000:41:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "8-15,72-79",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "1",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:40/0000:40:01.1/0000:41:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "8-15,72-79",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "1",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:40/0000:40:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:40/0000:40:01.1/0000:41:00.0"
+        },
+        "0000:81:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "56-63,120-127",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "7",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "56-63,120-127",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "7",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:80/0000:80:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0"
+        },
+        "0000:c1:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "5",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:01.1/0000:c1:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "5",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:c0/0000:c0:01.1/0000:c1:00.0"
+        }
+      },
+      "mount": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "TARGET    SOURCE   FSTYPE OPTIONS\n/lscratch /dev/md0 xfs    rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota\n"
+      },
+      "kernel": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Linux sdfampere012 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux\n"
+      },
+      "numa": {
+        "node0": {
+          "cpulist": "0-7,64-71",
+          "distance": "10 12 12 12 32 32 32 32"
+        },
+        "node1": {
+          "cpulist": "8-15,72-79",
+          "distance": "12 10 12 12 32 32 32 32"
+        },
+        "node2": {
+          "cpulist": "16-23,80-87",
+          "distance": "12 12 10 12 32 32 32 32"
+        },
+        "node3": {
+          "cpulist": "24-31,88-95",
+          "distance": "12 12 12 10 32 32 32 32"
+        },
+        "node4": {
+          "cpulist": "32-39,96-103",
+          "distance": "32 32 32 32 10 12 12 12"
+        },
+        "node5": {
+          "cpulist": "40-47,104-111",
+          "distance": "32 32 32 32 12 10 12 12"
+        },
+        "node6": {
+          "cpulist": "48-55,112-119",
+          "distance": "32 32 32 32 12 12 10 12"
+        },
+        "node7": {
+          "cpulist": "56-63,120-127",
+          "distance": "32 32 32 32 12 12 12 10"
+        }
+      },
+      "cpu_sockets": "CPU NODE SOCKET ONLINE\n  0    0      0    yes\n  1    0      0    yes\n  2    0      0    yes\n  3    0      0    yes\n  4    0      0    yes\n  5    0      0    yes\n  6    0      0    yes\n  7    0      0    yes\n  8    1      0    yes\n  9    1      0    yes\n 10    1      0    yes\n 11    1      0    yes\n 12    1      0    yes\n 13    1      0    yes\n 14    1      0    yes\n 15    1      0    yes\n 16    2      0    yes\n 17    2      0    yes\n 18    2      0    yes\n 19    2      0    yes\n 20    2      0    yes\n 21    2      0    yes\n 22    2      0    yes\n 23    2      0    yes\n 24    3      0    yes\n 25    3      0    yes\n 26    3      0    yes\n 27    3      0    yes\n 28    3      0    yes\n 29    3      0    yes\n 30    3      0    yes\n 31    3      0    yes\n 32    4      1    yes\n 33    4      1    yes\n 34    4      1    yes\n 35    4      1    yes\n 36    4      1    yes\n 37    4      1    yes\n 38    4      1    yes\n 39    4      1    yes\n 40    5      1    yes\n 41    5      1    yes\n 42    5      1    yes\n 43    5      1    yes\n 44    5      1    yes\n 45    5      1    yes\n 46    5      1    yes\n 47    5      1    yes\n 48    6      1    yes\n 49    6      1    yes\n 50    6      1    yes\n 51    6      1    yes\n 52    6      1    yes\n 53    6      1    yes\n 54    6      1    yes\n 55    6      1    yes\n 56    7      1    yes\n 57    7      1    yes\n 58    7      1    yes\n 59    7      1    yes\n 60    7      1    yes\n 61    7      1    yes\n 62    7      1    yes\n 63    7      1    yes\n 64    0      0    yes\n 65    0      0    yes\n 66    0      0    yes\n 67    0      0    yes\n 68    0      0    yes\n 69    0      0    yes\n 70    0      0    yes\n 71    0      0    yes\n 72    1      0    yes\n 73    1      0    yes\n 74    1      0    yes\n 75    1      0    yes\n 76    1      0    yes\n 77    1      0    yes\n 78    1      0    yes\n 79    1      0    yes\n 80    2      0    yes\n 81    2      0    yes\n 82    2      0    yes\n 83    2      0    yes\n 84    2      0    yes\n 85    2      0    yes\n 86    2      0    yes\n 87    2      0    yes\n 88    3      0    yes\n 89    3      0    yes\n 90    3      0    yes\n 91    3      0    yes\n 92    3      0    yes\n 93    3      0    yes\n 94    3      0    yes\n 95    3      0    yes\n 96    4      1    yes\n 97    4      1    yes\n 98    4      1    yes\n 99    4      1    yes\n100    4      1    yes\n101    4      1    yes\n102    4      1    yes\n103    4      1    yes\n104    5      1    yes\n105    5      1    yes\n106    5      1    yes\n107    5      1    yes\n108    5      1    yes\n109    5      1    yes\n110    5      1    yes\n111    5      1    yes\n112    6      1    yes\n113    6      1    yes\n114    6      1    yes\n115    6      1    yes\n116    6      1    yes\n117    6      1    yes\n118    6      1    yes\n119    6      1    yes\n120    7      1    yes\n121    7      1    yes\n122    7      1    yes\n123    7      1    yes\n124    7      1    yes\n125    7      1    yes\n126    7      1    yes\n127    7      1    yes\n"
+    },
+    "sdfampere027": {
+      "raw_path": "/sdf/scratch/users/m/monarin/gpu-validation/lscratch-numa-20261022-r1/sdfampere027-41630382.json",
+      "sha256": "8f289d8f9ff507091f733e618c0cec6238bba05af8df3817974716b4346e078e",
+      "time": 1792707639.8017414,
+      "md": {
+        "attrs": {
+          "md/chunk_size": "524288",
+          "md/level": "raid0",
+          "md/raid_disks": "2",
+          "queue/max_hw_sectors_kb": "512",
+          "queue/max_sectors_kb": "512",
+          "queue/read_ahead_kb": "4096",
+          "queue/rotational": "0",
+          "size": "30005334016"
+        },
+        "path": "/sys/devices/virtual/block/md0",
+        "pci_chain": [],
+        "slaves": [
+          "nvme3n1",
+          "nvme1n1"
+        ]
+      },
+      "drives": {
+        "nvme3n1": {
+          "attrs": {
+            "device/firmware_rev": "R1110021",
+            "device/model": "WUS4BB076D7P3E3",
+            "device/numa_node": "5",
+            "queue/max_hw_sectors_kb": "8192",
+            "queue/max_sectors_kb": "1280",
+            "queue/read_ahead_kb": "4096",
+            "queue/rotational": "0",
+            "queue/scheduler": "[none] mq-deadline kyber bfq",
+            "size": "15002931888"
+          },
+          "path": "/sys/devices/pci0000:c0/0000:c0:03.4/0000:c5:00.0/nvme/nvme3/nvme3n1",
+          "pci_chain": [
+            {
+              "attributes": {
+                "class": "0x010802",
+                "current_link_speed": "8.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x2400",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "8.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1b96"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.4/0000:c5:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "8.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.4"
+            }
+          ],
+          "slaves": []
+        },
+        "nvme1n1": {
+          "attrs": {
+            "device/firmware_rev": "R1110021",
+            "device/model": "WUS4BB076D7P3E3",
+            "device/numa_node": "5",
+            "queue/max_hw_sectors_kb": "8192",
+            "queue/max_sectors_kb": "1280",
+            "queue/read_ahead_kb": "4096",
+            "queue/rotational": "0",
+            "queue/scheduler": "[none] mq-deadline kyber bfq",
+            "size": "15002931888"
+          },
+          "path": "/sys/devices/pci0000:c0/0000:c0:03.3/0000:c4:00.0/nvme/nvme1/nvme1n1",
+          "pci_chain": [
+            {
+              "attributes": {
+                "class": "0x010802",
+                "current_link_speed": "8.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x2400",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "8.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1b96"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.3/0000:c4:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "8.0 GT/s PCIe",
+                "current_link_width": "4",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "4",
+                "numa_node": "5",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:03.3"
+            }
+          ],
+          "slaves": []
+        }
+      },
+      "gpus": {
+        "0000:01:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "24-31,88-95",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "3",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "24-31,88-95",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "3",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:00/0000:00:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:00/0000:00:01.1/0000:01:00.0"
+        },
+        "0000:41:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "8-15,72-79",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "1",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:40/0000:40:01.1/0000:41:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "8-15,72-79",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "1",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:40/0000:40:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:40/0000:40:01.1/0000:41:00.0"
+        },
+        "0000:81:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "56-63,120-127",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "7",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "56-63,120-127",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "7",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:80/0000:80:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:80/0000:80:01.1/0000:81:00.0"
+        },
+        "0000:c1:00.0": {
+          "chain": [
+            {
+              "attributes": {
+                "class": "0x030200",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x20b0",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "5",
+                "vendor": "0x10de"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:01.1/0000:c1:00.0"
+            },
+            {
+              "attributes": {
+                "class": "0x060400",
+                "current_link_speed": "16.0 GT/s PCIe",
+                "current_link_width": "16",
+                "device": "0x1483",
+                "enable": "1",
+                "local_cpulist": "40-47,104-111",
+                "max_link_speed": "16.0 GT/s PCIe",
+                "max_link_width": "16",
+                "numa_node": "5",
+                "vendor": "0x1022"
+              },
+              "path": "/sys/devices/pci0000:c0/0000:c0:01.1"
+            }
+          ],
+          "class_code": "0x030200",
+          "path": "/sys/devices/pci0000:c0/0000:c0:01.1/0000:c1:00.0"
+        }
+      },
+      "mount": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "TARGET    SOURCE   FSTYPE OPTIONS\n/lscratch /dev/md0 xfs    rw,relatime,attr2,inode64,logbufs=8,logbsize=32k,sunit=1024,swidth=2048,noquota\n"
+      },
+      "kernel": {
+        "returncode": 0,
+        "stderr": "",
+        "stdout": "Linux sdfampere027 5.14.0-570.58.1.el9_6.x86_64 #1 SMP PREEMPT_DYNAMIC Fri Oct 31 13:55:05 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux\n"
+      },
+      "numa": {
+        "node0": {
+          "cpulist": "0-7,64-71",
+          "distance": "10 12 12 12 32 32 32 32"
+        },
+        "node1": {
+          "cpulist": "8-15,72-79",
+          "distance": "12 10 12 12 32 32 32 32"
+        },
+        "node2": {
+          "cpulist": "16-23,80-87",
+          "distance": "12 12 10 12 32 32 32 32"
+        },
+        "node3": {
+          "cpulist": "24-31,88-95",
+          "distance": "12 12 12 10 32 32 32 32"
+        },
+        "node4": {
+          "cpulist": "32-39,96-103",
+          "distance": "32 32 32 32 10 12 12 12"
+        },
+        "node5": {
+          "cpulist": "40-47,104-111",
+          "distance": "32 32 32 32 12 10 12 12"
+        },
+        "node6": {
+          "cpulist": "48-55,112-119",
+          "distance": "32 32 32 32 12 12 10 12"
+        },
+        "node7": {
+          "cpulist": "56-63,120-127",
+          "distance": "32 32 32 32 12 12 12 10"
+        }
+      },
+      "cpu_sockets": "CPU NODE SOCKET ONLINE\n  0    0      0    yes\n  1    0      0    yes\n  2    0      0    yes\n  3    0      0    yes\n  4    0      0    yes\n  5    0      0    yes\n  6    0      0    yes\n  7    0      0    yes\n  8    1      0    yes\n  9    1      0    yes\n 10    1      0    yes\n 11    1      0    yes\n 12    1      0    yes\n 13    1      0    yes\n 14    1      0    yes\n 15    1      0    yes\n 16    2      0    yes\n 17    2      0    yes\n 18    2      0    yes\n 19    2      0    yes\n 20    2      0    yes\n 21    2      0    yes\n 22    2      0    yes\n 23    2      0    yes\n 24    3      0    yes\n 25    3      0    yes\n 26    3      0    yes\n 27    3      0    yes\n 28    3      0    yes\n 29    3      0    yes\n 30    3      0    yes\n 31    3      0    yes\n 32    4      1    yes\n 33    4      1    yes\n 34    4      1    yes\n 35    4      1    yes\n 36    4      1    yes\n 37    4      1    yes\n 38    4      1    yes\n 39    4      1    yes\n 40    5      1    yes\n 41    5      1    yes\n 42    5      1    yes\n 43    5      1    yes\n 44    5      1    yes\n 45    5      1    yes\n 46    5      1    yes\n 47    5      1    yes\n 48    6      1    yes\n 49    6      1    yes\n 50    6      1    yes\n 51    6      1    yes\n 52    6      1    yes\n 53    6      1    yes\n 54    6      1    yes\n 55    6      1    yes\n 56    7      1    yes\n 57    7      1    yes\n 58    7      1    yes\n 59    7      1    yes\n 60    7      1    yes\n 61    7      1    yes\n 62    7      1    yes\n 63    7      1    yes\n 64    0      0    yes\n 65    0      0    yes\n 66    0      0    yes\n 67    0      0    yes\n 68    0      0    yes\n 69    0      0    yes\n 70    0      0    yes\n 71    0      0    yes\n 72    1      0    yes\n 73    1      0    yes\n 74    1      0    yes\n 75    1      0    yes\n 76    1      0    yes\n 77    1      0    yes\n 78    1      0    yes\n 79    1      0    yes\n 80    2      0    yes\n 81    2      0    yes\n 82    2      0    yes\n 83    2      0    yes\n 84    2      0    yes\n 85    2      0    yes\n 86    2      0    yes\n 87    2      0    yes\n 88    3      0    yes\n 89    3      0    yes\n 90    3      0    yes\n 91    3      0    yes\n 92    3      0    yes\n 93    3      0    yes\n 94    3      0    yes\n 95    3      0    yes\n 96    4      1    yes\n 97    4      1    yes\n 98    4      1    yes\n 99    4      1    yes\n100    4      1    yes\n101    4      1    yes\n102    4      1    yes\n103    4      1    yes\n104    5      1    yes\n105    5      1    yes\n106    5      1    yes\n107    5      1    yes\n108    5      1    yes\n109    5      1    yes\n110    5      1    yes\n111    5      1    yes\n112    6      1    yes\n113    6      1    yes\n114    6      1    yes\n115    6      1    yes\n116    6      1    yes\n117    6      1    yes\n118    6      1    yes\n119    6      1    yes\n120    7      1    yes\n121    7      1    yes\n122    7      1    yes\n123    7      1    yes\n124    7      1    yes\n125    7      1    yes\n126    7      1    yes\n127    7      1    yes\n"
+    }
+  },
+  "sources": {
+    "kioxia": "https://www.kioxia.com/content/dam/kioxia/shared/business/ssd/enterprise-ssd/asset/productbrief/eSSD-CM6-R-product-brief.pdf",
+    "wd": "https://documents.sandisk.com/content/dam/asset-library/en_us/assets/public/western-digital/product/data-center-drives/ultrastar-nvme-series/data-sheet-ultrastar-dc-sn640.pdf",
+    "numa": "https://kernel.org/doc/html/v5.17/admin-guide/mm/numa_memory_policy.html"
+  },
+  "cold_027_disk_counters": {
+    "job": 41614567,
+    "scope": "Node-wide counters across process execution, including startup/teardown outside loop timing; exclusive benchmark allocation.",
+    "samples": [
+      {
+        "sample": "A0-off-cold-r1-B0-vs-A0",
+        "snapshot_interval_s": 62.59042739868164,
+        "devices": {
+          "md0": {
+            "read_bytes": 335606337536,
+            "read_ios": 1330504,
+            "io_busy_ms": 56243
+          },
+          "nvme1n1": {
+            "read_bytes": 167803170816,
+            "read_ios": 369306,
+            "io_busy_ms": 56239
+          },
+          "nvme3n1": {
+            "read_bytes": 167803166720,
+            "read_ios": 369932,
+            "io_busy_ms": 56197
+          }
+        }
+      },
+      {
+        "sample": "A0-off-cold-r2-B0-vs-A0",
+        "snapshot_interval_s": 62.75330686569214,
+        "devices": {
+          "md0": {
+            "read_bytes": 335605280768,
+            "read_ios": 1328171,
+            "io_busy_ms": 56438
+          },
+          "nvme1n1": {
+            "read_bytes": 167802642432,
+            "read_ios": 367084,
+            "io_busy_ms": 56375
+          },
+          "nvme3n1": {
+            "read_bytes": 167802638336,
+            "read_ios": 366484,
+            "io_busy_ms": 56312
+          }
+        }
+      },
+      {
+        "sample": "A0-off-cold-r3-B0-vs-A0",
+        "snapshot_interval_s": 62.788259983062744,
+        "devices": {
+          "md0": {
+            "read_bytes": 335608434688,
+            "read_ios": 1331848,
+            "io_busy_ms": 56348
+          },
+          "nvme1n1": {
+            "read_bytes": 167804219392,
+            "read_ios": 368046,
+            "io_busy_ms": 56320
+          },
+          "nvme3n1": {
+            "read_bytes": 167804215296,
+            "read_ios": 368923,
+            "io_busy_ms": 56225
+          }
+        }
+      },
+      {
+        "sample": "A0-off-cold-r4-B0-vs-A0",
+        "snapshot_interval_s": 63.14662003517151,
+        "devices": {
+          "md0": {
+            "read_bytes": 335605313536,
+            "read_ios": 1330763,
+            "io_busy_ms": 56375
+          },
+          "nvme1n1": {
+            "read_bytes": 167802646528,
+            "read_ios": 367153,
+            "io_busy_ms": 56259
+          },
+          "nvme3n1": {
+            "read_bytes": 167802667008,
+            "read_ios": 368006,
+            "io_busy_ms": 56323
+          }
+        }
+      },
+      {
+        "sample": "A0-on-cold-r1-B0-vs-A0",
+        "snapshot_interval_s": 62.852773904800415,
+        "devices": {
+          "md0": {
+            "read_bytes": 335609483264,
+            "read_ios": 1329686,
+            "io_busy_ms": 56338
+          },
+          "nvme1n1": {
+            "read_bytes": 167804743680,
+            "read_ios": 368031,
+            "io_busy_ms": 56319
+          },
+          "nvme3n1": {
+            "read_bytes": 167804739584,
+            "read_ios": 370253,
+            "io_busy_ms": 56269
+          }
+        }
+      },
+      {
+        "sample": "A0-on-cold-r2-B0-vs-A0",
+        "snapshot_interval_s": 62.93891167640686,
+        "devices": {
+          "md0": {
+            "read_bytes": 335603191808,
+            "read_ios": 1330153,
+            "io_busy_ms": 56330
+          },
+          "nvme1n1": {
+            "read_bytes": 167801597952,
+            "read_ios": 366561,
+            "io_busy_ms": 56316
+          },
+          "nvme3n1": {
+            "read_bytes": 167801593856,
+            "read_ios": 368231,
+            "io_busy_ms": 56275
+          }
+        }
+      },
+      {
+        "sample": "A0-on-cold-r3-B0-vs-A0",
+        "snapshot_interval_s": 63.260249853134155,
+        "devices": {
+          "md0": {
+            "read_bytes": 335601090560,
+            "read_ios": 1332128,
+            "io_busy_ms": 56408
+          },
+          "nvme1n1": {
+            "read_bytes": 167800549376,
+            "read_ios": 368406,
+            "io_busy_ms": 56282
+          },
+          "nvme3n1": {
+            "read_bytes": 167800541184,
+            "read_ios": 368298,
+            "io_busy_ms": 56365
+          }
+        }
+      },
+      {
+        "sample": "A0-on-cold-r4-B0-vs-A0",
+        "snapshot_interval_s": 62.85786557197571,
+        "devices": {
+          "md0": {
+            "read_bytes": 335605288960,
+            "read_ios": 1330584,
+            "io_busy_ms": 56258
+          },
+          "nvme1n1": {
+            "read_bytes": 167802646528,
+            "read_ios": 366088,
+            "io_busy_ms": 56224
+          },
+          "nvme3n1": {
+            "read_bytes": 167802642432,
+            "read_ios": 368384,
+            "io_busy_ms": 56224
+          }
+        }
+      },
+      {
+        "sample": "B0-off-cold-r1-B0-vs-A0",
+        "snapshot_interval_s": 62.88919162750244,
+        "devices": {
+          "md0": {
+            "read_bytes": 335608434688,
+            "read_ios": 1328260,
+            "io_busy_ms": 56368
+          },
+          "nvme1n1": {
+            "read_bytes": 167804219392,
+            "read_ios": 367875,
+            "io_busy_ms": 56249
+          },
+          "nvme3n1": {
+            "read_bytes": 167804215296,
+            "read_ios": 368502,
+            "io_busy_ms": 56323
+          }
+        }
+      },
+      {
+        "sample": "B0-off-cold-r2-B0-vs-A0",
+        "snapshot_interval_s": 62.84302854537964,
+        "devices": {
+          "md0": {
+            "read_bytes": 335607246848,
+            "read_ios": 1331563,
+            "io_busy_ms": 56308
+          },
+          "nvme1n1": {
+            "read_bytes": 167803695104,
+            "read_ios": 369710,
+            "io_busy_ms": 56287
+          },
+          "nvme3n1": {
+            "read_bytes": 167803551744,
+            "read_ios": 370940,
+            "io_busy_ms": 56240
+          }
+        }
+      },
+      {
+        "sample": "B0-off-cold-r3-B0-vs-A0",
+        "snapshot_interval_s": 62.601884841918945,
+        "devices": {
+          "md0": {
+            "read_bytes": 335607382016,
+            "read_ios": 1332067,
+            "io_busy_ms": 56207
+          },
+          "nvme1n1": {
+            "read_bytes": 167803691008,
+            "read_ios": 369002,
+            "io_busy_ms": 56166
+          },
+          "nvme3n1": {
+            "read_bytes": 167803691008,
+            "read_ios": 371028,
+            "io_busy_ms": 56160
+          }
+        }
+      },
+      {
+        "sample": "B0-off-cold-r4-B0-vs-A0",
+        "snapshot_interval_s": 62.95665884017944,
+        "devices": {
+          "md0": {
+            "read_bytes": 335605280768,
+            "read_ios": 1328932,
+            "io_busy_ms": 56317
+          },
+          "nvme1n1": {
+            "read_bytes": 167802642432,
+            "read_ios": 366761,
+            "io_busy_ms": 56291
+          },
+          "nvme3n1": {
+            "read_bytes": 167802638336,
+            "read_ios": 367440,
+            "io_busy_ms": 56260
+          }
+        }
+      },
+      {
+        "sample": "B0-on-cold-r1-B0-vs-A0",
+        "snapshot_interval_s": 62.93828630447388,
+        "devices": {
+          "md0": {
+            "read_bytes": 335605288960,
+            "read_ios": 1328689,
+            "io_busy_ms": 56325
+          },
+          "nvme1n1": {
+            "read_bytes": 167802646528,
+            "read_ios": 367736,
+            "io_busy_ms": 56311
+          },
+          "nvme3n1": {
+            "read_bytes": 167802642432,
+            "read_ios": 367801,
+            "io_busy_ms": 56231
+          }
+        }
+      },
+      {
+        "sample": "B0-on-cold-r2-B0-vs-A0",
+        "snapshot_interval_s": 62.821409463882446,
+        "devices": {
+          "md0": {
+            "read_bytes": 335607418880,
+            "read_ios": 1329714,
+            "io_busy_ms": 56358
+          },
+          "nvme1n1": {
+            "read_bytes": 167803699200,
+            "read_ios": 367705,
+            "io_busy_ms": 56342
+          },
+          "nvme3n1": {
+            "read_bytes": 167803719680,
+            "read_ios": 369020,
+            "io_busy_ms": 56286
+          }
+        }
+      },
+      {
+        "sample": "B0-on-cold-r3-B0-vs-A0",
+        "snapshot_interval_s": 63.11659789085388,
+        "devices": {
+          "md0": {
+            "read_bytes": 335605288960,
+            "read_ios": 1332537,
+            "io_busy_ms": 56331
+          },
+          "nvme1n1": {
+            "read_bytes": 167802646528,
+            "read_ios": 368443,
+            "io_busy_ms": 56320
+          },
+          "nvme3n1": {
+            "read_bytes": 167802642432,
+            "read_ios": 367875,
+            "io_busy_ms": 56259
+          }
+        }
+      },
+      {
+        "sample": "B0-on-cold-r4-B0-vs-A0",
+        "snapshot_interval_s": 62.8016083240509,
+        "devices": {
+          "md0": {
+            "read_bytes": 335607226368,
+            "read_ios": 1329327,
+            "io_busy_ms": 56324
+          },
+          "nvme1n1": {
+            "read_bytes": 167803658240,
+            "read_ios": 365700,
+            "io_busy_ms": 56306
+          },
+          "nvme3n1": {
+            "read_bytes": 167803568128,
+            "read_ios": 368377,
+            "io_busy_ms": 56230
+          }
+        }
+      }
+    ]
+  }
+}
