@@ -1,0 +1,3759 @@
+{
+  "campaign": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+  "generated_utc": "2026-10-26T15:19:22.400779Z",
+  "nodes": [
+    {
+      "node": "sdfampere001",
+      "jobs": [],
+      "status": "unavailable: drained",
+      "errors": []
+    },
+    {
+      "node": "sdfampere002",
+      "profile": "S1",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere002-41998193.json",
+      "evidence": {
+        "host": "sdfampere002",
+        "collected_utc": "2026-10-26T15:04:10.725317Z",
+        "job": "41998193",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme0n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme1n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-bd0aab0d-59cb-f0dd-23aa-4c34dac484cb"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-7ca24550-6f3d-0566-015a-88cbb5918209"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-cf62be42-b64d-d92d-c2e7-2b5644439472"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-2ffbbab3-51e7-f2a6-31de-fc601f6aa552"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "98%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.07",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056146400 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere003",
+      "jobs": [
+        {
+          "node": "sdfampere003",
+          "job": "41998194",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere003",
+            "--job-name=amp-inv-003",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 2,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    },
+    {
+      "node": "sdfampere004",
+      "profile": "S1",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere004-41998195.json",
+      "evidence": {
+        "host": "sdfampere004",
+        "collected_utc": "2026-10-26T15:04:10.707015Z",
+        "job": "41998195",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme0n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme1n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c27d62cd-6693-d20f-5167-0d5ccf9cda25"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-27699ebb-e5ba-f4f9-526d-831cc788f70a"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-3e8528f8-fe59-785e-c2c4-c969ab13acda"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-fc0cb424-b49f-3874-2ff8-021036437198"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.04",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056144100 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere005",
+      "jobs": [],
+      "status": "unavailable: maint",
+      "errors": []
+    },
+    {
+      "node": "sdfampere006",
+      "jobs": [],
+      "status": "unavailable: maint",
+      "errors": []
+    },
+    {
+      "node": "sdfampere007",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere008",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere009",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere010",
+      "profile": "S2",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere010-41998196.json",
+      "evidence": {
+        "host": "sdfampere010",
+        "collected_utc": "2026-10-26T15:04:58.906115Z",
+        "job": "41998196",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-e559d4b8-c5b1-499a-3c8b-949842b135d2"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-1abfaa46-69e3-8481-bb31-6943f24ca4e4"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-4a5a4591-3615-e06a-ee34-f71be2fc93ef"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-425ae296-67dc-02f1-0456-2cfa5331c25e"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.09",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145188 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere011",
+      "profile": "S2",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere011-41998197.json",
+      "evidence": {
+        "host": "sdfampere011",
+        "collected_utc": "2026-10-26T15:04:58.921208Z",
+        "job": "41998197",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-154e7adf-a139-1fb1-8ac7-73e6a5362bcc"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-b1a13715-f3ef-f7d7-d637-ffdd2c0263ae"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-79e27dff-6327-ab92-1dc3-ee1d17172bca"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-44e71b3c-9f3d-c7a8-75d4-e479fffdb3e2"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.13",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056142860 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere012",
+      "profile": "S3",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere012-41998192.json",
+      "evidence": {
+        "host": "sdfampere012",
+        "collected_utc": "2026-10-26T15:04:10.744405Z",
+        "job": "41998192",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "128",
+        "drives": [
+          {
+            "device": "nvme0n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "128",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "128",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c681ad2f-adac-bc52-4a87-c54aee3def30"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-b9d52c00-ca89-0794-e25d-8946162e9fac"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-98ae5d4f-13d4-3486-883f-8c0532df844f"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-f3cd8b03-eb69-2dc9-6143-7a971c9b443a"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "100%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.48",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145160 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere013",
+      "profile": "S2",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere013-41998198.json",
+      "evidence": {
+        "host": "sdfampere013",
+        "collected_utc": "2026-10-26T15:08:59.914624Z",
+        "job": "41998198",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme1n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-2dd3ef55-3b54-32cf-b9cd-088c69d3d6a8"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-a232a462-7eb9-93b2-4faa-02548e117d1d"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-3fe6c193-d8cc-0151-b678-89609508876b"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-8dad1199-fefd-4478-7f75-2550057f0a86"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.43",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145160 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere014",
+      "profile": "S2",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere014-41998199.json",
+      "evidence": {
+        "host": "sdfampere014",
+        "collected_utc": "2026-10-26T15:04:58.905653Z",
+        "job": "41998199",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-5bf74090-f097-fbe3-9100-46171f074298"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-16d613e6-6d05-e0da-9ced-df224ff42985"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-071647e2-f9d2-9e69-896c-ef75955abc36"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c9ef9054-6100-fd2e-2ec9-b5b06e54af77"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.87",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145192 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere015",
+      "profile": "S2",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere015-41998200.json",
+      "evidence": {
+        "host": "sdfampere015",
+        "collected_utc": "2026-10-26T15:05:11.719200Z",
+        "job": "41998200",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0106",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-3f96c0b8-c61a-cb19-6c86-d4162e98c702"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-68f808f5-7fa5-3fc9-654a-8f44aa766b02"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-d3778f34-575d-e2bc-55ac-48d82896318e"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-e36a5815-7415-bcb9-6fd7-942b4c39b006"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.00",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145172 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere016",
+      "profile": "S4",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere016-41998201.json",
+      "evidence": {
+        "host": "sdfampere016",
+        "collected_utc": "2026-10-26T15:05:11.714960Z",
+        "job": "41998201",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md125",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme1n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-877dca91-fef8-0a80-eb02-0b4254dcef63"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-857bfaa3-bd38-ea43-82b5-2f71ebe02f83"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-8d25f73e-d492-3cef-9c4a-ec46def74e35"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-70ddc293-3147-94bc-ab38-39e8fd18c447"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "98%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.73",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056136672 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere017",
+      "profile": "S4",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere017-41998202.json",
+      "evidence": {
+        "host": "sdfampere017",
+        "collected_utc": "2026-10-26T15:09:11.692171Z",
+        "job": "41998202",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md125",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-1e99084e-01b3-5c47-851a-8d03eca4fc68"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-e478baa0-4f12-e8b5-4de6-4a3d19b7558e"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-a085d857-b5af-0899-797f-65883992d564"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-14466daa-f567-d4ec-97fb-81b63b996e6c"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "100%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.33",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145168 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere018",
+      "profile": "S4",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere018-41998203.json",
+      "evidence": {
+        "host": "sdfampere018",
+        "collected_utc": "2026-10-26T15:05:11.714502Z",
+        "job": "41998203",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md125",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme0n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-9115ddc4-2de2-a742-2bc7-119c31bd517c"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-e9ccd980-04c6-f703-d5ee-cd5dd0f42767"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-a38adc82-4e3d-a6fc-4618-07dc19aecff1"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c66a5240-c553-4f3b-8faf-888aadef5938"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "96%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.22",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145196 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere019",
+      "profile": "S4",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere019-41998204.json",
+      "evidence": {
+        "host": "sdfampere019",
+        "collected_utc": "2026-10-26T15:05:59.178247Z",
+        "job": "41998204",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md125",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme1n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-d2bde32e-dd75-0f2c-e785-784189390b1d"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-857ff99a-aaa2-8132-4e20-414459616dab"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-42f3f35e-3196-9428-63d0-77b4b3cf4d37"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-5511853c-e1d1-076a-5508-1268f262b4c8"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "98%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.00",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145160 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere020",
+      "profile": "S4",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere020-41998205.json",
+      "evidence": {
+        "host": "sdfampere020",
+        "collected_utc": "2026-10-26T15:05:59.216899Z",
+        "job": "41998205",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-db1a755b-4e99-864d-68b8-73ca19ed72ea"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c7fc5757-0f7d-cfad-696f-248826c440dd"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-79ca3bbe-901c-95dc-97ab-ba3992c93d2f"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-51477212-6aa2-e1b8-9ca7-35a8b90ef7ab"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "98%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.90",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056134320 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere021",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere022",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere023",
+      "profile": "S4",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere023-41998206.json",
+      "evidence": {
+        "host": "sdfampere023",
+        "collected_utc": "2026-10-26T15:10:00.151118Z",
+        "job": "41998206",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCM6XRUL7T68",
+            "firmware": "0105",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-52ed4d03-f40c-877b-7455-4abb19f74cf3"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c3ec215e-e736-0752-8072-035a07dd0682"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-725b5882-2408-474f-8626-840a0942ecdc"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-2707908f-739a-6d82-1eeb-5f5c2e5b9141"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "98%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.68",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056145176 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere024",
+      "jobs": [],
+      "status": "unavailable: drained*",
+      "errors": []
+    },
+    {
+      "node": "sdfampere025",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere026",
+      "profile": "S1",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere026-41998207.json",
+      "evidence": {
+        "host": "sdfampere026",
+        "collected_utc": "2026-10-26T15:05:59.176075Z",
+        "job": "41998207",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme1n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-d9a80025-7595-4158-1ba0-f7917565fbc1"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-31c8936a-85a0-b2be-a41f-cb74e485aab2"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-bb45db7f-c825-82e4-989a-da1085394684"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-b324c5d1-3d3b-c1be-499b-0a9484516ca7"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "100%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.90",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056133684 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere027",
+      "jobs": [
+        {
+          "node": "sdfampere027",
+          "job": "41998208",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere027",
+            "--job-name=amp-inv-027",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998204",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 0,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    },
+    {
+      "node": "sdfampere028",
+      "profile": "S1",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere028-41998209.json",
+      "evidence": {
+        "host": "sdfampere028",
+        "collected_utc": "2026-10-26T15:06:12.222169Z",
+        "job": "41998209",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "WUS4BB076D7P3E3",
+            "firmware": "R1110021",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen3 x4",
+            "max_link": "Gen3 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-b6f81c74-cdef-f30e-0584-51a1dcd9b798"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-f0e994af-8ca8-563f-53c5-4ed31fba5797"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-e48131ae-6b5c-5f17-e16e-2fdd6de497ab"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-8049c837-5374-d13d-58a6-8b568860380f"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.25",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056133720 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere029",
+      "jobs": [],
+      "status": "unavailable: drained",
+      "errors": []
+    },
+    {
+      "node": "sdfampere030",
+      "jobs": [
+        {
+          "node": "sdfampere030",
+          "job": "41998210",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere030",
+            "--job-name=amp-inv-030",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998206",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 2,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    },
+    {
+      "node": "sdfampere031",
+      "profile": "S5",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere031-41998211.json",
+      "evidence": {
+        "host": "sdfampere031",
+        "collected_utc": "2026-10-26T15:06:12.222184Z",
+        "job": "41998211",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCD6XLUL3T84",
+            "firmware": "0102",
+            "bytes": 3840755982336,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCD6XLUL3T84",
+            "firmware": "0102",
+            "bytes": 3840755982336,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-a255872d-b458-94cf-7749-433c46d8a944"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-46383a29-391d-1580-82e6-2c0e3a117d3b"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-26dc1732-afe9-c1f6-0833-318d02fdd111"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-11624042-e803-5034-2321-9322ce3469ba"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.43",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056143844 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere032",
+      "jobs": [
+        {
+          "node": "sdfampere032",
+          "job": "41998212",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere032",
+            "--job-name=amp-inv-032",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998208",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 0,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    },
+    {
+      "node": "sdfampere033",
+      "profile": "S5",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere033-41998213.json",
+      "evidence": {
+        "host": "sdfampere033",
+        "collected_utc": "2026-10-26T15:06:59.564376Z",
+        "job": "41998213",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCD6XLUL3T84",
+            "firmware": "0102",
+            "bytes": 3840755982336,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCD6XLUL3T84",
+            "firmware": "0102",
+            "bytes": 3840755982336,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-546c2994-4ae8-d1e2-8ffa-ff8689b9d720"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-619aab5e-5e5d-760a-9fc8-cc9fc9221aa1"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-2de31c3b-cf7e-c86f-6e45-34bd36daf39f"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-477b7c46-0bdb-06f7-30bc-614c79334b9b"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5799.77",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056133916 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere034",
+      "profile": "S5",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere034-41998214.json",
+      "evidence": {
+        "host": "sdfampere034",
+        "collected_utc": "2026-10-26T15:12:00.806469Z",
+        "job": "41998214",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "KCD6XLUL3T84",
+            "firmware": "0102",
+            "bytes": 3840755982336,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "KCD6XLUL3T84",
+            "firmware": "0102",
+            "bytes": 3840755982336,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-5ff4a320-27a7-da53-8c2e-570951fc3f66"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-f97f5b2c-98cc-7326-a655-7d7b54528e22"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-c22a51e0-4d44-48ef-0d26-7dff2d15a9d4"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-73c5f641-1fc6-4433-4038-13df4ea1e353"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "99%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.18",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056143848 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere035",
+      "jobs": [
+        {
+          "node": "sdfampere035",
+          "job": "41998215",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere035",
+            "--job-name=amp-inv-035",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998211",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 3,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    },
+    {
+      "node": "sdfampere036",
+      "jobs": [
+        {
+          "node": "sdfampere036",
+          "job": "41998216",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere036",
+            "--job-name=amp-inv-036",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998212",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 0,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    },
+    {
+      "node": "sdfampere037",
+      "jobs": [],
+      "status": "unavailable: drained$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere038",
+      "profile": "S6",
+      "raw": "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere038-41998217.json",
+      "evidence": {
+        "host": "sdfampere038",
+        "collected_utc": "2026-10-26T15:07:10.803831Z",
+        "job": "41998217",
+        "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb",
+        "source": "/dev/md0",
+        "filesystem": "xfs",
+        "mount_target": "/lscratch",
+        "raid": "raid0",
+        "chunk_bytes": "524288",
+        "raid_state": "clean",
+        "raid_degraded": null,
+        "md_read_ahead_kib": "4096",
+        "md_max_request_kib": "512",
+        "drives": [
+          {
+            "device": "nvme2n1",
+            "model": "SAMSUNG MZQL27T6HBLA-00A07",
+            "firmware": "GDC5602Q",
+            "bytes": 7681501126656,
+            "pci": "0000:c4:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          },
+          {
+            "device": "nvme3n1",
+            "model": "SAMSUNG MZQL27T6HBLA-00A07",
+            "firmware": "GDC5602Q",
+            "bytes": 7681501126656,
+            "pci": "0000:c5:00.0",
+            "numa": "5",
+            "link": "Gen4 x4",
+            "max_link": "Gen4 x4",
+            "read_ahead_kib": "4096",
+            "max_request_kib": "1280",
+            "scheduler": "[none] mq-deadline kyber bfq"
+          }
+        ],
+        "gpus": [
+          {
+            "pci": "0000:01:00.0",
+            "numa": "3",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:41:00.0",
+            "numa": "1",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:81:00.0",
+            "numa": "7",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          },
+          {
+            "pci": "0000:c1:00.0",
+            "numa": "5",
+            "link": "Gen4 x16",
+            "max_link": "Gen4 x16"
+          }
+        ],
+        "gpu_query": [
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:01:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-275eeecd-dee5-d26b-2c4c-5438070e85a1"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:41:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-f5d3d05d-66c2-a1ba-f4fd-084d885e402b"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:81:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-bb5d55e4-8a4c-aad8-4d10-e4ba364482ef"
+          },
+          {
+            "memory": null,
+            "name": "NVIDIA A100-SXM4-40GB",
+            "pci": "0000:c1:00.0",
+            "source": "proc/driver/nvidia (NVML not required)",
+            "uuid": "GPU-25be9772-7677-8bbe-c593-e5eca1cf3eb5"
+          }
+        ],
+        "driver": "575.57.08",
+        "cpu": {
+          "Architecture": "x86_64",
+          "CPU op-mode(s)": "32-bit, 64-bit",
+          "Address sizes": "43 bits physical, 48 bits virtual",
+          "Byte Order": "Little Endian",
+          "CPU(s)": "128",
+          "On-line CPU(s) list": "0-127",
+          "Vendor ID": "AuthenticAMD",
+          "Model name": "AMD EPYC 7542 32-Core Processor",
+          "CPU family": "23",
+          "Model": "49",
+          "Thread(s) per core": "2",
+          "Core(s) per socket": "32",
+          "Socket(s)": "2",
+          "Stepping": "0",
+          "Frequency boost": "enabled",
+          "CPU(s) scaling MHz": "98%",
+          "CPU max MHz": "2900.0000",
+          "CPU min MHz": "1500.0000",
+          "BogoMIPS": "5800.03",
+          "Flags": "fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt pdpe1gb rdtscp lm constant_tsc rep_good nopl xtopology nonstop_tsc cpuid extd_apicid aperfmperf rapl pni pclmulqdq monitor ssse3 fma cx16 sse4_1 sse4_2 movbe popcnt aes xsave avx f16c rdrand lahf_lm cmp_legacy svm extapic cr8_legacy abm sse4a misalignsse 3dnowprefetch osvw ibs skinit wdt tce topoext perfctr_core perfctr_nb bpext perfctr_llc mwaitx cpb cat_l3 cdp_l3 hw_pstate ssbd mba ibrs ibpb stibp vmmcall fsgsbase bmi1 avx2 smep bmi2 cqm rdt_a rdseed adx smap clflushopt clwb sha_ni xsaveopt xsavec xgetbv1 cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local clzero irperf xsaveerptr rdpru wbnoinvd amd_ppin arat npt lbrv svm_lock nrip_save tsc_scale vmcb_clean flushbyasid decodeassists pausefilter pfthreshold avic v_vmsave_vmload vgif v_spec_ctrl umip rdpid overflow_recov succor smca sev sev_es",
+          "Virtualization": "AMD-V",
+          "L1d cache": "2 MiB (64 instances)",
+          "L1i cache": "2 MiB (64 instances)",
+          "L2 cache": "32 MiB (64 instances)",
+          "L3 cache": "256 MiB (16 instances)",
+          "NUMA node(s)": "8",
+          "NUMA node0 CPU(s)": "0-7,64-71",
+          "NUMA node1 CPU(s)": "8-15,72-79",
+          "NUMA node2 CPU(s)": "16-23,80-87",
+          "NUMA node3 CPU(s)": "24-31,88-95",
+          "NUMA node4 CPU(s)": "32-39,96-103",
+          "NUMA node5 CPU(s)": "40-47,104-111",
+          "NUMA node6 CPU(s)": "48-55,112-119",
+          "NUMA node7 CPU(s)": "56-63,120-127",
+          "Vulnerability Gather data sampling": "Not affected",
+          "Vulnerability Indirect target selection": "Not affected",
+          "Vulnerability Itlb multihit": "Not affected",
+          "Vulnerability L1tf": "Not affected",
+          "Vulnerability Mds": "Not affected",
+          "Vulnerability Meltdown": "Not affected",
+          "Vulnerability Mmio stale data": "Not affected",
+          "Vulnerability Reg file data sampling": "Not affected",
+          "Vulnerability Retbleed": "Mitigation; untrained return thunk; SMT enabled with STIBP protection",
+          "Vulnerability Spec rstack overflow": "Mitigation; Safe RET",
+          "Vulnerability Spec store bypass": "Mitigation; Speculative Store Bypass disabled via prctl",
+          "Vulnerability Spectre v1": "Mitigation; usercopy/swapgs barriers and __user pointer sanitization",
+          "Vulnerability Spectre v2": "Mitigation; Retpolines; IBPB conditional; STIBP always-on; RSB filling; PBRSB-eIBRS Not affected; BHI Not affected",
+          "Vulnerability Srbds": "Not affected",
+          "Vulnerability Tsx async abort": "Not affected"
+        },
+        "kernel": "5.14.0-570.58.1.el9_6.x86_64",
+        "mem_total": "MemTotal:       1056144840 kB",
+        "command_errors": {
+          "gpu_xml": {
+            "argv": [
+              "nvidia-smi",
+              "-q",
+              "-x"
+            ],
+            "returncode": 6,
+            "stderr": "",
+            "stdout": "No devices were found\n"
+          }
+        },
+        "usable_storage_inventory": true
+      }
+    },
+    {
+      "node": "sdfampere039",
+      "jobs": [],
+      "status": "unavailable: drained*",
+      "errors": []
+    },
+    {
+      "node": "sdfampere040",
+      "jobs": [
+        {
+          "node": "sdfampere040",
+          "job": "41998218",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere040",
+            "--job-name=amp-inv-040",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998214",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 2,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "TIMEOUT",
+      "errors": [
+        "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/nodes/sdfampere040-41998218.json: Expecting ',' delimiter: line 1 column 6 (char 5)"
+      ]
+    },
+    {
+      "node": "sdfampere041",
+      "jobs": [],
+      "status": "unavailable: down$",
+      "errors": []
+    },
+    {
+      "node": "sdfampere042",
+      "jobs": [
+        {
+          "node": "sdfampere042",
+          "job": "41998219",
+          "argv": [
+            "sbatch",
+            "--parsable",
+            "--account=lcls:data",
+            "--partition=ampere",
+            "--nodes=1",
+            "--ntasks=1",
+            "--cpus-per-task=1",
+            "--mem=1G",
+            "--time=00:05:00",
+            "--nodelist=sdfampere042",
+            "--job-name=amp-inv-042",
+            "--chdir=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1",
+            "--output=/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/logs/%x-%j.log",
+            "--dependency=afterany:41998215",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1/run-v2.sbatch",
+            "/sdf/scratch/users/m/monarin/gpu-validation/ampere-inventory-20261026-r1"
+          ],
+          "lane": 3,
+          "collector_sha256": "bd7a3b49967d30db1c9ff6e2f1b9738bae8f79af12275bb09833ff85163f1cdb"
+        }
+      ],
+      "status": "PENDING",
+      "errors": []
+    }
+  ]
+}
