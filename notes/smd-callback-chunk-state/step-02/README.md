@@ -18,6 +18,8 @@ Native proxy records point into their input chunk. The new iterator replaces
 them with records backed by the owned dgrams already copied by `EB.events()`.
 This avoids another payload copy while keeping event and transition data valid
 after refill. Routing destinations remain attached to each selected event.
+Retained records keep full parsed Dgram objects, including their Python
+attribute trees; step 3's buffer limits must account for that memory cost.
 Records serialize with `as_bytearray()`; they must not be passed into the native
 proxy-recycling method, which requires native ProxyEvent objects.
 
@@ -49,3 +51,7 @@ python -m pytest psana/psana/tests/test_callback_iterator.py -v
 
 The implementation/review loop remains active for subsequent work in this
 session. See `scope.md`, `status.json`, and the round records for its state.
+
+Claude review passed implementation `60269c77796947d41f69107ff2758d78845be3ba`
+with no blocking findings. The subsequent review-record commit changes only
+documentation. See `round-01/responses.md` for follow-ups carried into step 3.

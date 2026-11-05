@@ -1,0 +1,56 @@
+{
+  "reviewed_commit": "60269c77796947d41f69107ff2758d78845be3ba",
+  "verdict": "pass",
+  "summary": "Step 2 adds an unwired, run-scoped CallbackIterator plus tests and notes; no production module (CallbackBatchBuilder, RunSmallData, Step, node, smdreader_manager, eventbuilder_manager) is modified. The component is sound for its advertised contract: _CallbackRun overrides _iter_events so run.events()/run.steps() share one advancing generator across EventBuilder chunks, Step.events() only returns on EndStep, and chunk exhaustion fetches the next builder inside the generator, so enumerate counters are not reset and a Step is not ended by refill. Owned records reuse the dgrams produced by EB.events() (ProxyEvent.as_dgrams copies each payload into a bytearray-backed Dgram), EnvStoreManager wraps those owned Dgrams as views, so events, transitions and scan/EPICS metadata remain valid after the input buffers are overwritten. _OwnedProxyEvent.as_bytearray reproduces the native footer layout (array('I') of per-dgram sizes, 0 for missing streams, count last; Dgram buffer length equals header+payload like PyDgram.size()). Lifecycle: construction reads no chunk; natural StopIteration closes input once but keeps proxy_events; close() is idempotent, closes the callback generator, the input source, and clears transitions; callback exceptions trigger close and re-raise; destinations stay attached. README correctly documents that owned records must not reach the native _recycle_proxy_event (typed ProxyEvent) and that reject-all callbacks grow the transition queue until step 3 drains during consumption. Tests use real xtcwriter/smdwriter data, native EventBuilder over SmdReaderManager.chunks() buffers, an independent single-file oracle for timestamps and motor2/epics metadata, exact byte comparison of retained records against native encodings captured before poisoning, a single callback invocation with independently counted chunks (addresses CBS-R1-001 in spirit), and a second fresh run in the same process. Supplied evidence (18 focused passed, 91 core passed/16 strict xfail, 4 byhand passed) is consistent with the inspected code. Three low, non-blocking findings recorded.",
+  "checks": [
+    "Scope: only the four listed source/test files and four notes files are new; grep confirms callback_iterator is imported nowhere in production (only its own tests), CallbackBatchBuilder, RunSmallData, Step, BatchIterator and EventBuilderManager are unchanged and still drive production callbacks.",
+    "Single stream: _CallbackRun sets _stream_events before super().__init__, RunSmallData.__init__ stores self._evt_iter = self._iter_events() which now returns the same generator used by events(); Step objects receive that same iterator so enumerate counters span chunks.",
+    "Step boundary: Step.events() (step.py:60-64) returns only on EndStep; CallbackIterator._iter_events loops `for builder in self._builders` / `while builder.has_more()` so an exhausted chunk pulls the next builder without any return into Step.",
+    "Ownership: EB.events() (eventbuilder.pyx:475) calls ProxyEvent.as_dgrams, which constructs dgram.Dgram(view=bytearray(pydg.as_memoryview())) i.e. a copy; _OwnedProxyEvent keeps that list; dgram.cc view path stores the bytearray as dgrambytes so data survives chunk buffer overwrite.",
+    "Metadata: EnvStoreManager.update_by_event wraps each owned Dgram via Dgram(view=d, config, offset=0), holding a reference to the owned object; run.Detector lookups in the test read motor2 and epics PVs and match the file oracle.",
+    "Serialization parity: native ProxyEvent.as_bytearray uses array('I') footer with pydg.size()=sizeof(Dgram)+payload and leaves 0 for missing streams; owned version uses memoryview(dgram).nbytes, where PyDgramObject_getbuffer reports self->size = sizeof(Dgram)+sizeofPayload for view dgrams. Test asserts byte equality against native encodings recorded by RecordingBuilder before poisoning.",
+    "Native recycler incompatibility: gen_bytearray_batch calls self._recycle_proxy_event(proxy_evt) declared `cdef void _recycle_proxy_event(self, ProxyEvent proxy_evt)`, so passing _OwnedProxyEvent would TypeError; README and docstring state a new serialization sink is required in step 3.",
+    "Lifecycle: __init__ creates the generator without starting it; __next__ lazily starts callback; StopIteration sets _finished and closes input only; BaseException path closes everything and re-raises; close() idempotent via _closed, closes callback generator then input then clears proxy_events in nested finally blocks; _close_input guarded by _input_closed and calls source close via getattr.",
+    "Early close/error semantics in tests: 'close' and 'before_start' assert no extra chunk read and source_close_calls == 1; 'error' raises after 5 events across 2 chunks and asserts transition_count == 0 and source finally ran; 'return' and 'reject' covered; list(iterator) == [] after any termination.",
+    "Chunk/invocation independence: driver counts source_chunks in the builders() generator and the test asserts source_chunks == ceil(30/chunk_size) and chunks_read == source_chunks while callback_calls == 1.",
+    "Second run freshness: main() runs exercise() twice in one process and asserts identical results.",
+    "Test wiring: run_iterator scrubs PS_* env, sets PS_PARALLEL=none and PS_SMD_N_EVENTS (consumed by get_smd_n_events -> smd0_n_events -> build_batch_view); fixtures imported by name from test_callback_chunk_state so the step-1 test function is not re-collected; DataSourceBase._get_file_info_from_db stubbed only for logbook discovery.",
+    "Validation record: focused 18 passed, core 91 passed/5 skipped/2 deselected/16 xfailed, byhand 4 passed, compile and diff --check passed; 16 strict xfails are the intentional step-1 production regressions. Core collection preceded the before-start parameter; the component is unwired so other core tests cannot depend on it."
+  ],
+  "limitations": [
+    "No commands or tests were run by the reviewer; conclusions rest on file inspection and the coordinator-supplied validation record.",
+    "Log artifacts under /tmp/smd-callback-step02/ (focused-final.log, core-retry.log, byhand.log, core.log, legacy-build.log) are outside the restricted worktree and could not be read; SHA256 values in validation.md were not verified.",
+    "The worktree .git file points to a gitdir outside the restricted directory, so HEAD could not be read directly; the reviewed SHA is taken from the supplied git status snapshot and task statement.",
+    "The core pytest group was run before the final focused test-file edit (before-start parameter). The coordinator states the implementation module was not otherwise affected; this could not be independently confirmed from the worktree.",
+    "Native sources (eventbuilder.pyx, dgramedit.pyx, dgram.cc) were inspected by targeted reads only; no build or behavior of the temporary psalg.utils.dgramCreate overlay was examined."
+  ],
+  "findings": [
+    {
+      "id": "CBI-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/step-02/validation.md",
+      "line": 19,
+      "evidence": "The full core suite result (91 passed, 16 xfailed) was collected before the final test parameter was added, so the recorded core run does not correspond to the exact reviewed tree. The component is unwired, so other core tests cannot exercise it, and the focused run at the final tree covers all 18 cases, which is why this is non-blocking.",
+      "requested_change": "For step 3, run both core groups at the final implementation SHA and record the SHA next to each log hash in validation.md. If any further step-2 edits occur, re-run the core groups rather than relying on the earlier run."
+    },
+    {
+      "id": "CBI-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/callback_iterator.py",
+      "line": 112,
+      "evidence": "In __next__, `except BaseException: self.close(); raise` will replace the callback's exception if close() itself raises (for example a failing upstream source close or a callback generator that yields inside finally). Likewise on natural StopIteration, an exception from _close_input() turns normal termination into an error without the original context being preserved.",
+      "requested_change": "Optional hardening: wrap the cleanup in try/finally so the original exception is re-raised even when cleanup fails, or chain the cleanup error explicitly (raise ... from exc). Not required for step 2 acceptance."
+    },
+    {
+      "id": "CBI-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/callback_iterator.py",
+      "line": 92,
+      "evidence": "_OwnedProxyEvent retains the full dgram.Dgram objects produced by as_dgrams, each carrying parsed Python attribute trees, for every transition and selected event until a sink drains run.proxy_events. The native ProxyEvent held only pooled pointer handles. README notes bounded buffering is step 3 work but does not call out that the per-record retention cost is now the parsed Dgram rather than a pointer.",
+      "requested_change": "No code change required now. In step 3, size the bounded drain with the parsed-Dgram footprint in mind, or serialize records to bytes eagerly at accumulation time so the Dgram objects can be released; add a sentence to README.md noting the retention cost."
+    }
+  ]
+}

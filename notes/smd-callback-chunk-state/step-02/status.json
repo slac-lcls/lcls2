@@ -2,9 +2,9 @@
   "scope": "Step 2: persistent callback input component; production integration deferred to step 3",
   "branch": "tests/smd-callback-chunk-state",
   "base_sha": "516f25d4a",
-  "phase": "ready_for_independent_review",
+  "phase": "review_passed",
   "review_loop": "active for remainder of session",
-  "round": 0,
+  "round": 1,
   "round_limit": 3,
   "checks": {
     "focused": "18 passed",
@@ -13,5 +13,17 @@
     "compile_and_whitespace": "passed"
   },
   "unresolved_ids": [],
-  "artifacts": "/tmp/smd-callback-step02"
+  "artifacts": "/tmp/smd-callback-step02",
+  "implementation_sha": "60269c77796947d41f69107ff2758d78845be3ba",
+  "review_artifacts": "/tmp/smd-callback-step02/claude-01",
+  "external_review_authorization": "User explicitly approved sending code and review context to configured Claude service.",
+  "reviewed_sha": "60269c77796947d41f69107ff2758d78845be3ba",
+  "review_verdict": "pass",
+  "deferred_ids": [
+    "CBI-R1-001",
+    "CBI-R1-002"
+  ],
+  "addressed_ids": [
+    "CBI-R1-003"
+  ]
 }
