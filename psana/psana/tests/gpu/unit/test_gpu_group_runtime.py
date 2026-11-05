@@ -287,8 +287,12 @@ def test_transition_completion_failure_preserves_owner_and_retries(io, monkeypat
     assert not dispatched and windows and all(not w.released for w in windows)
     assert m._group_inputs.live_keys and not m._closed
     token.fail = False
-    # The retry succeeds and the transition is yielded, not dispatched.
+    # The retry succeeds and the transition is yielded, not dispatched. The
+    # EndRun is queued rather than released by _handle_steps -- a packet's
+    # transitions must follow its events -- so release it as _process_batch
+    # would once the pool is idle.
     retried = list(m._handle_steps(steps))
+    retried += list(m._release_transitions())
     assert [e.gpu_state for e in retried] == [None]
     assert not dispatched, 'the manager must not dispatch; the consumer does'
     assert all(w.released for w in windows)

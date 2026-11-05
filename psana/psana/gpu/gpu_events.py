@@ -803,8 +803,9 @@ class GpuEventManager:
         # when each has stopped reading it.
         #
         # The transition handling above stays: other GPU work depends on the
-        # step generation and on _handle_steps having drained the execution
-        # and input consumers.
+        # step generation. It no longer depends on a drain at BeginStep --
+        # only EndRun drains now, since each subbatch carries its own
+        # StepScope (issue #153).
 
     def _packet_transitions(self, step_dict):
         """Non-L1 records from the packet, in order, with their dgrams."""
@@ -887,24 +888,38 @@ class GpuEventManager:
                     pass
             self._dispatch_transition(service, dgrams)
 
-        # Queued rather than dispatched. Each entry records how many
-        # submissions must have RETIRED before it may be yielded; until
-        # _reposition_transitions() is told otherwise, that is the count as of
-        # now -- nothing of this packet precedes it. A caller that goes on to
-        # submit events ahead of a transition repositions it there.
+        # Queued rather than dispatched, as (seq, timestamp, service, dgrams).
+        # seq is how many submissions must have RETIRED before the entry may
+        # be yielded; the timestamp places it among the events of the
+        # submission that retires next. Until _reposition_transitions() is
+        # told otherwise, seq is the count as of now -- nothing of this packet
+        # precedes it.
+        #
+        # Nothing is released here, even when the pool is idle: this packet's
+        # own events have not been submitted yet, and a trailing BeginStep or
+        # EndRun must follow them. Releasing here delivered every transition
+        # ahead of the packet's events whenever the pool was idle -- which is
+        # the final packet every time, since EndRun drains first and the EB
+        # appends EndRun to the batch holding the run's last events. Both
+        # Run.events() and _steps_impl return on EndRun, so those events were
+        # lost. _process_batch releases what is due once the packet's events
+        # are submitted or yielded.
         queued = self._queued_transitions = getattr(
             self, '_queued_transitions', [])
         base = getattr(self, '_submit_seq', 0)
         first_new = len(queued)
         for service, dgrams in pending_transitions:
-            queued.append((base, service, dgrams))
+            # Real dgrams always carry a timestamp, and the planner requires
+            # one. Test fakes may not (see _dispatch_transition); 0 sorts such
+            # an entry before every event of its submission, which is the
+            # pre-#153 "due now" position.
+            try:
+                timestamp = utils.first_timestamp(dgrams)
+            except Exception:
+                timestamp = None
+            queued.append((base, 0 if timestamp is None else int(timestamp),
+                           service, dgrams))
         self._new_transitions = slice(first_new, len(queued))
-
-        # Nothing is in flight, so no retirement will release them later.
-        # getattr throughout: tests build the manager with __new__ and may
-        # set neither the pool nor its full surface.
-        if not getattr(getattr(self, 'event_pool', None), 'active_count', 0):
-            yield from self._release_transitions()
 
         return end_run_seen
 
@@ -912,7 +927,13 @@ class GpuEventManager:
         """Move this packet's queued transitions behind the events they follow.
 
         `placements` is PacketPlan.transitions -- (service, dgrams, timestamp,
-        n_events_before) -- and `subbatches` the submissions about to be made.
+        n_events_before) -- and `subbatches` the submissions about to be made,
+        in submission order.
+
+        seq counts the subbatches wholly before the transition. A transition
+        that falls inside a subbatch (a SlowUpdate, Disable or Enable -- the EB
+        does not break a batch on those) keeps that subbatch's index and is
+        released between its events by timestamp, in _yield_ready().
 
         Sequence numbers are absolute, not per packet, because the EventPool
         is pipelined: a subbatch submitted now does not retire until a later
@@ -925,22 +946,30 @@ class GpuEventManager:
             return
         entries = queued[window]
         if len(entries) != len(placements):
-            # The caller decoded a different set than _handle_steps did; leave
-            # the conservative "due now" positions rather than guess.
-            return
+            # Both lists come from the same step batch through the same filter,
+            # so this is a decoding bug. Leaving the "due now" positions would
+            # silently reintroduce GPU-148-01, so fail instead.
+            raise RuntimeError(
+                f'packet decoded to {len(entries)} transitions for delivery '
+                f'but {len(placements)} for planning')
         base = getattr(self, '_submit_seq', 0)
-        for i, (_service, _dgrams, _ts, n_before) in enumerate(placements):
-            seq, service, dgrams = entries[i]
+        for i, (_service, _dgrams, ts, n_before) in enumerate(placements):
+            _seq, _ts, service, dgrams = entries[i]
             # Submissions wholly before this transition's position. A leading
             # transition (n_before == 0) waits for none; a trailing one for all.
             ahead = sum(1 for sb in subbatches
                         if getattr(sb, '_end', 0) <= n_before)
-            queued[window.start + i] = (base + ahead, service, dgrams)
-        queued.sort(key=lambda entry: entry[0])
+            queued[window.start + i] = (base + ahead, ts, service, dgrams)
+        queued.sort(key=lambda entry: (entry[0], entry[1]))
         self._new_transitions = None
 
-    def _release_transitions(self):
-        """Yield transitions whose preceding events have all been delivered.
+    def _release_transitions(self, before_ts=None, max_seq=None):
+        """Yield queued transitions that are due.
+
+        An entry (seq, ts, ...) sits after `seq` submissions and before the
+        first event of submission seq+1 recorded after `ts`. So it is due when
+        seq <= max_seq (default: the retired count) and, when `before_ts` is
+        given, it was recorded before the event about to be yielded.
 
         gpu_state is None: a transition carries no GPU result. Consumers
         already handle this -- they call run._handle_transition() for any
@@ -949,9 +978,10 @@ class GpuEventManager:
         queued = getattr(self, '_queued_transitions', None)
         if not queued:
             return
-        retired = getattr(self, '_retire_seq', 0)
-        while queued and queued[0][0] <= retired:
-            _, _service, dgrams = queued.pop(0)
+        limit = getattr(self, '_retire_seq', 0) if max_seq is None else max_seq
+        while queued and queued[0][0] <= limit and (
+                before_ts is None or queued[0][1] < before_ts):
+            _seq, _ts, _service, dgrams = queued.pop(0)
             yield EventEnvelope(dgrams=list(dgrams), gpu_state=None)
 
     def _attach_gpu(self, envelope, gpu_results, leases=None,
@@ -1081,10 +1111,6 @@ class GpuEventManager:
     def _yield_ready(self, ready, device_released=False):
         if ready is None:
             return
-        # One submission has now retired. Counted before its events are
-        # yielded so a transition positioned after them is released by the
-        # trailing _release_transitions() below, in the same call.
-        self._retire_seq = getattr(self, '_retire_seq', 0) + 1
         # Log after the first batch: slot buffers have grown to their
         # initial sizes so this shows the steady-state allocation.
         if not self._first_batch_logged and ready.event_envelopes:
@@ -1092,6 +1118,10 @@ class GpuEventManager:
             self.log_memory("first_batch")
         for envelope in ready.event_envelopes:
             ts = utils.first_timestamp(envelope.dgrams)
+            # A transition recorded inside this submission's events -- or
+            # leading the packet -- goes out just before the first event
+            # recorded after it.
+            yield from self._release_transitions(before_ts=ts)
             gpu_results = ready.gpu_results_by_ts.get(ts, {})
             if device_released:
                 # Preserve the result-key API but never retain a stale view
@@ -1111,9 +1141,16 @@ class GpuEventManager:
                 ).get(ts)),
                 device_released=device_released,
             )
-        # In record order: any transition that followed these events is due
-        # now that they have been delivered.
-        yield from self._release_transitions()
+        # This submission has retired and all its events are out. Release
+        # what was positioned inside it after its last event -- seq up to the
+        # count BEFORE it retired. An entry with seq equal to the new count
+        # belongs to the NEXT submission, before its first event recorded
+        # later than the entry; that submission's per-event check above
+        # releases it, or flush / the idle release in _process_batch does
+        # when no further submission comes.
+        retired_before = getattr(self, '_retire_seq', 0)
+        self._retire_seq = retired_before + 1
+        yield from self._release_transitions(max_seq=retired_before)
 
     def _issue_gpu_read(self, subbatch, slot_id):
         """Issue and own the single read allowed ahead of CPU processing."""
@@ -1195,7 +1232,7 @@ class GpuEventManager:
         queued = getattr(self, '_queued_transitions', None)
         if queued:
             self._retire_seq = max(getattr(self, '_retire_seq', 0),
-                                   max(seq for seq, _, _ in queued))
+                                   max(entry[0] for entry in queued))
             yield from self._release_transitions()
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
@@ -1220,6 +1257,22 @@ class GpuEventManager:
                 packet_plans = self._plan_packets(gpu_views, transitions)
                 end_run_seen = yield from self._handle_steps(step_dict)
 
+                # The planner and _dispatch_transition count BeginSteps
+                # independently -- the planner by timestamp, the dispatcher as
+                # it applies each transition -- so they must agree once this
+                # packet's transitions are applied. They diverge on a dgram
+                # with no timestamp, where the dispatcher advances and the
+                # planner raises. Checked rather than assumed: a silent
+                # disagreement would label a later packet's events with the
+                # wrong step.
+                for plan in packet_plans.values():
+                    if plan.next_generation != getattr(
+                            self, '_step_generation', 0):
+                        raise RuntimeError(
+                            f'step generation {self._step_generation} after '
+                            f'dispatch but the plan projected '
+                            f'{plan.next_generation}')
+
                 # ── Phase 3: GPU path — split batch into subbatches ──────────
                 # Parse every GPU batch from this EB communication and split
                 # each into byte-bounded GpuSubbatchViews.  Issue the FIRST
@@ -1238,6 +1291,20 @@ class GpuEventManager:
                 # _handle_steps queued this packet's transitions as "due now".
                 # Reposition them behind the events they actually follow,
                 # before any submission advances _submit_seq.
+                #
+                # Exactly one view may carry them: _reposition_transitions
+                # consumes the queued window, so a second call would leave
+                # the later view's transitions at "due now" -- GPU-148-01
+                # again, silently. The MPI path always has one view and bulk
+                # reads require one, so this raises rather than ordering the
+                # rest wrong if that ever changes.
+                planned = [v for v in gpu_views
+                           if packet_plans.get(id(v)) is not None
+                           and packet_plans[id(v)].transitions]
+                if len(planned) > 1:
+                    raise RuntimeError(
+                        f'{len(planned)} GPU views carry transitions in one '
+                        f'packet; delivery order supports a single view')
                 for gpu_view in gpu_views:
                     plan = packet_plans.get(id(gpu_view))
                     if plan is not None:
@@ -1349,11 +1416,22 @@ class GpuEventManager:
                             stop_after = True
                             break
                         n_events += 1
+                        # No submission carries these events, so place the
+                        # packet's transitions among them by timestamp here.
+                        yield from self._release_transitions(
+                            before_ts=utils.first_timestamp(envelope.dgrams))
                         yield self._attach_gpu(envelope, {})
 
                 if stop_after or end_run_seen:
                     yield from self._flush_event_pool()
                     self._done = True
+                elif not getattr(getattr(self, 'event_pool', None),
+                                 'active_count', 0):
+                    # Nothing is in flight -- a transition-only packet, or one
+                    # whose events were all CPU-only and are already out -- so
+                    # no retirement will release the rest. Its events have
+                    # been delivered, so what remains is due.
+                    yield from self._release_transitions()
                 return
         finally:
             self._n_events = n_events
