@@ -520,7 +520,10 @@ def _yielded_services(events, step_dict):
     return [envelope.dgrams[0] for envelope in delivered]
 
 
-def test_beginstep_flushes_before_dispatch(monkeypatch, fake_transition_decode):
+def test_beginstep_does_not_flush_and_is_delivered_in_order(
+        monkeypatch, fake_transition_decode):
+    """Renamed: BeginStep no longer flushes, so the old name asserted the
+    opposite of the contract. Each subbatch carries its own StepScope."""
     log = []
     events = _new_gpu_events(log)
     step_dict = _transition_batch(

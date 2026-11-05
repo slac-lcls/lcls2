@@ -191,8 +191,12 @@ def test_dense_and_descriptor_selectors_preserve_sparse_segment_identity(monkeyp
         prepare_task_inputs(GpuTask(noop, [('jf', 'raw', 'missing')]), **args)
 
 
-def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
+def test_step_neither_drains_nor_refreshes_constants(monkeypatch, cpu_uploads):
     """BeginStep yields the transition and does not touch constants.
+
+    Renamed from test_step_drains_but_does_not_refresh_constants: BeginStep
+    no longer drains, so the old name asserted the opposite of what the body
+    checks.
 
     One constant set per run is the supported model and BeginStep does not
     fetch the calibration DB, so there is nothing for a rescan to pick up.
