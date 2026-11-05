@@ -209,10 +209,19 @@ def test_a_beginstep_does_not_drain_the_pool(monkeypatch):
             'BeginStep drained the pool; the step-boundary bubble is back')
         assert delivered == [], 'the BeginStep must wait for its events'
 
-        # EndRun does drain, and releases both transitions in order.
+        # EndRun does drain the pool, and its retirement releases the
+        # BeginStep that was waiting behind it.
         rest = list(m._handle_steps(
             {0: ([_transition(TransitionId.EndRun, 9000)], [])}))
         assert pool.active_count == 0
+        # Then the end-of-stream drain delivers the EndRun itself. In
+        # production _process_batch's terminal branch does this immediately
+        # after the flush; _flush_event_pool deliberately releases nothing of
+        # its own, because it also runs MID-packet on memory pressure, where
+        # releasing a trailing EndRun would put it ahead of the packet's
+        # unsubmitted events -- and the consumer returns on EndRun, losing
+        # them.
+        rest += list(m._drain_transitions())
         assert [e.dgrams[0].service() for e in rest if e.gpu_state is None] == [
             TransitionId.BeginStep, TransitionId.EndRun]
     finally:
