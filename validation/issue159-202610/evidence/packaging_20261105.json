@@ -1,0 +1,150 @@
+{
+  "scope": "PR262 Seema item 1: exclude development records from installed psana",
+  "base": "5b082e0fdfcefc36ea208c0954aab6548aa6bdb7",
+  "reviewed_implementation": "4c711002027c0107f481c4e46f80bb38c13a3b12",
+  "changes": {
+    "moved_files": 58,
+    "moved_to_validation": 57,
+    "moved_walkthrough_to_gpu_docs": 1,
+    "deleted_process_notes": 3,
+    "new_validation_index": true,
+    "meson_exclusion": "gpu/notes",
+    "runtime_and_tests_unchanged": true
+  },
+  "checks": {
+    "base": "5b082e0fdfcefc36ea208c0954aab6548aa6bdb7",
+    "runtime_and_tests_unchanged": true,
+    "moved": 58,
+    "removed": [
+      "psana/psana/gpu/notes/issue159_final_review_20261029.md",
+      "psana/psana/gpu/notes/issue159_personal_fork_handoff_20261029.md",
+      "psana/psana/gpu/notes/issue159_review_prompt_20261028.md"
+    ],
+    "preserved_json_sha256": {
+      "validation/issue159-202610/evidence/issue159_branch_cleanup_20261029.json": "4f138931f3fee970bb4cbaa3ab50b27435c8f09ffe3e559e7cf15ffaf8673e08",
+      "validation/issue159-202610/evidence/issue159_branch_layout_20261019.json": "e115a6020f869b7a5eedf1eeb093e60c3fe86945ac9afc0a2cceb47d9d963636",
+      "validation/issue159-202610/evidence/issue159_cache_diagnosis_20261020.json": "34854104317135377c0c0300515ecba238771a1a61c182d277c7318e1325c2a2",
+      "validation/issue159-202610/evidence/issue159_cache_fallout_20261022.json": "68f2f8755571cb6d5e1ce59331cbbc1a88a299e92f5f01bc77fc7ff5b4745d3d",
+      "validation/issue159-202610/evidence/issue159_cold_rate_history_20261022.json": "9b1f16c6ca475ea3e20dfda61be8af7ffe905c8abf4f9d2eb236008bf5e885fe",
+      "validation/issue159-202610/evidence/issue159_final_scope_20261029.json": "dfced7b5a49e2e27042f83bacf0165f60701110da18272213ac46296934b2dda",
+      "validation/issue159-202610/evidence/issue159_frozen_A_20261019.json": "76a06da060b06fb86859c4de646d3feaa5503d52ee16b6c69d3169e693d460a8",
+      "validation/issue159-202610/evidence/issue159_mpi_reporting_20261028.json": "95b94d5205e38fee597061c82f2a7639a0459c24bef5c926bde9243d45f5046c",
+      "validation/issue159-202610/evidence/issue159_parallel_validation_20261028.json": "e5b268806458dcc1ac651615c752a9aa7e027bb744625a4b152777f017ede7ee",
+      "validation/issue159-202610/evidence/issue159_pr246_cold_20261028.json": "a0738b17adb6c5ed345b475dd40f8bdc30d519c11d4527975d1fee99c809c648",
+      "validation/issue159-202610/evidence/issue159_pr246_fields_20261028.json": "ea3df3091891eed594e9b229a603421f35ca6d3c0bdbddf9d9862df15b77fa63",
+      "validation/issue159-202610/evidence/issue159_review_followup_20261028.json": "8eb07699cb33f2725d6febdf5000c7877ff6153102710edc79836ebe2eb84471",
+      "validation/issue159-202610/evidence/issue159_short_screen_20261019.json": "4da115c2be39d29d9a06275cd8fef21530ae531107fb4ed05b7543fb0971b010",
+      "validation/issue159-202610/evidence/issue159_stage2_initial_20261019.json": "719b0a9a735a5e92699a615d4bb4b4f0dcf06dd3914e76061460a66f9487444a",
+      "validation/issue159-202610/evidence/issue159_stage2_optimized_20261019.json": "b5d77f0c6d1d6a315021778bc202e4f310ab0d40d527e9cd502a84a05336e6b5",
+      "validation/issue159-202610/evidence/issue159_stage2_triage_20261019.json": "79626efa4569c47682a518a0ac009ac6cbf540a8d5054dff6ea7152dd8bd6a23",
+      "validation/issue159-202610/evidence/issue159_stage3_20261019.json": "9f645f59473ff7586842f2ae400a20aba16ae749fd30e8dacc6e485656615845",
+      "validation/issue159-202610/evidence/issue159_stage3_cache_reset_retry_20261020.json": "7494edeb6cb76886115b0cc25e0487c7e2674c6645ebd2ba508e34cfac32157a",
+      "validation/issue159-202610/evidence/issue159_stage3_rebuild_20261020.json": "3a8952660846b5f9a07893b396c97b8311af8cbfac792cc5d3d85192a562165d",
+      "validation/issue159-202610/evidence/issue159_stage3_screen_20261020.json": "4f84c78cec7cac7f19016d11e98deb0fb60032e04be6b3b3aea806082fa90749",
+      "validation/issue159-202610/evidence/issue159_stage4_20261021.json": "173e8b9172d097c67773b32083a568560dda14574906f024a81614bfb73de8e7",
+      "validation/issue159-202610/evidence/issue159_stage4_cold_20261022.json": "0c90a2b6c13149e3ce29b359bbd0713da5ca66f61f4b2c17b123bb4b0a72a482",
+      "validation/issue159-202610/evidence/issue159_stage5_20261029.json": "9fa57c9f63c8361104733e4742ebfb1a2455eddf8b119a040698396eeb205f68",
+      "validation/issue159-202610/evidence/issue159_stage6_20261029.json": "d509894734c0fc6dd3a5a2cd74204c9bc96580e922e5bfe9ada89ffbd03cc583",
+      "validation/issue159-202610/evidence/issue159_stage7_20261029.json": "6d90f66622c890579c596ba77ee3daa96bb9e7ef72c50e60d84a7f2c2aeb0523",
+      "validation/issue159-202610/evidence/issue159_target_merge_review_20261028.json": "a7286fa135a05a689c49edd3a05d68ecc7a8610c40eeaa9d9fd90a908dc68cde",
+      "validation/issue159-202610/evidence/lscratch_numa_012_027_20261022.json": "a375930f4d6f907c3f7d82db48b1de7fc2365b2f269d5405bc817c2900807674",
+      "validation/issue159-202610/evidence/pr187_staging_comparison_20261019.json": "58ad519a89cfd45c29e7cd567061c6ec2ae34e63a497d9e18ba2c743c8d273be",
+      "validation/issue159-202610/evidence/prepost_stack_cold_20261022.json": "e2c33ff83e2daaae96ff0b6933aac5f9884951e424c267c61d29a1febeb24962",
+      "validation/issue159-202610/evidence/prepost_stack_cold_replay012_20261022.json": "b3a6e5da3d88ef00373b626f071137fea481a6fbe3b1ef454b48c11e6829b2f7"
+    },
+    "local_links_checked": 222,
+    "preexisting_broken_links": [],
+    "new_broken_links": [],
+    "meson_stanza_sha256": "ef19a0e8c1658297f6caa02160db0b46c554a1974d300d198869e46e9321698c",
+    "meson_commands": [
+      {
+        "command": [
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-m",
+          "mesonbuild.mesonmain",
+          "setup",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/meson-build-attempt03",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/install-smoke-attempt03",
+          "--prefix",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/installed-attempt03"
+        ],
+        "returncode": 0,
+        "log": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/meson-setup-attempt03.log",
+        "sha256": "3a05031d909db630ec160422a0be8d0c463332519af50f224b65d923d4d038f2"
+      },
+      {
+        "command": [
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-m",
+          "mesonbuild.mesonmain",
+          "install",
+          "-C",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/meson-build-attempt03",
+          "--no-rebuild"
+        ],
+        "returncode": 0,
+        "log": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/meson-install-attempt03.log",
+        "sha256": "a5da153d9706fb666f327a028d5c70d7718cbf6ae4865811a766933d433e6bb9"
+      }
+    ],
+    "installed_package": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105/installed-attempt03/lib/python3.11/site-packages/psana",
+    "notes_absent": true,
+    "tests_absent": true,
+    "runtime_and_user_docs_present": true,
+    "scope": "Actual package install_subdir stanza using real package tree; no full native build or GPU execution"
+  },
+  "stage7_verifier": {
+    "passed": true,
+    "artifact_hashes": 89,
+    "gpu_modules": 37,
+    "cold_samples": 16,
+    "access_cases": 14,
+    "retirement_samples": 3840,
+    "python36_output_byte_identical": true,
+    "python311_rounding_note": "One final-bit standard-deviation difference; numeric assertions pass; original evidence bytes unchanged"
+  },
+  "review_loop": {
+    "round_limit": 3,
+    "accepted_round": 3,
+    "reviewer": "Claude via restricted read-only CLI",
+    "verdict": "pass",
+    "reviewed_commit": "4c711002027c0107f481c4e46f80bb38c13a3b12",
+    "unresolved_blocking_findings": [],
+    "findings": [
+      {
+        "id": "PKG-R3-01",
+        "severity": "low",
+        "blocking": false,
+        "file": "psana/psana/gpu/docs/issue159_callpath_and_lifetime_walkthrough.md",
+        "line": 10,
+        "evidence": "Installed-reader fallback links to https://github.com/monarin/lcls2/tree/c3a795758/validation/issue159-202610, a fork commit two commits before this head; the relative stage links on lines 4 and 349-351 still dangle in the installed tree by design.",
+        "requested_change": "Optional follow-up only: after PR262 merges, repoint the online index to the upstream slac-lcls/lcls2 tree at the merged commit so installed docs do not depend on the personal fork. No change required for this review."
+      }
+    ],
+    "responses": {
+      "PKG-R1-01": "Fixed: repository-only validation links explained with online fallback.",
+      "PKG-R1-02": "Fixed: walkthrough indexed in installed GPU README.",
+      "PKG-R2-01": "Fixed: anchors correctly identify final milestone PR262.",
+      "PKG-R3-01": "Deferred until final merge: optional upstream permalink requires the merge commit; current pinned fork URL is valid after publication."
+    },
+    "round1": "Not accepted as final: required scratch evidence reads denied despite reported pass.",
+    "round2": "Rejected by helper: reviewer returned incorrect full SHA.",
+    "round3": "Accepted: exact-SHA structured pass with required check evidence embedded; no blocked reads of required evidence."
+  },
+  "limitations": [
+    "Actual package-install Meson stanza tested against real package tree; no complete native rebuild or GPU execution.",
+    "Claude inspected supplied check code/results; it did not execute tests.",
+    "Full raw logs remain on scratch; compact evidence is recorded here.",
+    "Initial setup lacked Ninja on PATH; successful retry uses the existing validation venv.",
+    "Round-2 check guard initially misclassified the changed GPU README as runtime; corrected documentation exclusion and install check passed."
+  ],
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-packaging-20261105",
+  "artifact_sha256": {
+    "checks.json": "81225c9b6738c3d0ce42bb6e5ab153dd7e77fdd740d1758b4e08a06bf0e28fc8",
+    "check_packaging.py": "6267f3387255364ffd89d2c64df38ea70294403c7cff3233a7e801a5fe7a8939",
+    "meson-setup-attempt03.log": "3a05031d909db630ec160422a0be8d0c463332519af50f224b65d923d4d038f2",
+    "meson-install-attempt03.log": "a5da153d9706fb666f327a028d5c70d7718cbf6ae4865811a766933d433e6bb9",
+    "review/claude-round03/review.json": "12940f52c627f442f8c8a4c10e03747923b53fe4509db624e05c0664fc837667",
+    "review/context-round03.md": "090ca1c72ffda7baa94240ba117390562f795ec8f7fe862a4ce78a904da0d3ab"
+  }
+}
