@@ -4,8 +4,8 @@
 ## Current decision — October 29: final milestone review
 
 PR260 merged Stage 6 at `3feab5b24`. Intermediate work now lives in
-`monarin/lcls2`, on `fix/gpu-unaligned-reads-159`; see the
-[personal-fork workflow and Claude handoff](https://github.com/slac-lcls/lcls2/pull/262).
+`monarin/lcls2`, on `fix/gpu-unaligned-reads-159`; see
+[final milestone PR262](https://github.com/slac-lcls/lcls2/pull/262).
 Future stage PRs target the fork. The final milestone PR still targets upstream
 `slac-lcls/lcls2:features/psana2-gpu`.
 
