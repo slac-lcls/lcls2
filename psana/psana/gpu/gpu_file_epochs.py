@@ -65,7 +65,10 @@ class GpuFileEpochs:
         """
         controls = []
         for service, dgrams in transitions:
-            if not service or TransitionId.isEvent(service):
+            # `is None`, not falsiness: service 0 is ClearReadout, a real
+            # control that must fence coalescing. `_apply()` changes files
+            # only for Enable, so fencing here remaps no stream.
+            if service is None or TransitionId.isEvent(service):
                 continue
             timestamps = {int(dg.timestamp()) for dg in dgrams if dg is not None}
             if len(timestamps) != 1:

@@ -532,12 +532,62 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
 
 
 def test_empty_gpu_only_smd_event_is_not_dispatched(fake_transition_decode):
+    """A record with no dgrams at all is a GPU-only L1, not a transition.
+
+    The decoder reports it as service None, distinct from a real
+    ClearReadout, which is service 0. Both used to arrive as 0 and both were
+    skipped -- see the ClearReadout test below.
+    """
     log = []
     events = _new_gpu_events(log)
-    step_dict = _transition_batch(0, TransitionId.Enable)
+    step_dict = _transition_batch(None, TransitionId.Enable)
 
     assert list(events._handle_steps(step_dict)) == []
     assert log == [("transition", TransitionId.Enable)]
+
+
+def test_clearreadout_reaches_cpu_dispatch(fake_transition_decode):
+    """ClearReadout is service 0, which this code also used as its "no dgram
+    present" sentinel -- so every real ClearReadout was silently dropped
+    (GPU-141-02).
+
+    Service 0 is a real control record and must be dispatched like any other
+    non-event transition. It is not a step boundary, so it must not flush.
+    """
+    log = []
+    events = _new_gpu_events(log)
+    step_dict = _transition_batch(TransitionId.ClearReadout,
+                                  TransitionId.Enable)
+
+    assert list(events._handle_steps(step_dict)) == []
+    assert log == [
+        ("transition", TransitionId.ClearReadout),
+        ("transition", TransitionId.Enable),
+    ]
+    assert events.event_pool.flush_calls == 0
+
+
+def test_clearreadout_is_dispatched_even_when_alone(fake_transition_decode):
+    """The single-record case, which the old `service == 0` filter turned
+    into a no-op batch."""
+    log = []
+    events = _new_gpu_events(log)
+
+    assert list(events._handle_steps(_transition_batch(
+        TransitionId.ClearReadout))) == []
+    assert log == [("transition", TransitionId.ClearReadout)]
+
+
+def test_reset_is_also_dispatched(fake_transition_decode):
+    """Reset (1) was never filtered, so it is the control for ClearReadout:
+    it proves the dispatch path itself was always fine and only service 0 was
+    being dropped."""
+    log = []
+    events = _new_gpu_events(log)
+
+    assert list(events._handle_steps(_transition_batch(
+        TransitionId.Reset))) == []
+    assert log == [("transition", TransitionId.Reset)]
 
 
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
@@ -577,6 +627,145 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     assert events.event_pool.yield_count == 1
     assert ("transition", TransitionId.EndRun) in log
     assert log[-1] == "close"
+
+
+def _step_batch_bytes(records, n_streams):
+    """A transition batch in the wire layout `_iter_step_events` decodes.
+
+    `records` is a list of per-stream dgram-size lists. A size of 0 means
+    that stream is absent from the record, which is how a GPU-only L1
+    arrives: every stream zero.
+    """
+    batch = bytearray()
+    batch_pf = PacketFooter(len(records))
+    for index, sizes in enumerate(records):
+        assert len(sizes) == n_streams
+        event_pf = PacketFooter(n_streams)
+        for stream, size in enumerate(sizes):
+            event_pf.set_size(stream, size)
+        payload = bytearray(sum(sizes))
+        event = payload + bytearray(event_pf.footer)
+        batch_pf.set_size(index, len(event))
+        batch += event
+    return bytes(batch + bytearray(batch_pf.footer))
+
+
+def test_decoder_skips_an_all_empty_record():
+    """An all-streams-absent record is a GPU-only L1 with nothing in the SMD
+    packet, and the decoder drops it.
+
+    No position is lost: public delivery builds those envelopes from GPUBAT1,
+    iterating subbatch.timestamps and synthesising _GpuOnlyDgram when no CPU
+    envelope matches. What this buys is the contract every caller relies on
+    -- each yielded tuple carries at least one real dgram -- which is what
+    makes a reported service 0 trustworthy as ClearReadout rather than
+    ambiguous with "nothing here" (issue #156, GPU-141-02).
+    """
+    batch = _step_batch_bytes([[0, 0]], n_streams=2)
+
+    assert list(gpu_events_module._iter_step_events(batch, [None, None])) == []
+
+
+def test_decoder_validates_size_before_skipping_an_all_empty_record():
+    """The size check must run BEFORE any empty-record skip.
+
+    Otherwise a malformed packet whose streams are all absent is silently
+    accepted, and the corruption is discovered later or not at all.
+
+    The record must stay genuinely all-empty for this to test what it claims.
+    So the corruption is unaccounted padding ahead of the event footer, with
+    the outer size covering it: both stream sizes still read 0, no dgram is
+    constructed, and only the size check can object. Inflating the claimed
+    size instead would pull the batch footer into the record and have it
+    decoded as one present stream, which exercises a different path.
+    """
+    event_pf = PacketFooter(2)
+    event_pf.set_size(0, 0)
+    event_pf.set_size(1, 0)
+    padding = bytearray(8)  # in the record's bytes, in neither stream's size
+    event = padding + bytearray(event_pf.footer)
+
+    batch_pf = PacketFooter(1)
+    batch_pf.set_size(0, len(event))
+    batch = bytes(event + bytearray(batch_pf.footer))
+
+    with pytest.raises(RuntimeError, match='Malformed step event'):
+        list(gpu_events_module._iter_step_events(batch, [None, None]))
+
+
+class _ServiceByteDgram:
+    """Stands in for dgram.Dgram, reading its service from the payload byte.
+
+    The real Dgram needs a config and real XTC bytes. What the decoder tests
+    exercise is its counting and first-present rule, not dgram parsing, so a
+    present stream is represented by a single byte holding the service id.
+    """
+
+    def __init__(self, config, view, offset):
+        self._service = int(view[offset])
+
+    def service(self):
+        return self._service
+
+
+def test_a_packet_of_only_empty_records_decodes_to_nothing():
+    """The degenerate case: nothing is yielded at all, which is what makes
+    the "at least one real dgram" contract hold for every tuple a caller
+    sees."""
+    assert list(gpu_events_module._iter_step_events(
+        _step_batch_bytes([[0, 0], [0, 0], [0, 0]], n_streams=2),
+        [None, None])) == []
+
+
+def test_decoder_skips_only_the_empty_records_in_a_mixed_packet(monkeypatch):
+    """Empty records are dropped and the real ones keep their order.
+
+    The all-empty packet above cannot show this -- it has no survivors to
+    order. Here a ClearReadout and an Enable straddle an empty record, and
+    both must come through, in that order, with the empty one gone.
+    """
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    # record 0: stream 1 present; record 1: all absent; record 2: stream 0.
+    batch = bytearray(_step_batch_bytes([[0, 1], [0, 0], [1, 0]], n_streams=2))
+    sizes = PacketFooter(view=memoryview(bytes(batch))).get_size
+    batch[0] = TransitionId.ClearReadout
+    batch[sizes(0) + sizes(1)] = TransitionId.Enable
+
+    decoded = list(gpu_events_module._iter_step_events(bytes(batch),
+                                                      [None, None]))
+
+    assert [service for service, _ in decoded] == [
+        TransitionId.ClearReadout, TransitionId.Enable]
+
+
+def test_decoder_reports_the_first_present_stream_when_some_are_missing(monkeypatch):
+    """A partially present record is a real record, not an empty one.
+
+    The service comes from the FIRST present stream, and absent streams keep
+    their positions as None so a caller can still tell which stream supplied
+    what. This is the case that separates "count the dgrams" from "look at
+    whether service is falsy": a record whose stream 0 is absent but whose
+    stream 1 carries ClearReadout must be yielded with service 0, not skipped.
+
+    dgram.Dgram needs a real config and real bytes, so it is replaced here --
+    what is under test is the decoder's counting and first-present rule, not
+    dgram parsing.
+    """
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    # Stream 0 absent, stream 1 present carrying service 0 (ClearReadout).
+    batch = bytearray(_step_batch_bytes([[0, 1]], n_streams=2))
+    batch[0] = TransitionId.ClearReadout
+
+    decoded = list(gpu_events_module._iter_step_events(bytes(batch),
+                                                      [None, None]))
+
+    assert len(decoded) == 1, 'a partially present record must not be skipped'
+    service, dgrams = decoded[0]
+    assert service == TransitionId.ClearReadout
+    assert dgrams[0] is None, 'an absent stream must keep its position'
+    assert dgrams[1] is not None
 
 
 def _pack_transport(smd_bytes, gpu_bytes):

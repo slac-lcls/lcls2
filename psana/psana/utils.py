@@ -4,6 +4,9 @@ import os
 from pathlib import Path
 from logging.handlers import RotatingFileHandler
 from psana.psexp.tools import mode
+# transitionid is a leaf module with no imports of its own, so naming the
+# enum here cannot create a cycle with psexp.
+from psana.psexp.transitionid import TransitionId
 
 # --- new: one-time config state ---
 _LOGGING_CONFIGURED = False
@@ -185,11 +188,15 @@ def first_timestamp(dgrams):
 
 def first_service(dgrams):
     """
-    Return the service code (1..13) from the first valid dgram in `dgrams`.
+    Return the service code (0..12) from the first valid dgram in `dgrams`.
 
     Extracts via (d.env() >> 24) & 0xF, like Event.service().
-    Raises RuntimeError if no valid service is found or if the extracted
-    value is 0/out of the expected range.
+
+    0 is TransitionId.ClearReadout, a real control record: it is accepted.
+    Rejecting it dropped every genuine ClearReadout (issue #156,
+    GPU-141-02). 13 is TransitionId.NumberOf, an enum sentinel rather than a
+    record, so it is still rejected -- as is a dgrams sequence with nothing
+    usable in it, which is distinct from a dgram reporting service 0.
     """
     for d in dgrams:
         if not d:
@@ -199,8 +206,10 @@ def first_service(dgrams):
         except Exception:
             # If this dgram can't provide env(), skip it.
             continue
-        if not (1 <= svc <= 13):
-            raise RuntimeError(f"expected value between 1-13, got: {svc}")
+        if not (0 <= svc < TransitionId.NumberOf):
+            raise RuntimeError(
+                f"expected a service between 0 and "
+                f"{TransitionId.NumberOf - 1}, got: {svc}")
         return svc
 
     raise RuntimeError("No valid service found in provided dgrams")
