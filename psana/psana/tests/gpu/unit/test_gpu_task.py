@@ -226,8 +226,12 @@ def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
     monkeypatch.setattr(ge, '_iter_step_events',
                         lambda *a: [(ge.TransitionId.BeginStep, [])])
 
-    # One yielded envelope: the BeginStep, carrying no GPU state.
+    # One delivered envelope: the BeginStep, carrying no GPU state.
+    # _handle_steps queues rather than releases -- a packet's transitions must
+    # follow its events, which have not been submitted yet -- so the release
+    # that _process_batch performs is done explicitly here.
     delivered = list(manager._handle_steps({0: (b'x', [])}))
+    delivered += list(manager._release_transitions())
     assert [e.dgrams for e in delivered] == [[]]
     assert delivered[0].gpu_state is None
     assert log == [], (
@@ -238,6 +242,7 @@ def test_step_drains_but_does_not_refresh_constants(monkeypatch, cpu_uploads):
 
     log.clear()
     list(manager._handle_steps({0: (b'x', [])}))
+    list(manager._release_transitions())
     assert log == []
 
 

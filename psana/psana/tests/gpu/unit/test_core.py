@@ -498,17 +498,26 @@ def test_event_pool_owns_xtc_batch_until_slot_retirement(monkeypatch):
 
 
 def _yielded_services(events, step_dict):
-    """Services of the transition envelopes `_handle_steps` yields.
+    """Services of the transition envelopes a packet delivers downstream.
 
     Since #153 PR B step 4 the manager no longer calls
     run._handle_transition() itself -- it yields the transition downstream, in
     record order, and the consumer dispatches it exactly once. So the
     assertion moved from a dispatch log to the envelopes delivered.
+
+    `_handle_steps` only QUEUES them. It must not release, even when the pool
+    is idle: this packet's own events have not been submitted yet, so
+    releasing here put every transition ahead of them -- losing the final
+    packet's events, since EndRun drains the pool and both Run.events() and
+    _steps_impl return on EndRun. _process_batch releases what is due once
+    the events are out, which for a transition-only packet like these is
+    immediately; this helper stands in for that.
     """
     # _transition_batch's fake dgrams are bare ints with no env(), so read
     # the service from the dgram directly rather than via first_service.
-    return [envelope.dgrams[0]
-            for envelope in events._handle_steps(step_dict)]
+    delivered = list(events._handle_steps(step_dict))
+    delivered += list(events._release_transitions())
+    return [envelope.dgrams[0] for envelope in delivered]
 
 
 def test_beginstep_flushes_before_dispatch(monkeypatch, fake_transition_decode):

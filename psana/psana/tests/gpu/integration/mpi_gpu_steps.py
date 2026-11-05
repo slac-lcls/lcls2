@@ -51,11 +51,21 @@ def main():
     # (job 42149659), so 120 stops inside step 0 and no number of BD ranks can
     # ever see 3 steps. 2400 reaches step 2 with room for the split between
     # BDs while still being well short of the 3000-event run.
+    #
+    # PS_STEPS_NO_CAP=1 drops the cap entirely, which is the only way this
+    # driver reaches EndRun -- and EndRun is where delivery order was wrong:
+    # the manager released a packet's transitions before its events whenever
+    # the execution pool was idle, which is the final packet every time
+    # (EndRun drains the pool, and the EB appends EndRun to the batch holding
+    # the run's last events). Both Run.events() and _steps_impl return on
+    # EndRun, so those events were lost. A capped run stops before EndRun and
+    # cannot see it.
+    no_cap = os.environ.get('PS_STEPS_NO_CAP') == '1'
     options = (dict(exp='mfx100852324', run=77, detectors=['jungfrau', 'timing'],
-                    max_events=2400)
+                    max_events=0 if no_cap else 2400)
                if which == '77' else
                dict(exp='mfx100848724', run=51, detectors=['jungfrau'],
-                    max_events=120))
+                    max_events=0 if no_cap else 120))
     ds = DataSource(dir='/sdf/data/lcls/ds/prj/public01/xtc',
                     gpu_det='jungfrau', gpu_fn=task,
                     batch_size=20, **options)
@@ -118,18 +128,29 @@ def main():
     # Events are partitioned, not duplicated: each L1 goes to exactly one BD.
     max_events = options['max_events']
     total = sum(sum(row['per_step']) for row in bd_rows)
-    if total > max_events:
+    if max_events and total > max_events:
         failures.append(f'delivered {total} events, more than '
                         f'max_events={max_events}')
     if total == 0:
         failures.append('no events delivered inside any step')
 
+    # Uncapped, the run runs to EndRun and every event must arrive. This is
+    # the assertion that catches a transition released ahead of the events it
+    # follows: EndRun delivered early makes Run.events()/_steps_impl return
+    # before the final packet's events, so the total comes up short.
+    RUN_SIZES = {'77': 3000}
+    if no_cap and which in RUN_SIZES and total != RUN_SIZES[which]:
+        failures.append(
+            f'uncapped run {which} delivered {total} events, expected '
+            f'{RUN_SIZES[which]}: events after the last BeginStep are lost '
+            f'if EndRun is delivered before them')
+
     for row in bd_rows:
-        if any(n == 0 for n in row['per_step'][:-1]):
-            # A trailing step may be cut short by max_events; an earlier one
-            # being empty would mean events landed outside their step.
-            failures.append(f'an interior step delivered no events: '
-                            f'{row["per_step"]}')
+        # Uncapped, no step may be empty -- including the last, which a cap
+        # would otherwise truncate.
+        counted = row['per_step'] if no_cap else row['per_step'][:-1]
+        if any(n == 0 for n in counted):
+            failures.append(f'a step delivered no events: {row["per_step"]}')
 
     print('MPI_STEPS_RESULT', {'counts': counts, 'total': total,
                                'per_step': [r['per_step'] for r in bd_rows]},

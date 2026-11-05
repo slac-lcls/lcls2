@@ -12,7 +12,7 @@
 #SBATCH --cpus-per-task=2
 #SBATCH --mem=64G
 #SBATCH --gpus=1
-#SBATCH --time=00:40:00
+#SBATCH --time=00:55:00
 #SBATCH --job-name=gpu-steps
 #SBATCH --output=validation/gpu-steps-20261103/job-%j.log
 #
@@ -29,8 +29,12 @@ source ./setup_env.sh >/dev/null 2>&1
 export PYTHONPATH="$PYTHONPATH:$PWD/psana"
 export PS_PARALLEL=mpi PS_EB_NODES=1 PS_SRV_NODES=0
 export PS_STEPS_DATASET=${PS_STEPS_DATASET:-51}
+# PS_STEPS_NO_CAP=1 drops max_events so the run reaches EndRun. A capped run
+# stops before it, and EndRun is where transition delivery order was wrong.
+export PS_STEPS_NO_CAP=${PS_STEPS_NO_CAP:-0}
 echo "=== node $(hostname) ==="; nvidia-smi --query-gpu=name --format=csv,noheader
-echo "=== 4 ranks (mpirun): 1 smd0 + 1 EB + 2 BD, dataset=$PS_STEPS_DATASET ==="
+echo "=== 4 ranks (mpirun): 1 smd0 + 1 EB + 2 BD, dataset=$PS_STEPS_DATASET," \
+     "no_cap=$PS_STEPS_NO_CAP ==="
 # mpirun, not srun: srun gives each task its own singleton COMM_WORLD here.
 # timeout, because the failure mode this driver is most likely to hit is a
 # rank-role deadlock (a BD in bd_comm.Probe against an smd0/EB that never ran
@@ -39,7 +43,9 @@ echo "=== 4 ranks (mpirun): 1 smd0 + 1 EB + 2 BD, dataset=$PS_STEPS_DATASET ==="
 # ~150 s (job 43001391), so the cap scales with the dataset. Failing here
 # beats discovering a deadlock at the job's time limit. SIGKILL after the
 # grace period: a rank blocked in UCX progress does not take SIGTERM.
-if [ "$PS_STEPS_DATASET" = "77" ]; then LIMIT=25m; else LIMIT=12m; fi
+if [ "$PS_STEPS_NO_CAP" = "1" ]; then LIMIT=40m
+elif [ "$PS_STEPS_DATASET" = "77" ]; then LIMIT=25m
+else LIMIT=12m; fi
 timeout --kill-after=60 "$LIMIT" \
   mpirun -n 4 python3 -u psana/psana/tests/gpu/integration/mpi_gpu_steps.py 2>&1 | \
   grep -vE "Deprecation|warnings.warn|loop_scope|UserWarning|kvikio|self.gpu_reader"

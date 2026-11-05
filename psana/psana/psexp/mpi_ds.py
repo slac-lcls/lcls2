@@ -585,8 +585,10 @@ class RunParallel(Run):
         iterator, so an abandoned step's remainder is consumed by this loop's
         own filtering rather than by an explicit _finish(). That keeps GPU
         behaviour equal to the CPU path (issue #153). The stricter contract --
-        Step state, invalidation of a superseded Step -- is deliberately not
-        implemented here; see pr_d_remainder_close_decision_20261103.md.
+        Step state, invalidation of a superseded Step, and _finish() on an
+        unfinished child -- is the remainder/close matrix that issue #153
+        marks "subject to API review", and is deliberately not implemented
+        here.
         """
         gpu_manager = self._open_gpu_manager()
         evt_iter = self.start(gpu_manager=gpu_manager)
