@@ -5,6 +5,10 @@ The [revised Stage 5 plan](../../../../validation/issue159-202610/issue159_stage
 its former direct-byte D2H proposal. Stage 5 now verifies existing accessor
 compatibility and documents costs; direct D2H optimization is deferred.
 
+The stage-report links below refer to repository-only `validation/` records,
+which are not installed with psana. Installed-doc readers can find them through
+the [PR262 validation index](https://github.com/monarin/lcls2/tree/c3a795758/validation/issue159-202610).
+
 This walkthrough describes the implementation on `fix/gpu-unaligned-reads-159`
 through runtime commit `ef0a453d4`, using the integrated PR #187 base
 `90c05965c`. Stage 2 makes the dense gather safe, Stage 3 retains field-copy

@@ -83,6 +83,7 @@ for the worked examples.
 | [Current design](docs/design.md) | Serial/MPI flow, read groups, batching, ownership, budgets and cleanup |
 | [User kernels](docs/user_kernels.md) | Inputs, constants, scratch, publication, results and external science examples |
 | [GPU XTC parser](docs/gpu_xtc_parser.md) | Configure tables, device locators and segment-preserving field access |
+| [Alignment callpaths and lifetime](docs/issue159_callpath_and_lifetime_walkthrough.md) | Worked buffer/lease examples and historical alignment implementation |
 | [Limits and open work](docs/limitations.md) | Supported scope, configuration restrictions and unresolved issues |
 | [Read/staging performance](docs/performance/read_staging.md) | Latest full JF and partial JF+feespec cold/warm, bulk off/on matrices |
 | [User-kernel performance](docs/performance/user_kernels.md) | Matched scheduling comparison and calibration/integration scaling |
