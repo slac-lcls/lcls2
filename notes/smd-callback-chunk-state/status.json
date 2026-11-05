@@ -2,10 +2,10 @@
   "scope": "Step 1 only: callback chunk-state regression test",
   "branch": "tests/smd-callback-chunk-state",
   "base_sha": "71378658a54dcdd941c9137355a985fa4b637595",
-  "phase": "ready_for_commit",
-  "implementation_sha": null,
-  "reviewed_sha": null,
-  "round": 0,
+  "phase": "complete",
+  "implementation_sha": "ccd93559debd18a58d8f87c3fb4b52287c7c96fd",
+  "reviewed_sha": "ccd93559debd18a58d8f87c3fb4b52287c7c96fd",
+  "round": 1,
   "round_limit": 3,
   "checks": {
     "serial_whole_run": "4 passed; 20 deselected",
@@ -15,5 +15,12 @@
     "diff_check": "passed"
   },
   "unresolved_ids": [],
-  "artifacts": "/tmp/smd-callback-chunk-state"
+  "artifacts": "/tmp/smd-callback-chunk-state",
+  "review_verdict": "pass",
+  "deferred_ids": [
+    "CBS-R1-001",
+    "CBS-R1-002"
+  ],
+  "review_artifacts": "notes/smd-callback-chunk-state/round-01",
+  "runtime_bug": "intentionally unfixed; regression-test step only"
 }

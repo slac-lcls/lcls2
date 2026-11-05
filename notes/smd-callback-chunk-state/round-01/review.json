@@ -1,0 +1,42 @@
+{
+  "reviewed_commit": "ccd93559debd18a58d8f87c3fb4b52287c7c96fd",
+  "verdict": "pass",
+  "summary": "The commit adds only a regression test, a subprocess driver, and task notes; no production code changed. The test exercises the real SMD callback path: exp/dir DataSource dispatches to SerialDataSource (PS_PARALLEL=none) or MPIDataSource with one SMD0, one EB and two BD ranks (mpirun -n 4, PS_EB_NODES=1, PS_SRV_NODES=0), and the callback is driven by CallbackBatchBuilder over RunSmallData/Step exactly as Jungfrau's stage1_filter_callback is. Only logbook discovery (_get_file_info_from_db) is stubbed, which falls back to on-disk discovery; calibration is skipped and no network is touched. The oracle is a SingleFileDataSource read of stream 0, which bypasses SmdReaderManager/EventBuilder/callback entirely, and the fixture validates 3x10 steps with unique ordered timestamps. The selection predicate (evskip <= ievt < nrecs with upper-index semantics) matches UtilsJungfrauCalib.py:233 and UtilsJungfrauCalibMPI.py:148-149. The xfail is strict and restricted to raises=CallbackSelectionMismatch, and that exception is raised only after trace-integrity checks (30 events visited once in acquisition order) and the subprocess returncode/single-record checks pass, so setup, reader, MPI, and trace failures cannot hide inside an xfail. Timeouts kill the whole process group (start_new_session + killpg), and the test module does not import mpi4py, avoiding the known OpenMPI fork issue. PS_SMD_N_EVENTS is honored by get_smd_n_events() and controls serial and Smd0 chunking; batch_size does not reinvoke the callback (bounded builder persists _callback_iter), so split-chunk failures isolate chunk boundaries. Supplied validation (8 passed/16 xfailed, exit 0; --runxfail 16 CallbackSelectionMismatch failures, exit 1; representative trace shows istep/ievt resets at invocation boundaries) is consistent with the code I inspected. Two low, non-blocking observations recorded.",
+  "checks": [
+    "Scope: only four new files under notes/ and two new test files; no psana core or detector code modified.",
+    "Real callback path: exp/dir DataSource -> SerialDataSource or MPIDataSource; callback invoked via CallbackBatchBuilder in smdreader_manager.BatchIterator (serial) and EventBuilderManager (EB rank); only _get_file_info_from_db stubbed, falling back to _scan_run_files_on_disk.",
+    "Independent oracle: files= path -> SingleFileDataSource/RunSingleFile with smdr_man=None, no SMD chunking or callback; fixture asserts [10,10,10] steps and unique sorted timestamps.",
+    "Predicate relevance: args.evskip <= ievt < args.nrecs matches Jungfrau upper-index bound (UtilsJungfrauCalib.py:233, UtilsJungfrauCalibMPI.py:148).",
+    "xfail specificity: strict=True, raises=CallbackSelectionMismatch; marks applied only to chunk 4 and 7 params; trace-length, trace-order, invocations and subprocess assertions are plain AssertionError/pytest.fail and remain failures.",
+    "MPI isolation/shutdown: mpirun -n 4 with PS_EB_NODES=1/PS_SRV_NODES=0 yields smd0+eb+2 bd; PS_* env scrubbed before setting; start_new_session with killpg on 90s timeout; test module does not import mpi4py; non-root ranks return after gather.",
+    "Chunk control: PS_SMD_N_EVENTS read by get_smd_n_events() -> smd0_n_events -> build_batch_view; 100 > 30 L1 gives single chunk control; batch_size bounded builder keeps _callback_iter so batching alone does not reinvoke callback.",
+    "Exact-event coverage: expected list built from oracle steps[2:5] per selected step; serial compares ordered list, MPI compares sorted without dedup (detects missing/extra/duplicate).",
+    "Validation evidence in validation.md/status.json consistent with code: 24 cases, 8 pass, 16 strict xfail, 16 CallbackSelectionMismatch under --runxfail; representative trace shows istep/ievt reset at invocation boundaries.",
+    "xtcwriter flags verified: -t counting timestamps, -n 10 events, -m 3 steps, -e 4 SlowUpdate period, -s stream segment; RunInfo hardcodes xpptut15 run 14 matching the DataSource args."
+  ],
+  "limitations": [
+    "No commands or tests were run; conclusions rest on file inspection and the coordinator-supplied validation record.",
+    "Log artifacts /tmp/smd-callback-chunk-state/{control,matrix,runxfail}.log are outside the restricted worktree and could not be read; their SHA256 values in validation.md were not verified.",
+    "Native extensions (smdreader, eventbuilder) were not inspected beyond grep of batch_size/L1Accept handling; correctness of PS_SMD_N_EVENTS chunking relies on the Python call sites plus supplied runtime evidence."
+  ],
+  "findings": [
+    {
+      "id": "CBS-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/tests/test_callback_chunk_state.py",
+      "line": 116,
+      "evidence": "assert result[\"invocations\"] >= 1 is the only check that chunking occurred. For chunk 4/7 cases the strict xfail currently catches a non-split run as XPASS, but once the runtime fix lands and the marks are removed, a regression that makes PS_SMD_N_EVENTS ineffective (single chunk) would pass silently.",
+      "requested_change": "Optional hardening for the later fix step: for chunk_size < 30 assert result[\"invocations\"] > 1 so the split-chunk cases prove multiple callback invocations happened. Not required for this test-only acceptance."
+    },
+    {
+      "id": "CBS-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/tests/test_callback_chunk_state.py",
+      "line": 71,
+      "evidence": "The module fixture invokes xtcwriter/smdwriter/mpirun via Popen with no tool-presence guard. Where tools are absent, the whole module errors with FileNotFoundError. This matches the scope.md contract (missing tools must remain failures), but differs from the repo convention in test_extract_subset_xtc2.py:139 (skipif shutil.which).",
+      "requested_change": "No change required for this round. If the team later wants `pytest psana/psana/tests` to stay green on hosts without the built tools, add a skipif on shutil.which for xtcwriter/smdwriter/mpirun while keeping all in-run failures as failures."
+    }
+  ]
+}

@@ -48,3 +48,7 @@ Failure messages include actual/expected timestamp lists and callback traces of
 `[invocation, istep, ievt, timestamp]`. These show the reset directly and can be
 used to evaluate the later framework fix. Multi-EB global state, pedestal
 computation, and performance validation are outside this step.
+
+Independent Claude review passed on `ccd93559d`, with no blocking findings.
+See [validation](validation.md), [review](round-01/review.json), and
+[responses](round-01/responses.md) for results, limitations and deferred notes.
