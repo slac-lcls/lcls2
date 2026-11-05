@@ -1,0 +1,144 @@
+{
+  "scope": "PR262 optional field-copy memory-report category",
+  "base": "ab53cb976863ac0609462bcb0a2e5087d6c28b2e",
+  "reviewed_implementation": "ca18f21865d6c9f6961131c87a1ae46c7154465c",
+  "behavior": "Sum field-copy ledger capacities into field_copies; subtract once from retained; log current and peak values; no charge or lifetime change",
+  "checks": {
+    "focused": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "22",
+        "time": "0.157",
+        "timestamp": "2026-11-05T09:38:18.438103-08:00",
+        "hostname": "sdfiana025"
+      }
+    ],
+    "gpu-unit-mpi": [
+      {
+        "name": "pytest",
+        "errors": "0",
+        "failures": "0",
+        "skipped": "0",
+        "tests": "1016",
+        "time": "11.757",
+        "timestamp": "2026-11-05T09:40:22.357097-08:00",
+        "hostname": "sdfiana025"
+      }
+    ]
+  },
+  "focused_command": {
+    "name": "focused",
+    "command": [
+      "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+      "-B",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/pytest_runner.py",
+      "/sdf/scratch/users/m/monarin/gpu-validation/issue159-personal-fork-20261029/source",
+      "psana/psana/tests/gpu/unit/test_gpu_memory_report.py",
+      "-q",
+      "--disable-warnings",
+      "-o",
+      "cache_dir=/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/pytest-cache",
+      "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/tmp-focused",
+      "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/focused.xml"
+    ],
+    "returncode": 0,
+    "log": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/focused.log",
+    "log_sha256": "70f49794e3a26d5d4bfd0cc513a7715e08018fb71d476ffdafd7e2e905020679"
+  },
+  "full_suite": {
+    "results": [
+      {
+        "name": "gpu-unit-mpi",
+        "command": [
+          "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin/python",
+          "-B",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/pytest_runner.py",
+          "/sdf/scratch/users/m/monarin/gpu-validation/issue159-personal-fork-20261029/source",
+          "psana/psana/tests/gpu/unit",
+          "-q",
+          "--disable-warnings",
+          "-o",
+          "cache_dir=/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/pytest-cache",
+          "--basetemp=/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/tmp-gpu-unit-mpi",
+          "--junitxml=/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/gpu-unit-mpi.xml"
+        ],
+        "returncode": 0,
+        "log": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/gpu-unit-mpi.log",
+        "log_sha256": "8440d43c2ee968f902442b23763c1500aa08385873198ee435ef34186c3a2f8c"
+      }
+    ],
+    "environment": {
+      "PYTHONPATH": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105/python",
+      "PATH": "/sdf/scratch/users/m/monarin/gpu-validation/kvikio-2610-validation-20261015-r1/venv/bin:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/bin:/usr/bin:/bin",
+      "LD_LIBRARY_PATH": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib:/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/xpp_drp_gpu_311/lib",
+      "PS_PARALLEL": "mpi"
+    },
+    "source": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-personal-fork-20261029/source",
+    "native_install": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-target-merge-review-20261028-r1/trial/install/lib/python3.11/site-packages"
+  },
+  "scope_audit": {
+    "base": "ab53cb976863ac0609462bcb0a2e5087d6c28b2e",
+    "production_files_changed": [
+      "psana/psana/gpu/gpu_events.py"
+    ],
+    "allowed_diagnostic_changes": [
+      "_GpuMemStats",
+      "_snapshot_memory",
+      "log_high_water",
+      "log_memory"
+    ],
+    "all_other_gpu_events_ast_equal": true,
+    "all_other_gpu_sources_equal": true,
+    "current_gpu_events_sha256": "f50dc9a9a053fe71f9941a55ed15576bfd7111e17a8bfc6033cf9f0bcd0fd874",
+    "decision": "No gather/copy/lease/budget/admission or scheduling change; CPU reporting coverage required, no new GPU/MPI performance campaign justified"
+  },
+  "review_loop": {
+    "reviewer": "Claude via restricted read-only CLI",
+    "rounds": 1,
+    "round_limit": 3,
+    "reviewed_commit": "ca18f21865d6c9f6961131c87a1ae46c7154465c",
+    "verdict": "pass",
+    "findings": [],
+    "limitations": [
+      "No commands were run; test results, sha256 hashes and the AST scope audit are taken from the embedded evidence, not reproduced. I could not compute the worktree gpu_events.py sha256 to confirm it equals f50dc9a9 beyond content matching the supplied diff.",
+      "Detached HEAD equals the requested SHA and tree cleanliness were asserted by the helper, not verified by me.",
+      "Scratch artifact paths under /sdf/scratch/.../issue159-field-report-20261105/ were not read; only the embedded summaries and logs were used.",
+      "No GPU/MPI/device run exists for this change; the MPI driver's updated retained/field_copies assertions were exercised only via its CPU snapshot helper, as disclosed in the validation record.",
+      "The git diff against base ab53cb976 was taken from the supplied diff text rather than computed from .git."
+    ]
+  },
+  "earlier_attempts": [
+    {
+      "result": "Collection error: no psana.tests in native install",
+      "remedy": "Expose current source tests in scratch overlay",
+      "log": "gpu-unit.log"
+    },
+    {
+      "result": "1015 passed, 1 failed: serial mode omitted MPI symbol required by existing unit test",
+      "remedy": "Use single-process MPI mode, no test/code changes or skips",
+      "log": "gpu-unit-retry.log"
+    }
+  ],
+  "evidence_reuse": "Reporting runtime differs from measured B. Only diagnostics changed; earlier gather/copy/lifetime/device/performance evidence is reused on that qualified basis, not whole-file byte identity.",
+  "limitations": [
+    "No new CUDA/multi-rank MPI or cold A/B run.",
+    "Only the MPI driver snapshot serializer was executed on CPU; updated arm_fields device assertions were not executed.",
+    "Test counts overlap; focused cases are included in the full unit suite."
+  ],
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/issue159-field-report-20261105",
+  "artifact_sha256": {
+    "focused.log": "70f49794e3a26d5d4bfd0cc513a7715e08018fb71d476ffdafd7e2e905020679",
+    "gpu-unit.log": "2f5694a90d4b62231af4c78e4ea82e269e7101b45d03ddab5ce9de76db3ae526",
+    "gpu-unit-retry.log": "ebc76a2fbfce030edd1e981899c907e7830bb0fb861b0856fc45c96929532be8",
+    "gpu-unit-mpi.log": "8440d43c2ee968f902442b23763c1500aa08385873198ee435ef34186c3a2f8c",
+    "focused.xml": "6b564857a59d7aa53330369ddf247bb60f8bd0130cabf55afbc9adbd9b418be9",
+    "gpu-unit-mpi.xml": "551535c90e011495e4a3d748168bbdf66e666436daa0d81aa1d95036585d9bfe",
+    "scope-check.json": "a1dac37f710efdc0461407c4c38a485b23b77f117d50621cb96092935bb2783a",
+    "check_scope.py": "953263e1fc85e1f21008018c016ca8bf8ba21fdb8c4964015764780c28fd8727",
+    "review/claude-round01/review.json": "b7bfbc2f669f52cceda44c0596c21c2a91b7fe6e23605f0f0bab2c01481801fe",
+    "review/context-round01.md": "07668dec0adafadbd4650ed4c640aedb14eebbe046d31ab9fa823140112ed363"
+  }
+}
