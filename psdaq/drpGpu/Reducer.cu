@@ -8,8 +8,6 @@
 #include "psdaq/eb/src/ResultDgram.hh"
 #include "ReducerAlgo.hh"
 
-#include <sys/prctl.h>
-
 using namespace XtcData;
 using namespace Drp;
 using namespace Drp::Gpu;
@@ -18,7 +16,6 @@ using namespace Pds::Eb;
 
 using logging = psalg::SysLog;
 using json    = nlohmann::json;
-using us_t    = std::chrono::microseconds;
 
 struct red_domain{ static constexpr char const* name{"Reducer"}; };
 using red_scoped_range = nvtx3::scoped_range_in<red_domain>;
@@ -46,7 +43,7 @@ Reducer::Reducer(const Parameters&                  para,
   m_algo       (nullptr),
   m_terminate  (terminate),
   m_terminate_d(terminate_d),
-  m_reduce_us  (0),
+  m_timePrev   {0, 0},
   m_para       (para)
 {
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
@@ -58,15 +55,14 @@ Reducer::Reducer(const Parameters&                  para,
 
   // Create the Reducer streams
   m_streams.resize(m_para.nworkers);
-  m_t0.resize(m_para.nworkers);
-  m_indices.resize(m_para.nworkers);
+  m_indices_d.resize(m_para.nworkers);
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     //chkFatal(cudaStreamCreateWithPriority(&m_streams[i], cudaStreamNonBlocking, prio));
     chkFatal(cudaExecutionCtxStreamCreate(&m_streams[i], green_ctx, cudaStreamNonBlocking, prio));
 
-    // Keep track of the head and tail indices of the Reducer stream
-    chkError(cudaHostAlloc(&m_indices[i], sizeof(*m_indices[i]), cudaHostAllocDefault));
-    *m_indices[i] = 0;
+    // Index of the buffer being reduced; device memory since every reduce block reads it
+    chkError(cudaMalloc(&m_indices_d[i],    sizeof(*m_indices_d[i])));
+    chkError(cudaMemset( m_indices_d[i], 0, sizeof(*m_indices_d[i])));
   }
   logging::debug("Done with creating %u Reducer streams", m_streams.size());
 
@@ -120,34 +116,39 @@ Reducer::Reducer(const Parameters&                  para,
   // Set up the worker queues to fit all buffers
   if (m_para.nworkers) {
     auto nEntries{nxtPwrOf2((m_pool.nbuffers() + m_para.nworkers-1) / m_para.nworkers)};
-#ifndef HOST_LAUNCHED_REDUCERS
-    if (m_algo->hasGraph()) {
-      m_inputQueues2.resize(m_para.nworkers);
-      m_outputQueues2.resize(m_para.nworkers);
-      for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        auto& iq = m_inputQueues2[i];
-        iq.h = new RingQueueHtoD<unsigned>(nEntries);
-        chkError(cudaMalloc(&iq.d,       sizeof(*iq.d)));
-        chkError(cudaMemcpy( iq.d, iq.h, sizeof(*iq.d), cudaMemcpyHostToDevice));
-        auto& oq = m_outputQueues2[i];
-        oq.h = new RingQueueDtoH<ReducerTuple>(nEntries);
-        chkError(cudaMalloc(&oq.d,       sizeof(*oq.d)));
-        chkError(cudaMemcpy( oq.d, oq.h, sizeof(*oq.d), cudaMemcpyHostToDevice));
-      }
-    } else
-#endif
-    {
-      for (unsigned i = 0; i < m_para.nworkers; ++i) {
-        m_inputQueues.emplace_back(nEntries);
-        m_outputQueues.emplace_back(nEntries);
-      }
+    m_inputQueues.resize(m_para.nworkers);
+    m_outputQueues.resize(m_para.nworkers);
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      auto& iq = m_inputQueues[i];
+      iq.h = new RingQueueHtoD<unsigned>(nEntries);
+      chkError(cudaMalloc(&iq.d,       sizeof(*iq.d)));
+      chkError(cudaMemcpy( iq.d, iq.h, sizeof(*iq.d), cudaMemcpyHostToDevice));
+      auto& oq = m_outputQueues[i];
+      oq.h = new RingQueueDtoH<ReducerTuple>(nEntries);
+      chkError(cudaMalloc(&oq.d,       sizeof(*oq.d)));
+      chkError(cudaMemcpy( oq.d, oq.h, sizeof(*oq.d), cudaMemcpyHostToDevice));
     }
 
-    // @todo: TBD: Location to retrieve error return code from
+    // Where the algorithm reports a per-event problem; _reducerRcv zeroes it
     m_retCode_d.resize(m_para.nworkers);
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       chkError(cudaMalloc(&m_retCode_d[i],    sizeof(*m_retCode_d[i])));
       chkError(cudaMemset( m_retCode_d[i], 0, sizeof(*m_retCode_d[i])));
+    }
+
+    m_time_d.resize(m_para.nworkers);
+    for (unsigned i = 0; i < m_para.nworkers; ++i) {
+      chkError(cudaMalloc(&m_time_d[i],    sizeof(*m_time_d[i])));
+      chkError(cudaMemset( m_time_d[i], 0, sizeof(*m_time_d[i])));
+    }
+
+    // Optional loop timing histograms, a debugging aid
+    m_hist_d.resize(m_para.nworkers, nullptr);
+    if (para.kwargs.find("readerHist") != para.kwargs.end() && para.kwargs.at("readerHist") != "0") {
+      for (unsigned i = 0; i < m_para.nworkers; ++i) {
+        chkError(cudaMalloc(&m_hist_d[i],    sizeof(*m_hist_d[i])));
+        chkError(cudaMemset( m_hist_d[i], 0, sizeof(*m_hist_d[i])));
+      }
     }
 
     // Set up a state variable
@@ -163,13 +164,13 @@ Reducer::Reducer(const Parameters&                  para,
     m_metrics.outWtCtr.resize(m_para.nworkers);
     for (unsigned i = 0; i < m_para.nworkers; ++i) {
       if (!m_metrics.state[i]) {
-        chkError(cudaHostAlloc(&m_metrics.state[i], sizeof(*m_metrics.state[i]), cudaHostAllocDefault));
+        chkError(hostAlloc(&m_metrics.state[i], sizeof(*m_metrics.state[i])));
       }
       *m_metrics.state[i] = 0;
 
-      chkError(cudaHostAlloc(&m_metrics.inpWtCtr[i], sizeof(*m_metrics.inpWtCtr[i]), cudaHostAllocDefault));
+      chkError(hostAlloc(&m_metrics.inpWtCtr[i], sizeof(*m_metrics.inpWtCtr[i])));
       *m_metrics.inpWtCtr[i] = 0;
-      chkError(cudaHostAlloc(&m_metrics.outWtCtr[i], sizeof(*m_metrics.outWtCtr[i]), cudaHostAllocDefault));
+      chkError(hostAlloc(&m_metrics.outWtCtr[i], sizeof(*m_metrics.outWtCtr[i])));
       *m_metrics.outWtCtr[i] = 0;
     }
   }
@@ -179,16 +180,16 @@ Reducer::~Reducer()
 {
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_metrics.inpWtCtr[i]) {
-      chkError(cudaFreeHost(m_metrics.inpWtCtr[i]));
+      chkError(hostFree(m_metrics.inpWtCtr[i]));
       m_metrics.inpWtCtr[i] = nullptr;
     }
     if (m_metrics.outWtCtr[i]) {
-      chkError(cudaFreeHost(m_metrics.outWtCtr[i]));
+      chkError(hostFree(m_metrics.outWtCtr[i]));
       m_metrics.outWtCtr[i] = nullptr;
     }
 
     if (m_metrics.state[i]) {
-      cudaFreeHost(m_metrics.state[i]);
+      hostFree(m_metrics.state[i]);
       m_metrics.state[i] = nullptr;
     }
   }
@@ -202,46 +203,32 @@ Reducer::~Reducer()
   }
   m_state_d.clear();
 
+  for (auto& hist : m_hist_d) {
+    if (hist)  chkError(cudaFree(hist));
+    hist = nullptr;
+  }
+  m_hist_d.clear();
+
+  for (auto& time : m_time_d) {
+    if (time)  chkError(cudaFree(time));
+    time = nullptr;
+  }
+  m_time_d.clear();
+
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
     if (m_retCode_d[i])  chkError(cudaFree(m_retCode_d[i]));
     m_retCode_d[i] = nullptr;
   }
   m_retCode_d.clear();
 
-#ifndef HOST_LAUNCHED_REDUCERS
-  if (m_algo && m_algo->hasGraph()) {
-    for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      if (m_inputQueues2[i].d)  chkError(cudaFree(m_inputQueues2[i].d));
-      if (m_inputQueues2[i].h)  delete m_inputQueues2[i].h;
-      if (m_outputQueues2[i].d)  chkError(cudaFree(m_outputQueues2[i].d));
-      if (m_outputQueues2[i].h)  delete m_outputQueues2[i].h;
-    }
-    m_inputQueues2.clear();
-    m_outputQueues2.clear();
-  } else
-#endif
-  {
-    if (m_threads.size()) {
-      logging::info("Shutting down reducer workers");
-    }
-    for (unsigned i = 0; i < m_inputQueues.size(); i++) {
-      m_inputQueues[i].shutdown();
-    }
-    for (unsigned i = 0; i < m_threads.size(); i++) {
-      if (m_threads[i].joinable()) {
-        m_threads[i].join();
-      }
-    }
-    for (unsigned i = 0; i < m_outputQueues.size(); i++) {
-      m_outputQueues[i].shutdown();
-    }
-    if (m_threads.size()) {
-      logging::info("Reducer worker threads finished");
-    }
-    m_outputQueues.clear();
-    m_inputQueues.clear();
-    m_threads.clear();
+  for (unsigned i = 0; i < m_inputQueues.size(); ++i) {
+    if (m_inputQueues[i].d)   chkError(cudaFree(m_inputQueues[i].d));
+    if (m_inputQueues[i].h)   delete m_inputQueues[i].h;
+    if (m_outputQueues[i].d)  chkError(cudaFree(m_outputQueues[i].d));
+    if (m_outputQueues[i].h)  delete m_outputQueues[i].h;
   }
+  m_inputQueues.clear();
+  m_outputQueues.clear();
 
   for (auto& graphExec : m_graphExecs) {
     chkError(cudaGraphExecDestroy(graphExec));
@@ -256,11 +243,11 @@ Reducer::~Reducer()
   m_pool.destroyReduceBuffers();
 
   for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    chkError(cudaFreeHost(m_indices[i]));
+    chkError(cudaFree(m_indices_d[i]));
 
     chkError(cudaStreamDestroy(m_streams[i]));
   }
-  m_indices.clear();
+  m_indices_d.clear();
   m_streams.clear();
 }
 
@@ -277,23 +264,19 @@ int Reducer::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
     exporter->add("DRP_outWtCtr"+wkr, labels, MetricType::Counter, [&, i](){ return m_metrics.outWtCtr[i] ? *m_metrics.outWtCtr[i] : 0; });
   }
 
-  if (m_algo && m_algo->hasGraph()) {
-    for (unsigned i = 0; i < m_inputQueues2.size(); ++i) {
-      auto wkr = std::to_string(i);
-      exporter->add("DRP_inputQueue"+wkr,  labels, MetricType::Gauge, [&, i](){ return m_inputQueues2[i].h->occupancy(); });
-      exporter->add("DRP_outputQueue"+wkr, labels, MetricType::Gauge, [&, i](){ return m_outputQueues2[i].h->occupancy(); });
-    }
-  } else {
-    for (unsigned i = 0; i < m_inputQueues.size(); ++i) {
-      auto wkr = std::to_string(i);
-      exporter->add("DRP_inputQueue"+wkr,  labels, MetricType::Gauge, [&, i](){ return m_inputQueues[i].guess_size(); });
-      exporter->add("DRP_outputQueue"+wkr, labels, MetricType::Gauge, [&, i](){ return m_outputQueues[i].guess_size(); });
-    }
+  for (unsigned i = 0; i < m_inputQueues.size(); ++i) {
+    auto wkr = std::to_string(i);
+    exporter->add("DRP_inputQueue"+wkr,  labels, MetricType::Gauge, [&, i](){ return m_inputQueues[i].h->occupancy(); });
+    exporter->add("DRP_outputQueue"+wkr, labels, MetricType::Gauge, [&, i](){ return m_outputQueues[i].h->occupancy(); });
   }
 
-  exporter->add("DRP_reduceTime", labels, MetricType::Gauge, [&](){ return m_reduce_us; });
+  m_timePrev[0] = m_timePrev[1] = 0;
+  exporter->addFloat("DRP_reduceTime", labels, [&](double& us){
+    chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+    return stageTimeMean(m_time_d.data(), m_time_d.size(), m_timePrev, us);
+  });
 
-  return 0;
+  return m_algo ? m_algo->setupMetrics(exporter, labels) : 0;
 }
 
 bool Reducer::_setupAlgo(Detector& det)
@@ -375,16 +358,18 @@ int Reducer::_setupGraph(unsigned worker)
   return 0;
 }
 
-#ifndef HOST_LAUNCHED_REDUCERS
 /** This kernel receives a message from TebReceiver that indicates which
  * calibBuffer is ready for reducing.
  */
 static __global__
 void _reducerRcv(unsigned*                const __restrict__ state,
                  unsigned*                const __restrict__ index,
+                 unsigned*                const __restrict__ retCode,
                  RingQueueHtoD<unsigned>* const __restrict__ inputQueue,
                  uint64_t*                const __restrict__ stateMon,
-                 uint64_t* const                __restrict__ inpWtCtr)
+                 uint64_t* const                __restrict__ inpWtCtr,
+                 StageTime*               const __restrict__ time,
+                 StageHist*               const __restrict__ hist)
 {
   if (*state == 0) {
     //*stateMon = 1;
@@ -399,6 +384,9 @@ void _reducerRcv(unsigned*                const __restrict__ state,
       }
     }
     //printf("### _reducerRcv: got idx %u\n", *index);
+    *retCode = 0;
+    stageTimeStart(time);
+    if (hist)  stageHistStart(hist);
     *state = 1;
     //*stateMon = 3;
     //++(*inpWtCtr);
@@ -409,15 +397,19 @@ void _reducerRcv(unsigned*                const __restrict__ state,
 static __global__
 void _reducerLoop(unsigned*                    const __restrict__ state,
                   unsigned const*              const __restrict__ index,
+                  unsigned const*              const __restrict__ retCode,
                   uint8_t*                     const __restrict__ dataBuffers,
                   size_t                       const              dataBufsCnt,
                   size_t                       const              rawSize,
                   RingQueueDtoH<ReducerTuple>* const __restrict__ outputQueue,
                   uint64_t*                    const __restrict__ stateMon,
                   uint64_t*                    const __restrict__ outWtCtr,
+                  StageTime*                   const __restrict__ time,
+                  StageHist*                   const __restrict__ hist,
                   cuda::std::atomic<unsigned>  const&             terminate)
 {
   if (*state == 2) {
+    if (hist)  stageHistWorkDone(hist);
     //*stateMon = 4;
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
     // The size the algorithm recorded, in the word just below whatever it wrote:
@@ -429,7 +421,7 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
     //printf("### _reducerLoop: pushing {%u, %lu}\n", *index, dataSize);
     bool rc;
     unsigned ns{8};
-    while ( (rc = !outputQueue->push({*index, dataSize})) ) {
+    while ( (rc = !outputQueue->push({*index, dataSize, *retCode})) ) {
       __nanosleep(ns);
       if (ns < 256)  ns *= 2;
       else {
@@ -437,8 +429,13 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
         break;
       }
     }
-    if (!rc) {
+    if (rc) {
+      if (hist)  ++hist->pushFulls;
+    }
+    else {
       //printf("### _reducerLoop: pushed {%u, %lu}\n", *index, dataSize);
+      stageTimePushed(time);
+      if (hist)  stageHistPushed(hist);
       *state = 0;
       //*stateMon = 6;
       //++(*outWtCtr);
@@ -454,7 +451,6 @@ void _reducerLoop(unsigned*                    const __restrict__ state,
   //  printf("### _reducerLoop: Terminate is True: not relaunching\n");
   //}
 }
-#endif
 
 cudaGraph_t Reducer::_recordGraph(unsigned worker)
 {
@@ -476,40 +472,41 @@ cudaGraph_t Reducer::_recordGraph(unsigned worker)
     return 0;
   }
 
-#ifndef HOST_LAUNCHED_REDUCERS
   // Handle messages from TebReceiver to process an event
-  //printf("*** Reducer::_recordGraph: worker %d, iq h %p, d %p\n", worker, m_inputQueues2[worker].h, m_inputQueues2[worker].d);
   _reducerRcv<<<1, 1, 0, stream>>>(m_state_d[worker],
-                                   m_indices[worker],
-                                   m_inputQueues2[worker].d,
+                                   m_indices_d[worker],
+                                   m_retCode_d[worker],
+                                   m_inputQueues[worker].d,
                                    m_metrics.state[worker],
-                                   m_metrics.inpWtCtr[worker]);
+                                   m_metrics.inpWtCtr[worker],
+                                   m_time_d[worker],
+                                   m_hist_d[worker]);
   chkError(cudaGetLastError(), "Launch of _reducerRcv kernel failed");
-#endif
 
   // Perform the reduction algorithm
   m_algo->recordGraph(stream,
                       m_state_d[worker],
-                      m_indices[worker],
+                      m_indices_d[worker],
                       calibBuffers,
                       calibBufsCnt,
                       dataBuffers,
-                      dataBufsCnt);
+                      dataBufsCnt,
+                      m_retCode_d[worker]);
 
-#ifndef HOST_LAUNCHED_REDUCERS
   // Post the completed buffer results and relaunch
-  //printf("*** Reducer::_recordGraph: worker %d, oq h %p, d %p\n", worker, m_outputQueues2[worker].h, m_outputQueues2[worker].d);
   _reducerLoop<<<1, 1, 0, stream>>>(m_state_d[worker],
-                                    m_indices[worker],
+                                    m_indices_d[worker],
+                                    m_retCode_d[worker],
                                     dataBuffers,
                                     dataBufsCnt,
                                     m_pool.reduceBufsRaw(),
-                                    m_outputQueues2[worker].d,
+                                    m_outputQueues[worker].d,
                                     m_metrics.state[worker],
                                     m_metrics.outWtCtr[worker],
+                                    m_time_d[worker],
+                                    m_hist_d[worker],
                                     m_terminate_d);
   chkError(cudaGetLastError(), "Launch of _reducerLoop kernel failed");
-#endif
 
   cudaGraph_t graph;
   if (chkError(cudaStreamEndCapture(stream, &graph),
@@ -525,7 +522,7 @@ int Reducer::configure(const json& configureMsg,
                        size_t      collectionId) // Called during phase 1 of Configure
 {
   // Configure algorithm
-  if (m_algo && m_algo->hasGraph()) {
+  if (m_algo) {
     if (m_algo->configure(configureMsg, connectMsg, collectionId)) {
       logging::error("Failed 1st configure of Reducer");
       return -1;
@@ -536,7 +533,7 @@ int Reducer::configure(const json& configureMsg,
 
 bool Reducer::setup(Xtc& xtc, const void* bufEnd) // Called during phase 1 of Configure
 {
-  if (m_algo && m_algo->hasGraph()) {
+  if (m_algo) {
     // Configure algorithm instances
     if (m_algo->configure(xtc, bufEnd)) {
       logging::error("Failed 2nd configure of Reducer");
@@ -558,97 +555,27 @@ bool Reducer::startup()                 // Called during phase 1 of Configure
 {
   logging::info("Starting %u Reducer(s)", m_para.nworkers);
 
-#ifndef HOST_LAUNCHED_REDUCERS
-  if (m_algo && m_algo->hasGraph()) {
-
-    // Launch the Reducer graphs
-    for (unsigned i = 0; i < m_graphExecs.size(); ++i) {
-      chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
-    }
+  // Launch the Reducer graphs, which then relaunch themselves until terminated
+  for (unsigned i = 0; i < m_graphExecs.size(); ++i) {
+    chkFatal(cudaGraphLaunch(m_graphExecs[i], m_streams[i]));
   }
-#else
-  // Start the worker threads
-  for (unsigned i = 0; i < m_para.nworkers; ++i) {
-    m_threads.emplace_back(&Reducer::_worker, std::ref(*this), i);
-  }
-#endif
 
   return false;
 }
 
-void Reducer::shutdown()
-{
-  if (m_algo && !m_algo->hasGraph()) {
-    for (auto& outputQueue: m_outputQueues)
-      outputQueue.shutdown();
-    for (auto& inputQueue: m_inputQueues)
-      inputQueue.shutdown();
-  }
-}
-
 void Reducer::dump() const
 {
-  if (m_algo && m_algo->hasGraph()) {
-    for (unsigned i = 0; i < m_para.nworkers; ++i) {
-      printf("Reducer %u: in: head %u, tail %u, out: head %u, tail %u\n", i,
-             m_inputQueues2[i].h->head(), m_inputQueues2[i].h->tail(),
-             m_outputQueues2[i].h->head(), m_outputQueues2[i].h->tail());
-    }
+  for (unsigned i = 0; i < m_inputQueues.size(); ++i) {
+    printf("Reducer %u: in: head %u, tail %u, out: head %u, tail %u\n", i,
+           m_inputQueues[i].h->head(), m_inputQueues[i].h->tail(),
+           m_outputQueues[i].h->head(), m_outputQueues[i].h->tail());
   }
 }
 
-void Reducer::_worker(unsigned worker)
+void Reducer::reportHistograms() const
 {
-  red_scoped_range r{/*"Reducer::_worker"*/}; // Expose function name via NVTX
-
-  logging::info("Reducer worker %u is starting with process ID %lu", worker, syscall(SYS_gettid));
-  char nameBuf[16];
-  snprintf(nameBuf, sizeof(nameBuf), "ReducerWkr%d", worker);
-  if (prctl(PR_SET_NAME, nameBuf, 0, 0, 0) == -1) {
-    perror("prctl");
+  for (unsigned i = 0; i < m_hist_d.size(); ++i) {
+    std::string name{"Reducer[" + std::to_string(i) + "]"};
+    reportStageHist(name.c_str(), m_hist_d[i]);
   }
-
-  // Establish context in this thread
-  chkError(cudaSetDevice(m_pool.context().deviceNo()));
-
-  auto index        = m_indices[worker];
-  auto stream       = m_streams[worker];
-  auto& inputQueue  = m_inputQueues[worker];
-  auto& outputQueue = m_outputQueues[worker];
-  //auto calibBufsSz  = m_pool.calibBufsSize();
-  cudaGraphExec_t graph{0};
-  if (m_algo->hasGraph())  graph = m_graphExecs[worker];
-
-  unsigned idx;
-  while (inputQueue.pop(idx)) {
-    red_scoped_range loop_range{/*"Reducer::_worker", */nvtx3::payload{idx}};
-    if  (m_algo->hasGraph())  *index = idx;
-    //printf("*** Reducer::_worker: worker %u index %u\n", worker, idx);
-
-    auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-
-    // Launch the Reducer
-    size_t   dataSize{0};
-    unsigned retCode{0};
-    m_algo->reduce(graph, stream, idx, &dataSize, &retCode);
-
-    if  (m_algo->hasGraph()) {
-      // Wait for the graph to complete
-      chkError(cudaStreamSynchronize(stream));
-    }
-
-    auto now{fast_monotonic_clock::now(CLOCK_MONOTONIC)};
-    m_reduce_us = std::chrono::duration_cast<us_t>(now - t0).count();
-    //printf("*** Reducer::_worker: dt %lu\n", m_reduce_us);
-    //auto ratio{double(calibBufsSz)/double(cmpSize1)};
-    //printf("*** dt %lu us, in %zu / out %zu = %f\n", dt, calibBufsSz, cmpSize1, ratio);
-
-    if (retCode)
-      logging::error("Reducer found mismatch errors", retCode);
-
-    // Signal completion to the recorder
-    outputQueue.push({idx, dataSize});
-  }
-
-  logging::info("Reducer worker %u is exiting", worker);
 }

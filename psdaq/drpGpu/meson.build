@@ -93,6 +93,7 @@ cuda_inc_dir = include_directories([
       'Reader.cu',
       'TrgInpGen.cu',
       'Reducer.cu',
+      'StageHist.cu',
       # Not a reducer, and deliberately not a shared library: the CALIB config alias
       # selects it, so it must be resident rather than named by a kwarg.  See
       # PassthruShim.hh and Reducer::_setupAlgo().
@@ -303,7 +304,7 @@ cuda_inc_dir = include_directories([
     ],
   )
 
-  SLEEKReducer_lib = shared_library('SLEEKReducer',
+  SleekReducer_lib = shared_library('SleekReducer',
     'SleekReducer.cu',
     include_directories: [drpgpu_inc_dir],
     install: true,

@@ -15,11 +15,9 @@ public:
   virtual ~EpixUHR3x2() override;
 
 public:  // ePixUHR3x2 parameters:
-  static const unsigned NumAsics    {     6 };
-  static const unsigned NumRows     {   168 };  // elemRows    in drp/EpixUHR3x2.cc
-  static const unsigned NumCols     {   192 };  // elemRowSize in drp/EpixUHR3x2.cc
-  static const unsigned AsicPixels  { NumRows*NumCols };
-  static const unsigned NPixels     { NumAsics*AsicPixels };
+  static const unsigned NumRows     {   336 };  // The panel's image, as the f/w lays it out
+  static const unsigned NumCols     {   576 };
+  static const unsigned NPixels     { NumRows*NumCols };
   // Gain ranges, i.e. 1 << rangeBits(): the single gain bit selects one of two
   // pedestal/gain planes
   static const unsigned NRanges     {     2 };
@@ -28,14 +26,10 @@ public:  // ePixUHR3x2 parameters:
   //   tdest 0: Trigger (XPM), which is where the TimingHeader lives
   //   tdest 1: Event
   //   tdest 2: Timing
-  //   tdest 3-8: ASIC data, one sub-frame per ASIC in ASIC order
-  static const unsigned NumSubFrames    { 9 };
-  static const unsigned FirstDataTdest  { 3 };
-  // Data sub-frames are concatenated in tdest order, which is the order offline
-  // expects: tdest 3+k is ASIC k and no remapping is needed (Gabriel, 2026-09-25,
-  // confirming that Drp::EpixUHR3x2 writes its array that way).  The physical
-  // arrangement invites the opposite conclusion, so resist adding a remap here
-  // without checking what offline actually reads.
+  //   tdest 3: The image, [NumRows][NumCols] row-major
+  //   tdest 4: Header, 16 B per 3 ASICs: version, config status, maximum value
+  static const unsigned NumSubFrames    { 5 };
+  static const unsigned DataTdest       { 3 };
 
 public:
   unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
@@ -58,23 +52,20 @@ public:
   float const* pedestals_d()       const override { return m_peds_d;  }
   float const* gains_d()           const override { return m_gains_d; }
   unsigned     subframeCount()     const override { return NumSubFrames; }
-  unsigned     firstDataSubframe() const override { return FirstDataTdest; }
+  unsigned     firstDataSubframe() const override { return DataTdest; }
 
   // Bytes of raw data the detector produces, which sizes whichever buffer holds it:
   // every reduce buffer in CALIB, where raw is the whole payload, or a prescale slot
   // when prescaling in BEAM.  Unconditional, because this is capacity -- whether a
   // given event uses it is the keepRaw bit, unknown at Configure.  Fixed size, with
-  // zeros for any ASIC that is withheld or delivers short, so offline sees one shape
-  // whatever the ASIC configuration -- as the CPU DRP does.
+  // zeros for a short image, so offline sees one shape.
   size_t       rawSize()           const override
   { return NPixels * sizeof(uint16_t); }
 
-  // [NumAsics][AsicPixels], the same shape Drp::EpixUHR3x2 writes, so that offline
-  // sees one array whichever DRP produced the file
   unsigned     rawShape(unsigned* shape) const override
   {
-    shape[0] = NumAsics;
-    shape[1] = AsicPixels;
+    shape[0] = NumRows;
+    shape[1] = NumCols;
     return 2;
   }
 

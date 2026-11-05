@@ -14,23 +14,22 @@ public:
   EpixUHRemu(Parameters& para, MemPoolGpu& pool);
   virtual ~EpixUHRemu() override;
 
-public:  // ePixUHR parameters:
-  static const unsigned NumAsics   {   6 };
-  static const unsigned NumRows    { 168 };  // elemRows    in drp/EpixUHR3x2.cc
-  static const unsigned NumCols    { 192 };  // elemRowSize in drp/EpixUHR3x2.cc
-  static const unsigned AsicPixels { NumRows*NumCols };
-  static const unsigned NPixels    { NumAsics*AsicPixels };
-  static const unsigned RangeOffset{  14 };
-  static const unsigned RangeBits  {   2 };
-  static const unsigned NRanges    {   4 };
+public:  // ePixUHR3x2 parameters, though the TDetSim payload is only a sequence:
+  static const unsigned NumRows    { 336 };
+  static const unsigned NumCols    { 576 };
+  static const unsigned NPixels    { NumRows*NumCols };
+  static const unsigned NRanges    {   2 };  // 1 << rangeBits()
 public:
   unsigned configure(const std::string& config_alias, XtcData::Xtc&, const void* bufEnd) override;
   unsigned beginrun(XtcData::Xtc& xtc, const void* bufEnd, const nlohmann::json& runInfo) override;
   void event(XtcData::Dgram& dgram, const void* bufEnd, PGPEvent* event, uint64_t count) override;
   using Gpu::Detector::event;
 public:
-  unsigned     rangeOffset() const override { return RangeOffset; }
-  unsigned     rangeBits()   const override { return RangeBits; }
+  // As the ePixUHR3x2: gain in bit 0, an 11-bit value in bits 1-11
+  unsigned     rangeOffset() const override { return 0;  }
+  unsigned     rangeBits()   const override { return 1;  }
+  unsigned     dataOffset()  const override { return 1;  }
+  unsigned     dataBits()    const override { return 11; }
   float const* pedestals_d() const override { return m_pedsVec_d; };
   float const* gains_d()     const override { return m_gainsVec_d; };
 
@@ -42,15 +41,11 @@ public:
   size_t       rawSize()     const override
   { return NPixels * sizeof(uint16_t); }     // u16 per pixel, as rawShape() declares
 
-  // [NumAsics][AsicPixels], the same shape Drp::EpixUHR3x2 and Gpu::EpixUHR3x2 write,
-  // so that offline sees one array whichever detector or DRP produced the file.  The
-  // emulator's payload arrives as one contiguous run of u16 rather than the real
-  // detector's per-ASIC sub-frames, but it arrives in ASIC order, so this describes
-  // the bytes where they already are and needs no remapping.
+  // The panel's image shape, as Gpu::EpixUHR3x2 writes it
   unsigned     rawShape(unsigned* shape) const override
   {
-    shape[0] = NumAsics;
-    shape[1] = AsicPixels;
+    shape[0] = NumRows;
+    shape[1] = NumCols;
     return 2;
   }
 

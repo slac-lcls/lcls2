@@ -1482,7 +1482,7 @@ class CollectionManager():
             self.xpm.recording(self.groups,self.recording)
 
         # phase 1
-        ok = self.condition_common('beginrun', 6000)
+        ok = self.condition_common('beginrun', 12000)
         if not ok:
             logging.error('condition_beginrun(): beginrun phase1 failed')
             return False

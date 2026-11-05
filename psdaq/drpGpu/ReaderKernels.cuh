@@ -92,7 +92,21 @@ struct EventKernelArgs
   EvtBatcherSubFrames const*   subFrames;     // nullptr when the data isn't batched
   unsigned const*              evtStatus;     // An EventStatus, set by _waitForDMA
   uint64_t*                    stateMon;
+  unsigned*                    smMask;        // SMs _event ran on; nullptr unless readerHist
 };
+
+static __device__ __forceinline__ unsigned _smid()
+{
+  unsigned id;
+  asm volatile("mov.u32 %0, %smid;" : "=r"(id));
+  return id;
+}
+
+static __device__ __forceinline__ void _markSm(unsigned* const mask)
+{
+  auto const id{_smid()};
+  atomicOr(&mask[(id >> 5) & 7], 1u << (id & 31));
+}
 
 // This event's bucket of bytes, and where its results go.  Handed to the policy.
 struct EventPayload
@@ -246,6 +260,9 @@ void _event(EventKernelArgs const args, Calib const calib)
                           hasData,
                           pblBufIdx};
   calib.process(pyld, tid, stride);
+
+  // Sampled 1 event in 64, since this is an atomic per block
+  if (args.smMask && threadIdx.x == 0 && (pblBufIdx & 0x3f) == 0)  _markSm(args.smMask);
 
   // The state variable is likely set before the last thread is done, but the
   // next kernel won't check it before all threads of this kernel complete

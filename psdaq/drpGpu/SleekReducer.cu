@@ -47,7 +47,8 @@ void SleekReducer::recordGraph(cudaStream_t       stream,
                                float const* const calibBuffers_d,
                                size_t       const calibBufsCnt,
                                uint8_t*     const dataBuffers_d,
-                               size_t       const dataBufsCnt)
+                               size_t       const dataBufsCnt,
+                               unsigned*    const retCode)
 {
   sleek_scoped_range r{/*"SleekReducer::recordGraph"*/}; // Expose function name via NVTX
 
@@ -59,24 +60,6 @@ void SleekReducer::recordGraph(cudaStream_t       stream,
                            (uint8_t*)dataBuffers_d,
                            dataBufsCnt * sizeof(*dataBuffers_d));
 
-}
-
-void SleekReducer::reduce(cudaGraphExec_t graph,
-                          cudaStream_t    stream,
-                          unsigned        index,
-                          size_t*         dataSize,
-                          unsigned*       retCode)
-{
-  sleek_scoped_range r{/*"SleekpReducer::reduce"*/}; // Expose function name via NVTX
-
-  chkFatal(cudaGraphLaunch(graph, stream));
-
-  // Retrieve the compressed data size from the GPU
-  auto maxSize = m_pool.reduceBufsStride();
-  auto buffer  = &m_pool.reduceBuffers_d()[index * maxSize];
-  auto pSize   = buffer - sizeof(*dataSize);
-  chkError(cudaMemcpyAsync((void*)dataSize, pSize, sizeof(*dataSize), cudaMemcpyDeviceToHost, stream));
-  *retCode = 0;                          // @todo: TBD
 }
 
 unsigned SleekReducer::configure(Xtc& xtc, const void* bufEnd)

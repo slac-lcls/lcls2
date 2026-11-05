@@ -109,6 +109,29 @@ unsigned Drp::Gpu::Detector::beginstep(Xtc& xtc, const void* bufEnd, const json&
   return rc;
 }
 
+// A detector without a CPU-side counterpart keeps the base class's failure for scans
+unsigned Drp::Gpu::Detector::configureScan(const json& scanKeys, Xtc& xtc, const void* bufEnd)
+{
+  if (!m_det)  return Drp::Detector::configureScan(scanKeys, xtc, bufEnd);
+
+  unsigned rc = m_det->configureScan(scanKeys, xtc, bufEnd);
+  if (rc) {
+    logging::error("Gpu::Detector::configureScan failed for %s\n", m_para->device);
+  }
+  return rc;
+}
+
+unsigned Drp::Gpu::Detector::stepScan(const json& stepInfo, Xtc& xtc, const void* bufEnd)
+{
+  if (!m_det)  return Drp::Detector::stepScan(stepInfo, xtc, bufEnd);
+
+  unsigned rc = m_det->stepScan(stepInfo, xtc, bufEnd);
+  if (rc) {
+    logging::error("Gpu::Detector::stepScan failed for %s\n", m_para->device);
+  }
+  return rc;
+}
+
 unsigned Drp::Gpu::Detector::enable(Xtc& xtc, const void* bufEnd, const json& info)
 {
   logging::debug("Gpu::Detector::enable");
