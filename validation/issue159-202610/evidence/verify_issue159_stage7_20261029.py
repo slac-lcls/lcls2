@@ -12,7 +12,7 @@ import statistics as stats
 import subprocess
 import sys
 
-ROOT = Path(__file__).resolve().parents[5]
+ROOT = Path(__file__).resolve().parents[3]
 NOTES = Path(__file__).resolve().parent
 BASE = '9706dfeeb'
 B = '405f868ed380c78b6009da3001f4535cb9ae647b'

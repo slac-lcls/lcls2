@@ -1,7 +1,7 @@
 # Issue 159: call paths, buffers, and event lifetime through Stage 4
 
 **Scope update — October 29:** this remains a historical Stage 4 walkthrough.
-The [revised Stage 5 plan](issue159_stage5_revised_plan_20261029.md) supersedes
+The [revised Stage 5 plan](../../../../validation/issue159-202610/issue159_stage5_revised_plan_20261029.md) supersedes
 its former direct-byte D2H proposal. Stage 5 now verifies existing accessor
 compatibility and documents costs; direct D2H optimization is deferred.
 
@@ -342,9 +342,9 @@ PR #187 scheduling, input-group ownership, or output delivery.
 
 | Stage | Runtime change | Evidence |
 | --- | --- | --- |
-| 2 | Actual-address check and byte fallback in canonical gather | [Stage 2 report](issue159_stage2_20261019.md): bit-exact and alignment checks; aligned-path performance screen |
-| 3 | Root/child retention and completion handling for field-copy storage | [Stage 3 report](issue159_stage3_20261019.md), [accepted warm screen](issue159_stage3_cache_reset_retry_20261020.md) |
-| 4 | Actual-address field views, lazy aligned copies/cache, budget propagation | [Stage 4 report](issue159_stage4_20261021.md): 399 CPU, 323 CUDA and 305 memcheck checks passed |
+| 2 | Actual-address check and byte fallback in canonical gather | [Stage 2 report](../../../../validation/issue159-202610/issue159_stage2_20261019.md): bit-exact and alignment checks; aligned-path performance screen |
+| 3 | Root/child retention and completion handling for field-copy storage | [Stage 3 report](../../../../validation/issue159-202610/issue159_stage3_20261019.md), [accepted warm screen](../../../../validation/issue159-202610/issue159_stage3_cache_reset_retry_20261020.md) |
+| 4 | Actual-address field views, lazy aligned copies/cache, budget propagation | [Stage 4 report](../../../../validation/issue159-202610/issue159_stage4_20261021.md): 399 CPU, 323 CUDA and 305 memcheck checks passed |
 
 Useful tests to read alongside this walkthrough:
 

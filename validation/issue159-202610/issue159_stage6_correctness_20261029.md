@@ -3,7 +3,7 @@
 **Merged:** [PR260](https://github.com/slac-lcls/lcls2/pull/260) at `3feab5b24`.
 Claude found no blockers; the evidence-location follow-up below was committed at
 `7d112827a` before merge. Future stages use the
-[personal-fork workflow](issue159_personal_fork_handoff_20261029.md).
+[personal-fork workflow](https://github.com/slac-lcls/lcls2/pull/262).
 The review-pending descriptions below record the state before merge.
 
 Stage 6 starts from merged PR259, `a4293d71f`, on the separate branch

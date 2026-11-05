@@ -13,7 +13,7 @@ revision. Neither variant contains the alignment fix.
 | A | `c157b490ccb42940632ac83fce2a33e98335e9ce` | Before PR #187 |
 | B | `90c05965cf34869388cc526a50e7e822b50a6eba` | Integration of pinned PR #187 head `4b068a867d9164354ac7b7613d89812f06dc5ee6` |
 
-The workload follows the [staging comparison contract](../docs/performance/read_staging.md):
+The workload follows the [staging comparison contract](../../psana/psana/gpu/docs/performance/read_staging.md):
 Jungfrau run 387, full 32-panel data, five streams, dense raw gathering, no
 calibration or user kernel. This measures staging overhead associated with
 the integration; it does not measure IPC calibration-constant sharing benefits.

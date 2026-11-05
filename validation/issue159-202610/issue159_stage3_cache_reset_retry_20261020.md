@@ -9,7 +9,7 @@ and the job removed its private stage.
 ## Applied correction
 
 Harness commit `688205b9e` adds
-[`reset_private_stage_cache`](../scripts/feespec_bulk_benchmark/common.py).
+[`reset_private_stage_cache`](../../psana/psana/gpu/scripts/feespec_bulk_benchmark/common.py).
 It validates all supplied filenames, extents, ownership and regular-file/link
 properties before calling the existing cold-cache preparation. Symlinks,
 additional hard links, escaped paths and invalid extents are rejected before

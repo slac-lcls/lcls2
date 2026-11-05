@@ -145,7 +145,7 @@ to isolate cumulative runtime changes. The historical throughput question is
 still unresolved; the completed Stage 4 comparison establishes its incremental
 result only.
 
-Sources: [read/staging report](../docs/performance/read_staging.md),
+Sources: [read/staging report](../../psana/psana/gpu/docs/performance/read_staging.md),
 [PR187 comparison](pr187_staging_comparison_20261019.md),
 [Stage 3 warm screen](issue159_stage3_cache_reset_retry_20261020.md),
 [Stage 4 cold screen](issue159_stage4_cold_20261022.md), and

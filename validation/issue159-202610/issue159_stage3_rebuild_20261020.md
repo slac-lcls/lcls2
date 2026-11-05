@@ -28,7 +28,7 @@ same compiler configuration, dependency environment and release settings as
 Stage 2. The clean Meson build took **96.5 seconds**. No runtime logic, PR #187
 code, global linker settings or frozen baseline was changed.
 
-The shared [runtime provenance check](../scripts/check_runtime_provenance.py)
+The shared [runtime provenance check](../../psana/psana/gpu/scripts/check_runtime_provenance.py)
 now verifies both imported psana modules and actually mapped project libraries.
 The CPU test runner, MPI preflight and per-sample benchmark use that same check.
 The six-rank MPI preflight runs for both variants **before data staging**.

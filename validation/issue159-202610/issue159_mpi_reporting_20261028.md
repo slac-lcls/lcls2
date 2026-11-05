@@ -11,7 +11,7 @@ cold/field performance remain pending. No production code changed.
 
 - Integration runtime: `31c4c2f214de14628820cfdfdf309b74367620e6`.
 - Source branch at preparation: `111922650` plus the new
-  [`mpi_issue159_fields.py`](../../tests/gpu/integration/mpi_issue159_fields.py)
+  [`mpi_issue159_fields.py`](../../psana/psana/tests/gpu/integration/mpi_issue159_fields.py)
   acceptance driver, frozen by hash before submission. The frozen driver and
   committed driver must have identical hashes.
 - Existing independent install:

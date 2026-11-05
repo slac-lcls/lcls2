@@ -3,7 +3,7 @@
 Status: reviewed without blockers and merged in
 [personal-fork PR1](https://github.com/monarin/lcls2/pull/1) at `86a1eba3f`.
 Both review wording corrections landed at `f64e31471`. See the
-[final milestone review](issue159_final_review_20261029.md) for the current gate.
+[final milestone review](https://github.com/slac-lcls/lcls2/pull/262) for the current gate.
 This step changes
 notes and an offline evidence verifier only. No GPU job, A/A comparison, new
 runtime implementation, or performance threshold is introduced.
@@ -195,7 +195,7 @@ The [offline verifier](evidence/verify_issue159_stage7_20261029.py) can be run
 from a checkout on SDF with access to the preserved scratch artifacts:
 
 ```sh
-python3 psana/psana/gpu/notes/evidence/verify_issue159_stage7_20261029.py /tmp/issue159-stage7-check.json
+python3 validation/issue159-202610/evidence/verify_issue159_stage7_20261029.py /tmp/issue159-stage7-check.json
 ```
 
 It verified **89 artifact hashes**, including the 37 installed modules,

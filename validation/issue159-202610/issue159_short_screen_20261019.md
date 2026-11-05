@@ -84,7 +84,7 @@ Artifact root:
 - `logs/ab-41337036.log`: campaign progress and failure tracebacks.
 
 The 19 CPU harness checks and balanced-schedule check passed before submission.
-The tracked [alignment adapter](../scripts/jf_scaling/alignment_adapter.py) is
+The tracked [alignment adapter](../../psana/psana/gpu/scripts/jf_scaling/alignment_adapter.py) is
 frozen identically in all cases. Per-case installations link to the previously
 verified independent builds; source and dependency hash inventories are included.
 

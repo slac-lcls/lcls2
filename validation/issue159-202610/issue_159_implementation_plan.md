@@ -5,7 +5,7 @@
 
 PR260 merged Stage 6 at `3feab5b24`. Intermediate work now lives in
 `monarin/lcls2`, on `fix/gpu-unaligned-reads-159`; see the
-[personal-fork workflow and Claude handoff](issue159_personal_fork_handoff_20261029.md).
+[personal-fork workflow and Claude handoff](https://github.com/slac-lcls/lcls2/pull/262).
 Future stage PRs target the fork. The final milestone PR still targets upstream
 `slac-lcls/lcls2:features/psana2-gpu`.
 
@@ -15,7 +15,7 @@ cold/SDF field statistics and preserves historical unaligned Jungfrau coverage.
 Claude reviewed Stage 7 without blockers; both wording corrections landed and
 [personal-fork PR1](https://github.com/monarin/lcls2/pull/1) merged at `86a1eba3f`.
 No new performance campaign is needed under the reviewed reuse policy.
-The [final milestone review](issue159_final_review_20261029.md) confirms the
+The [final milestone review](https://github.com/slac-lcls/lcls2/pull/262) confirms the
 upstream target is still `8cf05e86a`, maps the cumulative code/test changes and
 groups final documentation and review fixes into one upstream milestone PR.
 
@@ -107,7 +107,7 @@ merge authorization still apply; grouping work does not remove either gate.
 The fix branch is now the source for the final upstream alignment milestone.
 
 Independent review and validation now run in parallel; see the
-[review prompt](issue159_review_prompt_20261028.md) and
+[review prompt](https://github.com/slac-lcls/lcls2/pull/246) and
 [validation plan/results](issue159_parallel_validation_20261028.md).
 The integrated runtime passed 333 GPU tests and 315 selected memcheck checks
 with zero sanitizer errors. [MPI/reporting validation](issue159_mpi_reporting_20261028.md)
@@ -269,7 +269,7 @@ renaming a stage; preserve completed evidence and fill only actual gaps.
 | 5. Accessor compatibility | Audit existing field `.on_cpu` / `.on_gpu` tests/callers; add only missing correctness regressions and usage guidance | Exact values, existing caching/independence, stream/lifetime safety and current copy counts; no accessor optimization or API changes | [Compatibility checks](issue159_stage5_compatibility_20261029.md): 393 CPU / 60 CUDA / 60 memcheck passed; runtime unchanged; reviewed and merged in PR259 at `a4293d71f` |
 | 6. Integrated correctness reconciliation | Map final requirements to exact-revision CPU/CUDA/memcheck/MPI/pixel evidence; run missing or affected checks, including required core groups | Explicit coverage/disposition for every required check; no GPU/data skip counted as device acceptance | [Reconciliation](issue159_stage6_correctness_20261029.md): 1,646 core / five byhand / five real-pixel cases passed; five non-GPU skips disclosed; reviewed and merged in PR260 at `3feab5b24` |
 | 7. Final performance reconciliation | Reuse accepted same-runtime cold/field evidence; measure affected paths only if runtime/dependency changes, failures or unresolved concerns justify it | Provenance matches candidate; accepted costs/limits retained; no new unsupported throughput claim | [Evidence reconciled](issue159_stage7_performance_20261029.md): runtime unchanged, 89 selected hashes verified, cold/SDF statistics reproduced; reviewed and merged in personal-fork PR1 at `86a1eba3f`; no repeat campaign |
-| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | [Final review prepared](issue159_final_review_20261029.md); target unchanged, code/test equivalence confirmed; final upstream review/merge pending |
+| 8. Final documentation and target PR | Review cumulative fix against current feature target; record usages, completed checks and #256/#257/#247; open final issue159 PR | Final review accepted and merged before closing #159 | [Final review prepared](https://github.com/slac-lcls/lcls2/pull/262); target unchanged, code/test equivalence confirmed; final upstream review/merge pending |
 
 ## Regression matrix
 
@@ -387,8 +387,8 @@ read is not a valid correctness/performance baseline.
 
 ### Shared environment and final reference
 
-Use the [current comparison report](../docs/performance/read_staging.md) and
-[staging harness contract](../scripts/jf_scaling/README.md). The October accepted
+Use the [current comparison report](../../psana/psana/gpu/docs/performance/read_staging.md) and
+[staging harness contract](../../psana/psana/gpu/scripts/jf_scaling/README.md). The October accepted
 environment uses official KvikIO 26.10, CuPy 14.0.1, Python 3.11 and CPU fallback;
 verify availability and freeze one identical environment for both variants.
 This supersedes the earlier local KvikIO-backport planning detail, not the matched

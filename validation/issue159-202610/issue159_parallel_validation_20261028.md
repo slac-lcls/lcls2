@@ -23,7 +23,7 @@ and planning details follow and do not override this current status.
 The user authorized independent review alongside validation on October 28.
 PR246 stays open; the main fix branch is unchanged. No Stage 5 implementation
 or PR merge is authorized by this validation work. The reviewer receives the
-[full prompt](issue159_review_prompt_20261028.md), covering cumulative Stages
+[full prompt](https://github.com/slac-lcls/lcls2/pull/246), covering cumulative Stages
 1–4 before reviewing the dependency integration.
 
 ## Review follow-up update

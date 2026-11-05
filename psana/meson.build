@@ -326,6 +326,7 @@ install_subdir(
     #'pycalgos',
     'shmem',
     'tests',
+    'gpu/notes',  # Development records are not installed package data.
   ],
   exclude_files: [
     'graphqt/QWDirNameV2.py',
