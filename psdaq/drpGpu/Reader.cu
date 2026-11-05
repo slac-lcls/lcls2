@@ -135,11 +135,32 @@ Reader::Reader(const Parameters&                  para,
   bufSz += 2 * sizeof(uint32_t);
   m_pool.createHostBuffers(bufSz);
 
+  auto const gpuNode = numaNodeOfGpu(m_pool.context().deviceNo());
+  logHostPlacement("Reader", "hostWrtBufs", m_pool.hostWrtBufs(),
+                   m_pool.nbuffers() * m_pool.hostWrtBufsSize(), gpuNode);
+  logHostPlacement("Reader", "pebbleQueue head", m_pebbleQueue.h->headAddr(), sizeof(unsigned), gpuNode);
+  logHostPlacement("Reader", "pebbleQueue tail", m_pebbleQueue.h->tailAddr(), sizeof(unsigned), gpuNode);
+
   // Per-Reader per-event status, written by _waitForDMA and copied out by _event
   m_evtStatus_d.resize(m_nReaders);
   for (unsigned i = 0; i < m_nReaders; ++i) {
     chkError(cudaMalloc(&m_evtStatus_d[i],    sizeof(*m_evtStatus_d[i])));
     chkError(cudaMemset( m_evtStatus_d[i], 0, sizeof(*m_evtStatus_d[i])));
+  }
+
+  m_time_d.resize(m_nReaders);
+  for (unsigned i = 0; i < m_nReaders; ++i) {
+    chkError(cudaMalloc(&m_time_d[i],    sizeof(*m_time_d[i])));
+    chkError(cudaMemset( m_time_d[i], 0, sizeof(*m_time_d[i])));
+  }
+
+  // Optional loop timing histograms, a debugging aid
+  m_hist_d.resize(m_nReaders, nullptr);
+  if (para.kwargs.find("readerHist") != para.kwargs.end() && para.kwargs.at("readerHist") != "0") {
+    for (unsigned i = 0; i < m_nReaders; ++i) {
+      chkError(cudaMalloc(&m_hist_d[i],    sizeof(*m_hist_d[i])));
+      chkError(cudaMemset( m_hist_d[i], 0, sizeof(*m_hist_d[i])));
+    }
   }
 
   // Set up a state variable
@@ -152,7 +173,7 @@ Reader::Reader(const Parameters&                  para,
   // Prepare a metric for tracking kernel state
   m_metrics.states.resize(m_nReaders, nullptr);
   for (unsigned i = 0; i < m_nReaders; ++i) {
-    chkError(cudaHostAlloc(&m_metrics.states[i], sizeof(*m_metrics.states[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.states[i], sizeof(*m_metrics.states[i])));
     *m_metrics.states[i] = 0;
   }
 
@@ -161,11 +182,11 @@ Reader::Reader(const Parameters&                  para,
   m_metrics.dmaWtCtrs.resize(m_nReaders, nullptr);
   m_metrics.fwdWtCtrs.resize(m_nReaders, nullptr);
   for (unsigned i = 0; i < m_nReaders; ++i) {
-    chkError(cudaHostAlloc(&m_metrics.pblWtCtrs[i], sizeof(*m_metrics.pblWtCtrs[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.pblWtCtrs[i], sizeof(*m_metrics.pblWtCtrs[i])));
     *m_metrics.pblWtCtrs[i] = 0;
-    chkError(cudaHostAlloc(&m_metrics.dmaWtCtrs[i], sizeof(*m_metrics.dmaWtCtrs[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.dmaWtCtrs[i], sizeof(*m_metrics.dmaWtCtrs[i])));
     *m_metrics.dmaWtCtrs[i] = 0;
-    chkError(cudaHostAlloc(&m_metrics.fwdWtCtrs[i], sizeof(*m_metrics.fwdWtCtrs[i]), cudaHostAllocDefault));
+    chkError(hostAlloc(&m_metrics.fwdWtCtrs[i], sizeof(*m_metrics.fwdWtCtrs[i])));
     *m_metrics.fwdWtCtrs[i] = 0;
   }
 }
@@ -179,15 +200,15 @@ Reader::~Reader()
 
   for (unsigned i = 0; i < m_nReaders; ++i) {
     if (m_metrics.pblWtCtrs[i]) {
-      chkError(cudaFreeHost(m_metrics.pblWtCtrs[i]));
+      chkError(hostFree(m_metrics.pblWtCtrs[i]));
       m_metrics.pblWtCtrs[i] = nullptr;
     }
     if (m_metrics.dmaWtCtrs[i]) {
-      chkError(cudaFreeHost(m_metrics.dmaWtCtrs[i]));
+      chkError(hostFree(m_metrics.dmaWtCtrs[i]));
       m_metrics.dmaWtCtrs[i] = nullptr;
     }
     if (m_metrics.fwdWtCtrs[i]) {
-      chkError(cudaFreeHost(m_metrics.fwdWtCtrs[i]));
+      chkError(hostFree(m_metrics.fwdWtCtrs[i]));
       m_metrics.fwdWtCtrs[i] = nullptr;
     }
   }
@@ -197,11 +218,23 @@ Reader::~Reader()
 
   for (unsigned i = 0; i < m_nReaders; ++i) {
     if (m_metrics.states[i]) {
-      chkError(cudaFreeHost(m_metrics.states[i]));
+      chkError(hostFree(m_metrics.states[i]));
       m_metrics.states[i] = nullptr;
     }
   }
   m_metrics.states.clear();
+
+  for (auto& hist : m_hist_d) {
+    if (hist)  chkError(cudaFree(hist));
+    hist = nullptr;
+  }
+  m_hist_d.clear();
+
+  for (auto& time : m_time_d) {
+    if (time)  chkError(cudaFree(time));
+    time = nullptr;
+  }
+  m_time_d.clear();
 
   for (unsigned i = 0; i < m_nReaders; ++i) {
     if (m_states_d[i])  chkError(cudaFree(m_states_d[i]));
@@ -266,10 +299,19 @@ int Reader::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
     exporter->add("DRP_rdrFwd"+rdr,   labels, MetricType::Counter, [&, i](){ return m_metrics.fwdWtCtrs[i] ? *m_metrics.fwdWtCtrs[i] : 0; });
   }
 
+  m_timePrev[0] = m_timePrev[1] = 0;
+  exporter->addFloat("DRP_readerTime", labels, [&](double& us){
+    chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+    return stageTimeMean(m_time_d.data(), m_time_d.size(), m_timePrev, us);
+  });
+
   exporter->add("DRP_pblQueOcc", labels, MetricType::Gauge, [&](){ return m_pebbleQueue.h->occupancy(); });
   for (unsigned i = 0; i < m_nReaders; ++i) {
     auto rdr = std::to_string(i);
-    exporter->add("DRP_rdrQueOcc"+rdr, labels, MetricType::Gauge, [&, i](){ return m_readerQueues[i].h->occupancy(); });
+    exporter->add("DRP_rdrQueOcc"+rdr, labels, MetricType::Gauge, [&, i](){
+      chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+      return m_readerQueues[i].h->occupancy();
+    });
   }
 
   if (m_det.subframeCount()) {
@@ -351,11 +393,23 @@ void _waitForDMA(unsigned  const                            reader,
                  RingIndexHtoD*   const        __restrict__ pebbleQueue,
                  uint64_t* const               __restrict__ stateMon,
                  uint64_t* const               __restrict__ pblWtCtr,
-                 uint64_t* const               __restrict__ dmaWtCtr)
+                 uint64_t* const               __restrict__ dmaWtCtr,
+                 size_t    const                            dmaCount,
+                 StageTime* const              __restrict__ time,
+                 ReaderHist* const             __restrict__ hist)
 {
   auto lclState{*state};
   if (lclState == 0) {
     DBG(*stateMon = 1;)
+
+    uint64_t tEntry{0};
+    if (hist) {
+      _markSm(hist->smWait);
+      tEntry = globalTimer();
+      if (hist->idle)  histLog2(hist->relaunch, hist->sum[0], tEntry - hist->tEntry);
+      hist->tEntry = tEntry;
+      hist->idle   = 1;
+    }
 
     // Wait for data to be DMAed into the GPU.
     const volatile uint32_t* const __restrict__ mem = (uint32_t*)(dmaBuffers[*dmaBufferIdx] + 4);
@@ -370,6 +424,32 @@ void _waitForDMA(unsigned  const                            reader,
       }
     }
     //printf("### Reader[%u]: dma[%u] %p: sz %u\n", reader, *dmaBufferIdx, mem, *mem);
+
+    stageTimeStart(time);
+    if (hist) {
+      auto const tDetect{globalTimer()};
+      hist->idle = 0;
+      if (hist->tPrevDetect)  histLog2(hist->interval, hist->sum[1], tDetect - hist->tPrevDetect);
+      hist->tPrevDetect = tDetect;
+      hist->tDetect     = tDetect;
+      if (!hist->t0)  hist->t0 = tDetect;
+      auto const slice{(tDetect - hist->t0) >> ReaderHist::sliceShift};
+      hist->slice = slice < ReaderHist::nSlice ? slice : ReaderHist::nSlice - 1;
+
+      // Sampled 1 in 16, since a deep backlog makes this walk long
+      if ((hist->nSample++ & 0xf) == 0) {
+        unsigned landed{0};
+        auto idx{*dmaBufferIdx};
+        for (unsigned k = 1; k < dmaCount / nReaders; ++k) {
+          idx = (idx + nReaders) & (dmaCount - 1);
+          if (*(const volatile uint32_t*)(dmaBuffers[idx] + 4) == 0)  break;
+          ++landed;
+        }
+        ++hist->backlog[landed < ReaderHist::nBacklog ? landed : ReaderHist::nBacklog - 1];
+        auto& slc{hist->slices[hist->slice]};
+        if (landed > slc.maxBacklog)  slc.maxBacklog = landed;
+      }
+    }
 
     // A Detector that has the AxiStream Batcher implemented batches everything it
     // sends, transitions included: a transition's batch is simply one with no data
@@ -400,7 +480,7 @@ void _waitForDMA(unsigned  const                            reader,
     DBG(*stateMon = 3; ++(*dmaWtCtr);)
   }
   if (lclState == 1) {
-    // Allocate the index of the next set of intermediate buffers to be used.
+    // Allocate the index of the next set of staging buffers to be used.
     // If an index is not available, wait here until one is.
     unsigned ns{8};
     unsigned idx;
@@ -410,10 +490,18 @@ void _waitForDMA(unsigned  const                            reader,
       if (ns < 256)  ns *= 2;
       else {
         DBG(*stateMon = 4;)
+        if (hist) {
+          ++hist->popTimeouts;
+          ++hist->slices[hist->slice].popTimeouts;
+        }
         return;
       }
     }
     *pebbleIdx = idx;
+    if (hist) {
+      hist->tPop = globalTimer();
+      histLog2(hist->pop, hist->sum[3], hist->tPop - hist->tDetect);
+    }
     //printf("### Reader[%u]: got pblIdx %u, hd %u, tl %u, occ %u\n", reader, idx,
     //       pebbleQueue->head(), pebbleQueue->tail(), pebbleQueue->occupancy());
     *state = 2;
@@ -436,10 +524,18 @@ void _readerLoop(unsigned  const                            reader,
                  RingIndexDtoD*   const        __restrict__ readerQueue,
                  cuda::std::atomic<unsigned> const&         terminate,
                  uint64_t* const               __restrict__ stateMon,
-                 uint64_t* const               __restrict__ evtCtr)
+                 uint64_t* const               __restrict__ evtCtr,
+                 StageTime* const              __restrict__ time,
+                 ReaderHist* const             __restrict__ hist)
 {
   if (*state == 3) {
     DBG(*stateMon = 13;)
+
+    // A full readerQueue brings us back here, so time only the first visit
+    if (hist && !hist->tLoop) {
+      hist->tLoop = globalTimer();
+      histLog2(hist->event, hist->sum[4], hist->tLoop - hist->tPop);
+    }
 
     // Attempt to pass the pebble index to the Trigger Input Generator.
     // If it is busy, we will wait here until a queue slot is available.
@@ -453,6 +549,10 @@ void _readerLoop(unsigned  const                            reader,
         DBG(*stateMon = 14;)
         break;
       }
+    }
+    if (rc && hist) {
+      ++hist->pushFulls;
+      ++hist->slices[hist->slice].pushFulls;
     }
     if (!rc) {
       // Once the pebble buffer index has been passed on to the next link in the
@@ -476,6 +576,18 @@ void _readerLoop(unsigned  const                            reader,
 
       *state = 0;
       DBG(*stateMon = 15; ++(*evtCtr);)
+      stageTimePushed(time);
+
+      if (hist) {
+        auto const tPush{globalTimer()};
+        _markSm(hist->smLoop);
+        histLog2(hist->service, hist->sum[2], tPush - hist->tDetect);
+        histLog2(hist->push,    hist->sum[5], tPush - hist->tLoop);
+        hist->tLoop = 0;
+        auto& slc{hist->slices[hist->slice]};
+        ++slc.nEvents;
+        slc.service += tPush - hist->tDetect;
+      }
     }
   }
 
@@ -534,19 +646,13 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                             : m_pool.prescaleBuffers_d();
   auto const nRdrShft       = ffs(m_nReaders) - 1; // log2(nReaders)
 
-  // Determine how many processing resources to reserve for the Reader kernel
-  // @todo: The maybe should be done in PgpDetector in conjunction with the other components
+  // Size the grid to the SMs of the green context the Reader runs in
+  cudaDevResource ctxSMs{};
+  chkError(cudaExecutionCtxGetDevResource(m_ctx, &ctxSMs, cudaDevResourceTypeSm));
+  const unsigned nSMs = ctxSMs.sm.smCount;
   cudaDeviceProp prop;
-  chkError(cudaGetDeviceProperties(&prop, 0));
+  chkError(cudaGetDeviceProperties(&prop, m_pool.context().deviceNo()));
   const auto tpSM{prop.maxThreadsPerMultiProcessor};
-  unsigned nSMs;
-  switch (tpSM) {
-    case 1536:  nSMs = 6;  break;
-    case 2048:  nSMs = 8;  break;
-    default:
-      logging::critical("Unexpected number of threads per MultiProcessor %u", tpSM);
-      abort();
-  };
   // Slightly better times seem to be achieved when nPixels/stride is an integer
   // Adjusting nBlocks for this might lead to a partially used SM, but aim for
   // maximum occupancy of the SMs
@@ -574,7 +680,10 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                                    m_pebbleQueue.d,
                                    m_metrics.states[reader],
                                    m_metrics.pblWtCtrs[reader],
-                                   m_metrics.dmaWtCtrs[reader]);
+                                   m_metrics.dmaWtCtrs[reader],
+                                   dmaCount,
+                                   m_time_d[reader],
+                                   m_hist_d[reader]);
   chkError(cudaGetLastError(), "Launch of _waitForDMA kernel failed");
 
   // Copy the DMA descriptor and the timing header to host-visible pinned memory
@@ -603,7 +712,8 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                              m_pool.rawReleased(),
                              m_subFrames[reader].d,
                              m_evtStatus_d[reader],
-                             m_metrics.states[reader]};
+                             m_metrics.states[reader],
+                             m_hist_d[reader] ? m_hist_d[reader]->smEvent : nullptr};
   // Claim a prescale slot before _event, so that all of its blocks agree on one.
   // Only needed when prescaling; pass-through indexes by pebble and claims nothing.
   if (rawBufCnt) {
@@ -626,7 +736,9 @@ cudaGraph_t Reader::_recordGraph(unsigned reader)
                                    m_readerQueues[reader].d,
                                    m_terminate_d,
                                    m_metrics.states[reader],
-                                   m_metrics.fwdWtCtrs[reader]);
+                                   m_metrics.fwdWtCtrs[reader],
+                                   m_time_d[reader],
+                                   m_hist_d[reader]);
   chkError(cudaGetLastError(), "Launch of _readerLoop kernel failed");
 
   cudaGraph_t graph;
@@ -694,6 +806,71 @@ bool Reader::startup()                  // Called during phase 1 of Configure
   }
 
   return false;
+}
+
+static __global__ void _readGlobalTimer(uint64_t* ns)
+{
+  *ns = globalTimer();
+}
+
+// A snapshot: the graph may still be finishing its last pass
+void Reader::reportHistograms() const
+{
+  for (unsigned i = 0; i < m_nReaders; ++i) {
+    if (!m_hist_d[i])  continue;
+    ReaderHist rh;
+    if (chkError(cudaMemcpy(&rh, m_hist_d[i], sizeof(rh), cudaMemcpyDeviceToHost)))  continue;
+
+    const char* name[] {"relaunch", "interval", "service", " pop", " event", " push"};
+    const uint64_t* hist[] {rh.relaunch, rh.interval, rh.service, rh.pop, rh.event, rh.push};
+    for (unsigned j = 0; j < 6; ++j) {
+      uint64_t count{0};
+      for (unsigned k = 0; k < ReaderHist::nLog2; ++k)  count += hist[j][k];
+      logging::info("Reader[%u] %-8s ns: n %lu, mean %.0f |%s", i, name[j], count,
+                    count ? double(rh.sum[j]) / count : 0., log2Line(hist[j], ReaderHist::nLog2).c_str());
+    }
+    std::string line;
+    uint64_t count{0}, sum{0};
+    for (unsigned k = 0; k < ReaderHist::nBacklog; ++k) {
+      if (!rh.backlog[k])  continue;
+      line += " " + std::to_string(k) + ":" + std::to_string(rh.backlog[k]);
+      count += rh.backlog[k];  sum += k * rh.backlog[k];
+    }
+    logging::info("Reader[%u] backlog  bufs: n %lu, mean %.1f |%s", i, count, count ? double(sum) / count : 0., line.c_str());
+    logging::info("Reader[%u] failed attempts: pop %lu, push %lu", i, rh.popTimeouts, rh.pushFulls);
+    const char* smName[] {"wait", "event", "loop"};
+    const unsigned* smMask[] {rh.smWait, rh.smEvent, rh.smLoop};
+    for (unsigned j = 0; j < 3; ++j) {
+      std::string ids;
+      unsigned nSMs{0};
+      for (unsigned id = 0; id < 256; ++id) {
+        if (smMask[j][id >> 5] & (1u << (id & 31))) { ids += " " + std::to_string(id);  ++nSMs; }
+      }
+      logging::info("Reader[%u] SMs %-5s: %u:%s", i, smName[j], nSMs, ids.c_str());
+    }
+
+    // Map %globaltimer to wall-clock time, so the timeline lines up with Prometheus
+    uint64_t* gpuNow_d;
+    uint64_t  gpuNow{0};
+    timespec  wallNow;
+    if (!chkError(cudaMalloc(&gpuNow_d, sizeof(*gpuNow_d)))) {
+      _readGlobalTimer<<<1, 1>>>(gpuNow_d);
+      chkError(cudaMemcpy(&gpuNow, gpuNow_d, sizeof(gpuNow), cudaMemcpyDeviceToHost));
+      clock_gettime(CLOCK_REALTIME, &wallNow);
+      chkError(cudaFree(gpuNow_d));
+    }
+    if (!gpuNow || !rh.t0)  continue;
+    int64_t const offset = int64_t(wallNow.tv_sec) * 1000000000 + wallNow.tv_nsec - int64_t(gpuNow);
+    for (unsigned k = 0; k < ReaderHist::nSlice; ++k) {
+      auto const& sl{rh.slices[k]};
+      if (!sl.nEvents && !sl.popTimeouts && !sl.pushFulls)  continue;
+      time_t const wall = (int64_t(rh.t0 + (uint64_t(k) << ReaderHist::sliceShift)) + offset) / 1000000000;
+      char tstr[16];
+      strftime(tstr, sizeof(tstr), "%T", localtime(&wall));
+      logging::info("Reader[%u] slice %s n %6u service %5.1f us, failed pop %6u push %6u, backlog max %3u",
+                    i, tstr, sl.nEvents, sl.nEvents ? 1e-3 * sl.service / sl.nEvents : 0., sl.popTimeouts, sl.pushFulls, sl.maxBacklog);
+    }
+  }
 }
 
 void Reader::freeDma(PGPEvent* event)

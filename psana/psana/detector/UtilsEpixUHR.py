@@ -247,8 +247,8 @@ def raw_v01(det_raw, evt, sh_seg=(336,576)):
     segnums = det_raw._segment_numbers # for now [0,]
     maxsegnum = max(segnums)
     out = np.zeros((maxsegnum+1,)+sh_seg, dtype=np.uint16)
-    for iseg, nseg in enumerate(segnums):
-        raw_asics = segs[iseg].raw # shape:(6, 32256)
+    for nseg in segnums:
+        raw_asics = segs[nseg].raw # shape:(6, 32256)
         arr2 = bit_opers_3x2_raw(raw_asics)
         asics = reshape_6x32256_to_6x168x192(arr2) # (6, 168, 192)
         arrseg = stack_3x2_asics(asics) # (336, 576)
@@ -270,8 +270,8 @@ def raw_v100(det_raw, evt, sh_seg=(336,576)):
     segnums = det_raw._segment_numbers
     maxsegnum = max(segnums)
     out = np.zeros((maxsegnum+1,)+sh_seg, dtype=np.uint16)
-    for iseg, nseg in enumerate(segnums):
-        raw_panel = segs[iseg].raw # shape:(336, 576)
+    for nseg in segnums:
+        raw_panel = segs[nseg].raw # shape:(336, 576)
         if raw_panel.shape != sh_seg:
             logger.error('segment %d raw shape %s != expected %s - ASIC-major data tagged as raw v1.0.0?'
                          % (nseg, str(raw_panel.shape), str(sh_seg)))

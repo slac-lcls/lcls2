@@ -9,7 +9,7 @@ import psdaq.configdb.configdb as cdb
 import os
 import io
 
-def usual_cdict():
+def beam_cdict():
     top = cdict()
 
     top.setAlg('tebConfig', [0,1,0])
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
     args = cdb.createArgs().args
     db   = 'configdb' if args.prod else 'devconfigdb'
-    url  = f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
+    url  = args.url or f'https://pswww.slac.stanford.edu/ws-auth/{db}/ws/'
 
     mycdb = cdb.configdb(url, args.inst, create,
                          root=dbname, user=args.user, password=args.password)
@@ -87,7 +87,7 @@ if __name__ == "__main__":
     if args.alias == 'CALIB':
         top = calib_cdict()
     else:
-        top = usual_cdict()
+        top = beam_cdict()
     top.setInfo('teb', args.name, args.segm, args.id, 'No comment')
 
     mycdb.modify_device(args.alias, top)

@@ -41,12 +41,7 @@ class PassthruShim : public ReducerAlgo
 {
 public:
   PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detector& det);
-  virtual ~PassthruShim();
-
-  // True: returning false makes Reducer skip configure() and setup(), and launch
-  // nothing from startup(), so no completion is ever posted and the recorder blocks
-  // on receive() for ever.  See Reducer::startup().
-  bool   hasGraph()    const override;
+  virtual ~PassthruShim() {}
 
   // The reduced payload is unused in pass-through: the recorded data is the raw
   // block, which Detector::rawSize() sizes and MemPool reserves separately.
@@ -58,12 +53,8 @@ public:
                      float const* const calibBuffers,
                      size_t       const calibBufsCnt,
                      uint8_t*     const dataBuffers,
-                     size_t       const dataBufsCnt) override;
-  void     reduce   (cudaGraphExec_t,
-                     cudaStream_t,
-                     unsigned  index,
-                     size_t*   dataSize,
-                     unsigned* retCode) override;
+                     size_t       const dataBufsCnt,
+                     unsigned*    const retCode) override;
   int      configure(const nlohmann::json& configureMsg,
                      const nlohmann::json& connectMsg,
                      size_t                collectionId) override;
@@ -71,7 +62,6 @@ public:
   void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) override;
 private:
   size_t    m_rawSize;                  // Bytes the Detector reserved for raw data
-  unsigned* m_retCode_d;                // Where the kernel reports success
 };
 
   } // Gpu

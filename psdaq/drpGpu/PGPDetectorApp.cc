@@ -477,6 +477,9 @@ void PGPDetectorApp::handlePhase1(const json& msg)
             m_drp->runInfoData(xtc, bufEnd, m_det->namesLookup(), runInfo);
         }
         unsigned error = m_det->beginrun(xtc, bufEnd, phase1Info);
+        for (auto const& warning : m_det->takeWarnings()) {
+            reply(createAsyncWarnMsg(m_para.alias, warning));
+        }
         if (error) {
             std::string errorMsg = "Phase 1 error in Detector::beginrun()";
             body["err_info"] = errorMsg;
@@ -837,7 +840,11 @@ int main(int argc, char* argv[])
         if (kwargs.first == "imageCheck")     continue;  // GPU DRP
         if (kwargs.first == "pinThreads")     continue;  // GPU DRP
         if (kwargs.first == "reducer")        continue;  // GPU DRP
+        if (kwargs.first == "readerHist")     continue;  // GPU DRP
         if (kwargs.first == "raw")            continue;  // GPU DRP, raw data format
+        if (kwargs.first == "calibSerNo")     continue;  // GPU DRP, EpixUHRemu and EpixUHRsim
+        if (kwargs.first == "isEmulator")     continue;  // GPU DRP, EpixUHR3x2
+        //if (kwargs.first == "useGpu")       continue;  // Not allowed: the DRP type decides it
         if (kwargs.first == "sim_l1_delay")   continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_su_rate")    continue;  // GPU DRP Simulator
         if (kwargs.first == "sim_l1_verify")  continue;  // GPU DRP Simulator

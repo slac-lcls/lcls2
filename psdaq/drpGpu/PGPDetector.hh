@@ -39,6 +39,9 @@ struct TebReceiverMetrics
   uint64_t recCtr          {0};
   uint64_t reducerStarts   {0};
   uint64_t reducerReceives {0};
+  uint64_t reducerErrors   {0};         // Events whose Reducer returned a non-zero code
+  uint64_t reducedBytes    {0};         // Reduced payload, headers excluded
+  uint64_t reducerInBytes  {0};         // What the detector sent for those events
   uint64_t freeCtr         {0};
 };
 
@@ -73,6 +76,7 @@ private:
   std::thread                      m_recorderThread;
   const Parameters&                m_para;
   TebReceiverMetrics               m_metrics;
+  uint64_t                         m_ratioPrev[2];  // {reducedBytes, reducerInBytes} at the last scrape
 };
 
 class PGPDrp : public DrpBase
@@ -106,7 +110,7 @@ private:
 private:
   const Parameters&            m_para;
   Detector&                    m_det;
-  cudaExecutionContext_t       m_green_ctx[3];
+  cudaExecutionContext_t       m_green_ctx[4];  // Reader, TrgInpGen, Reducer, recorder
   std::atomic<bool>            m_terminate;
   cuda::std::atomic<unsigned>* m_terminate_d;
   std::shared_ptr<Reader>      m_reader;

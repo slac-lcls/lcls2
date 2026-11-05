@@ -45,6 +45,9 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_terminate       (terminate),
   m_terminate_d     (terminate_d),
   m_retCode_d       (nullptr),
+  m_hist_d          (nullptr),
+  m_time_d          (nullptr),
+  m_timePrev        {0, 0},
   m_reader          (reader),
   m_lastPid         (0),
   m_latPid          (0),
@@ -64,6 +67,9 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   m_trgInpGenQueue.h = new RingIndexDtoH(pool.nbuffers());
   chkError(cudaMalloc(&m_trgInpGenQueue.d,                     sizeof(*m_trgInpGenQueue.d)));
   chkError(cudaMemcpy( m_trgInpGenQueue.d, m_trgInpGenQueue.h, sizeof(*m_trgInpGenQueue.d), cudaMemcpyDefault));
+  auto const gpuNode = numaNodeOfGpu(pool.context().deviceNo());
+  logHostPlacement("TrgInpGen", "queue head", m_trgInpGenQueue.h->headAddr(), sizeof(unsigned), gpuNode);
+  logHostPlacement("TrgInpGen", "queue tail", m_trgInpGenQueue.h->tailAddr(), sizeof(unsigned), gpuNode);
 
   // Get the range of priorities available [ greatest_priority, lowest_priority ]
   int prioLo;
@@ -81,6 +87,15 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   chkError(cudaMalloc(&m_index_d,    sizeof(*m_index_d)));
   chkError(cudaMemset( m_index_d, 0, sizeof(*m_index_d)));
 
+  chkError(cudaMalloc(&m_time_d,    sizeof(*m_time_d)));
+  chkError(cudaMemset( m_time_d, 0, sizeof(*m_time_d)));
+
+  // Optional loop timing histogram, a debugging aid
+  if (para.kwargs.find("readerHist") != para.kwargs.end() && para.kwargs.at("readerHist") != "0") {
+    chkError(cudaMalloc(&m_hist_d,    sizeof(*m_hist_d)));
+    chkError(cudaMemset( m_hist_d, 0, sizeof(*m_hist_d)));
+  }
+
   // Set up a state variable
   chkError(cudaMalloc(&m_state_d,    sizeof(*m_state_d)));
   chkError(cudaMemset( m_state_d, 0, sizeof(*m_state_d)));
@@ -90,13 +105,13 @@ TrgInpGen::TrgInpGen(const Parameters&                  para,
   chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
 
   // Prepare a metric for tracking kernel state
-  chkError(cudaHostAlloc(&m_metrics.state, sizeof(*m_metrics.state), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.state, sizeof(*m_metrics.state)));
   *m_metrics.state = 0;
 
   // Prepare counter metrics for tracking execution progress
-  chkError(cudaHostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.rcvWtCtr, sizeof(*m_metrics.rcvWtCtr)));
   *m_metrics.rcvWtCtr = 0;
-  chkError(cudaHostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr), cudaHostAllocDefault));
+  chkError(hostAlloc(&m_metrics.fwdWtCtr, sizeof(*m_metrics.fwdWtCtr)));
   *m_metrics.fwdWtCtr = 0;
 }
 
@@ -105,16 +120,16 @@ TrgInpGen::~TrgInpGen()
   chkError(cudaGraphExecDestroy(m_graphExec));
 
   if (m_metrics.rcvWtCtr) {
-    chkError(cudaFreeHost(m_metrics.rcvWtCtr));
+    chkError(hostFree(m_metrics.rcvWtCtr));
     m_metrics.rcvWtCtr = nullptr;
   }
   if (m_metrics.fwdWtCtr) {
-    chkError(cudaFreeHost(m_metrics.fwdWtCtr));
+    chkError(hostFree(m_metrics.fwdWtCtr));
     m_metrics.fwdWtCtr = nullptr;
   }
 
   if (m_metrics.state) {
-    chkError(cudaFreeHost(m_metrics.state));
+    chkError(hostFree(m_metrics.state));
     m_metrics.state = nullptr;
   }
 
@@ -126,6 +141,12 @@ TrgInpGen::~TrgInpGen()
 
   if (m_index_d)  chkError(cudaFree(m_index_d));
   m_index_d = nullptr;
+
+  if (m_hist_d)  chkError(cudaFree(m_hist_d));
+  m_hist_d = nullptr;
+
+  if (m_time_d)  chkError(cudaFree(m_time_d));
+  m_time_d = nullptr;
 
   chkError(cudaStreamDestroy(m_stream));
 
@@ -152,6 +173,12 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.pidWtCtr = 0;
   exporter->add("DRP_colRcv",   labels, MetricType::Counter, [&](){ return m_metrics.pndWtCtr; });
   exporter->add("DRP_pidWtCtr", labels, MetricType::Counter, [&](){ return m_metrics.pidWtCtr; });
+
+  m_timePrev[0] = m_timePrev[1] = 0;
+  exporter->addFloat("DRP_tigTime", labels, [&](double& us){
+    chkError(cuCtxSetCurrent(m_pool.context().context())); // The exporter's threads have none
+    return stageTimeMean(&m_time_d, 1, m_timePrev, us);
+  });
 
   exporter->add("DRP_colQueOcc", labels, MetricType::Gauge,   [&](){ return m_trgInpGenQueue.h->occupancy(); });
 
@@ -232,13 +259,14 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
                    unsigned       const                     nReaders,
                    unsigned       const                     nRdrShft,     // log2(nReaders)
                    uint64_t*      const        __restrict__ stateMon,
-                   uint64_t*      const        __restrict__ rcvWtCtr)
+                   uint64_t*      const        __restrict__ rcvWtCtr,
+                   StageTime*     const        __restrict__ time,
+                   StageHist*     const        __restrict__ hist)
 {
   //printf("### _trgInpGenRcv: state %u, index %u\n", *state, *index);
 
   if (*state == 0) {
     DBG(*stateMon = 2;)
-    // Get the intermediate buffer index
     unsigned idx;
     unsigned ns{8};
     while (!readerQueues[lReader]->pop(&idx)) {
@@ -249,6 +277,8 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
         return;
       }
     }
+    stageTimeStart(time);
+    if (hist)  stageHistStart(hist);
     idx = (idx << nRdrShft) | lReader;
     //printf("### _trgInpGenRcv: got idx %u from reader %u, hd %u, tl %u, occ %u\n", idx, lReader,
     //       readerQueues[lReader]->head(), readerQueues[lReader]->tail(), readerQueues[lReader]->occupancy());
@@ -268,10 +298,13 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
                     RingIndexDtoH* const  __restrict__ trgInpGenQueue,
                     uint64_t*      const  __restrict__ stateMon,
                     uint64_t*      const  __restrict__ fwdWtCtr,
+                    StageTime*     const  __restrict__ time,
+                    StageHist*     const  __restrict__ hist,
                     cuda::std::atomic<unsigned> const& terminate)
 {
   if (*state == 2) {
     DBG(*stateMon = 10;)
+    if (hist)  stageHistWorkDone(hist);
     // Push index to host and increment to the next one
     //printf("### _trgInpGenLoop: push index %u\n", *index);
     bool rc;
@@ -285,8 +318,13 @@ void _trgInpGenLoop(unsigned*      const  __restrict__ state,
         break;
       }
     }
-    if (!rc) {
+    if (rc) {
+      if (hist)  ++hist->pushFulls;
+    }
+    else {
       //printf("### _trgInpGenLoop: pushed index %u\n", *index);
+      stageTimePushed(time);
+      if (hist)  stageHistPushed(hist);
       *state = 0;
       DBG(*stateMon = 12; ++(*fwdWtCtr);)
     }
@@ -326,7 +364,9 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
                                      nReaders,
                                      nRdrShft,
                                      m_metrics.state,
-                                     m_metrics.rcvWtCtr);
+                                     m_metrics.rcvWtCtr,
+                                     m_time_d,
+                                     m_hist_d);
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
   if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
@@ -346,6 +386,8 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
                                       m_trgInpGenQueue.d,
                                       m_metrics.state,
                                       m_metrics.fwdWtCtr,
+                                      m_time_d,
+                                      m_hist_d,
                                       m_terminate_d);
 
   cudaGraph_t graph;
@@ -502,7 +544,7 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
       constexpr uint32_t lane{0}; // The lane is always 0 for GPU-enabled PGP devices
       DmaBuffer* buffer = &event->buffers[lane];
       buffer->size = size;
-      buffer->index = index;                // Intermediate buffer index; NOT DMA buffer index
+      buffer->index = index;                // Staging buffer index; NOT DMA buffer index
       if (event->mask) [[unlikely]] {
         logging::critical("PGPEvent mask (%02x) != 0 for pgpIdx %u, ctr %u\n",
                           event->mask, pgpIndex, evtCounter);
