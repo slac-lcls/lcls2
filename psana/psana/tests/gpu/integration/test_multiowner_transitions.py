@@ -81,7 +81,15 @@ def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypa
         # Since #153 PR B step 4 the manager yields the transition rather
         # than dispatching it, so the consumer stands in for run.events().
         # The drain assertions above still hold -- they just run here.
-        for envelope in m._handle_steps({0: ([(service, [dg])], [])}):
+        #
+        # _drain_transitions() stands in for _process_batch's terminal
+        # branch. _handle_steps only queues, and _flush_event_pool releases
+        # nothing of its own, because it also runs mid-packet on memory
+        # pressure where an early release would put a trailing transition
+        # ahead of the packet's unsubmitted events.
+        delivered = list(m._handle_steps({0: ([(service, [dg])], [])}))
+        delivered += list(m._drain_transitions())
+        for envelope in delivered:
             assert envelope.gpu_state is None, 'a transition carries no GPU state'
             dispatch(envelope.dgrams)
         assert order == ['consumer'] * len(windows) + ['dispatch']

@@ -80,7 +80,14 @@ def test_transition_drains_task_publications_before_constant_change(monkeypatch,
     try:
         submit()
         dg = NS(service=lambda s=service: s)
-        for envelope in m._handle_steps({0: ([(service, [dg])], [])}):
+        # _drain_transitions() stands in for _process_batch's terminal branch:
+        # _handle_steps only queues, and _flush_event_pool releases nothing of
+        # its own, because it also runs mid-packet on memory pressure where an
+        # early release would put a trailing transition ahead of the packet's
+        # unsubmitted events.
+        delivered = list(m._handle_steps({0: ([(service, [dg])], [])}))
+        delivered += list(m._drain_transitions())
+        for envelope in delivered:
             if envelope.gpu_state is None:
                 # The transition itself, yielded since #153 PR B step 4
                 # instead of being dispatched inside _handle_steps. Standing

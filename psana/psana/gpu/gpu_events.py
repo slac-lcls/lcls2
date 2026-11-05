@@ -845,6 +845,14 @@ class GpuEventManager:
 
     def _handle_steps(self, step_dict):
         end_run_seen = False
+        # Clear any window the PREVIOUS packet left behind, and do it before
+        # the early return below. _reposition_transitions is the only other
+        # place that clears it, and a packet with no gpu_views never calls it
+        # -- so without this a stale window survives into this packet and is
+        # matched against this packet's plan, raising the count-mismatch
+        # RuntimeError on well-formed data. Under MPI gpu_error_handler turns
+        # that into comm.Abort(1), killing the whole job.
+        self._new_transitions = None
         if not step_dict:
             return end_run_seen
 
@@ -920,6 +928,12 @@ class GpuEventManager:
             queued.append((base, 0 if timestamp is None else int(timestamp),
                            service, dgrams))
         self._new_transitions = slice(first_new, len(queued))
+        # _release_transitions only inspects queued[0], so sort order is an
+        # invariant it depends on. Appends preserve it today -- a new entry's
+        # seq is _submit_seq, which is >= every queued seq, and timestamps
+        # only increase -- so this is a guard against a future caller rather
+        # than a fix for an observed defect. Cheap: single digits of entries.
+        queued.sort(key=lambda entry: (entry[0], entry[1]))
 
         return end_run_seen
 
@@ -1224,11 +1238,35 @@ class GpuEventManager:
         with closing(self.event_pool.flush()) as slots:
             for slot_data in slots:
                 yield from self._yield_ready(slot_data)
-        # Every submission has retired, so nothing is still waiting on one.
-        # Release the rest unconditionally, or a transition queued behind a
-        # submission that the flush consumed would never be delivered -- the
-        # EndRun envelope among them, since EndRun drains before it is
-        # queued.
+        # Nothing to release here, and this is load-bearing. Each flushed
+        # submission retired through _yield_ready, which released what was
+        # due under the correct bound. An entry with seq == _retire_seq is
+        # NOT behind retired work: it sits inside the NEXT submission, which
+        # on the memory-pressure path is the rest of this very packet. It
+        # waits for that submission's per-event gate.
+        #
+        # This method used to force-release the whole queue by raising
+        # _retire_seq to the queue maximum. _retire_issue_and_yield() calls
+        # it mid-packet on GpuMemoryPressureError -- a normal condition it
+        # exists to recover from -- so that put a trailing BeginStep or
+        # EndRun ahead of the packet's unsubmitted events, and since
+        # Run.events() and _steps_impl both return on EndRun, those events
+        # were LOST. It also left _retire_seq permanently above _submit_seq,
+        # misordering every later packet in the run.
+        #
+        # When no further submission will come, _drain_transitions() (end of
+        # stream) or the idle release at the end of _process_batch delivers
+        # whatever is left.
+
+    def _drain_transitions(self):
+        """Release every remaining transition: the stream is over.
+
+        Deliberately separate from _flush_event_pool, because the
+        justification differs. Flush drains the POOL and may run mid-packet,
+        where unsubmitted work still follows. This runs only where no further
+        submission can occur, which is the single condition under which an
+        entry positioned behind a submission that never happened may go out.
+        """
         queued = getattr(self, '_queued_transitions', None)
         if queued:
             self._retire_seq = max(getattr(self, '_retire_seq', 0),
@@ -1408,6 +1446,17 @@ class GpuEventManager:
                             pending = gpu_read = None
                 else:
                     # No GPU batch — yield CPU-only events directly.
+                    #
+                    # Retire what is in flight FIRST. These events belong to
+                    # no submission, so nothing below advances _retire_seq --
+                    # and a transition positioned behind an earlier in-flight
+                    # submission would otherwise come due only after these
+                    # events, which it should precede. Draining opens the gate
+                    # honestly. It also keeps these CPU-only events behind the
+                    # earlier packets' GPU events, which is their true order.
+                    if getattr(getattr(self, 'event_pool', None),
+                               'active_count', 0):
+                        yield from self._flush_event_pool()
                     for envelope in event_envelopes:
                         if (
                             self.dsparms.max_events > 0
@@ -1424,6 +1473,10 @@ class GpuEventManager:
 
                 if stop_after or end_run_seen:
                     yield from self._flush_event_pool()
+                    # The stream is over: no further submission can come, so
+                    # anything still queued behind one that never happened is
+                    # now due. The flush itself deliberately releases nothing.
+                    yield from self._drain_transitions()
                     self._done = True
                 elif not getattr(getattr(self, 'event_pool', None),
                                  'active_count', 0):
@@ -1461,6 +1514,11 @@ class GpuEventManager:
             return
         try:
             yield from self._flush_event_pool()
+            # End of stream, like _process_batch's terminal branch: no
+            # further submission can come, so release what is still queued
+            # behind one that never happened. The flush releases nothing of
+            # its own, so without this a trailing transition is dropped.
+            yield from self._drain_transitions()
         finally:
             self.close()
 
