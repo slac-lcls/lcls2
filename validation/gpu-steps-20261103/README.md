@@ -39,6 +39,36 @@ the expected cut of a trailing step.
 cap rather than the stream: at the 120 used for run 51, run 77 stops inside
 step 0 and no number of BD ranks can ever see 3 steps (job 43000712).
 
+## The uncapped case, which is the one that matters
+
+Every capped run stops **before** `EndRun`, and `EndRun` is the record whose
+misordering loses data: it was delivered ahead of the final packet's events,
+and both `Run.events()` and `_steps_impl` return on it. So no capped run can
+catch that, however many steps it checks.
+
+    PS_STEPS_NO_CAP=1 drops max_events entirely:
+
+    SBATCH_ACCOUNT=lcls:prjdat21 SBATCH_QOS=normal sbatch \
+      --export=ALL,PS_STEPS_DATASET=77,PS_STEPS_NO_CAP=1 \
+      validation/gpu-steps-20261103/run.sbatch
+
+    python3 validation/gpu-steps-20261103/serial_events.py   # serial counterpart
+
+Both pass on run 77 (job 43349533):
+
+| Path | Result |
+| --- | --- |
+| serial `run.events()` | 3000 of 3000 events |
+| serial `run.steps()` | `per_step [1000, 1000, 1000]` |
+| MPI, 2 BD ranks | `counts [3, 3]`, `per_step [[500,500,500],[500,500,500]]`, total 3000 |
+
+The serial event count is the sharpest check in the whole harness: one
+number, against a known run size, on the path that returns at `EndRun`.
+
+Note the account override. The `#SBATCH` header requests `preemptable`, but
+`lcls:prjdat21@ampere` is the association that grants `normal` — without the
+override the job waits behind priority.
+
 ## Two failures this harness exists to catch
 
 **Run 77 was unopenable.** Its Configure records failed the GPU config parser
