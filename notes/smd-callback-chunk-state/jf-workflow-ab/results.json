@@ -1,0 +1,1928 @@
+[
+  {
+    "case": "fixed-large",
+    "stage": "stage1-0",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      0,
+      0
+    ],
+    "first_indices": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "fixed-large",
+    "stage": "stage1-1",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      0,
+      10,
+      0
+    ],
+    "first_indices": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        1,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "fixed-large",
+    "stage": "stage1-2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      0,
+      0,
+      10
+    ],
+    "first_indices": [
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        2,
+        6
+      ],
+      [
+        2,
+        7
+      ],
+      [
+        2,
+        8
+      ],
+      [
+        2,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "fixed-small",
+    "stage": "stage1-0",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      0,
+      0
+    ],
+    "first_indices": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "fixed-small",
+    "stage": "stage1-1",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 11,
+    "per_step_counts": [
+      0,
+      10,
+      0
+    ],
+    "first_indices": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        1,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "fixed-small",
+    "stage": "stage1-2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 21,
+    "per_step_counts": [
+      0,
+      0,
+      10
+    ],
+    "first_indices": [
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        2,
+        6
+      ],
+      [
+        2,
+        7
+      ],
+      [
+        2,
+        8
+      ],
+      [
+        2,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-large",
+    "stage": "stage1-0",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      0,
+      0
+    ],
+    "first_indices": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-large",
+    "stage": "stage1-1",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      0,
+      10,
+      0
+    ],
+    "first_indices": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        1,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-large",
+    "stage": "stage1-2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      0,
+      0,
+      10
+    ],
+    "first_indices": [
+      [
+        2,
+        0
+      ],
+      [
+        2,
+        1
+      ],
+      [
+        2,
+        2
+      ],
+      [
+        2,
+        3
+      ],
+      [
+        2,
+        4
+      ],
+      [
+        2,
+        5
+      ],
+      [
+        2,
+        6
+      ],
+      [
+        2,
+        7
+      ],
+      [
+        2,
+        8
+      ],
+      [
+        2,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-small",
+    "stage": "stage1-0",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      0,
+      0
+    ],
+    "first_indices": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-small",
+    "stage": "stage1-1",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 11,
+    "chunks": 11,
+    "per_step_counts": [
+      0,
+      10,
+      0
+    ],
+    "first_indices": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        1,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-small",
+    "stage": "stage1-2",
+    "exit_code": 1,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": false,
+    "expected_count": 10,
+    "actual_count": 0,
+    "timestamps_exact": false,
+    "callback_calls": 31,
+    "chunks": 31,
+    "per_step_counts": [
+      0,
+      0,
+      0
+    ],
+    "first_indices": [],
+    "exceptions": [
+      "UnboundLocalError(\"local variable 'ievt' referenced before assignment\")"
+    ],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy": {
+        "missing": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy": {
+        "missing": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-step",
+    "stage": "stage1-0",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      0,
+      0
+    ],
+    "first_indices": [
+      [
+        0,
+        0
+      ],
+      [
+        0,
+        1
+      ],
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-step",
+    "stage": "stage1-1",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": true,
+    "expected_count": 10,
+    "actual_count": 10,
+    "timestamps_exact": true,
+    "callback_calls": 2,
+    "chunks": 2,
+    "per_step_counts": [
+      0,
+      10,
+      0
+    ],
+    "first_indices": [
+      [
+        1,
+        0
+      ],
+      [
+        1,
+        1
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ],
+      [
+        1,
+        7
+      ],
+      [
+        1,
+        8
+      ],
+      [
+        1,
+        9
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy": {
+        "shape_match": true,
+        "equal": true,
+        "unequal_pixels": 0,
+        "max_abs_diff": 0.0,
+        "allclose": true
+      }
+    }
+  },
+  {
+    "case": "unfixed-step",
+    "stage": "stage1-2",
+    "exit_code": 1,
+    "timed_out": false,
+    "rank_reports": 1,
+    "completed": false,
+    "expected_count": 10,
+    "actual_count": 0,
+    "timestamps_exact": false,
+    "callback_calls": 4,
+    "chunks": 4,
+    "per_step_counts": [
+      0,
+      0,
+      0
+    ],
+    "first_indices": [],
+    "exceptions": [
+      "UnboundLocalError(\"local variable 'ievt' referenced before assignment\")"
+    ],
+    "arrays": {
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy": {
+        "missing": true
+      },
+      "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy": {
+        "missing": true
+      }
+    }
+  },
+  {
+    "case": "fixed-large",
+    "stage": "stage2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 5,
+    "completed": true,
+    "expected_count": 30,
+    "actual_count": 30,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      10,
+      10
+    ],
+    "first_indices": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ],
+      [
+        0,
+        10
+      ],
+      [
+        0,
+        11
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "0": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "1": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "2": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      }
+    }
+  },
+  {
+    "case": "fixed-small",
+    "stage": "stage2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 5,
+    "completed": true,
+    "expected_count": 30,
+    "actual_count": 30,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 31,
+    "per_step_counts": [
+      10,
+      10,
+      10
+    ],
+    "first_indices": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ],
+      [
+        0,
+        10
+      ],
+      [
+        0,
+        11
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "0": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "1": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "2": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      }
+    }
+  },
+  {
+    "case": "unfixed-large",
+    "stage": "stage2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 5,
+    "completed": true,
+    "expected_count": 30,
+    "actual_count": 30,
+    "timestamps_exact": true,
+    "callback_calls": 1,
+    "chunks": 1,
+    "per_step_counts": [
+      10,
+      10,
+      10
+    ],
+    "first_indices": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ],
+      [
+        0,
+        10
+      ],
+      [
+        0,
+        11
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "0": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "1": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "2": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      }
+    }
+  },
+  {
+    "case": "unfixed-small",
+    "stage": "stage2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 5,
+    "completed": true,
+    "expected_count": 30,
+    "actual_count": 300,
+    "timestamps_exact": false,
+    "callback_calls": 31,
+    "chunks": 31,
+    "per_step_counts": [
+      100,
+      100,
+      100
+    ],
+    "first_indices": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ],
+      [
+        0,
+        10
+      ],
+      [
+        0,
+        11
+      ],
+      [
+        0,
+        102
+      ],
+      [
+        0,
+        103
+      ],
+      [
+        0,
+        104
+      ],
+      [
+        0,
+        105
+      ],
+      [
+        0,
+        106
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "0": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524088,
+          "max_abs_diff": 105.84999999999997,
+          "allclose": false
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524284,
+          "max_abs_diff": 41.5874083359017,
+          "allclose": false
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 184,
+          "max_abs_diff": 1.0,
+          "allclose": false
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524284,
+          "max_abs_diff": 90.0,
+          "allclose": false
+        }
+      },
+      "1": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 523864,
+          "max_abs_diff": 20.401010101009888,
+          "allclose": false
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524283,
+          "max_abs_diff": 12.628017305594636,
+          "allclose": false
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 9,
+          "max_abs_diff": 16.0,
+          "allclose": false
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524283,
+          "max_abs_diff": 90.0,
+          "allclose": false
+        }
+      },
+      "2": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 523855,
+          "max_abs_diff": 19.55999999999949,
+          "allclose": false
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524268,
+          "max_abs_diff": 16.155829217802562,
+          "allclose": false
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 18,
+          "max_abs_diff": 4.0,
+          "allclose": false
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": false,
+          "unequal_pixels": 524270,
+          "max_abs_diff": 90.0,
+          "allclose": false
+        }
+      }
+    }
+  },
+  {
+    "case": "unfixed-step",
+    "stage": "stage2",
+    "exit_code": 0,
+    "timed_out": false,
+    "rank_reports": 5,
+    "completed": true,
+    "expected_count": 30,
+    "actual_count": 30,
+    "timestamps_exact": true,
+    "callback_calls": 4,
+    "chunks": 4,
+    "per_step_counts": [
+      10,
+      10,
+      10
+    ],
+    "first_indices": [
+      [
+        0,
+        2
+      ],
+      [
+        0,
+        3
+      ],
+      [
+        0,
+        4
+      ],
+      [
+        0,
+        5
+      ],
+      [
+        0,
+        6
+      ],
+      [
+        0,
+        7
+      ],
+      [
+        0,
+        8
+      ],
+      [
+        0,
+        9
+      ],
+      [
+        0,
+        10
+      ],
+      [
+        0,
+        11
+      ],
+      [
+        1,
+        2
+      ],
+      [
+        1,
+        3
+      ],
+      [
+        1,
+        4
+      ],
+      [
+        1,
+        5
+      ],
+      [
+        1,
+        6
+      ]
+    ],
+    "exceptions": [],
+    "arrays": {
+      "0": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "1": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      },
+      "2": {
+        "arr_av1": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_rms": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sta": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        },
+        "arr_sum0": {
+          "shape_match": true,
+          "equal": true,
+          "unequal_pixels": 0,
+          "max_abs_diff": 0.0,
+          "allclose": true
+        }
+      }
+    }
+  }
+]

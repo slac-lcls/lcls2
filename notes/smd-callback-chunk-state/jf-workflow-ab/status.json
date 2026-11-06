@@ -1,0 +1,16 @@
+{
+  "scope": "Real Jungfrau pedestal workflow pre-fix/fixed chunk-size A/B",
+  "phase": "validated; independent review pending",
+  "round": 1,
+  "round_limit": 3,
+  "unfixed_source": "71378658a54dcdd941c9137355a985fa4b637595",
+  "fixed_source": "b60fae55728e7d138747db57fad2c84c10543910",
+  "reviewed_commit": null,
+  "checks": {
+    "matrix": "20 expected outcomes verified: 18 process successes and 2 reproduced pre-fix stage-1 failures; unfixed small-chunk stage-2 inputs and arrays mismatch as expected",
+    "compile": "passed",
+    "source_provenance": "all rank reports resolve to their selected checkout"
+  },
+  "unresolved_findings": [],
+  "artifacts": "/tmp/jf-callback-ab/matrix"
+}

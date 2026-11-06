@@ -1,0 +1,932 @@
+[
+  {
+    "path": "/tmp/jf-callback-ab/matrix/commands.json",
+    "bytes": 16981,
+    "sha256": "cde64f9bf87426db3401f35675e5c72ec12035b37eb667415ef6120ee5fe9dd8"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-0/rank0.json",
+    "bytes": 1492,
+    "sha256": "1e30338bb311eabc734daeaf4f5cd199aa4d7f2b9f747b5e703ae1944eb5aae1"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-0/stdout.log",
+    "bytes": 11516,
+    "sha256": "5fb985000beac39d10e1b9f1c42a9be8c9c7c2285f2f151fbac745c1fda103d3"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-1/rank0.json",
+    "bytes": 1492,
+    "sha256": "61d561c9113e1b568136b7e8097f678bf4902053b1819e98dd5d729d00837f04"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-1/stdout.log",
+    "bytes": 11699,
+    "sha256": "ce651f219eecf8f0ce09a96652e43323ea1327ef6f2e8ce926944e22e9730e4c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-2/rank0.json",
+    "bytes": 1492,
+    "sha256": "d875135210a2b083d9d3202d5bf3be6b9eef4d5900b7b547a0af2a18e9616f19"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-2/stdout.log",
+    "bytes": 11945,
+    "sha256": "a693846fe2088854f006d73958d3595371164e085f352e1daa84a0c73d4ede8c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/logs/2026/2026-11-06T101730_log_jungfrau_dark_proc_monarin_step00_segi00.txt",
+    "bytes": 11070,
+    "sha256": "e40c5ca230ca0c38f30346ff1df757d876b6ae12f08e6e73271657f719308513"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/logs/2026/2026-11-06T101737_log_jungfrau_dark_proc_monarin_step01_segi00.txt",
+    "bytes": 11253,
+    "sha256": "81bd3862630a42520031fd29e0baf601c3d41b190ab63aa88ed27e138d609295"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage1-repo/jungfrau/logs/2026/2026-11-06T101743_log_jungfrau_dark_proc_monarin_step02_segi00.txt",
+    "bytes": 11499,
+    "sha256": "b6dc270b0f45505f792e37b3a1211f7194885bd35ec4df26744a56b893c30aa8"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank0.json",
+    "bytes": 938,
+    "sha256": "3f3b3203f17b2a17722f8a2736a8e39ba66441bf5ac384e1076795f187eb6369"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank1.json",
+    "bytes": 1678,
+    "sha256": "e9d5cd721429d464719516f2fedad790b208922ad5db6954395847b57818072c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank2-gain0.npz",
+    "bytes": 16778224,
+    "sha256": "0f8f8d4eea541cd67d011cbeadb67707b642af8f3517192323a84520cfea0e38"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank2-gain1.npz",
+    "bytes": 16778224,
+    "sha256": "6e102e8485d1b95c41abd3866e74013b8d266aedc91c8629216b4cd69a4f42b5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank2-gain2.npz",
+    "bytes": 16778224,
+    "sha256": "b0b7d321946aef73312779c6cc56fbc71196df3be95f8f46360aca64aca4edb5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank2.json",
+    "bytes": 1539,
+    "sha256": "8f1c2c056d11cc8505fe39cbb137f236b28c0b3db74fe20014dabbaa20174d68"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank3.json",
+    "bytes": 1351,
+    "sha256": "128616f348dad18236611c603657498c01e304b9a13799d22f28fb0dda27bc78"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/rank4.json",
+    "bytes": 926,
+    "sha256": "1db63ab376f7130a4b5ccff2fd8be82e61e805512375ea1c2e6862b7f67018a9"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2/stdout.log",
+    "bytes": 44294,
+    "sha256": "2e6e6a37ea1a6384f0529acfbed8190584b09565fef53c8ce4f137fb05422d62"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/logs/2026/2026-11-06T101903_log_jungfrau_dark_proc_monarin_segi00.txt",
+    "bytes": 42495,
+    "sha256": "466798dad31c775efece2db669afa0d012aa040a8b97cf520011124abe232310"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.json",
+    "bytes": 5380,
+    "sha256": "b2f94164b79c25294c9b9e7438b6d304be88d30cd997207f2e452b0a0e0e1999"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.txt",
+    "bytes": 15204652,
+    "sha256": "463a7d42c096fb74851cbdfad198dbdee376ec5272fad18c7433932b059654c5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.json",
+    "bytes": 5380,
+    "sha256": "8cb9121672a9a555a8b386a6d70eb92f73ad3e94b44b27db6c9a48774e396554"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.txt",
+    "bytes": 9723264,
+    "sha256": "37bdb0c7305c6d05299d64a7472a3a95c24962e040d9034ad73dd3a01f35f577"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.json",
+    "bytes": 5386,
+    "sha256": "d7c24bf0f462f638f61cacf25fe1df00149080842084648c136840dfc76199c1"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.txt",
+    "bytes": 3146335,
+    "sha256": "9733fa7fb8c62e01136ee4bfdb1fd4b4d55dbb8e50eb8b73a1f2330a9a501496"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-0/rank0.json",
+    "bytes": 1489,
+    "sha256": "c291d13705810c5ef1aa010ba693b0ab3b3ff2ead7520ab5587b91d9dd1d3e2c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-0/stdout.log",
+    "bytes": 11516,
+    "sha256": "80a9e2ef2bf443ffe0671442532b5a2d119b1ea173efb38f22a2380e56b8c0ee"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-1/rank0.json",
+    "bytes": 1579,
+    "sha256": "b1904287a5a9d215753d4624c9789022f5870dfb784b05a001b3afc2858b15d7"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-1/stdout.log",
+    "bytes": 11699,
+    "sha256": "2b196412047cab056d4df744f571962ef4c027ceec02df3525f1f6ca98a7fb1f"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-2/rank0.json",
+    "bytes": 1669,
+    "sha256": "e17d40c8b138061144f65fc9fbc630dc553ef085530bfce6b5b5d2758065f5dd"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-2/stdout.log",
+    "bytes": 11945,
+    "sha256": "2ac1a6ff5f9dc7b872b0d0a1603768315e380adcad23726d3a953239d657d67f"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/logs/2026/2026-11-06T101750_log_jungfrau_dark_proc_monarin_step00_segi00.txt",
+    "bytes": 11070,
+    "sha256": "7773029dbf60176fcc2d573a677fa94553eff21135276f9b73babc6a863a81a9"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/logs/2026/2026-11-06T101757_log_jungfrau_dark_proc_monarin_step01_segi00.txt",
+    "bytes": 11253,
+    "sha256": "174764018556a55a2b28cce06ec8dd4346334a585c38607585ef89d66a837ceb"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage1-repo/jungfrau/logs/2026/2026-11-06T101803_log_jungfrau_dark_proc_monarin_step02_segi00.txt",
+    "bytes": 11499,
+    "sha256": "657c00d3edc9ddc097beec09357c9b0a9939b29b44dabe5f0f53692de01c19fd"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank0.json",
+    "bytes": 1203,
+    "sha256": "9d69608040e131dba392f83dd17cbc1ff83f2e9664df18b523a9660694ee7182"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank1.json",
+    "bytes": 1676,
+    "sha256": "b8025a0f241236116d7874b3595e9459a813e9405cc50f22236fb3a6a6763da9"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank2-gain0.npz",
+    "bytes": 16778224,
+    "sha256": "0f8f8d4eea541cd67d011cbeadb67707b642af8f3517192323a84520cfea0e38"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank2-gain1.npz",
+    "bytes": 16778224,
+    "sha256": "6e102e8485d1b95c41abd3866e74013b8d266aedc91c8629216b4cd69a4f42b5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank2-gain2.npz",
+    "bytes": 16778224,
+    "sha256": "b0b7d321946aef73312779c6cc56fbc71196df3be95f8f46360aca64aca4edb5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank2.json",
+    "bytes": 1537,
+    "sha256": "4bf9d387bf6cbd9508f4c116f9197277e7cf72c4b10ef1b08eb404c33bca1d4f"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank3.json",
+    "bytes": 1349,
+    "sha256": "e991293ed8ae7e0012f3e477597002f625d2fce2c38187971ddb8d578cae3f5a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/rank4.json",
+    "bytes": 924,
+    "sha256": "92e9e3ccb8e08f95aa057ff7f6bb1bcd86efde1932c2b71670bad4a35011386c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2/stdout.log",
+    "bytes": 44294,
+    "sha256": "aba85b053e35cd76063120fb780e3495985686a8500c54d32706f598a07e3719"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/logs/2026/2026-11-06T101914_log_jungfrau_dark_proc_monarin_segi00.txt",
+    "bytes": 42495,
+    "sha256": "ebad0d96176949ca0694588048084994965635f8aa3d909744ddf7617d16e9a4"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.json",
+    "bytes": 5380,
+    "sha256": "fccd1f00fc6e569545a0227940cbd9bec9d14237bfcafd9fa63f65e07e14f3c5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.txt",
+    "bytes": 15204652,
+    "sha256": "94a9c6cd9890246730d789af43e0b0a1b3b62a6fb2f29e929f16d0d9983716e5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.json",
+    "bytes": 5380,
+    "sha256": "a5c432d0af8aac63ee86fade1058cd1de424fc082b69f16e8e33e47d1704cf61"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.txt",
+    "bytes": 9723264,
+    "sha256": "5abc87d29e6a63bb7b7f97a425036dc7fc05b111b3e992ae961e870c6e8ce571"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.json",
+    "bytes": 5386,
+    "sha256": "49a1d2f5cbda5f0f72fbefa5d9c19e79e7234b2cd44e2a7b35f38ed566a0ae5c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/fixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.txt",
+    "bytes": 3146335,
+    "sha256": "636e3531d0f407ff3b9256d4e00d33420c180a12f403d0300bd51be3e56ffa80"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/results.json",
+    "bytes": 32912,
+    "sha256": "464af8b740f815c9653444060c806a86ab4e56b806b660d9fb0450eb9c45ffb0"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-0/rank0.json",
+    "bytes": 1494,
+    "sha256": "7eb7cd571fd8aaf666315d237bd957b1fedca5c23fcf76805dcc6ecdc825804f"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-0/stdout.log",
+    "bytes": 11536,
+    "sha256": "2e2955f4e33775311d6c16bcf658ec5c1a2c51fa7cffebb9647a26a6bcf98e46"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-1/rank0.json",
+    "bytes": 1494,
+    "sha256": "6e782c7881b78a4ae3401aebae59e6be627d53469671a4b90880b25ca33d7baa"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-1/stdout.log",
+    "bytes": 11719,
+    "sha256": "d296943e101ef401478c1a7d8fb389e7c14d400bc387cd52a2451b2da5cfcf36"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-2/rank0.json",
+    "bytes": 1494,
+    "sha256": "fa93ce849aef83648f5b83575cb61aa04f2a3398e8678917ddbb4fa7497bb031"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-2/stdout.log",
+    "bytes": 11965,
+    "sha256": "297a32084e812d32a1ef355a77e3f6fbee9e1c4f1ff0f29a804f6b864a96832f"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/logs/2026/2026-11-06T101809_log_jungfrau_dark_proc_monarin_step00_segi00.txt",
+    "bytes": 11088,
+    "sha256": "04d1e3946f05136119d5f8f0a85d9089c2d7285facad79accef24d0c9191498b"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/logs/2026/2026-11-06T101815_log_jungfrau_dark_proc_monarin_step01_segi00.txt",
+    "bytes": 11271,
+    "sha256": "041f5e8c69af8c0dd67f400909a74594085c76c3f02ecc6c220bc086cc9c2d4b"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage1-repo/jungfrau/logs/2026/2026-11-06T101821_log_jungfrau_dark_proc_monarin_step02_segi00.txt",
+    "bytes": 11517,
+    "sha256": "67ef574b7c0376fd61ec60592fcefddcb074506a21a3f14aca53ad749317139a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank0.json",
+    "bytes": 940,
+    "sha256": "2a0903ad158c47917165e1443f616ad1efce573f1e22bd32cc0c3450cab9d3bd"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank1.json",
+    "bytes": 1680,
+    "sha256": "f23160d0cdb2d883a4b612306c6775dd3efd7e40204bf1b902f58db5528e5707"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank2-gain0.npz",
+    "bytes": 16778224,
+    "sha256": "0f8f8d4eea541cd67d011cbeadb67707b642af8f3517192323a84520cfea0e38"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank2-gain1.npz",
+    "bytes": 16778224,
+    "sha256": "6e102e8485d1b95c41abd3866e74013b8d266aedc91c8629216b4cd69a4f42b5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank2-gain2.npz",
+    "bytes": 16778224,
+    "sha256": "b0b7d321946aef73312779c6cc56fbc71196df3be95f8f46360aca64aca4edb5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank2.json",
+    "bytes": 1541,
+    "sha256": "e5651d71a5189fd3c4892c751dda3293f027b79509f9c05b2c6a84b85d961608"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank3.json",
+    "bytes": 1353,
+    "sha256": "d593fc781a5b68cde37c962f147a46443a187ae4313178ee87bea9d0919d7d02"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/rank4.json",
+    "bytes": 928,
+    "sha256": "61aedc94a346ed88e9bdc46657736d7d9997b1e1df0e528e71d635f021bd8c64"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2/stdout.log",
+    "bytes": 44364,
+    "sha256": "8d7f8371d7817083f72c564e285c6973092c86395ee62ff20ae9e3509b6ab8e4"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/logs/2026/2026-11-06T101925_log_jungfrau_dark_proc_monarin_segi00.txt",
+    "bytes": 42563,
+    "sha256": "485088df0b3a2dd17fe4ffe90a433d0ac6fbeae9240bb12e93aa21f11e6f0ffa"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.json",
+    "bytes": 5384,
+    "sha256": "b1cd7776a3bbc232faa4d7381e8db7534bc49e0d369fb8e47694bbb08230a6e4"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.txt",
+    "bytes": 15204654,
+    "sha256": "d5fded83ba1fd9d3ee142d33dc9adeecd26a74fc2f9040228de1d637023683e8"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.json",
+    "bytes": 5384,
+    "sha256": "992ac6a97bcf998eff2cb91e447d05631819b3d15a74538f230ba8d8f8568c59"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.txt",
+    "bytes": 9723266,
+    "sha256": "91f662065a3696288580f5b62ceb25567568c13427661b3d3a32b3131473accb"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.json",
+    "bytes": 5390,
+    "sha256": "549cba98a9bde9b330b5c3f2c6e30b481b390c6dea01ce9f6e802d29a7ddf0a2"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-large/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.txt",
+    "bytes": 3146337,
+    "sha256": "a3714972924a19bafe3bc9739adb8ee67d5a46350929e6e60ee95dcefa3ce580"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-0/rank0.json",
+    "bytes": 1491,
+    "sha256": "df019cec5a5ea622ec8e104223ed0bbef0c31c8dddede80709a70c00c4eac381"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-0/stdout.log",
+    "bytes": 11536,
+    "sha256": "7f474c3096c72d0f3ba6d9f9ac8c9e8b3261a977a06419eac5bf3464be1f5872"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-1/rank0.json",
+    "bytes": 1582,
+    "sha256": "1b849b8f85e58319f2af8cf253ac240a743fbd3051ea8a1f1a038c0bfc8c8f39"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-1/stdout.log",
+    "bytes": 13529,
+    "sha256": "eab85e2e16e2eb69ec74682ba3fc1e02c66c1c7b943a5846d505ab9e69362579"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-2/rank0.json",
+    "bytes": 1301,
+    "sha256": "441bef15799fdf47c3de3777a9452ba3382dc821dbbd30616d6a76b06a02830d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-2/stdout.log",
+    "bytes": 14877,
+    "sha256": "6c304ace46bea12a1ab107d823ca627c870037dec4f9439fb47edf54ed2a53c3"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/jungfrau/logs/2026/2026-11-06T101827_log_jungfrau_dark_proc_monarin_step00_segi00.txt",
+    "bytes": 11088,
+    "sha256": "0a63ae884621ff039db7e2f9abab8ab6b143828cba4701f9d99558d43bb7e3a3"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/jungfrau/logs/2026/2026-11-06T101833_log_jungfrau_dark_proc_monarin_step01_segi00.txt",
+    "bytes": 13081,
+    "sha256": "f2de7601c28f328d7521ac98bf09aeb47baefd121986c96dac8f01b43632c48d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage1-repo/scripts/jungfrau_dark_proc/logs/2026/2026-11-06T101839_log_jungfrau_dark_proc_monarin_step02_segi00.txt",
+    "bytes": 13774,
+    "sha256": "bb721ccf391dff5e1d7df4fcd4bb7d7a03179424c611e4167fa530ed2ada8e74"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank0.json",
+    "bytes": 1205,
+    "sha256": "c5708074576c34b713994d7a70a8437d60274695e5cbdf06039aa17b00333bef"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank1.json",
+    "bytes": 8429,
+    "sha256": "4b1e8138e47e3c8db7e8aa90de7392c6a349176253d87a54d003582e8b77ae11"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank2-gain0.npz",
+    "bytes": 16778224,
+    "sha256": "a9fb0cd7b7e077987c66058a236c67ef75740a90a1c22ca2a589492398fef49b"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank2-gain1.npz",
+    "bytes": 16778224,
+    "sha256": "3e174fe0886a99c3c57f43888efacadd22d16256b6912f0099dc9eac4a522d5e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank2-gain2.npz",
+    "bytes": 16778224,
+    "sha256": "ed28ca3f430ba969a3fbdaec4cbbe5ec2bcf40e33449af0da6f39a2fd0855925"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank2.json",
+    "bytes": 4914,
+    "sha256": "14c183f1a0da19bcd3285401973504ea1948cc526549e0c93302deb50dd9168d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank3.json",
+    "bytes": 4726,
+    "sha256": "88e59e0ddda6080951e5bad67f79d26b23c433db349fa8ee1b381cd8e82354aa"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/rank4.json",
+    "bytes": 926,
+    "sha256": "3b8dd209bb1ed82603b4618344754afe8cacd15266e3191833c74f29d4894a0e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2/stdout.log",
+    "bytes": 94754,
+    "sha256": "9d6a510819acd26be2c02fa562aef749cbe6f224cc642c5be0d30dcd52baa485"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/logs/2026/2026-11-06T101933_log_jungfrau_dark_proc_monarin_segi00.txt",
+    "bytes": 92948,
+    "sha256": "ab72f7ef2f9c3d1553fcde667338e9e00bbdb5c9303f74902a1c7c780b0048b2"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.json",
+    "bytes": 5384,
+    "sha256": "267256ce0decd6c9ff0b637a28fd1c1b4d32773a9ee23cf97a657922e3ccec7d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.txt",
+    "bytes": 15204654,
+    "sha256": "5b03f0b3c5dc6bc8a58e447761b4004ab0cca08c31f469b2cb511d9bcf8c5c60"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.json",
+    "bytes": 5384,
+    "sha256": "603ff61d788b8792e05ab1e57cc34d216a7a203f90742bc789757229af0eb0c8"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.txt",
+    "bytes": 9727405,
+    "sha256": "07c116df662f4fe78839d6e3a29a7d81f2a27a65f53cc217bc620ca8912dc9d5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.json",
+    "bytes": 5390,
+    "sha256": "1783d84c592e721956206021a552bb6878a331e7787d8cf11cac0a13f0dc9854"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-small/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.txt",
+    "bytes": 3146336,
+    "sha256": "149bff7a030a5a8734d80e7c3d0e89dd839244abd8717db920a9204558eef65c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-0/rank0.json",
+    "bytes": 1492,
+    "sha256": "16375fea72e59c88a369f77a374fe002f902028adb5044fa23eae1c92ff3f5cb"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-0/stdout.log",
+    "bytes": 11526,
+    "sha256": "4eb88c23363311cc3ef00e8dd96be2575af88abdc798bcce3c3d9b522a65a98a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-1/rank0.json",
+    "bytes": 1502,
+    "sha256": "9f1868169dfd3cd5b21b112089afc8ee9ebe7205068853bf58c7ec7cf138eb0d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-1/stdout.log",
+    "bytes": 11890,
+    "sha256": "a5a2b36251dd5fbcbdef6a51c1892848d2a5b2b4557e4a9a66f02dfd7b786aa9"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-2/rank0.json",
+    "bytes": 1060,
+    "sha256": "f7f6eb8f71c039f1a3d2bf9d26a4ab87d74c595c5d757cde421cffa02897ef02"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-2/stdout.log",
+    "bytes": 9984,
+    "sha256": "03465c0e57b85b82d54bb36c57075963f8d536928efea9e3f447233dcaefc571"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/jungfrau/logs/2026/2026-11-06T101844_log_jungfrau_dark_proc_monarin_step00_segi00.txt",
+    "bytes": 11079,
+    "sha256": "557fd829af70f918a5ce1e2bea6c055b4bf685fddca5bf52debce275a48ed793"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/jungfrau/logs/2026/2026-11-06T101852_log_jungfrau_dark_proc_monarin_step01_segi00.txt",
+    "bytes": 11443,
+    "sha256": "5ca329a99e43505f65646e1d69dc084a60112296ccab364d34da3ecf45e997eb"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage1-repo/scripts/jungfrau_dark_proc/logs/2026/2026-11-06T101857_log_jungfrau_dark_proc_monarin_step02_segi00.txt",
+    "bytes": 8882,
+    "sha256": "70f39e65bb4e2c29b499672280b7682619bfc195e6ae9e9724078d699f446cff"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank0.json",
+    "bytes": 965,
+    "sha256": "8b3638196dde6e4005ea677d588b982b505589ae6cd7b7859038a237b79bac91"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank1.json",
+    "bytes": 1678,
+    "sha256": "613fd8f405c606cba4773333e0210c0c7eb805edb176bd87a179afefbc10e1e4"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank2-gain0.npz",
+    "bytes": 16778224,
+    "sha256": "0f8f8d4eea541cd67d011cbeadb67707b642af8f3517192323a84520cfea0e38"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank2-gain1.npz",
+    "bytes": 16778224,
+    "sha256": "6e102e8485d1b95c41abd3866e74013b8d266aedc91c8629216b4cd69a4f42b5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank2-gain2.npz",
+    "bytes": 16778224,
+    "sha256": "b0b7d321946aef73312779c6cc56fbc71196df3be95f8f46360aca64aca4edb5"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank2.json",
+    "bytes": 1539,
+    "sha256": "e05f86b803a5c810e3fc8cfc1fbaad0a68fe892dda76c208ff6e0a3d4ddd11d3"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank3.json",
+    "bytes": 1351,
+    "sha256": "59e459093db0e07a6d30f75b1c3988c8ca63980c505dbf84e542e553ce07cbaf"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/rank4.json",
+    "bytes": 926,
+    "sha256": "67f275edacc50d067a219107d1cc1fcfb26fca6239abe833cb4b90b5fc3a07b2"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2/stdout.log",
+    "bytes": 45427,
+    "sha256": "0cd8df90c9854a5d183728e3489b821f9def46c2e674aea5cf03f6957b860e4a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "b656214c88b00519d0f04394ef4d93467885bc1029f57f8a9a143e87e109983c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g0-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "4753559755180511f8062258ac9984913d35cf270ba03a58f3a62f31d687232e"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g1-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 1048704,
+    "sha256": "ca2182dd0b31eb597001d18f62ad35361c4da8900976d502fbdf7cb087a55b3a"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 1048704,
+    "sha256": "08a4c4ea562bb3011e978d8d29aab89abe428f7aead68832d02b5325b9b01139"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/logs/2026/2026-11-06T101959_log_jungfrau_dark_proc_monarin_segi00.txt",
+    "bytes": 43627,
+    "sha256": "62400919c6f5f824710ee4c6c353d2141b8cdaa6efb54e4b4e4eeaa9cffd7a9c"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.json",
+    "bytes": 5382,
+    "sha256": "d5d1ccbdf354398594f1fe0d0fc1cc4dc78f8a6eac9611d8928beb77553bef52"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pedestals.txt",
+    "bytes": 15204653,
+    "sha256": "baf295804958dc6d2362957990984bd16c9283530631d66a1d34fb7e5baba7c6"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.json",
+    "bytes": 5382,
+    "sha256": "b0a830d850aa276595ae8a88ecb929ac792cd1a8c951daa74db9c213c02866f0"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_rms.txt",
+    "bytes": 9723265,
+    "sha256": "e36cb3ae99fffc3a7bd2ff919ecfda7211bf693c90192e7ff40fc35ea010fc13"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.json",
+    "bytes": 5388,
+    "sha256": "50c4476afa9a66705cec5ba21774ee997717798c34b3adb21af20cf1250d999d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/matrix/unfixed-step/stage2-repo/jungfrau/merge_tmp/jungfrau_000005-20250616234430-mfx100848724-r0049-pixel_status.txt",
+    "bytes": 3146336,
+    "sha256": "ed9c399624e9f08101808a6fe00f2a11c12dc8ad08f424b1e25905b4aed56f02"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/oracle.json",
+    "bytes": 63006,
+    "sha256": "bee7d91890c1d9a5c0be31a0bd86e05867bb36fdaede68e0689f0d42a6d1bd20"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/preparation.log",
+    "bytes": 169,
+    "sha256": "7b49014e5dcba71d8c81909f52bf673f6481b653a4a468650a5ae479fffec21d"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/analysis.log",
+    "bytes": 2089,
+    "sha256": "2c7cc45a420c76963d9a9b2287eab40fe7c4a5af6f244629258fee5cfc3004cb"
+  }
+]
