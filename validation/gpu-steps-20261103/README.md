@@ -54,7 +54,7 @@ catch that, however many steps it checks.
 
     python3 validation/gpu-steps-20261103/serial_events.py   # serial counterpart
 
-Both pass on run 77 (job 43349533):
+Both pass on run 77:
 
 | Path | Result |
 | --- | --- |
@@ -62,8 +62,32 @@ Both pass on run 77 (job 43349533):
 | serial `run.steps()` | `per_step [1000, 1000, 1000]` |
 | MPI, 2 BD ranks | `counts [3, 3]`, `per_step [[500,500,500],[500,500,500]]`, total 3000 |
 
+Job **43386685**, after the transition-release fix. Job 43349533 is the same
+pair of cases on `c0e0d5d9a`, *before* that fix, and also passed — worth
+recording, because it shows what this harness does and does not cover: the
+delivery-order defects it missed needed a memory-pressure flush mid-packet,
+which a normal run does not provoke. See the note below.
+
 The serial event count is the sharpest check in the whole harness: one
 number, against a known run size, on the path that returns at `EndRun`.
+
+## What the real-data runs do NOT cover
+
+Neither uncapped run hits `GpuMemoryPressureError`, so neither exercises the
+mid-packet flush where the delivery-order defects lived — both passed before
+that fix. Unit coverage carries that path
+(`test_gpu_transition_order.py`, `test_gpu_step_delivery_properties.py`,
+`test_gpu_process_batch_transitions.py`).
+
+For device evidence, run uncapped with a budget tight enough to force
+admission failures:
+
+    SBATCH_ACCOUNT=lcls:prjdat21 SBATCH_QOS=normal sbatch \
+      --export=ALL,PS_STEPS_DATASET=77,PS_STEPS_NO_CAP=1 \
+      validation/gpu-steps-20261103/run.sbatch
+
+with `gpu_memory_budget_gb` lowered in the driver until
+`_retire_issue_and_yield` takes its recovery path. Not yet done.
 
 Note the account override. The `#SBATCH` header requests `preemptable`, but
 `lcls:prjdat21@ampere` is the association that grants `normal` — without the
