@@ -49,9 +49,6 @@ jobs:
           ./build_all.sh
 
       - name: Run Tests
-        env:
-          # Callback routing tests use four MPI ranks, even on smaller runners.
-          OMPI_MCA_rmaps_base_oversubscribe: "1"
         run: |
           export PATH=$(pwd)/install/bin:${PATH}
           pyver=$(python -V 2>&1 | grep -oP '\d+\.\d+' | head -1)

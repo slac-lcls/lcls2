@@ -51,7 +51,8 @@ def run_driver(xtc_dir, execution="serial", chunk_size=100, batch_size=1, extra=
     )
     command = [sys.executable, str(DRIVER), str(xtc_dir), "--batch-size", str(batch_size), *extra]
     if execution == "mpi":
-        command = ["mpirun", "-n", "4", *command]
+        # The four-rank topology must also run on CI hosts with fewer slots.
+        command = ["mpirun", "--oversubscribe", "-n", "4", *command]
     output = run_process(command, env)
     records = [line[len(RESULT_PREFIX):] for line in output.splitlines() if line.startswith(RESULT_PREFIX)]
     assert len(records) == 1, f"Expected exactly one result record:\n{output}"
