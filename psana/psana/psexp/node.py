@@ -5,9 +5,8 @@ import numpy as np
 
 from psana import utils
 from psana.dgram import Dgram
-from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.eventbuilder_manager import EventBuilderManager, CallbackEventBuilderManager
 from psana.psexp.events import Events
-from psana.psexp.run import CallbackRunState
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
@@ -1017,31 +1016,21 @@ class EventBuilderNode(object):
 
     def start(self):
         rankreq = np.empty(6, dtype=np.int64)
-        smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm = self.comms.bd_comm
         waiting_bds = []
         chunk_id = 0
         rr_next_bd = 1
         enforce_strict_rr = self.dsparms.smd_callback != 0 and n_bd_nodes > 1
-        callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
 
         # Initialize Non-blocking Send Requests with Null
         self._init_requests()
 
         bypass_bd = bool(int(os.environ.get("PS_EB_BYPASS_BD", "0")))
 
-        while True:
-            self._reset_eb_chunk_stats()
-            smd_chunk = self._request_data(smd_comm)
-            if not smd_chunk:
-                break
-
-            if not bypass_bd:
+        for eb_man in self._batch_managers():
+            if not bypass_bd and not self.dsparms.smd_callback:
                 self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
-            eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, callback_run_state=callback_run_state,
-            )
             self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
             )
@@ -1054,6 +1043,7 @@ class EventBuilderNode(object):
 
             t0 = time.monotonic()
             for smd_batch_dict, step_batch_dict in eb_man.batches():
+                batch_records = sum(len(sizes) for _, sizes in smd_batch_dict.values())
                 if bypass_bd:
                     continue
                 # If single item and dest_rank=0, send to any bigdata nodes.
@@ -1177,7 +1167,7 @@ class EventBuilderNode(object):
                 # end else -> if 0 in smd_batch_dict.keys()
 
                 t1 = time.monotonic()
-                rate_hz = eb_man.eb.nevents / (t1 - t0)
+                rate_hz = batch_records / (t1 - t0)
                 self._bd_rate_hz.append(rate_hz)
                 # Prometheus metric expects kHz
                 self.rate_gauge.set(rate_hz * 1e-3)
@@ -1191,7 +1181,7 @@ class EventBuilderNode(object):
             chunk_id += 1
 
         # end While True
-        if not bypass_bd:
+        if not bypass_bd and not self.dsparms.smd_callback:
             self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
         wait_for(self.requests)
 
@@ -1266,19 +1256,8 @@ class EventBuilderNode(object):
                 self.logger.debug(bd_stats)
 
     def start_broadcast(self):
-        smd_comm = self.comms.smd_comm
         bd_comm = self.comms.bd_comm
-        callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
-
-        while True:
-            smd_chunk = self._request_data(smd_comm)
-            if not smd_chunk:
-                break
-
-            eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, callback_run_state=callback_run_state
-            )
-
+        for eb_man in self._batch_managers(broadcast=True):
             for smd_batch_dict, _ in eb_man.batches():
                 smd_batch, _ = smd_batch_dict[0]
 
@@ -1288,6 +1267,40 @@ class EventBuilderNode(object):
 
         # Send empty array to signal termination
         bd_comm.bcast(np.array([], dtype='B'), root=0)
+
+    def _batch_managers(self, broadcast=False):
+        def chunks():
+            finished = False
+            input_chunk_id = 0
+            try:
+                while True:
+                    if self.dsparms.smd_callback:
+                        self._reset_eb_chunk_stats()
+                        self._prepare_bd_read_stats(input_chunk_id - 1,
+                                                    self.comms.bd_comm.Get_size() - 1)
+                    chunk = self._request_data(self.comms.smd_comm)
+                    if not chunk:
+                        finished = True
+                        return
+                    yield chunk
+                    if self.dsparms.smd_callback:
+                        self._log_chunk_stats(input_chunk_id)
+                        input_chunk_id += 1
+            finally:
+                # Even after physical EndRun, receive the SMD0 protocol's empty
+                # terminator (and any final step-history packet) before shutdown.
+                if not finished:
+                    while self._request_data(self.comms.smd_comm):
+                        self._reset_eb_chunk_stats()
+
+        self._reset_eb_chunk_stats()
+        if self.dsparms.smd_callback:
+            yield CallbackEventBuilderManager(chunks(), self.configs, self.dsparms,
+                                              run_serial=broadcast)
+        else:
+            for chunk in chunks():
+                yield EventBuilderManager(chunk, self.configs, self.dsparms)
+                self._reset_eb_chunk_stats()
 
 
 class BigDataNode(object):
