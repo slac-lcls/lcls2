@@ -1,0 +1,221 @@
+{
+  "argv": [
+    "-k",
+    "exp=mfx100848724,run=49",
+    "-d",
+    "jungfrau",
+    "-o",
+    "./work1",
+    "--nrecs",
+    "50",
+    "--nrecs1",
+    "50",
+    "--stepnum",
+    "2"
+  ],
+  "cwd": "/tmp/smd-callback-pr/jf/master-10000",
+  "initial_smd_n_events": "10000",
+  "chunks": [
+    3039
+  ],
+  "callback_calls": 1,
+  "callback_timestamps": [
+    4806028405361277613,
+    4806028405369535152,
+    4806028405377923763,
+    4806028405386181302,
+    4806028405394569913,
+    4806028405402827452,
+    4806028405411216063,
+    4806028405419473602,
+    4806028405427862213,
+    4806028405436119752,
+    4806028405444508363,
+    4806028405452896974,
+    4806028405461154513,
+    4806028405469543124,
+    4806028405477800663,
+    4806028405486189274,
+    4806028405494446813,
+    4806028405502835424,
+    4806028405511224035,
+    4806028405519481574,
+    4806028405527870185,
+    4806028405536127724,
+    4806028405544516335,
+    4806028405552773874,
+    4806028405561162485,
+    4806028405569420024,
+    4806028405577808635,
+    4806028405586066174,
+    4806028405594454785,
+    4806028405602843396,
+    4806028405611100935,
+    4806028405619489546,
+    4806028405627747085,
+    4806028405636135696,
+    4806028405644393235,
+    4806028405652781846,
+    4806028405661170457,
+    4806028405669427996,
+    4806028405677816607,
+    4806028405686074146,
+    4806028405694462757,
+    4806028405702720296,
+    4806028405711108907,
+    4806028405719366446,
+    4806028405727755057,
+    4806028405736012596,
+    4806028405744401207,
+    4806028405752658746,
+    4806028405761047357,
+    4806028405769435968
+  ],
+  "raw_timestamps": [
+    4806028405361277613,
+    4806028405369535152,
+    4806028405377923763,
+    4806028405386181302,
+    4806028405394569913,
+    4806028405402827452,
+    4806028405411216063,
+    4806028405419473602,
+    4806028405427862213,
+    4806028405436119752,
+    4806028405444508363,
+    4806028405452896974,
+    4806028405461154513,
+    4806028405469543124,
+    4806028405477800663,
+    4806028405486189274,
+    4806028405494446813,
+    4806028405502835424,
+    4806028405511224035,
+    4806028405519481574,
+    4806028405527870185,
+    4806028405536127724,
+    4806028405544516335,
+    4806028405552773874,
+    4806028405561162485,
+    4806028405569420024,
+    4806028405577808635,
+    4806028405586066174,
+    4806028405594454785,
+    4806028405602843396,
+    4806028405611100935,
+    4806028405619489546,
+    4806028405627747085,
+    4806028405636135696,
+    4806028405644393235,
+    4806028405652781846,
+    4806028405661170457,
+    4806028405669427996,
+    4806028405677816607,
+    4806028405686074146,
+    4806028405694462757,
+    4806028405702720296,
+    4806028405711108907,
+    4806028405719366446,
+    4806028405727755057,
+    4806028405736012596,
+    4806028405744401207,
+    4806028405752658746,
+    4806028405761047357,
+    4806028405769435968
+  ],
+  "name_lookups": [
+    {
+      "add_shortname": false,
+      "result": "jungfrau_000005"
+    },
+    {
+      "add_shortname": false,
+      "result": "jungfrau_000005"
+    }
+  ],
+  "blocked_mutations": [],
+  "datasource_class": "SerialDataSource",
+  "dskwargs": {
+    "exp": "mfx100848724",
+    "run": 49,
+    "batch_size": 1,
+    "skip_calib_load": "all"
+  },
+  "smd_files": [
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s000-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s001-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s002-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s003-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s004-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s005-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s006-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s007-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s008-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s009-c000.smd.xtc2"
+  ],
+  "raw_shape": [
+    32,
+    512,
+    1024
+  ],
+  "completed": true,
+  "effective_smd_n_events": "10000",
+  "sources": {
+    "datasource": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/datasource.py",
+      "sha256": "a198adca2d508dc9b9075e4ba9737a956904796fe92c2286d0e1c3a2835c6d17"
+    },
+    "app.jungfrau_dark_proc": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/app/jungfrau_dark_proc.py",
+      "sha256": "e2a7ccc0b29946f565ce247e2cb97fb2bc4384f0c4834c79fa8620ae8f7a343e"
+    },
+    "detector.UtilsJungfrauCalib": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/detector/UtilsJungfrauCalib.py",
+      "sha256": "79a42c31767f711919387110f89f405f916d95e9ad413002be2cf4b8d38410ad"
+    },
+    "detector.UtilsCalib": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/detector/UtilsCalib.py",
+      "sha256": "a7021a42f42f2158e12f87420a2f5c1277cee8477fbe8959919bd66cc57b5c43"
+    },
+    "detector.RepoManager": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/detector/RepoManager.py",
+      "sha256": "49e0748de58d4b529da7daac8f068d5e5f65c80810a394775ec3071435f21fec"
+    },
+    "psexp.run": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/psexp/run.py",
+      "sha256": "f77885358fffe73ee284ef6bef1de350db5d02f3a99426d7d527f719d6b3ac14"
+    },
+    "psexp.step": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/psexp/step.py",
+      "sha256": "06c68be08716c7f4a0e81b3d37752704e75ffd45fb3e252c9f99cfe55bc248de"
+    },
+    "psexp.ds_base": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/psexp/ds_base.py",
+      "sha256": "70a74e2fd71e6bf5191e7f791bfdaa2eae0693184bd638cc121b10c691e09a51"
+    },
+    "psexp.serial_ds": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/psexp/serial_ds.py",
+      "sha256": "f5653b5ee8fb4df129555e535c82674b720ccd4f85148a405666085f650e0a2c"
+    },
+    "psexp.smdreader_manager": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/psexp/smdreader_manager.py",
+      "sha256": "c225c66ee839e809ff0fe9831dd705598241cc81e2f2b128a509f82b241262ce"
+    },
+    "psexp.callback_batch": {
+      "path": "/tmp/smd-callback-pr/master/psana/psana/psexp/callback_batch.py",
+      "sha256": "0ea63be68208aeaf3dd8fac9fb6bd8f44f9be526d749372b1b2211db024a4abe"
+    },
+    "smdreader": {
+      "path": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/smdreader.cpython-39-x86_64-linux-gnu.so",
+      "sha256": "490f1be327584f36b6955a6e59364707409a40008cac655b0436ae6825948ece"
+    },
+    "eventbuilder": {
+      "path": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/eventbuilder.cpython-39-x86_64-linux-gnu.so",
+      "sha256": "2096c33d26b92383496c1dfb084b51e046699d3d4abc10740267dcfcc1404c7e"
+    },
+    "dgram": {
+      "path": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/dgram.cpython-39-x86_64-linux-gnu.so",
+      "sha256": "bedf0f5c8f222a17fe30eb17c3f41f8e83ba54651ab1ee7d9fb71730584d8a44"
+    }
+  }
+}

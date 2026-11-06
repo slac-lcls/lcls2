@@ -1,0 +1,57 @@
+[
+  {
+    "path": "/tmp/smd-callback-pr/oracle.json",
+    "bytes": 63007,
+    "sha256": "687a9821f142fb1d3059719d38896d9dd7155bd839d821004ade0900eded64bd"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/fixed-default/report.json",
+    "bytes": 8031,
+    "sha256": "5983d6d2e9184e603cbd59644914d106dc5925842dc63a2525c8051d1588a0f7"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/master-10000/report.json",
+    "bytes": 7188,
+    "sha256": "9817c7d379b41046a19b34cff695dd1f5f7e01b5547f79a3aae66b8335d1d1d4"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/master-default/report.json",
+    "bytes": 4677,
+    "sha256": "d3b1db8fcfb97ba7b5e2bbe1a0696150572106239400e1c4df631aefcf53279c"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/fixed-default/stdout.log",
+    "bytes": 11219,
+    "sha256": "9181a8334ec9374886bd497042e857e63f6fb545bcf67c31ffd96bb40f37f2b7"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/master-10000/stdout.log",
+    "bytes": 11217,
+    "sha256": "9f37d8ea52f87cc5235b954e493e0b78a5a70b25036c9f53d40745a0b0f5f42f"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/master-default/stdout.log",
+    "bytes": 8847,
+    "sha256": "f8784918e1d80619600de55b04fc5694a5cc358a9392b35cab927b9bec753624"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/fixed-default/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 33554560,
+    "sha256": "1ee7bfd30789d946ffe8acb41d4499aa7f24189aabbf7c353ca8cdc8eeca1f90"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/fixed-default/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 33554560,
+    "sha256": "e82d16ae3b59786ded01a1211c7bf014c440cc56dbb0057f64d57f73de228c89"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/master-10000/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 33554560,
+    "sha256": "1ee7bfd30789d946ffe8acb41d4499aa7f24189aabbf7c353ca8cdc8eeca1f90"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf/master-10000/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 33554560,
+    "sha256": "e82d16ae3b59786ded01a1211c7bf014c440cc56dbb0057f64d57f73de228c89"
+  }
+]

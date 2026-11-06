@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/tmp/smd-callback-pr/build.log",
+    "bytes": 18603,
+    "sha256": "a3d54789139e63c47a0b293e130a39279c1f535e71018728e3139b9063083d86"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/core.log",
+    "bytes": 15544,
+    "sha256": "6faf46bf80918bd4d00690b4e6b9c1392e1460aae06a21ce9efdc1cc2c1ba3fc"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/byhand.log",
+    "bytes": 778,
+    "sha256": "40b710f1647b41c07913831ce1a67371f7c6e079ba0c1abf3febb0ee7b5a4ab6"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/jf-analysis.log",
+    "bytes": 1293,
+    "sha256": "06e7fa7b111551da2913ab0bd8c1d050704e4bd3305fba74d335e660e0f2d8a0"
+  }
+]

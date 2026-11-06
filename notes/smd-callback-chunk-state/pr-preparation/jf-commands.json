@@ -1,0 +1,77 @@
+[
+  {
+    "case": "master-default",
+    "setting": null,
+    "pythonpath": "/tmp/smd-callback-pr/master-python",
+    "command": [
+      "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python",
+      "/sdf/home/m/monarin/lcls2/notes/smd-callback-chunk-state/pr-preparation/run_case.py",
+      "-k",
+      "exp=mfx100848724,run=49",
+      "-d",
+      "jungfrau",
+      "-o",
+      "./work1",
+      "--nrecs",
+      "50",
+      "--nrecs1",
+      "50",
+      "--stepnum",
+      "2"
+    ],
+    "cwd": "/tmp/smd-callback-pr/jf/master-default",
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 6.33
+  },
+  {
+    "case": "master-10000",
+    "setting": "10000",
+    "pythonpath": "/tmp/smd-callback-pr/master-python",
+    "command": [
+      "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python",
+      "/sdf/home/m/monarin/lcls2/notes/smd-callback-chunk-state/pr-preparation/run_case.py",
+      "-k",
+      "exp=mfx100848724,run=49",
+      "-d",
+      "jungfrau",
+      "-o",
+      "./work1",
+      "--nrecs",
+      "50",
+      "--nrecs1",
+      "50",
+      "--stepnum",
+      "2"
+    ],
+    "cwd": "/tmp/smd-callback-pr/jf/master-10000",
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 53.61
+  },
+  {
+    "case": "fixed-default",
+    "setting": null,
+    "pythonpath": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages",
+    "command": [
+      "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python",
+      "/sdf/home/m/monarin/lcls2/notes/smd-callback-chunk-state/pr-preparation/run_case.py",
+      "-k",
+      "exp=mfx100848724,run=49",
+      "-d",
+      "jungfrau",
+      "-o",
+      "./work1",
+      "--nrecs",
+      "50",
+      "--nrecs1",
+      "50",
+      "--stepnum",
+      "2"
+    ],
+    "cwd": "/tmp/smd-callback-pr/jf/fixed-default",
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 36.78
+  }
+]

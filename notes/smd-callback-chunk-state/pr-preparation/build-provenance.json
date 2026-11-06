@@ -1,0 +1,44 @@
+[
+  {
+    "module": "psana/psexp/callback_iterator.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/callback_iterator.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/callback_iterator.py",
+    "sha256": "5b9d6c6f08a5a56c86acdfcb632584acb540556fb073f5b98e8593656c5cd672"
+  },
+  {
+    "module": "psana/psexp/callback_stream.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/callback_stream.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/callback_stream.py",
+    "sha256": "6ca02a84d265c5fbb6f218cd4db08f579cbb4d15ada8a6fbff9673a10fa6b468"
+  },
+  {
+    "module": "psana/psexp/node.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/node.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/node.py",
+    "sha256": "82787202153473c86895413cc7921463c294da24d35f3e5304779cf87dcb3de3"
+  },
+  {
+    "module": "psana/psexp/smdreader_manager.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/smdreader_manager.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/smdreader_manager.py",
+    "sha256": "737a01739a6a74b1855b0f8e8194b16593a4c7aa1b49aba6b712940f05e1645c"
+  },
+  {
+    "module": "psana/psexp/eventbuilder_manager.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/eventbuilder_manager.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/eventbuilder_manager.py",
+    "sha256": "3700d96d183dbfae58038071c3551791c6e650945abad1d6af323ce2db49e7bc"
+  },
+  {
+    "module": "psana/psexp/events.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/events.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/events.py",
+    "sha256": "348a9d44d6fe2391bfce0fe15f75ba3606755b30b6b707bbacbdafe0f8a3a44d"
+  },
+  {
+    "module": "psana/psexp/serial_ds.py",
+    "source": "/tmp/smd-callback-pr/worktree/psana/psana/psexp/serial_ds.py",
+    "installed": "/tmp/smd-callback-pr/worktree/install/lib/python3.9/site-packages/psana/psexp/serial_ds.py",
+    "sha256": "0faa47a1db81175ec0d3e1106b31c00c70bd13e4435a41a4cabb8395b6bdeb79"
+  }
+]

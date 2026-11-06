@@ -1,0 +1,60 @@
+{
+  "cases": [
+    {
+      "case": "master-default",
+      "effective_smd_n_events": "1000",
+      "exit_code": 1,
+      "raw_events": 0,
+      "timestamps_exact": false,
+      "callback_calls": 4,
+      "chunks": 4,
+      "gate_files": 0,
+      "exception": "UnboundLocalError(\"local variable 'ievt' referenced before assignment\")"
+    },
+    {
+      "case": "master-10000",
+      "effective_smd_n_events": "10000",
+      "exit_code": 0,
+      "raw_events": 50,
+      "timestamps_exact": true,
+      "callback_calls": 1,
+      "chunks": 1,
+      "gate_files": 2,
+      "exception": null
+    },
+    {
+      "case": "fixed-default",
+      "effective_smd_n_events": "1000",
+      "exit_code": 0,
+      "raw_events": 50,
+      "timestamps_exact": true,
+      "callback_calls": 1,
+      "chunks": 3,
+      "gate_files": 2,
+      "exception": null
+    }
+  ],
+  "gates": [
+    {
+      "file": "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+      "shape": [
+        32,
+        512,
+        1024
+      ],
+      "dtype": "uint16",
+      "exact_equal": true
+    },
+    {
+      "file": "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+      "shape": [
+        32,
+        512,
+        1024
+      ],
+      "dtype": "uint16",
+      "exact_equal": true
+    }
+  ],
+  "acceptance_passed": true
+}

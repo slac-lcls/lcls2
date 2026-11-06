@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "7ddd3f4fd0b8273ba32ec67ad978d1ffe8801005",
+  "verdict": "pass",
+  "summary": "The fix is correct as implemented. CallbackIterator drives one callback generator per run over a run-scoped iterable of native EventBuilders, so step/event counters inside the user generator survive chunk refills in both serial (SmdReaderManager.__next__ returning one StreamingCallbackBatches per run) and MPI (CallbackEventBuilderManager over the EB rank's chunk stream). Ownership across refill is sound: EB.events() already copies dgrams (as_dgrams builds Dgram over a bytearray copy) and _OwnedProxyEvent keeps only those copies plus scalar metadata; its as_bytearray matches the native ProxyEvent footer format (Dgram buffer len is the dgram size). Transitions are serialized immediately through _TransitionSink so no borrowed pointers survive. Routing: each emitted batch has exactly one destination key; dest changes flush, transitions ride with the adjacent event's batch and StepHistory delivers missing steps to other BDs, mirroring gen_bytearray_batch semantics; serial forces dest 0 and no step dict. max_events is enforced by chunks() on both Smd0 and serial paths. Early return drains remaining transitions (documented, tested as chunks==8); explicit close discards pending and closes the owned input without refilling; errors close input first and keep the primary exception. Per-run reset: serial close in SerialDataSource.runs() finally plus get_next_dgrams resetting _callback_batches on BeginRun; MPI gets a fresh manager per run. The chunks() finally in node.py still drains the SMD0 terminator protocol after EndRun. Non-callback paths (eb.build(), BatchIterator, EventBuilderManager) are unchanged in behaviour, and the master check_mpi_layout/bd_size validation in node.py is intact. Tests use an independent direct-xtc oracle, 90 s process-group timeouts, PS_* env isolation, per-module tmp dirs, and all three files are enrolled in the CI workflow with oversubscribe enabled; openmpi/mpi4py are in the pinned conda env. Coordinator evidence (142 passed / 5 pre-existing skips, 4 byhand passed, fresh native build, real-data parity) is consistent with the inspected code. Three low, non-blocking findings: dead legacy callback code paths remain, the CHANGELOG entry still lacks its PR link, and the drain-on-early-return reads the full remaining run synchronously (a documented design choice, not a regression). The #284 unbounded pending-queue limitation remains correctly deferred and is now stated in both module docstrings.",
+  "checks": [
+    "Read all seven changed core modules: callback_iterator.py, callback_stream.py, eventbuilder_manager.py, events.py, node.py, serial_ds.py, smdreader_manager.py",
+    "Read supporting unchanged code: run.py (CallbackRunState, Run, RunSerial, RunSmallData), step.py, event.py set_destination, eventbuilder.pyx (ProxyEvent, events, has_more, gen_bytearray_batch, recycle), dgram.cc getbuffer",
+    "Verified _CallbackRun constructs _stream_events before RunSmallData.__init__ calls _iter_events, and that run.events()/run.steps()/Step.events() share the single advancing generator",
+    "Verified ownership: as_dgrams copies into bytearray; _OwnedProxyEvent holds only copies and scalars; as_bytearray footer layout matches native ProxyEvent.as_bytearray; transitions serialized at append time",
+    "Verified EndRun ends _iter_events, drain_remaining appends only non-L1 records, _close_input closes events generator then builders (idempotent), close() clears sink and never refills",
+    "Verified exception paths keep the primary exception and close input; StreamingCallbackBatches.__next__ marks closed on any exception; close() is idempotent",
+    "Verified batch packing: single-dest batches, flush on dest change / max_records / max_bytes / batch_size L1 count, _pack footer matches PacketFooter format, serial dest 0 and empty steps dict",
+    "Verified node.py consumption: 0-key path and explicit-destination path both read (bytearray, sizes) tuples; step_hist extension per dest; destination > n_bd_nodes rejected; check_mpi_layout and bd_size<2 validation retained",
+    "Verified MPI chunks() finally drains SMD0 terminator when input closed early (EndRun or error), and CallbackEventBuilderManager.batches() closes stream in finally",
+    "Verified serial lifecycle: Events.__next__ consumes StreamingCallbackBatches via smdr_man; second next(smdr_man) raises StopIteration; runs() finally closes; get_next_dgrams resets on BeginRun; terminate path closes",
+    "Verified max_events handled by chunks() in both Smd0 and serial _callback_builders",
+    "Verified non-callback paths unchanged: eb.build() branch in BatchIterator/EventBuilderManager, EventBuilderManager used only when smd_callback==0 in node.py",
+    "Reviewed three test modules and three drivers: independent direct-file oracle, uniqueness assertion, 90 s timeout with process-group kill, PS_* env scrubbing, module-scoped tmp dirs, buffer poisoning and native-packet comparison in iterator driver, no-greenlet import guard in stream driver",
+    "Counted parametrized cases: 24 + 18 + 17 = 59, matching coordinator evidence",
+    "Verified CI workflow enrolls all three test files, sets OMPI_MCA_rmaps_base_oversubscribe=1, and the pinned conda env includes openmpi 5.0.5 and mpi4py 4.0.1",
+    "Checked CHANGELOG entry placement under Unreleased/Fixed against docs/CHANGELOG_GUIDE.md",
+    "Confirmed skipped serial_loop_callback and serial_steps_w_ts_filter carry pre-existing skip markers in test_xtc.py, which is not among the changed files",
+    "Confirmed docstrings in callback_iterator.py and callback_stream.py state the unbounded pending-transition limitation (prior REV1-01 resolved)"
+  ],
+  "limitations": [
+    "No shell access: the diff against master 9ab5c193b could not be computed; the change set was inferred from the stated scope and the current source. Pre-existing versus new lines in node.py, events.py and serial_ds.py were judged from context.",
+    "Did not run any tests or builds; pytest, byhand, native build and Jungfrau real-data results are coordinator-reported evidence only.",
+    "Coordinator artifacts under /tmp/smd-callback-pr/jf and the core.log/byhand.log/build.log/oracle.json files are outside the restricted worktree and could not be read.",
+    "Remote GitHub Actions CI has not run for this commit; CI enrollment was verified by reading the workflow only.",
+    "Native Cython/C++ internals (SmdReader.build_batch_view EndRun handling, Smd0 repack) were reviewed only as far as their Python-visible contracts; their behaviour is assumed unchanged from master.",
+    "PR description content was not available for review; only the template and the stated plan were inspected."
+  ],
+  "findings": [
+    {
+      "id": "PRCB-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/eventbuilder_manager.py",
+      "line": 45,
+      "evidence": "node.py:1297-1302 yields CallbackEventBuilderManager whenever dsparms.smd_callback is set and EventBuilderManager only otherwise, and smdreader_manager.py:383-389 returns StreamingCallbackBatches before BatchIterator is ever built with a callback. The callback branches in EventBuilderManager.batches() (line 45-53), BatchIterator.__next__ (smdreader_manager.py:70-78), the whole CallbackBatchBuilder class (callback_batch.py) and the CallbackRunState/callback_run_state plumbing (run.py:93-105, 853-861; step.py:60-63; smdreader_manager.py:88, 406) are no longer reachable in production.",
+      "requested_change": "No change required for this PR (cleanup was explicitly out of scope). Open a follow-up to remove CallbackBatchBuilder, CallbackRunState and the dead callback branches so the superseded per-chunk restart logic cannot be re-wired by mistake."
+    },
+    {
+      "id": "PRCB-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "CHANGELOG.md",
+      "line": 23,
+      "evidence": "Entry ends with '@monarin' and no '[#NNN](url)' link; docs/CHANGELOG_GUIDE.md:18-19 requires handle plus PR link. Scope states the link is added after GitHub allocates the number.",
+      "requested_change": "Append the PR number and link once allocated, before merge, as planned."
+    },
+    {
+      "id": "PRCB-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/callback_iterator.py",
+      "line": 112,
+      "evidence": "With drain_remaining=True (always, via callback_stream.py:47-48) a normal callback return iterates self._events to exhaustion, which pulls every remaining chunk for the run through EB.events() (including as_dgrams copies of all L1 events that are then discarded) before _close_input runs and the final batch is yielded. In MPI the chunks() finally in node.py:1289-1294 also completes the SMD0 request/terminator protocol inside that same call. test_stream_delivery asserts chunks == 8 for the 'return' behaviour, so this is intentional and documented ('consumes the input run without selecting further events').",
+      "requested_change": "No change requested. Recorded so the cost is visible: for a callback that returns early on a long run, the rank still reads and copies the remainder of the run synchronously. If this becomes a problem it can be addressed together with #284 (prompt bounded transition delivery) rather than in this PR."
+    }
+  ]
+}
