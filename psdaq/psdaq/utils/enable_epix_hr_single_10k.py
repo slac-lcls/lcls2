@@ -1,22 +1,6 @@
-import pyrogue as pr
-import os
-import sys
+# Importing this module makes the epix-hr-single-10k python tree importable process-wide.
+# A process that uses more than one firmware package should use
+# psdaq.utils.firmware_packages.isolated() instead.
+from psdaq.utils.firmware_packages import enable
 
-submoduledir = os.environ["SUBMODULEDIR"]
-
-top_level = submoduledir + "/epix-hr-single-10k/"
-
-sys.path.append("%s/firmware/python".format(top_level))
-
-pr.addLibraryPath(top_level + 'firmware/submodules/axi-pcie-core/python')
-pr.addLibraryPath(top_level + 'firmware/submodules/epix-hr-core/python')
-pr.addLibraryPath(top_level + 'firmware/submodules/surf/python')
-pr.addLibraryPath(top_level + 'firmware/python')
-pr.addLibraryPath(top_level + 'software/python')
-pr.addLibraryPath(top_level + 'firmware/submodules/l2si-core/python')
-pr.addLibraryPath(top_level + 'firmware/submodules/lcls-timing-core/python')
-try :
-    pr.addLibraryPath(top_level+'firmware/submodules/ePixViewer/python')
-except :
-    print("pr.addLibraryPath Import ePixViewer failed")
-    pass
+enable('epix-hr-single-10k')
