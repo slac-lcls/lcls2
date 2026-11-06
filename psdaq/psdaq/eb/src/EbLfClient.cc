@@ -187,6 +187,18 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
       return rc;
     }
     unsigned rmtId = link->id();
+    if (rmtId >= links.size())
+    {
+      logging::error("%s:\n  %s at %s:%s has ID %u, out of range (>= %zu)",
+                     __PRETTY_FUNCTION__, peer, addrs[i].c_str(), ports[i].c_str(), rmtId, links.size());
+      return EINVAL;
+    }
+    if (links[rmtId])
+    {
+      logging::error("%s:\n  %s at %s:%s claims ID %u, already taken by another %s",
+                     __PRETTY_FUNCTION__, peer, addrs[i].c_str(), ports[i].c_str(), rmtId, peer);
+      return EINVAL;
+    }
     links[rmtId]   = link;
 
     logging::info("Outbound link with %3s ID %2d at %s:%s connected", // in %4lu ms",

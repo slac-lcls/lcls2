@@ -408,6 +408,18 @@ int Pds::Eb::linksConnect(EbLfServer&                transport,
       return rc;
     }
     unsigned rmtId = link->id();
+    if (rmtId >= links.size())
+    {
+      logging::error("%s:\n  %s ID %u is out of range (>= %zu) for link[%u]",
+                     __PRETTY_FUNCTION__, peer, rmtId, links.size(), i);
+      return EINVAL;
+    }
+    if (links[rmtId])
+    {
+      logging::error("%s:\n  Two %ss claim ID %u (link[%u] and an earlier one)",
+                     __PRETTY_FUNCTION__, peer, rmtId, i);
+      return EINVAL;
+    }
     links[rmtId]   = link;
 
     logging::info("Inbound  link with %3s ID %2d connected", // in %4lu ms",

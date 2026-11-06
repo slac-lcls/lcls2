@@ -50,6 +50,8 @@ EbAppBase::EbAppBase(EbParams&          prms,
   _verbose     (prms.verbose),
   _lastPid     (0),
   _bufferCnt   (0),
+  _slotCheck   (prms.kwargs.find("eb_slot_check") == prms.kwargs.end() ||
+                prms.kwargs.at("eb_slot_check") != "0"),
   _id          (-1),
   _notifySocket{&_context, ZMQ_PUSH},
   _notifyPid   (0),
@@ -109,6 +111,7 @@ void EbAppBase::disconnect()
 void EbAppBase::unconfigure()
 {
   EventBuilder::clear();
+  _slots.clear();
 }
 
 int EbAppBase::startConnection(const std::string& ifAddr,
@@ -260,6 +263,8 @@ int EbAppBase::_linksConfigure(const EbParams&            prms,
       return rc;
     }
 
+    _slots.resize(rmtId, prms.numBuffers[rmtId] + _maxTrBuffers);
+
     auto t1{std::chrono::steady_clock::now()};
     auto dT{std::chrono::duration_cast<ms_t>(t1 - t0).count()};
     auto rs = _regSize[rmtId];                // Size of the whole MR
@@ -278,9 +283,9 @@ int EbAppBase::process()
   int rc;
 
   // Pend for an input datagram and pass it to the event builder
-  uint64_t  data;
+  fi_cq_data_entry cqEntry;
   const int msTmo = 100;
-  if ( (rc = _transport.pend(&data, msTmo)) < 0)
+  if ( (rc = _transport.pend(&cqEntry, msTmo)) < 0)
   {
     if (rc == -FI_EAGAIN)
     {
@@ -293,11 +298,20 @@ int EbAppBase::process()
     return rc;
   }
 
-  unsigned       src = ImmData::src(data);
+  uint64_t       data = cqEntry.data;
+  unsigned       src  = ImmData::src(data);
   if (src >= _links.size()) [[unlikely]]
   {
     logging::critical("Invalid DRP ID %u (>= %zu) in immediate data %08lx",
                       src, _links.size(), data);
+    abort();
+  }
+  // A remote write may complete without a link context; check only when it has one
+  auto arrLnk = static_cast<const EbLfLink*>(cqEntry.op_context);
+  if (arrLnk && (arrLnk->id() != src)) [[unlikely]]
+  {
+    logging::critical("Immediate data %08lx claims DRP ID %u but arrived on the link with DRP ID %u",
+                      data, src, arrLnk->id());
     abort();
   }
   EbLfSvrLink*   lnk = _links[src];
@@ -419,6 +433,13 @@ int EbAppBase::process()
     }
   }
 
+  if (ImmData::buf(flg) == ImmData::Buffer && !accepting(src, idx, idg)) [[unlikely]]
+  {
+    _slots.dump(_pfx.c_str());
+    abort();
+  }
+  if (_slotCheck)  _claim(src, idg, end, data);
+
   // Tr space bufSize value is irrelevant since idg has EOL set in that case
   if ((_idxSrcs & (1ull << src)) == 0)  data = 0;
   EventBuilder::process(idg, _maxBufSize[src], data, end);
@@ -426,6 +447,72 @@ int EbAppBase::process()
   ++_bufferCnt;
 
   return 0;
+}
+
+// Buffer slots first, then transition slots
+size_t EbAppBase::_slot(unsigned src, const EbDgram* dg) const
+{
+  auto ofs = size_t((const char*)dg - (const char*)_region[src]);
+  return ofs < _bufRegSize[src] ? ofs / _maxBufSize[src]
+                                : _prms.numBuffers[src] + (ofs - _bufRegSize[src]) / _maxTrSize[src];
+}
+
+// Every entry of an arriving batch must land in a slot no pending event holds
+void EbAppBase::_claim(unsigned src, const EbDgram* idg, const void* end, uint32_t imm)
+{
+  auto dg = idg;
+  for (unsigned i = 0; i < _maxEntries; ++i)
+  {
+    auto slot = _slot(src, dg);
+    if (slot >= _slots.size(src)) [[unlikely]]
+    {
+      logging::critical("%s:\n  DRP %u dgram %p, pid %014lx is in slot %zu, beyond the %zu tracked",
+                        __PRETTY_FUNCTION__, src, dg, dg->pulseId(), slot, _slots.size(src));
+      _slots.dump(_pfx.c_str());
+      abort();
+    }
+    auto held = _slots.claim(src, slot, dg->pulseId(), imm);
+    if (held != SlotTracker::Free) [[unlikely]]
+    {
+      logging::critical("%s:\n  DRP %u wrote %s pid %014lx into slot %zu, still held by pending pid %014lx, imm %08x",
+                        __PRETTY_FUNCTION__, src, TransitionId::name(dg->service()), dg->pulseId(),
+                        slot, SlotTracker::pid(held), imm);
+      _slots.dump(_pfx.c_str());
+      abort();
+    }
+    if (dg->isEOL() || (slot >= _prms.numBuffers[src]))  break; // Transitions are single
+    dg = reinterpret_cast<const EbDgram*>(reinterpret_cast<const char*>(dg) + _maxBufSize[src]);
+    if (dg >= end)  break;
+  }
+}
+
+// Each contribution must still hold the event's pulse ID; its slot is then free for reuse
+void EbAppBase::retiring(const EbEvent* event)
+{
+  if (!_slotCheck)  return;
+
+  auto pid = event->sequence();
+  for (auto ctrb = event->begin(); ctrb != event->end(); ++ctrb)
+  {
+    auto dg   = *ctrb;
+    auto src  = dg->xtc.src.value();
+    auto slot = src < _links.size() ? _slot(src, dg) : SIZE_MAX;
+    if ((dg->pulseId() != pid) || (slot >= _slots.size(src))) [[unlikely]]
+    {
+      logging::critical("%s:\n  Contribution %p of event %014lx now holds pid %014lx, src %u, slot %zu",
+                        __PRETTY_FUNCTION__, dg, pid, dg->pulseId(), src, slot);
+      _slots.dump(_pfx.c_str());
+      throw "Fatal: contribution overwritten before retirement";
+    }
+    auto held = _slots.release(src, slot);
+    if (SlotTracker::pid(held) != pid) [[unlikely]]
+    {
+      logging::critical("%s:\n  Slot %zu of DRP %u was claimed by pid %014lx, not by retiring event %014lx",
+                        __PRETTY_FUNCTION__, slot, src, SlotTracker::pid(held), pid);
+      _slots.dump(_pfx.c_str());
+      throw "Fatal: slot claimed by another event";
+    }
+  }
 }
 
 void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)

@@ -130,6 +130,8 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _newestRcvd   {},
   _rcvdFrom     {},
   _orphanCount  (0),
+  _slotCheck    (prms.kwargs.find("eb_slot_check") == prms.kwargs.end() ||
+                 prms.kwargs.at("eb_slot_check") != "0"),
   _prms         (prms),
   _regSize      (0),
   _region       (nullptr)
@@ -442,11 +444,44 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     if (print)  abort();
   }
 
+  if (_slotCheck)  _checkOverlap(bdg, end, src, data);
+
   _matchUp(ctrb, bdg);
 
   ++_batchCount;
 
   return 0;
+}
+
+// A TEB reuses a Results slot only once its Input is done with, so an arriving
+// batch must not overlap one still waiting to be delivered
+void EbCtrbInBase::_checkOverlap(const ResultDgram* bdg, const void* end, unsigned src, uint64_t data)
+{
+  if (_deferred.empty())  return;
+
+  auto last = bdg;
+  for (unsigned i = 1; (i < _prms.maxEntries) && !last->isEOL(); ++i)
+  {
+    auto next = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(last) + _maxResultSize);
+    if (next >= end)  break;
+    last = next;
+  }
+
+  for (const auto& batch : _deferred)
+  {
+    if ((batch >= bdg) && (batch <= last)) [[unlikely]]
+    {
+      unsigned bIdx = ((char*)bdg   - (char*)_region) / _maxResultSize;
+      unsigned dIdx = ((char*)batch - (char*)_region) / _maxResultSize;
+      logging::critical("%s:\n  TEB %u wrote Results %014lx at idx %u over deferred Results at idx %u, "
+                        "now pid %014lx, data %08lx",
+                        __PRETTY_FUNCTION__, src, bdg->pulseId(), bIdx, dIdx, batch->pulseId(), data);
+      fprintf(stderr, "*** deferred %zu, inputs %014lx, batches %lu\n",
+              _deferred.size(), _inputs ? _inputs->pulseId() : 0ul, _batchCount);
+      _tbDump();
+      abort();
+    }
+  }
 }
 
 // Can the Input at iPid still be paired?  Events reach the TEB in pulse ID

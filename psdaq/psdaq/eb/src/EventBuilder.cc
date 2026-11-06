@@ -340,6 +340,8 @@ void EventBuilder::_retire(EbEvent* event)
     throw "Fatal: creator buffer overwritten";
   }
 
+  retiring(event);
+
   process(event);
 
   auto age{fast_monotonic_clock::now(CLOCK_MONOTONIC) - event->_t0};
