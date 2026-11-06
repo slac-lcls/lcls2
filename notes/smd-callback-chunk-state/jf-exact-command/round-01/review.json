@@ -1,0 +1,98 @@
+{
+  "reviewed_commit": "b6628b0735a0723af5e2c9897d6b42605c943690",
+  "verdict": "pass",
+  "summary": "Round-1 review of the new notes/smd-callback-chunk-state/jf-exact-command directory at b6628b0735a0723af5e2c9897d6b42605c943690. All required artifacts are present: scope.md, README.md, run_case.py, run_matrix.py, analyze.py, results.json, commands.json, three per-case reports, artifact-manifest.json and status.json. The harness preserves CLI semantics: run_case.py asserts the exact argv, sets sys.argv to the same ten tokens, and calls the real do_main(); the wrapped smd_callback only counts invocations and records timestamps while re-yielding the application's own events, build_batch and AreaDetectorRaw.raw are observed pass-through (the Jungfrau raw class inherits raw without override), and no filtering or computation is replaced. Protections match claims: the literal -o ./work1 skips RepoManager.save_record_at_start (RepoManager.py:320); add_shortname=False makes _short_detector_name return None instead of calling _add_detector_name -> add_document -> post (MDBWebUtils.py:794-808, 589-593); post/put/delete_cmd are patched to raise, and the only lookup path (find_docs -> request) is a GET; _get_file_info_from_db patched to {} drives the non-live on-disk scan at ds_base.py:548-551; --deploy defaults False and the nrecs==nrecs1 path writes gates via np.save only (UtilsCalib.py:743-751). The effective default of 1000 is confirmed from datasource.py:92-121,207 (_force_mfx_overrides). Source isolation is evidenced by per-case resolved paths/hashes: all .py paths resolve under the respective detached checkouts, native .so hashes are identical across cases, and the fixed overlay differs only in serial_ds, smdreader_manager plus the new callback_iterator/callback_stream modules, consistent with a Python-only fix. The negative control is specific: unfixed default records 4 chunks/4 callbacks, zero selected/raw events and UnboundLocalError on ievt, which matches UtilsJungfrauCalib.py:336/408 where ievt is first bound in the event loop and used after it. Both successful cases record 50 identical timestamps, raw shape [32,512,1024], and two gate files whose manifest SHA-256 digests are byte-identical between unfixed-10000 and fixed-default, corroborating the analyzer's exact-equality claim. README conclusions match results and state the limits (overlay not native rebuild, not Mikhail's installed build, workaround not a general fix). Findings are all low and non-blocking: an import-order dependency in the patching (JFEX-R1-001), README omissions about view_size counting transitions (JFEX-R1-002), a forward reference to round-01/ (JFEX-R1-003), post-hoc expected counts not labelled (JFAB-R1-004 reused), and the still-open application ievt bug (JFAB-R1-006 reused). JFAB-R1-005 and JFAB-R2-001 are addressed in this directory.",
+  "checks": [
+    "Read all 12 files in notes/smd-callback-chunk-state/jf-exact-command: scope.md, README.md, run_case.py, run_matrix.py, analyze.py, results.json, commands.json, artifact-manifest.json, status.json, unfixed-default.json, unfixed-10000.json, fixed-default.json.",
+    "run_case.py:9-14 asserts sys.argv[1:] equals the exact ten CLI tokens from scope.md/README and reinstalls them before do_main(); run_matrix.py:12-13 passes the same tokens; commands.json records them for all three cases.",
+    "run_case.py:32-39 wraps the application's smd_callback as a generator that re-yields each event unchanged while recording timestamps; UtilsJungfrauCalib.py:223-239 shows stage1_filter_callback is a generator over run.steps()/step.events(), so semantics are preserved.",
+    "run_case.py:47-59 observes SmdReaderManager.build_batch and AreaDetectorRaw.raw as pass-throughs; psana/psana/detector/jungfrau.py defines no raw override (line 37 commented), so the patched base method is the one invoked.",
+    "psana/psana/app/jungfrau_dark_proc.py:189-238: do_main lazily imports psana.detector.UtilsJungfrauCalibMPI at line 237; UtilsJungfrauCalibMPI.py:29-33 binds open_DataSource by value at import and line 154-158 dispatches to ujc.jungfrau_dark_proc when MPI size is 1. Per-case reports show callback_calls and datasource_class populated, confirming the patch was active at import time.",
+    "psana/psana/datasource.py:92-121 and 207: _force_mfx_overrides sets PS_SMD_N_EVENTS='1000' when unset and exp starts with 'mfx'; matches effective_smd_n_events '1000' in both default reports and '10000' preserved in the workaround case.",
+    "RepoManager.py:308-321: save_record_at_start is skipped when dirrepo is 'work1' or './work1', supporting the central-startup-log suppression claim.",
+    "UtilsCalib.py:240-245 default add_shortname=True; MDBWebUtils.py:760-811 shows add_shortname=False returns None before _add_detector_name; _add_detector_name -> add_document -> post (lines 752-757, 589-593) is additionally blocked by the post patch. find_docs uses request (GET) only (lines 284-296). Reports show every lookup returned jungfrau_000005 and blocked_mutations is empty.",
+    "ds_base.py:505-556: with _get_file_info_from_db patched to {} and live False, _setup_run_files falls back to _scan_run_files_on_disk; all three reports list the same ten smd files, as analyze.py:59 asserts.",
+    "UtilsJungfrauCalib.py:336-420: ievt is first bound at line 336 inside the event loop and formatted at line 408 after the loop; an empty step therefore raises UnboundLocalError, matching the unfixed-default report. Line 416-417 writes gates via uc.save_block_results (np.save only, UtilsCalib.py:743-751); jungfrau_dark_proc.py:65 sets deploy default False and no deploy flag is in argv.",
+    "smdreader.pyx:970-973: view_size counts L1Accept and transitions, so reported chunk sizes 1011/1012/1013/3 are not L1 counts; analyze.py only uses len(chunks).",
+    "Source isolation: all .py paths in unfixed-*.json resolve under /tmp/jf-callback-ab/unfixed/psana/psana and in fixed-default.json under /tmp/jf-exact-command/fixed/psana/psana; smdreader/eventbuilder/dgram .so hashes identical across all three reports; fixed overlay differs only in serial_ds.py, smdreader_manager.py and the added callback_iterator.py/callback_stream.py (present in this checkout). analyze.py:58-69 asserts these properties.",
+    "run_matrix.py:19-25 verifies both checkout SHAs and clean tracked status, refuses existing overlay/case directories, pops PS_SMD_N_EVENTS before optionally setting it, uses PS_PARALLEL=none, start_new_session and a 600s timeout with process-group kill.",
+    "Negative control specificity: unfixed-default has exit 1, 4 chunks/4 callbacks, empty callback and raw timestamp lists, UnboundLocalError on ievt, no gate files; analyze.py:33-38 asserts exactly these.",
+    "Positive cases: both reports list 50 identical callback and raw timestamps (4806028405361277613 .. 4806028405769435968), raw_shape [32,512,1024], two -g2-gate_ files; analyze.py:41-47 asserts equality to oracle steps[2][:50] and oracle shape 3x1000 unique timestamps.",
+    "artifact-manifest.json: gate_hi and gate_lo SHA-256 digests and sizes (33554560 bytes) are byte-identical between unfixed-10000 and fixed-default, independently corroborating results.json exact_equal/unequal_pixels 0.",
+    "Oracle provenance: jf-workflow-ab/prepare.py:33-38 iterates a direct files= DataSource over the s000 smd file with no smd_callback, so it is independent of callback chunking as README claims.",
+    "README conclusions cross-checked against results.json and reports: table rows, chunk/callback mechanism, workaround scope limitation, overlay-not-rebuild caveat, and no-production-change statement are consistent with the evidence. Scope.md items (fresh dirs, ./work1, readonly lookup, blocked HTTP writes, no deploy, local discovery, 600s bound) each map to a code line in run_case.py/run_matrix.py.",
+    "Prior finding IDs reviewed from jf-workflow-ab/round-02/review.json and status.json; JFAB-R1-004/005/006 and JFAB-R2-001 re-evaluated against this directory."
+  ],
+  "limitations": [
+    "No commands were run and no tests executed. Exit codes, elapsed times, chunk counts, timestamps, gate equality and the byte-compile/diff-check/hook results are coordinator-supplied runtime evidence, read from the committed reports and the review context.",
+    "Raw evidence under /tmp/jf-exact-command/{unfixed-default,unfixed-10000,fixed-default}/stdout.log and the .npy gate arrays are outside the restricted worktree; reads were denied. The manifest digests could not be recomputed and the arrays could not be loaded, so exact gate equality rests on the committed manifest hashes and analyze.py output, not on independent verification.",
+    "The detached checkouts /tmp/jf-callback-ab/unfixed and /tmp/jf-exact-command/fixed and the oracle /tmp/jf-callback-ab/oracle.json are outside the worktree; source hashes recorded in the per-case reports were not recomputed, and the claim that the unfixed tree 71378658a is unchanged from earlier experiments rests on run_matrix.py's SHA/clean-status assertions and the coordinator statement.",
+    "Could not run git to confirm HEAD equals b6628b0735a0723af5e2c9897d6b42605c943690 or to diff against b59c2fd1a; the reviewed SHA is taken from the review instruction, and the claim that only the new notes directory changed relies on the stated scope and inspection of production files matching the earlier-reviewed state.",
+    "Source inspection used the worktree copy at the fixed version b6628b0; the unfixed copies of UtilsJungfrauCalib.py, datasource.py and MDBWebUtils.py were not readable. The per-case reports show identical SHA-256 digests for these files across both overlays, so the inspected code is representative of both."
+  ],
+  "findings": [
+    {
+      "id": "JFEX-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-exact-command/run_case.py",
+      "line": 75,
+      "evidence": "The open_DataSource patch takes effect only because psana/psana/app/jungfrau_dark_proc.py:237 imports psana.detector.UtilsJungfrauCalibMPI lazily inside do_main(), after the patch context is entered. UtilsJungfrauCalibMPI.py:32-33 binds open_DataSource by value at import time, so if that module were ever imported earlier (e.g. by a future import in run_case.py or a changed app entry point) the callback/datasource observation would silently become a no-op while the run still completed. The committed reports confirm the patch was active in these three runs.",
+      "requested_change": "Non-blocking. For future reuse, add a guard such as asserting 'psana.detector.UtilsJungfrauCalibMPI' not in sys.modules before entering the patch context, or assert report['callback_calls'] > 0 or report['datasource_class'] is set after do_main() so a lost patch fails loudly; optionally note the dispatch path in README."
+    },
+    {
+      "id": "JFEX-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-exact-command/README.md",
+      "line": 25,
+      "evidence": "The per-case reports list chunk view sizes 1011/1012/1013/3 (unfixed-default) and 3039 (unfixed-10000). smdreader.pyx:970-973 documents view_size as all events including transitions, so these are not L1 event counts, and README states only that results.json records observed chunk/callback counts. README also describes the entry as the serial stage-1 path without noting it is reached via the UtilsJungfrauCalibMPI dispatcher (which imports mpi4py) with MPI size 1.",
+      "requested_change": "Non-blocking. Add one sentence that per-case chunk sizes are smdreader view sizes including transitions (hence 1011-1013 for 1000-event steps and a 3-datagram tail chunk), and optionally that the serial path is selected by UtilsJungfrauCalibMPI.jungfrau_dark_proc when the MPI world size is 1."
+    },
+    {
+      "id": "JFEX-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-exact-command/README.md",
+      "line": 78,
+      "evidence": "README refers readers to status.json and round-01/ for review status, but no round-01 directory exists at this commit; status.json says phase ready-for-review, round 1. The text explains records are added after the evidence commit, so this is a forward reference rather than a missing artifact.",
+      "requested_change": "Non-blocking. When committing the review record, ensure round-01/ is added and status.json updated with the reviewed SHA and verdict so the reference resolves."
+    },
+    {
+      "id": "JFAB-R1-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-exact-command/analyze.py",
+      "line": 60,
+      "evidence": "analyze.py hard-codes the expected (chunks, callback_calls) tuples [(4,4),(1,1),(3,1)] and the expected effective values '1000'/'10000', written after observing these runs and specific to run 49 with these settings. Unlike the jf-workflow-ab README (lines 88-90, added in response to this finding), this README does not label the acceptance branches as post hoc. The timestamp oracle comparison and gate equality checks remain independent of these branches.",
+      "requested_change": "Non-blocking. Add a sentence to README stating that analyze.py's expected chunk/callback counts and effective-value assertions were fixed after inspecting the runs and apply only to this dataset and parameter set."
+    },
+    {
+      "id": "JFAB-R1-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-exact-command/README.md",
+      "line": 71,
+      "evidence": "Resolved for this directory. run_matrix.py:10-18 hard-codes /tmp/jf-exact-command, /tmp/jf-callback-ab/unfixed, the overlay template and the /sdf/home/m/monarin source prefix; README lines 71-75 document that the scripts use Mona's paths, the pinned checkouts, the overlay template and oracle, and require fresh directories.",
+      "requested_change": "None."
+    },
+    {
+      "id": "JFAB-R1-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/detector/UtilsJungfrauCalib.py",
+      "line": 408,
+      "evidence": "Open, previously deferred by coordinator. ievt is first bound at line 336 inside the event loop and used as ievt+1 at line 408 after it, so a step that yields no events raises UnboundLocalError. Reproduced a third time by the unfixed-default case (exception recorded in unfixed-default.json line 54). README lines 29-31 describe this correctly as application logging referencing uninitialized ievt. The same pattern exists in UtilsJungfrauCalibMPI.py:295/325 for the MPI path.",
+      "requested_change": "No change to this commit. Track the empty-step handling in the serial and MPI stage-1 loops as a follow-up application issue; remains non-blocking for these experiment notes."
+    },
+    {
+      "id": "JFAB-R2-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-exact-command/run_case.py",
+      "line": 90,
+      "evidence": "Resolved in this experiment. run_case.py:15 records the pre-DataSource PS_SMD_N_EVENTS and line 90 records the post-run effective value in the finally block; run_matrix.py:44-48 commits the exact environment setup (overlay PYTHONPATH, PS_PARALLEL=none, SIT_PSDM_DATA, unset or explicit PS_SMD_N_EVENTS). analyze.py:27-28 asserts both values per case.",
+      "requested_change": "None."
+    }
+  ]
+}

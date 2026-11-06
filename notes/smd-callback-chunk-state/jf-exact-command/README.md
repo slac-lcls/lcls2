@@ -24,6 +24,11 @@ Their full `(32, 512, 1024)` `gate_lo` and `gate_hi` arrays are exactly equal,
 with zero differing pixels. `results.json` records the checked results and
 observed chunk/callback counts. `commands.json` records exits and elapsed times;
 these times are observations, not a performance benchmark.
+Per-case `chunks` entries are SMD view sizes including transitions, not L1 event
+counts: the 1000-event chunks have sizes 1011–1013, with a three-datagram tail
+in the failing case. The analyzer's exact chunk/callback-count assertions were
+added after observing these runs and apply to this dataset and parameter set;
+the timestamp oracle and gate comparisons provide separate correctness checks.
 
 At the default, the unfixed callback is recreated for each chunk and never
 recognizes physical step 2 as local step index 2. Its four invocations select
@@ -75,4 +80,6 @@ to run 49, `source setup_env.sh`, and fresh case/overlay directories. Run
 existing output directories are rejected to prevent accidental reuse.
 
 Independent review status and exact reviewed SHA are in `status.json` and
-`round-01/`; review records are added after the implementation/evidence commit.
+`round-01/`. Review passed at `b6628b0735a0723af5e2c9897d6b42605c943690` with no
+blocking findings. The subsequent commit records review responses and these
+documentation clarifications; the executed and reviewed scripts are unchanged.

@@ -1,6 +1,6 @@
 {
   "scope": "Exact 50-frame full-detector stage-1 command, three protected cases",
-  "phase": "ready-for-review",
+  "phase": "complete",
   "base_sha": "b59c2fd1aad012de195b14b62401bc966e6755c3",
   "round": 1,
   "round_limit": 3,
@@ -10,5 +10,12 @@
     "database_write_attempts": 0
   },
   "unresolved_ids": [],
-  "artifacts": "/tmp/jf-exact-command"
+  "artifacts": "/tmp/jf-exact-command",
+  "reviewed_sha": "b6628b0735a0723af5e2c9897d6b42605c943690",
+  "verdict": "pass",
+  "deferred_nonblocking": [
+    "JFEX-R1-001: future harness hardening",
+    "JFAB-R1-006: empty-step application logging"
+  ],
+  "review_limitations": "Reviewer inspected source and committed reports; raw external artifacts and binary arrays not independently verified."
 }
