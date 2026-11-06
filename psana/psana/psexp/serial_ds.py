@@ -94,7 +94,13 @@ class SerialDataSource(DataSourceBase):
                 self._configs,        # configs for this run
                 self.beginruns,       # beginrun dgrams
             )
-            yield run
+            try:
+                yield run
+            finally:
+                # The consumer may stop at EndRun without requesting the next
+                # batch, or stop the runs generator early. Release its callback
+                # stack before advancing/replacing the SMD reader.
+                self.smdr_man.close()
 
     def is_mpi(self):
         return False
