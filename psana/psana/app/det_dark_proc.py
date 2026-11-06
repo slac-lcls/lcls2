@@ -63,6 +63,7 @@ def argument_parser():
     d_run_end = 'end'
     d_comment = 'no comment'
     d_plotim  = 0
+    d_ctdepl  = 'prs'   # for constants from dark, 'prsnx'
 
     h_dskwargs= 'string of comma-separated (no spaces) simple parameters for DataSource(**kwargs),'\
                 ' ex: exp=<expname>,run=<runs>,dir=<xtc-dir>, ...,'\
@@ -101,6 +102,7 @@ def argument_parser():
     h_run_end = 'last run for validity range, default = %s' % str(d_run_end)
     h_comment = 'comment added to constants metadata, default = %s' % str(d_comment)
     h_plotim  = 'plot image/s of pedestals, default = %s' % str(d_plotim)
+    h_ctdepl  = f'DEPLOY: (str) keyword for deployment: "p"-pedestals, "r"-rms, "s"-status, "x" - max, "n" - min, default = {d_ctdepl}'
 
     parser = ArgumentParser(usage=USAGE, description='%s - proceses dark run xtc raw data for specified detector' % SCRNAME)
     parser.add_argument('-k', '--dskwargs',default=d_dskwargs,   type=str,   help=h_dskwargs)
@@ -136,7 +138,7 @@ def argument_parser():
     parser.add_argument('-R', '--run_end', default=d_run_end,    type=str,   help=h_run_end)
     parser.add_argument('-C', '--comment', default=d_comment,    type=str,   help=h_comment)
     parser.add_argument('-p', '--plotim',  default=d_plotim,     type=int,   help=h_plotim)
-
+    parser.add_argument('--ctdepl',        default=d_ctdepl,     type=str,   help=h_ctdepl)
     return parser
 
 
