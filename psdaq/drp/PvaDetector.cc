@@ -32,6 +32,7 @@
 #include "psdaq/service/Affinity.hh"
 #include "psalg/utils/SysLog.hh"
 #include "psalg/utils/trim.hh"
+#include "psdaq/epicstools/EpicsPVA.hh"
 
 #ifndef POSIX_TIME_AT_EPICS_EPOCH
 #define POSIX_TIME_AT_EPICS_EPOCH 631152000u
@@ -1414,6 +1415,68 @@ void PvApp::handleReset(const json& msg)
 } // namespace Drp
 
 
+//  Fetch the detector serial number from <prefix>SerialNumber_RBV.
+//  Returns an empty string if the PV can't be read or holds no value.
+namespace {
+    // One-shot get: no monitor callback, so no monitor is started
+    class SerialNumberPv : public Pds_Epics::EpicsPVA
+    {
+    public:
+        SerialNumberPv(const std::string& provider, const std::string& pvName) :
+            EpicsPVA(provider.c_str(), pvName.c_str(), nullptr) {}
+        std::string get(unsigned tmo)
+        {
+            if (!getComplete(tmo))  return {};
+            if (!_strct)            return {};
+            std::string serNo;
+            if (auto scalar = _strct->getSubField<pvd::PVScalar>("value")) {
+                serNo = scalar->getAs<std::string>();
+            } else if (auto array = _strct->getSubField<pvd::PVScalarArray>("value")) {
+                // e.g., a char waveform record
+                pvd::shared_vector<const int8_t> chars;
+                array->getAs<int8_t>(chars);
+                for (auto ch : chars) {
+                    if (ch == 0)  break;
+                    serNo += static_cast<char>(ch);
+                }
+            } else {
+                logging::error("PV %s 'value' field has unsupported type", name().c_str());
+                return {};
+            }
+            return psalg::strip(serNo);
+        }
+    };
+}
+
+//  prefix is of the form "[<provider>/]<EPICS prefix>", provider defaults to "ca"
+static std::string readSerialNumber(const std::string& prefix)
+{
+    std::string provider = "ca";
+    std::string pvName   = prefix;
+    auto pos = pvName.find("/");
+    if (pos != std::string::npos) {
+        provider = pvName.substr(0, pos);
+        pvName   = pvName.substr(pos+1);
+    }
+    pvName += "SerialNumber_RBV";
+    const unsigned tmo = 5;   // seconds
+    try {
+        SerialNumberPv pv(provider, pvName);
+        std::string serNo = pv.get(tmo);
+        if (serNo.empty()) {
+            logging::warning("No serial number found in PV %s", pvName.c_str());
+        } else {
+            logging::info("Serial number '%s' read from PV %s", serNo.c_str(), pvName.c_str());
+        }
+        return serNo;
+    }
+    catch (std::exception& e) {
+        logging::error("Failed to read PV %s: %s", pvName.c_str(), e.what());
+    }
+    return {};
+}
+
+
 int main(int argc, char* argv[])
 {
     Drp::PvParameters para;
@@ -1434,7 +1497,7 @@ int main(int argc, char* argv[])
             case 'D':
                 para.detType = optarg;  // Defaults to 'pv'
                 break;
-            case 'S':
+            case 'S':                   // Fallback when <prefix>SerialNumber_RBV is empty
                 para.serNo = optarg;
                 break;
             case 'u':
@@ -1588,9 +1651,36 @@ int main(int argc, char* argv[])
             if (kwargs.first == "firstdim")       continue;
             if (kwargs.first == "match_tmo_ms")   continue;
             if (kwargs.first == "data_vsn")       continue;
+            if (kwargs.first == "prefix")         continue;  // EPICS prefix for SerialNumber_RBV
             logging::critical("Unrecognized kwarg '%s=%s'\n",
                               kwargs.first.c_str(), kwargs.second.c_str());
             return 1;
+        }
+
+        // For non-default detector types (-D), obtain the serial number from
+        // <prefix>SerialNumber_RBV, falling back to -S, else fail
+        if (para.detType != "pv") {
+            std::string serNo;
+            auto it = para.kwargs.find("prefix");
+            if (it != para.kwargs.end() && !it->second.empty()) {
+                serNo = readSerialNumber(it->second);
+            } else {
+                logging::warning("-k prefix=<PFX> not given: can't read serial number from EPICS");
+            }
+            if (!serNo.empty()) {
+                if (!para.serNo.empty() && para.serNo != serNo) {
+                    logging::warning("-S serial number '%s' overridden by EPICS value '%s'",
+                                     para.serNo.c_str(), serNo.c_str());
+                }
+                para.serNo = serNo;
+            } else if (!para.serNo.empty()) {
+                logging::info("Using serial number '%s' from -S", para.serNo.c_str());
+            } else {
+                logging::critical("-D %s: serial number not available from <prefix>SerialNumber_RBV "
+                                  "(-k prefix=<PFX>) and not specified with -S",
+                                  para.detType.c_str());
+                return 1;
+            }
         }
 
         // Before any thread that pins itself is created
