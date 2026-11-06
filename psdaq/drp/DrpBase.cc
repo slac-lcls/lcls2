@@ -479,7 +479,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nNoTrDgrams (0),
     m_nLaneStalls (0),
     m_nStaleEvents(0),
-    m_stallEvtCtr (0),
+    m_stallPid    (0),
     m_stallChecks (0),
     m_stallReported(false),
     m_dmaOverrun  (false)
@@ -778,31 +778,39 @@ void PgpReader::checkLaneStall(const Detector* det)
     m_tStallCheck = now;
 
     uint32_t evtCtr = (m_lastComplete + 1) & EvtCtrMask;
-    const PGPEvent* event = &m_pool.pgpEvents[evtCtr & (m_pool.nDmaBuffers() - 1)];
-    if (event->mask == 0) {                     // A partial BeginRun precedes the reset to 0
-        const PGPEvent* evt1 = &m_pool.pgpEvents[1];
-        if (evt1->mask != 0) {
-            const auto* th1 = det->getTimingHeader(evt1->buffers[__builtin_ctz(evt1->mask)].index);
-            if (th1->service() == TransitionId::BeginRun) {
-                evtCtr = 1;
-                event  = evt1;
+    uint8_t  mask;
+    uint64_t pid = 0;
+    {
+        // The collector's freeDma() clears masks lane by lane and returns the buffers
+        std::lock_guard<std::mutex> lock(m_lock);
+        const PGPEvent* event = &m_pool.pgpEvents[evtCtr & (m_pool.nDmaBuffers() - 1)];
+        if (event->mask == 0) {                 // A partial BeginRun precedes the reset to 0
+            const PGPEvent* evt1 = &m_pool.pgpEvents[1];
+            if (evt1->mask != 0) {
+                const auto* th1 = det->getTimingHeader(evt1->buffers[__builtin_ctz(evt1->mask)].index);
+                if (th1->service() == TransitionId::BeginRun) {
+                    evtCtr = 1;
+                    event  = evt1;
+                }
             }
         }
+        mask = event->mask;
+        if (mask != 0 && mask != m_para.laneMask) {
+            pid = det->getTimingHeader(event->buffers[__builtin_ctz(mask)].index)->pulseId();
+        }
     }
-    if (event->mask == 0 || event->mask == m_para.laneMask || evtCtr != m_stallEvtCtr) {
-        m_stallEvtCtr   = evtCtr;               // Nothing partial yet, or progress was made
+    if (pid == 0 || pid != m_stallPid) {        // Nothing partial, progress, or a new event in the slot
+        m_stallPid      = pid;
         m_stallChecks   = 0;
         m_stallReported = false;
         return;
     }
     if (++m_stallChecks < StallChecks || m_stallReported)  return;
 
-    unsigned lane = __builtin_ctz(event->mask); // Any lane that arrived has the header
-    const auto* th = det->getTimingHeader(event->buffers[lane].index);
     logging::error("PGPReader: Stalled for over %lld ms on evtCounter %u (pulseId %014lx): "
                    "lanes 0x%02x of 0x%02x arrived, missing 0x%02x; %ld DMA buffers in user, %ld in hw",
-                   (long long)(StallChecks * Period.count()), evtCtr, th->pulseId(),
-                   event->mask, m_para.laneMask, m_para.laneMask & ~event->mask,
+                   (long long)(StallChecks * Period.count()), evtCtr, pid,
+                   mask, m_para.laneMask, m_para.laneMask & ~mask,
                    (long)nPgpInUser(), (long)nPgpInHw());
     m_stallReported = true;
     ++m_nLaneStalls;

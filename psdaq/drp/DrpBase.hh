@@ -208,7 +208,7 @@ protected:
     uint64_t m_nLaneStalls;
     uint64_t m_nStaleEvents;
     Pds::fast_monotonic_clock::time_point m_tStallCheck;
-    uint32_t m_stallEvtCtr;             // evtCounter of the partial event being timed
+    uint64_t m_stallPid;                // pulseId of the partial event being timed
     unsigned m_stallChecks;             // Consecutive checks that found it partial
     bool     m_stallReported;
     std::mutex m_lock;
