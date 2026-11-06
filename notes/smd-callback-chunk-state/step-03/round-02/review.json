@@ -1,0 +1,64 @@
+{
+  "reviewed_commit": "7e2d5d3714b9ca1ef87cc9be8a1dc5879cbeed8b",
+  "verdict": "pass",
+  "summary": "Inspected the changed production code at 7e2d5d3 (callback_stream.py, callback_iterator.py, smdreader_manager.py, eventbuilder_manager.py, node.py EventBuilderNode.start/start_broadcast/_batch_managers, serial_ds.py, events.py, root pyproject.toml) against the consumers they feed (PacketFooter, repack_for_bd, StepHistory.extend_buffers, EventManager, native ProxyEvent.as_bytearray/as_dgrams, Smd0.start protocol). Packet layout emitted by StreamingCallbackBatches._pack and _OwnedProxyEvent.as_bytearray matches the native per-event footer and batch footer ('I' sizes + count), so BD-side EventManager and StepHistory parsing are compatible. Batch/step dicts are keyed by a single destination per batch with default and explicit routing split at flush, matching both the key-0 and explicit-destination branches of EventBuilderNode.start; broadcast and serial force destination 0. Bounds (records, bytes with one oversized record, selected-event batch_size) are enforced inside the sink so reject-all callbacks still flush transitions. Lifetime: the greenlet suspends only in _flush's parent.switch; close() throws GeneratorExit, closes the iterator, and reports ignored cancellation; _produce preserves the primary callback error over cleanup failures; CallbackIterator drains remaining transitions after normal return and closes input via the owned builders generator, whose finally drains the SMD0 protocol to the empty terminator. Serial run iteration closes the stream in runs() finally and on the terminate flag, and get_next_dgrams resets per BeginRun. No blocking correctness, lifetime, or integration defect found in the changed code. Supplied evidence (core 125 passed/0 xfail exit 0; byhand 4 passed exit 0, on this exact SHA) is accepted as coordinator-reported; logs were not readable here. Step-2 findings CBI-R1-001/002/003 are addressed in source (exact-SHA validation reported, error-priority in _produce/__next__, immediate serialization of transition records). Four low, non-blocking observations are listed.",
+  "checks": [
+    "Read callback_stream.py fully: bounds, single-destination batching, greenlet suspend/resume, close/throw semantics, error priority",
+    "Read callback_iterator.py fully: owned dgram serialization, EndRun stop, drain_remaining after StopIteration, primary-error preservation, input close chain",
+    "Verified emitted packet layout against native ProxyEvent.as_bytearray, EventBuilder._append_packet_footer/gen_bytearray_batch, PacketFooter, repack_for_bd and StepHistory.extend_buffers(as_event=True)",
+    "Verified Dgram buffer protocol exposes dgram size (dgram.cc getbuffer view->len = self->size) so memoryview(dgram) copies exactly one dgram",
+    "Read smdreader_manager.py callback branch in __next__, _callback_builders, close(), BeginRun reset in get_next_dgrams",
+    "Read eventbuilder_manager.py CallbackEventBuilderManager and batches() finally close",
+    "Read node.py EventBuilderNode.start, start_broadcast, _batch_managers chunks() drain-to-empty; cross-checked Smd0.start end-of-run protocol (missing steps then empty terminator)",
+    "Read serial_ds.runs finally close and events.py terminate-flag close plus serial batch refill path",
+    "Confirmed greenlet>=3.1,<4 declared in root pyproject.toml",
+    "Read step-03 README.md, scope.md, status.json; noted status.json predates the reported test runs",
+    "Step-2 finding IDs CBI-R1-001/002/003 checked as addressed in source",
+    "Did not run any commands or tests; relied on coordinator-supplied test results"
+  ],
+  "limitations": [
+    "Test logs at /tmp/smd-callback-step03/core.log and byhand.log were not readable in this checkout; their SHA256 values and pass counts are accepted as supplied evidence, not verified.",
+    "No commands or tests were executed; correctness of native EventBuilder.build/has_more/events offset handling is assumed from existing usage, not re-verified.",
+    "The brief referenced psana/pyproject.toml; that file does not exist. The greenlet dependency was verified in the repository-root pyproject.toml instead.",
+    "Multi-EB (PS_EB_NODES>1) routing/StepHistory interactions were only inspected as far as the changed code touches them, per agreed scope.",
+    "Review limited to a single 15-minute window; unrelated psana subsystems were not reconstructed."
+  ],
+  "findings": [
+    {
+      "id": "CBS-R2-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/eventbuilder_manager.py",
+      "line": 62,
+      "evidence": "builders() wraps chunks() in try/finally chunks.close(), but a generator that was never started runs no finally. If StreamingCallbackBatches.close() is invoked before the first __next__ (worker never ran, _iter_events never advanced _builders), chunks() is never started and the SMD0 request/drain protocol for this EB never executes. In production start()/start_broadcast() always iterate before closing, so this is not reachable today.",
+      "requested_change": "Optional hardening: have CallbackEventBuilderManager eagerly prime chunks() (or make close() of an unstarted stream explicitly drain the SMD0 protocol) so the protocol completes even if the stream is closed before iteration. Document the invariant otherwise."
+    },
+    {
+      "id": "CBS-R2-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/smdreader_manager.py",
+      "line": 384,
+      "evidence": "In callback mode __next__ returns one StreamingCallbackBatches per run and raises StopIteration on every later call until get_next_dgrams sees BeginRun. A second Events iterator created in the same serial run (e.g. calling run.events() twice) therefore yields nothing, whereas the non-callback branch would continue from the reader's current position.",
+      "requested_change": "Document that a serial callback run supports exactly one event stream, or return the existing live stream (if not exhausted/closed) on subsequent __next__ calls."
+    },
+    {
+      "id": "CBS-R2-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/callback_stream.py",
+      "line": 142,
+      "evidence": "close() raises RuntimeError('Callback ignored cancellation') if the worker is still alive after throw(GeneratorExit). A user callback that swallows BaseException and keeps iterating would spin inside the worker because _flush raises GeneratorExit again on every record while _closed is set; it cannot re-suspend, so close() only returns once the callback itself exits. Acceptable, but the failure mode is an unbounded loop inside the user's frame rather than a prompt error.",
+      "requested_change": "Optional: document this contract (callbacks must not swallow GeneratorExit) in the README/docstring; no code change required for this step."
+    },
+    {
+      "id": "CBS-R2-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/step-03/status.json",
+      "line": 12,
+      "evidence": "status.json records core and byhand as 'pending at frozen code SHA' and round 0, while the supplied evidence states both groups passed on this exact SHA. The frozen commit therefore carries stale validation status.",
+      "requested_change": "Update status.json (checks.core, checks.byhand, round, phase) in a follow-up docs commit to record the completed runs, log paths and SHA256 values."
+    }
+  ]
+}

@@ -47,3 +47,19 @@ failure. Both psana core groups must pass at the reviewed code SHA.
 
 Native psana extensions are unchanged. Numerical Jungfrau calibration and
 global multi-EB scheduling remain outside this step.
+
+Lifecycle contracts: each serial run owns one advancing underlying callback
+stream; consumers must not construct independent Events readers over the same
+SmdReaderManager to reopen that stream. The normal RunSerial API shares its
+existing Events iterator. Callback code must allow GeneratorExit to propagate
+on cancellation; swallowing BaseException and continuing indefinitely prevents
+cooperative close from completing. Production MPI start/start_broadcast always
+begin iteration of their callback manager. Closing an unstarted internal MPI
+manager does not initiate the SMD0 request/drain protocol and is not a supported
+standalone protocol-shutdown operation.
+
+Claude passed implementation `7e2d5d3714b9ca1ef87cc9be8a1dc5879cbeed8b`
+with no blocking findings on review attempt 2. Attempt 1 timed out without a
+verdict. See round-02/responses.md and validation.md; subsequent changes are
+review records and documentation only. The review loop remains active for the
+rest of the session.

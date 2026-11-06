@@ -1,17 +1,49 @@
 {
   "scope": "Step 3 production integration",
-  "phase": "final_core_validation_pending",
+  "phase": "review_passed",
   "branch": "tests/smd-callback-chunk-state",
   "review_loop": "active for whole session",
-  "round": 0,
+  "round": 2,
   "round_limit": 3,
   "checks": {
     "development_matrix": "24 passed with --runxfail",
     "development_focused": "54 passed",
     "development_lifecycle": "5 passed",
-    "core": "pending at frozen code SHA",
-    "byhand": "pending at frozen code SHA"
+    "core": "125 passed, 5 skipped, 2 deselected; no xfails; exact implementation SHA",
+    "byhand": "4 passed; exact implementation SHA"
   },
   "unresolved_ids": [],
-  "artifacts": "/tmp/smd-callback-step03"
+  "artifacts": "/tmp/smd-callback-step03",
+  "implementation_sha": "7e2d5d3714b9ca1ef87cc9be8a1dc5879cbeed8b",
+  "review_artifacts": "/tmp/smd-callback-step03/claude-02",
+  "previous_attempts": [
+    {
+      "round": 1,
+      "result": "timeout after 900 seconds; no verdict or findings",
+      "artifacts": "/tmp/smd-callback-step03/claude-01"
+    }
+  ],
+  "reviewed_sha": "7e2d5d3714b9ca1ef87cc9be8a1dc5879cbeed8b",
+  "review_verdict": "pass",
+  "deferred_ids": [
+    "CBS-R2-001"
+  ],
+  "addressed_ids": [
+    "CBS-R2-002",
+    "CBS-R2-003",
+    "CBS-R2-004",
+    "CBI-R1-001",
+    "CBI-R1-002",
+    "CBI-R1-003"
+  ],
+  "logs": {
+    "core": {
+      "path": "/tmp/smd-callback-step03/core.log",
+      "sha256": "d386e4fe8c80152b2393ee1e94752edb1aa8f12b8bce0135d020db611a85b4cb"
+    },
+    "byhand": {
+      "path": "/tmp/smd-callback-step03/byhand.log",
+      "sha256": "00dc2b92e4e2934f5970ac7cdc2339849958933be86bd403fcb8d281dcd98ac8"
+    }
+  }
 }

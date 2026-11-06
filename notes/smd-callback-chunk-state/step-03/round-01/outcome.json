@@ -1,0 +1,9 @@
+{
+  "implementation_sha": "7e2d5d3714b9ca1ef87cc9be8a1dc5879cbeed8b",
+  "outcome": "timeout",
+  "timeout_seconds": 900,
+  "approval": false,
+  "findings_returned": false,
+  "artifacts": "/tmp/smd-callback-step03/claude-01",
+  "next_action": "Retry the same commit with a focused review brief and unchanged restrictions."
+}
