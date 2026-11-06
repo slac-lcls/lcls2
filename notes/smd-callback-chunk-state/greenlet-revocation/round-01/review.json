@@ -1,0 +1,35 @@
+{
+  "reviewed_commit": "a64df64d9dffd975e9fbd1ed9e07d264bec5c63f",
+  "verdict": "pass",
+  "summary": "Both deliverables are acceptable. The code change replaces the greenlet stack-switching batcher with an ordinary synchronous generator in callback_stream.py: transitions are serialized into a deque by a sink installed on run.proxy_events, next(iterator) is only called when the deque is empty, and queued records are then emitted in acquisition order under the retained per-batch record/byte/selected-event limits with the one-oversized-record allowance. Selected-event destination routing (batch split on destination change, transitions riding with the current destination, steps dict only for MPI) is preserved. Cleanup is correct in all paths I traced: normal exhaustion closes the iterator after draining; GeneratorExit from close() and callback exceptions both close the iterator, which clears the sink (pending and partial records) and closes the owned input exactly once; cleanup failures do not mask the primary callback error. The documented limitation that close() cannot interrupt a running callback on the same thread is accurate. CallbackIterator is unchanged in behavior; its drain_remaining path still forwards remaining transitions to the sink before closing input, and the serial (SmdReaderManager) and MPI (CallbackEventBuilderManager, chunks() finally drains the SMD0 terminator) integrations are unchanged from the base. pyproject.toml declares no greenlet; the only remaining greenlet mentions are conda lock files unrelated to this package, historical notes, and the forbidding import hook in run_callback_stream.py. Tests: the stress driver now asserts the whole callback finishes before the first batch arrives (accurate delayed-delivery characterization) while keeping bounded-output, oversized-record, close-early, before-start and failure coverage; test_callback_stream.py retains serial/MPI select/reject/return x destinations, metadata, step counts, early-return drain, and MPI routing checks. Case counts (24 + 18 + 17 = 59) match the supplied focused evidence, and the supplied final-SHA core and byhand runs pass with no xfails. Issue payload: title carries the psana2-cpu prefix, labels are bug plus psana2-cpu with a valid proposed color, the body correctly describes delayed-not-lost transitions, unbounded pending memory, the no-yield/reject-all cases, references the correct greenlet commit SHA, names existing test files, states no production OOM/loss incident, does not pre-authorize any dependency or API change, and keeps the counter fix out of scope. Superseded step-3 and root README records are marked historical. One low, non-blocking documentation nit.",
+  "checks": [
+    "Read callback_stream.py fully: generator control flow, pending deque ordering, batch limits, destination split, oversized-record handling, close/GeneratorExit/exception cleanup, double-close idempotence",
+    "Read callback_iterator.py fully: drain_remaining path, _close_input idempotence, error priority in __next__/close, proxy_events.clear() interaction with _TransitionSink.clear()",
+    "Confirmed pyproject.toml has no greenlet dependency; repo-wide grep shows greenlet only in conda lock files, historical notes, and the forbidding meta_path finder",
+    "Read run_callback_stream.py and test_callback_stream.py: import guard, delayed-delivery assertion, bounded output assertions, close-early/before-start/failure lifecycle, serial+MPI delivery/routing/metadata parametrization; counted 17 stream + 18 iterator + 24 chunk-state cases matching supplied evidence",
+    "Inspected eventbuilder_manager.py CallbackEventBuilderManager, smdreader_manager.py __next__/_callback_builders/close, node.py _batch_managers/start/start_broadcast for unchanged integration and terminator drain",
+    "Inspected run.py RunSmallData.steps/events and step.py Step.events for proxy_events append semantics feeding the sink",
+    "Read greenlet-revocation README.md, scope.md, issue.md, issue.json, status.json; verified step-03/README.md and root README.md are marked historical/superseded",
+    "Verified issue.md technical claims against code: no-yield call runs to run end on reject-all, chunk/step boundaries do not yield control, referenced commit 7e2d5d371 matches git log, referenced test files exist, no production incident claimed, no dependency/API pre-authorized",
+    "Verified issue.json title prefix, labels [bug, psana2-cpu], and label_creation metadata",
+    "Cross-checked supplied final-SHA validation table (core 125 passed/5 skipped/2 deselected, byhand 4 passed, no xfails) against the test inventory"
+  ],
+  "limitations": [
+    "No commands run per review contract: could not compute the issue body SHA256 (2116c8c3...) or verify log hashes at /tmp/smd-callback-revocation; test results are taken from supplied coordinator evidence",
+    "Could not verify GitHub state (absence of psana2-cpu label, absence of a matching existing issue) or the working branch name tests/smd-callback-chunk-state cited in issue.md; the checkout is detached HEAD",
+    "status.json is frozen at round 0 with core/byhand pending, as the context states; final-SHA evidence from the context was used instead",
+    "Native EventBuilder/proxy destination semantics were not inspected; routing correctness relies on the supplied MPI test passes",
+    "No audit of unrelated subsystems was performed, per scope"
+  ],
+  "findings": [
+    {
+      "id": "REV1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/psexp/callback_iterator.py",
+      "line": 3,
+      "evidence": "Module docstring says \"StreamingCallbackBatches supplies bounded production batching around this input.\" while callback_stream.py line 3-4 and the class docstring at callback_iterator.py:61-63 state pending transitions are not memory-bounded. The unqualified word \"bounded\" could be read as contradicting the revocation's explicit non-claim.",
+      "requested_change": "Optional wording tweak: \"supplies bounded output batches around this input; pending transitions during a non-yielding call are not bounded\" or similar. No code or test change needed."
+    }
+  ]
+}

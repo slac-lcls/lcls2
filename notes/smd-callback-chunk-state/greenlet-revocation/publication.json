@@ -1,0 +1,11 @@
+{
+  "issue_number": 284,
+  "url": "https://github.com/slac-lcls/lcls2/issues/284",
+  "reviewed_commit": "a64df64d9dffd975e9fbd1ed9e07d264bec5c63f",
+  "title_exact": true,
+  "body_exact": true,
+  "labels_exact": true,
+  "body_sha256": "2116c8c3ba4f4c7eb45f722cc9c95b82ba790d90fd13c738d0837627fe632af3",
+  "created_via": "authenticated GitHub CLI after plugin returned 403 Resource not accessible by integration",
+  "verified_via": "GitHub plugin fetch_issue; exact title/body and label-set comparison against reviewed payload"
+}

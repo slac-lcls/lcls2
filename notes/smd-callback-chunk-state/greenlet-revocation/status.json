@@ -1,22 +1,28 @@
 {
   "scope": "Remove greenlet, preserve run-scoped counters, and independently review and publish the deferred no-yield issue",
-  "phase": "implementation validation",
+  "phase": "review passed; issue published and verified",
   "base_commit": "570f954d96d23012fd14341405471582b164a728",
-  "implementation_commit": null,
-  "reviewed_commit": null,
-  "round": 0,
+  "implementation_commit": "a64df64d9dffd975e9fbd1ed9e07d264bec5c63f",
+  "reviewed_commit": "a64df64d9dffd975e9fbd1ed9e07d264bec5c63f",
+  "round": 1,
   "round_limit": 3,
   "checks": {
     "standalone_without_greenlet": "passed",
     "focused": "59 passed, 219.51 seconds; no greenlet in environment",
-    "core": "pending",
-    "byhand": "pending"
+    "core": "125 passed, 5 skipped, 2 deselected; 351.51 seconds",
+    "byhand": "4 passed; 155.42 seconds"
   },
   "unresolved_findings": [],
   "issue_payload": [
     "issue.md",
     "issue.json"
   ],
-  "issue_url": null,
-  "artifacts": "/tmp/smd-callback-revocation"
+  "issue_url": "https://github.com/slac-lcls/lcls2/issues/284",
+  "artifacts": "/tmp/smd-callback-revocation",
+  "review_verdict": "pass",
+  "review_blocker": null,
+  "external_review_authorization": "User explicitly answered Yes to sending this code, issue draft and test/review context to the configured external Claude service after automatic rejection.",
+  "deferred_findings": [
+    "REV1-01"
+  ]
 }

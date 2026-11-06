@@ -32,3 +32,11 @@ Both this revocation and the exact issue payload undergo independent Claude
 review before publication. See scope.md and the round records for the contract
 and findings. Historical step-3 documents retain their original evidence and
 are marked superseded.
+
+Claude passed both deliverables at `a64df64d9dffd975e9fbd1ed9e07d264bec5c63f`
+with no blocking findings. One optional documentation suggestion is deferred in
+round-01/responses.md. Both required test groups passed; see validation.md.
+The exact reviewed issue is published as [#284](https://github.com/slac-lcls/lcls2/issues/284)
+with labels `bug` and `psana2-cpu`. Title, body and labels were verified by
+readback; publication.json records the comparison. Subsequent changes contain
+review/validation/publication records only.
