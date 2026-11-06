@@ -1,0 +1,24 @@
+{
+  "reviewed_commit": "38010bfb13110f4bef0da3c8d235c466d06946a3",
+  "verdict": "pass",
+  "summary": "Round 2 correction review at 38010bfb1 passes. The MPI launch path in run_driver now builds ['mpirun','--oversubscribe','-n','4', ...] (test_callback_chunk_state.py:53-55) with a comment explaining small CI hosts; the serial path is unchanged. The ineffective OMPI_MCA_rmaps_base_oversubscribe env block is gone from .github/workflows/run_psana_tests.yaml, and no residual reference to that variable exists anywhere in the repository. All three regression test files (test_callback_chunk_state.py, test_callback_iterator.py, test_callback_stream.py) remain enrolled in the workflow pytest invocation (lines 63-65). test_callback_stream.py imports run_driver from the chunk-state module, so all MPI cases share the single corrected launcher. Case arithmetic matches the supplied evidence: 12 MPI cases in chunk_state (2 batch x 3 chunk x 2 stepnum) plus 8 in stream (1 + 1 + 3 behaviors x 2 destinations) equals the 20 passed; the 20 serial cases plus test_synchronous_delivery_and_cleanup equals the 21 deselected. No topology, assertion, timeout, filtering, dependency or production changes were introduced. The --oversubscribe flag is already used elsewhere in this repo (debugtools/make_rankfile.py, detector/testman scripts), consistent with the Open MPI 5 documentation cited. Prior findings PRCB-R1-001 and PRCB-R1-003 remain deferred and non-blocking; PRCB-R1-002 was resolved by fd2a46905. The coordinator's two-slot wrapper result (20 passed, 21 deselected, exit 0) is accepted as supplied evidence; GitHub CI on 38010bfb1 is still pending and is not claimed green.",
+  "checks": [
+    "Read psana/psana/tests/test_callback_chunk_state.py at 38010bfb1: run_driver MPI branch uses ['mpirun','--oversubscribe','-n','4', ...] with explanatory comment; serial branch unchanged; 90 s timeout, process-group kill and result-record parsing unchanged",
+    "Read .github/workflows/run_psana_tests.yaml: no OMPI_MCA_* env block remains; test_callback_chunk_state.py, test_callback_iterator.py and test_callback_stream.py all enrolled in the pytest invocation",
+    "Read psana/psana/tests/test_callback_stream.py: imports run_driver/run_process/scan_data from test_callback_chunk_state, so every MPI case goes through the corrected launcher; no independent mpirun invocation",
+    "Repository-wide grep for 'OMPI_MCA_rmaps' returned no matches; grep for 'oversubscribe' shows the only test-launcher use is the new line plus pre-existing uses in debugtools and detector/testman, confirming precedent for the flag in this codebase",
+    "Grep for 'mpirun' under psana/psana/tests/test_callback*.py shows a single launch site (chunk_state line 55)",
+    "Cross-checked parametrization counts against supplied evidence: 12 + 8 = 20 MPI cases passed; 20 serial + 1 non-parametrized = 21 deselected under -k mpi",
+    "Confirmed no changes to selection assertions, chunk/rank topology, timeouts, pytest filtering, runtime dependencies or production modules within the files in scope",
+    "Verified prior finding status: PRCB-R1-002 resolved by CHANGELOG link in fd2a46905 (per agreed context); PRCB-R1-001 and PRCB-R1-003 remain deferred, non-blocking"
+  ],
+  "limitations": [
+    "No commands were run and no tests were executed by the reviewer; the two-slot wrapper result (20 passed, 21 deselected, 108.76 s, exit 0) and the earlier fresh-build results are supplied coordinator evidence, not independently reproduced",
+    "Raw coordinator logs under /tmp/smd-callback-pr (outside this worktree) were not read; review relied on the inspected checkout plus the supplied correction rationale",
+    "GitHub CI on 38010bfb1 was triggered but had not completed at review time; CI greenness on the correction is not claimed",
+    "This was a narrow correction review of the test launcher and CI workflow; the seven production modules were not re-audited beyond confirming the agreed scope states them unchanged",
+    "The commit diff itself was not inspected via git; file content at the checkout was treated as the source of truth",
+    "The --oversubscribe flag is Open MPI specific, as was the replaced env variable; behaviour under a non-Open MPI mpirun was not assessed and is outside the conda environment used by CI"
+  ],
+  "findings": []
+}

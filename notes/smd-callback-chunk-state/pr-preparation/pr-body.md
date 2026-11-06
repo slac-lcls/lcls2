@@ -30,14 +30,16 @@ python -m pytest psana/psana/tests/byhand_*
 
 Fresh build against master `9ab5c193b`: **142 passed, 5 skipped, 2 deselected** in
 the core suite; **4 passed** in the longer MPI group. All 59 callback cases passed.
+The 20 MPI cases also passed with an explicit two-slot limit using the portable
+`mpirun --oversubscribe` launcher option.
 
 Protected real-data comparison of Mikhail's exact command, 50 frames across all 32 panels:
 
 | Source | PS_SMD_N_EVENTS | Result |
 | --- | --- | --- |
 | Current master | Unset (effective 1000) | 0 events; existing empty-step `ievt` logging exception |
-| Current master | 10000 | Correct50 events from step2 |
-| This fix | Unset (effective 1000) | Same correct50 events; both gate arrays exactly equal to the 10000 control |
+| Current master | 10000 | Correct 50 events from step 2 |
+| This fix | Unset (effective 1000) | Same correct 50 events; both gate arrays exactly equal to the 10000 control |
 
 Data inputs were checked against a direct-file timestamp oracle. Outputs were
 isolated, detector-name lookup readonly, and calibration database write helpers
@@ -46,12 +48,14 @@ blocked. No database writes were attempted.
 Earlier implementation reviews and experiment records are preserved on the
 [audit branch](https://github.com/slac-lcls/lcls2/tree/tests/smd-callback-chunk-state/notes/smd-callback-chunk-state).
 [Current-master validation and independent review](https://github.com/slac-lcls/lcls2/tree/tests/smd-callback-chunk-state/notes/smd-callback-chunk-state/pr-preparation)
-passed on `7ddd3f4fd`; the reviewer reported no blocking findings.
+passed on final head `38010bfb1`; the second review reported no findings.
+Production code is unchanged from the full-suite and real-data validation at
+`7ddd3f4fd`; the follow-up adjusts only the MPI test launcher and changelog link.
 
 ## Checklist
 
-- [x] Updated `CHANGELOG.md` under Unreleased/Fixed (PR link added after creation).
+- [x] Updated `CHANGELOG.md` under Unreleased/Fixed with the PR link.
 - [x] Described the problem and solution.
-- [ ] All GitHub Actions checks pass (pending PR creation).
-- [x] Issue linkage checked: no existing issue tracks this specific counter fix;
-  #284 is a deferred follow-up and must remain open, so no `Fix #284` keyword.
+- [ ] All GitHub Actions checks pass (running).
+- [x] Issue linkage checked: #284 is a separate deferred follow-up and remains
+  open; this PR intentionally has no issue-closing reference.

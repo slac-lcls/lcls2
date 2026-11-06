@@ -1,22 +1,28 @@
 {
-  "phase": "review-passed-preparing-pr",
+  "phase": "final-ci-running",
   "branch": "fix/smd-callback-persistence",
   "base_sha": "9ab5c193b4277e44e3e8ef9563d830c8943fede3",
   "implementation_sha": "7ddd3f4fd0b8273ba32ec67ad978d1ffe8801005",
-  "round": 1,
+  "round": 2,
   "round_limit": 3,
   "unresolved_ids": [],
   "checks": {
     "fresh_native_build": "pass",
     "core": "142 passed, 5 skipped, 2 deselected; 355.56s",
     "byhand": "4 passed, 126.70s",
-    "jungfrau_matrix": "pass: master default fails, master10000/fixed default select50, identical full gates"
+    "jungfrau_matrix": "pass: master default fails, master10000/fixed default select50, identical full gates",
+    "two_slot_mpi": "20 passed, 21 deselected; 108.76s",
+    "first_github_ci": "DAQ/changelog passed; psana20MPIlaunchfailures from slot limit; fixed launcher"
   },
   "artifacts": "/tmp/smd-callback-pr",
-  "reviewed_sha": "7ddd3f4fd0b8273ba32ec67ad978d1ffe8801005",
+  "reviewed_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
   "review_verdict": "pass",
   "deferred_nonblocking": [
     "PRCB-R1-001: legacy callback cleanup",
     "PRCB-R1-003: synchronous early-return drain"
-  ]
+  ],
+  "pr_url": "https://github.com/slac-lcls/lcls2/pull/287",
+  "pr_head_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
+  "github_approval": "required; not requested or bypassed",
+  "latest_code_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3"
 }

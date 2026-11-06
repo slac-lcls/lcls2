@@ -1,0 +1,22 @@
+[
+  {
+    "path": "/tmp/smd-callback-pr/two-slots-control.log",
+    "bytes": 1272,
+    "sha256": "e94b71eb5f1a3d08bbf63f6c0624c1f1df103a04198d8bf3d6cf5e67b14b0373"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/two-slots-legacy-env.log",
+    "bytes": 1272,
+    "sha256": "e94b71eb5f1a3d08bbf63f6c0624c1f1df103a04198d8bf3d6cf5e67b14b0373"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/two-slots-explicit.log",
+    "bytes": 44,
+    "sha256": "ee58a7d72bc53a4a729fdaa4510adbe46756eba81903abfe718dd227bbe4c379"
+  },
+  {
+    "path": "/tmp/smd-callback-pr/two-slots-tests.log",
+    "bytes": 3464,
+    "sha256": "5989462c6c6e208fb321fa3ade1347aee9afa4d8f3fb0dfb163d05929ef1ec26"
+  }
+]

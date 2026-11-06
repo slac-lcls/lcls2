@@ -38,5 +38,23 @@ no deployment and no central startup log. No blocked mutation calls occurred.
 Artifacts: /tmp/smd-callback-pr/{build.log,core.log,byhand.log,jf/,oracle.json}.
 jf-results.json, jf-commands.json, per-case reports and jf-manifest.json preserve
 compact results/provenance. Large binary output remains temporary storage.
-CI workflow now includes all three new callback test files and permits MPI
-oversubscription on small runners. Remote CI is checked after PR creation.
+CI workflow includes all three new callback test files. The initial environment
+setting intended to permit MPI oversubscription was ineffective in Open MPI5;
+the correction below supersedes that setting.
+
+## CI launcher correction
+
+PR287 initial head fd2a46905: changelog and DAQ checks passed, psana build passed,
+but20MPI cases failed before launching because the runner exposed fewer than
+4slots (80tests passed,3skipped). This exposed a test-launcher setup error.
+Commit38010bfb13110f4bef0da3c8d235c466d06946a3 uses explicit
+`mpirun --oversubscribe -n4` in the shared callback test helper and removes the
+ineffective OMPI_MCA_rmaps_base_oversubscribe workflow setting. Production code
+and all assertions are unchanged.
+
+Open MPI5.0.6 local reproduction with `--host localhost:2`: both plain launch and
+the old env setting reject4ranks; explicit option starts all4. All20affected MPI
+cases then passed through this wrapper (21deselected,108.76s). Second independent
+review passes with zero findings. Full core/byhand and realdata evidence above
+remains applicable to unchanged production. Final GitHub results are recorded
+in status.json and publication.json after the rerun completes.
