@@ -478,6 +478,7 @@ PgpReader::PgpReader(const Parameters& para, MemPool& pool, unsigned maxRetCnt, 
     m_nPgpJumps   (0),
     m_nNoTrDgrams (0),
     m_nLaneStalls (0),
+    m_nStaleEvents(0),
     m_stallEvtCtr (0),
     m_stallChecks (0),
     m_stallReported(false),
@@ -585,6 +586,18 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     uint32_t evtCounter = timingHeader->evtCounter & EvtCtrMask;
     uint32_t pgpIndex = evtCounter & (m_pool.nDmaBuffers() - 1);
     PGPEvent* event = &m_pool.pgpEvents[pgpIndex];
+    // An evtCounter restart (ClearReadout) can land on a slot still holding a partial event
+    // from before it; mixing the two would forward a bogus complete event, so drop the old one
+    if (event->mask) {
+        auto other = det->getTimingHeader(event->buffers[__builtin_ctz(event->mask)].index);
+        if (other->pulseId() != timingHeader->pulseId()) [[unlikely]] {
+            if (m_nStaleEvents++ < 5) {
+                logging::error("PGPReader: Discarding stale partial event at evtCounter %u (pulseId %014lx, lanes 0x%02x)",
+                               evtCounter, other->pulseId(), event->mask);
+            }
+            freeDma(event);             // Leaves event mask = 0
+        }
+    }
     DmaBuffer* buffer = &event->buffers[lane];
     buffer->size = size;
     buffer->index = index;
@@ -737,9 +750,23 @@ const Pds::TimingHeader* PgpReader::handle(Detector* det, unsigned current)
     return nullptr;                     // Event is still incomplete
 }
 
+// Events left partial by an earlier attempt would collide with the new evtCounters after a
+// Reset, so free them.  Call only while no other thread touches pgpEvents.
+void PgpReader::discardStaleEvents()
+{
+    unsigned n = 0;
+    for (auto& event : m_pool.pgpEvents) {
+        if (event.mask) {
+            freeDma(&event);
+            ++n;
+        }
+    }
+    if (n)  logging::warning("PGPReader: Discarded %u events left incomplete before the reset", n);
+}
+
 // Called while no DMAs arrive.  With every DMA buffer held by events still missing a
 // lane, the reader stalls without any other error, so name the missing lanes once.
-void PgpReader::checkLaneStall()
+void PgpReader::checkLaneStall(const Detector* det)
 {
     static const unsigned  StallChecks = 10;      // Partial for this many periods...
     static const ms_t      Period{100};           // ...of this length is a stall
@@ -751,8 +778,18 @@ void PgpReader::checkLaneStall()
     m_tStallCheck = now;
 
     uint32_t evtCtr = (m_lastComplete + 1) & EvtCtrMask;
-    const PGPEvent& event = m_pool.pgpEvents[evtCtr & (m_pool.nDmaBuffers() - 1)];
-    if (event.mask == 0 || event.mask == m_para.laneMask || evtCtr != m_stallEvtCtr) {
+    const PGPEvent* event = &m_pool.pgpEvents[evtCtr & (m_pool.nDmaBuffers() - 1)];
+    if (event->mask == 0) {                     // A partial BeginRun precedes the reset to 0
+        const PGPEvent* evt1 = &m_pool.pgpEvents[1];
+        if (evt1->mask != 0) {
+            const auto* th1 = det->getTimingHeader(evt1->buffers[__builtin_ctz(evt1->mask)].index);
+            if (th1->service() == TransitionId::BeginRun) {
+                evtCtr = 1;
+                event  = evt1;
+            }
+        }
+    }
+    if (event->mask == 0 || event->mask == m_para.laneMask || evtCtr != m_stallEvtCtr) {
         m_stallEvtCtr   = evtCtr;               // Nothing partial yet, or progress was made
         m_stallChecks   = 0;
         m_stallReported = false;
@@ -760,12 +797,12 @@ void PgpReader::checkLaneStall()
     }
     if (++m_stallChecks < StallChecks || m_stallReported)  return;
 
-    unsigned lane = __builtin_ctz(event.mask);  // Any lane that arrived has the header
-    const auto* th = reinterpret_cast<const Pds::TimingHeader*>(m_pool.dmaBuffers[event.buffers[lane].index]);
+    unsigned lane = __builtin_ctz(event->mask); // Any lane that arrived has the header
+    const auto* th = det->getTimingHeader(event->buffers[lane].index);
     logging::error("PGPReader: Stalled for over %lld ms on evtCounter %u (pulseId %014lx): "
                    "lanes 0x%02x of 0x%02x arrived, missing 0x%02x; %ld DMA buffers in user, %ld in hw",
                    (long long)(StallChecks * Period.count()), evtCtr, th->pulseId(),
-                   event.mask, m_para.laneMask, m_para.laneMask & ~event.mask,
+                   event->mask, m_para.laneMask, m_para.laneMask & ~event->mask,
                    (long)nPgpInUser(), (long)nPgpInHw());
     m_stallReported = true;
     ++m_nLaneStalls;

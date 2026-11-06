@@ -520,6 +520,8 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
                   [&](){return m_pgp.nNoTrDgrams();});
     exporter->add("drp_num_lane_stalls", labels, MetricType::Gauge,
                   [&](){return m_pgp.nLaneStalls();});
+    exporter->add("drp_num_stale_events", labels, MetricType::Gauge,
+                  [&](){return m_pgp.nStaleEvents();});
 
     exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
     exporter->add("drp_num_pgp_in_user", labels, MetricType::Gauge,
@@ -559,6 +561,7 @@ void PGPDrp::reader()
 
     // If triggers had been left running, they will have been stopped during Allocate
     // Flush anything that accumulated
+    m_pgp.discardStaleEvents();
     m_pgp.flush();
 
     // Reset counters to avoid 'jumping' errors on reconfigures
@@ -598,7 +601,7 @@ void PGPDrp::reader()
                         m_batch.l1count += pendingL1;
                         pendingL1 = 0;
                     }
-                    m_pgp.checkLaneStall();
+                    m_pgp.checkLaneStall(&m_det);
                 }
             }
         }

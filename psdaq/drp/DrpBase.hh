@@ -156,7 +156,8 @@ public:
     void flush();
     const Pds::TimingHeader* handle(Detector* det, unsigned current);
     void freeDma(PGPEvent* event);
-    void checkLaneStall();
+    void checkLaneStall(const Detector* det);
+    void discardStaleEvents();
     virtual void handleBrokenEvent(const PGPEvent& event) {}
     virtual void resetEventCounter() { m_lastComplete = 0; } // EvtCounter reset
     uint64_t dmaBytes()     const { return m_dmaBytes; }
@@ -169,6 +170,7 @@ public:
     uint64_t nPgpJumps()    const { return m_nPgpJumps; }
     uint64_t nNoTrDgrams()  const { return m_nNoTrDgrams; }
     uint64_t nLaneStalls()  const { return m_nLaneStalls; }
+    uint64_t nStaleEvents() const { return m_nStaleEvents; }
     int64_t  nPgpInUser()   const { return dmaGetRxBuffinUserCount  (m_pool.fd()); }
     int64_t  nPgpInHw()     const { return dmaGetRxBuffinHwCount    (m_pool.fd()); }
     int64_t  nPgpInPreHw()  const { return dmaGetRxBuffinPreHwQCount(m_pool.fd()); }
@@ -204,6 +206,7 @@ protected:
     uint64_t m_nPgpJumps;
     uint64_t m_nNoTrDgrams;
     uint64_t m_nLaneStalls;
+    uint64_t m_nStaleEvents;
     Pds::fast_monotonic_clock::time_point m_tStallCheck;
     uint32_t m_stallEvtCtr;             // evtCounter of the partial event being timed
     unsigned m_stallChecks;             // Consecutive checks that found it partial
