@@ -1,4 +1,15 @@
 #!/bin/bash
+#SBATCH --partition=milano
+#SBATCH --account=lcls:prjdat21
+#SBATCH --qos=normal
+#SBATCH --exclusive
+#SBATCH --export=ALL
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=19
+#SBATCH --output=jungfrau_dark_proc_sbatch_%j.log
+
+##logfile="$(date +%Y-%m-%dT%H%M%S)_jungfrau_dark_proc_sbatch_$(whoami)_%j.log"
+##SBATCH --output=$logfile
 
 ## sbatch ./lcls2/psana/psana/app/jungfrau_dark_proc_sbatch.sh # execute this script with default command
 ## sbatch --wait --ntasks-per-node 19 jungfrau_dark_proc_sbatch.sh "jungfrau_dark_proc -k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 1000 --nrecs1 0"
@@ -6,16 +17,6 @@
 ## squeue -u dubrovin # check batch jobs in queue
 ## scancel [JobID]
 ## scontrol show jobid <job_id>
-
-logfile="$(date +%Y-%m-%dT%H%M%S)_jungfrau_dark_proc_sbatch_$(whoami)_%j.log"
-
-#SBATCH --partition=milano
-#SBATCH --account=lcls:prjdat21
-#SBATCH --exclusive
-#SBATCH --export=ALL
-#SBATCH --nodes=1
-#SBATCH --ntasks-per-node=19
-#SBATCH --output=$logfile
 
 echo "SLURM_JOB_NAME: $SLURM_JOB_NAME"
 echo "SLURM_JOB_ID: $SLURM_JOB_ID"
