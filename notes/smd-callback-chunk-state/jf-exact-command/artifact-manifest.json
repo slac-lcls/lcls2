@@ -1,0 +1,62 @@
+[
+  {
+    "path": "/tmp/jf-callback-ab/oracle.json",
+    "bytes": 63006,
+    "sha256": "bee7d91890c1d9a5c0be31a0bd86e05867bb36fdaede68e0689f0d42a6d1bd20"
+  },
+  {
+    "path": "/tmp/jf-exact-command/commands.json",
+    "bytes": 2077,
+    "sha256": "0b86bcb18ef14e2e3a597c6476af2ee19a960bb83509de465baf8621551311f2"
+  },
+  {
+    "path": "/tmp/jf-exact-command/fixed-default/report.json",
+    "bytes": 7601,
+    "sha256": "03219276fcbf87dbce54f680a04e6fcbbfe54d2f11b8b6e333566ff0db8ee9ba"
+  },
+  {
+    "path": "/tmp/jf-exact-command/unfixed-10000/report.json",
+    "bytes": 7175,
+    "sha256": "0c72087bce66de5f0825144b79f5a9c2ead22725b01209f388417ccf4f8518be"
+  },
+  {
+    "path": "/tmp/jf-exact-command/unfixed-default/report.json",
+    "bytes": 4664,
+    "sha256": "11760246491647e745d20a57197ba1b0452df87aeaacdf0955651b401d962bc2"
+  },
+  {
+    "path": "/tmp/jf-exact-command/fixed-default/stdout.log",
+    "bytes": 11215,
+    "sha256": "8f118aff4e4dedbea9639f9d8e9301336a7c3fa36e380525b61083903dd7fce8"
+  },
+  {
+    "path": "/tmp/jf-exact-command/unfixed-10000/stdout.log",
+    "bytes": 11215,
+    "sha256": "8503a545f5fe27585e35e3ea013126fe60502b61ce5794416648e77f8ff1e16c"
+  },
+  {
+    "path": "/tmp/jf-exact-command/unfixed-default/stdout.log",
+    "bytes": 8855,
+    "sha256": "0c54b333ca75773f6667343bdfbdb95eb6a6105b23b1953e9a29973da3a45093"
+  },
+  {
+    "path": "/tmp/jf-exact-command/fixed-default/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 33554560,
+    "sha256": "1ee7bfd30789d946ffe8acb41d4499aa7f24189aabbf7c353ca8cdc8eeca1f90"
+  },
+  {
+    "path": "/tmp/jf-exact-command/fixed-default/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 33554560,
+    "sha256": "e82d16ae3b59786ded01a1211c7bf014c440cc56dbb0057f64d57f73de228c89"
+  },
+  {
+    "path": "/tmp/jf-exact-command/unfixed-10000/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+    "bytes": 33554560,
+    "sha256": "1ee7bfd30789d946ffe8acb41d4499aa7f24189aabbf7c353ca8cdc8eeca1f90"
+  },
+  {
+    "path": "/tmp/jf-exact-command/unfixed-10000/work1/jungfrau/block_results/jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+    "bytes": 33554560,
+    "sha256": "e82d16ae3b59786ded01a1211c7bf014c440cc56dbb0057f64d57f73de228c89"
+  }
+]

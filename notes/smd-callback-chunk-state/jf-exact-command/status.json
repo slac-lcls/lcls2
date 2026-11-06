@@ -1,0 +1,14 @@
+{
+  "scope": "Exact 50-frame full-detector stage-1 command, three protected cases",
+  "phase": "ready-for-review",
+  "base_sha": "b59c2fd1aad012de195b14b62401bc966e6755c3",
+  "round": 1,
+  "round_limit": 3,
+  "checks": {
+    "three_expected_outcomes": "pass",
+    "timestamp_and_full_gate_equality": "pass",
+    "database_write_attempts": 0
+  },
+  "unresolved_ids": [],
+  "artifacts": "/tmp/jf-exact-command"
+}

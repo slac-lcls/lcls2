@@ -1,0 +1,231 @@
+{
+  "argv": [
+    "-k",
+    "exp=mfx100848724,run=49",
+    "-d",
+    "jungfrau",
+    "-o",
+    "./work1",
+    "--nrecs",
+    "50",
+    "--nrecs1",
+    "50",
+    "--stepnum",
+    "2"
+  ],
+  "cwd": "/tmp/jf-exact-command/fixed-default",
+  "initial_smd_n_events": null,
+  "chunks": [
+    1011,
+    1012,
+    1013
+  ],
+  "callback_calls": 1,
+  "callback_timestamps": [
+    4806028405361277613,
+    4806028405369535152,
+    4806028405377923763,
+    4806028405386181302,
+    4806028405394569913,
+    4806028405402827452,
+    4806028405411216063,
+    4806028405419473602,
+    4806028405427862213,
+    4806028405436119752,
+    4806028405444508363,
+    4806028405452896974,
+    4806028405461154513,
+    4806028405469543124,
+    4806028405477800663,
+    4806028405486189274,
+    4806028405494446813,
+    4806028405502835424,
+    4806028405511224035,
+    4806028405519481574,
+    4806028405527870185,
+    4806028405536127724,
+    4806028405544516335,
+    4806028405552773874,
+    4806028405561162485,
+    4806028405569420024,
+    4806028405577808635,
+    4806028405586066174,
+    4806028405594454785,
+    4806028405602843396,
+    4806028405611100935,
+    4806028405619489546,
+    4806028405627747085,
+    4806028405636135696,
+    4806028405644393235,
+    4806028405652781846,
+    4806028405661170457,
+    4806028405669427996,
+    4806028405677816607,
+    4806028405686074146,
+    4806028405694462757,
+    4806028405702720296,
+    4806028405711108907,
+    4806028405719366446,
+    4806028405727755057,
+    4806028405736012596,
+    4806028405744401207,
+    4806028405752658746,
+    4806028405761047357,
+    4806028405769435968
+  ],
+  "raw_timestamps": [
+    4806028405361277613,
+    4806028405369535152,
+    4806028405377923763,
+    4806028405386181302,
+    4806028405394569913,
+    4806028405402827452,
+    4806028405411216063,
+    4806028405419473602,
+    4806028405427862213,
+    4806028405436119752,
+    4806028405444508363,
+    4806028405452896974,
+    4806028405461154513,
+    4806028405469543124,
+    4806028405477800663,
+    4806028405486189274,
+    4806028405494446813,
+    4806028405502835424,
+    4806028405511224035,
+    4806028405519481574,
+    4806028405527870185,
+    4806028405536127724,
+    4806028405544516335,
+    4806028405552773874,
+    4806028405561162485,
+    4806028405569420024,
+    4806028405577808635,
+    4806028405586066174,
+    4806028405594454785,
+    4806028405602843396,
+    4806028405611100935,
+    4806028405619489546,
+    4806028405627747085,
+    4806028405636135696,
+    4806028405644393235,
+    4806028405652781846,
+    4806028405661170457,
+    4806028405669427996,
+    4806028405677816607,
+    4806028405686074146,
+    4806028405694462757,
+    4806028405702720296,
+    4806028405711108907,
+    4806028405719366446,
+    4806028405727755057,
+    4806028405736012596,
+    4806028405744401207,
+    4806028405752658746,
+    4806028405761047357,
+    4806028405769435968
+  ],
+  "name_lookups": [
+    {
+      "add_shortname": false,
+      "result": "jungfrau_000005"
+    },
+    {
+      "add_shortname": false,
+      "result": "jungfrau_000005"
+    }
+  ],
+  "blocked_mutations": [],
+  "datasource_class": "SerialDataSource",
+  "dskwargs": {
+    "exp": "mfx100848724",
+    "run": 49,
+    "batch_size": 1,
+    "skip_calib_load": "all"
+  },
+  "smd_files": [
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s000-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s001-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s002-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s003-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s004-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s005-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s006-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s007-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s008-c000.smd.xtc2",
+    "/sdf/data/lcls/ds/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0049-s009-c000.smd.xtc2"
+  ],
+  "raw_shape": [
+    32,
+    512,
+    1024
+  ],
+  "completed": true,
+  "effective_smd_n_events": "1000",
+  "sources": {
+    "datasource": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/datasource.py",
+      "sha256": "a198adca2d508dc9b9075e4ba9737a956904796fe92c2286d0e1c3a2835c6d17"
+    },
+    "app.jungfrau_dark_proc": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/app/jungfrau_dark_proc.py",
+      "sha256": "e2a7ccc0b29946f565ce247e2cb97fb2bc4384f0c4834c79fa8620ae8f7a343e"
+    },
+    "detector.UtilsJungfrauCalib": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/detector/UtilsJungfrauCalib.py",
+      "sha256": "79a42c31767f711919387110f89f405f916d95e9ad413002be2cf4b8d38410ad"
+    },
+    "detector.UtilsCalib": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/detector/UtilsCalib.py",
+      "sha256": "2ec9b2c8e4981f9db3ea86ff1b7f404b28f115d6b13d3f1a41a937cc473a374d"
+    },
+    "detector.RepoManager": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/detector/RepoManager.py",
+      "sha256": "49e0748de58d4b529da7daac8f068d5e5f65c80810a394775ec3071435f21fec"
+    },
+    "psexp.run": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/run.py",
+      "sha256": "f77885358fffe73ee284ef6bef1de350db5d02f3a99426d7d527f719d6b3ac14"
+    },
+    "psexp.step": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/step.py",
+      "sha256": "06c68be08716c7f4a0e81b3d37752704e75ffd45fb3e252c9f99cfe55bc248de"
+    },
+    "psexp.ds_base": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/ds_base.py",
+      "sha256": "9f597478988bf43aa6fb79755c2ece262a7a8a7b93189b13887480146447b77e"
+    },
+    "psexp.serial_ds": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/serial_ds.py",
+      "sha256": "0faa47a1db81175ec0d3e1106b31c00c70bd13e4435a41a4cabb8395b6bdeb79"
+    },
+    "psexp.smdreader_manager": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/smdreader_manager.py",
+      "sha256": "737a01739a6a74b1855b0f8e8194b16593a4c7aa1b49aba6b712940f05e1645c"
+    },
+    "psexp.callback_batch": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/callback_batch.py",
+      "sha256": "0ea63be68208aeaf3dd8fac9fb6bd8f44f9be526d749372b1b2211db024a4abe"
+    },
+    "psexp.callback_iterator": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/callback_iterator.py",
+      "sha256": "1b59c4e2af226de94149b27ef77e94eb912d588662c349eaae7c7fef95b7534d"
+    },
+    "psexp.callback_stream": {
+      "path": "/tmp/jf-exact-command/fixed/psana/psana/psexp/callback_stream.py",
+      "sha256": "6ca02a84d265c5fbb6f218cd4db08f579cbb4d15ada8a6fbff9673a10fa6b468"
+    },
+    "smdreader": {
+      "path": "/sdf/home/m/monarin/lcls2/install/lib/python3.9/site-packages/psana/smdreader.cpython-39-x86_64-linux-gnu.so",
+      "sha256": "15db4db14be230ff161acbf848783d27bf4f2aec27f211c3afb145c8d757fc9d"
+    },
+    "eventbuilder": {
+      "path": "/sdf/home/m/monarin/lcls2/install/lib/python3.9/site-packages/psana/eventbuilder.cpython-39-x86_64-linux-gnu.so",
+      "sha256": "fb194f02e03dee37f0a17521689fae86964419c81f5e3a8cd79839210e57b169"
+    },
+    "dgram": {
+      "path": "/sdf/home/m/monarin/lcls2/install/lib/python3.9/site-packages/psana/dgram.cpython-39-x86_64-linux-gnu.so",
+      "sha256": "1728fa06b74e5f67afab464591199aa6640679b9930d63087e987f42e0706f05"
+    }
+  }
+}

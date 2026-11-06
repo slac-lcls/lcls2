@@ -1,0 +1,80 @@
+[
+  {
+    "case": "unfixed-default",
+    "source_sha": "71378658a54dcdd941c9137355a985fa4b637595",
+    "overlay": "/tmp/jf-exact-command/unfixed-python",
+    "initial_smd_n_events": null,
+    "command": [
+      "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python",
+      "/sdf/home/m/monarin/lcls2/notes/smd-callback-chunk-state/jf-exact-command/run_case.py",
+      "-k",
+      "exp=mfx100848724,run=49",
+      "-d",
+      "jungfrau",
+      "-o",
+      "./work1",
+      "--nrecs",
+      "50",
+      "--nrecs1",
+      "50",
+      "--stepnum",
+      "2"
+    ],
+    "cwd": "/tmp/jf-exact-command/unfixed-default",
+    "exit_code": 1,
+    "timed_out": false,
+    "seconds": 5.43
+  },
+  {
+    "case": "unfixed-10000",
+    "source_sha": "71378658a54dcdd941c9137355a985fa4b637595",
+    "overlay": "/tmp/jf-exact-command/unfixed-python",
+    "initial_smd_n_events": "10000",
+    "command": [
+      "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python",
+      "/sdf/home/m/monarin/lcls2/notes/smd-callback-chunk-state/jf-exact-command/run_case.py",
+      "-k",
+      "exp=mfx100848724,run=49",
+      "-d",
+      "jungfrau",
+      "-o",
+      "./work1",
+      "--nrecs",
+      "50",
+      "--nrecs1",
+      "50",
+      "--stepnum",
+      "2"
+    ],
+    "cwd": "/tmp/jf-exact-command/unfixed-10000",
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 67.43
+  },
+  {
+    "case": "fixed-default",
+    "source_sha": "b59c2fd1aad012de195b14b62401bc966e6755c3",
+    "overlay": "/tmp/jf-exact-command/fixed-python",
+    "initial_smd_n_events": null,
+    "command": [
+      "/sdf/group/lcls/ds/ana/sw/conda2/inst/envs/ps_20241122/bin/python",
+      "/sdf/home/m/monarin/lcls2/notes/smd-callback-chunk-state/jf-exact-command/run_case.py",
+      "-k",
+      "exp=mfx100848724,run=49",
+      "-d",
+      "jungfrau",
+      "-o",
+      "./work1",
+      "--nrecs",
+      "50",
+      "--nrecs1",
+      "50",
+      "--stepnum",
+      "2"
+    ],
+    "cwd": "/tmp/jf-exact-command/fixed-default",
+    "exit_code": 0,
+    "timed_out": false,
+    "seconds": 73.89
+  }
+]

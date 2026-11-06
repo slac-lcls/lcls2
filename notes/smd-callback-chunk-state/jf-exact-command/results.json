@@ -1,0 +1,82 @@
+{
+  "cases": [
+    {
+      "case": "unfixed-default",
+      "exit_code": 1,
+      "initial_smd_n_events": null,
+      "effective_smd_n_events": "1000",
+      "chunks": 4,
+      "callback_calls": 4,
+      "selected_events": 0,
+      "raw_events": 0,
+      "timestamps_exact": false,
+      "raw_shape": null,
+      "gate_files": 0,
+      "exception": "UnboundLocalError(\"local variable 'ievt' referenced before assignment\")",
+      "seconds": 5.43
+    },
+    {
+      "case": "unfixed-10000",
+      "exit_code": 0,
+      "initial_smd_n_events": "10000",
+      "effective_smd_n_events": "10000",
+      "chunks": 1,
+      "callback_calls": 1,
+      "selected_events": 50,
+      "raw_events": 50,
+      "timestamps_exact": true,
+      "raw_shape": [
+        32,
+        512,
+        1024
+      ],
+      "gate_files": 2,
+      "exception": null,
+      "seconds": 67.43
+    },
+    {
+      "case": "fixed-default",
+      "exit_code": 0,
+      "initial_smd_n_events": null,
+      "effective_smd_n_events": "1000",
+      "chunks": 3,
+      "callback_calls": 1,
+      "selected_events": 50,
+      "raw_events": 50,
+      "timestamps_exact": true,
+      "raw_shape": [
+        32,
+        512,
+        1024
+      ],
+      "gate_files": 2,
+      "exception": null,
+      "seconds": 73.89
+    }
+  ],
+  "gate_comparisons": [
+    {
+      "file": "jungfrau_000005-mfx100848724-r0049-g2-gate_hi.npy",
+      "shape": [
+        32,
+        512,
+        1024
+      ],
+      "dtype": "uint16",
+      "exact_equal": true,
+      "unequal_pixels": 0
+    },
+    {
+      "file": "jungfrau_000005-mfx100848724-r0049-g2-gate_lo.npy",
+      "shape": [
+        32,
+        512,
+        1024
+      ],
+      "dtype": "uint16",
+      "exact_equal": true,
+      "unequal_pixels": 0
+    }
+  ],
+  "acceptance_passed": true
+}
