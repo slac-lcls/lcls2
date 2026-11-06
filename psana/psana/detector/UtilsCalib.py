@@ -664,6 +664,7 @@ def deploy_constants(dic_consts, **kwa):
     shortname= kwa.get('shortname', 'not-def-shortname')
     longname = kwa.get('longname', 'not-def-longname')
     segind   = kwa.get('segind', 0)
+    ctdepl   = kwa.get('ctdepl', 'prs')
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -686,7 +687,10 @@ def deploy_constants(dic_consts, **kwa):
 
     logger.info('use panelid: %s' % panelid)
 
-    for ctype, nda in dic_consts.items():
+    #for ctype, nda in dic_consts.items():
+    for c in ctdepl:
+        ctype = cc.dic_calib_char_to_name[c]
+        nda = dic_consts[ctype]
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
