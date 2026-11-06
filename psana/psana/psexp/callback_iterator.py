@@ -59,7 +59,8 @@ class CallbackIterator:
 
     Selected Events are yielded, while non-L1 records are appended to
     ``run.proxy_events`` as in RunSmallData. StreamingCallbackBatches replaces
-    that list with a bounded serializing sink, including for reject-all callbacks.
+    that list with a serializing sink. Delivery waits for a callback yield or
+    return; pending transitions during that call are not memory-bounded.
     With drain_remaining=True, normal callback return forwards remaining
     transitions and consumes the input run without selecting further events.
 

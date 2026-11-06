@@ -1,7 +1,11 @@
-"""Bounded, same-thread production batches from a run-scoped SMD callback."""
+"""Synchronous production batches from a run-scoped SMD callback.
+
+Output batch sizes are bounded. Pending transitions during a callback call that
+does not yield are not bounded; prompt delivery for that case is deferred.
+"""
 
 from array import array
-from contextvars import copy_context
+from collections import deque
 from operator import index
 
 from . import TransitionId
@@ -15,26 +19,25 @@ class _TransitionSink:
         self.batches = batches
 
     def append(self, record):
-        self.batches._append(record)
+        self.batches._pending.append(self.batches._serialize(record))
 
     def clear(self):
+        self.batches._pending.clear()
         self.batches._reset()
 
 
 class StreamingCallbackBatches:
-    """Suspend the callback stack when a batch is ready, even without L1 yields.
+    """Keep one callback alive, collecting output when it yields or returns.
 
-    All callback, reader and MPI work stays on the caller's thread. No producer
-    runs ahead while the consumer processes a batch. Serialized pending records
-    are bounded by count and bytes (one oversized record is permitted). User-held
-    events and upstream input chunks are outside this output-buffer bound.
+    All work executes synchronously on the caller's thread. The callback must
+    yield or return before the consumer can receive another batch. Transitions
+    serialize immediately, but their pending queue can grow during a long gap
+    without a callback yield. Count/byte limits apply to emitted batches only
+    (one oversized record is permitted), not to that queue.
     """
 
     def __init__(self, builders, configs, dsparms, run_serial=False,
                  max_records=1000, max_bytes=8 * 1024 * 1024):
-        # Only callback users need this dependency at import/run time.
-        from greenlet import greenlet
-
         if max_records <= 0 or max_bytes <= 0:
             raise ValueError("Callback batch limits must be positive")
         self.run_serial = run_serial
@@ -45,9 +48,9 @@ class StreamingCallbackBatches:
                                          dsparms.smd_callback, drain_remaining=True)
         self.iterator.run.proxy_events = _TransitionSink(self)
         self._closed = False
+        self._pending = deque()
         self._reset()
-        self._worker = greenlet(self._produce)
-        self._worker.gr_context = copy_context()
+        self._batches = self._produce()
 
     def _reset(self):
         self._records = []
@@ -55,28 +58,12 @@ class StreamingCallbackBatches:
         self._l1 = 0
         self._destination = None
 
-    def _append(self, record):
+    def _serialize(self, record):
         is_event = TransitionId.isEvent(record.service)
         dest = 0 if self.run_serial else index(record.destination)
         if is_event and dest < 0:
             raise ValueError("Callback destination must be a non-negative integer")
-        packet = record.as_bytearray()
-        # Flush before adding a record that would exceed a bound or mix default
-        # and explicit routing. A batch has a single event destination; step
-        # history supplies these transitions to other BD clients as needed.
-        if self._records and (
-            self._nbytes + len(packet) > self.max_bytes
-            or (is_event and self._destination is not None and dest != self._destination)
-        ):
-            self._flush()
-        self._records.append((is_event, packet))
-        self._nbytes += len(packet)
-        if is_event:
-            self._destination = dest
-            self._l1 += 1
-        if (len(self._records) >= self.max_records or self._nbytes >= self.max_bytes
-                or self._l1 >= self.batch_size):
-            self._flush()
+        return is_event, dest, record.as_bytearray()
 
     @staticmethod
     def _pack(packets):
@@ -86,24 +73,46 @@ class StreamingCallbackBatches:
             result.extend(array("I", sizes + [len(sizes)]))
         return result, sizes
 
-    def _flush(self):
-        if not self._records:
-            return
-        if self._closed:
-            raise GeneratorExit
+    def _take_batch(self):
         dest = self._destination if self._destination is not None else 0
         batch = {dest: self._pack([packet for _, packet in self._records])}
         steps = {} if self.run_serial else {
             dest: self._pack([packet for is_event, packet in self._records if not is_event])
         }
         self._reset()
-        self._worker.parent.switch((batch, steps))
+        return batch, steps
 
     def _produce(self):
         try:
-            for evt in self.iterator:
-                self._append(evt._proxy_evt)
-            self._flush()
+            finished = False
+            while not finished or self._pending:
+                if not self._pending:
+                    try:
+                        evt = next(self.iterator)
+                    except StopIteration:
+                        finished = True
+                    else:
+                        self._pending.append(self._serialize(evt._proxy_evt))
+                    # next() may have queued transitions before yielding an
+                    # event or reaching run end. Preserve acquisition order.
+                    if not self._pending:
+                        break
+                is_event, dest, packet = self._pending.popleft()
+                if self._records and (
+                    self._nbytes + len(packet) > self.max_bytes
+                    or (is_event and self._destination is not None and dest != self._destination)
+                ):
+                    yield self._take_batch()
+                self._records.append((is_event, packet))
+                self._nbytes += len(packet)
+                if is_event:
+                    self._destination = dest
+                    self._l1 += 1
+                if (len(self._records) >= self.max_records or self._nbytes >= self.max_bytes
+                        or self._l1 >= self.batch_size):
+                    yield self._take_batch()
+            if self._records:
+                yield self._take_batch()
         except BaseException:
             try:
                 self.iterator.close()
@@ -117,27 +126,19 @@ class StreamingCallbackBatches:
         return self
 
     def __next__(self):
-        if self._closed or self._worker.dead:
+        if self._closed:
             raise StopIteration
         try:
-            result = self._worker.switch()
+            return next(self._batches)
         except BaseException:
             self._closed = True
             raise
-        if self._worker.dead:
-            self._closed = True
-            raise StopIteration
-        return result
 
     def close(self):
         if self._closed:
             return
         self._closed = True
-        if not self._worker.dead:
-            try:
-                self._worker.throw(GeneratorExit)
-            except GeneratorExit:
-                pass
-        self.iterator.close()
-        if not self._worker.dead:
-            raise RuntimeError("Callback ignored cancellation")
+        try:
+            self._batches.close()
+        finally:
+            self.iterator.close()

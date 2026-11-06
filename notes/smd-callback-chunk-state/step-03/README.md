@@ -1,5 +1,11 @@
 # Production callback lifetime
 
+This is the historical greenlet implementation record. Its suspension design,
+dependency and backpressure claims are superseded by the
+[greenlet revocation](../greenlet-revocation/README.md). The run-scoped callback
+and counter-continuity fix remain; current synchronous delivery does not bound
+pending transition memory during a callback call without a yield.
+
 Serial experiment-directory reading and MPI event-builder ranks now construct
 one CallbackIterator per run over a sequence of input EventBuilders. Physical
 EndStep ends step.events(); a chunk boundary no longer restarts either local

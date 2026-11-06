@@ -1,0 +1,22 @@
+{
+  "scope": "Remove greenlet, preserve run-scoped counters, and independently review and publish the deferred no-yield issue",
+  "phase": "implementation validation",
+  "base_commit": "570f954d96d23012fd14341405471582b164a728",
+  "implementation_commit": null,
+  "reviewed_commit": null,
+  "round": 0,
+  "round_limit": 3,
+  "checks": {
+    "standalone_without_greenlet": "passed",
+    "focused": "59 passed, 219.51 seconds; no greenlet in environment",
+    "core": "pending",
+    "byhand": "pending"
+  },
+  "unresolved_findings": [],
+  "issue_payload": [
+    "issue.md",
+    "issue.json"
+  ],
+  "issue_url": null,
+  "artifacts": "/tmp/smd-callback-revocation"
+}

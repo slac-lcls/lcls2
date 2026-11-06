@@ -1,4 +1,4 @@
-"""Production routing, transition draining and bounded callback output."""
+"""Production routing, transition draining and synchronous callback batches."""
 
 import pytest
 import os
@@ -8,7 +8,7 @@ import sys
 from test_callback_chunk_state import scan_data, run_driver, run_process
 
 
-def test_backpressure_and_cleanup():
+def test_synchronous_delivery_and_cleanup():
     env = dict(os.environ, PS_PARALLEL="none")
     output = run_process([sys.executable, str(Path(__file__).with_name("run_callback_stream.py"))], env)
     assert "CALLBACK_STREAM_STRESS_OK" in output

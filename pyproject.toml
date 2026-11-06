@@ -10,7 +10,6 @@ requires-python = ">=3.9"
 # Core dependencies.
 # Analysis excluded psdaq/ (not packaged in wheel, only built with build_daq=true)
 dependencies = [
-    "greenlet>=3.1,<4", # resumable SMD callbacks on the MPI thread
     "numpy",        # 289 imports, 245 files - core array operations
     "h5py",         # 14 imports, 14 files - HDF5 file I/O
     "mpi4py",       # 42 imports, 35 files - parallel processing (requires system MPI)

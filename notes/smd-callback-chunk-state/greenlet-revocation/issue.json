@@ -1,0 +1,11 @@
+{
+  "repository": "slac-lcls/lcls2",
+  "title": "psana2-cpu: bound transition buffering during long SMD callback stretches without a yield",
+  "labels": ["bug", "psana2-cpu"],
+  "label_creation": {
+    "name": "psana2-cpu",
+    "color": "1D76DB",
+    "description": "psana2 CPU processing and event-delivery issues"
+  },
+  "publication": "pending independent review"
+}

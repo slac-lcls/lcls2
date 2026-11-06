@@ -1,5 +1,10 @@
 # Callback chunk-state regression
 
+Historical step-1 record below. The branch now includes the persistent-counter
+fix, and all 24 cases are ordinary passing regressions. See
+[current implementation](greenlet-revocation/README.md) for the removal of
+greenlet and the separately tracked no-yield delivery limitation.
+
 This branch implements the regression-test step only. Runtime callback behavior
 is unchanged. The test asserts that selecting events by physical scan step and
 event position gives the same timestamps for every internal chunk/batch size.
