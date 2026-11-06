@@ -1,0 +1,90 @@
+{
+  "reviewed_commit": "5e8bb5d69212dca801b50a13b1850856c25383d8",
+  "verdict": "pass",
+  "summary": "Round 2 documentation/evidence re-review of the Jungfrau pedestal A/B record at 5e8bb5d69212dca801b50a13b1850856c25383d8. The disputed finding JFAB-R1-001 is resolved in the coordinator's favour: psana/psana/datasource.py:92-121 defines _force_mfx_overrides, which sets os.environ['PS_SMD_N_EVENTS']='1000' whenever the experiment name starts with 'mfx' and the variable is unset, and DataSource calls it at line 207 in the 'exp' branch before any SmdReaderManager is built. The pedestal CLI passes exp='mfx100848724' in -k, so the tools.py:14-21 fallback of 20000 is never reached for this workflow; the round-1 inference that the default already yields one chunk was wrong, and the README (lines 8-17) now states both values and the effective 1000 correctly. The committed default-probe.json (initial None, effective 1000, 4 chunks, 4 callbacks, 0 events, UnboundLocalError, exit 1, resolved_sources under /tmp/jf-callback-ab/unfixed) is consistent with the existing unfixed-step stage1-2 entry in results.json (4 chunks/callbacks, 0 events, same exception, exit 1), and the manifest adds digests for the log, rank JSON and effective-value file. run_matrix.py:28-30 sets PS_SMD_N_EVENTS explicitly for every matrix job and commands.json records 'chunk' per job, so the MFX override did not influence the original 20-job matrix and the round-1 analysis stands. JFAB-R1-002/003/004/005 are addressed by README text (lines 44-47, 92-99, 88-90). JFAB-R1-006 remains deferred and untracked by coordinator decision; UtilsJungfrauCalib.py:336/408 is unchanged. No production code, runtime script, results.json or commands.json changed. One new low, non-blocking finding: the outer wrapper that captured the post-run environment value for the probe is not committed.",
+  "checks": [
+    "Read round-01 review.json, responses.md and context.md; mapped each prior finding to the corresponding README/evidence change.",
+    "psana/psana/datasource.py:92-121: _force_mfx_overrides sets PS_SMD_N_EVENTS='1000' only when exp starts with 'mfx' and the variable is unset; explicit values preserved; also sets batch_size=1 and PS_EB_NODES defaults. Invoked at datasource.py:207 in the 'exp' branch on every rank before data source construction.",
+    "psana/psana/psexp/tools.py:14-21: get_smd_n_events fallback 20000 is only reached if the environment variable is absent at read time, which the MFX override prevents for this workflow.",
+    "README.md lines 8-17: states generic fallback 20000, MFX override 1000, that 100 is forced and 1000 is the effective default, that explicit values are preserved, and that the 10000 workaround is established by observation of one chunk on this run with the variable exported to serial jobs and MPI ranks.",
+    "default-probe.json: initial_smd_n_events null, effective 1000, chunks 4, callback_calls 4, actual_events 0, UnboundLocalError, exit 1, argv matches unfixed-step stage1-2 parameters, resolved_sources point to /tmp/jf-callback-ab/unfixed. Cross-checked against results.json lines 1034-1062 (unfixed-step stage1-2: 4/4/0, same exception, exit 1).",
+    "artifact-manifest.json lines 933-946: new entries for default-effective.txt (5 bytes), default-probe.log and default-probe/rank0.json with SHA256 digests.",
+    "run_stage.py line 26 records PS_SMD_N_EVENTS at import, before DataSource runs, consistent with the probe's initial None; script unchanged from round 1.",
+    "run_matrix.py:28-30 sets PS_SMD_N_EVENTS=str(chunk) for every job; commands.json records 'chunk' per job (e.g. lines 5, 35), so the MFX override was a no-op in the 20-job matrix.",
+    "README lines 44-47 (JFAB-R1-002 mechanism), 88-90 (JFAB-R1-004 post-hoc branches), 92-95 (JFAB-R1-003 two-module provenance), 95-99 (JFAB-R1-005 hard-coded prefix, overlay and fresh directory) present.",
+    "psana/psana/detector/UtilsJungfrauCalib.py: ievt first bound in the loop at line 336 and used at line 408 after the loop; unchanged, JFAB-R1-006 still applicable.",
+    "status.json: round 2, unresolved JFAB-R1-001, deferred JFAB-R1-003 instrumentation and JFAB-R1-006; consistent with responses.md."
+  ],
+  "limitations": [
+    "No commands were run and no tests executed; the default probe result, compile/whitespace/hook checks and the original 20-job matrix are coordinator-supplied evidence.",
+    "The unfixed checkout at /tmp/jf-callback-ab/unfixed is outside the restricted working directory; reads of its datasource.py and run.py were denied. The claim that _force_mfx_overrides exists in 71378658a rests on the coordinator statement and on the probe's observed effective value under the unfixed overlay.",
+    "The worktree gitdir (/sdf/home/m/monarin/lcls2/.git/worktrees/review-02) is outside the restricted directory, so the HEAD SHA could not be read; the reviewed_commit SHA is taken from the review instruction.",
+    "Raw probe artifacts (default-probe.log, default-probe/rank0.json, default-effective.txt) were not read and their SHA256 digests were not verified.",
+    "Could not diff 5e8bb5d69 against d5932e447 to confirm that only notes/ changed; acceptance of unchanged runtime scripts and production code relies on the stated scope and on inspection of run_stage.py, run_matrix.py and UtilsJungfrauCalib.py matching the round-1 descriptions."
+  ],
+  "findings": [
+    {
+      "id": "JFAB-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 8,
+      "evidence": "Resolved. The round-1 inference that the 20000 fallback applies was incorrect: psana/psana/datasource.py:118-119 sets PS_SMD_N_EVENTS='1000' when unset and exp starts with 'mfx', invoked from DataSource at line 207 before SmdReaderManager reads the value. README lines 8-17 now state both values, that 1000 is the effective MFX default, that 100 is forced, and that the 10000 workaround is observed rather than guaranteed. default-probe.json is consistent with results.json unfixed-step stage1-2.",
+      "requested_change": "None. Finding closed; the coordinator's correction is accepted on the basis of the inspected override code."
+    },
+    {
+      "id": "JFAB-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 44,
+      "evidence": "Resolved. README lines 44-47 explain that the resumed open step is yielded at callback-local index 0 and the next BeginStep at local index 1, so local index 2 is never reached in small/step-sized chunks. Matches run.py RunSmallData.steps() in this checkout as verified in round 1; the unfixed copy could not be read (see limitations).",
+      "requested_change": "None."
+    },
+    {
+      "id": "JFAB-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 92,
+      "evidence": "Resolved for this record. README lines 92-95 state provenance evidence covers UtilsJungfrauCalib and smdreader_manager only, with remaining modules selected by the uniform overlay; instrumentation expansion deferred to future runs. default-probe.json also records only these two resolved paths.",
+      "requested_change": "None for this commit; include additional resolved module paths in future runs as previously requested."
+    },
+    {
+      "id": "JFAB-R1-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 88,
+      "evidence": "Resolved. README lines 88-90 label analyze.py's expected pre-fix branches as written after inspecting the runs and specific to run 49, these chunk sizes and selection parameters.",
+      "requested_change": "None."
+    },
+    {
+      "id": "JFAB-R1-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 95,
+      "evidence": "Resolved. README lines 95-99 document the hard-coded user source prefix, the required overlay path and the fixed artifact directory that must be absent for a fresh run.",
+      "requested_change": "None."
+    },
+    {
+      "id": "JFAB-R1-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/detector/UtilsJungfrauCalib.py",
+      "line": 408,
+      "evidence": "Open, deferred by coordinator. ievt is first bound inside the loop at line 336 and formatted as ievt+1 at line 408, so an empty step still raises UnboundLocalError; reproduced again by the default probe. responses.md states no follow-up issue was created.",
+      "requested_change": "No change to this commit. Track the serial stage-1 empty-step handling in a follow-up issue when convenient; remains non-blocking."
+    },
+    {
+      "id": "JFAB-R2-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/default-probe.json",
+      "line": 3,
+      "evidence": "effective_smd_n_events is not a field produced by run_stage.py (which records only the pre-DataSource value at line 26). It was captured by an outer wrapper's finally block writing default-effective.txt, but that wrapper and its environment/PYTHONPATH setup are not committed; default-probe.json records argv and resolved_sources only.",
+      "requested_change": "Commit the small wrapper or the exact shell command (overlay PYTHONPATH, PS_PARALLEL, unset PS_SMD_N_EVENTS) used for the probe so the effective-value measurement is reproducible from the checkout. Not required for this round."
+    }
+  ]
+}

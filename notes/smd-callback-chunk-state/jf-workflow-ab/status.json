@@ -1,24 +1,31 @@
 {
   "scope": "Real Jungfrau pedestal workflow pre-fix/fixed chunk-size A/B",
-  "phase": "round-1 documentation responses; re-review pending",
+  "phase": "review passed",
   "round": 2,
   "round_limit": 3,
   "unfixed_source": "71378658a54dcdd941c9137355a985fa4b637595",
   "fixed_source": "b60fae55728e7d138747db57fad2c84c10543910",
-  "reviewed_commit": null,
+  "reviewed_commit": "5e8bb5d69212dca801b50a13b1850856c25383d8",
   "checks": {
     "matrix": "20 expected outcomes verified: 18 process successes and 2 reproduced pre-fix stage-1 failures; unfixed small-chunk stage-2 inputs and arrays mismatch as expected",
     "compile": "passed",
     "source_provenance": "UtilsJungfrauCalib and smdreader_manager resolved paths checked on all ranks; uniform overlay for remaining modules",
     "default_probe": "Unset PS_SMD_N_EVENTS becomes MFX default1000; expected pre-fix stage1-step2 failure reproduced with zero selected events"
   },
-  "unresolved_findings": [
-    "JFAB-R1-001"
-  ],
+  "unresolved_findings": [],
   "artifacts": "/tmp/jf-callback-ab/matrix",
-  "implementation_commit": "d5932e447b2ea63d7bdd3c666d2063a4926dc8cc",
+  "implementation_commit": "5e8bb5d69212dca801b50a13b1850856c25383d8",
   "deferred_findings": [
     "JFAB-R1-003 instrumentation extension",
-    "JFAB-R1-006"
+    "JFAB-R1-006 empty-step application handling"
+  ],
+  "review_verdict": "pass",
+  "addressed_findings": [
+    "JFAB-R1-001",
+    "JFAB-R1-002",
+    "JFAB-R1-003 documentation",
+    "JFAB-R1-004",
+    "JFAB-R1-005",
+    "JFAB-R2-001 probe command retained in review response"
   ]
 }

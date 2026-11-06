@@ -112,3 +112,9 @@ reports, gates and numeric snapshots remain under `/tmp/jf-callback-ab/matrix`;
 artifact-manifest.json records their SHA256 digests. The preliminary pilot used
 a string-valued monitor option and is excluded; the final matrix passes a
 Python boolean and is the evidence summarized above.
+
+Independent Claude review passed after two rounds at
+`5e8bb5d69212dca801b50a13b1850856c25383d8`, with no blocking findings.
+The reviewer accepted the MFX-default correction after inspecting DataSource.
+See round-02/responses.md for remaining optional follow-ups and the exact
+default-probe command. Subsequent edits contain review records only.
