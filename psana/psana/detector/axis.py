@@ -53,4 +53,8 @@ class axis_raw_1_0_0(AreaDetectorRaw):
         return self.calib(evt, nda=nda) if use_calib else\
                AreaDetectorRaw.image(self, evt, nda=nda, **kwa)
 
+    def _shape_as_daq(self):
+        return None if is_none(self._raw_shape, 'det.raw._shape_as_daq() is None', logger.warning) else\
+               self._raw_shape
+
 #EOF
