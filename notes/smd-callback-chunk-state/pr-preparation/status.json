@@ -1,5 +1,5 @@
 {
-  "phase": "final-ci-running",
+  "phase": "complete-pr-open-awaiting-github-review",
   "branch": "fix/smd-callback-persistence",
   "base_sha": "9ab5c193b4277e44e3e8ef9563d830c8943fede3",
   "implementation_sha": "7ddd3f4fd0b8273ba32ec67ad978d1ffe8801005",
@@ -12,7 +12,10 @@
     "byhand": "4 passed, 126.70s",
     "jungfrau_matrix": "pass: master default fails, master10000/fixed default select50, identical full gates",
     "two_slot_mpi": "20 passed, 21 deselected; 108.76s",
-    "first_github_ci": "DAQ/changelog passed; psana20MPIlaunchfailures from slot limit; fixed launcher"
+    "first_github_ci": "DAQ/changelog passed; psana20MPIlaunchfailures from slot limit; fixed launcher",
+    "github_psana": "100 passed, 3 skipped; workflow success on final head",
+    "github_daq": "success on final head",
+    "github_changelog": "success on final head"
   },
   "artifacts": "/tmp/smd-callback-pr",
   "reviewed_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
@@ -23,6 +26,6 @@
   ],
   "pr_url": "https://github.com/slac-lcls/lcls2/pull/287",
   "pr_head_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
-  "github_approval": "required; not requested or bypassed",
+  "github_approval": "required; PR open and unmerged",
   "latest_code_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3"
 }

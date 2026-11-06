@@ -30,8 +30,8 @@ python -m pytest psana/psana/tests/byhand_*
 
 Fresh build against master `9ab5c193b`: **142 passed, 5 skipped, 2 deselected** in
 the core suite; **4 passed** in the longer MPI group. All 59 callback cases passed.
-The 20 MPI cases also passed with an explicit two-slot limit using the portable
-`mpirun --oversubscribe` launcher option.
+The 20 MPI cases also passed with an explicit two-slot limit using the explicit
+Open MPI `mpirun --oversubscribe` launcher option.
 
 Protected real-data comparison of Mikhail's exact command, 50 frames across all 32 panels:
 
@@ -56,6 +56,6 @@ Production code is unchanged from the full-suite and real-data validation at
 
 - [x] Updated `CHANGELOG.md` under Unreleased/Fixed with the PR link.
 - [x] Described the problem and solution.
-- [ ] All GitHub Actions checks pass (running).
+- [x] All GitHub Actions checks pass on `38010bfb1`: [psana](https://github.com/slac-lcls/lcls2/actions/runs/42297812200) (100 passed, 3 skipped), [DAQ](https://github.com/slac-lcls/lcls2/actions/runs/42297812297), and [changelog](https://github.com/slac-lcls/lcls2/actions/runs/42297812205).
 - [x] Issue linkage checked: #284 is a separate deferred follow-up and remains
   open; this PR intentionally has no issue-closing reference.

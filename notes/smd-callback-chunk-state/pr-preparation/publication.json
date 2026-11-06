@@ -1,0 +1,46 @@
+{
+  "url": "https://github.com/slac-lcls/lcls2/pull/287",
+  "state": "open",
+  "draft": false,
+  "head_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
+  "base_sha": "9ab5c193b4277e44e3e8ef9563d830c8943fede3",
+  "mergeable": true,
+  "mergeable_state": "blocked",
+  "labels": [
+    "bug",
+    "psana2-cpu"
+  ],
+  "changed_files": 15,
+  "workflow_runs": [
+    {
+      "id": 42297812205,
+      "name": "Check changelog",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/slac-lcls/lcls2/actions/runs/42297812205",
+      "head_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3"
+    },
+    {
+      "id": 42297812297,
+      "name": "Test DAQ",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/slac-lcls/lcls2/actions/runs/42297812297",
+      "head_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3"
+    },
+    {
+      "id": 42297812200,
+      "name": "Test psana",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/slac-lcls/lcls2/actions/runs/42297812200",
+      "head_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3"
+    }
+  ],
+  "psana_ci_summary": [
+    "2026-11-06T21:42:41.4573699Z ================== 100 passed, 3 skipped in 307.16s (0:05:07) =================="
+  ],
+  "reviewed_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
+  "review_verdict": "pass",
+  "merged": false
+}
