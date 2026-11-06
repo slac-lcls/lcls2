@@ -6,8 +6,10 @@ from psana.eventbuilder import EventBuilder
 from psana.smdreader import SmdReader
 from psana.psexp.prometheus_manager import get_prom_manager
 from psana.psexp.tools import get_smd_n_events
+from psana.psexp import TransitionId
 
 from .callback_batch import CallbackBatchBuilder
+from .callback_stream import StreamingCallbackBatches
 from .run import CallbackRunState, RunSmallData
 
 
@@ -105,6 +107,7 @@ class SmdReaderManager(object):
         self.read_gauge = get_prom_manager().get_metric("psana_smd0_read")
         self._read_bytes = []
         self._read_times = []
+        self._callback_batches = None
 
     def check_transfer_complete(self):
         """
@@ -236,6 +239,9 @@ class SmdReaderManager(object):
                         for ba_buf, config in zip(bytearray_bufs, self.configs)
                     ]
 
+                if dgrams[0].service() == TransitionId.BeginRun:
+                    self.close()
+                    self._callback_batches = None
                 return dgrams
 
             # Check if no more data will ever arrive
@@ -374,6 +380,14 @@ class SmdReaderManager(object):
         Returns a batch of events as an iterator object.
         Used by non-parallel (serial) mode.
         """
+        if self.dsparms.smd_callback:
+            if self._callback_batches is not None:
+                raise StopIteration
+            self._callback_batches = StreamingCallbackBatches(
+                self._callback_builders(), self.configs, self.dsparms, run_serial=True,
+            )
+            return self._callback_batches
+
         if self.dsparms.max_events and self.processed_events >= self.dsparms.max_events:
             raise StopIteration
 
@@ -393,6 +407,19 @@ class SmdReaderManager(object):
         )
         self.got_events = self.smdr.view_size
         return batch_iter
+
+    def _callback_builders(self):
+        for _ in self.chunks():
+            yield EventBuilder(
+                [self.smdr.show(i) for i in range(self.n_files)],
+                self.configs, filter_timestamps=self.dsparms.timestamps,
+                intg_stream_id=self.dsparms.intg_stream_id,
+                batch_size=self.dsparms.batch_size, use_proxy_events=True,
+            )
+
+    def close(self):
+        if self._callback_batches is not None:
+            self._callback_batches.close()
 
     @property
     def min_ts(self):
