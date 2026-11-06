@@ -1,7 +1,5 @@
 """Regression contract: per-step selection must not depend on SMD chunk size.
 
-Split-chunk cases currently xfail on the exact timestamp mismatch only. Run
-with --runxfail to see the bug; remove the marks when callback lifetime is fixed.
 Requires the locally built psana environment, xtcwriter/smdwriter and mpirun.
 """
 
@@ -20,7 +18,7 @@ RESULT_PREFIX = "CALLBACK_CHUNK_RESULT="
 
 
 class CallbackSelectionMismatch(AssertionError):
-    """Only a completed callback run's selection mismatch is an expected bug."""
+    """A completed callback run selected incorrect event timestamps."""
 
 
 def run_process(command, env):
@@ -83,18 +81,12 @@ def scan_data(tmp_path_factory):
     return xtc_dir, steps
 
 
-SPLIT_CHUNK_BUG = pytest.mark.xfail(
-    strict=True, raises=CallbackSelectionMismatch,
-    reason="SMD callback reinvocation resets local step/event counters across chunks",
-)
-
-
 @pytest.mark.parametrize("execution", ["serial", "mpi"])
 @pytest.mark.parametrize("batch_size", [1, 3], ids=["batch1", "batch3"])
 @pytest.mark.parametrize("chunk_size", [
     pytest.param(100, id="whole_run"),
-    pytest.param(4, marks=SPLIT_CHUNK_BUG, id="chunk4"),
-    pytest.param(7, marks=SPLIT_CHUNK_BUG, id="chunk7"),
+    pytest.param(4, id="chunk4"),
+    pytest.param(7, id="chunk7"),
 ])
 @pytest.mark.parametrize("stepnum", [None, 1], ids=["all_steps", "step1"])
 def test_callback_step_selection(scan_data, execution, batch_size, chunk_size, stepnum):
@@ -113,7 +105,11 @@ def test_callback_step_selection(scan_data, execution, batch_size, chunk_size, s
     # These are ordinary failures, never hidden by the expected-failure mark.
     assert len(result["trace"]) == 30, result
     assert [row[3] for row in result["trace"]] == [ts for step in steps for ts in step], result
-    assert result["invocations"] >= 1, result
+    assert result["invocations"] == 1, result
+    assert result["chunks"] == (30 + chunk_size - 1) // chunk_size, result
+    assert result["trace"] == [
+        [1, istep, ievt, ts] for istep, step in enumerate(steps) for ievt, ts in enumerate(step)
+    ]
     if result["selected"] != expected:
         raise CallbackSelectionMismatch(
             f"{execution=}, {chunk_size=}, {batch_size=}, {stepnum=}\n"

@@ -1,0 +1,17 @@
+{
+  "scope": "Step 3 production integration",
+  "phase": "final_core_validation_pending",
+  "branch": "tests/smd-callback-chunk-state",
+  "review_loop": "active for whole session",
+  "round": 0,
+  "round_limit": 3,
+  "checks": {
+    "development_matrix": "24 passed with --runxfail",
+    "development_focused": "54 passed",
+    "development_lifecycle": "5 passed",
+    "core": "pending at frozen code SHA",
+    "byhand": "pending at frozen code SHA"
+  },
+  "unresolved_ids": [],
+  "artifacts": "/tmp/smd-callback-step03"
+}
