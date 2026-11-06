@@ -928,5 +928,20 @@
     "path": "/tmp/jf-callback-ab/analysis.log",
     "bytes": 2089,
     "sha256": "2c7cc45a420c76963d9a9b2287eab40fe7c4a5af6f244629258fee5cfc3004cb"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/default-effective.txt",
+    "bytes": 5,
+    "sha256": "83c02ac2d48c863dab2ccf6870455aadfc2cec073b8db269b517c879d76aa6d9"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/default-probe.log",
+    "bytes": 10419,
+    "sha256": "1d371ddc1efbed832bfc3b72852d5f0c2ed5dae90356f730adff1e1ab3b5b862"
+  },
+  {
+    "path": "/tmp/jf-callback-ab/default-probe/rank0.json",
+    "bytes": 1045,
+    "sha256": "14a82de9953e62a9d7e908e3dc9f57aacc68040dd68df95c8d5705aba05d73e1"
   }
 ]

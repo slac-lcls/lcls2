@@ -1,0 +1,85 @@
+{
+  "reviewed_commit": "d5932e447b2ea63d7bdd3c666d2063a4926dc8cc",
+  "verdict": "pass",
+  "summary": "Round 1 review of the real-data Jungfrau pedestal A/B harness and report at d5932e447b2ea63d7bdd3c666d2063a4926dc8cc (notes-only change over b60fae557). The committed README, scope, scripts (prepare.py, run_matrix.py, run_stage.py, analyze.py), results.json, commands.json, artifact-manifest.json and status.json are present and mutually consistent. Every claim checked in the README is traceable to results.json or commands.json: 18 exit-0 jobs, two pre-fix stage1-step2 exit-1 jobs with zero selected events and UnboundLocalError, callback/chunk counts 31/4/1 for stage 2, 300 vs 30 stage-2 events for unfixed-small, exact timestamp and gate/array equality for all correct cases, and the quoted pixel-difference counts and max-abs-diffs. The manifest independently corroborates the array equivalence: rank2-gain0/1/2.npz SHA256 values are byte-identical for fixed-large, fixed-small, unfixed-large and unfixed-step, and differ only for unfixed-small; all six gate files share digests with the reference across every stage-2 repo. The production code paths match the report: UtilsJungfrauCalib.py:220-240 selects the stage-1 callback for nrecs==nrecs1, line 336 never initialises ievt so line 408 raises UnboundLocalError when a step yields no events (the MPI variant initialises ievt at UtilsJungfrauCalibMPI.py:209), UtilsJungfrauCalibMPI.py:137-151 implements the [evskip:nrecs] window, and the MPI summary reduces before calling the patched DarkProcJungfrau.summary so captured arrays are post-reduction. Instrumentation is observational: the callback wrapper only counts and re-yields, build_batch/raw/summary wrappers call the originals, the dict-form -k string is eval'd so monitor=False is a Python boolean, deploy defaults False and deploy_constants_for_data_and_metadata gates DB writes on it, and only jungfrauemu overrides raw so the AreaDetectorRaw.raw patch reaches the real detector. Non-blocking findings concern missing context (default PS_SMD_N_EVENTS is 20000, which already fits this 3000-event run), an unexplained but explainable 'step 1 happens to work' statement, a two-module-only provenance check, post-hoc hard-coded acceptance expectations, hard-coded user-specific paths, and the latent production empty-step crash that deserves its own issue. None of the prior finding IDs (CBS-R1/R2, CBI-R1, REV1) apply to this notes-only harness.",
+  "checks": [
+    "Read README.md and scope.md; every quantitative claim (exit codes, counts, chunk/callback totals, pixel-difference counts, max-abs-diffs, 31/4/1 views) cross-checked against results.json and commands.json entries.",
+    "commands.json: 20 jobs, all timed_out=false, overlays match version (fixed -> /tmp/smd-callback-chunk-state/python, unfixed -> /tmp/jf-callback-ab/unfixed-python), PS_SMD_N_EVENTS per case, mpirun -n 5 with --mca osc ^ucx for stage 2, no --deploy/--submit/--wrapper, monitor=False inside the dict-form -k string, explicit dir.",
+    "artifact-manifest.json: stage-2 rank2-gain{0,1,2}.npz SHA256 identical across fixed-large, fixed-small, unfixed-large, unfixed-step and different for unfixed-small; all six gate .npy digests identical in every stage2-repo copy and in each successful stage1-repo; failed stage1-2 jobs logged under scripts/jungfrau_dark_proc (dettype never set), consistent with early failure.",
+    "run_stage.py: wrappers call originals (open_DataSource, build_batch, AreaDetectorRaw.raw, DarkProcJungfrau.summary, detector_name_short with add_shortname=False, _get_file_info_from_db stub); asserts exclude --deploy/-D/--submit/--wrapper; rank report always written in finally; exceptions re-raised so exit code is nonzero.",
+    "run_matrix.py: stages run sequentially with 240 s process-group timeout; stage-2 gate directory copied from fixed-large reference for every case; PS_PARALLEL/PS_EB_NODES/PS_SRV_NODES set per stage.",
+    "analyze.py: oracle uniqueness asserted; timestamps compared as sorted lists retaining duplicates; elementwise array comparison with NaN handling; acceptance asserts 20 items, rank_reports 5/1, expected failures for unfixed-small/unfixed-step stage1-2, repeated-window case requires exit 0 with [100,100,100] and unequal arr_av1; all other cases require exact timestamps and equal arrays.",
+    "prepare.py: unfixed overlay built by symlinking every file of the fixed overlay and redirecting source-tree targets to /tmp/jf-callback-ab/unfixed, so native .so links stay shared; oracle read via direct-file SMD stream 0 with skip_calib_load='all'.",
+    "psana/psana/app/jungfrau_dark_proc.py: do_main dispatches to UtilsJungfrauCalibMPI.jungfrau_dark_proc when wrapper==0; deploy/save default False.",
+    "psana/psana/detector/UtilsJungfrauCalib.py: stage1_filter_callback (220-240) requires nrecs==nrecs1>0 and yields evskip<=ievt<nrecs for istep==stepnum; event loop at 336 does not initialise ievt, post-loop log at 408 uses ievt+1 -> UnboundLocalError on an empty step, matching the recorded exception; save_block_results on status==1.",
+    "psana/psana/detector/UtilsJungfrauCalibMPI.py: open_DataSource bound via ujc attribute at import (line 32-33) but the application calls open_DataSource(**kwargs) with smd_callback=filter_callback; the patched ujc.open_DataSource took effect, confirmed by nonzero stage-2 callback_calls; DarkProcJungfrauMPI.summary reduces via smd.sum/max/min/bor then calls DarkProcJungfrau.summary on the reduction rank only, so the captured npz is the merged result; jungfrau_deploy_dark_direct writes merge_tmp files but deploy_constants_for_data_and_metadata only touches the DB when deploy is True.",
+    "psana/psana/detector/UtilsCalib.py: summary computes arr_av1/arr_rms/arr_sta from arr_sum0/1/2 and status counters; add_event gates on gate_lo/gate_hi, so identical gates plus identical selected events imply identical arrays.",
+    "psana/psana/psexp/tools.py: PS_SMD_N_EVENTS read by get_smd_n_events with default 20000. psana/psana/psexp/utils.py: dict-form -k string parsed with eval, so monitor=False is a boolean. Only psana/detector/jungfrauemu.py overrides raw(), so the AreaDetectorRaw.raw patch reaches the real jungfrau detector.",
+    "psana/psana/psexp/run.py RunSmallData.steps() (853-883): an open step is resumed as local index 0 at chunk start via callback_run_state.in_step, explaining why --stepnum 1 selects correctly in per-chunk callbacks while --stepnum 2 never matches.",
+    "Prior finding IDs CBS-R1-001/002, CBI-R1-001/002/003, CBS-R2-001..004 and REV1-01 reviewed; none applies to this notes-only harness, so new JFAB-R1 IDs are used."
+  ],
+  "limitations": [
+    "No commands were run and no tests executed; all runtime results (20-job matrix, exit codes, analyze.py pass, compile/hook checks) are coordinator-supplied.",
+    "Raw artifacts under /tmp/jf-callback-ab (stdout logs, rank JSON, npz/npy, oracle.json, preparation.log, analysis.log) were not read and their SHA256 digests were not verified; conclusions rely on the committed results.json/commands.json/artifact-manifest.json.",
+    "The unfixed checkout 71378658a at /tmp/jf-callback-ab/unfixed was not inspected; the claim that application/calibration and .pyx sources are identical between A and B, and that unfixed RunSmallData has the in_step resume behaviour, rests on coordinator statements and on observed counts.",
+    "Could not run git diff to confirm that d5932e447 differs from b60fae557 only in notes/; acceptance of the previously passed core groups (125 + 4) for this commit relies on that stated property.",
+    "Native smdreader view_size/batch-cut semantics (whether transitions count toward PS_SMD_N_EVENTS) were not inspected; the 31/4/1 nonempty-view counts are taken from the reports.",
+    "Single detector panel (--segind 0), small statistics (10-12 events per step) and one run layout; numeric equality shows A/B equivalence, not independent correctness of the pedestal algorithm."
+  ],
+  "findings": [
+    {
+      "id": "JFAB-R1-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 3,
+      "evidence": "README concludes that raising PS_SMD_N_EVENTS to fit the whole run works around the bug, but never states the production default. psana/psana/psexp/tools.py:14-21 defaults PS_SMD_N_EVENTS to 20000, so for this 3000-event run the unmodified default already yields the single-chunk 'large' behaviour; the 100- and 1000-event settings are artificially induced. Readers cannot tell from the README whether a default production stage-2 run of run 49 is affected.",
+      "requested_change": "State the default (20000) in the README, note that the small-chunk cases are forced below the default, and phrase the workaround conditionally: the pre-fix bug manifests only when a run's SMD stream exceeds PS_SMD_N_EVENTS (so a step or step boundary spans chunks), and the workaround is to set it above the run's total event count, with the env var exported to all MPI ranks."
+    },
+    {
+      "id": "JFAB-R1-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/README.md",
+      "line": 31,
+      "evidence": "README says '--stepnum 1 happens to work for this input layout' without explanation. psana/psana/psexp/run.py:853-861 shows RunSmallData.steps() first yields the still-open step (local index 0) when callback_run_state.in_step is set, then the chunk's BeginStep as local index 1. Hence in per-chunk callbacks the physical step whose BeginStep is in the chunk is always local index 1 and local index 2 is never reached, which matches results.json (unfixed-small stage1-1: 11 callbacks, 10 correct events; stage1-2: 31 callbacks, 0 events; unfixed-step stage1-2: 4 callbacks, 0 events).",
+      "requested_change": "Add one or two sentences explaining the mechanism (resumed open step at local index 0, next BeginStep at local index 1), so readers do not treat the step-1 success as a coincidence or infer that other nonzero steps might pass. If the unfixed checkout lacks callback_run_state, state the actual mechanism observed in its logs instead."
+    },
+    {
+      "id": "JFAB-R1-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/run_stage.py",
+      "line": 89,
+      "evidence": "report['sources'] records only UtilsJungfrauCalib and smdreader_manager. The fix also lives in run.py, step.py, node.py, eventbuilder_manager.py, callback_batch.py and callback_stream.py; the status.json statement 'all rank reports resolve to their selected checkout' therefore covers two of the relevant modules. The uniform symlink construction in prepare.py and the differing callback counts make mis-selection unlikely, but it is not directly evidenced.",
+      "requested_change": "In future runs include the resolved paths of psana.psexp.run, node, eventbuilder_manager and the callback modules (and the smdreader .so path) in the rank report; for this record, add a README sentence that provenance was checked for two modules and that the overlay construction is uniform."
+    },
+    {
+      "id": "JFAB-R1-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/analyze.py",
+      "line": 84,
+      "evidence": "Acceptance expectations are hard-coded to the observed layout: missing_step for unfixed-small/unfixed-step stage1-2 only, repeated_window with per_step_counts == [100,100,100]. These encode results post hoc rather than being derived from the oracle and chunk size, so the script is a record of this run rather than a reusable regression test.",
+      "requested_change": "State in the README that analyze.py's expected-outcome branches are specific to run 49 with the chosen chunk sizes and nrecs/evskip, or derive the expected pre-fix counts from the oracle step lengths and PS_SMD_N_EVENTS."
+    },
+    {
+      "id": "JFAB-R1-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/jf-workflow-ab/prepare.py",
+      "line": 23,
+      "evidence": "prepare.py hard-codes the prefix /sdf/home/m/monarin/lcls2/psana/psana/ and /tmp/smd-callback-chunk-state/python; run_matrix.py hard-codes /tmp/jf-callback-ab/matrix and shutil.copytree fails if the target exists. The README mentions a fresh artifact directory but not the user-specific prefix.",
+      "requested_change": "Document the hard-coded prefix and overlay path as prerequisites (or read them from environment variables) so another operator can reproduce the matrix without editing the scripts."
+    },
+    {
+      "id": "JFAB-R1-006",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/detector/UtilsJungfrauCalib.py",
+      "line": 408,
+      "evidence": "The event loop at line 336 does not initialise ievt; line 408 formats ievt+1 after the loop, so any step that yields zero events crashes with UnboundLocalError (the reproduced pre-fix stage1-step2 failure). The MPI path initialises ievt = 0 at UtilsJungfrauCalibMPI.py:209. The README correctly reports this as a secondary problem and makes no change, but nothing tracks it.",
+      "requested_change": "Open a follow-up issue for the serial stage-1 empty-step handling (initialise ievt, log the zero-event condition explicitly). No change to this commit is required."
+    }
+  ]
+}

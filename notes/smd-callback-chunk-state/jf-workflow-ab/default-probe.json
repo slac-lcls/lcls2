@@ -1,0 +1,29 @@
+{
+  "initial_smd_n_events": null,
+  "effective_smd_n_events": 1000,
+  "actual_events": 0,
+  "chunks": 4,
+  "callback_calls": 4,
+  "exception": "UnboundLocalError(\"local variable 'ievt' referenced before assignment\")",
+  "exit_code": 1,
+  "argv": [
+    "-k",
+    "{'exp': 'mfx100848724', 'run': 49, 'dir': '/sdf/data/lcls/ds/mfx/mfx100848724/xtc', 'monitor': False}",
+    "-d",
+    "jungfrau",
+    "-o",
+    "/tmp/jf-callback-ab/default-probe-repo",
+    "--nrecs",
+    "10",
+    "--nrecs1",
+    "10",
+    "--stepnum",
+    "2",
+    "--segind",
+    "0"
+  ],
+  "resolved_sources": {
+    "calibration": "/tmp/jf-callback-ab/unfixed/psana/psana/detector/UtilsJungfrauCalib.py",
+    "smdreader": "/tmp/jf-callback-ab/unfixed/psana/psana/psexp/smdreader_manager.py"
+  }
+}

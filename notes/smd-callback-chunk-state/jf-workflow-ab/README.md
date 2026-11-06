@@ -5,6 +5,17 @@ data. Raising PS_SMD_N_EVENTS to fit the entire run in one chunk works around
 both the step- and event-counter resets in this measured case. Fitting a single
 step per chunk is insufficient for the full two-stage workflow.
 
+The generic fallback in psexp/tools.py is 20000, but DataSource's
+`_force_mfx_overrides()` sets **1000 for MFX when PS_SMD_N_EVENTS is unset**,
+before that fallback is used. Explicit environment values are preserved in both
+tested revisions. Therefore 100 is a forced stress setting; 1000 is also the
+effective default for this MFX workflow. A separate unset-variable probe of the
+unfixed stage-1 step-2 job confirmed effective value 1000 and the same failure.
+The successful workaround here is `export PS_SMD_N_EVENTS=10000` inherited by
+the serial jobs and MPI ranks. Its sufficiency is established by observing one
+actual chunk on this run, not by assuming the setting guarantees a single chunk
+for every input/buffer configuration or a larger/live run.
+
 Data: mfx100848724 run 49, detector jungfrau, three physical steps of 1000
 events. The documented example run is available locally; Mikhail's latest
 private command was not verified. Numerical processing uses supported
@@ -30,6 +41,10 @@ raises `UnboundLocalError: local variable 'ievt' referenced before assignment`
 in its post-loop logging. This exposes a secondary empty-selection handling
 problem; no changes to that application code were made. Step 1 happens to work
 for this input layout; it is not correct to claim every nonzero step fails.
+In the unfixed RunSmallData.steps(), a resumed open step is yielded first, at
+callback-local index 0. A subsequent BeginStep in the same boundary chunk is
+then local index 1. This explains the observed step-1 success; local index 2 is
+never reached in these small/step-sized chunks, even at physical step 2.
 
 Stage 2 uses `--evskip 2 --nrecs 12 --nrecs1 0`, selecting indices [2:12]
 within each physical step: 10 per step, 30 total. Unfixed 100-event chunks
@@ -70,6 +85,18 @@ In particular, unfixed 1000 is not a successful end-to-end workaround.
 - `analyze.py` checks all 20 outcomes, including expected pre-fix failures.
   Raw timestamps retain duplicates for comparison; matching counts alone do
   not constitute a pass. Gate and output arrays are compared elementwise.
+  The expected pre-fix outcome branches were written after inspecting the runs
+  and are specific to run 49, these chunk sizes and these selection parameters;
+  this is an experiment record, not a general reusable regression test.
+
+Per-rank source provenance checks cover two modules: UtilsJungfrauCalib and
+smdreader_manager. The uniformly constructed overlay selects the remaining
+Python sources from the same checkout, but their resolved paths were not all
+recorded. Future runs can expand that instrumentation. The scripts hard-code
+Mona's source prefix `/sdf/home/m/monarin/lcls2/psana/psana/` and existing source
+overlay `/tmp/smd-callback-chunk-state/python`; another operator must adapt
+those paths or provide the same layout. Matrix artifacts are fixed at
+`/tmp/jf-callback-ab/matrix`, which must be absent for a fresh complete run.
 
 Run preparation with the fixed overlay first on PYTHONPATH and PS_PARALLEL=none.
 Run the matrix in a fresh setup_env.sh environment; its subprocesses select
