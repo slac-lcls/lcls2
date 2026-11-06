@@ -12,7 +12,6 @@ truncates the run silently -- this counts to the known run size instead.
 No max_events: the cap is what hid the defect, since a capped run stops
 before EndRun is ever reached.
 """
-import os
 import sys
 from psana import DataSource
 from psana.gpu import GpuTask
