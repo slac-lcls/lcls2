@@ -1,0 +1,13 @@
+{
+  "phase": "published",
+  "documentation_sha": "4b02b9ca5eed530afda8f1ae383d93b4a628e555",
+  "pr_code_sha": "38010bfb13110f4bef0da3c8d235c466d06946a3",
+  "round": 1,
+  "round_limit": 3,
+  "unresolved_ids": [],
+  "review_verdict": "pass",
+  "deferred_nonblocking": [
+    "PRDESC-R1-001: optional local-file discovery detail; harness linked"
+  ],
+  "pr_url": "https://github.com/slac-lcls/lcls2/pull/287"
+}

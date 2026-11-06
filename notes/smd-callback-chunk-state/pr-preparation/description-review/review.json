@@ -1,0 +1,39 @@
+{
+  "reviewed_commit": "4b02b9ca5eed530afda8f1ae383d93b4a628e555",
+  "verdict": "pass",
+  "summary": "Documentation commit 4b02b9ca5 passes. The PR body's \"How to test the behavior?\" section now centers on Mikhail's command exactly as recorded in jf-commands.json and run_case.py (-k exp=mfx100848724,run=49 -d jungfrau -o ./work1 --nrecs 50 --nrecs1 50 --stepnum 2), with the serial environment (PS_PARALLEL=none) and unset PS_SMD_N_EVENTS matching run_jf.py's harness environment. The before/after table matches jf-results.json: master 9ab5c193b default -> exit 1, 0 raw events, 0 gate files, UnboundLocalError on 'ievt'; fixed default -> exit 0, 50 events equal to oracle step 2 [:50], 2 gate files of shape 32x512x1024; master with 10000 -> identical gates (exact_equal true). The \"effective MFX default 1000\" claim is confirmed by psana/psana/datasource.py:118-119. The body distinguishes the protected instrumented measurements (isolated outputs, readonly name lookup, blocked calibration writes) from the proposed direct manual reviewer command and asks the reviewer to confirm the command works. #284 is stated as a separate open follow-up with no closing reference; production SHA 38010bfb1 and the GitHub check results (100 passed, 3 skipped) match publication.json. Local counts (142 core, 4 byhand) match validation.md. One low, non-blocking finding: the harness also stubbed logbook file discovery (_get_file_info_from_db -> {}), which the body's protection list omits.",
+  "checks": [
+    "Read pr-body.md and description-review/scope.md; confirmed Motivation / How to test / Checklist structure retained and the test section centers on Mikhail's command with before/after table and explicit reviewer confirmation request",
+    "Compared the manual command in pr-body.md:25-28 against run_case.py CLI (lines 9-10) and all three entries in jf-commands.json: identical flags and values; PS_PARALLEL=none asserted in run_case.py:13 and set in run_jf.py:46; PS_SMD_N_EVENTS popped in run_jf.py:48 for the default cases",
+    "Verified before/after table against jf-results.json: master-default exit 1, raw_events 0, gate_files 0, UnboundLocalError 'ievt'; fixed-default exit 0, raw_events 50, timestamps_exact true, gate_files 2; master-10000 exit 0, gates exact_equal true, shape [32,512,1024]",
+    "Verified analyze_jf.py compares raw/callback timestamps to oracle steps[2][:50] (line 14, 37), supporting the 'from step 2' claim, and asserts datasource_class SerialDataSource",
+    "Confirmed run_jf.py:16-17 asserts master checkout HEAD == 9ab5c193b..., matching the 'Before: master 9ab5c193b' row and publication.json base_sha",
+    "Confirmed effective MFX default: psana/psana/datasource.py:118-119 sets PS_SMD_N_EVENTS=1000 when unset for mfx experiments; both default-case reports record effective_smd_n_events '1000'",
+    "Confirmed UnboundLocalError source: UtilsJungfrauCalib.py:407-408 references ievt after an empty event loop for a step; stage-1 callback filter at lines 220-240 uses enumerate counters per the Motivation text",
+    "Confirmed harness protections stated in body: readonly_name forces add_shortname=False (run_case.py:62-66), mdb post/put/delete_cmd patched to raise (lines 69-82), fresh cwd refuses existing work1 (line 12); blocked_mutations empty in all reports",
+    "Confirmed GitHub check claims (psana 100 passed, 3 skipped; DAQ and changelog success; run IDs 42297812200/42297812297/42297812205; head 38010bfb1) against publication.json",
+    "Confirmed local counts: validation.md reports 142 passed core, 4 byhand passed; byhand_mpi.py and byhand_run_steps.py are MPI-based",
+    "Confirmed #284 is described only as separate deferred follow-up (pr-body.md:14-16, 58-59) with no Fixes/Closes keyword",
+    "Confirmed gate output path under ./work1/jungfrau/block_results in jf-manifest.json matches 'writes gate_lo and gate_hi arrays under ./work1'",
+    "Confirmed round-02/review.json production review at 38010bfb1 passed with zero findings and PRCB-R1-001/003 deferred non-blocking"
+  ],
+  "limitations": [
+    "No commands were run and no tests executed; all runtime results (jf-results.json, validation.md, publication.json) are coordinator-supplied evidence, not independently reproduced",
+    "This checkout contains no .github/pull_request_template.md and no CHANGELOG.md, so template conformance and the 'Updated CHANGELOG.md with PR link' checklist item could not be verified here; they rely on round-02 context stating fd2a46905 added the link",
+    "The audit branch name tests/smd-callback-chunk-state used in the validation link could not be verified from git metadata (worktree HEAD file is outside the restricted directory); it is consistent with status.json and scope.md across the notes tree",
+    "Raw artifacts under /tmp/smd-callback-pr (report.json, stdout.log, .npy files) are outside the restricted worktree; only their copies and SHA256 manifest in the notes directory were inspected",
+    "The git diff of this documentation commit against 079d9ed04 was not computed; file content at the checkout was treated as the source of truth",
+    "The live GitHub PR body was not fetched; review is of pr-body.md as committed"
+  ],
+  "findings": [
+    {
+      "id": "PRDESC-R1-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/smd-callback-chunk-state/pr-preparation/pr-body.md",
+      "line": 46,
+      "evidence": "Body lists harness protections as 'isolated outputs, readonly detector-name lookup, and calibration database writes blocked'. run_case.py:79 additionally patches DataSourceBase._get_file_info_from_db to return {} (local on-disk file discovery), a difference a reviewer running the plain manual command will not have.",
+      "requested_change": "Optional wording tweak: mention that the harness also used local on-disk file discovery instead of the logbook lookup, so the manual command's environment differences are fully disclosed. Not blocking; the measured results are unaffected."
+    }
+  ]
+}
