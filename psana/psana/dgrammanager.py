@@ -60,9 +60,16 @@ class DgramManager(object):
         tag=None,
         max_retries=0,
         config_consumers=[],
+        transitions_only=False,
     ):
         """Opens xtc_files and stores configs.
         If file descriptors (fds) is given, reuse the given file descriptors.
+
+        transitions_only: if True (shmem only), the shmem reader thread asks
+        the shmem server for transitions only, never draining L1Accepts off
+        this client's event queue. Used by calib_prefetch so it doesn't
+        consume a full event-queue share from AMI/other clients. Can be
+        toggled at runtime via set_transitions_only().
         """
         self.xtc_files = []
         self.shmem_cli = None
@@ -95,6 +102,7 @@ class DgramManager(object):
         self.chunk_ids = []
         self.config_consumers = config_consumers
         self.tag = tag
+        self.transitions_only = transitions_only
 
         if isinstance(xtc_files, (str)):
             self.xtc_files = np.array([xtc_files], dtype="U%s" % FN_L)
@@ -462,10 +470,23 @@ class DgramManager(object):
             self._shmem_thread_continue = False
             self._shmem_thread.join()
 
+    def set_transitions_only(self, flag):
+        """Toggle transitions-only mode on the shmem reader thread at runtime.
+
+        Wakes the reader thread immediately so a change takes effect right
+        away rather than waiting for its next poll/sleep cycle. No-op if not
+        operating on shared memory.
+        """
+        if not hasattr(self, "_shmem_cond"):
+            return
+        with self._shmem_cond:
+            self.transitions_only = flag
+            self._shmem_cond.notify_all()
+
     def _shmem_reader(self):
         while self._shmem_thread_continue:
             with self._shmem_cond:
-                self.shmem_kwargs["transitionsOnly"] = self._skip_event
+                self.shmem_kwargs["transitionsOnly"] = self._skip_event or self.transitions_only
 
             view = self.shmem_cli.get(self.shmem_kwargs)
             if view:
@@ -508,7 +529,7 @@ class DgramManager(object):
                 # NOTE: May want to force the reader to sleep as well....
                 #       BUT, setting a timeout is... tricky...
                 with self._shmem_cond:
-                    if self._skip_event and self._shmem_thread_continue:
+                    if (self._skip_event or self.transitions_only) and self._shmem_thread_continue:
                         self._shmem_cond.wait(timeout=0.1)
                 continue
             else:

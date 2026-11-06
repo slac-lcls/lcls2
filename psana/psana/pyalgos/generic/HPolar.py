@@ -177,6 +177,18 @@ class HPolar():
         #self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=None)
         self.npix_per_bin = np.bincount(self.iseq, weights=None, minlength=self.ntbins+1)
 
+        # Precompute the in-ROI pixel indices and their bin assignment once, so
+        # bin_avrg_rad_phi (the per-event hot path for e.g. AMI's RoiArch node) can bincount
+        # over just the pixels that land in a bin, instead of every pixel in the full image
+        # (self.cond is False for the vast majority of pixels when the ROI is a small
+        # fraction of the detector). Restricting to in-ROI pixels and dropping the overflow
+        # bin here is equivalent to bin_avrg_rad_phi's existing [:-1] slice of the full
+        # bin_avrg result, since those are exactly the pixels that land in the overflow bin
+        # (self.iseq == self.ntbins) -- same bincount, over a subset of entries, bit-identical.
+        self._inroi_idx = np.flatnonzero(self.cond)
+        self._inroi_iseq = self.iseq[self._inroi_idx]
+        self._inroi_npix_per_bin = self.npix_per_bin[:-1]
+
         self.griddata = None
 
 
@@ -290,7 +302,9 @@ class HPolar():
 
     def bin_avrg_rad_phi(self, nda, do_transp=True):
         """Returns 2-d (rad,phi) numpy array of averaged in bin intensity for input array nda."""
-        arr_rphi = self.bin_avrg(self._ravel_(nda))[:-1] # -1 removes off ROI bin
+        flat = self._ravel_(nda)
+        num = np.bincount(self._inroi_iseq, weights=flat[self._inroi_idx], minlength=self.ntbins)
+        arr_rphi = divide_protected(num, self._inroi_npix_per_bin, vsub_zero=0)
         arr_rphi.shape = (self.pb.nbins(), self.rb.nbins())
         return np.transpose(arr_rphi) if do_transp else arr_rphi
 

@@ -33,6 +33,7 @@ class epix100_raw_2_0_1(ad.AreaDetectorRaw):
         self._data_bit_mask = 0xffff
         self._gain_ = None # ADU/eV
         self._gain_factor_ = None # keV/ADU
+        self._missing_gain_calibconst = object()
         self._path_geo_default = 'pscalib/geometry/data/geometry-def-epix100a.data'
 
     def _gain(self):
@@ -42,6 +43,7 @@ class epix100_raw_2_0_1(ad.AreaDetectorRaw):
            3. set default gain factor shaped as pedestals
         """
         if self._gain_ is not None: return self._gain_
+        if self._missing_gain_calibconst is self._calibconst: return None
         g = ad.AreaDetectorRaw._gain(self)
         if g is not None:
             self._gain_factor_ = ndau.divide_protected(np.ones_like(g), g)
@@ -54,6 +56,7 @@ class epix100_raw_2_0_1(ad.AreaDetectorRaw):
         logger.warning('gain is missing in calib constants, try to set default')
         peds = self._pedestals() # - n-d pedestals
         if is_none(peds, 'pedestals are None, _gain_ IS NOT SET', logger_method=logger.warning):
+            self._missing_gain_calibconst = self._calibconst
             return None
         self._gain_ = ue100.GAIN_DEFAULT * np.ones_like(peds)
         self._gain_factor_ = ue100.GAIN_FACTOR_DEFAULT * np.ones_like(peds)
