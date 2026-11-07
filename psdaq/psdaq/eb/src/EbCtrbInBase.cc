@@ -209,7 +209,7 @@ int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   exporter->add("TCtbI_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;          });
   exporter->add("TCtbI_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
   exporter->add("TCtbI_MisCt",  labels, MetricType::Counter, [&](){ return _missing;             });
-  exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
+  exporter->add("TCtbI_DefSz",  labels, MetricType::Gauge,   [&](){ return _deferred.size();     });
   exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
   exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
   exporter->add("TCtbI_OrphCt", labels, MetricType::Counter, [&](){ return _orphanCount;         });
