@@ -467,15 +467,29 @@ void EbCtrbInBase::_checkOverlap(const ResultDgram* bdg, const void* end, unsign
     last = next;
   }
 
+  // Entries below bdg are untouched by this write, so walking a deferred batch
+  // in live memory is safe up to the first entry that reaches bdg.  Only a
+  // batch starting within maxEntries below bdg can reach it.
+  auto regEnd = reinterpret_cast<const char*>(_region) + _regSize;
+  auto reach  = (_prms.maxEntries - 1) * _maxResultSize;
   for (const auto& batch : _deferred)
   {
-    if ((batch >= bdg) && (batch <= last)) [[unlikely]]
+    if ((batch > last) || (reinterpret_cast<const char*>(batch) + reach < reinterpret_cast<const char*>(bdg)))
+      continue;
+    auto dg = batch;
+    for (unsigned i = 1; (dg < bdg) && !dg->isEOL() && (i < _prms.maxEntries); ++i)
+    {
+      auto next = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(dg) + _maxResultSize);
+      if (reinterpret_cast<const char*>(next) >= regEnd)  break;
+      dg = next;
+    }
+    if ((dg >= bdg) && (dg <= last)) [[unlikely]]
     {
       unsigned bIdx = ((char*)bdg   - (char*)_region) / _maxResultSize;
-      unsigned dIdx = ((char*)batch - (char*)_region) / _maxResultSize;
+      unsigned dIdx = ((char*)dg    - (char*)_region) / _maxResultSize;
       logging::critical("%s:\n  TEB %u wrote Results %014lx at idx %u over deferred Results at idx %u, "
                         "now pid %014lx, data %08lx",
-                        __PRETTY_FUNCTION__, src, bdg->pulseId(), bIdx, dIdx, batch->pulseId(), data);
+                        __PRETTY_FUNCTION__, src, bdg->pulseId(), bIdx, dIdx, dg->pulseId(), data);
       fprintf(stderr, "*** deferred %zu, inputs %014lx, batches %lu\n",
               _deferred.size(), _inputs ? _inputs->pulseId() : 0ul, _batchCount);
       _tbDump();
