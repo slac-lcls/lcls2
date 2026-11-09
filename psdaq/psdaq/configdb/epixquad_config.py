@@ -3,10 +3,7 @@ from psdaq.configdb.scan_utils import *
 from psdaq.configdb.typed_json import cdict
 from psdaq.cas.xpm_utils import timTxId
 from .xpmmini import *
-from psdaq.utils import enable_epix_quad
-import ePixQuad
-from psdaq.utils import enable_lcls2_pgp_pcie_apps
-import lcls2_pgp_pcie_apps
+from psdaq.utils import firmware_packages
 import rogue
 #import epix
 import time
@@ -15,10 +12,17 @@ import os
 import numpy as np
 import IPython
 from collections import deque
-import surf.protocols.batcher  as batcher  # for Start/StopRun
-import l2si_core               as l2si
-import lcls2_pgp_fw_lib.shared as shared
 import logging
+
+# The FEB (epix-quad) and the PCIe card (lcls2-pgp-pcie-apps) packages each
+# carry their own copy of surf and axi-pcie-core: import each against its own copy.
+with firmware_packages.isolated('epix-quad'):
+    import ePixQuad
+with firmware_packages.isolated('lcls2-pgp-pcie-apps'):
+    import lcls2_pgp_pcie_apps
+    import surf.protocols.batcher  as batcher  # for Start/StopRun
+    import l2si_core               as l2si
+    import lcls2_pgp_fw_lib.shared as shared
 
 base = None
 pv = None
