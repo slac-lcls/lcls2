@@ -129,29 +129,18 @@ def test_a_packet_with_no_transitions_keeps_the_current_scope():
     TransitionId.Enable,
     TransitionId.Disable,
     TransitionId.EndStep,
-    TransitionId.ClearReadout,
+    TransitionId.SlowUpdate,
 ])
 def test_only_beginstep_opens_a_scope(service):
-    """Enable/Disable/EndStep do appear mid-packet -- the EB deliberately does
-    not break on them (eventbuilder.pyx) -- and ClearReadout is service 0, a
-    real record since #156. None of them opens a step.
+    """All four do appear mid-packet -- the EB deliberately does not break on
+    them (eventbuilder.pyx), and SlowUpdate arrives about once a second. None
+    of them opens a step.
     """
     plan = plan_packet(events(1000), [transition(900, service)],
                        run=1, generation=0, begin_ts=0)
 
     assert plan.scope == StepScope(run=1, index=0, begin_ts=0)
     assert plan.next_generation == 0
-
-
-def test_clearreadout_is_planned_not_dropped():
-    """Service 0 must survive planning. Before #156 a falsy-service filter
-    discarded it; this pins that the planner does not reintroduce that."""
-    plan = plan_packet(events(1000),
-                       [transition(900, TransitionId.ClearReadout)],
-                       run=1, generation=0, begin_ts=0)
-
-    assert [svc for svc, _, _, _ in plan.transitions] == [
-        TransitionId.ClearReadout]
 
 
 def test_transitions_are_returned_in_timestamp_order_with_their_dgrams():

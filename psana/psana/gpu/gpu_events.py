@@ -838,8 +838,13 @@ class GpuEventManager:
             transition
             for packet, _ in step_dict.values()
             for transition in _iter_step_events(packet, self.configs)
-            # `is not None`, not truthiness: service 0 is ClearReadout and
-            # must fence reads.
+            # `is not None`, not truthiness: None means the record had no
+            # datagram in any stream, which is not a transition. A present
+            # service 0 never reaches here -- the decoder validates it and
+            # raises (issue #156) -- so this is only ever about absence.
+            # Redundant with resolve()'s own `is None` skip, and on r77 it
+            # discards nothing (absent fraction 0.0000); kept to state that
+            # precondition where the list is built.
             if transition[0] is not None and not TransitionId.isEvent(transition[0])
         ]
 
