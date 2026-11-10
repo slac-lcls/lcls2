@@ -868,7 +868,17 @@ class GpuEventManager:
             plans[id(gpu_view)] = plan
         return plans
 
-    def _handle_steps(self, step_dict):
+    def _handle_steps(self, step_dict, transitions=None):
+        """Apply and queue a packet's transitions.
+
+        `transitions` is the packet's non-L1 records as `_packet_transitions`
+        returns them. _process_batch passes the list it already built for
+        the planner, so the packet is decoded once rather than once per
+        consumer -- on the MPI BD path `step_dict` is the whole SMD batch,
+        so decoding it a second time built a Dgram per L1 record per stream
+        for nothing. When omitted, decoded here from `step_dict`; the tests
+        that drive this method directly rely on that.
+        """
         end_run_seen = False
         # Clear any window the PREVIOUS packet left behind, and do it before
         # the early return below. _reposition_transitions is the only other
@@ -881,24 +891,13 @@ class GpuEventManager:
         if not step_dict:
             return end_run_seen
 
-        pending_transitions = []
-        for step_batch, _ in step_dict.values():
-            for service, dgrams in _iter_step_events(step_batch, self.configs):
-                # An absent record: no datagram was present in any stream, so
-                # there is nothing to dispatch.
-                #
-                # `is None` rather than a truthiness or `== 0` test, though
-                # not because a service-0 could arrive here -- the decoder
-                # validates a present record through utils.first_service and
-                # raises on 0, so this loop never sees one (issue #156). The
-                # reasons are that it says exactly what it means, and that
-                # six test files monkeypatch _iter_step_events with fakes
-                # that bypass that validation and can emit anything.
-                if service is None:
-                    continue
-                if TransitionId.isEvent(service):
-                    continue
-                pending_transitions.append((service, dgrams))
+        # Same filter as _packet_transitions: absent records (service None)
+        # and L1 events are dropped. _reposition_transitions requires the two
+        # lists to agree one-for-one, which is trivially so when the caller
+        # hands over that very list.
+        if transitions is None:
+            transitions = self._packet_transitions(step_dict)
+        pending_transitions = list(transitions)
 
         # EndRun only. A BeginStep no longer drains: each subbatch carries its
         # own StepScope (issue #153), so work from the previous step does not
@@ -1323,7 +1322,8 @@ class GpuEventManager:
                 # before a trailing BeginStep belong to the step that was open
                 # when they arrived, not to the one it opens (GPU-148-01).
                 packet_plans = self._plan_packets(gpu_views, transitions)
-                end_run_seen = yield from self._handle_steps(step_dict)
+                end_run_seen = yield from self._handle_steps(
+                    step_dict, transitions)
 
                 # The planner and _dispatch_transition count BeginSteps
                 # independently -- the planner by timestamp, the dispatcher as
