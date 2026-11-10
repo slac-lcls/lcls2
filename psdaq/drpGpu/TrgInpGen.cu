@@ -291,6 +291,13 @@ void _trgInpGenRcv(unsigned*      const        __restrict__ state,
   }
 }
 
+// Stands in for a TriggerPrimitive's kernel when this DRP provides no TEB input
+static __global__
+void _noTrgInp(unsigned* const __restrict__ state)
+{
+  if (*state == 1)  *state = 2;
+}
+
 // This will re-launch the current graph
 static __global__
 void _trgInpGenLoop(unsigned*      const  __restrict__ state,
@@ -369,15 +376,24 @@ cudaGraph_t TrgInpGen::_recordGraph(cudaStream_t stream)
                                      m_hist_d);
 
   // Process calibBuffers[tail] into TEB input data placed at the end of hostWrtBufs[tail]
-  if (m_triggerPrimitive) { // else this DRP doesn't provide TEB input
-    m_triggerPrimitive->event(stream,
-                              m_state_d,
-                              calibBuffers,
-                              calibBufsCnt,
-                              hostWrtBufs,
-                              hostWrtBufsCnt,
-                              m_index_d,
-                              m_retCode_d);
+  if (m_triggerPrimitive) {
+    if (m_triggerPrimitive->event(stream,
+                                  m_state_d,
+                                  calibBuffers,
+                                  calibBufsCnt,
+                                  hostWrtBufs,
+                                  hostWrtBufsCnt,
+                                  m_index_d,
+                                  m_retCode_d)) {
+      logging::error("TriggerPrimitive's GPU event() failed or is not implemented");
+      cudaGraph_t graph{nullptr};
+      cudaStreamEndCapture(stream, &graph);
+      if (graph)  cudaGraphDestroy(graph);
+      return 0;
+    }
+  }
+  else {                    // This DRP doesn't provide TEB input
+    _noTrgInp<<<1, 1, 0, stream>>>(m_state_d);
   }
 
   // Post the buffer to the host and relaunch

@@ -44,14 +44,14 @@ void _event(float     const* const __restrict__ /*calibBuffers*/,
 }
 
 // This method presumes that it is being called while the stream is in capture mode
-void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
-                                      unsigned* const        state_d,
-                                      float     const* const calibBuffers,
-                                      size_t    const        calibBufsCnt,
-                                      uint32_t* const        outBuffers,
-                                      size_t    const        outBufsCnt,
-                                      unsigned  const* const index_d,
-                                      unsigned* const        retCode_d)
+int Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
+                                     unsigned* const        state_d,
+                                     float     const* const calibBuffers,
+                                     size_t    const        calibBufsCnt,
+                                     uint32_t* const        outBuffers,
+                                     size_t    const        outBufsCnt,
+                                     unsigned  const* const index_d,
+                                     unsigned* const        retCode_d)
 {
   _event<<<1, 1, 0, stream>>>(calibBuffers,
                               calibBufsCnt,
@@ -60,6 +60,6 @@ void Pds::Trg::TmoTebPrimitive::event(cudaStream_t           stream,
                               state_d,
                               index_d,
                               retCode_d);
-  chkError(cudaGetLastError(), "Launch of TmoTebPrimitive _event kernel failed");
+  return chkError(cudaGetLastError(), "Launch of TmoTebPrimitive _event kernel failed");
 }
 
