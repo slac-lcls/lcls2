@@ -65,7 +65,13 @@ class GpuFileEpochs:
         """
         controls = []
         for service, dgrams in transitions:
-            if not service or TransitionId.isEvent(service):
+            # `is None`, not falsiness. An absent record is not a transition
+            # and must not create a coalescing fence. The old `not service`
+            # test conflated absence with service 0; a present service-0
+            # record now raises in the decoder's validation before it can
+            # reach here, so this guard is only ever about absence
+            # (issue #156).
+            if service is None or TransitionId.isEvent(service):
                 continue
             timestamps = {int(dg.timestamp()) for dg in dgrams if dg is not None}
             if len(timestamps) != 1:

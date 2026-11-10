@@ -190,6 +190,30 @@ def first_service(dgrams):
     Extracts via (d.env() >> 24) & 0xF, like Event.service().
     Raises RuntimeError if no valid service is found or if the extracted
     value is 0/out of the expected range.
+
+    Service 0 is rejected deliberately. It is TransitionId.ClearReadout in the
+    DAQ enum, but enum membership does not make it a supported INPUT datagram:
+    the standard l2si-core timing receiver consumes message 0 by resetting its
+    FIFO and suppressing the output record, so it does not reach DRP software
+    as a datagram --
+
+      https://github.com/slaclab/l2si-core/blob/cc7b7f851ce229291f1c4f9f8f29b6b1bbb0c44b/base/rtl/TriggerEventBuffer.vhd#L356-L362
+
+    -- so a PRESENT dgram whose env byte decodes to 0 is unsupported input and
+    must raise here rather than be silently skipped (issue #156).
+
+    This does NOT contradict psexp/event_manager.py:90, which documents 0 as
+    meaning "the dgram is missing from that stream". That 0 comes from
+    service_array, which is np.zeros-initialised and written only for a
+    present stream, so there it marks an EMPTY SLOT and never a dgram that
+    reported 0. The two readings agree: nothing that reaches psana reports
+    service 0 for real. Absence on the GPU side is likewise represented by
+    None rather than 0 -- see _iter_step_events in psana/gpu/gpu_events.py.
+
+    The 1..13 range is master's, unchanged. 13 is TransitionId.NumberOf, an
+    enum bound rather than a record that can arrive, and is almost certainly
+    wrong to accept -- but tightening it is separate work, kept out of this
+    change on purpose (PR #241 review, 2026-11-01).
     """
     for d in dgrams:
         if not d:
