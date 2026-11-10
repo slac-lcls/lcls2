@@ -75,6 +75,7 @@ from psdaq.IOC.epix_monitor_base import (
         current_pv,
         setup_logging,
         temp_pv,
+        humidity_pv,
 )
 
 
