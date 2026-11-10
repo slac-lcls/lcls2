@@ -687,7 +687,7 @@ def deploy_constants(dic_consts, **kwa):
 
     logger.info('use panelid: %s' % panelid)
 
-    #for ctype, nda in dic_consts.items():
+    #for ctype, nda in dic_consts.items(): # 2026-11-09 use --ctdepl prs
     for c in ctdepl:
         ctype = cc.dic_calib_char_to_name[c]
         nda = dic_consts[ctype]
