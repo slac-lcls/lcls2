@@ -72,6 +72,7 @@ from psdaq.IOC.epix_monitor_base import (
         EpixMonitoringIOCBase,
         MonitorPacket,
         add_common_args,
+        voltage_pv,
         current_pv,
         setup_logging,
         temp_pv,
