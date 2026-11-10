@@ -43,6 +43,8 @@ class InputWindow:
         self._released = False
         self._release = release
         self._defer_retirement = bool(defer_retirement)
+        self._retirement_notify = None
+        self._retirement_notify_set = False
         self._batch_retired = False
         self._ready = []
         self._ready_ids = set()
@@ -118,10 +120,32 @@ class InputWindow:
             self._closed = True
         return self._try_retire(blocking=True)
 
+    def notify_when_retirable(self, notify):
+        """Register one nonblocking owner notification, without checking CUDA.
+
+        Called with the window lock held. The callback must only enqueue work;
+        it must not reclaim storage or call back into the input pool. Eligibility
+        means closed with no references; CUDA completion still needs checking.
+        """
+        with self._lock:
+            if self._retirement_notify_set:
+                raise RuntimeError('retirement notification already registered')
+            self._retirement_notify_set = True
+            self._retirement_notify = notify
+            self._notify_retirable()
+
+    def _notify_retirable(self):
+        # Caller holds _lock. Once closed and unreferenced, no use can fork.
+        if self._closed and not self._uses and self._retirement_notify is not None:
+            notify = self._retirement_notify
+            notify()
+            self._retirement_notify = None
+
     def _try_retire(self, blocking=None):
         if blocking is None:
             blocking = not self._defer_retirement
         with self._lock:
+            self._notify_retirable()
             if self._released:
                 return True
             if not self._closed or self._uses or self._retiring:

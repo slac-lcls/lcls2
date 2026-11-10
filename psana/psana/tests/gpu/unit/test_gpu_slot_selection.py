@@ -14,6 +14,7 @@ def pool_for(capacities, busy=(), small=()):
     pool = InputGroupPool(reader)
     pool._groups = {(0, i): NS(slot=i, window=None) for i in busy}
     pool._small = {s: (0, s) for s in small}
+    pool._busy_slots = set(busy)
     return pool
 
 
@@ -74,6 +75,7 @@ def test_new_plan_observes_growth_trim_and_completion(monkeypatch):
     def complete_later_group():
         # Earlier slot 0 is still busy; later slot 1 returns its stream credit.
         pool._groups.pop((0, 1), None)
+        pool._busy_slots.discard(1)
         pool._small.pop(7, None)
     monkeypatch.setattr(pool, 'poll', complete_later_group)
     assert pool.plan_slots([group]) == (1,)

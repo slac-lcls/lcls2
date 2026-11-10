@@ -906,12 +906,14 @@ class GpuEventManager:
         pending = []
         self._pending_gpu_read = pending
         with hold:
-            for group, slot in zip(groups, slots):
-                key = inputs.issue(self._input_batch_id, group, slot_id=slot)
-                if key is None:
-                    raise RuntimeError('reserved input group became unavailable')
-                pending.append(key)
-                self._group_schedule.issued.add(group.group_id)
+            # On partial failure the pool owns started reads, even though this
+            # pending list and the schedule stay unpopulated. The non-None
+            # _pending_gpu_read guard prevents reissue; pool.close drains them.
+            keys = inputs.issue_groups(self._input_batch_id, groups, slots=slots)
+            if keys is None:
+                raise RuntimeError('reserved input groups became unavailable')
+            pending.extend(keys)
+            self._group_schedule.issued.update(group.group_id for group in groups)
         return pending
 
     def _yield_ready(self, ready, device_released=False):

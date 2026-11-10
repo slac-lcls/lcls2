@@ -248,3 +248,138 @@ def test_failed_parser_keeps_reader_hold_through_group_pool_shutdown(io):
     assert pool.reader._input_holds[0] == 0
     pool.reader.trim_free_buffers()
     assert pool.reader.memory_bytes()['raw_input_slots'] == 0
+
+
+def test_batch_submission_uses_plan_without_repolling_and_preserves_reads(io, monkeypatch):
+    pool, groups = setup(io)
+    selected = groups[1:]
+    slots = pool.plan_slots(selected)
+
+    def unexpected_poll():
+        raise AssertionError('batch submission repeated retirement polling')
+
+    monkeypatch.setattr(pool, 'poll', unexpected_poll)
+    keys = pool.issue_groups(0, selected, slots=slots)
+    assert len(keys) == len(selected) == len(io.futures) == 3
+    assert pool._busy_slots == set(slots)
+    assert [call[2:] for call in io.calls if call[0] == 'submit'] == [(0, 16), (16, 16), (32, 16)]
+    pool.close()
+    assert not pool._busy_slots and all(f.gets == 1 for f in io.futures)
+
+
+def test_batch_conflicts_are_rejected_before_any_io(io):
+    pool, groups = setup(io)
+    assert pool.issue_groups(0, groups[1:3], slots=(0, 0)) is None
+    assert not io.futures
+    with pytest.raises(ValueError, match='duplicate'):
+        pool.issue_groups(0, (groups[1], groups[1]), slots=(0, 1))
+    with pytest.raises(IndexError):
+        pool.issue_groups(0, groups[1:3], slots=(0, 99))
+    assert not io.futures
+    key = pool.issue(0, groups[1], slot_id=0)
+    assert pool.issue_groups(1, groups[1:3], slots=(0, 1)) is None
+    assert len(io.futures) == 1 and pool.live_keys == (key,)
+    pool.close()
+
+
+def test_partial_batch_submission_failure_keeps_started_reads_owned(io):
+    pool, groups = setup(io)
+    io.fail_submit = 1
+    with pytest.raises(RuntimeError, match='submission'):
+        pool.issue_groups(0, groups[1:], slots=(0, 1, 2))
+    assert len(io.futures) == 1 and pool._busy_slots == {0}
+    assert pool.live_keys == ((0, groups[1].group_id),)
+    pool.close()
+    assert not pool._busy_slots and not pool.live_keys
+    assert all(f.gets == 1 for f in io.futures)
+
+
+def test_retirement_candidates_skip_live_windows_and_retry_delayed_cuda(io, monkeypatch):
+    pool, groups = setup(io)
+    a, b = pool.issue_groups(0, groups[1:3], slots=(0, 1))
+    wa, wb = bind(pool, a), bind(pool, b)
+    original = wa.poll
+
+    def still_owned():
+        raise AssertionError('polled a window with a live planned reference')
+
+    monkeypatch.setattr(wa, 'poll', still_owned)
+    done = Token(False)
+    use = pool.take_use(b, 1)
+    use.register_consumer_done(done)
+    use.wait_until_safe_to_reuse()
+    assert not pool.poll()
+    assert set(pool._candidates) == {b}
+    assert done.waits == 0
+    done.ready = True
+    assert pool.poll() == (b,) and not pool._candidates
+    assert not wa.released and wb.released
+    monkeypatch.setattr(wa, 'poll', original)
+    pool.take_use(a, 0).wait_until_safe_to_reuse()
+    assert pool.poll() == (a,)
+    pool.close()
+
+
+def test_consumer_thread_only_enqueues_and_stale_notification_cannot_reclaim_new_group(io):
+    from concurrent.futures import ThreadPoolExecutor
+    pool, groups = setup(io, slots=1)
+    key = pool.issue(0, groups[1])
+    bind(pool, key)
+    old = pool._groups[key]
+    use = pool.take_use(key, 0)
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        executor.submit(use.wait_until_safe_to_reuse).result()
+    assert pool.live_keys == (key,) and not pool._candidates
+    assert pool.poll() == (key,)
+    assert pool.issue(0, groups[1]) == key
+    bind(pool, key)
+    pool._retirement_queue.put(old)
+    assert not pool.poll() and not pool._candidates
+    assert pool.live_keys == (key,) and pool._busy_slots == {0}
+    pool.close()
+    assert pool._retirement_queue.empty() and not pool._candidates
+
+
+def test_raw_hold_release_failure_preserves_candidate_and_busy_slot_until_retry(io):
+    pool, groups = setup(io, slots=1)
+    key = pool.issue(0, groups[1])
+    bind(pool, key)
+    state = pool._groups[key]
+    release = state.release_raw
+    calls = []
+
+    def fail_once():
+        calls.append('release')
+        if len(calls) == 1:
+            raise RuntimeError('raw hold release failed')
+        release()
+
+    state.release_raw = fail_once
+    pool.take_use(key, 0).wait_until_safe_to_reuse()
+    with pytest.raises(RuntimeError, match='raw hold release failed'):
+        pool.poll()
+    assert pool._groups[key] is state and pool._candidates[key] is state
+    assert pool._busy_slots == {0} and state.release_raw is fail_once
+    assert pool.reader._input_holds[0] == 1
+    assert pool.poll() == (key,)
+    assert not pool._groups and not pool._candidates and not pool._busy_slots
+    assert pool.reader._input_holds[0] == 0
+    pool.close()
+
+
+def test_failed_notification_registration_does_not_leave_untracked_bound_window(io):
+    pool, groups = setup(io, slots=1)
+    key = pool.issue(0, groups[1])
+    read = pool.read(key)
+    batch = NS(data_gpu=read.data_gpu, n_dgrams=1, walk_done=Token())
+    rejected = InputWindow(key[0], key[1], batch, read.desc_table,
+        release=read.retain_input(), defer_retirement=True)
+    rejected.notify_when_retirable(lambda: None)
+    with pytest.raises(RuntimeError, match='already registered'):
+        pool.bind(key, rejected)
+    assert pool._groups[key].window is None
+    assert rejected.close()
+    window = bind(pool, key)
+    pool.take_use(key, 0).wait_until_safe_to_reuse()
+    assert pool.poll() == (key,) and window.released
+    pool.close()
