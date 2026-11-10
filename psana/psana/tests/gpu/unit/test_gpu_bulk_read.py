@@ -30,6 +30,10 @@ def view(descriptors):
     return NS(iter_read_descs=lambda _: iter(descriptors))
 
 
+class _Stop(Exception):
+    """Unwinds _process_batch once the assertion point is reached."""
+
+
 def control(ts, chunk=1, filename="next.xtc2", service=TransitionId.Enable):
     dg = NS(timestamp=lambda: ts, chunkinfo={0: NS(chunkinfo=NS(chunkid=chunk, filename=filename))})
     return service, [dg]
@@ -207,6 +211,88 @@ def test_transition_fence_prevents_merge_even_with_same_file_and_adjacent_bytes(
         reader.wait_batch(reader.issue_group(g, slot_id=i))
     assert reader.io_stats()["total_requests"] == 2
     reader.close()
+
+
+def test_an_absent_record_does_not_fence_coalescing(io):
+    """An absent record is not a control and must NOT fence.
+
+    `resolve()` skipped it via `not service`, which also swallowed a present
+    service-0 record -- the conflation issue #156 removes. Absence is now
+    None and is still skipped, deliberately: there is no control record
+    there, so two reads either side of it must coalesce.
+
+    Contrast with the test above, where a real control fences and the reads
+    stay separate.
+    """
+    io.files = {"/fast": bytes(range(32))}
+    reader = KvikioGpuReader(bulk_read=True)
+    descriptors = [desc(0, 0, 0), desc(1, 0, 4)]
+    epochs = GpuFileEpochs(dm(io.files)).resolve(
+        descriptors, [control(105, service=None)])
+
+    assert {e.file for e in epochs.values()} == {
+        ResolvedFile(os.path.realpath("/fast"), 0)}
+    for i, g in enumerate(groups(descriptors, epochs)):
+        reader.wait_batch(reader.issue_group(g, slot_id=i))
+    assert reader.io_stats()["total_requests"] == 1, (
+        'an absent record fenced coalescing: it is not a control boundary, '
+        'so the two adjacent reads should have merged')
+    reader.close()
+
+
+def test_an_absent_record_is_skipped_before_any_file_resolution(io):
+    """`resolve` must discard an absent record before it reaches `_apply`.
+
+    The claim is specifically about the SKIP, not about `_apply`'s filter: a
+    `None` record never reaches `_apply` at all, so a chunkinfo planted on it
+    is never examined and cannot demonstrate anything about which services
+    switch files. `test_only_enable_applies_a_chunkinfo_file_switch` below
+    covers that filter, with a service that does reach `_apply`.
+    """
+    io.files = {"/fast": bytes(range(32))}
+    before = GpuFileEpochs(dm(io.files))._active[0]
+    epochs_obj = GpuFileEpochs(dm(io.files))
+    applied = []
+    original = epochs_obj._apply
+    epochs_obj._apply = lambda *a: applied.append(a) or original(*a)
+
+    epochs = epochs_obj.resolve(
+        [desc(0, 0, 0)],
+        [control(105, chunk=7, filename="other.xtc2", service=None)])
+
+    assert applied == [], 'an absent record must not reach _apply'
+    assert epochs[(0, 0)].file == before
+
+
+@pytest.mark.parametrize('service,switches', [
+    (TransitionId.Enable, True),
+    (TransitionId.Disable, False),
+    (TransitionId.BeginStep, False),
+])
+def test_only_enable_applies_a_chunkinfo_file_switch(io, service, switches):
+    """`_apply`'s `service != Enable` early return, with services that reach it.
+
+    This is what the absent-record test above cannot show. Each of these is a
+    present, supported control carrying chunkinfo; only Enable may remap the
+    stream. Deleting `_apply`'s early return makes the non-Enable cases fail.
+    """
+    # Two descriptors straddling the control at ts 105: a switch shows only
+    # on the one recorded AFTER it, so a single earlier descriptor cannot
+    # distinguish "applied" from "not applied".
+    manager = dm(["/data/old.xtc2"])
+    epochs = GpuFileEpochs(manager).resolve(
+        [desc(0, 0, 88), desc(1, 0, 124)],
+        [control(105, chunk=7, filename="new.xtc2", service=service)])
+
+    assert epochs[(0, 0)].file.path == "/data/old.xtc2", (
+        'the descriptor before the control is never remapped')
+    if switches:
+        assert epochs[(1, 0)].file.path == "/data/new.xtc2", (
+            'Enable with chunkinfo must remap the following descriptor')
+        assert epochs[(1, 0)].file.chunk_id == 7
+    else:
+        assert epochs[(1, 0)].file.path == "/data/old.xtc2", (
+            f'service {service} carried chunkinfo but must not switch files')
 
 
 def test_capacity_is_total_input_not_last_logical_row(io):
@@ -389,3 +475,50 @@ def test_bulk_target_validation(value, error):
     with pytest.raises(error, match="gpu_bulk_target_bytes"):
         DsParms(5, 0, 0, False, None, "", 0, False, [], 0, [], "",
                 gpu_bulk_target_bytes=value)
+
+
+def test_absent_records_are_filtered_before_resolve(monkeypatch):
+    """Pins `_process_batch`'s `transition[0] is not None` filter.
+
+    The filter is not load-bearing for correctness -- `resolve()` skips None
+    itself -- so nothing else fails if it is deleted, which makes it easy to
+    lose to a "simplification". Nor is it there to save work: an instrumented
+    uncapped run of mfx100852324 r77 reports an absent fraction of 0.0000
+    over 80 records, so on that fixture it discards nothing. It is kept
+    because it states the precondition `resolve()` relies on where the list
+    is built, rather than leaving it implicit two calls away -- so this test
+    is the only thing standing between it and a cleanup.
+
+    This drives the real `_process_batch` and inspects what `resolve()`
+    actually receives. Reproducing the comprehension in the test body instead
+    would pass with the filter deleted, since the test would be checking its
+    own copy of it.
+    """
+    from psana.gpu import gpu_events
+
+    decoded = [(None, [None]),
+               (TransitionId.Enable, [NS(timestamp=lambda: 105,
+                                         chunkinfo={})]),
+               (None, [None])]
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda packet, configs: iter(decoded))
+
+    seen = []
+    m = gpu_events.GpuEventManager.__new__(gpu_events.GpuEventManager)
+    m.configs = [None]
+    m.dm = None
+    m.dsparms = NS(gpu_bulk_read=True, max_events=0)
+    m._n_events = 0
+    # Stop inside resolve() itself: everything after it needs device and run
+    # state this test has no business building.
+    def _resolve(descs, trans):
+        seen.append(list(trans))
+        raise _Stop('resolve called')
+    m._gpu_file_epochs = NS(resolve=_resolve)
+
+    with pytest.raises(_Stop):
+        list(m._process_batch({}, {}, {0: (b'step', [])}))
+
+    assert seen, 'resolve() was never called'
+    assert [service for service, _ in seen[0]] == [TransitionId.Enable], (
+        'absent records must be filtered before resolve() sees them')

@@ -55,6 +55,13 @@ def _iter_step_events(batch_bytes, configs):
 
         event_pf = PacketFooter(view=event_view)
         event_footer_nbytes = memoryview(event_pf.footer).nbytes
+        # Emptiness is decided by datagram PRESENCE, never by service value
+        # (issue #156). Service 0 used to mean both "no dgram here" and
+        # ClearReadout, so callers could not tell an absent record from an
+        # unsupported one and silently skipped both. Counting dgrams
+        # separates them: absence becomes None, and any service a record
+        # reports is validated rather than interpreted.
+        n_dgrams = 0
         dgram_offset = 0
         dgrams = [None] * len(configs)
         for i_stream in range(event_pf.n_packets):
@@ -65,17 +72,40 @@ def _iter_step_events(batch_bytes, configs):
                     view=event_view,
                     offset=dgram_offset,
                 )
+                n_dgrams += 1
             dgram_offset += dgram_size
 
+        # Validated BEFORE anything below, so a malformed record whose streams
+        # are all absent still fails rather than passing as "empty".
         if dgram_offset + event_footer_nbytes != event_size:
             raise RuntimeError(f"Malformed step event {event_index}: dgrams={dgram_offset} footer={event_footer_nbytes} event_size={event_size}")
 
-        service = 0
-        for dg in dgrams:
-            if dg is not None:
-                service = dg.service()
-                break
-        yield service, dgrams
+        if n_dgrams == 0:
+            # An all-empty record is a GPU-only L1 with nothing in the SMD
+            # packet. Reported as None rather than skipped, so that absence is
+            # structurally distinct from any service value and cannot be
+            # confused with one -- which is the whole point of issue #156,
+            # where 0 meant both. None is not a transition: callers test
+            # `service is None` and must neither dispatch it nor fence read
+            # coalescing on it.
+            #
+            # Reporting rather than dropping also keeps the record's slot, but
+            # NOTHING READS THAT POSITION TODAY. GPU-only events are placed
+            # from GPUBAT1 instead: public delivery iterates
+            # subbatch.timestamps and synthesises _GpuOnlyDgram where no CPU
+            # envelope matches (see _process_batch below). Do not write new
+            # code that depends on this walk for ordering without checking
+            # that first.
+            yield None, dgrams
+            continue
+
+        # Non-empty: validate through the shared CPU helper rather than
+        # reading dgram.service() directly. That is what makes a present
+        # service-0 record RAISE here, exactly as it does on the CPU path,
+        # instead of being silently discarded as if it were absent. The
+        # helper is given a list with at least one real dgram, so it is never
+        # called on an all-empty record.
+        yield utils.first_service(dgrams), dgrams
 
 
 def _fmt_mib(n: int) -> str:
@@ -772,8 +802,17 @@ class GpuEventManager:
         pending_transitions = []
         for step_batch, _ in step_dict.values():
             for service, dgrams in _iter_step_events(step_batch, self.configs):
-                if service == 0:
-                    # A GPU-only L1 has no dgrams in the CPU/SMD packet.
+                # An absent record: no datagram was present in any stream, so
+                # there is nothing to dispatch.
+                #
+                # `is None` rather than a truthiness or `== 0` test, though
+                # not because a service-0 could arrive here -- the decoder
+                # validates a present record through utils.first_service and
+                # raises on 0, so this loop never sees one (issue #156). The
+                # reasons are that it says exactly what it means, and that
+                # six test files monkeypatch _iter_step_events with fakes
+                # that bypass that validation and can emit anything.
+                if service is None:
                     continue
                 if TransitionId.isEvent(service):
                     continue
@@ -1031,7 +1070,18 @@ class GpuEventManager:
                         transition
                         for packet, _ in step_dict.values()
                         for transition in _iter_step_events(packet, self.configs)
-                        if transition[0] and not TransitionId.isEvent(transition[0])
+                        # None means the record had no datagram in any
+                        # stream: not a transition, so it must not fence read
+                        # coalescing. A present service-0 never reaches here
+                        # -- the decoder validates it and raises (issue
+                        # #156) -- so this is only ever about absence.
+                        #
+                        # Redundant with resolve()'s own `is None` skip, and
+                        # on r77 it discards nothing (absent fraction 0.0000).
+                        # Kept only to state resolve()'s precondition where the
+                        # list is built. Pinned by
+                        # test_absent_records_are_filtered_before_resolve.
+                        if transition[0] is not None and not TransitionId.isEvent(transition[0])
                     ]
                     self._gpu_read_files = self._gpu_file_epochs.resolve(
                         [d for view in gpu_views for d in view.iter_read_descs(self.dm)],

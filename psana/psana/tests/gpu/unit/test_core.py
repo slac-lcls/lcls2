@@ -531,13 +531,49 @@ def test_non_boundary_transitions_do_not_flush(fake_transition_decode):
     assert events.event_pool.flush_calls == 0
 
 
-def test_empty_gpu_only_smd_event_is_not_dispatched(fake_transition_decode):
+def test_an_absent_record_is_not_dispatched(fake_transition_decode):
+    """A record with no dgrams at all is a GPU-only L1, not a transition.
+
+    The decoder reports absence as None, which is what distinguishes it from
+    an unsupported present record reporting service 0 -- that one raises in
+    validation and never reaches here (issue #156). Both used to arrive as 0,
+    so a caller could not tell them apart and skipped both.
+    """
     log = []
     events = _new_gpu_events(log)
-    step_dict = _transition_batch(0, TransitionId.Enable)
+    step_dict = _transition_batch(None, TransitionId.Enable)
 
     assert list(events._handle_steps(step_dict)) == []
     assert log == [("transition", TransitionId.Enable)]
+
+
+def test_an_absent_record_alone_is_not_dispatched_and_does_not_flush(
+        fake_transition_decode):
+    """The single-record case: a packet containing only an absence produces no
+    dispatch and no flush, rather than a no-op batch that still flushed.
+
+    Read coalescing is fenced in GpuFileEpochs.resolve, not here, so this says
+    nothing about fencing -- test_an_absent_record_does_not_fence_coalescing in
+    test_gpu_bulk_read.py covers that.
+    """
+    log = []
+    events = _new_gpu_events(log)
+
+    assert list(events._handle_steps(_transition_batch(None))) == []
+    assert log == []
+    assert events.event_pool.flush_calls == 0
+
+
+def test_reset_is_dispatched(fake_transition_decode):
+    """Reset (1) is the lowest SUPPORTED service id, so it is the control
+    showing the dispatch path handles a low id correctly -- the rejection of
+    0 is about support, not about an off-by-one in the range check."""
+    log = []
+    events = _new_gpu_events(log)
+
+    assert list(events._handle_steps(_transition_batch(
+        TransitionId.Reset))) == []
+    assert log == [("transition", TransitionId.Reset)]
 
 
 def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
@@ -577,6 +613,217 @@ def test_endrun_flushes_pending_result_once_and_stops(fake_transition_decode):
     assert events.event_pool.yield_count == 1
     assert ("transition", TransitionId.EndRun) in log
     assert log[-1] == "close"
+
+
+def _step_batch_bytes(records, n_streams):
+    """A transition batch in the wire layout `_iter_step_events` decodes.
+
+    `records` is a list of per-stream dgram-size lists. A size of 0 means
+    that stream is absent from the record, which is how a GPU-only L1
+    arrives: every stream zero.
+    """
+    batch = bytearray()
+    batch_pf = PacketFooter(len(records))
+    for index, sizes in enumerate(records):
+        assert len(sizes) == n_streams
+        event_pf = PacketFooter(n_streams)
+        for stream, size in enumerate(sizes):
+            event_pf.set_size(stream, size)
+        payload = bytearray(sum(sizes))
+        event = payload + bytearray(event_pf.footer)
+        batch_pf.set_size(index, len(event))
+        batch += event
+    return bytes(batch + bytearray(batch_pf.footer))
+
+
+def test_decoder_reports_an_all_empty_record_as_none():
+    """An all-streams-absent record is a GPU-only L1 with nothing in the SMD
+    packet, and the decoder reports it as None rather than skipping it.
+
+    What is under test is that ABSENCE HAS ITS OWN REPRESENTATION, distinct
+    from every service value: None cannot be confused with a present record
+    reporting 0, which is unsupported input and raises instead (issue #156).
+
+    Reporting the record also keeps its slot, which is asserted below so the
+    behaviour is pinned -- but no production code reads that position. GPU-only
+    events are placed from GPUBAT1 timestamps, not from this walk.
+    """
+    batch = _step_batch_bytes([[0, 0]], n_streams=2)
+
+    decoded = list(gpu_events_module._iter_step_events(batch, [None, None]))
+
+    assert len(decoded) == 1, 'the empty record keeps its position'
+    service, dgrams = decoded[0]
+    assert service is None, 'absence is None, never a service id'
+    assert dgrams == [None, None], 'per-stream positions are preserved'
+
+
+def test_decoder_preserves_the_positions_of_empty_records_in_a_mixed_packet(
+        monkeypatch):
+    """Leading, interior and trailing absences all keep their slots, so the
+    index of a present record is not shifted by the empty ones around it."""
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    # stream 0 absent/present per record: empty, present, empty, empty.
+    batch = bytearray(_step_batch_bytes([[0, 0], [1, 0], [0, 0], [0, 0]],
+                                        n_streams=2))
+    # Record 1's payload byte, found via the batch footer rather than assumed
+    # at offset 0 -- record 0 is empty, so offset 0 is ITS footer, and writing
+    # a service id there corrupts a declared stream size instead.
+    sizes = PacketFooter(view=memoryview(bytes(batch))).get_size
+    batch[sizes(0)] = TransitionId.Enable
+
+    decoded = list(gpu_events_module._iter_step_events(bytes(batch),
+                                                      [None, None]))
+
+    services = [service for service, _ in decoded]
+    assert services == [None, TransitionId.Enable, None, None], (
+        'every record keeps its index; only the present one names a service')
+
+
+def test_decoder_validates_size_before_reporting_an_all_empty_record():
+    """The size check must run BEFORE any empty-record skip.
+
+    Otherwise a malformed packet whose streams are all absent is silently
+    accepted, and the corruption is discovered later or not at all.
+
+    The record must stay genuinely all-empty for this to test what it claims.
+    So the corruption is unaccounted padding ahead of the event footer, with
+    the outer size covering it: both stream sizes still read 0, no dgram is
+    constructed, and only the size check can object. Inflating the claimed
+    size instead would pull the batch footer into the record and have it
+    decoded as one present stream, which exercises a different path.
+    """
+    event_pf = PacketFooter(2)
+    event_pf.set_size(0, 0)
+    event_pf.set_size(1, 0)
+    padding = bytearray(8)  # in the record's bytes, in neither stream's size
+    event = padding + bytearray(event_pf.footer)
+
+    batch_pf = PacketFooter(1)
+    batch_pf.set_size(0, len(event))
+    batch = bytes(event + bytearray(batch_pf.footer))
+
+    with pytest.raises(RuntimeError, match='Malformed step event'):
+        list(gpu_events_module._iter_step_events(batch, [None, None]))
+
+
+class _ServiceByteDgram:
+    """Stands in for dgram.Dgram, reading its service from the payload byte.
+
+    The real Dgram needs a config and real XTC bytes. What the decoder tests
+    exercise is its counting and its validation of a present record, not
+    dgram parsing, so a present stream is one byte holding the service id.
+
+    Only env() is needed: the decoder validates a non-empty record through
+    utils.first_service(), which reads (env() >> 24) & 0xF. A service()
+    method was kept here when the decoder still called it directly, and is
+    deliberately not reinstated -- it would suggest the decoder reads it.
+    """
+
+    def __init__(self, config, view, offset):
+        self._service = int(view[offset])
+
+    def env(self):
+        return self._service << 24
+
+
+def test_a_packet_of_only_empty_records_is_all_nones():
+    """The degenerate case: a packet of nothing but GPU-only L1s still reports
+    one None per record, rather than decoding to nothing at all."""
+    decoded = list(gpu_events_module._iter_step_events(
+        _step_batch_bytes([[0, 0], [0, 0], [0, 0]], n_streams=2),
+        [None, None]))
+
+    assert [service for service, _ in decoded] == [None, None, None]
+
+
+def test_decoder_interleaves_empty_and_present_records_in_order(monkeypatch):
+    """Present records keep their order and absences keep their slots between
+    them, so relative position is recoverable."""
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    # record 0: stream 1 present; record 1: all absent; record 2: stream 0.
+    batch = bytearray(_step_batch_bytes([[0, 1], [0, 0], [1, 0]], n_streams=2))
+    sizes = PacketFooter(view=memoryview(bytes(batch))).get_size
+    batch[0] = TransitionId.Disable
+    batch[sizes(0) + sizes(1)] = TransitionId.Enable
+
+    decoded = list(gpu_events_module._iter_step_events(bytes(batch),
+                                                      [None, None]))
+
+    assert [service for service, _ in decoded] == [
+        TransitionId.Disable, None, TransitionId.Enable]
+
+
+def test_a_present_service_zero_record_raises_through_the_real_decoder(
+        monkeypatch):
+    """The central rejection case, and it must come from the REAL path.
+
+    A present record reporting service 0 is unsupported input (issue #156):
+    l2si-core's TriggerEventBuffer consumes message 0 in firmware, so such a
+    datagram does not arise on psana's normal event-processing path. The
+    decoder validates a non-empty record through utils.first_service(), so
+    this raises rather than being silently discarded as if the record were
+    absent.
+
+    Driven through _iter_step_events with real packet framing, not a
+    monkeypatched service tuple, so it exercises the validation the
+    production path actually performs.
+    """
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    batch = bytearray(_step_batch_bytes([[1, 0]], n_streams=2))
+    batch[0] = 0  # a PRESENT stream whose service is 0
+
+    with pytest.raises(RuntimeError, match='got: 0'):
+        list(gpu_events_module._iter_step_events(bytes(batch), [None, None]))
+
+
+def test_service_zero_raises_even_when_earlier_streams_are_absent(monkeypatch):
+    """The case that separates rejection from the absence path: stream 0 is
+    missing, so the record looks empty until stream 1 is found present with
+    service 0. It must raise, not be mistaken for an all-empty record."""
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    batch = bytearray(_step_batch_bytes([[0, 1]], n_streams=2))
+    batch[0] = 0  # stream 1's payload byte: service 0
+
+    with pytest.raises(RuntimeError, match='got: 0'):
+        list(gpu_events_module._iter_step_events(bytes(batch), [None, None]))
+
+
+def test_decoder_reports_the_first_present_stream_when_some_are_missing(monkeypatch):
+    """A partially present record is a real record, not an empty one.
+
+    The service comes from the FIRST present stream, and absent streams keep
+    their positions as None so a caller can still tell which stream supplied
+    what: a record whose stream 0 is absent but whose stream 1 carries a
+    supported service must be yielded with that service, not treated as empty.
+
+    This case does NOT distinguish counting dgrams from testing whether the
+    service is falsy -- the payload here is Disable (9), and `not 9` is
+    False, so either rule yields 9. The two new service_zero tests above are
+    what separate them, because 0 is the only service where the rules differ.
+
+    dgram.Dgram needs a real config and real bytes, so it is replaced here --
+    what is under test is the decoder's counting and first-present rule, not
+    dgram parsing.
+    """
+    monkeypatch.setattr(gpu_events_module.dgram, 'Dgram', _ServiceByteDgram)
+
+    # Stream 0 absent, stream 1 present carrying a supported service.
+    batch = bytearray(_step_batch_bytes([[0, 1]], n_streams=2))
+    batch[0] = TransitionId.Disable
+
+    decoded = list(gpu_events_module._iter_step_events(bytes(batch),
+                                                      [None, None]))
+
+    assert len(decoded) == 1, 'a partially present record must not be skipped'
+    service, dgrams = decoded[0]
+    assert service == TransitionId.Disable
+    assert dgrams[0] is None, 'an absent stream must keep its position'
+    assert dgrams[1] is not None
 
 
 def _pack_transport(smd_bytes, gpu_bytes):
