@@ -18,7 +18,8 @@ class epics2d_raw_1_0_0(AreaDetectorRaw):
         self._seg_geo =  None
         self._geo = None
         self._shape_of_raw = None
-        self._count_warnings = 0
+        self._count_warnings_peds = 0
+        self._count_warnings_shape = 0
 
     def _init_geometry(self, shape, pix_size_rcsd_um=(100,100,100,400)):
         """delayed geometry initialization when raw.shape is available in det.raw.raw"""
@@ -49,12 +50,13 @@ class epics2d_raw_1_0_0(AreaDetectorRaw):
             return None
         #peds = self._calibconst['pedestals'][0]
         peds = self._pedestals() # - n-d pedestals
-        if is_none(peds, 'no epics2d pedestals', logger.warning):
+        if is_none(peds, 'no epics2d pedestals', logger.warning if self._count_warnings_peds<3 else None):
+            self._count_warnings_peds += 1
             return raw
         if is_true(peds.shape != raw.shape,\
                    f'incorrect epics2d pedestal shape: {peds.shape}, raw data shape: {raw.shape}',\
-                   logger_method=logger.warning if self._count_warnings<3 else None):
-            self._count_warnings += 1
+                   logger_method=logger.warning if self._count_warnings_shape<3 else None):
+            self._count_warnings_shape += 1
             return raw
         arr = raw-peds
         mask = self._mask() # **kwa
