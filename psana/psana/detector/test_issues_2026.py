@@ -1481,13 +1481,13 @@ def issue_2026_10_24(args):
 
 def issue_2026_11_04(args):
     """ISSUE:
-             datinfo -k exp=rix102087027,run=7 -d alvium3rix1
-             det_dark_proc -k exp=rix102087027,run=7 -d alvium3rix1 -o work1 -n10000 [-D]
-       PROBLEM: new detector type alvium
-       FIX: add psana/detector/alvium.py and extend detectors.py
+             datinfo -k exp=rix102087527,run=42 -d alvium3rix1
+             det_dark_proc -k exp=rix102087527,run=42 -d alvium3rix1 -o work1 -n10000 [-D]
+       PROBLEM: new detector type epics2d
+       FIX: add psana/detector/alvium.py renamed to epics2d.py, includes axis and update detectors.py
     """
     from psana.detector.NDArrUtils import info_ndarr
-    ds,run,det = ds_run_det(exp='rix102087027', run=7, detname='alvium3rix1', max_events=5) # **kwa)
+    ds,run,det = ds_run_det(exp='rix102087527', run=42, detname='alvium3rix1', max_events=5) # **kwa)
     for ievt,evt in enumerate(run.events()):
         print(info_ndarr(det.raw.raw(evt),   'ev: %03d raw' % ievt))
         print(info_ndarr(det.raw.calib(evt), '      calib'))
@@ -1564,7 +1564,7 @@ def selector():
     elif TNAME in ('24',):issue_2026_10_15(args) # Stefano - SegGeometryJungfrauV2.pix_area_arr is unusable
     elif TNAME in ('25',):issue_2026_10_18(args) # Stefano - SegGeometryEpixUHR3x2V1.make_pixel_coord_arrs(), wide-pixel-center flavour
     elif TNAME in ('26',):issue_2026_10_24(args) # Cong - after lcls2_091526 find no calibration constants for the archon in rix101214125
-    elif TNAME in ('27',):issue_2026_11_04(args) # test alvium
+    elif TNAME in ('27',):issue_2026_11_04(args) # test epics2d.py for axis, alvium, etc.
 
     elif TNAME in ('99',):issue_2026_MM_DD(args) # template
     else:
