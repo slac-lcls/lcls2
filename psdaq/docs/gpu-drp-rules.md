@@ -72,6 +72,9 @@ shared DRP code they call (`psdaq/drp/`).
 ## Shared code
 
 - **Comments in shared event-builder code (`psdaq/eb/`) must not name a detector.**
+- **`Pds::fast_monotonic_clock::now()` defaults to `CLOCK_MONOTONIC_COARSE`**, which steps
+  ~1 ms (`CONFIG_HZ=1000`).  For intervals of a few ms or less pass `CLOCK_MONOTONIC`: a
+  1 ms "idle" test on the default fired at ~860/s while events arrived every 30 us.
 - **psdaq Python on the DAQ's path must not import `psana`**: it pulls in `mpi4py` and
   OpenMPI noise.  Shared code goes in `psalg` (e.g. `psalg/psalg/calibdb/`).
 

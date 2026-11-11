@@ -80,6 +80,10 @@ on the "GPU node rules" Confluence page.
 - **The logs record the cnf's name, not its contents, and cnfs are edited freely.**  If its
   mtime is later than the log's start, what ran is unknown: say so, and ask, rather than
   reasoning from the current file.
+- **A cnf entry that `config.select()` does not list is silently not run.**  Only the
+  selected ids are submitted (`psdaq/slurm/config.py`), so an uncommented process entry
+  proves nothing; a listed id with no entry only prints "Warning: no <id> found".  Check
+  both lists, and `sacct` for which jobs were actually submitted.
 - **A DRP's log is `~/daq/logs/<year>/<month>/<DD>_<HH:MM:SS>_<node>:<alias>.log`**, in
   the home of whoever ran the DAQ (hutches: `/sdf/home/<h>/<h>opr/`), and
   includes the full configdb JSON it was given.  For *setup* questions (alias, trigger
