@@ -5,9 +5,8 @@ import numpy as np
 
 from psana import utils
 from psana.dgram import Dgram
-from psana.psexp.eventbuilder_manager import EventBuilderManager
+from psana.psexp.eventbuilder_manager import EventBuilderManager, CallbackEventBuilderManager
 from psana.psexp.events import Events
-from psana.psexp.run import CallbackRunState
 from psana.psexp.smd_events import SmdEvents
 from psana.psexp.packet_footer import PacketFooter
 from psana.psexp.tools import mode
@@ -87,6 +86,39 @@ def get_cpu_id():
 #       2   5   8   11      0   1   2   3
 
 
+def check_mpi_layout(world_size, ps_eb_nodes, ps_srv_nodes):
+    """Check that an MPI layout gives every EventBuilder at least one BigData rank.
+
+    Ranks are assigned as: rank 0 is smd0, the last PS_SRV_NODES ranks are
+    smalldata servers, and the remaining ranks are split into PS_EB_NODES
+    groups by ``rank % PS_EB_NODES``. The first rank of each group is the
+    EventBuilder and the rest are BigData workers. If a group has no workers
+    its EventBuilder blocks forever waiting for a worker request and the
+    whole job hangs with no error, so refuse such a layout up front.
+
+    Returns (n_eb, n_bd). Raises ValueError with the layout spelled out.
+    """
+    n_bd_main = world_size - ps_srv_nodes - 1
+    n_eb = max(0, min(ps_eb_nodes, n_bd_main))
+    n_bd = max(0, n_bd_main - n_eb)
+    if n_eb < 1 or n_bd < n_eb:
+        required = 1 + ps_srv_nodes + 2 * ps_eb_nodes
+        raise ValueError(
+            "Bad MPI layout: %d EventBuilder rank(s) but only %d BigData rank(s). "
+            "Every EventBuilder needs at least one BigData rank, otherwise the "
+            "job hangs waiting for a worker that does not exist."
+            "\n\tMPI size:       %d"
+            "\n\tsmd0 ranks:     1"
+            "\n\tPS_EB_NODES:    %d"
+            "\n\tPS_SRV_NODES:   %d"
+            "\n\tBigData ranks:  %d  (MPI size - 1 - PS_EB_NODES - PS_SRV_NODES)"
+            "\nUse at least %d MPI ranks for these settings, or lower "
+            "PS_EB_NODES and/or PS_SRV_NODES."
+            % (n_eb, n_bd, world_size, ps_eb_nodes, ps_srv_nodes, n_bd, required)
+        )
+    return n_eb, n_bd
+
+
 class Communicators(object):
     # Reserved nodes are for external applications (e.g. smalldata
     # servers).  These nodes will do nothing for event/step iterators
@@ -144,6 +176,27 @@ class Communicators(object):
                 "" % (PS_SRV_NODES, self.world_size, PS_SRV_NODES + 3)
             )
 
+        self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
+            "1",
+            "true",
+            "yes",
+            "on",
+        )
+
+        # In the default (non colocated) mode the EB/BD split is fixed by the
+        # three numbers below, so a layout that leaves an EB without any BD
+        # can be rejected on every rank before any communicator is built.
+        if not self.colocate_non_marching:
+            n_eb, n_bd = check_mpi_layout(self.world_size, PS_EB_NODES, PS_SRV_NODES)
+            if self.world_rank == 0:
+                self.logger.info(
+                    "[MPI-role] layout: smd0=1 eb=%d bd=%d srv=%d (world=%d)",
+                    n_eb,
+                    n_bd,
+                    PS_SRV_NODES,
+                    self.world_size,
+                )
+
         self.psana_group = self.world_group.Excl(
             range(self.world_size - PS_SRV_NODES, self.world_size)
         )
@@ -155,13 +208,6 @@ class Communicators(object):
         self.node_comm = None
         self.node_leader_comm = None
         self._setup_node_comms()
-
-        self.colocate_non_marching = os.environ.get("PS_EB_NODE_LOCAL", "0").strip().lower() in (
-            "1",
-            "true",
-            "yes",
-            "on",
-        )
 
         self.bd_main_group = self.psana_group.Excl([0])
         self._bd_only_group = None
@@ -196,6 +242,14 @@ class Communicators(object):
 
             if self.bd_rank == 0:
                 self._nodetype = "eb"
+                if self.bd_size < 2:
+                    raise RuntimeError(
+                        "EventBuilder rank %d on %s has no BigData ranks in its "
+                        "group (bd_comm size %d). The job would hang waiting for "
+                        "a worker. Add MPI ranks on this host or lower "
+                        "PS_EB_NODES/PS_SRV_NODES."
+                        % (self.world_rank, self.hostname, self.bd_size)
+                    )
             else:
                 self._nodetype = "bd"
 
@@ -962,31 +1016,21 @@ class EventBuilderNode(object):
 
     def start(self):
         rankreq = np.empty(6, dtype=np.int64)
-        smd_comm = self.comms.smd_comm
         n_bd_nodes = self.comms.bd_comm.Get_size() - 1
         bd_comm = self.comms.bd_comm
         waiting_bds = []
         chunk_id = 0
         rr_next_bd = 1
         enforce_strict_rr = self.dsparms.smd_callback != 0 and n_bd_nodes > 1
-        callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
 
         # Initialize Non-blocking Send Requests with Null
         self._init_requests()
 
         bypass_bd = bool(int(os.environ.get("PS_EB_BYPASS_BD", "0")))
 
-        while True:
-            self._reset_eb_chunk_stats()
-            smd_chunk = self._request_data(smd_comm)
-            if not smd_chunk:
-                break
-
-            if not bypass_bd:
+        for eb_man in self._batch_managers():
+            if not bypass_bd and not self.dsparms.smd_callback:
                 self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
-            eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, callback_run_state=callback_run_state,
-            )
             self.logger.debug(
                 f"TIMELINE 8. EB{self.comms.world_rank}DONEBUILDINGEVENTS {time.monotonic()}",
             )
@@ -999,6 +1043,7 @@ class EventBuilderNode(object):
 
             t0 = time.monotonic()
             for smd_batch_dict, step_batch_dict in eb_man.batches():
+                batch_records = sum(len(sizes) for _, sizes in smd_batch_dict.values())
                 if bypass_bd:
                     continue
                 # If single item and dest_rank=0, send to any bigdata nodes.
@@ -1122,7 +1167,7 @@ class EventBuilderNode(object):
                 # end else -> if 0 in smd_batch_dict.keys()
 
                 t1 = time.monotonic()
-                rate_hz = eb_man.eb.nevents / (t1 - t0)
+                rate_hz = batch_records / (t1 - t0)
                 self._bd_rate_hz.append(rate_hz)
                 # Prometheus metric expects kHz
                 self.rate_gauge.set(rate_hz * 1e-3)
@@ -1136,7 +1181,7 @@ class EventBuilderNode(object):
             chunk_id += 1
 
         # end While True
-        if not bypass_bd:
+        if not bypass_bd and not self.dsparms.smd_callback:
             self._prepare_bd_read_stats(chunk_id - 1, n_bd_nodes)
         wait_for(self.requests)
 
@@ -1211,19 +1256,8 @@ class EventBuilderNode(object):
                 self.logger.debug(bd_stats)
 
     def start_broadcast(self):
-        smd_comm = self.comms.smd_comm
         bd_comm = self.comms.bd_comm
-        callback_run_state = CallbackRunState() if self.dsparms.smd_callback else None
-
-        while True:
-            smd_chunk = self._request_data(smd_comm)
-            if not smd_chunk:
-                break
-
-            eb_man = EventBuilderManager(
-                smd_chunk, self.configs, self.dsparms, callback_run_state=callback_run_state
-            )
-
+        for eb_man in self._batch_managers(broadcast=True):
             for smd_batch_dict, _ in eb_man.batches():
                 smd_batch, _ = smd_batch_dict[0]
 
@@ -1233,6 +1267,40 @@ class EventBuilderNode(object):
 
         # Send empty array to signal termination
         bd_comm.bcast(np.array([], dtype='B'), root=0)
+
+    def _batch_managers(self, broadcast=False):
+        def chunks():
+            finished = False
+            input_chunk_id = 0
+            try:
+                while True:
+                    if self.dsparms.smd_callback:
+                        self._reset_eb_chunk_stats()
+                        self._prepare_bd_read_stats(input_chunk_id - 1,
+                                                    self.comms.bd_comm.Get_size() - 1)
+                    chunk = self._request_data(self.comms.smd_comm)
+                    if not chunk:
+                        finished = True
+                        return
+                    yield chunk
+                    if self.dsparms.smd_callback:
+                        self._log_chunk_stats(input_chunk_id)
+                        input_chunk_id += 1
+            finally:
+                # Even after physical EndRun, receive the SMD0 protocol's empty
+                # terminator (and any final step-history packet) before shutdown.
+                if not finished:
+                    while self._request_data(self.comms.smd_comm):
+                        self._reset_eb_chunk_stats()
+
+        self._reset_eb_chunk_stats()
+        if self.dsparms.smd_callback:
+            yield CallbackEventBuilderManager(chunks(), self.configs, self.dsparms,
+                                              run_serial=broadcast)
+        else:
+            for chunk in chunks():
+                yield EventBuilderManager(chunk, self.configs, self.dsparms)
+                self._reset_eb_chunk_stats()
 
 
 class BigDataNode(object):

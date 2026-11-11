@@ -258,6 +258,7 @@ std::shared_ptr<Pds::PromHistogram>
     m_families.emplace_back(makeMetric(name, labels, prometheusType));
     m_families.back().metric[0].histogram.bucket.resize(numBins + 1);
     m_values.push_back(nullptr);        // Placeholder; won't be called
+    m_floats.push_back(nullptr);        // Placeholder; won't be called
     m_histos.push_back(std::make_shared<PromHistogram>(numBins, binWidth, binMin));
     m_type.push_back(type);
     m_previous.push_back({});           // Placeholder: unused

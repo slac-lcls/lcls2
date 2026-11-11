@@ -847,7 +847,8 @@ def calib_jungfrau_versions(det_raw, evt, **kwa): # cmpars=(7,3,200,10), self.cv
     """
        - switch for calib versions C++
     """
-    nda_raw = kwa.get('nda_raw', None)
+    nda_raw = kwa.pop('nda_raw', None)  # pop (not get): keep ndarrays out of DetCache's cached kwa /
+                                        # the "kwa != odc.kwa" comparison below, which would raise on an array
     size_blk = kwa.get('size_blk', 512*1024) # single panel size
 
     # Avoid extra raw() copy here; calib immediately consumes raw per-event data.

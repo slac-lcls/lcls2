@@ -25,7 +25,7 @@ def test_run_exec_can_suppress_success_output(capsys):
     assert output.err == ""
 
 
-def test_run_exec_can_suppress_failure_output(capsys):
+def test_run_exec_prints_failure_output_by_default(capsys):
     rc = run_python(
         "import sys; print('stdout failed'); "
         "print('stderr failed', file=sys.stderr); sys.exit(7)"
@@ -33,8 +33,9 @@ def test_run_exec_can_suppress_failure_output(capsys):
 
     assert rc == 7
     output = capsys.readouterr()
-    assert output.out == ""
-    assert output.err == ""
+    # Failures always print, so sbatch errors are visible (2e9f0b263)
+    assert output.out == "stdout failed\n"
+    assert output.err == "stderr failed\n"
 
 
 def test_run_exec_prints_failure_output_when_requested(capsys):

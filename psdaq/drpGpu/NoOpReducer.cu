@@ -7,10 +7,6 @@
 #include "xtcdata/xtc/DescData.hh"
 #include "psalg/utils/SysLog.hh"
 
-// Define the HAS_GRAPH macro to select the CUDA graph method of running the
-// Reducer.  Leave it undefined to select the raw kernel launching method.
-#define HAS_GRAPH
-
 using logging = psalg::SysLog;
 using namespace XtcData;
 using namespace Drp::Gpu;
@@ -40,8 +36,7 @@ public:
 NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo(para, pool, det),
   m_refBufs_d(nullptr),
-  m_refBufCnt(0),
-  m_retCode_d(nullptr)
+  m_refBufCnt(0)
 {
   if (para.detType == "epixuhrsim") {
     if (para.kwargs.find("sim_l1_verify") != para.kwargs.end()) {
@@ -51,76 +46,57 @@ NoOpReducer::NoOpReducer(const Parameters& para, const MemPoolGpu& pool, Detecto
       }
     }
   }
-  chkError(cudaMalloc(&m_retCode_d,    sizeof(*m_retCode_d)));
-  chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
+
+  // Workers' graphs run concurrently, so each needs its own counters.  Allocated here
+  // because cudaMalloc isn't allowed while recordGraph()'s stream is capturing.
+  m_counters_d.resize(para.nworkers, nullptr);
+  for (auto& counters : m_counters_d) {
+    chkError(cudaMalloc(&counters, sizeof(*counters)));
+    chkError(cudaMemset( counters, 0, sizeof(*counters)));
+  }
 }
 
 NoOpReducer::~NoOpReducer()
 {
-  if (m_retCode_d)  cudaFree(m_retCode_d);
+  for (auto counters : m_counters_d)  chkError(cudaFree(counters));
 }
 
-static __device__ unsigned lErrCnt       = 0;
-//static __device__ unsigned lOutSz        = 0;
-static __device__ unsigned blockCount    = 0;
-static __shared__ bool     isLastBlockDone;
+static __shared__ bool isLastBlockDone;
 
 // GPU kernel for actually performing the data reduction
 // In this case, the calibrated data is just copied to the output buffer
 static __global__
 void _reduce(unsigned* const        __restrict__ state,
-#ifdef HAS_GRAPH
              unsigned  const* const __restrict__ index,
-#else
-             unsigned  const                     index,
-#endif
              float     const* const __restrict__ calibBuffers,
              size_t    const                     calibBufsCnt,
              uint8_t*  const        __restrict__ dataBuffers,
              size_t    const                     dataBufsCnt,
              float     const* const __restrict__ refBuffers,
              unsigned  const                     refBufCnt,
+             NoOpCounters* const    __restrict__ counters,
              unsigned* const        __restrict__ retCode)
 {
-#ifndef HOST_LAUNCHED_REDUCERS
-  if (*state == 1)
-#endif
-  {
+  if (*state == 1) {
     int tid    = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
-#ifdef HAS_GRAPH
     unsigned const idx{*index};         // Dereference only once
-#else
-    unsigned const idx{index};
-#endif
     float const* const __restrict__ calib = &calibBuffers[idx * calibBufsCnt];
     float*       const __restrict__ data  = (float*)(&dataBuffers[idx * dataBufsCnt]);
-    //float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
-    //if (tid == 0)  printf("### NoOpReducer: calibCnt %lu, dataCnt %lu, stride %u, idx %u, calib %p:%p, data %p:%p\n",
-    //                      calibBufsCnt, dataBufsCnt, stride, idx, &calib[0],&calib[calibBufsCnt], &data[0], &data[calibBufsCnt]);
+    float const* const __restrict__ ref   = refBuffers ? &refBuffers[(idx % refBufCnt) * calibBufsCnt] : nullptr;
     for (unsigned i = tid; i < calibBufsCnt; i += stride) {
-      //if (i < 4) {
-      //  if (!ref)
-      //    printf("### NoOpReducer: blk %d, thr %d, idx %u, cnt %lu, i %u, calib %f\n",
-      //           blockIdx.x, threadIdx.x, idx, calibBufsCnt, i, calib[i]);
-      //  else
-      //    printf("### NoOpReducer: blk %d, thr %d, idx %u, cnt %lu, ref %p: i %u, calib %f, ref %f\n",
-      //           blockIdx.x, threadIdx.x, idx%refBufCnt, calibBufsCnt, &ref[i], i, calib[i], ref ? ref[i] : 0.f);
-      //}
-      //if (ref && (calib[i] != ref[i])) {
-      //  printf("### NoOpReducer: blk %d, thr %d, Mismatch @ %u: calib %f != ref %f\n",
-      //         blockIdx.x, threadIdx.x, i, calib[i], ref[i]);
-      //  atomicAdd(&lErrCnt, 1);
-      //}
+      if (ref && (calib[i] != ref[i])) {
+        atomicAdd(&counters->errCnt, 1);
+      }
       data[i] = calib[i];
       //atomicAdd(&lOutSz, sizeof(*data)); // @todo: Not working
     }
 
     __syncthreads();    // Wait for all threads to complete so that thread 0 can't increment blockCount before they're done
     if (threadIdx.x == 0) {
-      __threadfence();                                    // Ensure global memory is updated before the following
-      unsigned value = atomicInc(&blockCount, gridDim.x); // Thread 0 signals that it is done
-      isLastBlockDone = (value == (gridDim.x - 1));       // Thread 0 determines if its block is the last  block to be done
+      __threadfence();                                        // Ensure global memory is updated before the following
+      unsigned value = atomicInc(&counters->blockCount, gridDim.x - 1); // Wraps to 0 for the next launch
+      isLastBlockDone = (value == (gridDim.x - 1));           // Thread 0 determines if its block is the last block to be done
     }
     if (isLastBlockDone) {
       if (threadIdx.x == 0) {
@@ -129,13 +105,11 @@ void _reduce(unsigned* const        __restrict__ state,
         *extent = calibBufsCnt * sizeof(*data);
         //*extent  = lOutSz;              // @todo: This returns crazy values: why?
         //lOutSz   = 0;                   // Reset for next time
-        *retCode = lErrCnt != 0;
-        lErrCnt  = 0;                   // Reset for next time
+        *retCode = counters->errCnt;    // Count of mismatched elements
+        counters->errCnt = 0;           // Reset for next time
 
-#ifndef HOST_LAUNCHED_REDUCERS
         // Advance to the next state
         *state = 2;
-#endif
       }
     }
   }
@@ -148,9 +122,9 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
                               float const* const calibBuffers_d,
                               size_t       const calibBufsCnt,
                               uint8_t*     const dataBuffers_d,
-                              size_t       const dataBufsCnt)
+                              size_t       const dataBufsCnt,
+                              unsigned*    const retCode)
 {
-#ifdef HAS_GRAPH
   // @todo: Use green context SM splitting results here
   cudaDeviceProp prop;
   chkError(cudaGetDeviceProperties(&prop, 0));
@@ -167,6 +141,12 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
   auto nThrs{tpSM/maxBpSM}; //{32}; // @todo: Find from green context
   auto nBlks{nSMs*maxBpSM}; //20*48;
   printf("*** NoOpReducer blocks %u * threads %u = %u threads\n", nBlks, nThrs, nBlks * nThrs);
+
+  if (m_nGraphs >= m_counters_d.size()) {
+    logging::critical("NoOpReducer: more graphs recorded than the %zu workers", m_counters_d.size());
+    abort();
+  }
+  auto const counters = m_counters_d[m_nGraphs++];      // Recorded once per worker, in order
   _reduce<<<nBlks, nThrs, 0, stream>>>(state_d,
                                        index_d,
                                        calibBuffers_d,
@@ -175,90 +155,10 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
                                        dataBufsCnt,
                                        m_refBufs_d,
                                        m_refBufCnt,
-                                       m_retCode_d);
+                                       counters,
+                                       retCode);
   chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
-#endif
 }
-
-#ifdef HAS_GRAPH // hasGraph == true case
-bool NoOpReducer::hasGraph() const { return true; }
-
-void NoOpReducer::reduce(cudaGraphExec_t graph,
-                         cudaStream_t    stream,
-                         unsigned        index,
-                         size_t*         dataSize,
-                         unsigned*       retCode)
-{
-  noop_scoped_range r{/*"NoOpReducer::reduce"*/}; // Expose function name via NVTX
-
-  //printf("*** NoOpReducer::reduce\n");
-
-  chkFatal(cudaGraphLaunch(graph, stream));
-
-  auto maxSize  = m_pool.reduceBufsStride();
-  auto buffer_d = &m_pool.reduceBuffers_d()[index * maxSize];
-  auto pSize_d  = buffer_d - sizeof(*dataSize);
-  chkError(cudaMemcpyAsync((void*)dataSize, pSize_d,     sizeof(*dataSize), cudaMemcpyDefault, stream));
-  chkError(cudaMemcpyAsync((void*)retCode,  m_retCode_d, sizeof(*retCode),  cudaMemcpyDefault, stream));
-}
-#else // hasGraph == false case
-bool NoOpReducer::hasGraph() const { return false; }
-
-void NoOpReducer::reduce(cudaGraphExec_t,
-                         cudaStream_t stream,
-                         unsigned     index,
-                         size_t*      dataSize,
-                         unsigned*    retCode)
-{
-  noop_scoped_range r{/*"NoOpReducer::reduce"*/}; // Expose function name via NVTX
-
-  auto calibBuffers = m_pool.calibBuffers_d();
-  auto calibBufsSz  = m_pool.calibBufsSize();
-  auto calibBufsCnt = calibBufsSz / sizeof(*calibBuffers);
-  auto dataBuffers  = m_pool.reduceBuffers_d();
-  auto dataBufsRsvd = m_pool.reduceBufsReserved();
-  auto dataBufsSz   = m_pool.reduceBufsSize();
-  // The stride is every region of a reduce buffer, not just the reserve plus
-  // payload, so that `&dataBuffers[idx * dataBufsCnt]` indexes buffer idx
-  auto dataBufsCnt  = m_pool.reduceBufsStride() / sizeof(*dataBuffers);
-
-  // @todo: Use green context SM splitting results here
-  cudaDeviceProp prop;
-  chkError(cudaGetDeviceProperties(&prop, 0));
-  const auto tpSM{prop.maxThreadsPerMultiProcessor};
-  unsigned nSMs;
-  switch (tpSM) {
-    case 1536:  nSMs = 20;  break;
-    case 2048:  nSMs = 10;  break;
-    default:
-      logging::critical("Unexpected number of threads per MultiProcessor %u", tpSM);
-      abort();
-  };
-  const auto maxBpSM{prop.maxBlocksPerMultiProcessor};
-  auto threads{tpSM/maxBpSM}; //{32}; // @todo: Move to green contexts for improved robustness
-  auto blocks {nSMs*maxBpSM}; //20*48; //(calibBufsCnt + threads-1) / threads; // @todo: Limit this?
-  printf("*** NoOp::reduce: 1 blocks %d, threads %d, grid size %d\n", blocks, threads, blocks * threads);
-  _reduce<<<blocks, threads, 0, stream>>>(nullptr, // Unused state variable
-                                          index,
-                                          calibBuffers,
-                                          calibBufsCnt,
-                                          dataBuffers,
-                                          dataBufsCnt,
-                                          m_refBufs_d,
-                                          m_refBufCnt,
-                                          m_retCode_d);
-  chkError(cudaGetLastError(), "Launch of _reduce kernel failed");
-
-  printf("*** NoOp::reduce: 2\n");
-
-  auto maxSize  = m_pool.reduceBufsStride();
-  auto buffer_d = &dataBuffers[index * maxSize];
-  auto pSize_d  = buffer_d - sizeof(*dataSize);
-  chkError(cudaMemcpyAsync((void*)dataSize, pSize_d,    sizeof(*dataSize), cudaMemcpyDefault, stream));
-  chkError(cudaMemcpyAsync((void*)retCode, m_retCode_d, sizeof(*retCode),  cudaMemcpyDefault, stream));
-  chkError(cudaStreamSynchronize(stream));
-}
-#endif
 
 int NoOpReducer::configure(const nlohmann::json& configureMsg,
                            const nlohmann::json& connectMsg,

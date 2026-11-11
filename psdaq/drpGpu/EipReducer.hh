@@ -1,5 +1,7 @@
 #pragma once
 
+// Not built: it needs a recordGraph() to work with the graph-only ReducerAlgo interface.
+
 #include "ReducerAlgo.hh"
 
 #include <eip/Compressor.hh>

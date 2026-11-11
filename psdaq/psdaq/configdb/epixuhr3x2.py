@@ -27,7 +27,8 @@ class EpixUHR3x2_Manager:
         nasics: int = 6,
         readout_system_num: int = 0,
         logger_name: str = "ePixUHR3x2",
-        emulator: bool = True,
+        use_gpu: int = 1,
+        emulator: int = 0,
     ):
         self._root: epixUhrDev.Root = root
         self._nasics: int = nasics
@@ -42,7 +43,8 @@ class EpixUHR3x2_Manager:
         }
 
         self._ros_num: int = readout_system_num
-        self._emulator: bool = emulator
+        self._use_gpu: bool = bool(use_gpu)
+        self._emulator: bool = bool(emulator)
 
     @property
     def emulator(self) -> bool:
@@ -78,14 +80,13 @@ class EpixUHR3x2_Manager:
         time.sleep(0.1)
         logger.info("Stopping run.")
 
-    def _kick_data_path(self, use_cpu: bool = True):
+    def _kick_data_path(self):
         """The data path may read as one or the other, but this may not be correct.
 
-        Args:
-            use_cpu (bool): If True, data will be routed to the CPU.
+        The data path selection is determined at construction.
         """
-        target_val: int = 0x0 if use_cpu else 0x1
-        kick_val: int = 0x1 if use_cpu else 0x0
+        target_val: int = int(self._use_gpu)
+        kick_val: int = int(not self._use_gpu)
         if hasattr(self.ReadoutSystem, "DataDestination"):
             self.ReadoutSystem.DataDestination.set(kick_val)
             time.sleep(0.01)
@@ -160,7 +161,7 @@ class EpixUHR3x2_Manager:
     @lru_cache
     def FebAsics(self):
         asic_dict: Dict[int, Any] = {}
-        for i in range(1, self._nasics + 1):
+        for i in range(self._nasics):
             # asic_dict[i] = self._get_feb_asic(asic=i)
             asic_dict[i] = self._get_nonpython_name(
                 base_node=self.FebFpga.App, template="Asic[{asic}]", asic=i
@@ -172,7 +173,7 @@ class EpixUHR3x2_Manager:
     @lru_cache
     def FebFramerAsics(self):
         asic_dict: Dict[int, Any] = {}
-        for i in range(1, self._nasics + 1):
+        for i in range(self._nasics):
             # asic_dict[i] = self._get_feb_asic(asic=i)
             asic_dict[i] = self._get_nonpython_name(
                 base_node=self.FebFpga.App, template="FramerAsic[{asic}]", asic=i
@@ -188,7 +189,7 @@ class EpixUHR3x2_Manager:
 
             return getter
 
-        for i in range(1, nasics + 1):
+        for i in range(nasics):
             setattr(
                 EpixUHR3x2_Manager,
                 f"Asic{i}",
@@ -422,7 +423,7 @@ class EpixUHR3x2_Manager:
     def _set_running_framer_asic(self, asic: int) -> None:
         registers_and_vals: Dict[str, Any] = {
             "enable": True,
-            "DisableLane": 0,
+            "DisableAsic": 0,
         }
 
         self.write_many(
@@ -434,11 +435,30 @@ class EpixUHR3x2_Manager:
         for asic in asics:
             logger.info(f"Configuring Asic {asic}")
             asic_reg_cfg: Dict[str, Any] = app_cfg[f"Asic[{asic}]"]
+
+            # NOTE: Have switched to zero indexing now with v5.0.0
             self._set_running_asic(asic=asic, reg_cfg=asic_reg_cfg)
             time.sleep(0.1)
             self._set_running_framer_asic(asic=asic)
 
         logger.info("Done with SACI configuration")
+
+    def setup_asic_descramblers(self, asics: List[int]) -> None:
+        logger: logging.Logger = logging.getLogger(self._logger_name)
+        descrambler = self.FebFpga.App.Descrambler
+        for asic in asics:
+            asic_descrambler = descrambler.DescAsic[asic]
+
+            # For the top row of asics - ASIC[0...2] - set `MirrorCols`
+            # For the bottom row of asics - ASIC[3...5] - set `MirrorRows`
+            if asic < 3:
+                asic_descrambler.MirrorCols.set(True)
+                asic_descrambler.MirrorRows.set(False)
+            else:
+                asic_descrambler.MirrorCols.set(False)
+                asic_descrambler.MirrorRows.set(True)
+
+        logger.info("Done with ASIC Descrambler Mirroring Setup")
 
     def _init_framer_asic(self, asic: int) -> None:
         registers_and_vals: Dict[str, Any] = {
@@ -452,6 +472,7 @@ class EpixUHR3x2_Manager:
 
     def init_asics(self, asics: Tuple[int, ...]):
         for asic in asics:
+            # NOTE: Have switched to zero indexing now with v5.0.0
             self._init_asic(asic=asic)
             self._init_framer_asic(asic=asic)
 
@@ -540,6 +561,8 @@ class EpixUHR3x2_Manager:
         logger: logging.Logger = logging.getLogger(self._logger_name)
         if not emulator:
             for i in asics:
+                # NOTE: Have switched to zero indexing now with v5.0.0
+
                 asicGtData = self.FebFpga.App.AsicGtData[i]
                 try:
                     asicGtData.enable.set(True)
@@ -550,6 +573,8 @@ class EpixUHR3x2_Manager:
             time.sleep(1)
 
             for i in asics:
+                # NOTE: Have switched to zero indexing now with v5.0.0
+
                 asicGtData = self.FebFpga.App.AsicGtData[i]
                 try:
                     asicGtData.gtStableRst.set(False)
@@ -601,7 +626,8 @@ class EpixUHR3x2_Manager:
             if not self._emulator:
                 devPtr.FebFpga.App.AsicGtClk.enable.set(True)
                 for i in range(self._nasics):
-                    devPtr.FebFpga.App.AsicGtData[i+1].enable.set(True)
+                    # devPtr.FebFpga.App.AsicGtData[i+1].enable.set(True)
+                    devPtr.FebFpga.App.AsicGtData[i].enable.set(True)
 
             time.sleep(1)
             devPtr.FebFpga.App.WaveformControl.GlblRstPolarity.set(False)
@@ -618,10 +644,12 @@ class EpixUHR3x2_Manager:
                 time.sleep(1)
                 devPtr.FebFpga.App.AsicGtClk.gtRstAll.set(False)
                 for i in range(self._nasics):
-                    devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(True)
+                    # devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(True)
+                    devPtr.FebFpga.App.AsicGtData[i].gtStableRst.set(True)
                 time.sleep(1)
                 for i in range(self._nasics):
-                    devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(False)
+                    # devPtr.FebFpga.App.AsicGtData[i + 1].gtStableRst.set(False)
+                    devPtr.FebFpga.App.AsicGtData[i].gtStableRst.set(False)
 
     def init_board(self, timebase: str):
         self._check_pll_lock()
@@ -649,10 +677,9 @@ class EpixUHR3x2_Manager:
 
         self.initialize_timing(timebase=timebase)
 
-        # Force use of CPU data path. Seems to not determine that sometimes.
-        # Per Gabriel: set use_cpu=False for GPU use
-        # self._kick_data_path(use_cpu=True)
-        self._kick_data_path(use_cpu=False)
+        # Force use of the correct data path. Seems to not determine that sometimes.
+        # Selection of GPU/CPU is done when constructing the Manager
+        self._kick_data_path()
 
     def reset_counters(self):
         self.FebFpga.App.TimingRx.TimingFrameRx.countReset()
@@ -901,6 +928,8 @@ class EpixUHR3x2_Manager:
         logger: logging.Logger = logging.getLogger(self._logger_name)
         logger.info(f"Programming Pixel Gain {gain_value} for ASICs {asics}")
         for i in asics:
+            # NOTE: Have switched to zero indexing now with v5.0.0
+
             asic = self.FebAsics[i]
             self.write_and_check(asic.PixNumModeEn, True)
             # NOTE: This register expects the bits as a string...
@@ -930,7 +959,7 @@ class EpixUHR3x2_Manager:
             if map_data.shape[0] == len(asics):
                 maps = {asic: map_data[i] for i, asic in enumerate(asics)}
             else:
-                maps = {asic: map_data[asic - 1] for asic in asics}
+                maps = {asic: map_data[asic] for asic in asics}
         else:
             raise ValueError(f"map_data must be 2D or 3D, got {map_data.ndim}D")
         for asic_num in asics:
@@ -947,13 +976,10 @@ class EpixUHR3x2_Manager:
 
             try:
                 matrix_config = self.FebFpga.App.EpixUhrMatrixConfig
-                # prog_cmd = getattr(
-                #     matrix_config, f"progPixelMatrixFromCsvAsic{asic_num}"
-                # )
-                # prog_cmd(fn)
+
                 matrix_config.CsvFilePath[asic_num].set(fn)
                 prog_cmd = getattr(
-                    matrix_config, f"progPixelMatrixFromCsvAsic{asic_num}"
+                    matrix_config, f"progPixelMatrixFromCsvAsic[{asic_num}]"
                 )
                 time.sleep(0.1)
                 prog_cmd(fn)
@@ -996,7 +1022,7 @@ class EpixUHR3x2_Manager:
             if map_data.shape[0] == len(asics):
                 maps = {asic: map_data[i] for i, asic in enumerate(asics)}
             else:
-                maps = {asic: map_data[asic - 1] for asic in asics}
+                maps = {asic: map_data[asic] for asic in asics}
         else:
             raise ValueError(f"map_data must be 2D or 3D, got {map_data.ndim}D")
         for asic_num in asics:
@@ -1013,7 +1039,7 @@ class EpixUHR3x2_Manager:
             )
 
             self.write_and_check(asic_node.PixNumModeEn, False)
-            matrix_config.selAsicMat.set(asic_num - 1)
+            matrix_config.selAsicMat.set(asic_num)
 
             most_frequent = np.bincount(np.ravel(matrix_cfg.astype(int))).argmax()
             getattr(matrix_config, f"MaxFreqConfAsic[{asic_num}]").set(
@@ -1026,12 +1052,12 @@ class EpixUHR3x2_Manager:
                 packed_words |= reshaped[:, i] << (i * 8)
 
             ldata = packed_words.tobytes()
-            dest_addr = matrix_config.memAddress + (asic_num - 1) * 0x80000
+            dest_addr = matrix_config.memAddress + asic_num * 0x80000
 
             matrix_config._reqTransaction(dest_addr, ldata, len(ldata), 0, rim.Write)
             matrix_config._waitTransaction(0)
 
-            matrix_config.ConfSel.set(1 << (asic_num - 1))
+            matrix_config.ConfSel.set(1 << asic_num)
             matrix_config.ConfWrReq.set(True)
 
             while not matrix_config.ConfDoneAll.get():

@@ -32,8 +32,7 @@ void _passthru(unsigned*       const __restrict__ state,
                unsigned  const* const __restrict__ index,
                uint8_t*        const __restrict__ dataBuffers,
                size_t          const              dataBufsCnt,
-               size_t          const              rawSize,
-               unsigned*       const __restrict__ retCode)
+               size_t          const              rawSize)
 {
   if (*state == 1) {
     auto const __restrict__ data = &dataBuffers[*index * dataBufsCnt];
@@ -46,7 +45,6 @@ void _passthru(unsigned*       const __restrict__ state,
     // right up to the payload, so the usual slot would be clobbered by it.
     size_t* const __restrict__ extent = &((size_t*)(data - rawSize))[-1];
     *extent  = rawSize;
-    *retCode = 0;
 
     __threadfence();                    // Publish the size before the state change
 
@@ -57,8 +55,7 @@ void _passthru(unsigned*       const __restrict__ state,
 
 PassthruShim::PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detector& det) :
   ReducerAlgo(para, pool, det),
-  m_rawSize  (det.rawSize()),
-  m_retCode_d(nullptr)
+  m_rawSize  (det.rawSize())
 {
   // Without a raw block there is nothing for this shim to report the size of, and
   // the recorder would write a zero-length payload for every event.  Reaching here
@@ -72,19 +69,9 @@ PassthruShim::PassthruShim(const Parameters& para, const MemPoolGpu& pool, Detec
                       para.detName.c_str());
     abort();
   }
-  chkError(cudaMalloc(&m_retCode_d,    sizeof(*m_retCode_d)));
-  chkError(cudaMemset( m_retCode_d, 0, sizeof(*m_retCode_d)));
-
   logging::warning("PassthruShim: recording %zu B of raw data per event, unreduced",
                    m_rawSize);
 }
-
-PassthruShim::~PassthruShim()
-{
-  if (m_retCode_d)  cudaFree(m_retCode_d);
-}
-
-bool PassthruShim::hasGraph() const { return true; }
 
 void PassthruShim::recordGraph(cudaStream_t       stream,
                                unsigned*    const state_d,
@@ -92,7 +79,8 @@ void PassthruShim::recordGraph(cudaStream_t       stream,
                                float const* const calibBuffers_d,
                                size_t       const calibBufsCnt,
                                uint8_t*     const dataBuffers_d,
-                               size_t       const dataBufsCnt)
+                               size_t       const dataBufsCnt,
+                               unsigned*    const retCode)
 {
   // calibBuffers_d is deliberately unused: pass-through bypasses the calibrated
   // buffer entirely, so nothing populates it in this mode.  Anything downstream
@@ -102,25 +90,8 @@ void PassthruShim::recordGraph(cudaStream_t       stream,
                                  index_d,
                                  dataBuffers_d,
                                  dataBufsCnt,
-                                 m_rawSize,
-                                 m_retCode_d);
+                                 m_rawSize);
   chkError(cudaGetLastError(), "Launch of _passthru kernel failed");
-}
-
-void PassthruShim::reduce(cudaGraphExec_t graph,
-                          cudaStream_t    stream,
-                          unsigned        index,
-                          size_t*         dataSize,
-                          unsigned*       retCode)
-{
-  pass_scoped_range r{/*"PassthruShim::reduce"*/}; // Expose function name via NVTX
-
-  // Only reached by the host-launched path, which this shim does not support.  In
-  // the graph case the graph is launched once by Reducer::startup() and relaunches
-  // itself from _reducerLoop, so nothing calls this.
-  logging::critical("PassthruShim::reduce: unreachable -- hasGraph() is true, so the "
-                    "graph relaunches itself and the host does not drive it");
-  abort();
 }
 
 int PassthruShim::configure(const nlohmann::json& configureMsg,

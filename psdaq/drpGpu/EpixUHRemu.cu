@@ -1,4 +1,5 @@
 #include "EpixUHRemu.hh"
+#include "EpixUHRcalib.hh"
 
 #include "ReaderKernels.cuh"
 
@@ -144,7 +145,7 @@ unsigned EpixUHRemu::configure(const std::string& config_alias, Xtc& xtc, const 
     logging::error("Gpu::EpixUHRemu::configure failed for %s\n", m_para->device);
   }
 
-  Alg alg("raw", 0, 0, 0);
+  Alg alg("raw", 1, 0, 0);               // 1.0.0: [336][576], as ePixUHR3x2 raw 1.0.0
   NamesId namesId(nodeId, EventNamesIndex);
   Names& names = *new(xtc, bufEnd) Names(bufEnd,
                                          m_para->detName.c_str(), alg,
@@ -168,19 +169,19 @@ unsigned EpixUHRemu::beginrun(Xtc& xtc, const void* bufEnd, const json& runInfo)
     logging::error("Gpu::EpixUHRemu::beginrun failed for %s\n", m_para->device);
   }
 
-  // Load the calibration constants onto the GPU
-  // @todo: Fetch calibration constants
-  std::vector<float> peds(NPixels, 0.0);
-  std::vector<float> gains(NPixels, 1.0);
-  auto pool = m_pool->getAs<MemPoolGpu>();
-  auto peds_d  = m_pedsVec_d;
-  auto gains_d = m_gainsVec_d;
-  for (unsigned range = 0; range < NRanges; ++range) {
-    chkError(cudaMemcpy(peds_d,  peds.data(),  NPixels * sizeof(*peds_d),  cudaMemcpyDefault));
-    chkError(cudaMemcpy(gains_d, gains.data(), NPixels * sizeof(*gains_d), cudaMemcpyDefault));
-    peds_d  += NPixels;
-    gains_d += NPixels;
+  // Load the calibration constants onto the GPU.
+  std::vector<float> peds(NRanges * NPixels, 0.0);
+  std::vector<float> gains(NRanges * NPixels, 1.0);
+  auto const serNo = m_para->kwargs.find("calibSerNo");
+  if (serNo != m_para->kwargs.end() && !m_passthru) {   // Pass-through records raw, so a CALIB run can take the first darks
+    if (fetchEpixUHRconstants("pedestals", serNo->second, runInfo, EpixUHRgainModes, NRanges, peds, m_warnings))  rc = 1;
+    if (fetchEpixUHRconstants("gain_factors", serNo->second, runInfo, EpixUHRgainModes, NRanges, gains, m_warnings))  rc = 1;
   }
+  else if (!m_passthru) {
+    m_warnings.push_back("no calibSerNo kwarg: using pedestals of 0 and gains of 1");
+  }
+  chkError(cudaMemcpy(m_pedsVec_d,  peds.data(),  peds.size()  * sizeof(*m_pedsVec_d),  cudaMemcpyDefault));
+  chkError(cudaMemcpy(m_gainsVec_d, gains.data(), gains.size() * sizeof(*m_gainsVec_d), cudaMemcpyDefault));
 
   return rc;
 }

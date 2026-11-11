@@ -219,9 +219,9 @@ def bit_opers_3x2_raw(a):
        bits, in a 16 bit integer. The layout of this 16-bit word data is:
 
                            U U U U D D D D D D D D U U U G
-                           \_____/ \___________________/ |
-                              |              |            \
-                         Unused bits    11 data bits    Gain bit
+                           |_____| |___________________| |
+                              |              |           |
+                         Unused bits    11 data bits     Gain bit
     """
     return a & 0x0FFF
 
@@ -247,12 +247,36 @@ def raw_v01(det_raw, evt, sh_seg=(336,576)):
     segnums = det_raw._segment_numbers # for now [0,]
     maxsegnum = max(segnums)
     out = np.zeros((maxsegnum+1,)+sh_seg, dtype=np.uint16)
-    for iseg, nseg in enumerate(segnums):
-        raw_asics = segs[iseg].raw # shape:(6, 32256)
+    for nseg in segnums:
+        raw_asics = segs[nseg].raw # shape:(6, 32256)
         arr2 = bit_opers_3x2_raw(raw_asics)
         asics = reshape_6x32256_to_6x168x192(arr2) # (6, 168, 192)
         arrseg = stack_3x2_asics(asics) # (336, 576)
         out[nseg,:] = arrseg # save panel in the output array
+    return out
+
+
+def raw_v100(det_raw, evt, sh_seg=(336,576)):
+    """raw for firmware >= v5.0.0 (raw alg version 1.0.0):
+       the FPGA delivers each panel as a single row-major (336, 576) array,
+       so no ASIC reshaping/stacking is needed.
+       returns raw for all segments shaped as (<number of segments>, 336, 576)
+    """
+    if cond_msg(evt is None, msg='evt is None - return None', output_meth=logger.warning):
+        return None
+    segs = det_raw._segments(evt)
+    if segs is None:
+        return None
+    segnums = det_raw._segment_numbers
+    maxsegnum = max(segnums)
+    out = np.zeros((maxsegnum+1,)+sh_seg, dtype=np.uint16)
+    for nseg in segnums:
+        raw_panel = segs[nseg].raw # shape:(336, 576)
+        if raw_panel.shape != sh_seg:
+            logger.error('segment %d raw shape %s != expected %s - ASIC-major data tagged as raw v1.0.0?'
+                         % (nseg, str(raw_panel.shape), str(sh_seg)))
+            return None
+        out[nseg,:] = bit_opers_3x2_raw(raw_panel)
     return out
 
 

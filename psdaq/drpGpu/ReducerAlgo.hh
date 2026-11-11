@@ -7,12 +7,19 @@
 #include "xtcdata/xtc/ShapesData.hh"    // For Alg
 #include "xtcdata/xtc/NamesLookup.hh"
 #include <nlohmann/json.hpp>
+#include <map>
+#include <memory>
+#include <string>
 
 #include <cuda_runtime.h>
 
 namespace XtcData {
   class Xtc;
 } // XtcData
+
+namespace Pds {
+  class MetricExporter;
+} // Pds
 
 namespace Drp {
   struct Parameters;
@@ -26,6 +33,7 @@ struct ReducerTuple
 {
   unsigned index;
   size_t   dataSize;
+  unsigned retCode;                     // Non-zero if the algorithm reported a problem
 };
 
 class ReducerAlgo
@@ -34,25 +42,26 @@ public:
   ReducerAlgo(const Parameters& para, const MemPoolGpu& pool, Detector& det) : m_para(para), m_pool(pool), m_det(det) {}
   virtual ~ReducerAlgo() {}
 
-  virtual bool   hasGraph()    const = 0;
   virtual size_t payloadSize() const = 0;
+  // retCode is zeroed before each event; an algorithm may set it non-zero to have the
+  // recorder count and report a problem with that event.
   virtual void   recordGraph(cudaStream_t       stream,
                              unsigned*    const state,
                              unsigned*    const index,
                              float const* const calibBuffers,
                              size_t       const calibBufsCnt,
                              uint8_t*     const dataBuffers,
-                             size_t       const dataBufsCnt) = 0;
-  virtual void     reduce   (cudaGraphExec_t,
-                             cudaStream_t,
-                             unsigned  index,
-                             size_t*   dataSize,
-                             unsigned* retCode) = 0;
+                             size_t       const dataBufsCnt,
+                             unsigned*    const retCode) = 0;
   virtual int      configure(const nlohmann::json& configureMsg,
                              const nlohmann::json& connectMsg,
                              size_t                collectionId) = 0;                 // Retrieve configDb configuration
   virtual unsigned configure(XtcData::Xtc&, const void* bufEnd) = 0;                  // attach descriptions to xtc
   virtual void     event    (XtcData::Xtc&, const void* bufEnd, unsigned dataSize) {} // fill xtc data description
+  // Metrics only the algorithm knows, beyond the Reducer's DRP_redRatio.  Called at each
+  // Configure after the algorithm is created; they are dropped at Unconfigure.
+  virtual int      setupMetrics(const std::shared_ptr<Pds::MetricExporter>,
+                                std::map<std::string, std::string>& labels) { return 0; }
 protected:
   const Parameters& m_para;
   const MemPoolGpu& m_pool;

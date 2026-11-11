@@ -60,6 +60,7 @@ namespace Pds
                     const EbDgram*     inputs) const;
       void    _slotDump();
       bool    _orphaned(uint64_t iPid) const;
+      void    _checkOverlap(const ResultDgram* bdg, const void* end, unsigned src, uint64_t data);
       void    _orphanDump(TebContributor& ctrb, const EbDgram* inp);
     private:
       EbLfServer                    _transport;
@@ -80,6 +81,7 @@ namespace Pds
       uint64_t                      _newestRcvd[MAX_TEBS];
       uint64_t                      _rcvdFrom[MAX_TEBS];
       uint64_t                      _orphanCount;
+      const bool                    _slotCheck;
       const TebCtrbParams&          _prms;
       size_t                        _regSize;
       void*                         _region;

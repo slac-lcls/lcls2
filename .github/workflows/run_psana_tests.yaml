@@ -3,6 +3,12 @@ on:
   schedule:
     - cron: '0 5 * * *'  # once per day at midnight ET
   workflow_dispatch:
+  pull_request:
+
+# A new push to a PR cancels that PR's run still in progress.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build-lcls-ii:
@@ -16,7 +22,7 @@ jobs:
         # This makes the shell a login shell, which typically
         # sources said files. This is needed for conda.
         # Refer: https://github.com/marketplace/actions/setup-miniconda
-        shell: bash -el {0}  
+        shell: bash -el {0}
     steps:
       - name: Checkout repo with submodules
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -54,6 +60,9 @@ jobs:
           # regardless of credentials, so the test asserts on uncalibrated
           # fallback data. Root cause not yet resolved; see repo history.
           pytest psana/psana/tests/test_HBins.py \
+                 psana/psana/tests/test_callback_chunk_state.py \
+                 psana/psana/tests/test_callback_iterator.py \
+                 psana/psana/tests/test_callback_stream.py \
                  psana/psana/tests/test_Time.py \
                  psana/psana/tests/test_TimeFormat.py \
                  psana/psana/tests/test_TimeParse.py \

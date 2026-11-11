@@ -2,6 +2,7 @@ from psana.eventbuilder import EventBuilder
 from psana.psexp.packet_footer import PacketFooter
 
 from .callback_batch import CallbackBatchBuilder
+from .callback_stream import StreamingCallbackBatches
 from .run import RunSmallData
 
 
@@ -52,3 +53,28 @@ class EventBuilderManager(object):
                 batch_dict, step_dict = callback_batch
 
             yield batch_dict, step_dict
+
+
+class CallbackEventBuilderManager:
+    """One callback stream spanning all SMD chunks assigned to this EB rank."""
+
+    def __init__(self, chunks, configs, dsparms, run_serial=False):
+        def builders():
+            try:
+                for chunk in chunks:
+                    views = PacketFooter(view=chunk).split_packets()
+                    yield EventBuilder(
+                        views, configs, filter_timestamps=dsparms.timestamps,
+                        intg_stream_id=dsparms.intg_stream_id,
+                        batch_size=dsparms.batch_size, use_proxy_events=True,
+                    )
+            finally:
+                chunks.close()
+
+        self.stream = StreamingCallbackBatches(builders(), configs, dsparms, run_serial)
+
+    def batches(self):
+        try:
+            yield from self.stream
+        finally:
+            self.stream.close()

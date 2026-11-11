@@ -23,6 +23,8 @@ using namespace Drp::Gpu;
 using namespace Pds::Eb;
 using json    = nlohmann::json;
 using logging = psalg::SysLog;
+
+static constexpr uint64_t MaxReducerErrorLogs{10};  // DRP_redErrors counts the rest
 using us_t    = std::chrono::microseconds;
 
 struct drp_domain{ static constexpr char const* name{"PGPDrp"}; };
@@ -88,12 +90,26 @@ int TebReceiver::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.recCtr = 0;
   m_metrics.reducerStarts = 0;
   m_metrics.reducerReceives = 0;
+  m_metrics.reducerErrors = 0;
   m_metrics.freeCtr = 0;
   exporter->add("DRP_cmpCtr",    labels, MetricType::Counter, [&](){ return m_metrics.cmpCtr; });
   exporter->add("DRP_recCtr",    labels, MetricType::Counter, [&](){ return m_metrics.recCtr; });
   exporter->add("DRP_redStarts", labels, MetricType::Counter, [&](){ return m_metrics.reducerStarts; });
   exporter->add("DRP_redRcvs",   labels, MetricType::Counter, [&](){ return m_metrics.reducerReceives; });
+  exporter->add("DRP_redErrors", labels, MetricType::Counter, [&](){ return m_metrics.reducerErrors; });
   exporter->add("DRP_evFrCtr",   labels, MetricType::Counter, [&](){ return m_metrics.freeCtr; });
+
+  // Reduced size over input size, both excluding headers, for the events since the last scrape
+  m_metrics.reducedBytes = m_metrics.reducerInBytes = 0;
+  m_ratioPrev[0] = m_ratioPrev[1] = 0;
+  exporter->addFloat("DRP_redRatio", labels, [&](double& ratio){
+    uint64_t out = m_metrics.reducedBytes, in = m_metrics.reducerInBytes;
+    uint64_t dOut = out - m_ratioPrev[0], dIn = in - m_ratioPrev[1];
+    m_ratioPrev[0] = out;  m_ratioPrev[1] = in;
+    if (!dIn)  return false;
+    ratio = double(dOut) / double(dIn);
+    return true;
+  });
 
   return 0;
 }
@@ -262,6 +278,9 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 
   auto& drp = static_cast<PGPDrp&>(m_drp);
 
+  // The detector's data, one u16 or fp16 per calibrated float: DRP_redRatio's denominator
+  auto const inBytes = memPool.calibBufsSize() / sizeof(float) * sizeof(uint16_t);
+
   // Collect completion information from the reducer kernels in time order
   unsigned worker = 0;
   while (!m_terminate.load(std::memory_order_acquire)) {
@@ -336,6 +355,11 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
       }
       dataSize = rt.dataSize;
 
+      if (rt.retCode) [[unlikely]] {
+        if (m_metrics.reducerErrors++ < MaxReducerErrorLogs)
+          logging::error("Reducer reported code %u for index %u", rt.retCode, rt.index);
+      }
+
       // More data than the Reducer reserved through payloadSize() means it has
       // written past its region and into the next buffer.  In pass-through the
       // reported size is the raw block's, since that is what PassthruShim measures
@@ -349,6 +373,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
                           "payloadSize() is too small", dataSize, capacity, rt.index);
         abort();
       }
+      m_metrics.reducedBytes   += dataSize;
+      m_metrics.reducerInBytes += inBytes;
     }
     lStateMon = 5;
 
@@ -360,7 +386,6 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
 //             result->pulseId(), result->service(), result->prescale(), result->persist(), result->monitor());
 //    }
 
-    // Release the GPU intermediate buffers for reuse
     drp.freeBuffers(index);             // Leaves event mask = 0
     nvtx3::mark("Recorder freeBufs()", nvtx3::payload{index});
     //printf("*** TebRcvr::recorder: 2, freeBufs idx %u\n", index);
@@ -737,7 +762,7 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   DrpBase      (parameters, memPool, detector, zmqContext),
   m_para       (parameters),
   m_det        (detector),
-  m_green_ctx  {{}, {}, {}},
+  m_green_ctx  {{}, {}, {}, {}},
   m_terminate  (false),
   m_terminate_d(nullptr),
   m_nNoTrDgrams(0)
@@ -796,28 +821,45 @@ void PGPDrp::_setupGreenContexts(MemPoolGpu& memPool)
   //logging::info("  - WQ sharing scope: %d", initial_WQ_config_resources.wqConfig.sharingScope);
 
   // Split SM resources
-  constexpr int nbGroups {2};
+  // The Reader and TrgInpGen each run a persistent graph, so each gets its own SMs
+  // rather than competing for one set.  The Reader sizes its _event grid from what its
+  // context actually gets; TrgInpGen needs only the minimum.
+  cudaDeviceProp prop;
+  chkError(cudaGetDeviceProperties(&prop, gpu_device_index));
+  const unsigned readerSMs{prop.maxThreadsPerMultiProcessor == 1536 ? 6u : 8u};
+  constexpr int nbGroups {3};
   constexpr unsigned default_split_flags {0};
   cudaDevResource remainder {};
-  cudaDevResource result[nbGroups] {{}, {}};
-  cudaDevSmResourceGroupParams group_params[2] =  {
-    {.smCount=6,  .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},
-    {.smCount=40, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}};
-  if (group_params[0].smCount < initial_SM_resources.sm.minSmPartitionSize) {
-    group_params[0].smCount = initial_SM_resources.sm.minSmPartitionSize;
+  cudaDevResource result[nbGroups] {{}, {}, {}};
+  cudaDevSmResourceGroupParams group_params[nbGroups] =  {
+    {.smCount=readerSMs, .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // Reader
+    {.smCount=0,         .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0},  // TrgInpGen
+    {.smCount=40,        .coscheduledSmCount=0, .preferredCoscheduledSmCount=0, .flags=0}}; // Reducer
+  const unsigned minSMs = initial_SM_resources.sm.minSmPartitionSize;
+  const unsigned align  = initial_SM_resources.sm.smCoscheduledAlignment;
+  unsigned totalSMs{0};
+  for (auto& group : group_params) {
+    if (group.smCount < minSMs)  group.smCount = minSMs;
+    if (align > 1)  group.smCount = ((group.smCount + align - 1) / align) * align;
+    totalSMs += group.smCount;
+  }
+  // The remainder goes to the recorder, so it must not be empty either
+  if (totalSMs + minSMs > unsigned(initial_SM_resources.sm.smCount)) {
+    logging::critical("Green contexts need %u SMs plus %u for the recorder, but the GPU has %d",
+                      totalSMs, minSMs, initial_SM_resources.sm.smCount);
+    abort();
   }
   chkError(cudaDevSmResourceSplit(&result[0], nbGroups, &initial_SM_resources, &remainder, default_split_flags, &group_params[0]));
 
-  // Generate resource descriptors for each resource
-  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}};
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[0], &result[0], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[1], &result[1], 1));
-  chkError(cudaDevResourceGenerateDesc(&resource_desc[2], &remainder, 1));
+  // Generate resource descriptors for each resource, the remainder going to the recorder
+  cudaDevResourceDesc_t resource_desc[nbGroups+1] {{}, {}, {}, {}};
+  for (unsigned i = 0; i < nbGroups; ++i)
+    chkError(cudaDevResourceGenerateDesc(&resource_desc[i], &result[i], 1));
+  chkError(cudaDevResourceGenerateDesc(&resource_desc[nbGroups], &remainder, 1));
 
   // Create green contexts
-  chkError(cudaGreenCtxCreate(&m_green_ctx[0], resource_desc[0], gpu_device_index, 0));
-  chkError(cudaGreenCtxCreate(&m_green_ctx[1], resource_desc[1], gpu_device_index, 0));
-  chkError(cudaGreenCtxCreate(&m_green_ctx[2], resource_desc[2], gpu_device_index, 0));
+  for (unsigned i = 0; i < nbGroups+1; ++i)
+    chkError(cudaGreenCtxCreate(&m_green_ctx[i], resource_desc[i], gpu_device_index, 0));
 
   // Get all available GPU SM resources
   for (unsigned i = 0; i < nbGroups+1; ++i) {
@@ -866,12 +908,12 @@ std::string PGPDrp::configure(const json& msg)
   // Create the Trigger Input Generator, which calculates the TEB input data
   // The TriggerPrimitive object in det is dynamically loaded to pick up the
   // TEB input data creation algorithm, e.g., peak finder
-  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[0], m_terminate, *m_terminate_d);
+  m_trgInpGen = std::make_unique<TrgInpGen>(m_para, memPool, m_reader, trgPrimitive, m_green_ctx[1], m_terminate, *m_terminate_d);
 
   // Create the data reducer
   // The data reduction object is dynamically loaded to pick up the
   // problem-specific reduction algorithm, e.g., SZ, angular integration, etc.
-  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[1], m_terminate, *m_terminate_d);
+  m_reducer = std::make_unique<Reducer>(m_para, memPool, m_det, m_green_ctx[2], m_terminate, *m_terminate_d);
 
   // Do initial configuration of the reducers
   if (m_reducer->configure(msg["body"], connectMsg(), collectionId())) {
@@ -904,7 +946,7 @@ std::string PGPDrp::startup(Xtc& xtc, const void* bufEnd)
   m_collectorThread = std::thread(&PGPDrp::_collector, this);
 
   // Set up the TebReceiver
-  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[2]);
+  static_cast<TebReceiver&>(tebReceiver()).setup(m_green_ctx[3]);
 
   // Start the PGP reader before phase 2 is issued
   if (m_reader->startup())
@@ -935,7 +977,6 @@ unsigned PGPDrp::unconfigure()
   chkError(cudaMemset(m_terminate_d, 1, sizeof(unsigned)));
   //printf("*** PGPDrp::unconfigure 2\n");
 
-  if (m_reducer)  m_reducer->shutdown();
   static_cast<TebReceiver&>(tebReceiver()).teardown();
   //printf("*** PGPDrp::unconfigure 3\n");
 
@@ -946,13 +987,16 @@ unsigned PGPDrp::unconfigure()
   }
   //printf("*** PGPDrp::unconfigure 4\n");
 
+  if (m_reducer)  m_reducer->reportHistograms();
   m_reducer.reset();
   //printf("*** PGPDrp::unconfigure 5\n");
+  if (m_trgInpGen)  m_trgInpGen->reportHistograms();
   m_trgInpGen.reset();
   //printf("*** PGPDrp::unconfigure 6\n");
   // Report anything the Readers found wrong with the sub-frame layout.  The
   // DRP_ebStatus metric carries this while running; this is the end-of-run word.
   m_reader->checkBatcher();
+  m_reader->reportHistograms();
   m_reader.reset();
   //printf("*** PGPDrp::unconfigure 7\n");
 
@@ -1049,7 +1093,7 @@ void PGPDrp::_collector()
   const uint32_t bufferMask = pool.nbuffers() - 1;
   uint64_t lastPid = 0;
   uint64_t l1Count = 0;
-  unsigned bufIndex = 0;                // Intermediate buffer index
+  unsigned bufIndex = 0;                // Staging buffer index
   while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 
