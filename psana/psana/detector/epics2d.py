@@ -1,6 +1,6 @@
 """ is used for detectors like:
-    datinfo -k exp=rix102087527,run=42 -d epics2d
-    det_dark_proc -k exp=rix102087527,run=42 -d epics2d -o ./work1
+    datinfo -k exp=rix102087527,run=42 -d alvium3rix1
+    det_dark_proc -k exp=rix102087527,run=42 -d alvium3rix1 -o ./work1
 """
 
 import numpy as np
