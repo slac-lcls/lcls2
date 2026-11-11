@@ -531,8 +531,9 @@ being surprised:
 
 - **Host mutation does not propagate.** `refresh()` runs once, at run setup.
   Changing `dsparms.calibconst` after that does not update the device copy —
-  BeginStep drains and applies the host transition but does not fetch the
-  calibration DB, so there is nothing for a rescan to find. One constant set
+  BeginStep applies the host transition but does not fetch the calibration
+  DB, so there is nothing for a rescan to find (and it no longer drains
+  prior work either -- each subbatch carries its own `StepScope`). One constant set
   per run is the supported model; dynamic mid-run updates are deferred (#168).
 - **Read-only is a contract, not enforcement.** CuPy arrays carry no
   NumPy-style WRITEABLE flag and psana cannot intercept native writes, so
