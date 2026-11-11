@@ -45,7 +45,7 @@
 #define GPU_ASYNC_WR_LATENCY(_n)			(0x508 + (_n*16))
 #define GPU_ASYNC_RD_LATENCY(_n)			(0x50C + (_n*16))
 
-/** Max buffers, must match firmware value **/
+/** pgpread's buffer bound; the firmware's count is read with gpuGetMaxBuffers() **/
 #define MAX_BUFFERS                         8
 
 
