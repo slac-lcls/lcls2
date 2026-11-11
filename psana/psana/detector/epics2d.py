@@ -25,7 +25,7 @@ class epics2d_raw_1_0_0(AreaDetectorRaw):
         #self._seg_geo = sgs.Create(segname=f'MTRX:{shape[0]}:{shape[1]}:{pixel_size_microns}:{pixel_size_microns}', detector=self)
         self._seg_geo = sgs.Create(segname='MTRXANY:V1', detector=self)
         self._seg_geo.init_matrix_parameters(shape=shape, pix_size_rcsd_um=pix_size_rcsd_um)
-        self._path_geo_default = 'pscalib/geometry/data/geometry-def-epics2d.data' # None
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-axis.data'
 
     def _shape_as_daq(self):
         """this shape is taken from epics2d.raw.raw..."""
