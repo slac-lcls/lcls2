@@ -281,7 +281,7 @@ static ssize_t dumpCqError(CompletionQueue* cq, const char* fn)
 int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
 {
   int  rc;
-  auto t0{fast_monotonic_clock::now()};
+  auto t0{fast_monotonic_clock::now(CLOCK_MONOTONIC)}; // The coarse clock steps ~1 ms
 
   _pending += 1;
 
@@ -295,7 +295,7 @@ int EbLfServer::pend(fi_cq_data_entry* cqEntry, int msTmo)
     {
       if (_tmo)  break;
 
-      auto t1 { fast_monotonic_clock::now() };
+      auto t1 { fast_monotonic_clock::now(CLOCK_MONOTONIC) };
 
       if (t1 - t0 >= ms_t{1})
       {

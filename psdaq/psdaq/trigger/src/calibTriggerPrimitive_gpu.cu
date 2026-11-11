@@ -22,14 +22,15 @@ void _event(unsigned* const        __restrict__ state,
 }
 
 // This method presumes that it is being called while the stream is in capture mode
-void Pds::Trg::CalibPrimitive::event(cudaStream_t           stream,
-                                     unsigned* const        state_d,
-                                     float     const* const /*calibBuffers*/,
-                                     size_t    const        /*calibBufsCnt*/,
-                                     uint32_t* const        /*outBuffers*/,
-                                     size_t    const        /*outBufsCnt*/,
-                                     unsigned  const* const /*index*/,
-                                     unsigned* const        retCode_d)
+int Pds::Trg::CalibPrimitive::event(cudaStream_t           stream,
+                                    unsigned* const        state_d,
+                                    float     const* const /*calibBuffers*/,
+                                    size_t    const        /*calibBufsCnt*/,
+                                    uint32_t* const        /*outBuffers*/,
+                                    size_t    const        /*outBufsCnt*/,
+                                    unsigned  const* const /*index*/,
+                                    unsigned* const        retCode_d)
 {
   _event<<<1, 1, 0, stream>>>(state_d, retCode_d);
+  return cudaGetLastError() == cudaSuccess ? 0 : -1;
 }

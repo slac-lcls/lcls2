@@ -35,14 +35,16 @@ namespace Pds {
                            const XtcData::Xtc& contribution,
                            XtcData::Xtc&       xtc,
                            const void*         bufEnd) = 0;
-      virtual void   event(cudaStream_t           stream,
+      // GPU overload: enqueue a kernel that advances *state from 1 to 2, even when it
+      // produces no TEB input, or TrgInpGen stalls.  Return non-zero on failure.
+      virtual int    event(cudaStream_t           stream,
                            unsigned* const        state,
                            float     const* const calibBuffers,
                            size_t    const        calibBufsCnt,
                            uint32_t* const        outBuffers,
                            size_t    const        outBufsCnt,
                            unsigned  const* const index,
-                           unsigned* const        retCode_d) {}
+                           unsigned* const        retCode_d) { return -1; }
       virtual size_t size() const = 0;
     };
   }

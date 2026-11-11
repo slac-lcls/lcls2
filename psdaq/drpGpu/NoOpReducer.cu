@@ -127,7 +127,7 @@ void NoOpReducer::recordGraph(cudaStream_t       stream,
 {
   // @todo: Use green context SM splitting results here
   cudaDeviceProp prop;
-  chkError(cudaGetDeviceProperties(&prop, 0));
+  chkError(cudaGetDeviceProperties(&prop, m_pool.context().deviceNo()));
   const auto tpSM{prop.maxThreadsPerMultiProcessor};
   unsigned nSMs;
   switch (tpSM) {

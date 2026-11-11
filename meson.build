@@ -98,7 +98,7 @@ if cuda_compiler.found()
   cmake = import('cmake')
   cmk_opts = cmake.subproject_options()
   cmk_opts.add_cmake_defines({'CMAKE_BUILD_TYPE': 'RelWithDebInfo'})
-  cmk_opts.add_cmake_defines({'CMAKE_CUDA_ARCHITECTURES': '86;90'})
+  cmk_opts.add_cmake_defines({'CMAKE_CUDA_ARCHITECTURES': '86;90;120'})
   cmk_opts.set_override_option('cpp_std', 'c++17')
   cmk_opts.set_override_option('cuda_std', 'c++17')
   # Build fails with the following (which the old method had)?
