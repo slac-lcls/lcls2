@@ -39,7 +39,7 @@ using us_t    = std::chrono::microseconds;
 // Due to the possibility of deadtime, a timeout of 1 batch period after the
 // current batch ends is too short, leading to batch fragments being posted.
 // This causes no harm, but is extra work that is avoided with a longer timeout.
-const std::chrono::milliseconds BATCH_TIMEOUT{1};
+const std::chrono::milliseconds BATCH_TIMEOUT{1}; // Timed on CLOCK_MONOTONIC: the coarse clock steps ~1 ms
 
 
 TebContributor::TebContributor(const TebCtrbParams& prms,
@@ -206,7 +206,7 @@ int TebContributor::configure()
 
 CtrbBatch::CtrbBatch(const Pds::EbDgram* dgram, bool contractor_) :
   entries   (dgram ? 1 : 0),
-  tStart    (Pds::fast_monotonic_clock::now()),
+  tStart    (Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC)),
   start     (dgram),
   end       (dgram),
   contractor(contractor_)
@@ -227,7 +227,7 @@ void TebContributor::_flush()
 //     called from the same thread (Collector)
 bool TebContributor::timeout()
 {
-  auto now = Pds::fast_monotonic_clock::now();
+  auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
 
   if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
 
@@ -331,7 +331,7 @@ void TebContributor::process(const EbDgram* dgram)
 void TebContributor::_post(const CtrbBatch& batch)
 {
   using ns_t = std::chrono::nanoseconds;
-  auto age   = Pds::fast_monotonic_clock::now() - batch.tStart;
+  auto age   = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC) - batch.tStart;
   _age       = std::chrono::duration_cast<ns_t>(age).count();
 
   batch.end->setEOL();        // Avoid race: terminate before adding batch to pending list

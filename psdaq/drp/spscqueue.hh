@@ -111,9 +111,9 @@ public:
         int64_t index = m_read_index.load(std::memory_order_relaxed);
 
         // check if queue is empty
-        auto t0 = Pds::fast_monotonic_clock::now();
+        auto t0 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC); // The coarse clock steps ~1 ms
         while (index == m_write_index.load(std::memory_order_acquire)) {
-            auto t1 = Pds::fast_monotonic_clock::now();
+            auto t1 = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC);
             if (t1 - t0 >= ms_t(1)) {
                 return popW(value);
             }
