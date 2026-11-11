@@ -7,10 +7,12 @@
 #include "psdaq/service/MetricExporter.hh"
 #include "psdaq/service/Affinity.hh"    // pinHotThread
 #include "psdaq/service/EbDgram.hh"     // For TimingHeader
+#include "psdaq/service/fast_monotonic_clock.hh"
 #include "psdaq/trigger/src/TriggerPrimitive.hh"
 #include "psdaq/eb/src/eb.hh"
 
 #include <sys/prctl.h>
+#include <unistd.h>                     // usleep
 
 #if 0                                   // Set to 1 to enable device metrics.  These affect performance.
 #define DBG(stmt) stmt
@@ -173,6 +175,8 @@ int TrgInpGen::setupMetrics(const std::shared_ptr<MetricExporter> exporter,
   m_metrics.pidWtCtr = 0;
   exporter->add("DRP_colRcv",   labels, MetricType::Counter, [&](){ return m_metrics.pndWtCtr; });
   exporter->add("DRP_pidWtCtr", labels, MetricType::Counter, [&](){ return m_metrics.pidWtCtr; });
+  m_metrics.nRcvrSleeps = 0;
+  exporter->add("DRP_tigSleeps", labels, MetricType::Counter, [&](){ return m_metrics.nRcvrSleeps; });
 
   m_timePrev[0] = m_timePrev[1] = 0;
   exporter->addFloat("DRP_tigTime", labels, [&](double& us){
@@ -470,10 +474,18 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
   const auto     hostWrtBufsCnt = m_pool.hostWrtBufsSize() / sizeof(*hostWrtBufs);
   const uint32_t bufferMask     = m_pool.nbuffers() - 1;
 
+  // Spin until the queue has been empty for spinTime, then back off; rates above 1 kHz never sleep
+  constexpr std::chrono::milliseconds spinTime{1};
+  constexpr unsigned maxSleepUs{1024};
+  Pds::fast_monotonic_clock::time_point emptySince{};
+  unsigned sleepUs{1};
+
   while (!m_terminate.load(std::memory_order_relaxed)) {
     unsigned nRet = 0;
+    unsigned nPop = 0;
     unsigned index = 0;
     while (m_trgInpGenQueue.h->pop(&index)) {
+      ++nPop;
       tig_scoped_range loop_range{/*"TrgInpGen::receive", */nvtx3::payload{index}};
       ++m_metrics.pndWtCtr;
 
@@ -670,6 +682,18 @@ void TrgInpGen::_receiver(SPSCQueue<unsigned>& collectorQueue)
 
     m_metrics.nDmaRet = nRet;
     if (nRet)  collectorQueue.push(nRet);
+    if (nPop) {
+      emptySince = {};
+      sleepUs    = 1;
+    } else {
+      auto now = Pds::fast_monotonic_clock::now(CLOCK_MONOTONIC); // The default coarse clock ticks ~1 ms
+      if (emptySince == decltype(now){})  emptySince = now;
+      else if (now - emptySince > spinTime) {
+        usleep(sleepUs);
+        ++m_metrics.nRcvrSleeps;
+        if (sleepUs < maxSleepUs)  sleepUs <<= 1;
+      }
+    }
   }
 
   collectorQueue.shutdown();
