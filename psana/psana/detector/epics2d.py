@@ -78,7 +78,7 @@ class axis_raw_1_0_0(epics2d_raw_1_0_0):
 
     def _init_geometry(self, shape, pix_size_rcsd_um=(100,100,100,400)):
         """delayed geometry initialization when raw.shape is available in det.raw.raw"""
-         super()._init_geometry(shape, pix_size_rcsd_um=pix_size_rcsd_um)
-         self._path_geo_default = 'pscalib/geometry/data/geometry-def-axis.data' # None
+        super()._init_geometry(shape, pix_size_rcsd_um=pix_size_rcsd_um)
+        self._path_geo_default = 'pscalib/geometry/data/geometry-def-axis.data' # None
 
 #EOF
