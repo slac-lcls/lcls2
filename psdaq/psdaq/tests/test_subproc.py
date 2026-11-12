@@ -1,7 +1,7 @@
 import asyncio
 import sys
 
-from psdaq.slurm.subproc import SubprocHelper
+from psalg.slurm.subproc import SubprocHelper
 
 
 def run_python(code, echo_output=False):

@@ -5,7 +5,7 @@ import os
 import re
 import shlex
 from datetime import datetime
-from psdaq.slurm.main import Runner
+from psalg.slurm.main import Runner
 import smtplib
 from email.message import EmailMessage
 

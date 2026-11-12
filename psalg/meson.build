@@ -20,6 +20,9 @@ install_subdir(
   exclude_files: [
     'CMakeLists.txt',
     'meson.build',
+    'slurm/readme.md',
+    'slurm/slurm.cnf',
+    'slurm/xthi.c',
     'utils/CMakeLists.txt',
     'utils/ctest_utils.hh',
     'utils/DirFileIterator.hh',
