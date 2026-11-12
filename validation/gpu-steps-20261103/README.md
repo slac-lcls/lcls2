@@ -71,23 +71,33 @@ which a normal run does not provoke. See the note below.
 The serial event count is the sharpest check in the whole harness: one
 number, against a known run size, on the path that returns at `EndRun`.
 
-## What the real-data runs do NOT cover
+## The memory-pressure path, which the two runs above do NOT cover
 
 Neither uncapped run hits `GpuMemoryPressureError`, so neither exercises the
 mid-packet flush where the delivery-order defects lived — both passed before
-that fix. Unit coverage carries that path
-(`test_gpu_transition_order.py`, `test_gpu_step_delivery_properties.py`,
-`test_gpu_process_batch_transitions.py`).
+that fix. `pressure_events.py` exists for exactly that path. It runs run 77
+uncapped, serial, with a per-BD budget small enough that
+`_retire_issue_and_yield` takes its recovery path, and it **counts the
+recoveries**: a run that never hit pressure proves nothing, so it prints
+`PRESSURE77_INCONCLUSIVE` and fails rather than passing vacuously.
 
-For device evidence, run uncapped with a budget tight enough to force
-admission failures:
+    PS_PARALLEL=none PS_PRESSURE_BATCH=200 PS_PRESSURE_GB=0.25 PS_PRESSURE_STREAMS=4 \
+      python3 validation/gpu-steps-20261103/pressure_events.py
 
-    SBATCH_ACCOUNT=lcls:prjdat21 SBATCH_QOS=normal sbatch \
-      --export=ALL,PS_STEPS_DATASET=77,PS_STEPS_NO_CAP=1 \
-      validation/gpu-steps-20261103/run.sbatch
+Budget and batch size matter together: at these batch sizes 0.5 GiB never
+recovers (inconclusive), 0.25 GiB recovers on nearly every subbatch. Too small
+and admission raises "cannot fit alone", a different and legitimate error.
 
-with `gpu_memory_budget_gb` lowered in the driver until
-`_retire_issue_and_yield` takes its recovery path. Not yet done.
+| batch | budget | streams | result |
+| --- | --- | --- | --- |
+| 200 | 0.25 GiB | 4 | **999 recoveries**, 3000 of 3000, `per_step [1000, 1000, 1000]` |
+| 500 | 0.25 GiB | 8 | **999 recoveries**, 3000 of 3000, `per_step [1000, 1000, 1000]` |
+| 200 / 500 | 0.5 GiB | 4 | 0 recoveries — inconclusive, as designed |
+
+Identical on job **43402513** (Nov 5, before the rebase onto #262) and job
+**44524024** (Nov 12, at `a29258975` with #262 and the Copilot-review fixes
+in). Unit coverage of the same path: `test_gpu_transition_order.py`,
+`test_gpu_step_delivery_properties.py`, `test_gpu_process_batch_transitions.py`.
 
 Note the account override. The `#SBATCH` header requests `preemptable`, but
 `lcls:prjdat21@ampere` is the association that grants `normal` — without the
