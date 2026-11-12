@@ -200,7 +200,14 @@ def _get_missing_value(dtype):
         dtype = np.dtype(dtype)
 
     if dtype in INT_TYPES:
-        missing_value = MISSING_INT
+        # numpy2 raises OverflowError for out-of-range values (numpy1 wrapped).
+        # Signed: MISSING_INT, clamped for small types (e.g. int8/int16).
+        # Unsigned: the dtype's max value.
+        info = np.iinfo(dtype)
+        if info.min < 0:
+            missing_value = max(MISSING_INT, info.min)
+        else:
+            missing_value = info.max
     elif dtype in FLOAT_TYPES:
         missing_value = MISSING_FLOAT
     else:

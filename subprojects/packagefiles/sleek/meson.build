@@ -14,6 +14,7 @@ cuda = dependency('cuda', required: true)
 cuda_arch = [
   '-gencode=arch=compute_86,code=sm_86',
   '-gencode=arch=compute_90,code=sm_90',
+  '-gencode=arch=compute_120,code=sm_120',
 ]
 
 cpp_args = [

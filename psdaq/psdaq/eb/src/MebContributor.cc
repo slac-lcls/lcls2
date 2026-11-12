@@ -204,7 +204,6 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
   EbLfCltLink* link   = _links[dst];
   uint32_t     data   = ImmData::value(ImmData::NoResponse_Buffer, _id, idx);
   void*        buffer = (char*)(_region[dst]) + offset;
-  memcpy(buffer, ddg, sz);  // Copy the datagram into the intermediate buffer
 
   if (sz > _maxEvSize) [[unlikely]]
   {
@@ -264,6 +263,9 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
       }
     }
   }
+
+  // post() needs this link's own MR; the pebble isn't registered (it was shm for DrpPython)
+  memcpy(buffer, ddg, sz);
 
   int rc = link->post(buffer, sz, offset, data);
   if (rc < 0) [[unlikely]]
@@ -382,7 +384,6 @@ int MebContributor::post(const EbDgram* dgram)
     size_t   offset = _bufRegSize[src] + idx * _maxTrSize;
     uint32_t data   = ImmData::value(ImmData::NoResponse_Transition, _id, idx);
     void*    buffer = (char*)(_region[src]) + offset;
-    memcpy(buffer, dgram, sz); // Copy the datagram into the intermediate buffer
 
     if ((buffer < (char*)_region[src] + _bufRegSize[src]) || ((char*)buffer + sz > (char*)_region[src] + _regSize[src])) [[unlikely]]
     {
@@ -424,6 +425,9 @@ int MebContributor::post(const EbDgram* dgram)
         }
       }
     }
+
+    // post() needs this link's own MR; the pebble isn't registered (it was shm for DrpPython)
+    memcpy(buffer, dgram, sz);
 
     rc = link->post(buffer, sz, offset, data); // Not a batch; Continue on error
     if (rc) [[unlikely]]

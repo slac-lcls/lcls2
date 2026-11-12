@@ -88,6 +88,7 @@ if cuda_compiler.found()
     '-forward-unknown-to-host-compiler',
     '-gencode=arch=compute_86,code=sm_86',
     '-gencode=arch=compute_90,code=sm_90',
+    '-gencode=arch=compute_120,code=sm_120',
     '-Wno-uninitialized',
     '-Wno-deprecated-gpu-targets',
     '-fno-omit-frame-pointer',
