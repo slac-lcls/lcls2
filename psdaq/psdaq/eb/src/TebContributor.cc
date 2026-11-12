@@ -232,6 +232,8 @@ bool TebContributor::timeout()
   if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
 
   _flush();
+
+  for (auto link : _links)  link->drain(); // The Collector may block next
   return true;
 }
 
@@ -310,6 +312,8 @@ void TebContributor::process(const EbDgram* dgram)
         // This dgram is also in a batch, so EOL must NOT be additionally set
         _post(dgram);         // Post, if contributor is providing trigger input
       }
+
+      for (auto link : _links)  link->drain(); // A transition may be followed by nothing
     }
   }
   else                        // Common RoG didn't trigger: bypass the TEB(s)

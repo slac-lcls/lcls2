@@ -1386,15 +1386,9 @@ ssize_t Endpoint::writedata(const void* buf, size_t len, const RemoteAddress* ra
   CHECK_MR(buf, len, mr, "fi_writedata");
 
   ssize_t rret = fi_writedata(_ep, buf, len, mr->desc(), data, 0, raddr->addr, raddr->rkey, context);
-  if (rret != FI_SUCCESS) {
-    if (rret == -FI_EAGAIN) {
-      ssize_t rc = check_completion_noctx(_txcq, FI_WRITE | FI_RMA, 0, 0);
-      if (rc != FI_SUCCESS)
-        rret = rc;
-    } else {
-      _errno = (int) rret;
-      set_error("fi_writedata");
-    }
+  if ((rret != FI_SUCCESS) && (rret != -FI_EAGAIN)) { // Caller reaps the Tx CQ on EAGAIN
+    _errno = (int) rret;
+    set_error("fi_writedata");
   }
 
   return rret;
@@ -1675,15 +1669,9 @@ ssize_t Endpoint::writemsg_sync(RmaMessage* msg, uint64_t flags)
 ssize_t Endpoint::injectdata(const void* buf, size_t len, uint64_t data)
 {
   ssize_t rret = fi_injectdata(_ep, buf, len, data, 0);
-  if (rret != FI_SUCCESS) {
-    if (rret == -FI_EAGAIN) {
-      ssize_t rc = check_completion_noctx(_txcq, FI_SEND | FI_RMA, 0, 0);
-      if (rc != FI_SUCCESS)
-        rret = rc;
-    } else {
-      _errno = (int) rret;
-      set_error("fi_injectdata");
-    }
+  if ((rret != FI_SUCCESS) && (rret != -FI_EAGAIN)) { // Caller reaps the Tx CQ on EAGAIN
+    _errno = (int) rret;
+    set_error("fi_injectdata");
   }
 
   return rret;

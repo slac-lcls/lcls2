@@ -59,9 +59,8 @@ namespace Pds {
       // required under FI_PROGRESS_MANUAL, where reading a CQ *is* what
       // advances the provider.
       //
-      // Called by post(), which is the only place that knows a write has been
-      // queued, so no caller has to remember to do it.  A no-op on a link with
-      // no Tx CQ, which is every server-side link.
+      // Called by post() and drain().  A no-op on a link with no Tx CQ, which
+      // is every server-side link.
       ssize_t _reapTx();
     protected:
       enum { _BegSync = 0x11111111,
@@ -129,6 +128,7 @@ namespace Pds {
                size_t      offset,
                uint64_t    immData,
                void*       ctx = nullptr);
+      int drain(unsigned msTmo = 5000);
     private:
       int _synchronizeBegin();
       int _synchronizeEnd();

@@ -17,6 +17,7 @@ using namespace Pds::Eb;
 
 using ms_t = std::chrono::milliseconds;
 
+static const ms_t TX_WARN_TMO{5000};    // Below EB_TMO_MS, so the sender reports first
 
 static int checkMr(Fabric*         fabric,
                    void*           region,
@@ -529,6 +530,7 @@ int EbLfCltLink::post(const void* buf,
 {
   RemoteAddress ra{_ra.rkey, _ra.addr + offset, len};
   auto          t0{fast_monotonic_clock::now()};
+  bool          warned{false};
   ssize_t       rc;
 
   _posting |= 1 << _id;
@@ -546,8 +548,18 @@ int EbLfCltLink::post(const void* buf,
       break;
     }
 
+    _reapTx();                          // Frees Tx queue entries; progresses tcp
+
     const ms_t tmo{300000};            // Revisit: Skip the timeout altogether?
     auto       t1 {fast_monotonic_clock::now()};
+
+    if ((t1 - t0 > TX_WARN_TMO) && !warned)
+    {
+      warned = true;
+      fprintf(stderr, "%s:\n  writedata() to ID %d still blocked after %lu ms, "
+              "%lu writes outstanding\n", __PRETTY_FUNCTION__, _id,
+              TX_WARN_TMO.count(), _posted - _completed - _txErrors);
+    }
 
     if (t1 - t0 > tmo)
     {
@@ -563,13 +575,32 @@ int EbLfCltLink::post(const void* buf,
   if (!rc)  ++_posted;                  // Queued only; _reapTx() reports delivery
 
   // Collect whatever delivery status is ready.  Doing it here rather than at
-  // each call site is what makes it impossible to forget: the write has just
-  // been queued and nothing else reads that queue.  Note writedata() above
-  // touches the same CQ on its -FI_EAGAIN path, but only via fi_cq_read, which
-  // leaves an error entry queued for the fi_cq_readerr() below to find.
+  // each call site is what makes it impossible to forget.
   _reapTx();
 
   return rc;
+}
+
+// Wait for this link's writes to complete.  Call it where the link may go quiet:
+// on tcp, the unsent remainder of a write moves only while its Tx CQ is read.
+int EbLfCltLink::drain(unsigned msTmo)
+{
+  if (_posted == _completed + _txErrors)  return 0;
+
+  auto t0{fast_monotonic_clock::now()};
+  while (_posted != _completed + _txErrors)
+  {
+    _reapTx();
+
+    if (fast_monotonic_clock::now() - t0 > ms_t{msTmo})
+    {
+      ++_timedOut;
+      fprintf(stderr, "%s:\n  Gave up on writes to ID %d after %u ms: %lu outstanding\n",
+              __PRETTY_FUNCTION__, _id, msTmo, _posted - _completed - _txErrors);
+      return -FI_ETIMEDOUT;
+    }
+  }
+  return 0;
 }
 
 // This method requires that a memory region has been registered that covers the
@@ -594,6 +625,8 @@ int EbLfLink::post(const void* buf,
               __PRETTY_FUNCTION__, _id, _ep->error());
       break;
     }
+
+    _reapTx();                          // No-op without a Tx CQ
 
     const ms_t tmo{300000};            // Revisit: Skip the timeout altogether?
     auto       t1 {fast_monotonic_clock::now()};
@@ -746,12 +779,8 @@ int EbLfLink::poll(uint64_t* data, int msTmo) // Wait until timed out
 // that fails after fi_writedata has accepted it is reported only here, so
 // without this a lost write is invisible to both ends.
 //
-// Note the Tx CQ is bound with FI_SELECTIVE_COMPLETION (EbLfClient.cc), so
-// successful writes generate no completion unless the operation asks for one
-// with FI_COMPLETION -- fi_writedata does not.  _completed therefore counts
-// only what the provider volunteers.  **Errors are always reported**, with or
-// without selective completion, so the error path below is the one that
-// matters; the posted-vs-completed deficit is not a loss count by itself.
+// Every write completes (EbLfClient.cc), so _posted - _completed - _txErrors
+// is the number still outstanding.  Nothing else may read this CQ.
 ssize_t Pds::Eb::EbLfLink::_reapTx()
 {
   auto cq = _ep->txcq();

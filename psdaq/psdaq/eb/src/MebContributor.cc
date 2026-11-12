@@ -437,6 +437,8 @@ int MebContributor::post(const EbDgram* dgram)
     }
   }
 
+  for (auto link : _links)  link->drain(); // Nothing may follow a transition for a while
+
   ++_trCount;
 
   return 0;
