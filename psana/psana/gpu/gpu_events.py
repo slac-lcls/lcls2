@@ -1482,15 +1482,25 @@ class GpuEventManager:
                 else:
                     # No GPU batch — yield CPU-only events directly.
                     #
-                    # Retire what is in flight FIRST. These events belong to
-                    # no submission, so nothing below advances _retire_seq --
-                    # and a transition positioned behind an earlier in-flight
-                    # submission would otherwise come due only after these
-                    # events, which it should precede. Draining opens the gate
-                    # honestly. It also keeps these CPU-only events behind the
-                    # earlier packets' GPU events, which is their true order.
-                    if getattr(getattr(self, 'event_pool', None),
-                               'active_count', 0):
+                    # If there ARE CPU-only events, retire what is in flight
+                    # first. They belong to no submission, so nothing below
+                    # advances _retire_seq -- and a transition positioned
+                    # behind an earlier in-flight submission would otherwise
+                    # come due only after these events, which it should
+                    # precede. Draining opens the gate honestly, and keeps
+                    # these events behind the earlier packets' GPU events,
+                    # which is their true order.
+                    #
+                    # A transition-only packet -- a BeginStep the EB broke on
+                    # right after a full batch, say -- also lands here, with
+                    # nothing to order. Flushing for it reinstated the drain
+                    # at the step boundary that StepScope exists to remove
+                    # (issue #153). Its transitions stay queued: _yield_ready
+                    # releases them before the next packet's first later
+                    # event, or _drain_transitions does at end of stream.
+                    if event_envelopes and getattr(
+                            getattr(self, 'event_pool', None),
+                            'active_count', 0):
                         yield from self._flush_event_pool()
                     for envelope in event_envelopes:
                         if (

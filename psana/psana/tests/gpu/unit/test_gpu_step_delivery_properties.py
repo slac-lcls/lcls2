@@ -180,9 +180,11 @@ class _Harness:
             {0: (b'packet', [])} if transitions else {}, transitions))
 
         if cpu_only:
-            # _process_batch's CPU-only branch: drain in flight, then
-            # interleave the packet's transitions among its events.
-            if m.event_pool.active_count:
+            # _process_batch's CPU-only branch: drain in flight only when
+            # there are events to order, then interleave the packet's
+            # transitions among them. A transition-only packet leaves its
+            # transitions queued for the next retirement or the drain.
+            if events and m.event_pool.active_count:
                 self._deliver(m._flush_event_pool())
             for ts in events:
                 self._deliver(m._release_transitions(before_ts=ts))

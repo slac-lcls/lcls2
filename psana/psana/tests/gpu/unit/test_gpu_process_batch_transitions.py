@@ -12,7 +12,8 @@ leaves all 313 cases in the other two files passing. These three fail.
 Each test names the production line it pins, so a reviewer can delete that
 line and watch exactly one test fail:
 
-  * the CPU-only branch's `_flush_event_pool()` when work is in flight;
+  * the CPU-only branch's `_flush_event_pool()` when work is in flight --
+    and that it is skipped for a transition-only packet;
   * `_drain_transitions()` in `_process_batch`'s terminal branch;
   * `_drain_transitions()` in `finish()`.
 """
@@ -144,6 +145,46 @@ def test_a_cpu_only_packet_drains_in_flight_work_before_its_events(monkeypatch):
         (T.BeginStep, 250),                     # before the events it opens
         (T.L1Accept, 300), (T.L1Accept, 400),
     ], 'the CPU-only branch did not drain in-flight work first'
+
+
+def test_a_transition_only_packet_does_not_drain_in_flight_work(monkeypatch):
+    """Pins the `event_envelopes and` half of that same condition.
+
+    A transition-only packet -- a BeginStep the EB broke on right after a
+    full batch -- also takes the CPU-only branch, with NOTHING to order. The
+    drain above exists to put CPU-only events behind in-flight GPU events;
+    with no such events it only reinstates the step-boundary drain that
+    StepScope removes (issue #153). So the pool must be left alone and the
+    transition left queued: it goes out after the in-flight submission
+    retires and before anything later, which the retire + drain below shows.
+
+    Delete `event_envelopes and` from the condition and this fails: the
+    packet drains the in-flight submission itself.
+    """
+    h = _Harness()
+    m = h.m
+    m._submit_seq = 1
+    h.in_flight.append([100, 200])
+
+    transitions = [(T.BeginStep, [_Dgram(T.BeginStep, 250)])]
+    monkeypatch.setattr(gpu_events, '_iter_step_events',
+                        lambda b, c: list(transitions))
+    _fake_event_manager(monkeypatch, [])          # no CPU-only events at all
+
+    delivered = list(m._process_batch(
+        {0: (b'smd', None)}, {}, {0: (b'step', [])}))
+
+    assert delivered == [], 'a transition-only packet must deliver nothing itself'
+    assert h.in_flight == [[100, 200]], 'it must not drain the pool'
+    assert [e[2] for e in m._queued_transitions] == [T.BeginStep], \
+        'the BeginStep must stay queued'
+
+    # The in-flight submission retires on its own schedule; then the stream
+    # ends. The BeginStep comes out after those events, never before.
+    delivered += list(m._yield_ready(h.ready(h.in_flight.pop(0))))
+    delivered += list(m._drain_transitions())
+    assert _stream(delivered) == [
+        (T.L1Accept, 100), (T.L1Accept, 200), (T.BeginStep, 250)]
 
 
 def test_end_of_stream_delivers_a_trailing_endrun_after_its_events(monkeypatch):
