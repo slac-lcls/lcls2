@@ -11,6 +11,7 @@ from psana.gpu.gpu_kvikio_read import KvikioGpuReader
 from psana.gpu.gpu_read_plan import ResolvedDgram, ResolvedFile
 from psana.gpu.gpu_stream_read_plan import build_stream_read_plan
 from test_gpu_bulk_read import io  # shared injected KvikIO backend
+from input_group_checks import assert_pool_invariants
 
 
 class Token:
@@ -49,9 +50,36 @@ def bind(pool, key, producer=None):
     return window
 
 
+@pytest.mark.parametrize('corruption,diagnostic', [
+    ('missing_busy_slot', 'busy slots'),
+    ('extra_busy_slot', 'busy slots'),
+    ('orphan_candidate', 'candidate keys'),
+    ('stale_candidate', 'candidate identity'),
+])
+def test_pool_invariant_checker_rejects_bookkeeping_drift(corruption, diagnostic):
+    key = (0, 0)
+    state = NS(slot=0)
+    pool = NS(_groups={key: state}, _busy_slots={0}, _candidates={})
+    assert_pool_invariants(pool)
+    pool._candidates[key] = state
+    assert_pool_invariants(pool)
+    if corruption == 'missing_busy_slot':
+        pool._busy_slots.clear()
+    elif corruption == 'extra_busy_slot':
+        pool._busy_slots.add(1)
+    elif corruption == 'orphan_candidate':
+        pool._candidates[(0, 1)] = NS(slot=1)
+    else:
+        pool._candidates[key] = NS(slot=0)
+    with pytest.raises(AssertionError, match=diagnostic):
+        assert_pool_invariants(pool)
+
+
 def test_later_jf_reclaims_while_fee_and_earlier_jf_are_busy(io):
     pool, groups = setup(io)
+    assert_pool_invariants(pool)
     fee, jf0, jf1 = [pool.issue(0,g) for g in groups[:3]]
+    assert_pool_invariants(pool)
     assert all(f.gets == 0 for f in io.futures)
     windows = [bind(pool,k) for k in (fee,jf0,jf1)]
     delayed_fee, delayed_jf = Token(False), Token(False)
@@ -65,16 +93,20 @@ def test_later_jf_reclaims_while_fee_and_earlier_jf_are_busy(io):
     later = pool.take_use(jf1,1)
     later.wait_until_safe_to_reuse()
     assert pool.poll() == (jf1,)
+    assert_pool_invariants(pool)
     assert delayed_fee.waits == delayed_jf.waits == 0
     assert not windows[0].released and not windows[1].released
     assert bytes(windows[0].batch.data_gpu) == bytes(range(6))
     replacement = pool.issue(0,groups[3])
     assert replacement is not None
     assert pool._groups[replacement].slot == 2  # later slot reused first
+    assert_pool_invariants(pool)
     assert pool.reader.memory_bytes()['raw_input_slots'] == 38
     delayed_fee.ready = delayed_jf.ready = True
     assert set(pool.poll()) == {fee,jf0}
+    assert_pool_invariants(pool)
     pool.close()  # drains replacement I/O even without parsing
+    assert_pool_invariants(pool)
     assert all(f.gets == 1 for f in io.futures)
 
 
@@ -115,11 +147,14 @@ def test_query_failure_does_not_recycle_failed_owner_or_block_other_reclamation(
     pool.take_use(b,1).wait_until_safe_to_reuse()
     failure.fail=True
     with pytest.raises(RuntimeError,match='query failure'):pool.poll()
+    assert_pool_invariants(pool)
     assert a in pool.live_keys and b not in pool.live_keys
     assert not wa.released and wb.released and failure.waits == 0
     failure.fail=False;failure.ready=True
     assert pool.poll() == (a,)
+    assert_pool_invariants(pool)
     pool.close()
+    assert_pool_invariants(pool)
 
 
 def test_producer_and_all_consumer_tokens_must_complete(io):
@@ -164,8 +199,10 @@ def test_close_cancels_only_untaken_uses_and_drains_tokens(io):
     use.register_consumer_done(token);use.wait_until_safe_to_reuse()
     assert token.waits==0
     pool.close()
+    assert_pool_invariants(pool)
     assert token.waits==1 and window.released and not pool.live_keys
     pool.close()
+    assert_pool_invariants(pool)
     assert token.waits==1
 
 
@@ -186,9 +223,11 @@ def test_shutdown_wait_failure_keeps_backing_until_retry(io):
     token.fail = True
     with pytest.raises(RuntimeError):
         pool.close()
+    assert_pool_invariants(pool)
     assert not window.released and pool.reader._input_holds[0] == 2
     token.fail = False
     pool.close()
+    assert_pool_invariants(pool)
     assert window.released and not pool.live_keys
     assert pool.reader._input_holds[0] == 0
 
@@ -254,32 +293,40 @@ def test_batch_submission_uses_plan_without_repolling_and_preserves_reads(io, mo
     pool, groups = setup(io)
     selected = groups[1:]
     slots = pool.plan_slots(selected)
+    assert_pool_invariants(pool)
 
     def unexpected_poll():
         raise AssertionError('batch submission repeated retirement polling')
 
     monkeypatch.setattr(pool, 'poll', unexpected_poll)
     keys = pool.issue_groups(0, selected, slots=slots)
+    assert_pool_invariants(pool)
     assert len(keys) == len(selected) == len(io.futures) == 3
     assert pool._busy_slots == set(slots)
     assert [call[2:] for call in io.calls if call[0] == 'submit'] == [(0, 16), (16, 16), (32, 16)]
     pool.close()
+    assert_pool_invariants(pool)
     assert not pool._busy_slots and all(f.gets == 1 for f in io.futures)
 
 
 def test_batch_conflicts_are_rejected_before_any_io(io):
     pool, groups = setup(io)
     assert pool.issue_groups(0, groups[1:3], slots=(0, 0)) is None
+    assert_pool_invariants(pool)
     assert not io.futures
     with pytest.raises(ValueError, match='duplicate'):
         pool.issue_groups(0, (groups[1], groups[1]), slots=(0, 1))
+    assert_pool_invariants(pool)
     with pytest.raises(IndexError):
         pool.issue_groups(0, groups[1:3], slots=(0, 99))
+    assert_pool_invariants(pool)
     assert not io.futures
     key = pool.issue(0, groups[1], slot_id=0)
     assert pool.issue_groups(1, groups[1:3], slots=(0, 1)) is None
+    assert_pool_invariants(pool)
     assert len(io.futures) == 1 and pool.live_keys == (key,)
     pool.close()
+    assert_pool_invariants(pool)
 
 
 def test_partial_batch_submission_failure_keeps_started_reads_owned(io):
@@ -287,9 +334,11 @@ def test_partial_batch_submission_failure_keeps_started_reads_owned(io):
     io.fail_submit = 1
     with pytest.raises(RuntimeError, match='submission'):
         pool.issue_groups(0, groups[1:], slots=(0, 1, 2))
+    assert_pool_invariants(pool)
     assert len(io.futures) == 1 and pool._busy_slots == {0}
     assert pool.live_keys == ((0, groups[1].group_id),)
     pool.close()
+    assert_pool_invariants(pool)
     assert not pool._busy_slots and not pool.live_keys
     assert all(f.gets == 1 for f in io.futures)
 
@@ -297,6 +346,7 @@ def test_partial_batch_submission_failure_keeps_started_reads_owned(io):
 def test_retirement_candidates_skip_live_windows_and_retry_delayed_cuda(io, monkeypatch):
     pool, groups = setup(io)
     a, b = pool.issue_groups(0, groups[1:3], slots=(0, 1))
+    assert_pool_invariants(pool)
     wa, wb = bind(pool, a), bind(pool, b)
     original = wa.poll
 
@@ -310,14 +360,18 @@ def test_retirement_candidates_skip_live_windows_and_retry_delayed_cuda(io, monk
     use.wait_until_safe_to_reuse()
     assert not pool.poll()
     assert set(pool._candidates) == {b}
+    assert_pool_invariants(pool)
     assert done.waits == 0
     done.ready = True
     assert pool.poll() == (b,) and not pool._candidates
+    assert_pool_invariants(pool)
     assert not wa.released and wb.released
     monkeypatch.setattr(wa, 'poll', original)
     pool.take_use(a, 0).wait_until_safe_to_reuse()
     assert pool.poll() == (a,)
+    assert_pool_invariants(pool)
     pool.close()
+    assert_pool_invariants(pool)
 
 
 def test_consumer_thread_only_enqueues_and_stale_notification_cannot_reclaim_new_group(io):
@@ -330,13 +384,18 @@ def test_consumer_thread_only_enqueues_and_stale_notification_cannot_reclaim_new
     with ThreadPoolExecutor(max_workers=1) as executor:
         executor.submit(use.wait_until_safe_to_reuse).result()
     assert pool.live_keys == (key,) and not pool._candidates
+    assert_pool_invariants(pool)
     assert pool.poll() == (key,)
+    assert_pool_invariants(pool)
     assert pool.issue(0, groups[1]) == key
+    assert_pool_invariants(pool)
     bind(pool, key)
     pool._retirement_queue.put(old)
     assert not pool.poll() and not pool._candidates
     assert pool.live_keys == (key,) and pool._busy_slots == {0}
+    assert_pool_invariants(pool)
     pool.close()
+    assert_pool_invariants(pool)
     assert pool._retirement_queue.empty() and not pool._candidates
 
 
@@ -358,13 +417,16 @@ def test_raw_hold_release_failure_preserves_candidate_and_busy_slot_until_retry(
     pool.take_use(key, 0).wait_until_safe_to_reuse()
     with pytest.raises(RuntimeError, match='raw hold release failed'):
         pool.poll()
+    assert_pool_invariants(pool)
     assert pool._groups[key] is state and pool._candidates[key] is state
     assert pool._busy_slots == {0} and state.release_raw is fail_once
     assert pool.reader._input_holds[0] == 1
     assert pool.poll() == (key,)
+    assert_pool_invariants(pool)
     assert not pool._groups and not pool._candidates and not pool._busy_slots
     assert pool.reader._input_holds[0] == 0
     pool.close()
+    assert_pool_invariants(pool)
 
 
 def test_failed_notification_registration_does_not_leave_untracked_bound_window(io):
@@ -377,9 +439,12 @@ def test_failed_notification_registration_does_not_leave_untracked_bound_window(
     rejected.notify_when_retirable(lambda: None)
     with pytest.raises(RuntimeError, match='already registered'):
         pool.bind(key, rejected)
+    assert_pool_invariants(pool)
     assert pool._groups[key].window is None
     assert rejected.close()
     window = bind(pool, key)
     pool.take_use(key, 0).wait_until_safe_to_reuse()
     assert pool.poll() == (key,) and window.released
+    assert_pool_invariants(pool)
     pool.close()
+    assert_pool_invariants(pool)
