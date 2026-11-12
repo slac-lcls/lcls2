@@ -176,8 +176,10 @@ def test_budget_failure_precedes_submission_and_returns_group_credit(io):
     pool,groups=setup(io,capacity=21)
     fee=pool.issue(0,groups[0])  # 6 bytes leave only 15 for a 16-byte JF group
     with pytest.raises(GpuMemoryPressureError):pool.issue(0,groups[1])
+    assert_pool_invariants(pool)
     assert pool.live_keys == (fee,) and len(io.futures)==1
     pool.close()
+    assert_pool_invariants(pool)
 
 
 @pytest.mark.parametrize('failure',['fail_submit','fail_get','short'])
@@ -186,10 +188,13 @@ def test_io_failure_drains_every_started_future_and_prevents_reuse(io,failure):
     setattr(io,failure,0)
     with pytest.raises(RuntimeError):
         key=pool.issue(0,groups[1]);pool.read(key)
+    assert_pool_invariants(pool)
     assert all(f.gets==1 for f in io.futures)
     with pytest.raises(RuntimeError,match='closed or failed'):
         pool.issue(1,groups[1])
+    assert_pool_invariants(pool)
     pool.close()
+    assert_pool_invariants(pool)
 
 
 def test_close_cancels_only_untaken_uses_and_drains_tokens(io):
@@ -210,9 +215,13 @@ def test_old_receipt_cannot_retain_reused_generation(io):
     pool,groups=setup(io,slots=1)
     key=pool.issue(0,groups[1]);old=pool.read(key);bind(pool,key)
     pool.take_use(key,0).wait_until_safe_to_reuse();pool.poll()
+    assert_pool_invariants(pool)
     pool.issue(0,groups[2])
+    assert_pool_invariants(pool)
     with pytest.raises(RuntimeError,match='obsolete'):old.retain_input()
+    assert_pool_invariants(pool)
     pool.close()
+    assert_pool_invariants(pool)
 
 
 def test_shutdown_wait_failure_keeps_backing_until_retry(io):
