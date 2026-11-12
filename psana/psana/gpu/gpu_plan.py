@@ -32,10 +32,11 @@ class StepScope:
     """Which step a batch of events was recorded in.
 
     `index` counts distinct BeginSteps applied in this run, 0 before the
-    first. Counting by timestamp rather than per record seen is what makes it
-    identical on every BD: smd0 and the EB prepend missing history to each
-    recipient, so the same BeginStep arrives repeatedly and must not advance
-    the index twice.
+    first. It is counted by timestamp rather than per record seen, which is
+    the replay safety #172 asks for: a catch-up copy of a BeginStep carries
+    the same timestamp and cannot advance the index twice. Each BD receives
+    each BeginStep once today (StepHistory.get_buffer is per client), so this
+    guards an invariant rather than a case that occurs.
     """
     run: int
     index: int
@@ -99,9 +100,10 @@ def plan_packet(gpu_view, transitions, *, run, generation, begin_ts):
             f'GPU event and transition have the same timestamp: '
             f'{sorted(collisions)[0]}')
 
-    # A BeginStep advances the generation for events recorded after it. Applied
-    # by timestamp so prepended history that this BD already consumed does not
-    # advance it a second time.
+    # A BeginStep advances the generation for events recorded after it. Judged
+    # by timestamp, not per record, so a catch-up copy of a BeginStep this BD
+    # has already applied could not advance it twice -- #172's replay safety.
+    # The EB does not send such copies today; see StepScope.
     next_generation, next_begin_ts = generation, begin_ts
     for service, _, ts in ordered:
         if service == TransitionId.BeginStep and ts > next_begin_ts:

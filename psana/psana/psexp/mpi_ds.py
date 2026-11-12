@@ -589,8 +589,7 @@ class RunParallel(Run):
         the user's loop, and when the abandoned steps() generator was then
         closed the handler saw only GeneratorExit, which it deliberately lets
         through. No comm.Abort, and the EB waited on a receive that never
-        came -- the exact hang the wrapper exists to prevent (Copilot review
-        on PR #299).
+        came -- the exact hang the wrapper exists to prevent.
 
         Wrapping the iterator puts the handler in the frame that does the
         advancing, from either caller. close() still reaches the inner

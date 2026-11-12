@@ -802,10 +802,15 @@ class GpuEventManager:
         # What stays here is the generation bookkeeping, which must advance
         # before the NEXT packet is planned.
         if service == TransitionId.BeginStep:
-            # Advance on a NEW BeginStep only. Replayed history repeats one
-            # this BD already applied, and incrementing per record seen made
-            # the generation diverge between BDs (issue #153, GPU-148-01).
-            # Matches gpu_plan.plan_packet, which must agree with this.
+            # Advance on a NEW BeginStep only, judged by timestamp rather than
+            # per record seen -- the replay safety #172 asks for: a catch-up
+            # copy of a BeginStep carries the same timestamp and so cannot
+            # open a second step. The EB does not deliver such copies today
+            # (StepHistory.get_buffer sends each client only what it has not
+            # had, and run 77 under MPI yields exactly one Step per BeginStep
+            # per BD), so this guards an invariant rather than handles a case
+            # that occurs. gpu_plan.plan_packet counts the same way and the
+            # two must agree.
             #
             # A dgram with no usable timestamp still advances the generation:
             # first_timestamp() raises on one, and several tests dispatch
@@ -1303,9 +1308,11 @@ class GpuEventManager:
         """
         queued = getattr(self, '_queued_transitions', None)
         if queued:
-            self._retire_seq = max(getattr(self, '_retire_seq', 0),
-                                   max(entry[0] for entry in queued))
-            yield from self._release_transitions()
+            # An explicit bound, not a bump of _retire_seq: the counter means
+            # "submissions retired", and pushing it past _submit_seq here would
+            # leave the two disagreeing for anything that ran afterwards.
+            yield from self._release_transitions(
+                max_seq=max(entry[0] for entry in queued))
 
     def _process_batch(self, batch_dict, gpu_batch_dict, step_dict):
         n_events = self._n_events
