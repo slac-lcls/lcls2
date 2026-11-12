@@ -18,8 +18,9 @@ enqueue notifications. This does not make the pool a concurrent host submitter.
 
 The original implementation was validated on the research branch at
 `b95b789ca834e6746870548274d119de09ef86ee`, before extraction onto the current
-`features/psana2-gpu` target. These numbers describe that measured comparison;
-the exact PR-base runtime has not been rebenchmarked.
+`features/psana2-gpu` target. These numbers describe that historical before/after
+comparison. Subsequent measurements of the extracted PR runtime are reported
+separately below; they do not repeat the before/after comparison.
 
 Job 61098604 on nid003900 used one BD, one A100-SXM4-40GB, 10,000 Sim10 JF events,
 batch 100, execution depth 1 or 2, 512 KiB bulk target and a 6 GiB budget. KvikIO
@@ -53,6 +54,53 @@ The task checked descriptor staging, with no dense gather, blow-up, calibration,
 cube or user payload D2H. Timing instrumentation adds overhead; throughput uses
 clean runs only. Two repetitions do not establish narrow uncertainty bounds.
 
+## Extracted PR runtime: matched Ada stream comparisons
+
+Both November 10 S3DF jobs used PR #298 at
+`67c327a148a08b2aaf972e67e1e02e367c2b298f`, not the research runtime. The jobs
+completed successfully on `sdfada016`, using the same physical NVIDIA L40S and
+CPU cores 0-23. Each compared one versus two CUDA streams with two full
+repetitions per configuration, in order 1, 2, 2, 1; 1,000-event pilots are
+excluded from these medians.
+
+| Job | Events per full pass | Requested JF GiB per pass | One stream GiB/s | Two streams GiB/s | Two-stream repeats GiB/s |
+|---|---:|---:|---:|---:|---|
+| 44185752 | 10,000 | 31.276 | 3.409 | 3.269 | 3.264, 3.275 |
+| 44189224 | 100,000 | 312.757 | 3.019 | 2.870 | 2.862, 2.878 |
+
+Controls: one BD/one GPU, batch 100, SMD 1,000, 512 KiB bulk target, 6 GiB GPU
+budget, a 24-physical-core allowance and NUMA interleave. KvikIO 26.10 used CPU
+fallback, 8 workers, 1 MiB tasks, 16 MiB bounce buffers and automatic direct I/O
+disabled. CuPy was 14.0.1 and the CUDA runtime was 12.9. These are descriptor
+staging measurements, not dense gather, blow-up, calibration, cube or payload
+D2H measurements. The loop timer includes lazy framework setup but excludes
+input staging, tests and cache conditioning.
+
+Each 10k pass completed 50,000 reads / 33,582,000,000 bytes / 100 callbacks of
+100 events; each 100k pass completed 500,000 reads / 335,820,000,000 bytes /
+1,000 callbacks of 100 events. Both jobs passed 31 native GPU tests with zero
+failures or skips, the automatic evidence audit and independent results review.
+Event identities, complete draining, and absence of CPU payload reads and
+pressure drains were checked. Temporary FFB inputs were removed after each job.
+
+PR Python ran over existing SDF native extensions, not a fresh PR build. The
+runtime receipts checked 225 native source files against the existing build and
+verified loaded module paths/hashes. The sole build-configuration difference
+was the packaging-only `gpu/notes` installation exclusion in `psana/meson.build`;
+it changed no extension sources, compiler flags or link inputs.
+
+JF files were verified at zero local page residency after setup and immediately
+before each loop. Physical NIC RX was approximately 1.056 times requested JF
+bytes for 10k and 1.057 times for 100k, corroborating network-served Weka FFB
+reads, not a precise cache-miss fraction. SMD files were not cold-gated, backend
+cache state was uncontrolled, and no NVMe input staging was used.
+
+These runs establish GPU acceptance and post-fix throughput for the extracted
+PR runtime. They have no pre-fix control on Ada and do not independently confirm
+the historical 72.6% Perlmutter improvement. Hardware and filesystem differences
+also prevent treating the Ada and Perlmutter rates as a before/after pair. Two
+repetitions per configuration remain insufficient for narrow uncertainty bounds.
+
 ## Reproduction and evidence
 
 After building/installing this checkout and activating its matching runtime:
@@ -66,6 +114,16 @@ Native ownership acceptance requires a CUDA node. The original campaign's
 record the matched benchmark launch and fail-closed validation. They pin the
 historical runtime and are not generic launchers for a newly installed PR tree.
 
-See the [immutable implementation, harness, receipts and independent review](https://github.com/monarin/lcls2/tree/3c3799829c659d739d5927511f86cc968a6fae6e/notes/sim10_input_bookkeeping_20261110).
-The receipts include exact runtime hashes, cache checks, event identities,
-read/callback counts, cleanup, Slurm exit status and measured phases.
+See the [historical implementation, harness, receipts and independent review](https://github.com/monarin/lcls2/tree/3c3799829c659d739d5927511f86cc968a6fae6e/notes/sim10_input_bookkeeping_20261110).
+The extracted PR runtime's later reports and receipts are pinned separately:
+
+- [10k Ada results, job 44185752](https://github.com/monarin/lcls2/tree/f888b316e8d940be6cad683d9dc62110938f006f/notes/sim10_ada_baseline_20261110).
+- [100k Ada results, job 44189224](https://github.com/monarin/lcls2/tree/f888b316e8d940be6cad683d9dc62110938f006f/notes/sim10_ada_100k_baseline_20261110).
+
+Each Ada directory contains `results.json`, `runtime-evidence.json`,
+`gpu-tests.json`, `audit.json`, `artifact-index.json`, cleanup and Slurm receipts,
+the pinned campaign harness and independent review. The 10k directory also
+contains `build-config-diff.json` for the native-build reuse qualification.
+On November 12, all 35 indexed raw artifacts (18 for 10k, 17 for 100k) and all
+13 recorded runtime modules per campaign were rehashed successfully. This was
+an evidence-integrity check, not a new benchmark or GPU test run.
