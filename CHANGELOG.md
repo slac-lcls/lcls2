@@ -27,6 +27,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed `daqmgr restart` (and daqstat's Restart) submitting the new job while the cancelled one could still be exiting, letting both hold the same device (e.g. a KCU's `/dev/datadev_N`). It now waits up to 40 s, longer than Slurm's 32 s KillWait, for the old jobs to leave `squeue`, warns if they don't, and refuses to start a second copy. @CheolhongAn [#306](https://github.com/slac-lcls/lcls2/pull/306)
 - Fixed missing h5 data overflow error created by move to numpy2. @chrisvam [#303](https://github.com/slac-lcls/lcls2/pull/303)
 - Fixed the 1 ms waits in the TEB batch timeout, `EbLfServer::pend()` and `SPSCQueue::pop()` ending early because they were timed on a clock that steps every ~1 ms. TEB, MEB and DRP threads blocked up to ~1000 times a second at full rate, and TEB batches were flushed early. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Fixed a GPU DRP hanging on its first event when its trigger primitive has no GPU `event()`, or when it is not in `buildDets`. The first now fails Configure with a message. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
