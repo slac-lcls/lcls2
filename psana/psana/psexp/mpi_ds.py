@@ -578,6 +578,44 @@ class RunParallel(Run):
             from psana.gpu.gpu_placement import release_placement
             release_placement(placement)
 
+    def _guard_shared_iterator(self, evt_iter):
+        """Run gpu_error_handler around every advance of `evt_iter`, whoever
+        makes it.
+
+        steps() wraps _steps_impl in the handler, but each Step it yields
+        shares `evt_iter` and advances it from the USER's frame while
+        _steps_impl sits suspended at its yield. A GPU failure raised during
+        step.events() therefore never passed through that handler: it reached
+        the user's loop, and when the abandoned steps() generator was then
+        closed the handler saw only GeneratorExit, which it deliberately lets
+        through. No comm.Abort, and the EB waited on a receive that never
+        came -- the exact hang the wrapper exists to prevent (Copilot review
+        on PR #299).
+
+        Wrapping the iterator puts the handler in the frame that does the
+        advancing, from either caller. close() still reaches the inner
+        generator through `yield from`, so BigDataNode.start()'s finally runs
+        as before and _close_gpu_manager's ordering is untouched. GeneratorExit
+        still passes through the handler, so breaking out of a step loop
+        remains a local decision.
+
+        _events_impl does not need this: it consumes evt_iter inside its own
+        frame, within events()'s handler. CPU ranks and callers without a
+        communicator get the iterator back unwrapped.
+        """
+        if not (self.dsparms.gpu_enabled and nodetype == "bd"):
+            return evt_iter
+        comms = getattr(self, 'comms', None)
+        if comms is None:
+            return evt_iter
+        from psana.gpu.gpu_mpi import gpu_error_handler
+
+        def guarded():
+            with gpu_error_handler(comms.psana_comm):
+                yield from evt_iter
+
+        return guarded()
+
     def _steps_impl(self):
         """Yield a Step per BeginStep, with the GPU stream owned as in events().
 
@@ -591,7 +629,8 @@ class RunParallel(Run):
         here.
         """
         gpu_manager = self._open_gpu_manager()
-        evt_iter = self.start(gpu_manager=gpu_manager)
+        evt_iter = self._guard_shared_iterator(
+            self.start(gpu_manager=gpu_manager))
         try:
             for envelope in evt_iter:
                 dgrams = envelope.dgrams
@@ -666,9 +705,13 @@ class RunParallel(Run):
         # GPU BD ranks used to return here, so run.steps() silently yielded
         # nothing on the GPU path (GPU-140-03). PR B now puts ordered
         # BeginStep/EndStep envelopes in the stream, so _steps_impl consumes
-        # them like the CPU path does. The gpu_error_handler wrapper matches
-        # events(): without it an exception in a user's step loop on one BD
-        # rank leaves the EB waiting on a receive that never arrives. It lets
+        # them like the CPU path does.
+        #
+        # Two handler layers, because the work happens in two frames. This
+        # one covers _steps_impl's own body. The shared event iterator is
+        # guarded separately by _guard_shared_iterator, because a Step
+        # advances it from the user's frame while this generator is
+        # suspended -- a failure there never reaches this `with`. Both let
         # GeneratorExit through, so breaking out of run.steps() stays a local
         # decision and never aborts the job.
         if self.dsparms.gpu_enabled and nodetype == "bd":

@@ -225,6 +225,78 @@ def test_parallel_iterator_close_drains_gpu_manager(monkeypatch):
     assert closed == [True]
 
 
+def _gpu_bd_steps_run(monkeypatch, start, aborts):
+    """A RunParallel stand-in on a GPU BD rank whose comm records Abort."""
+    from psana.psexp import mpi_ds
+    monkeypatch.setattr(mpi_ds, 'nodetype', 'bd')
+    comm = NS(Get_rank=lambda: 0, Abort=lambda code: aborts.append(code))
+    run = NS(dsparms=NS(gpu_enabled=True), comms=NS(psana_comm=comm),
+             _make_gpu_event_manager=lambda: NS(close=lambda: None),
+             start=start,
+             _update_envstore_from_dgrams=lambda dgrams: None,
+             _materialize_event=lambda env: env,
+             _run_ctx=object(), esm=None)
+    # Bind the real methods lazily, so a method this fix adds is only looked
+    # up when the code under test calls it.
+    for name in ('_open_gpu_manager', '_close_gpu_manager', '_steps_impl',
+                 '_guard_shared_iterator'):
+        setattr(run, name,
+                lambda *a, _n=name: getattr(mpi_ds.RunParallel, _n)(run, *a))
+    return run
+
+
+def _beginstep_envelope():
+    from psana.psexp import TransitionId
+    begin = NS(timestamp=lambda: 900,
+               service=lambda: TransitionId.BeginStep,
+               env=lambda: TransitionId.BeginStep << 24)
+    return NS(dgrams=[begin], gpu_state=None)
+
+
+def test_a_gpu_failure_inside_step_events_aborts_the_mpi_job(monkeypatch):
+    """The failure happens on the USER's call stack, not inside run.steps().
+
+    steps() wraps _steps_impl in gpu_error_handler, but step.events() advances
+    the shared iterator while that generator is suspended, so an exception
+    there bypassed the handler entirely: it reached the user, and closing the
+    abandoned steps() generator afterwards showed the handler only
+    GeneratorExit. No Abort, and the EB hung. Without _guard_shared_iterator
+    this test dies with the RuntimeError and `aborts` stays empty.
+    """
+    from psana.psexp import mpi_ds
+
+    def start(**kwargs):
+        yield _beginstep_envelope()
+        raise RuntimeError('KvikIO pread failed')   # the step's first read
+
+    aborts = []
+    run = _gpu_bd_steps_run(monkeypatch, start, aborts)
+    steps = mpi_ds.RunParallel.steps(run)
+    step = next(steps)
+
+    list(step.events())        # the user's loop; must not see the exception
+
+    assert aborts == [1], 'a GPU failure inside step.events() must Abort'
+
+
+def test_breaking_out_of_a_gpu_step_loop_does_not_abort(monkeypatch):
+    """GeneratorExit must still pass through both handler layers: abandoning
+    run.steps() is a local decision, not a job failure."""
+    from psana.psexp import mpi_ds
+
+    def start(**kwargs):
+        yield _beginstep_envelope()
+        yield _beginstep_envelope()      # never reached
+
+    aborts = []
+    run = _gpu_bd_steps_run(monkeypatch, start, aborts)
+    steps = mpi_ds.RunParallel.steps(run)
+    next(steps)
+    steps.close()
+
+    assert aborts == [], 'closing early must not abort the job'
+
+
 def test_parallel_steps_iterator_close_drains_gpu_manager(monkeypatch):
     """The same ownership contract for steps() as for events().
 
@@ -251,6 +323,10 @@ def test_parallel_steps_iterator_close_drains_gpu_manager(monkeypatch):
     run._open_gpu_manager = lambda: mpi_ds.RunParallel._open_gpu_manager(run)
     run._close_gpu_manager = lambda it, mgr: mpi_ds.RunParallel._close_gpu_manager(
         run, it, mgr)
+    # No comms on this stand-in, so the guard hands the iterator back as is;
+    # the close path below is therefore the unwrapped one.
+    run._guard_shared_iterator = (
+        lambda it: mpi_ds.RunParallel._guard_shared_iterator(run, it))
     iterator = mpi_ds.RunParallel._steps_impl(run)
     step = next(iterator)
     assert step.evt is envelope, 'one BeginStep, so one Step'
