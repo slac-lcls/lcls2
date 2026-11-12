@@ -18,10 +18,11 @@ from .epix100               import *
 from .epixm320              import *
 from .epixuhr               import *
 from .archon                import *
-from .axis                  import *
+#from .axis                  import *
 from .jungfrau              import *
 from .jungfrauemu           import *
 #from .epixhremu             import *
 from .generic               import *
 from .epixuhr3x2            import *
-#from .pv_det      import * # until the version of detector with panel id is available
+#from .alvium                import *
+from .epics2d               import *

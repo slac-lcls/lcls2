@@ -22,7 +22,7 @@ import os
 import sys
 import numpy as np
 import psana.detector.utils_psana as up
-from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp  # info_command_line
+from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp, is_none  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, reshape_to_3d, save_ndarray_in_textfile
 from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix, fname_prefix_block_results
@@ -664,6 +664,7 @@ def deploy_constants(dic_consts, **kwa):
     shortname= kwa.get('shortname', 'not-def-shortname')
     longname = kwa.get('longname', 'not-def-longname')
     segind   = kwa.get('segind', 0)
+    ctdepl   = kwa.get('ctdepl', 'prs')
 
     fmt_peds   = kwa.get('fmt_peds', '%.3f')
     fmt_rms    = kwa.get('fmt_rms',  '%.3f')
@@ -686,7 +687,12 @@ def deploy_constants(dic_consts, **kwa):
 
     logger.info('use panelid: %s' % panelid)
 
-    for ctype, nda in dic_consts.items():
+    #for ctype, nda in dic_consts.items(): # 2026-11-09 use --ctdepl prs
+    for c in ctdepl:
+        ctype = cc.dic_calib_char_to_name[c]
+        nda = dic_consts.get(ctype, None)
+        if is_none(nda, f'constants for ctype:{ctype} are missing - skip deployment', logger_method=logger.warning):
+            continue
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
@@ -714,7 +720,7 @@ def deploy_constants(dic_consts, **kwa):
         if deploy:
             detname = kwa['longname']
             resp = add_data_and_two_docs(data, expname, detname, **kwa) # url=cc.URL_KRB, krbheaders=cc.KRBHEADERS
-            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys)))
+            logger.info('partial metadata: %s' % str(up.dict_filter(kwa, list_keys=list_keys, ordered=False)))
             if resp:
                 #id_data_exp, id_data_det, id_doc_exp, id_doc_det = resp
                 logger.debug('deployment id_data_exp:%s id_data_det:%s id_doc_exp:%s id_doc_det:%s' % resp)
