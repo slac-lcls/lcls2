@@ -170,10 +170,14 @@ class _Harness:
             plan = plan_packet(view, transitions, run=1,
                                generation=getattr(m, '_step_generation', 0),
                                begin_ts=getattr(m, '_step_begin_ts', 0))
-        gpu_events._iter_step_events = lambda b, c: list(transitions)
         end_run = any(s == ER for s, _ in records)
+        # Hand _handle_steps the list directly, as _process_batch does.
+        # Replacing gpu_events._iter_step_events at module level here left
+        # the fake in place after the test, and test_core.py's decoder tests
+        # then received this harness's last packet instead of their own bytes
+        # whenever this file ran first.
         self._deliver(m._handle_steps(
-            {0: (b'packet', [])} if transitions else {}))
+            {0: (b'packet', [])} if transitions else {}, transitions))
 
         if cpu_only:
             # _process_batch's CPU-only branch: drain in flight, then
