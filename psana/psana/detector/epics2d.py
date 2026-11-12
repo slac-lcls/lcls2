@@ -68,7 +68,7 @@ class epics2d_raw_1_0_0(AreaDetectorRaw):
         r = self.raw(evt)
         if r is None: return None
         use_calib = kwa.get('use_calib_as_image', True)
-        use_nda = kwa.get('use_nda_as_image', True) and nda is not None
+        use_nda = kwa.get('use_nda_as_image', use_calib) and nda is not None
         if (not use_calib) and self._seg_geo is None and r is not None:
             self._init_geometry(r.shape, pix_size_rcsd_um=kwa.get('pix_size_rcsd_um', (10,10,10,400)))
         return nda if use_nda else\
