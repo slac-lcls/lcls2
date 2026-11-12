@@ -1,0 +1,32 @@
+{
+  "phase": "complete",
+  "base": "1805e1d9522a4e45aa611a59d83a4cf051678104",
+  "branch": "work/sim10-input-bookkeeping-20261110",
+  "review_round": 2,
+  "review_limit": 3,
+  "checks": {
+    "cpu": "970 passed in8.77s after review fixes",
+    "initial_cpu": "42 targeted passed; initial full suite had 4 fixtures missing new busy-slot state and 1 MPI-mode mismatch; fixed fixtures and reran full suite",
+    "syntax": "Python AST, bash -n, diff --check pass",
+    "gpu": "31 passed, zero failures/skips; exact stale baseline assertion reproduced on unchanged runtime",
+    "performance": "12/12 passed on nid003900, job61098604 COMPLETED exit0; two-stream median1.2656 ->2.1841GiB/s",
+    "receipt_verification": "all remote JSON hashes and12 case invariants/cleanup rechecked locally"
+  },
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110",
+  "unresolved": [],
+  "implementation_commit": "b95b789ca834e6746870548274d119de09ef86ee",
+  "job": "61098604",
+  "previous_jobs": [
+    "61098117",
+    "61098227",
+    "61098414"
+  ],
+  "reviewed_commit": "8b7b9ffc042797ec95722ee83e3078bc4e937ebd",
+  "review_verdict": "pass",
+  "runtime_sha256": {
+    "psana/psana/gpu/gpu_events.py": "27e2046291ebadaa2c8414c110e0d8d9c0e3e564ea368d7b5081bf7accf82780",
+    "psana/psana/gpu/gpu_input_group.py": "3df71deff9c0df685f02ab4030537fffac93de67018a127ca0baa79fdc7ab2c6",
+    "psana/psana/gpu/gpu_input_window.py": "61b1203e91993ad6dc101a9c2614ca0a468ac01cb6724758f9189721c0551832"
+  },
+  "runtime_hash_note": "Computed in reviewed checkout8b7b9ffc042797ec95722ee83e3078bc4e937ebd and matched native provenance; closure changes only evidence/docs."
+}

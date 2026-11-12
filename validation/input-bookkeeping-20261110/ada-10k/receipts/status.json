@@ -1,0 +1,41 @@
+{
+  "phase": "complete",
+  "job_id": "44185752",
+  "harness_sha": "58894c331e40f70a61dd24d800cf3548479e38d7",
+  "pr_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "review": {
+    "round": 3,
+    "round_limit": 3,
+    "verdict": "pass",
+    "blocking": [],
+    "reviewed_results_sha": "fbeeddebe0bbe0e2e20082897b9fef5466f93866",
+    "harness_sha": "58894c331e40f70a61dd24d800cf3548479e38d7"
+  },
+  "checks": {
+    "cpu_unit_passed": 1023,
+    "harness_passed": 16,
+    "gpu": {
+      "passed": 31,
+      "failed": 0,
+      "skipped": 0
+    },
+    "performance": "six cases passed",
+    "final_evidence_review": "round03 pass; no blocking findings",
+    "audit": "pass"
+  },
+  "remaining": [],
+  "deferred": [
+    "ADA-08: commit launch assertion and enforce packaging-only configuration allow-list before next100k/BD sweep",
+    "ADA-09: resolve receipt source paths before reusing harness with symlinks"
+  ],
+  "artifacts": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02",
+  "failed_attempt": {
+    "job_id": "44185349",
+    "node": "sdfada011",
+    "error": "cudaErrorUnknown before tests or staging",
+    "diagnostic_job": "44185635",
+    "no_psana_reproduction": true,
+    "stage_removed": true
+  },
+  "host": "sdfada016"
+}

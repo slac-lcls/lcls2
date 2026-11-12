@@ -1,0 +1,9 @@
+{
+  "diff": "--- frozen/psana/meson.build\n+++ PR/psana/meson.build\n@@ -326,6 +326,7 @@\n     #'pycalgos',\n     'shmem',\n     'tests',\n+    'gpu/notes',  # Development records are not installed package data.\n   ],\n   exclude_files: [\n     'graphqt/QWDirNameV2.py',\n",
+  "classification": "Packaging only: excludes gpu/notes from installed Python package data. No extension source, include, flag or link changes.",
+  "hashes": {
+    "pr": "4cd078217825f316d8db0ef62782ac5d8a2a3d42283b839240bfc984efe9f1ae",
+    "frozen": "27ae0bce919c99bfb7705747074f7d6413f23d3fffcf5aa6ba65741602149452"
+  },
+  "pre_submission_check": "Exact expected one-line insertion asserted by submission helper. Canonical PR source path also asserted."
+}

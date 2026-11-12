@@ -1,0 +1,95 @@
+{
+  "root": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02",
+  "files": [
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/00-stream1.json",
+      "bytes": 661258,
+      "sha256": "7bdc7b69a73d6a9485c617cb3bff66dfc813b5b43bda60d749ef274d2ea192f2"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/01-stream2.json",
+      "bytes": 661262,
+      "sha256": "258b048ec2c54cbd26619c91b9fddc79b27863ab61c68e98e94a8642cf783bbd"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/02-stream2.json",
+      "bytes": 661259,
+      "sha256": "95e294edd027461140f024f38a02ab27ecdafd76b94f6fd9eefc69985ab0c1b2"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/03-stream1.json",
+      "bytes": 661265,
+      "sha256": "1568cf491d3fcdfa5da08c4c9e55d21d27e8cafb4edf2819868c01772da47cb2"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/cleanup.json",
+      "bytes": 105,
+      "sha256": "41b54a44f3bd2f27c403d608b9f2d45fa041b75a78e9f1aabb32116d0afed70e"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/complete.json",
+      "bytes": 5777,
+      "sha256": "850255265790b96df67d3945e4c8df9187755c8ea2b152fff2880577191bef04"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/gpu-tests.json",
+      "bytes": 319,
+      "sha256": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/inputs.json",
+      "bytes": 250924,
+      "sha256": "31a7b88e3c2f97e9a69711a628597964337285ecd5ee0faf2fae0abad894037d"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/preflight-stream1.json",
+      "bytes": 92733,
+      "sha256": "11add00e7f1566a2d177fb0e865a4c9ed516ec8862f9a1663723731987db96d6"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/preflight-stream2.json",
+      "bytes": 92733,
+      "sha256": "a9690fabb3ae8cdaf44d6226a16fe88d6430655d83967fc707d04bac92b4dfee"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/progress.json",
+      "bytes": 5392,
+      "sha256": "6f8779b35dcae8fb7de8a0e603c3a01ae820ec9e7d6bf5a73aba99730ae1a73a"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/provenance.json",
+      "bytes": 154270,
+      "sha256": "ddd192ae5fcf29b0df84cefeec4a28c843a482bcd349a21f9b49f67c32c2a5af"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/audit.json",
+      "bytes": 13098,
+      "sha256": "66e3970e5894a39fd053271591273febafd3802b2cd8d49830e6cbbaf82c55d2"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/submission.json",
+      "bytes": 1222,
+      "sha256": "2555f72423e83209f2e7abe24e7cb33ad8d569bcc34454917162c41d203f4e95"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/native-compatibility.json",
+      "bytes": 141929,
+      "sha256": "2f4b41e861afd16ab3bba7594883a04f3ad2ad385febaa3a2185ede45bc749f7"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/slurm-44185752.err",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/slurm-44185752.out",
+      "bytes": 5113,
+      "sha256": "e31c762cd35eec4e88bb2576560686737d9ef9a6a0e285f075bfa30d1754161b"
+    },
+    {
+      "path": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-baseline-20261110/attempt02/results/gpu-tests.log",
+      "bytes": 2418,
+      "sha256": "8e75f9adfa15a1021fbe2e2fd4270986b9d5ea31913933a33b85c7d982b9b771"
+    }
+  ]
+}

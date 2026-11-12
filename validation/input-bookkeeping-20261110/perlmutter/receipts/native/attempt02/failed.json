@@ -1,0 +1,4 @@
+{
+  "error": "CalledProcessError(1, ['srun', '--mpi=cray_shasta', '--nodes=1', '--ntasks=1', '--ntasks-per-node=1', '--cpus-per-task=16', '--gpus-per-node=1', '--gpu-bind=none', '--cpu-bind=none', '--kill-on-bad-exit=1', 'numactl', '--interleave=all', '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python', '/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/source/notes/sim10_input_bookkeeping_20261110/baseline_check.py', '/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt02/results/baseline-check.json', '/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt02/baseline-test-tmp'])",
+  "time": 1794334026.2640092
+}

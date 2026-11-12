@@ -109,21 +109,26 @@ After building/installing this checkout and activating its matching runtime:
 PS_PARALLEL=mpi python -m pytest -q psana/psana/tests/gpu/unit
 ```
 
-Native ownership acceptance requires a CUDA node. The original campaign's
-`gpu_tests.py` lists the six integration files; `campaign.py` and `run.sbatch`
-record the matched benchmark launch and fail-closed validation. They pin the
-historical runtime and are not generic launchers for a newly installed PR tree.
+The [repository validation bundle](../../../../../validation/input-bookkeeping-20261110/README.md)
+preserves essential evidence independently of the personal fork:
 
-See the [historical implementation, harness, receipts and independent review](https://github.com/monarin/lcls2/tree/3c3799829c659d739d5927511f86cc968a6fae6e/notes/sim10_input_bookkeeping_20261110).
-The extracted PR runtime's later reports and receipts are pinned separately:
+- [Historical Perlmutter summary](../../../../../validation/input-bookkeeping-20261110/perlmutter/receipts/native/attempt03/summary.json), with completion, GPU-test, provenance and phase receipts.
+- [10k Ada results, job 44185752](../../../../../validation/input-bookkeeping-20261110/ada-10k/receipts/results.json).
+- [100k Ada results, job 44189224](../../../../../validation/input-bookkeeping-20261110/ada-100k/receipts/results.json).
 
-- [10k Ada results, job 44185752](https://github.com/monarin/lcls2/tree/f888b316e8d940be6cad683d9dc62110938f006f/notes/sim10_ada_baseline_20261110).
-- [100k Ada results, job 44189224](https://github.com/monarin/lcls2/tree/f888b316e8d940be6cad683d9dc62110938f006f/notes/sim10_ada_100k_baseline_20261110).
+The bundle contains byte-preserved receipts, archived harness source and a
+manifest with original Git identities and SHA-256 hashes. Its offline verifier
+checks preserved-file integrity and summary consistency without scratch, Git,
+psana, CUDA or network access. Large raw event results and full review
+conversations remain external; their availability is not implied by the import.
+Original absolute paths and historical statements remain unchanged in receipts.
 
-Each Ada directory contains `results.json`, `runtime-evidence.json`,
-`gpu-tests.json`, `audit.json`, `artifact-index.json`, cleanup and Slurm receipts,
-the pinned campaign harness and independent review. The 10k directory also
-contains `build-config-diff.json` for the native-build reuse qualification.
-On November 12, all 35 indexed raw artifacts (18 for 10k, 17 for 100k) and all
-13 recorded runtime modules per campaign were rehashed successfully. This was
-an evidence-integrity check, not a new benchmark or GPU test run.
+Native ownership acceptance still requires a CUDA node. Archived launch scripts
+retain original site dependencies and runtime pins; they are not portable
+launchers for this directory or a newly installed PR tree. See the bundle README
+for the dependency and verification limits.
+
+On November 12, all 35 original indexed raw artifacts (18 for 10k, 17 for 100k)
+and all 13 recorded runtime modules per campaign were rehashed successfully.
+That earlier scratch integrity check is distinct from the bundle's portable
+check and was not a new benchmark or GPU test run.

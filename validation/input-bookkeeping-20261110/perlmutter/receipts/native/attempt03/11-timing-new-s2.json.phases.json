@@ -1,0 +1,803 @@
+{
+  "phases": {
+    "startup/allocation.owned_empty": {
+      "calls": 1017,
+      "total_ns": 174648258,
+      "self_ns": 174648258,
+      "max_ns": 14055593
+    },
+    "startup/setup.pipeline": {
+      "calls": 1,
+      "total_ns": 11581634,
+      "self_ns": 8706712,
+      "max_ns": 11581634
+    },
+    "startup/read.file_epochs": {
+      "calls": 4,
+      "total_ns": 1366865,
+      "self_ns": 1366865,
+      "max_ns": 560741
+    },
+    "startup/pool.flush": {
+      "calls": 1,
+      "total_ns": 4278,
+      "self_ns": 4278,
+      "max_ns": 4278
+    },
+    "startup/manager.flush": {
+      "calls": 1,
+      "total_ns": 20089,
+      "self_ns": 15811,
+      "max_ns": 20089
+    },
+    "startup/input.poll": {
+      "calls": 3,
+      "total_ns": 14449,
+      "self_ns": 14449,
+      "max_ns": 6182
+    },
+    "startup/transition.handle": {
+      "calls": 4,
+      "total_ns": 1206524,
+      "self_ns": 1182166,
+      "max_ns": 374932
+    },
+    "startup/manager.process": {
+      "calls": 4,
+      "total_ns": 700293125,
+      "self_ns": 24935513,
+      "max_ns": 459790332
+    },
+    "startup/admission.plan": {
+      "calls": 3,
+      "total_ns": 30209329,
+      "self_ns": 30209329,
+      "max_ns": 13621916
+    },
+    "startup/retire.begin": {
+      "calls": 3,
+      "total_ns": 23326,
+      "self_ns": 10290,
+      "max_ns": 19478
+    },
+    "startup/delivery.events": {
+      "calls": 3,
+      "total_ns": 591140,
+      "self_ns": 591140,
+      "max_ns": 587633
+    },
+    "startup/retire.finish": {
+      "calls": 2,
+      "total_ns": 1733,
+      "self_ns": 1733,
+      "max_ns": 932
+    },
+    "startup/input.plan_slots": {
+      "calls": 2,
+      "total_ns": 402275,
+      "self_ns": 392095,
+      "max_ns": 210716
+    },
+    "startup/read.buffer": {
+      "calls": 1000,
+      "total_ns": 176837894,
+      "self_ns": 7808227,
+      "max_ns": 14066354
+    },
+    "startup/read.pread_loop": {
+      "calls": 1000,
+      "total_ns": 51236194,
+      "self_ns": 51236194,
+      "max_ns": 12333483
+    },
+    "startup/read.submit": {
+      "calls": 1000,
+      "total_ns": 251063764,
+      "self_ns": 22989676,
+      "max_ns": 14210592
+    },
+    "startup/read.group": {
+      "calls": 1000,
+      "total_ns": 320073271,
+      "self_ns": 69009507,
+      "max_ns": 14260839
+    },
+    "startup/input.issue": {
+      "calls": 1000,
+      "total_ns": 325792173,
+      "self_ns": 5718902,
+      "max_ns": 14268975
+    },
+    "startup/input.issue_groups": {
+      "calls": 2,
+      "total_ns": 330258492,
+      "self_ns": 4466319,
+      "max_ns": 197527275
+    },
+    "startup/group.issue": {
+      "calls": 2,
+      "total_ns": 334823511,
+      "self_ns": 4162744,
+      "max_ns": 199772964
+    },
+    "startup/manager.issue_read": {
+      "calls": 2,
+      "total_ns": 334859582,
+      "self_ns": 36071,
+      "max_ns": 199779938
+    },
+    "startup/read.wait": {
+      "calls": 1000,
+      "total_ns": 162115009,
+      "self_ns": 162115009,
+      "max_ns": 136613961
+    },
+    "startup/parser.metadata": {
+      "calls": 2,
+      "total_ns": 283697,
+      "self_ns": 111895,
+      "max_ns": 142786
+    },
+    "startup/parser.walk_submit": {
+      "calls": 2,
+      "total_ns": 32350087,
+      "self_ns": 32350087,
+      "max_ns": 32247910
+    },
+    "startup/parser.locator_buffer": {
+      "calls": 2,
+      "total_ns": 2304833,
+      "self_ns": 19488,
+      "max_ns": 2086822
+    },
+    "startup/parser.locate_submit": {
+      "calls": 2,
+      "total_ns": 141002,
+      "self_ns": 141002,
+      "max_ns": 91907
+    },
+    "startup/parser.parse": {
+      "calls": 2,
+      "total_ns": 35196673,
+      "self_ns": 117054,
+      "max_ns": 34638538
+    },
+    "startup/sync.pool_submit": {
+      "calls": 2,
+      "total_ns": 31100,
+      "self_ns": 31100,
+      "max_ns": 21642
+    },
+    "startup/event.views": {
+      "calls": 2,
+      "total_ns": 2109666,
+      "self_ns": 2109666,
+      "max_ns": 1062097
+    },
+    "startup/task.callback": {
+      "calls": 2,
+      "total_ns": 37093339,
+      "self_ns": 36974269,
+      "max_ns": 20010321
+    },
+    "startup/pool.submit": {
+      "calls": 2,
+      "total_ns": 48682217,
+      "self_ns": 9448112,
+      "max_ns": 27081671
+    },
+    "startup/group.submit": {
+      "calls": 2,
+      "total_ns": 144940962,
+      "self_ns": 60894620,
+      "max_ns": 81045039
+    },
+    "startup/manager.submit": {
+      "calls": 2,
+      "total_ns": 144984104,
+      "self_ns": 43142,
+      "max_ns": 81068514
+    },
+    "startup/sync.producer_retire": {
+      "calls": 1,
+      "total_ns": 13036,
+      "self_ns": 13036,
+      "max_ns": 13036
+    },
+    "steady/delivery.events": {
+      "calls": 10099,
+      "total_ns": 33143760,
+      "self_ns": 33143760,
+      "max_ns": 14948
+    },
+    "steady/manager.process": {
+      "calls": 9897,
+      "total_ns": 14757354179,
+      "self_ns": 954251069,
+      "max_ns": 167088705
+    },
+    "steady/retire.consumer_join": {
+      "calls": 100,
+      "total_ns": 606840220,
+      "self_ns": 606840220,
+      "max_ns": 6768287
+    },
+    "steady/retire.finish": {
+      "calls": 98,
+      "total_ns": 603207653,
+      "self_ns": 6321032,
+      "max_ns": 6834675
+    },
+    "steady/input.poll": {
+      "calls": 98,
+      "total_ns": 180979566,
+      "self_ns": 180979566,
+      "max_ns": 2289714
+    },
+    "steady/input.plan_slots": {
+      "calls": 98,
+      "total_ns": 227514064,
+      "self_ns": 46534498,
+      "max_ns": 2763477
+    },
+    "steady/read.buffer": {
+      "calls": 49000,
+      "total_ns": 52002977,
+      "self_ns": 52002977,
+      "max_ns": 56950
+    },
+    "steady/read.pread_loop": {
+      "calls": 49000,
+      "total_ns": 1151413158,
+      "self_ns": 1151413158,
+      "max_ns": 924963
+    },
+    "steady/read.submit": {
+      "calls": 49000,
+      "total_ns": 2372342692,
+      "self_ns": 1168926557,
+      "max_ns": 34123353
+    },
+    "steady/read.group": {
+      "calls": 49000,
+      "total_ns": 5683214036,
+      "self_ns": 3310871344,
+      "max_ns": 34232905
+    },
+    "steady/input.issue": {
+      "calls": 49000,
+      "total_ns": 5940983356,
+      "self_ns": 257769320,
+      "max_ns": 34239376
+    },
+    "steady/input.issue_groups": {
+      "calls": 98,
+      "total_ns": 6146144637,
+      "self_ns": 205161281,
+      "max_ns": 94233495
+    },
+    "steady/group.issue": {
+      "calls": 98,
+      "total_ns": 6551015518,
+      "self_ns": 177356817,
+      "max_ns": 98487596
+    },
+    "steady/manager.issue_read": {
+      "calls": 98,
+      "total_ns": 6551770102,
+      "self_ns": 754584,
+      "max_ns": 98494158
+    },
+    "steady/read.wait": {
+      "calls": 49000,
+      "total_ns": 945302973,
+      "self_ns": 945302973,
+      "max_ns": 29374240
+    },
+    "steady/parser.metadata": {
+      "calls": 98,
+      "total_ns": 4562397,
+      "self_ns": 4562397,
+      "max_ns": 61057
+    },
+    "steady/parser.walk_submit": {
+      "calls": 98,
+      "total_ns": 8881066,
+      "self_ns": 8881066,
+      "max_ns": 100453
+    },
+    "steady/parser.locator_buffer": {
+      "calls": 98,
+      "total_ns": 160542,
+      "self_ns": 160542,
+      "max_ns": 2574
+    },
+    "steady/parser.locate_submit": {
+      "calls": 98,
+      "total_ns": 3260890,
+      "self_ns": 3260890,
+      "max_ns": 53503
+    },
+    "steady/parser.parse": {
+      "calls": 98,
+      "total_ns": 21095806,
+      "self_ns": 4230911,
+      "max_ns": 249621
+    },
+    "steady/sync.pool_submit": {
+      "calls": 98,
+      "total_ns": 1149686,
+      "self_ns": 1149686,
+      "max_ns": 24116
+    },
+    "steady/event.views": {
+      "calls": 98,
+      "total_ns": 118251228,
+      "self_ns": 118251228,
+      "max_ns": 1811422
+    },
+    "steady/allocation.owned_empty": {
+      "calls": 98,
+      "total_ns": 5035789,
+      "self_ns": 5035789,
+      "max_ns": 63612
+    },
+    "steady/task.callback": {
+      "calls": 98,
+      "total_ns": 1673012086,
+      "self_ns": 1667976297,
+      "max_ns": 17388892
+    },
+    "steady/pool.submit": {
+      "calls": 98,
+      "total_ns": 2359103805,
+      "self_ns": 566690805,
+      "max_ns": 54579900
+    },
+    "steady/group.submit": {
+      "calls": 98,
+      "total_ns": 4519869555,
+      "self_ns": 2139669944,
+      "max_ns": 71421747
+    },
+    "steady/manager.submit": {
+      "calls": 98,
+      "total_ns": 4521492258,
+      "self_ns": 1622703,
+      "max_ns": 71438840
+    },
+    "steady/read.file_epochs": {
+      "calls": 97,
+      "total_ns": 171090228,
+      "self_ns": 171090228,
+      "max_ns": 31831384
+    },
+    "steady/transition.handle": {
+      "calls": 97,
+      "total_ns": 33266687,
+      "self_ns": 33266687,
+      "max_ns": 375163
+    },
+    "steady/admission.plan": {
+      "calls": 97,
+      "total_ns": 942933799,
+      "self_ns": 942933799,
+      "max_ns": 41053924
+    },
+    "steady/sync.producer_retire": {
+      "calls": 97,
+      "total_ns": 961395,
+      "self_ns": 961395,
+      "max_ns": 22153
+    },
+    "steady/retire.begin": {
+      "calls": 97,
+      "total_ns": 1509615,
+      "self_ns": 548220,
+      "max_ns": 28004
+    },
+    "steady/sync.pool_flush": {
+      "calls": 2,
+      "total_ns": 24457,
+      "self_ns": 24457,
+      "max_ns": 18806
+    },
+    "steady/pool.flush": {
+      "calls": 4,
+      "total_ns": 10112676,
+      "self_ns": 134620,
+      "max_ns": 5777018
+    },
+    "steady/manager.flush": {
+      "calls": 202,
+      "total_ns": 11327953,
+      "self_ns": 601312,
+      "max_ns": 5826052
+    },
+    "startup/bd.loop": {
+      "calls": 1,
+      "total_ns": 15579478986,
+      "self_ns": 98922095,
+      "max_ns": 15579478986
+    }
+  },
+  "patches": [
+    {
+      "function": "KvikioGpuReader._submit_read",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_kvikio_read.py",
+      "source_sha256": "740fd0d13b6a9cda88d596346d6f36beeb186f0df3b4f1d407d02f0015b4d986",
+      "ranges": {
+        "read.pread_loop": 1
+      }
+    },
+    {
+      "function": "EventPool.submit",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py",
+      "source_sha256": "682a23a3c5a1887897695702acd14dc2c48bdeace88d9684035b3079cb1da780",
+      "ranges": {
+        "sync.pool_submit": 2
+      }
+    },
+    {
+      "function": "EventPool.flush",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py",
+      "source_sha256": "f56e162db0060db794aa634f79cc38dbfe0c8e2c24e79465ac8b4cf767a0ed4b",
+      "ranges": {
+        "sync.pool_flush": 1,
+        "retire.consumer_join": 1
+      }
+    },
+    {
+      "function": "EventPool.begin_retire_next",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py",
+      "source_sha256": "99963a7f28abe0bc584b4481862472b30bc531b029fd6febdc1e62941391de4f",
+      "ranges": {
+        "sync.producer_retire": 1
+      }
+    },
+    {
+      "function": "EventPool.finish_retire_next",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py",
+      "source_sha256": "90fd2cdc00e2b401c5eb2fe2670c0b46fa374081952ad5d239d4560e21e4a67b",
+      "ranges": {
+        "retire.consumer_join": 1
+      }
+    },
+    {
+      "function": "GpuEventManager._setup_gpu_pipeline",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "b660d130acd193422053d7a0d9b7ba61368564845372536bf8c0243cc0c6a0ea",
+      "ranges": [
+        "setup.pipeline"
+      ]
+    },
+    {
+      "function": "GpuEventManager._next_batch",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "cd7cbc036f059355bca24ad9d59c58827b1130cf849163afc509639f32c0eac6",
+      "ranges": [
+        "upstream.next_batch"
+      ]
+    },
+    {
+      "function": "GpuEventManager._process_batch",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "66689fd1a1d12485377faa77f5e0779560d750a2d16a292875285a02bf4a5907",
+      "ranges": [
+        "manager.process"
+      ]
+    },
+    {
+      "function": "GpuEventManager._handle_steps",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "00cf43a50c4898215a32cf5f8a0c1699bb5851006fb56e5a4eecd3d0594cf01b",
+      "ranges": [
+        "transition.handle"
+      ]
+    },
+    {
+      "function": "GpuEventManager._split_subbatches",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "f00ea231895543c02dca5254c0f3c02a2d438176b0f19fcfc9f71498aadc5b33",
+      "ranges": [
+        "admission.plan"
+      ]
+    },
+    {
+      "function": "GpuEventManager._reserve_gpu_subbatch",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "5ac06d23830fcec236b9cf0b919d605c7cac7502f0da9e69b52ac2e5b63697c5",
+      "ranges": [
+        "admission.reserve_execution"
+      ]
+    },
+    {
+      "function": "GpuEventManager._issue_group_reads",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "00e4094e84ece38ddb28e775a268e859adacec10cedd7a32f28ece304efe10d8",
+      "ranges": [
+        "group.issue"
+      ]
+    },
+    {
+      "function": "GpuEventManager._submit_group_gpu",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "646a2d102eb756db076a7450d8c4ca1e6d13596114fea35371b553312263f98c",
+      "ranges": [
+        "group.submit"
+      ]
+    },
+    {
+      "function": "GpuEventManager._trim_gpu_caches",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "9446134e5ff0b0de6e102ec725f3462a889a3500e9781a6cb3dee4a697c10c9a",
+      "ranges": [
+        "cache.trim"
+      ]
+    },
+    {
+      "function": "GpuEventManager._flush_event_pool",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "dd074eb05bb99938676949fae07e36b04a4ec245e415f90453f012a1ed2c3c1e",
+      "ranges": [
+        "manager.flush"
+      ]
+    },
+    {
+      "function": "GpuEventManager._issue_gpu_read",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "ed0ff3dcabadc36a6aab64b87b98b83cddd9f24cd76b0766cd8ae950ba038771",
+      "ranges": [
+        "manager.issue_read"
+      ]
+    },
+    {
+      "function": "GpuEventManager._submit_gpu",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "d13ee98c48e72291fda65d8e229e98c5c67d2211d27c52497dcaf2d09934c281",
+      "ranges": [
+        "manager.submit"
+      ]
+    },
+    {
+      "function": "GpuEventManager._yield_ready",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_events.py",
+      "source_sha256": "6032d5143783f9fc56c5cb79d9e404e46fb12dfd02d671f16d187fef15199a65",
+      "ranges": [
+        "delivery.events"
+      ]
+    },
+    {
+      "function": "GpuFileEpochs.resolve",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_file_epochs.py",
+      "source_sha256": "0e8e0eccc7f9a9f2c9239167eee5a66572e78b77b41e6fef935e598e4feeef33",
+      "ranges": [
+        "read.file_epochs"
+      ]
+    },
+    {
+      "function": "KvikioGpuReader._submit_read",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_kvikio_read.py:bulk-timing",
+      "source_sha256": "740fd0d13b6a9cda88d596346d6f36beeb186f0df3b4f1d407d02f0015b4d986",
+      "ranges": [
+        "read.submit"
+      ]
+    },
+    {
+      "function": "KvikioGpuReader.issue_group",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_kvikio_read.py",
+      "source_sha256": "0a83db516aaa93baceb7e4b9b2157309abaf93b7ac2f80345976d36040d2c8d6",
+      "ranges": [
+        "read.group"
+      ]
+    },
+    {
+      "function": "KvikioGpuReader._ensure_slot_buffer",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_kvikio_read.py",
+      "source_sha256": "62c5ec8f706995ec75d5b2068d2695395af1be630b3c70fbaa1e83fdb9c9b8b8",
+      "ranges": [
+        "read.buffer"
+      ]
+    },
+    {
+      "function": "KvikioGpuReader.wait_batch",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_kvikio_read.py",
+      "source_sha256": "ea04362f11529c033c5b33fea1b4d7fe598e3eb33b080ce1b16cf5ecc85e0d3a",
+      "ranges": [
+        "read.wait"
+      ]
+    },
+    {
+      "function": "EventPool.submit",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py:bulk-timing",
+      "source_sha256": "682a23a3c5a1887897695702acd14dc2c48bdeace88d9684035b3079cb1da780",
+      "ranges": [
+        "pool.submit"
+      ]
+    },
+    {
+      "function": "EventPool.flush",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py:bulk-timing",
+      "source_sha256": "f56e162db0060db794aa634f79cc38dbfe0c8e2c24e79465ac8b4cf767a0ed4b",
+      "ranges": [
+        "pool.flush"
+      ]
+    },
+    {
+      "function": "EventPool.begin_retire_next",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py:bulk-timing",
+      "source_sha256": "99963a7f28abe0bc584b4481862472b30bc531b029fd6febdc1e62941391de4f",
+      "ranges": [
+        "retire.begin"
+      ]
+    },
+    {
+      "function": "EventPool.finish_retire_next",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_stream.py:bulk-timing",
+      "source_sha256": "90fd2cdc00e2b401c5eb2fe2670c0b46fa374081952ad5d239d4560e21e4a67b",
+      "ranges": [
+        "retire.finish"
+      ]
+    },
+    {
+      "function": "GpuXtcBatchPool.parse_window",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpudgram/batch.py",
+      "source_sha256": "c18b425b44272d2711b32101cd10adc29c92910fab7276f81afc2e583580ac60",
+      "ranges": [
+        "parser.window"
+      ]
+    },
+    {
+      "function": "GpuXtcBatchPool.parse",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpudgram/batch.py",
+      "source_sha256": "b54664a64227b71ab5176881aee60f52a950aab2f0307ee0736a704d69ac7bfd",
+      "ranges": [
+        "parser.parse"
+      ]
+    },
+    {
+      "function": "_GpuXtcSlotBuffers.prepare",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpudgram/batch.py",
+      "source_sha256": "29965925bfc454ef53045551307adaa1451d834e48111f7a900216e61fd2d7ec",
+      "ranges": [
+        "parser.metadata"
+      ]
+    },
+    {
+      "function": "_GpuXtcSlotBuffers.batched_locator_rows",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpudgram/batch.py",
+      "source_sha256": "54ba06e19ef104945a274655a1c269e0f105f91282b8222429c12b41aa0e5e9d",
+      "ranges": [
+        "parser.locator_buffer"
+      ]
+    },
+    {
+      "function": "GpuEventBatch.__init__",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpudgram/parser.py",
+      "source_sha256": "e9f41de0982b9f04a49a16a4fef9a18b8d08dd3b8a442d8fe4f666d8511ff45f",
+      "ranges": [
+        "parser.walk_submit"
+      ]
+    },
+    {
+      "function": "GpuEventBatch._locate_configured",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpudgram/parser.py",
+      "source_sha256": "81c0f486b06cec11cfffa2462087f042fa3a03b680c4c407bf3e55f8ac966267",
+      "ranges": [
+        "parser.locate_submit"
+      ]
+    },
+    {
+      "function": "GpuEventDgrams.from_windows",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_input.py",
+      "source_sha256": "50334596ff702ec30ecc3a56e3732fff5a0f761ad1430d1c517b550be894c4a1",
+      "ranges": [
+        "event.views"
+      ]
+    },
+    {
+      "function": "DenseInputPreparer.prepare_batch",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_detector.py",
+      "source_sha256": "dbea18f980c92366ecf2a01dc8e77325f5aa999d930f2e65dd53f28b7482de26",
+      "ranges": [
+        "input.prepare"
+      ]
+    },
+    {
+      "function": "DenseInputPreparer._slot_buffer",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_detector.py",
+      "source_sha256": "a1f985244ad275f53e35c71da23d1100a174facb3aca4ff50d4d974d3968f159",
+      "ranges": [
+        "detector.buffer"
+      ]
+    },
+    {
+      "function": "_GatherMap.prepare",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_detector.py",
+      "source_sha256": "c3181f1b00e82be90433a23a721c9533f349daebeb2ce98746117f0ce6f810a3",
+      "ranges": [
+        "detector.owner_map"
+      ]
+    },
+    {
+      "function": "_CanonicalGatherPlan.gather",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_detector.py",
+      "source_sha256": "80c32d27ac57b192f52de5b8c093cc8193c0ade021c2805cbeed7912c7155d1b",
+      "ranges": [
+        "detector.gather_submit"
+      ]
+    },
+    {
+      "function": "owned_empty",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_allocation.py",
+      "source_sha256": "80bdd3dd658850d8cc8634f016808517cdf84f2cd6e2c8e19bb140cbcf88b20e",
+      "ranges": [
+        "allocation.owned_empty"
+      ],
+      "aliases": [
+        "psana.gpu.gpu_allocation.owned_empty",
+        "psana.gpu.gpu_kvikio_read.owned_empty",
+        "psana.gpu.gpudgram.batch.owned_empty",
+        "psana.gpu.gpu_detector.owned_empty"
+      ]
+    },
+    {
+      "function": "InputGroupPool.poll",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_input_group.py",
+      "ranges": [
+        "input.poll"
+      ],
+      "source_sha256": "ec35b4dd469d064dc86a0628c16865274d58b73ed2613b9355ddf9723d9e23dd"
+    },
+    {
+      "function": "InputGroupPool.plan_slots",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_input_group.py",
+      "ranges": [
+        "input.plan_slots"
+      ],
+      "source_sha256": "c970bb8fc6d3e61e71340a4ca38bae1f3f3af652a86ad0177b2a3b1bc6a29ffa"
+    },
+    {
+      "function": "InputGroupPool.issue_groups",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_input_group.py",
+      "ranges": [
+        "input.issue_groups"
+      ],
+      "source_sha256": "a70985be6fde51265ac06d2dc30612df5c021673d36097207710b85224ce73d8"
+    },
+    {
+      "function": "InputGroupPool._issue_reserved",
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-input-bookkeeping-20261110/attempt03/overlay/psana/gpu/gpu_input_group.py",
+      "ranges": [
+        "input.issue"
+      ],
+      "source_sha256": "ec2a303a881d107d0424044f9c6a79d48824a68b6dcc8435e0399d09f140a2fb"
+    }
+  ],
+  "counters": {
+    "input_poll": {
+      "calls": 101,
+      "retained_states_at_poll": 98500,
+      "max_states": 1000,
+      "reclaimed": 49000
+    },
+    "owned_allocations": {
+      "fixed": 5,
+      "reader": 1000,
+      "parser": 10,
+      "task-metadata": 100
+    },
+    "reader": {
+      "io_path": "CPU-fallback",
+      "compat_mode": true,
+      "bulk_read": true,
+      "total_requests": 50000,
+      "total_bytes": 33582000000,
+      "useful_bytes": 33582000000,
+      "total_ns": 291657158,
+      "issue_to_complete_ns": 2308557861222
+    }
+  },
+  "units": "host wall nanoseconds, not CUDA kernel duration",
+  "steady_definition": "after first delivered event"
+}
