@@ -22,7 +22,7 @@ import os
 import sys
 import numpy as np
 import psana.detector.utils_psana as up
-from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp  # info_command_line
+from psana.detector.Utils import str_tstamp, time, get_login, info_dict, selected_record, time_sec_from_stamp, is_none  # info_command_line
 import psana.pscalib.calib.CalibConstants as cc
 from psana.detector.NDArrUtils import info_ndarr, divide_protected, reshape_to_2d, reshape_to_3d, save_ndarray_in_textfile
 from psana.detector.RepoManager import init_repoman_and_logger, set_repoman_and_logger, fname_prefix, fname_prefix_block_results
@@ -690,7 +690,9 @@ def deploy_constants(dic_consts, **kwa):
     #for ctype, nda in dic_consts.items(): # 2026-11-09 use --ctdepl prs
     for c in ctdepl:
         ctype = cc.dic_calib_char_to_name[c]
-        nda = dic_consts[ctype]
+        nda = dic_consts.get(ctype, None)
+        if is_none(nda, f'constants for ctype:{ctype} are missing - skip deployment', logger_method=logger.warning):
+            continue
 
         dir_ct = repoman.makedir_ctype(panelid, ctype)
         fprefix = fname_prefix(shortname, segind, tsshort, expname, runnum, dir_ct)
