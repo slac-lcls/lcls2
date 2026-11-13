@@ -575,6 +575,11 @@ void TebContributor::_post(const EbDgram* dgram)
       rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
       if (rc)
       {
+        if (rc == -FI_ETIMEDOUT)
+        {
+          logging::critical("%s:\n  TEB ID %u stopped taking transitions", __PRETTY_FUNCTION__, src);
+          abort();
+        }
         logging::error("%s:\n  Failed to post buffer number to TEB ID %u: rc %d, data %08x",
                        __PRETTY_FUNCTION__, src, rc, data);
       }

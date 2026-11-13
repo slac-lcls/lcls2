@@ -432,6 +432,11 @@ int MebContributor::post(const EbDgram* dgram)
     rc = link->post(buffer, sz, offset, data); // Not a batch; Continue on error
     if (rc) [[unlikely]]
     {
+      if (rc == -FI_ETIMEDOUT)
+      {
+        logging::critical("%s:\n  MEB ID %u stopped taking transitions", __PRETTY_FUNCTION__, src);
+        abort();
+      }
       logging::error("%s:\n  Failed to post buffer number to MEB ID %u: rc %d, data %08x",
                      __PRETTY_FUNCTION__, src, rc, data);
     }

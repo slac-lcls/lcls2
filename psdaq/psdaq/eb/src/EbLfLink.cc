@@ -18,6 +18,7 @@ using namespace Pds::Eb;
 using ms_t = std::chrono::milliseconds;
 
 static const ms_t TX_WARN_TMO{5000};    // Below EB_TMO_MS, so the sender reports first
+static const ms_t TX_FAIL_TMO{30000};   // The far side has stopped taking writes
 
 static int checkMr(Fabric*         fabric,
                    void*           region,
@@ -550,8 +551,7 @@ int EbLfCltLink::post(const void* buf,
 
     _reapTx();                          // Frees Tx queue entries; progresses tcp
 
-    const ms_t tmo{300000};            // Revisit: Skip the timeout altogether?
-    auto       t1 {fast_monotonic_clock::now()};
+    auto t1{fast_monotonic_clock::now()};
 
     if ((t1 - t0 > TX_WARN_TMO) && !warned)
     {
@@ -561,11 +561,12 @@ int EbLfCltLink::post(const void* buf,
               TX_WARN_TMO.count(), _posted - _completed - _txErrors);
     }
 
-    if (t1 - t0 > tmo)
+    if (t1 - t0 > TX_FAIL_TMO)
     {
       ++_timedOut;
-      fprintf(stderr, "%s:\n  writedata() to ID %d timed out (%lu ms): %s\n",
-              __PRETTY_FUNCTION__, _id, tmo.count(), _ep->error());
+      fprintf(stderr, "%s:\n  writedata() to ID %d timed out after %lu ms\n",
+              __PRETTY_FUNCTION__, _id, TX_FAIL_TMO.count());
+      rc = -FI_ETIMEDOUT;
       break;
     }
   }
@@ -611,6 +612,7 @@ int EbLfLink::post(const void* buf,
                    uint64_t    immData)
 {
   auto    t0{fast_monotonic_clock::now()};
+  bool    warned{false};
   ssize_t rc;
 
   _posting |= 1 << _id;
@@ -628,14 +630,21 @@ int EbLfLink::post(const void* buf,
 
     _reapTx();                          // No-op without a Tx CQ
 
-    const ms_t tmo{300000};            // Revisit: Skip the timeout altogether?
-    auto       t1 {fast_monotonic_clock::now()};
+    auto t1{fast_monotonic_clock::now()};
 
-    if (t1 - t0 > tmo)
+    if ((t1 - t0 > TX_WARN_TMO) && !warned)
+    {
+      warned = true;
+      fprintf(stderr, "%s:\n  injectdata() to ID %d still blocked after %lu ms\n",
+              __PRETTY_FUNCTION__, _id, TX_WARN_TMO.count());
+    }
+
+    if (t1 - t0 > TX_FAIL_TMO)
     {
       ++_timedOut;
-      fprintf(stderr, "%s:\n  injectdata() to ID %d timed out (%lu ms): %s\n",
-              __PRETTY_FUNCTION__, _id, tmo.count(), _ep->error());
+      fprintf(stderr, "%s:\n  injectdata() to ID %d timed out after %lu ms\n",
+              __PRETTY_FUNCTION__, _id, TX_FAIL_TMO.count());
+      rc = -FI_ETIMEDOUT;
       break;
     }
   }
