@@ -5,6 +5,7 @@ from types import SimpleNamespace as NS
 import pytest
 
 from psana.gpu.gpu_input_group import InputGroupPool
+from input_group_checks import assert_pool_invariants
 
 
 def pool_for(capacities, busy=(), small=()):
@@ -14,6 +15,8 @@ def pool_for(capacities, busy=(), small=()):
     pool = InputGroupPool(reader)
     pool._groups = {(0, i): NS(slot=i, window=None) for i in busy}
     pool._small = {s: (0, s) for s in small}
+    pool._busy_slots = set(busy)
+    assert_pool_invariants(pool)
     return pool
 
 
@@ -47,6 +50,7 @@ def test_exact_slot_policy(capacities, busy, sizes, expected):
     pool = pool_for(capacities, busy)
     groups = [NS(size=n, small=False, stream_id=i) for i, n in enumerate(sizes)]
     assert pool.plan_slots(iter(groups)) == expected
+    assert_pool_invariants(pool)
 
 
 def test_generated_slot_decisions_match_original_policy_without_consuming_credits():
@@ -62,6 +66,7 @@ def test_generated_slot_decisions_match_original_policy_without_consuming_credit
         pool = pool_for(capacities, busy, small)
         old_groups, old_credits = dict(pool._groups), dict(pool._small)
         assert pool.plan_slots(groups) == reference(capacities, busy, small, groups)
+        assert_pool_invariants(pool)
         assert pool._groups == old_groups and pool._small == old_credits
         assert [None if b is None else b.nbytes for b in pool.reader._slot_bufs] == capacities
 
@@ -70,11 +75,14 @@ def test_new_plan_observes_growth_trim_and_completion(monkeypatch):
     pool = pool_for([4, 8, None], busy=(0, 1), small=(7,))
     group = NS(size=3, small=True, stream_id=7)
     assert pool.plan_slots([group]) is None
+    assert_pool_invariants(pool)
 
     def complete_later_group():
         # Earlier slot 0 is still busy; later slot 1 returns its stream credit.
         pool._groups.pop((0, 1), None)
+        pool._busy_slots.discard(1)
         pool._small.pop(7, None)
+        assert_pool_invariants(pool)
     monkeypatch.setattr(pool, 'poll', complete_later_group)
     assert pool.plan_slots([group]) == (1,)
     pool.reader._slot_bufs[2] = NS(nbytes=4)
@@ -86,3 +94,4 @@ def test_new_plan_observes_growth_trim_and_completion(monkeypatch):
     pool.reader._slot_bufs[2] = None
     assert pool.plan_slots([group]) == (1,)
     assert (0, 0) in pool._groups
+    assert_pool_invariants(pool)

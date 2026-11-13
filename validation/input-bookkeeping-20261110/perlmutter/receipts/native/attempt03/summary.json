@@ -1,0 +1,336 @@
+{
+  "clean": [
+    {
+      "variant": "old",
+      "streams": 1,
+      "seconds": [
+        14.084011683007702,
+        13.963978190906346
+      ],
+      "gib_s": [
+        2.2206510051728348,
+        2.239739583745871
+      ],
+      "median_seconds": 14.023994936957024,
+      "median_gib_s": 2.230195294459353
+    },
+    {
+      "variant": "old",
+      "streams": 2,
+      "seconds": [
+        24.696872543077916,
+        24.727264505112544
+      ],
+      "gib_s": [
+        1.2663819941648038,
+        1.2648255003811895
+      ],
+      "median_seconds": 24.71206852409523,
+      "median_gib_s": 1.2656037472729966
+    },
+    {
+      "variant": "new",
+      "streams": 1,
+      "seconds": [
+        13.765096297021955,
+        13.586015698034316
+      ],
+      "gib_s": [
+        2.2720999567219455,
+        2.3020490624975576
+      ],
+      "median_seconds": 13.675555997528136,
+      "median_gib_s": 2.2870745096097513
+    },
+    {
+      "variant": "new",
+      "streams": 2,
+      "seconds": [
+        14.288112516980618,
+        14.351222652941942
+      ],
+      "gib_s": [
+        2.1889297598662956,
+        2.17930384449339
+      ],
+      "median_seconds": 14.31966758496128,
+      "median_gib_s": 2.184116802179843
+    }
+  ],
+  "timing": [
+    {
+      "name": "08-timing-old-s1",
+      "variant": "old",
+      "streams": 1,
+      "seconds": 16.172241759952158,
+      "exclusive_seconds": {
+        "allocation.owned_empty": 0.19579682099999998,
+        "setup.pipeline": 0.009207896,
+        "read.file_epochs": 0.069921624,
+        "pool.flush": 6.7882e-05,
+        "manager.flush": 0.000343665,
+        "input.poll": 0.637683738,
+        "transition.handle": 0.035288965,
+        "manager.process": 0.9554009609999999,
+        "admission.plan": 0.885262886,
+        "retire.begin": 0.000565802,
+        "delivery.events": 0.031602419,
+        "retire.finish": 0.005468679000000001,
+        "input.plan_slots": 0.042104176,
+        "read.buffer": 0.053015746,
+        "read.pread_loop": 1.451011636,
+        "read.submit": 1.004696731,
+        "read.group": 3.3503929070000003,
+        "input.issue": 1.209723426,
+        "group.issue": 0.39826044400000005,
+        "manager.issue_read": 0.000712595,
+        "read.wait": 1.05950047,
+        "parser.metadata": 0.004483773,
+        "parser.walk_submit": 0.073057639,
+        "parser.locator_buffer": 0.00017554299999999998,
+        "parser.locate_submit": 0.0033813199999999997,
+        "parser.parse": 0.0042446839999999994,
+        "sync.pool_submit": 0.001053499,
+        "event.views": 0.128834223,
+        "task.callback": 1.708832551,
+        "pool.submit": 0.507590809,
+        "group.submit": 1.85704445,
+        "manager.submit": 0.001656834,
+        "sync.producer_retire": 0.000795329,
+        "retire.consumer_join": 0.38877456,
+        "sync.pool_flush": 6.292e-06,
+        "bd.loop": 0.096132529
+      },
+      "counters": {
+        "input_poll": {
+          "calls": 50101,
+          "retained_states_at_poll": 12524500,
+          "max_states": 500,
+          "reclaimed": 49500
+        },
+        "owned_allocations": {
+          "fixed": 5,
+          "reader": 500,
+          "parser": 5,
+          "task-metadata": 100
+        },
+        "reader": {
+          "io_path": "CPU-fallback",
+          "compat_mode": true,
+          "bulk_read": true,
+          "total_requests": 50000,
+          "total_bytes": 33582000000,
+          "useful_bytes": 33582000000,
+          "total_ns": 207722248,
+          "issue_to_complete_ns": 2761816490455
+        }
+      }
+    },
+    {
+      "name": "09-timing-new-s1",
+      "variant": "new",
+      "streams": 1,
+      "seconds": 15.059730120003223,
+      "exclusive_seconds": {
+        "allocation.owned_empty": 0.16395363699999999,
+        "setup.pipeline": 0.009307778,
+        "read.file_epochs": 0.11719782499999999,
+        "pool.flush": 6.733000000000001e-05,
+        "manager.flush": 0.000337375,
+        "input.poll": 0.135595825,
+        "transition.handle": 0.035103664,
+        "manager.process": 0.9523790849999999,
+        "admission.plan": 0.9142946700000001,
+        "retire.begin": 0.000570473,
+        "delivery.events": 0.03147382,
+        "retire.finish": 0.0054207990000000005,
+        "input.plan_slots": 0.041929045,
+        "read.buffer": 0.053594573000000006,
+        "read.pread_loop": 1.149616056,
+        "read.submit": 1.0753780530000001,
+        "read.group": 3.231003443,
+        "input.issue": 0.248689662,
+        "input.issue_groups": 0.20774339,
+        "group.issue": 0.176970168,
+        "manager.issue_read": 0.00071375,
+        "read.wait": 1.5046859419999998,
+        "parser.metadata": 0.004639341,
+        "parser.walk_submit": 0.102993057,
+        "parser.locator_buffer": 0.00017985199999999998,
+        "parser.locate_submit": 0.003453875,
+        "parser.parse": 0.004403371,
+        "sync.pool_submit": 0.0010999459999999999,
+        "event.views": 0.116269516,
+        "task.callback": 1.705269838,
+        "pool.submit": 0.5533273729999999,
+        "group.submit": 1.999689432,
+        "manager.submit": 0.001667302,
+        "sync.producer_retire": 0.000915683,
+        "retire.consumer_join": 0.408167371,
+        "sync.pool_flush": 6.322e-06,
+        "bd.loop": 0.101471639
+      },
+      "counters": {
+        "input_poll": {
+          "calls": 101,
+          "retained_states_at_poll": 49500,
+          "max_states": 500,
+          "reclaimed": 49500
+        },
+        "owned_allocations": {
+          "fixed": 5,
+          "reader": 500,
+          "parser": 5,
+          "task-metadata": 100
+        },
+        "reader": {
+          "io_path": "CPU-fallback",
+          "compat_mode": true,
+          "bulk_read": true,
+          "total_requests": 50000,
+          "total_bytes": 33582000000,
+          "useful_bytes": 33582000000,
+          "total_ns": 709305224,
+          "issue_to_complete_ns": 2376027966822
+        }
+      }
+    },
+    {
+      "name": "10-timing-old-s2",
+      "variant": "old",
+      "streams": 2,
+      "seconds": 26.306957097025588,
+      "exclusive_seconds": {
+        "allocation.owned_empty": 0.36397850000000004,
+        "setup.pipeline": 0.008794903,
+        "read.file_epochs": 0.05020969,
+        "pool.flush": 0.000144768,
+        "manager.flush": 0.0006411040000000001,
+        "input.poll": 9.224703181999999,
+        "transition.handle": 0.033003115,
+        "manager.process": 0.9123178150000001,
+        "admission.plan": 0.817956009,
+        "retire.begin": 0.000530094,
+        "delivery.events": 0.032686415999999996,
+        "retire.finish": 0.006417247,
+        "input.plan_slots": 0.044394465999999994,
+        "read.buffer": 0.050129481000000004,
+        "read.pread_loop": 1.464914349,
+        "read.submit": 0.984172298,
+        "read.group": 3.120410979,
+        "input.issue": 2.7127465060000002,
+        "group.issue": 0.371564002,
+        "manager.issue_read": 0.000761009,
+        "read.wait": 0.877439097,
+        "parser.metadata": 0.004627949,
+        "parser.walk_submit": 0.051091419,
+        "parser.locator_buffer": 0.000184033,
+        "parser.locate_submit": 0.003479873,
+        "parser.parse": 0.004366121,
+        "sync.pool_submit": 0.0010551509999999998,
+        "event.views": 0.14108880499999998,
+        "task.callback": 1.69994379,
+        "pool.submit": 0.5733073059999999,
+        "group.submit": 2.096524396,
+        "manager.submit": 0.001684211,
+        "sync.producer_retire": 0.000781097,
+        "retire.consumer_join": 0.555379221,
+        "sync.pool_flush": 1.2004e-05,
+        "bd.loop": 0.095367334
+      },
+      "counters": {
+        "input_poll": {
+          "calls": 50101,
+          "retained_states_at_poll": 37323500,
+          "max_states": 1000,
+          "reclaimed": 49000
+        },
+        "owned_allocations": {
+          "fixed": 5,
+          "reader": 1000,
+          "parser": 10,
+          "task-metadata": 100
+        },
+        "reader": {
+          "io_path": "CPU-fallback",
+          "compat_mode": true,
+          "bulk_read": true,
+          "total_requests": 50000,
+          "total_bytes": 33582000000,
+          "useful_bytes": 33582000000,
+          "total_ns": 79920216,
+          "issue_to_complete_ns": 5116260609116
+        }
+      }
+    },
+    {
+      "name": "11-timing-new-s2",
+      "variant": "new",
+      "streams": 2,
+      "seconds": 15.57962042815052,
+      "exclusive_seconds": {
+        "allocation.owned_empty": 0.179684047,
+        "setup.pipeline": 0.008706712,
+        "read.file_epochs": 0.172457093,
+        "pool.flush": 0.000138898,
+        "manager.flush": 0.000617123,
+        "input.poll": 0.180994015,
+        "transition.handle": 0.034448853,
+        "manager.process": 0.979186582,
+        "admission.plan": 0.9731431279999999,
+        "retire.begin": 0.00055851,
+        "delivery.events": 0.0337349,
+        "retire.finish": 0.006322765,
+        "input.plan_slots": 0.046926593,
+        "read.buffer": 0.059811204,
+        "read.pread_loop": 1.202649352,
+        "read.submit": 1.191916233,
+        "read.group": 3.3798808510000002,
+        "input.issue": 0.26348822200000005,
+        "input.issue_groups": 0.2096276,
+        "group.issue": 0.181519561,
+        "manager.issue_read": 0.000790655,
+        "read.wait": 1.107417982,
+        "parser.metadata": 0.004674292,
+        "parser.walk_submit": 0.041231153,
+        "parser.locator_buffer": 0.00018003000000000002,
+        "parser.locate_submit": 0.0034018919999999997,
+        "parser.parse": 0.0043479650000000005,
+        "sync.pool_submit": 0.001180786,
+        "event.views": 0.120360894,
+        "task.callback": 1.704950566,
+        "pool.submit": 0.576138917,
+        "group.submit": 2.200564564,
+        "manager.submit": 0.001665845,
+        "sync.producer_retire": 0.000974431,
+        "retire.consumer_join": 0.60684022,
+        "sync.pool_flush": 2.4457e-05,
+        "bd.loop": 0.098922095
+      },
+      "counters": {
+        "input_poll": {
+          "calls": 101,
+          "retained_states_at_poll": 98500,
+          "max_states": 1000,
+          "reclaimed": 49000
+        },
+        "owned_allocations": {
+          "fixed": 5,
+          "reader": 1000,
+          "parser": 10,
+          "task-metadata": 100
+        },
+        "reader": {
+          "io_path": "CPU-fallback",
+          "compat_mode": true,
+          "bulk_read": true,
+          "total_requests": 50000,
+          "total_bytes": 33582000000,
+          "useful_bytes": 33582000000,
+          "total_ns": 291657158,
+          "issue_to_complete_ns": 2308557861222
+        }
+      }
+    }
+  ]
+}

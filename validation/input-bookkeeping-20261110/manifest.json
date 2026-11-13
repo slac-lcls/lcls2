@@ -1,0 +1,554 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "path": "perlmutter/receipts/native/attempt03/summary.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/summary.json",
+      "git_blob_sha1": "0595e6801d777463998decabda235b57ecf080cd",
+      "bytes": 10548,
+      "sha256": "3ec70a0a056e326b5f240c33c45adbf828fa50520acf0ac28974d18a1ff304fa"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/complete.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/complete.json",
+      "git_blob_sha1": "fec05e31ba50d40b88f2c099a3ec309cc6155139",
+      "bytes": 6690,
+      "sha256": "e9bb03e7800ae1998bf55d1d605778fbaf79f91c74ccae3d7ab1284c812345e6"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/provenance.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/provenance.json",
+      "git_blob_sha1": "b520ed5cd574b92bdb6800339cd9260f12b281a1",
+      "bytes": 6418,
+      "sha256": "11dbfb0fb875e0f9d2932807f6f711606b773647aee31c3cd7a50821893436ed"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/gpu-tests.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/gpu-tests.json",
+      "git_blob_sha1": "3b3707aa9684475f899dba90de5e0431777beb06",
+      "bytes": 319,
+      "sha256": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/baseline-check.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/baseline-check.json",
+      "git_blob_sha1": "c2cc6a420bbfa348c16e3f725887f9c8cdda4b7c",
+      "bytes": 6116,
+      "sha256": "d12e0bd38b9a58f972026ec4105333ab8396c22dbd78628b2b911cefd3236143"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/slurm.txt",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/slurm.txt",
+      "git_blob_sha1": "30dad9693b9f31221bdceabad94ec07fff7f5ac6",
+      "bytes": 797,
+      "sha256": "1d1070dd7569a5f23c9b7a509e195cf6bf99d13442f3c5917754056f809cd225"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/SHA256SUMS.remote",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/SHA256SUMS.remote",
+      "git_blob_sha1": "9d95290e83078fe92562a0c25a239658292d6bec",
+      "bytes": 3262,
+      "sha256": "b28495b218aa155491fcbf3563717992ee4829130917683d89d3ff9e09e2282b"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/08-timing-old-s1.json.phases.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/08-timing-old-s1.json.phases.json",
+      "git_blob_sha1": "6ac95da8883d1c2ff5e2fb66b89e66925f1799c8",
+      "bytes": 25493,
+      "sha256": "b0c6ca347f4f4e6e4a181f923721c9a6c52af7075b04024673ec15bec1421957"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/09-timing-new-s1.json.phases.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/09-timing-new-s1.json.phases.json",
+      "git_blob_sha1": "33ef40ce5c3ece61cbbaa8fc608c733cb4cd08a6",
+      "bytes": 24854,
+      "sha256": "49370b15dcf3a445c98a657934551935439acc0c45428f6a8e7fc6ea0cfcf8b5"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/10-timing-old-s2.json.phases.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/10-timing-old-s2.json.phases.json",
+      "git_blob_sha1": "e92811943afa19331985b238016b61aedb2eb2a5",
+      "bytes": 25526,
+      "sha256": "ef9f75a15c9eb87882d552710f1ff4e632ba53bfe7c06f9ba0d1a7f684e9feef"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt03/11-timing-new-s2.json.phases.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt03/11-timing-new-s2.json.phases.json",
+      "git_blob_sha1": "4be34da42821c6e2463364fe9b1bb157f74b284e",
+      "bytes": 24884,
+      "sha256": "32c9ec4129278faa585140d00e1d923ed0a860808420735fb77c8b27565e034b"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt01/failed.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt01/failed.json",
+      "git_blob_sha1": "65ce80eb1c25d0a9aee3b1025e3d6b3c62ac2af2",
+      "bytes": 702,
+      "sha256": "e7b76f37497c4cde774ed95d970c8ed77281812aaf9a26b2f3f0c40ebce9b12c"
+    },
+    {
+      "path": "perlmutter/receipts/native/attempt02/failed.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/native/attempt02/failed.json",
+      "git_blob_sha1": "5109134b053160ae45d0a813698883aeb6be415e",
+      "bytes": 719,
+      "sha256": "0162c76012f9e4460e8670c7194b56b393e061e7ec1acbb6bdcc3bd3b4ead731"
+    },
+    {
+      "path": "perlmutter/receipts/status.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/status.json",
+      "git_blob_sha1": "af3ff9508e554e8832233c9ae8d344c318a1283c",
+      "bytes": 1675,
+      "sha256": "031716a37cc859f8b3973b0c70cf5448cc50ba2e771d3e476dd6df85e3aa2f8a"
+    },
+    {
+      "path": "perlmutter/harness/campaign.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/campaign.py",
+      "git_blob_sha1": "a86ed2d69cffb8100589045eccd51fbdb387e2fd",
+      "bytes": 5287,
+      "sha256": "f62954f47d02f582a14ca8deeab6fea1e864b91e0ec7117278fae7b4fba94c83"
+    },
+    {
+      "path": "perlmutter/harness/runner.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/runner.py",
+      "git_blob_sha1": "e8b905a5b3eac848e186d907de1170387a9613dd",
+      "bytes": 9623,
+      "sha256": "bd41e68589b12dcf570be0989d2881c1ed7fd2254b7dc5296ceee8e9262bea10"
+    },
+    {
+      "path": "perlmutter/harness/run.sbatch",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/run.sbatch",
+      "git_blob_sha1": "4da1b373698443f1abd321deb6f4ae2571113cde",
+      "bytes": 538,
+      "sha256": "22fa6e2618358f046db113c3213b2e513cab8aa898fe0bc00468c040cadfebbf"
+    },
+    {
+      "path": "perlmutter/harness/gpu_tests.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/gpu_tests.py",
+      "git_blob_sha1": "2e1a10516c1717d3743ad58c907831440ce86eca",
+      "bytes": 1571,
+      "sha256": "e2005e4bc6202132766a327056c5149d4f8542263692e23801627c14b8db67de"
+    },
+    {
+      "path": "perlmutter/harness/summarize.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/summarize.py",
+      "git_blob_sha1": "c813d3ecfb53607fbaea002417832b96c52f687a",
+      "bytes": 1440,
+      "sha256": "8ae74e833f40d81604cbc585e6f6c5a1626b7a560d207819ea9b86d74d872ad7"
+    },
+    {
+      "path": "perlmutter/harness/baseline_check.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/baseline_check.py",
+      "git_blob_sha1": "100648b69d1285a4429333674e5caf5918e17c45",
+      "bytes": 1817,
+      "sha256": "198e9cb79497c2177bd5d0ef953e81a427dd46b7fcc093449aea0e8c73b6e08d"
+    },
+    {
+      "path": "perlmutter/harness/prepare_overlay.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/prepare_overlay.py",
+      "git_blob_sha1": "a5813d33a6efcb534dd213dff287d4642cec5259",
+      "bytes": 1277,
+      "sha256": "ea9b50fdd2c07eaaa9f1cfc2adc23813a7ef3e2a4a9e875f2b731d4f5a17e0da"
+    },
+    {
+      "path": "perlmutter/harness/runtime_identity.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/runtime_identity.py",
+      "git_blob_sha1": "e239e40122eebd3364f0a1d12a7391e759c89497",
+      "bytes": 1249,
+      "sha256": "915d348c06570bd1e1851e50b149165c9b2c20f27d7e0aeeab92fd6da7fada5b"
+    },
+    {
+      "path": "perlmutter/harness/trace_runner.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "3c3799829c659d739d5927511f86cc968a6fae6e",
+      "source_path": "notes/sim10_input_bookkeeping_20261110/trace_runner.py",
+      "git_blob_sha1": "aefe94c4dc213d914d324493e08a643a23b59e45",
+      "bytes": 4849,
+      "sha256": "2b2a8aeee5dbb5426a7088a5ba8740b5166853b8b53e63c18daa0a4de92b5810"
+    },
+    {
+      "path": "ada-10k/receipts/results.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/results.json",
+      "git_blob_sha1": "dd44a175c200f1c7e05fc50882633a6bd4c44e20",
+      "bytes": 133641,
+      "sha256": "20ec95469219b3073a767a5b462e8464e7d6ce75c1e3242e094bec42abdfa2d2"
+    },
+    {
+      "path": "ada-10k/receipts/runtime-evidence.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/runtime-evidence.json",
+      "git_blob_sha1": "7ea2be9e20e9b3f56230aff674262fea7dfe72ce",
+      "bytes": 17794,
+      "sha256": "9a2158ee7dc02b839aba4a247011e30adf7b02563c5e0513d67e0fb539d7238f"
+    },
+    {
+      "path": "ada-10k/receipts/gpu-tests.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/gpu-tests.json",
+      "git_blob_sha1": "3b3707aa9684475f899dba90de5e0431777beb06",
+      "bytes": 319,
+      "sha256": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a"
+    },
+    {
+      "path": "ada-10k/receipts/audit.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/audit.json",
+      "git_blob_sha1": "c83c4277dde1e04f0f61ab1a2a7d52d69307bbac",
+      "bytes": 13098,
+      "sha256": "66e3970e5894a39fd053271591273febafd3802b2cd8d49830e6cbbaf82c55d2"
+    },
+    {
+      "path": "ada-10k/receipts/complete.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/complete.json",
+      "git_blob_sha1": "86d50e325ea778581219a5e0dc0de674a78d2c22",
+      "bytes": 5777,
+      "sha256": "850255265790b96df67d3945e4c8df9187755c8ea2b152fff2880577191bef04"
+    },
+    {
+      "path": "ada-10k/receipts/cleanup.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/cleanup.json",
+      "git_blob_sha1": "be6b13922990d9f0dd4c61c7f4010de35cff246d",
+      "bytes": 105,
+      "sha256": "41b54a44f3bd2f27c403d608b9f2d45fa041b75a78e9f1aabb32116d0afed70e"
+    },
+    {
+      "path": "ada-10k/receipts/artifact-index.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/artifact-index.json",
+      "git_blob_sha1": "f32f1bbd257e83bb1f871fcd4ce7d06e83f8cde2",
+      "bytes": 4418,
+      "sha256": "4053ea1cec905629e7c4963a195f6ab4d9a6cfb44f579189a3482036bcbdc40f"
+    },
+    {
+      "path": "ada-10k/receipts/slurm-completed.txt",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/slurm-completed.txt",
+      "git_blob_sha1": "63815bc26607fb71571ab5b13a5888d1fd629b8e",
+      "bytes": 259,
+      "sha256": "832076d460afd288e564c3d8ee82e7dee34820e394c719ad5e0932965139a2c5"
+    },
+    {
+      "path": "ada-10k/receipts/status.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/status.json",
+      "git_blob_sha1": "833300c87ece4a1aa1bb8ba199e43ae87541ae74",
+      "bytes": 1268,
+      "sha256": "29811e182db46ba67dda4377d10c6a4dd3d01ab825b47ca8b8727770c6013c1d"
+    },
+    {
+      "path": "ada-10k/harness/campaign.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/campaign.py",
+      "git_blob_sha1": "3a48750fa38781754ee896098d5788a884b7c9dc",
+      "bytes": 4838,
+      "sha256": "619b195d36acf6d2a675bb2231d2fb37b8bbffa848943bbb106e88c6c6bd3971"
+    },
+    {
+      "path": "ada-10k/harness/runner.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/runner.py",
+      "git_blob_sha1": "b78a41bb28a944372e9bb30ec8d8771ec9ed3731",
+      "bytes": 8812,
+      "sha256": "88e88e9de656ee7db54fe464ebf038ff1bd30d0c765dc2fbb083b59dc1806eb3"
+    },
+    {
+      "path": "ada-10k/harness/run.sbatch",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/run.sbatch",
+      "git_blob_sha1": "3b8d641edd6432e3a4eabc4353731970fa83753b",
+      "bytes": 1289,
+      "sha256": "75ccff74a3745814c1ae8c14fada83b6e39972feed57b4e19579ddcaaaa47bf2"
+    },
+    {
+      "path": "ada-10k/harness/gpu_tests.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/gpu_tests.py",
+      "git_blob_sha1": "0847b275bc9c714c893bd0f1caf07eb8cb6952f3",
+      "bytes": 1442,
+      "sha256": "adefa02def68e0b08b96387176092c2dca49eaebe6d90db453ecbdf8052240c1"
+    },
+    {
+      "path": "ada-10k/harness/audit.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/audit.py",
+      "git_blob_sha1": "9daaf2ce06613cba11bef275d68ee1594fe40737",
+      "bytes": 4514,
+      "sha256": "4c289206fe02ad466032b5eb304fb4423f30064a87e9861b3b9e407555583602"
+    },
+    {
+      "path": "ada-10k/harness/prepare_runtime.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/prepare_runtime.py",
+      "git_blob_sha1": "73be177405782a098ae3348915b9ab71bd5956ef",
+      "bytes": 1905,
+      "sha256": "123bc7560e4eef95d501832d61a13fcaca9f528c947be94178a3836dcb22ba5f"
+    },
+    {
+      "path": "ada-10k/harness/runtime.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/runtime.py",
+      "git_blob_sha1": "85d2843d0b1e7154e5345bb280363e73a51458bd",
+      "bytes": 1993,
+      "sha256": "f1ceb2a2cdd5f3868fdd86880d0dfbc925ef51cfdb47f764ee4d05607ef56af2"
+    },
+    {
+      "path": "ada-10k/harness/support.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/support.py",
+      "git_blob_sha1": "d130179bcb4c67db84d98f3f9c5b9300bcddf01f",
+      "bytes": 2217,
+      "sha256": "8336bf8950cbcf9b047957598442987eb7842c425f74b640ad90119c5a20d785"
+    },
+    {
+      "path": "ada-10k/harness/bulk_accounting.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/bulk_accounting.py",
+      "git_blob_sha1": "744f06ce86109b563f4bbd74a81bdc3e4d073280",
+      "bytes": 2038,
+      "sha256": "d1aed7fb7e19e950bcdaed1e1f47d864c7c70bc1398ee85ef12f350f9f41540f"
+    },
+    {
+      "path": "ada-100k/receipts/results.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/results.json",
+      "git_blob_sha1": "ad10fbd83a222d50d5b13220346737d4b8b8158d",
+      "bytes": 137626,
+      "sha256": "09a0ce662c4c5c4339e2c5cbeb4e90a6e59810c6721601dd3940697e1d38af85"
+    },
+    {
+      "path": "ada-100k/receipts/runtime-evidence.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/runtime-evidence.json",
+      "git_blob_sha1": "d35a5a680c255c50db19e395119547286e1c2a4b",
+      "bytes": 18055,
+      "sha256": "0f9cf325cb4f7bc11a54cbc72d8757c10ce82b2fb72c98010e6120d0446a08c2"
+    },
+    {
+      "path": "ada-100k/receipts/gpu-tests.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/gpu-tests.json",
+      "git_blob_sha1": "3b3707aa9684475f899dba90de5e0431777beb06",
+      "bytes": 319,
+      "sha256": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a"
+    },
+    {
+      "path": "ada-100k/receipts/audit.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/audit.json",
+      "git_blob_sha1": "111b09b60b50c7c6cd8a5e045e9c893bdb3fa1c0",
+      "bytes": 13126,
+      "sha256": "923edd415bc03e393804d5a18bf81423ca26d48ce8d20e6eb1d239ceabcd4442"
+    },
+    {
+      "path": "ada-100k/receipts/complete.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/complete.json",
+      "git_blob_sha1": "069717909979c0c590f7e41fd6ef8c2235c9ba9c",
+      "bytes": 5844,
+      "sha256": "8c4a06ae31c6b4919adb1bf429ef66ff00797ee26da9cf7c1e7845f926d62679"
+    },
+    {
+      "path": "ada-100k/receipts/cleanup.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/cleanup.json",
+      "git_blob_sha1": "4f08082e370c3c3939405d43349cba2239badf46",
+      "bytes": 101,
+      "sha256": "a9f62aa8503e286cf6636c1a8fe085a16cf28aa0307980b5f03ad5c6406f0065"
+    },
+    {
+      "path": "ada-100k/receipts/artifact-index.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/artifact-index.json",
+      "git_blob_sha1": "86eaa148294f4eddd4f074477d31095aa5dd0b4d",
+      "bytes": 3987,
+      "sha256": "394b1c2263e71ac0a2ee139f0e32a3feb4c7750340efac66590f27926f8d5198"
+    },
+    {
+      "path": "ada-100k/receipts/slurm-completed.txt",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/slurm-completed.txt",
+      "git_blob_sha1": "d511d4c63073a9e2a2380be74e74733a66777315",
+      "bytes": 325,
+      "sha256": "98e82c6159c64199ae25fef9c42a4bd4abef308646e0661c57296e80b7ff2553"
+    },
+    {
+      "path": "ada-100k/receipts/status.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/status.json",
+      "git_blob_sha1": "ecd6933e617071c55f3a346e34bbb01daad025e7",
+      "bytes": 1631,
+      "sha256": "010f89aa6002426494947229a0cc005daf46f30c2e6c62aae727bcbb557a3a17"
+    },
+    {
+      "path": "ada-100k/harness/campaign.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/campaign.py",
+      "git_blob_sha1": "573321331411f03b2d52599a59754311a5f72738",
+      "bytes": 4836,
+      "sha256": "c3e72b834e676e7386fa68e415795354177ca26dab90040f687db669ab54389a"
+    },
+    {
+      "path": "ada-100k/harness/runner.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/runner.py",
+      "git_blob_sha1": "f5d0f9565c68ebc46b574e22ddeb6ae9964e81e1",
+      "bytes": 8814,
+      "sha256": "5aa1b7d471098bec21011280029d6e94e81dd0d0e24fdba3b053234f7eaa6936"
+    },
+    {
+      "path": "ada-100k/harness/run.sbatch",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/run.sbatch",
+      "git_blob_sha1": "e68bbc86cbbdec9ae7ddc917b54414ae49715988",
+      "bytes": 1285,
+      "sha256": "1a2e04bb49973ac67e55f903e57c06e87ddae778a5c7888d98b8caf4d4aded4b"
+    },
+    {
+      "path": "ada-100k/harness/gpu_tests.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/gpu_tests.py",
+      "git_blob_sha1": "0847b275bc9c714c893bd0f1caf07eb8cb6952f3",
+      "bytes": 1442,
+      "sha256": "adefa02def68e0b08b96387176092c2dca49eaebe6d90db453ecbdf8052240c1"
+    },
+    {
+      "path": "ada-100k/harness/audit.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/audit.py",
+      "git_blob_sha1": "8d237d214132831ca9da126b3238a043338711ec",
+      "bytes": 4717,
+      "sha256": "e748c918a44031e01a7a9aca411046a9ba36086a776a4631cca39d57507443ed"
+    },
+    {
+      "path": "ada-100k/harness/prepare_runtime.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/prepare_runtime.py",
+      "git_blob_sha1": "23fced3bce3b1f72dee9344ea9b31f2dba2d5e9f",
+      "bytes": 2569,
+      "sha256": "0c82ab3b37b6b7758939eacf35d9fce08973fe1fb5a8a9c59e3a2bde44757645"
+    },
+    {
+      "path": "ada-100k/harness/runtime.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/runtime.py",
+      "git_blob_sha1": "85d2843d0b1e7154e5345bb280363e73a51458bd",
+      "bytes": 1993,
+      "sha256": "f1ceb2a2cdd5f3868fdd86880d0dfbc925ef51cfdb47f764ee4d05607ef56af2"
+    },
+    {
+      "path": "ada-100k/harness/support.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/support.py",
+      "git_blob_sha1": "c480a80ea2bd0f87f27609cd8416db839e881bb0",
+      "bytes": 3524,
+      "sha256": "6bf7d38c338fa161e413ac4181f4e0f9b0486a4b6a1a0dd9961140899edd51a6"
+    },
+    {
+      "path": "ada-100k/harness/bulk_accounting.py",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_100k_baseline_20261110/bulk_accounting.py",
+      "git_blob_sha1": "744f06ce86109b563f4bbd74a81bdc3e4d073280",
+      "bytes": 2038,
+      "sha256": "d1aed7fb7e19e950bcdaed1e1f47d864c7c70bc1398ee85ef12f350f9f41540f"
+    },
+    {
+      "path": "ada-10k/receipts/build-config-diff.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/build-config-diff.json",
+      "git_blob_sha1": "96aed5e214bd945d7fe983ffdccf4ad9c43f1b15",
+      "bytes": 735,
+      "sha256": "745a5650c4314ff8f7ef912627651d2c78f154625cf3833f10d76cf5456598c5"
+    },
+    {
+      "path": "ada-10k/receipts/native-compatibility-summary.json",
+      "source_repository": "monarin/lcls2",
+      "source_commit": "f888b316e8d940be6cad683d9dc62110938f006f",
+      "source_path": "notes/sim10_ada_baseline_20261110/native-compatibility-summary.json",
+      "git_blob_sha1": "2d97234d0bdad3ce493a0946c68eb7014f5de430",
+      "bytes": 7673,
+      "sha256": "5dc9ccd13dad546e3a50731d2516d84608136f50df259c3319f235b248903aaa"
+    }
+  ]
+}

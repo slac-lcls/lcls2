@@ -1,0 +1,48 @@
+{
+  "phase": "complete",
+  "round": 2,
+  "round_limit": 3,
+  "base_sha": "5f18da747",
+  "checks": {
+    "local_tests": "22 passed in 4.28s",
+    "shell_syntax": "pass",
+    "fixture": {
+      "events": 100000,
+      "streams": 5
+    },
+    "native_compatibility": {
+      "status": "pass",
+      "native_sources": 225,
+      "native_binaries": 28,
+      "config_mismatches": {
+        "psana/meson.build": {
+          "pr": "4cd078217825f316d8db0ef62782ac5d8a2a3d42283b839240bfc984efe9f1ae",
+          "frozen": "27ae0bce919c99bfb7705747074f7d6413f23d3fffcf5aa6ba65741602149452"
+        }
+      }
+    },
+    "gpu_execution": "pass: job 44189224, 31 GPU tests, automatic audit pass",
+    "artifact_integrity": "17 indexed raw artifacts and 13 live modules rehashed successfully"
+  },
+  "unresolved": [],
+  "artifact_root": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-100k-baseline-20261110",
+  "job": "44189224",
+  "implementation_sha": "7a727fd242754338be1720c457e579e6278edeb6",
+  "reviewed_sha": "596b17248e17d7ec933c1fc2e4f7d0c05db74126",
+  "review_verdict": "pass",
+  "attempt": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-ada-100k-baseline-20261110/attempt01",
+  "deferred": [
+    "Reverse-tree native/config inventory comparison",
+    "BDS-02 prompt staging cancellation (manual orphan recovery documented)",
+    "ADA-11 explicit --chdir (shared cwd verified for this launch)"
+  ],
+  "job_state": "COMPLETED",
+  "job_exitcode": "0:0",
+  "results_audit": "pass",
+  "gpu_tests": {
+    "passed": 31,
+    "failed": 0,
+    "skipped": 0
+  },
+  "reviewed_results_sha": "596b17248e17d7ec933c1fc2e4f7d0c05db74126"
+}

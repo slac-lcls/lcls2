@@ -1,0 +1,14 @@
+{
+  "exitcode": 0,
+  "passed": 31,
+  "failed": 0,
+  "skipped": 0,
+  "files": [
+    "test_gpu_input_group_device.py",
+    "test_gpu_input_window_device.py",
+    "test_gpu_group_ownership_device.py",
+    "test_gpu_group_schedule_device.py",
+    "test_multiowner_transitions.py",
+    "test_gpu_task_batch_device.py"
+  ]
+}

@@ -1,0 +1,153 @@
+{
+  "pr_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "status": "pass",
+  "native_source_files": 225,
+  "python_files": 961,
+  "native_binaries": 28,
+  "build_configurations": {
+    "meson.build": {
+      "pr": "b9a82bf78bb8a7f4473f2e11035259f5440e5e669354de9f0a99e128af3c36dc",
+      "frozen": "b9a82bf78bb8a7f4473f2e11035259f5440e5e669354de9f0a99e128af3c36dc"
+    },
+    "meson_options.txt": {
+      "pr": "112662f7f9083100fdd5461461433945dfafccce8390ce746cf4c0ed26985e55",
+      "frozen": "112662f7f9083100fdd5461461433945dfafccce8390ce746cf4c0ed26985e55"
+    },
+    "psalg/CMakeLists.txt": {
+      "pr": "cd0048ad9e6cbd7307fa1eba1fc943e714cb243ee23fd39a79f7fd4c512f2596",
+      "frozen": "cd0048ad9e6cbd7307fa1eba1fc943e714cb243ee23fd39a79f7fd4c512f2596"
+    },
+    "psalg/meson.build": {
+      "pr": "bdac06d1601453020464dbfed5568fa73487fe458edd95d4ddbe6433cff3cd7e",
+      "frozen": "bdac06d1601453020464dbfed5568fa73487fe458edd95d4ddbe6433cff3cd7e"
+    },
+    "psalg/psalg/CMakeLists.txt": {
+      "pr": "c6f4d0d588ae026fb19a2513caa2ef9d3291f90b65a3a5f40bfc70b29159fd29",
+      "frozen": "c6f4d0d588ae026fb19a2513caa2ef9d3291f90b65a3a5f40bfc70b29159fd29"
+    },
+    "psalg/psalg/alloc/CMakeLists.txt": {
+      "pr": "656fa13fb29a3ece23d36d9f7140005ae43f257ae528dbd4428cb443d8f91e0f",
+      "frozen": "656fa13fb29a3ece23d36d9f7140005ae43f257ae528dbd4428cb443d8f91e0f"
+    },
+    "psalg/psalg/alloc/meson.build": {
+      "pr": "bcd74e7e726d3e2660eda153dad7dbb41c11e6a23c5b16a8a32e48bb03a021f4",
+      "frozen": "bcd74e7e726d3e2660eda153dad7dbb41c11e6a23c5b16a8a32e48bb03a021f4"
+    },
+    "psalg/psalg/calib/CMakeLists.txt": {
+      "pr": "656de4e2c385f437e76fd2c3f3b7612808402a4deb6509962fb47c8bc01e0c58",
+      "frozen": "656de4e2c385f437e76fd2c3f3b7612808402a4deb6509962fb47c8bc01e0c58"
+    },
+    "psalg/psalg/calib/meson.build": {
+      "pr": "7af99cb80dfa91d8f57680d851229fca9ee9e028c96b9c55bfdfa7d62100c022",
+      "frozen": "7af99cb80dfa91d8f57680d851229fca9ee9e028c96b9c55bfdfa7d62100c022"
+    },
+    "psalg/psalg/detector/CMakeLists.txt": {
+      "pr": "97fb63a67ef940378a813177d4c183dda7144ef480e1249cfb02e486b4ded715",
+      "frozen": "97fb63a67ef940378a813177d4c183dda7144ef480e1249cfb02e486b4ded715"
+    },
+    "psalg/psalg/detector/meson.build": {
+      "pr": "8e5184c22e1cfc7e01998bdbcb0678d8381080bdb6bd83faa30a6248c82cd8d5",
+      "frozen": "8e5184c22e1cfc7e01998bdbcb0678d8381080bdb6bd83faa30a6248c82cd8d5"
+    },
+    "psalg/psalg/digitizer/CMakeLists.txt": {
+      "pr": "e12411e89cd7bdfdc581c70f7d3e351f7f88e90bb1abe24c629b10254bf3e2cd",
+      "frozen": "e12411e89cd7bdfdc581c70f7d3e351f7f88e90bb1abe24c629b10254bf3e2cd"
+    },
+    "psalg/psalg/digitizer/meson.build": {
+      "pr": "ea72b24015ad6dced0b53116183d7d1237d07bf2b6ce5e60aee60b8b34d67b02",
+      "frozen": "ea72b24015ad6dced0b53116183d7d1237d07bf2b6ce5e60aee60b8b34d67b02"
+    },
+    "psalg/psalg/geometry/CMakeLists.txt": {
+      "pr": "b3ada387e088180d304838d42c03cc37216bb8156bb91c263473f355c9ffbaa0",
+      "frozen": "b3ada387e088180d304838d42c03cc37216bb8156bb91c263473f355c9ffbaa0"
+    },
+    "psalg/psalg/geometry/meson.build": {
+      "pr": "f112ac7e991f5bfc2d0dd09d22ffe5f55fa2828ac3e3a30e43422b810fbd869c",
+      "frozen": "f112ac7e991f5bfc2d0dd09d22ffe5f55fa2828ac3e3a30e43422b810fbd869c"
+    },
+    "psalg/psalg/meson.build": {
+      "pr": "9d2f954bc548198397fbec488e5ee39b5a1779ee102926b56567819e04b1b9f7",
+      "frozen": "9d2f954bc548198397fbec488e5ee39b5a1779ee102926b56567819e04b1b9f7"
+    },
+    "psalg/psalg/shmem/CMakeLists.txt": {
+      "pr": "edb12784c745607066ed8211ccf4d101d54ed87d655be95002d2e728ea2d9fb7",
+      "frozen": "edb12784c745607066ed8211ccf4d101d54ed87d655be95002d2e728ea2d9fb7"
+    },
+    "psalg/psalg/shmem/meson.build": {
+      "pr": "89cb8a549fdf39d7ff9ceedeb2b86e5c2c7fb9df57abdec6475c7e6dbc36af68",
+      "frozen": "89cb8a549fdf39d7ff9ceedeb2b86e5c2c7fb9df57abdec6475c7e6dbc36af68"
+    },
+    "psalg/psalg/utils/CMakeLists.txt": {
+      "pr": "ff02ab15c538b149d1ec5abf805c0565ba048ae6b58cf19aee4e278096a57aad",
+      "frozen": "ff02ab15c538b149d1ec5abf805c0565ba048ae6b58cf19aee4e278096a57aad"
+    },
+    "psalg/psalg/utils/meson.build": {
+      "pr": "b7d36ed9c2d6b07bb8aefb73e0661f6592bfa01d98bfced56b8afad118c09706",
+      "frozen": "b7d36ed9c2d6b07bb8aefb73e0661f6592bfa01d98bfced56b8afad118c09706"
+    },
+    "psalg/pyproject.toml": {
+      "pr": "0d2df4e9048f74f759f835775a4bb1f586923dc5bdfb27781abdf0282fa882d9",
+      "frozen": "0d2df4e9048f74f759f835775a4bb1f586923dc5bdfb27781abdf0282fa882d9"
+    },
+    "psana/CMakeLists.txt": {
+      "pr": "04de0efff2c4e9c3337f7325b225294ee64d7afe682941686730e2039cb6de40",
+      "frozen": "04de0efff2c4e9c3337f7325b225294ee64d7afe682941686730e2039cb6de40"
+    },
+    "psana/meson.build": {
+      "pr": "4cd078217825f316d8db0ef62782ac5d8a2a3d42283b839240bfc984efe9f1ae",
+      "frozen": "27ae0bce919c99bfb7705747074f7d6413f23d3fffcf5aa6ba65741602149452"
+    },
+    "psana/psana/constFracDiscrim/CMakeLists.txt": {
+      "pr": "42f071c211360d182a89f367273bf38ef3c84c3f29ab1eb118bb502a0b40cd79",
+      "frozen": "42f071c211360d182a89f367273bf38ef3c84c3f29ab1eb118bb502a0b40cd79"
+    },
+    "psana/psana/hexanode/CMakeLists.txt": {
+      "pr": "2bd7611fa676ba228940cadd867ddd0d670482a847e706c028d35199ec085434",
+      "frozen": "2bd7611fa676ba228940cadd867ddd0d670482a847e706c028d35199ec085434"
+    },
+    "psana/psana/momentum/setup.py": {
+      "pr": "4749909efa1286965fff4ebc05f8a52a7e791a2b9b34b8ce8dabd97c542aaddc",
+      "frozen": "4749909efa1286965fff4ebc05f8a52a7e791a2b9b34b8ce8dabd97c542aaddc"
+    },
+    "psana/psana/peakFinder/CMakeLists.txt": {
+      "pr": "11568e8f8cbdbe9cac22fba6ec803df3ef6a6bd8bef2379f6f4e2ae7a77366f7",
+      "frozen": "11568e8f8cbdbe9cac22fba6ec803df3ef6a6bd8bef2379f6f4e2ae7a77366f7"
+    },
+    "pyproject.toml": {
+      "pr": "83d3f92304642f3907b92481030f31654de3b4e98ef2403f793b378e06989dce",
+      "frozen": "83d3f92304642f3907b92481030f31654de3b4e98ef2403f793b378e06989dce"
+    },
+    "xtcdata/CMakeLists.txt": {
+      "pr": "14ec5200e19595f25f42062ba35e9f39a11241425cbff1fc305d6e6e451c6f9d",
+      "frozen": "14ec5200e19595f25f42062ba35e9f39a11241425cbff1fc305d6e6e451c6f9d"
+    },
+    "xtcdata/meson.build": {
+      "pr": "a12e78ce50ee8e224755e1aa33f45a549e617d7e016c4d3cfa2e67f20503c09c",
+      "frozen": "a12e78ce50ee8e224755e1aa33f45a549e617d7e016c4d3cfa2e67f20503c09c"
+    },
+    "xtcdata/xtcdata/CMakeLists.txt": {
+      "pr": "902e2dcdc4f9cec08a11ae6ea75bc1476995b2007cc555d518e98ac1810499ec",
+      "frozen": "902e2dcdc4f9cec08a11ae6ea75bc1476995b2007cc555d518e98ac1810499ec"
+    },
+    "xtcdata/xtcdata/app/CMakeLists.txt": {
+      "pr": "5075591e28f8d41ab34e755780ae838f4c0c8578772ce95cc25eb7c2d716968b",
+      "frozen": "5075591e28f8d41ab34e755780ae838f4c0c8578772ce95cc25eb7c2d716968b"
+    },
+    "xtcdata/xtcdata/app/meson.build": {
+      "pr": "91005fe954fd97d5c33fca66d55b1d414db95d6ed0cffc46d9d4ee24a645f481",
+      "frozen": "91005fe954fd97d5c33fca66d55b1d414db95d6ed0cffc46d9d4ee24a645f481"
+    },
+    "xtcdata/xtcdata/meson.build": {
+      "pr": "f0a08321638cf54446985920d36618ad377f5a55f1414c7a257318fc986b5799",
+      "frozen": "f0a08321638cf54446985920d36618ad377f5a55f1414c7a257318fc986b5799"
+    },
+    "xtcdata/xtcdata/xtc/CMakeLists.txt": {
+      "pr": "de9169631faef64f94e94352f4336c5fb86cc04ebe3a57b879129e771df3cb89",
+      "frozen": "de9169631faef64f94e94352f4336c5fb86cc04ebe3a57b879129e771df3cb89"
+    },
+    "xtcdata/xtcdata/xtc/meson.build": {
+      "pr": "604a6fdaeae61cf8effe4d49338ecc7660567b0ca18881e0f67b6d62210d901e",
+      "frozen": "604a6fdaeae61cf8effe4d49338ecc7660567b0ca18881e0f67b6d62210d901e"
+    }
+  }
+}

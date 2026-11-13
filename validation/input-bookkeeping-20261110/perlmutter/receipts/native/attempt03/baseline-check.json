@@ -1,0 +1,56 @@
+{
+  "expected_failure_reproduced": true,
+  "runtime": "/pscratch/sd/m/monarin/psana2-gpu/pr187-pr208-perlmutter-20261026/attempt01/install-B/lib/python3.11/site-packages/psana/gpu/gpu_events.py",
+  "runtime_sha256": "cfc6b2bbede9f5081560a153067289dc4bc4aee794f18d4a62b459bc51b930db",
+  "exitcode": 1,
+  "reports": [
+    {
+      "nodeid": "notes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[6]",
+      "when": "setup",
+      "passed": true,
+      "failed": false,
+      "skipped": false,
+      "error": null
+    },
+    {
+      "nodeid": "notes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[6]",
+      "when": "call",
+      "passed": false,
+      "failed": true,
+      "skipped": false,
+      "error": "monkeypatch = <_pytest.monkeypatch.MonkeyPatch object at 0x7f8025f20790>\nservice = 6\n\n    @pytest.mark.parametrize('service', [TransitionId.BeginStep, TransitionId.EndRun])\n    def test_transition_drains_pending_multiowner_consumers_before_dispatch(monkeypatch, service):\n        import cupy as cp\n        _, detector, _, specs, expected, owner = fixture_inputs(cp)\n        producer = cp.cuda.Stream(non_blocking=True)\n        windows = tuple(owner((i,), range(4), producer) for i in range(2))\n        m = gpu_events.GpuEventManager.__new__(gpu_events.GpuEventManager)\n        m.event_pool = EventPool(n=1)\n        m._first_batch_logged = True\n        m.input_preparers, m.configs = {'camera': detector}, []\n        record = m.event_pool.submit(NS(iter_events=lambda: iter(specs)), None, [],\n                                     m.input_preparers, input_windows=windows, batch_id=7)\n        output = record.prepared_inputs['camera'].data[0]\n        lease = record.leases[0]\n        consumer = cp.cuda.Stream(non_blocking=True)\n        delay = cp.RawKernel('''extern \"C\" __global__ void delay(unsigned long long ticks) {\n            unsigned long long start = clock64();\n            while (clock64() - start < ticks) {}\n        }''', 'delay')\n        delay.compile()\n        order = []\n        from psana.gpu.gpu_task import RequestedConstants\n        from psana.gpu.gpu_budget import _GpuBudget\n        constants = RequestedConstants([('camera', 'gain')], _GpuBudget(4096))\n        m.dsparms = NS(calibconst={'camera': {'gain': np.array(1., np.float64)}})\n        constants.refresh(m.dsparms.calibconst)\n        old_gain = constants.get('camera', 'gain')\n        m._task_constants = constants\n        m._trim_gpu_caches = lambda: None\n        m._compute_subbatch_budget = lambda: 4096\n    \n        with consumer:\n            consumer.wait_event(lease.result_ready)\n            delay((1,), (1,), (np.uint64(60000000),))\n            copied = output.copy()\n            copied_gain = old_gain.copy()\n            done = cp.cuda.Event(disable_timing=True)\n            done.record(consumer)\n    \n        class Completion:\n            def synchronize(self):\n                done.synchronize()\n                order.append('consumer')\n        lease.register_consumer_done(Completion())\n        for window in windows:\n            assert not window.close()\n        assert m.event_pool.active_count == 1\n        monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))\n    \n        def dispatch(dgrams):\n            assert done.done and not m.event_pool.active_count\n            assert all(w.released for w in windows)\n            assert constants.get('camera', 'gain') is old_gain\n            m.dsparms.calibconst['camera']['gain'][...] = 2\n            order.append('dispatch')\n        m.run = NS(_handle_transition=dispatch)\n        dg = NS(service=lambda: service)\n        try:\n            assert list(m._handle_steps({0: ([(service, [dg])], [])})) == []\n            assert order == ['consumer'] * len(windows) + ['dispatch']\n            np.testing.assert_array_equal(copied.get(), expected[0])\n            assert cp.asnumpy(copied_gain) == cp.asnumpy(old_gain) == 1\n>           assert cp.asnumpy(constants.get('camera', 'gain')) == (2 if service == TransitionId.BeginStep else 1)\nE           AssertionError: assert array(1.) == 2\nE            +  where array(1.) = <function asnumpy at 0x7f803c3ba020>(array(1.))\nE            +    where <function asnumpy at 0x7f803c3ba020> = <module 'cupy' from '/pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/lib/python3.11/site-packages/cupy/__init__.py'>.asnumpy\nE            +    and   array(1.) = get('camera', 'gain')\nE            +      where get = <psana.gpu.gpu_task.RequestedConstants object at 0x7f8025f80790>.get\n\nnotes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py:79: AssertionError"
+    },
+    {
+      "nodeid": "notes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[6]",
+      "when": "teardown",
+      "passed": true,
+      "failed": false,
+      "skipped": false,
+      "error": null
+    },
+    {
+      "nodeid": "notes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[5]",
+      "when": "setup",
+      "passed": true,
+      "failed": false,
+      "skipped": false,
+      "error": null
+    },
+    {
+      "nodeid": "notes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[5]",
+      "when": "call",
+      "passed": true,
+      "failed": false,
+      "skipped": false,
+      "error": null
+    },
+    {
+      "nodeid": "notes/sim10_input_bookkeeping_20261110/baseline_test/test_multiowner_transitions.py::test_transition_drains_pending_multiowner_consumers_before_dispatch[5]",
+      "when": "teardown",
+      "passed": true,
+      "failed": false,
+      "skipped": false,
+      "error": null
+    }
+  ]
+}

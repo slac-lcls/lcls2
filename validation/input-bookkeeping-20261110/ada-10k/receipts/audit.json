@@ -1,0 +1,483 @@
+{
+  "status": "pass",
+  "host": "sdfada016",
+  "device": {
+    "mask": "GPU-075afbaf-4e77-c882-8d56-bd1dc489b71a",
+    "pci": "0000:05:00.0",
+    "name": "NVIDIA L40S",
+    "cupy": "14.0.1",
+    "kvikio": "26.10.00",
+    "cuda_runtime": 12090,
+    "compat_mode": "ON",
+    "effective": {
+      "num_threads": 8,
+      "task_size": 1048576,
+      "bounce_buffer_size": 16777216,
+      "auto_direct_io_read": false
+    }
+  },
+  "cases": [
+    {
+      "name": "preflight-stream1",
+      "streams": 1,
+      "events": 1000,
+      "seconds": 1.0715991400647908,
+      "gib_s": 2.9185983388196837,
+      "hz": 933.1847727495733,
+      "reader_calls": 5000,
+      "callbacks": 10,
+      "nic_delta": {
+        "enp69s0f0np0": {
+          "seconds": 1.2194657379295677,
+          "rx_bytes": 3725452892,
+          "tx_bytes": 63956904,
+          "rx_gib_s": 2.84517905757391,
+          "rx_to_requested_bytes": 1.1093600416890002
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.2183040368836373,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.2179214600473642,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.2135091279633343,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp69s0f0np0": {
+          "seconds": 1.1422434321139008,
+          "rx_bytes": 1175018,
+          "tx_bytes": 7811021,
+          "rx_gib_s": 0.0009580451576371229,
+          "rx_to_requested_bytes": null
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.1436474591027945,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.1448477010708302,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.1443782020360231,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "memory": {
+        "before_free": 47212462080,
+        "total": 47665709056,
+        "after_free": 46830780416,
+        "pool_used": 344805376,
+        "pool_total": 345012224
+      }
+    },
+    {
+      "name": "preflight-stream2",
+      "streams": 2,
+      "events": 1000,
+      "seconds": 1.1446618379559368,
+      "gib_s": 2.7323069280082826,
+      "hz": 873.6204587598862,
+      "reader_calls": 5000,
+      "callbacks": 10,
+      "nic_delta": {
+        "enp69s0f0np0": {
+          "seconds": 1.3065761581528932,
+          "rx_bytes": 3731680844,
+          "tx_bytes": 64355373,
+          "rx_gib_s": 2.659928079654012,
+          "rx_to_requested_bytes": 1.1112145923411352
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.2912021318916231,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.289444288937375,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.2879497911781073,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp69s0f0np0": {
+          "seconds": 1.1459431720431894,
+          "rx_bytes": 1284874,
+          "tx_bytes": 6962668,
+          "rx_gib_s": 0.0010442334235500716,
+          "rx_to_requested_bytes": null
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.1613399679772556,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.161373328184709,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.1609245198778808,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "memory": {
+        "before_free": 47212462080,
+        "total": 47665709056,
+        "after_free": 46451195904,
+        "pool_used": 689542656,
+        "pool_total": 689956352
+      }
+    },
+    {
+      "name": "00-stream1",
+      "streams": 1,
+      "events": 10000,
+      "seconds": 9.029941705055535,
+      "gib_s": 3.4635522268351844,
+      "hz": 1107.426861283209,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "nic_delta": {
+        "enp69s0f0np0": {
+          "seconds": 9.176703013014048,
+          "rx_bytes": 35455959140,
+          "tx_bytes": 581966217,
+          "rx_gib_s": 3.5983441008058104,
+          "rx_to_requested_bytes": 1.0558024876421892
+        },
+        "enp69s0f1np1": {
+          "seconds": 9.184030330041423,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f0np0": {
+          "seconds": 9.200630948180333,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f1np1": {
+          "seconds": 9.209141135914251,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp69s0f0np0": {
+          "seconds": 1.1687389959115535,
+          "rx_bytes": 1361997,
+          "tx_bytes": 8035256,
+          "rx_gib_s": 0.001085322349212134,
+          "rx_to_requested_bytes": null
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.170339475851506,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.17136534396559,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.1731665779370815,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "memory": {
+        "before_free": 47212462080,
+        "total": 47665709056,
+        "after_free": 46830780416,
+        "pool_used": 344805376,
+        "pool_total": 345012224
+      }
+    },
+    {
+      "name": "01-stream2",
+      "streams": 2,
+      "events": 10000,
+      "seconds": 9.581894075032324,
+      "gib_s": 3.2640388691242648,
+      "hz": 1043.6349976000195,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "nic_delta": {
+        "enp69s0f0np0": {
+          "seconds": 9.759957754984498,
+          "rx_bytes": 35448094867,
+          "tx_bytes": 583124487,
+          "rx_gib_s": 3.3825567492736144,
+          "rx_to_requested_bytes": 1.0555683064439283
+        },
+        "enp69s0f1np1": {
+          "seconds": 9.761178257875144,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f0np0": {
+          "seconds": 9.761448013130575,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f1np1": {
+          "seconds": 9.76277770777233,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp69s0f0np0": {
+          "seconds": 1.1495803489815444,
+          "rx_bytes": 1320107,
+          "tx_bytes": 7118352,
+          "rx_gib_s": 0.0010694732656983277,
+          "rx_to_requested_bytes": null
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.1552352448925376,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.155001729959622,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.1561185310129076,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "memory": {
+        "before_free": 47212462080,
+        "total": 47665709056,
+        "after_free": 46451195904,
+        "pool_used": 689542656,
+        "pool_total": 689956352
+      }
+    },
+    {
+      "name": "02-stream2",
+      "streams": 2,
+      "events": 10000,
+      "seconds": 9.550360928988084,
+      "gib_s": 3.2748159921167335,
+      "hz": 1047.08084588166,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "nic_delta": {
+        "enp69s0f0np0": {
+          "seconds": 9.71094962512143,
+          "rx_bytes": 35460721619,
+          "tx_bytes": 587829683,
+          "rx_gib_s": 3.400838417542185,
+          "rx_to_requested_bytes": 1.0559443040616998
+        },
+        "enp69s0f1np1": {
+          "seconds": 9.713027592981234,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f0np0": {
+          "seconds": 9.712536904029548,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f1np1": {
+          "seconds": 9.713893239153549,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp69s0f0np0": {
+          "seconds": 1.1922687229234725,
+          "rx_bytes": 1315049,
+          "tx_bytes": 7535979,
+          "rx_gib_s": 0.0010272305201653115,
+          "rx_to_requested_bytes": null
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.1958760598208755,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.1860158359631896,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.1817779769189656,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "memory": {
+        "before_free": 47212462080,
+        "total": 47665709056,
+        "after_free": 46451195904,
+        "pool_used": 689542656,
+        "pool_total": 689956352
+      }
+    },
+    {
+      "name": "03-stream1",
+      "streams": 1,
+      "events": 10000,
+      "seconds": 9.321552636101842,
+      "gib_s": 3.3552001390420836,
+      "hz": 1072.7826565362695,
+      "reader_calls": 50000,
+      "callbacks": 100,
+      "nic_delta": {
+        "enp69s0f0np0": {
+          "seconds": 9.498240560060367,
+          "rx_bytes": 35462809105,
+          "tx_bytes": 583866681,
+          "rx_gib_s": 3.4772034325645595,
+          "rx_to_requested_bytes": 1.0560064649216843
+        },
+        "enp69s0f1np1": {
+          "seconds": 9.485654006013647,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f0np0": {
+          "seconds": 9.477191999088973,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        },
+        "enp9s0f1np1": {
+          "seconds": 9.478540354175493,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": 0.0
+        }
+      },
+      "idle": {
+        "enp69s0f0np0": {
+          "seconds": 1.1750160418450832,
+          "rx_bytes": 1186482,
+          "tx_bytes": 6530886,
+          "rx_gib_s": 0.0009404105404720998,
+          "rx_to_requested_bytes": null
+        },
+        "enp69s0f1np1": {
+          "seconds": 1.1762990460265428,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f0np0": {
+          "seconds": 1.1649519549682736,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        },
+        "enp9s0f1np1": {
+          "seconds": 1.1824354999698699,
+          "rx_bytes": 0,
+          "tx_bytes": 0,
+          "rx_gib_s": 0.0,
+          "rx_to_requested_bytes": null
+        }
+      },
+      "memory": {
+        "before_free": 47212462080,
+        "total": 47665709056,
+        "after_free": 46830780416,
+        "pool_used": 344805376,
+        "pool_total": 345012224
+      }
+    }
+  ]
+}
