@@ -54,8 +54,11 @@ void MebContributor::disconnect()
   // there won't be an Unconfigure transition, so unconfigure() here
   unconfigure();                        // Does no harm if already done
 
-  for (auto link : _links)  _transport.disconnect(link);
-  _links.clear();
+  {
+    std::lock_guard<std::mutex> lock(_linksMtx);
+    for (auto link : _links)  _transport.disconnect(link);
+    _links.clear();
+  }
 
   _id = -1;
 }
@@ -76,6 +79,14 @@ int MebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter
   exporter->add("MCtbO_TrCt",  labels, MetricType::Counter, [&](){ return _trCount;             });
   exporter->add("MCtbO_TxPdg", labels, MetricType::Gauge,   [&](){ return _transport.posting(); });
   exporter->add("MCtbO_RxPdg", labels, MetricType::Gauge,   [&](){ return _transport.pending(); });
+  exporter->add("MCtbO_TxErCt", labels, MetricType::Counter, [&](){ return txFailures(_linksMtx, _links); });
+  for (unsigned i = 0; i < _prms.addrs.size(); ++i)
+  {
+    auto lbls{labels};
+    lbls["meb"] = std::to_string(i);
+    exporter->add("MCtbO_TxOut" + std::to_string(i), lbls, MetricType::Gauge,
+                  [&, i](){ return txOutstanding(_linksMtx, _links, i); });
+  }
 
   return 0;
 }
@@ -88,14 +99,18 @@ int MebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
     if (rc)  return rc;
   }
 
-  _links      .resize(_prms.addrs.size());
-  _region     .resize(_links.size());
-  _regSize    .resize(_links.size());
-  _bufRegSize .resize(_links.size());
-  _trBuffers  .resize(_links.size());
+  _region     .resize(_prms.addrs.size());
+  _regSize    .resize(_prms.addrs.size());
+  _bufRegSize .resize(_prms.addrs.size());
+  _trBuffers  .resize(_prms.addrs.size());
   _id         = _prms.id;
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "MEB");
+  std::vector<EbLfCltLink*> links(_prms.addrs.size());
+  int rc = linksConnect(_transport, links, _prms.addrs, _prms.ports, _id, "MEB");
+  {
+    std::lock_guard<std::mutex> lock(_linksMtx);
+    _links = std::move(links);          // Even on failure, so disconnect() frees them
+  }
   if (rc)  return rc;
 
   return 0;

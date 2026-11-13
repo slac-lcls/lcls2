@@ -6,6 +6,8 @@
 #include <stdint.h>
 #include <cstddef>
 #include <vector>
+#include <atomic>
+#include <mutex>
 
 
 namespace Pds {
@@ -43,6 +45,8 @@ namespace Pds {
       const uint64_t&    postCnt()  const { return _posted; }
       const uint64_t&    compCnt()  const { return _completed; }
       const uint64_t&    errCnt()   const { return _txErrors; }
+      const uint64_t&    txTmoCnt() const { return _txTimedOut; }
+      uint64_t           txOutstanding() const;
     public:
       int post(const void* buf,
                size_t      len,
@@ -79,6 +83,7 @@ namespace Pds {
       uint64_t               _posted;    // RMA writes queued
       uint64_t               _completed; // Their Tx completions reaped
       uint64_t               _txErrors;  // Of which reported an error
+      uint64_t               _txTimedOut; // Sends given up on; _timedOut also counts empty polls
     public:
       const unsigned         _depth;
       unsigned               _credits;
@@ -133,8 +138,22 @@ namespace Pds {
       int _synchronizeBegin();
       int _synchronizeEnd();
     };
+
+    // For metrics: the exporter may run while disconnect() deletes the links,
+    // so the link vector may change only while holding mtx
+    int64_t txOutstanding(std::mutex& mtx, const std::vector<EbLfCltLink*>& links, unsigned idx);
+    int64_t txFailures   (std::mutex& mtx, const std::vector<EbLfCltLink*>& links);
   };
 };
+
+inline
+uint64_t Pds::Eb::EbLfLink::txOutstanding() const
+{
+  // Read the completions first: _posted only grows, so the difference can't go negative
+  uint64_t done = _completed + _txErrors;
+  std::atomic_thread_fence(std::memory_order_acquire);
+  return _posted - done;
+}
 
 inline
 void* Pds::Eb::EbLfLink::lclAdx(size_t offset) const

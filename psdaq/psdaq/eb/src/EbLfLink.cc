@@ -108,6 +108,7 @@ EbLfLink::EbLfLink(Endpoint*          ep,
   _posted   (0ull),
   _completed(0ull),
   _txErrors (0ull),
+  _txTimedOut(0ull),
   _depth   (depth),
   _credits (0)
 {
@@ -564,6 +565,7 @@ int EbLfCltLink::post(const void* buf,
     if (t1 - t0 > TX_FAIL_TMO)
     {
       ++_timedOut;
+      ++_txTimedOut;
       fprintf(stderr, "%s:\n  writedata() to ID %d timed out after %lu ms\n",
               __PRETTY_FUNCTION__, _id, TX_FAIL_TMO.count());
       rc = -FI_ETIMEDOUT;
@@ -596,12 +598,27 @@ int EbLfCltLink::drain(unsigned msTmo)
     if (fast_monotonic_clock::now() - t0 > ms_t{msTmo})
     {
       ++_timedOut;
+      ++_txTimedOut;
       fprintf(stderr, "%s:\n  Gave up on writes to ID %d after %u ms: %lu outstanding\n",
               __PRETTY_FUNCTION__, _id, msTmo, _posted - _completed - _txErrors);
       return -FI_ETIMEDOUT;
     }
   }
   return 0;
+}
+
+int64_t Pds::Eb::txOutstanding(std::mutex& mtx, const std::vector<EbLfCltLink*>& links, unsigned idx)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  return (idx < links.size() && links[idx]) ? links[idx]->txOutstanding() : 0;
+}
+
+int64_t Pds::Eb::txFailures(std::mutex& mtx, const std::vector<EbLfCltLink*>& links)
+{
+  std::lock_guard<std::mutex> lock(mtx);
+  uint64_t sum = 0;
+  for (auto link : links)  if (link)  sum += link->errCnt() + link->txTmoCnt();
+  return sum;
 }
 
 // This method requires that a memory region has been registered that covers the
@@ -642,6 +659,7 @@ int EbLfLink::post(const void* buf,
     if (t1 - t0 > TX_FAIL_TMO)
     {
       ++_timedOut;
+      ++_txTimedOut;
       fprintf(stderr, "%s:\n  injectdata() to ID %d timed out after %lu ms\n",
               __PRETTY_FUNCTION__, _id, TX_FAIL_TMO.count());
       rc = -FI_ETIMEDOUT;
