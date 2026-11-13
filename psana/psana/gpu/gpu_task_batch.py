@@ -72,10 +72,16 @@ class BatchInputContext:
     scalars. Registered input leases must outlive every consumer of these views.
     """
     def __init__(self, events, task, prepared, bindings, constants, stream,
-                 owners, *, budget=None, batch_id=0, run=None, step_generation=0):
+                 owners, *, budget=None, batch_id=0, run=None, step_generation=0,
+                 step_scope=None):
         self.timestamps = tuple(int(e.timestamp) for e in events)
         self.batch_event_indices = tuple(int(e.batch_event_index) for e in events)
         self.batch_id, self.run, self.step_generation = batch_id, run, step_generation
+        # step_generation keeps its name and meaning -- it is public callback
+        # surface via ProducerContext -- and is now the scope's index.
+        # step_scope exposes the same thing with its run and BeginStep
+        # timestamp (issue #153).
+        self.step_scope = step_scope
         self.size = len(events)
         self._active = True
         self._task, self._prepared, self._bindings = task, prepared, bindings

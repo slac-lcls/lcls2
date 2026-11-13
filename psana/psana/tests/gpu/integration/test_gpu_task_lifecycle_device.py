@@ -27,7 +27,9 @@ def manager(pool, mapping):
 
 
 @pytest.mark.parametrize('cap', [0, 8192])
-@pytest.mark.parametrize('service', [TransitionId.BeginStep, TransitionId.EndRun])
+# EndRun only: see test_multiowner_transitions.py -- a BeginStep no longer
+# drains the pool since #153 PR B step 4.
+@pytest.mark.parametrize('service', [TransitionId.EndRun])
 def test_transition_drains_task_publications_before_constant_change(monkeypatch, cap, service):
     import cupy as cp
     parser, detector, budget, specs, expected, window = fixture(cp, ((0,),) * 3)
@@ -77,8 +79,22 @@ def test_transition_drains_task_publications_before_constant_change(monkeypatch,
     monkeypatch.setattr(gpu_events, '_iter_step_events', lambda packet, configs: iter(packet))
     try:
         submit()
-        dg = NS(service=lambda: service)
-        for envelope in m._handle_steps({0: ([(service, [dg])], [])}):
+        dg = NS(service=lambda s=service: s)
+        # _drain_transitions() stands in for _process_batch's terminal branch:
+        # _handle_steps only queues, and _flush_event_pool releases nothing of
+        # its own, because it also runs mid-packet on memory pressure where an
+        # early release would put a trailing transition ahead of the packet's
+        # unsubmitted events.
+        delivered = list(m._handle_steps({0: ([(service, [dg])], [])}))
+        delivered += list(m._drain_transitions())
+        for envelope in delivered:
+            if envelope.gpu_state is None:
+                # The transition itself, yielded since #153 PR B step 4
+                # instead of being dispatched inside _handle_steps. Standing
+                # in for run.events() keeps `dispatch`'s assertions -- drained
+                # pool, unchanged constants -- exactly as before.
+                dispatch(envelope.dgrams)
+                continue
             held.append(envelope.gpu_state)
             order.append('delivery')
         assert order == ['delivery'] * 3 + ['dispatch']
@@ -93,8 +109,10 @@ def test_transition_drains_task_publications_before_constant_change(monkeypatch,
                 # running job. This expected + 2 when the old contract
                 # refreshed at every step.
                 np.testing.assert_array_equal(envelope.gpu_state.get('value').on_cpu, expected[i] + 1)
-            # The step generation still advances: BeginStep drains and
-            # re-dispatches, it just does not reload constants.
+            # The step generation still advances. Since step 4 BeginStep no
+            # longer drains the pool -- each subbatch carries its own
+            # StepScope -- but it still does not reload constants, which is
+            # what this test is about.
             assert calls == [(3, 0), (3, 1)]
         else:
             assert calls == [(3, 0)] and m._step_generation == 0

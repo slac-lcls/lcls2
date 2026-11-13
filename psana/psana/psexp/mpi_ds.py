@@ -513,25 +513,144 @@ class RunParallel(Run):
         self._gpu_manager_for_placement = manager
         return manager
 
+    def _open_gpu_manager(self):
+        """Create this rank's GpuEventManager, or None off the GPU BD path.
+
+        Shared by _events_impl and _steps_impl: both need the identical
+        setup, and its teardown counterpart _close_gpu_manager() has an
+        ordering requirement that must not be duplicated.
+        """
+        if not (self.dsparms.gpu_enabled and nodetype == "bd"):
+            return None
+        # Setup raises on individual ranks -- an explicit budget the group
+        # cannot honour, or set_limit() rejecting a lowered limit on
+        # followers only. Those are per-rank conditions that the other
+        # ranks cannot observe, so abort rather than leave them waiting.
+        from contextlib import nullcontext
+
+        from psana.gpu.gpu_mpi import gpu_error_handler
+        comms = getattr(self, 'comms', None)
+        # No communicator means nothing to abort -- a single process, or a
+        # caller that supplied no comms. Create the manager unguarded
+        # rather than failing on the guard itself.
+        guard = (gpu_error_handler(comms.psana_comm)
+                 if comms is not None else nullcontext())
+        with guard:
+            return self._make_gpu_event_manager()
+
+    def _close_gpu_manager(self, evt_iter, gpu_manager):
+        """Release this run's iterator, manager and communicator, in order.
+
+        Shared by _events_impl and _steps_impl. The order is load-bearing and
+        the comments below say why; copying this into a second caller rather
+        than sharing it is how the two paths would drift into a hang.
+        """
+        # Close the batch iterator FIRST. BigDataNode.start()'s own finally
+        # drains whatever EB traffic this rank still owes -- a look-ahead
+        # request is outstanding whenever the consumer stopped early -- and
+        # it must run before any collective. gpu_manager.close() barriers
+        # on device_comm while releasing shared constants, so closing the
+        # manager while this rank still owes the EB a receive lets it enter
+        # a barrier that a peer cannot reach: the EB is blocked sending to
+        # this rank, and that peer is waiting on the EB. Only the bounded
+        # barrier's timeout breaks it.
+        #
+        # close() on an already-exhausted generator is a no-op, so this is
+        # free on the normal path.
+        close_iter = getattr(evt_iter, 'close', None)
+        if close_iter is not None:
+            close_iter()
+        # Then the manager. Order still matters against the communicator:
+        # SharedRequestedConstants.close() barriers on device_comm, so the
+        # manager must close before device_comm is freed. Freeing it is not
+        # optional -- discovery creates one per run, and a job over many
+        # runs would otherwise accumulate them until it hits the MPI
+        # communicator limit.
+        if gpu_manager is not None:
+            gpu_manager.close()
+        # Drop the inspection handle too. It is only there for tests, but
+        # leaving it set keeps this run's manager -- and whatever device
+        # buffers it still holds -- reachable while the NEXT run's
+        # discovery samples free memory and sizes its budget.
+        self._gpu_manager_for_placement = None
+        placement = getattr(self, '_gpu_placement', None)
+        if placement is not None:
+            from psana.gpu.gpu_placement import release_placement
+            release_placement(placement)
+
+    def _guard_shared_iterator(self, evt_iter):
+        """Run gpu_error_handler around every advance of `evt_iter`, whoever
+        makes it.
+
+        steps() wraps _steps_impl in the handler, but each Step it yields
+        shares `evt_iter` and advances it from the USER's frame while
+        _steps_impl sits suspended at its yield. A GPU failure raised during
+        step.events() therefore never passed through that handler: it reached
+        the user's loop, and when the abandoned steps() generator was then
+        closed the handler saw only GeneratorExit, which it deliberately lets
+        through. No comm.Abort, and the EB waited on a receive that never
+        came -- the exact hang the wrapper exists to prevent.
+
+        Wrapping the iterator puts the handler in the frame that does the
+        advancing, from either caller. close() still reaches the inner
+        generator through `yield from`, so BigDataNode.start()'s finally runs
+        as before and _close_gpu_manager's ordering is untouched. GeneratorExit
+        still passes through the handler, so breaking out of a step loop
+        remains a local decision.
+
+        _events_impl does not need this: it consumes evt_iter inside its own
+        frame, within events()'s handler. CPU ranks and callers without a
+        communicator get the iterator back unwrapped.
+        """
+        if not (self.dsparms.gpu_enabled and nodetype == "bd"):
+            return evt_iter
+        comms = getattr(self, 'comms', None)
+        if comms is None:
+            return evt_iter
+        from psana.gpu.gpu_mpi import gpu_error_handler
+
+        def guarded():
+            with gpu_error_handler(comms.psana_comm):
+                yield from evt_iter
+
+        return guarded()
+
+    def _steps_impl(self):
+        """Yield a Step per BeginStep, with the GPU stream owned as in events().
+
+        Same shape as the inherited CPU Run.steps(): the Step shares this
+        iterator, so an abandoned step's remainder is consumed by this loop's
+        own filtering rather than by an explicit _finish(). That keeps GPU
+        behaviour equal to the CPU path (issue #153). The stricter contract --
+        Step state, invalidation of a superseded Step, and _finish() on an
+        unfinished child -- is the remainder/close matrix that issue #153
+        marks "subject to API review", and is deliberately not implemented
+        here.
+        """
+        gpu_manager = self._open_gpu_manager()
+        evt_iter = self._guard_shared_iterator(
+            self.start(gpu_manager=gpu_manager))
+        try:
+            for envelope in evt_iter:
+                dgrams = envelope.dgrams
+                svc = utils.first_service(dgrams)
+                if TransitionId.isEvent(svc):
+                    continue  # steps() yields only on BeginStep
+                self._update_envstore_from_dgrams(dgrams)
+                if svc == TransitionId.EndRun:
+                    return
+                if svc == TransitionId.BeginStep:
+                    yield Step(
+                        self._materialize_event(envelope),
+                        evt_iter,
+                        self._run_ctx,
+                        esm=self.esm,
+                    )
+        finally:
+            self._close_gpu_manager(evt_iter, gpu_manager)
+
     def _events_impl(self):
-        gpu_manager = None
-        if self.dsparms.gpu_enabled and nodetype == "bd":
-            # Setup raises on individual ranks -- an explicit budget the group
-            # cannot honour, or set_limit() rejecting a lowered limit on
-            # followers only. Those are per-rank conditions that the other
-            # ranks cannot observe, so abort rather than leave them waiting.
-            from contextlib import nullcontext
-
-            from psana.gpu.gpu_mpi import gpu_error_handler
-            comms = getattr(self, 'comms', None)
-            # No communicator means nothing to abort -- a single process, or a
-            # caller that supplied no comms. Create the manager unguarded
-            # rather than failing on the guard itself.
-            guard = (gpu_error_handler(comms.psana_comm)
-                     if comms is not None else nullcontext())
-            with guard:
-                gpu_manager = self._make_gpu_event_manager()
-
+        gpu_manager = self._open_gpu_manager()
         evt_iter = self.start(gpu_manager=gpu_manager)
         st = time.time()
         try:
@@ -571,38 +690,7 @@ class RunParallel(Run):
                     self.ana_t_gauge.set(ana_rate)
                     st = time.time()
         finally:
-            # Close the batch iterator FIRST. BigDataNode.start()'s own finally
-            # drains whatever EB traffic this rank still owes -- a look-ahead
-            # request is outstanding whenever the consumer stopped early -- and
-            # it must run before any collective. gpu_manager.close() barriers
-            # on device_comm while releasing shared constants, so closing the
-            # manager while this rank still owes the EB a receive lets it enter
-            # a barrier that a peer cannot reach: the EB is blocked sending to
-            # this rank, and that peer is waiting on the EB. Only the bounded
-            # barrier's timeout breaks it.
-            #
-            # close() on an already-exhausted generator is a no-op, so this is
-            # free on the normal path.
-            close_iter = getattr(evt_iter, 'close', None)
-            if close_iter is not None:
-                close_iter()
-            # Then the manager. Order still matters against the communicator:
-            # SharedRequestedConstants.close() barriers on device_comm, so the
-            # manager must close before device_comm is freed. Freeing it is not
-            # optional -- discovery creates one per run, and a job over many
-            # runs would otherwise accumulate them until it hits the MPI
-            # communicator limit.
-            if gpu_manager is not None:
-                gpu_manager.close()
-            # Drop the inspection handle too. It is only there for tests, but
-            # leaving it set keeps this run's manager -- and whatever device
-            # buffers it still holds -- reachable while the NEXT run's
-            # discovery samples free memory and sizes its budget.
-            self._gpu_manager_for_placement = None
-            placement = getattr(self, '_gpu_placement', None)
-            if placement is not None:
-                from psana.gpu.gpu_placement import release_placement
-                release_placement(placement)
+            self._close_gpu_manager(evt_iter, gpu_manager)
 
     def events(self):
         if self.dsparms.gpu_enabled and nodetype == "bd":
@@ -613,28 +701,24 @@ class RunParallel(Run):
         yield from self._events_impl()
 
     def steps(self):
-        # GPU step iteration remains outside this first MPI events refactor.
-        # GpuEventManager handles BeginStep while processing run.events().
-        if self.dsparms.gpu_enabled and nodetype == 'bd':
+        # GPU BD ranks used to return here, so run.steps() silently yielded
+        # nothing on the GPU path (GPU-140-03). PR B now puts ordered
+        # BeginStep/EndStep envelopes in the stream, so _steps_impl consumes
+        # them like the CPU path does.
+        #
+        # Two handler layers, because the work happens in two frames. This
+        # one covers _steps_impl's own body. The shared event iterator is
+        # guarded separately by _guard_shared_iterator, because a Step
+        # advances it from the user's frame while this generator is
+        # suspended -- a failure there never reaches this `with`. Both let
+        # GeneratorExit through, so breaking out of run.steps() stays a local
+        # decision and never aborts the job.
+        if self.dsparms.gpu_enabled and nodetype == "bd":
+            from psana.gpu.gpu_mpi import gpu_error_handler
+            with gpu_error_handler(self.comms.psana_comm):
+                yield from self._steps_impl()
             return
-
-        evt_iter = self.start()
-        for envelope in evt_iter:
-            dgrams = envelope.dgrams
-            svc = utils.first_service(dgrams)
-            if TransitionId.isEvent(svc):
-                # steps() only yields on BeginStep transitions; ignore L1
-                continue
-            # Update envstore for every transition
-            self._update_envstore_from_dgrams(dgrams)
-
-            if svc == TransitionId.BeginStep:
-                yield Step(
-                    self._materialize_event(envelope),
-                    evt_iter,
-                    self._run_ctx,
-                    esm=self.esm,
-                )
+        yield from self._steps_impl()
 
     def close_shared_memory(self):
         self._close_shared_memory()

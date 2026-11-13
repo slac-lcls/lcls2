@@ -48,7 +48,7 @@ Sources: [mpi_ds.py](../../psexp/mpi_ds.py),
 | Area | Current boundary |
 | --- | --- |
 | DataSource mode | `gpu_fn` supports experiment/run serial and MPI input; files-only, shmem and DRP modes are rejected |
-| GPU step iteration | Use `run.events()` for transitions; GPU `RunParallel.steps()` returns without yielding |
+| GPU step iteration | `run.steps()` / `step.events()` work on GPU BD ranks (serial and MPI); one `StepScope` per packet, so a BeginStep between a packet's events is rejected rather than split (issue #153) |
 | SMD callback | `smd_callback` with GPU routing is rejected because callback batching does not create coherent GPUBAT1 descriptors |
 | Bulk reads | `gpu_bulk_read=True` rejects `intg_det` and nonempty timestamp filtering; disabling bulk removes that parameter restriction, not a claim of acceptance for those combinations |
 | Stream routing | Exclusive routing requires one normal detector per selected stream; hybrid routing duplicates complete-stream I/O |
