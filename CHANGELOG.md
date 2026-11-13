@@ -8,7 +8,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 ### Added
 
 - Added ePixUHR calibration and a CALIB mode for taking darks to the GPU DRP, with the Reader/Reducer performance work that runs five GPU DRPs on one node at 33 kHz, and per-stage metrics. @rclaus2 [#269](https://github.com/slac-lcls/lcls2/pull/269)
-- Add support for getting pva detectors serial numbers to support calibration from the SerialNumber_RBV epics variable @chrisvam [#288](https://github.com/slac-lcls/lcls2/pull/288)
+- Added reading a `drp_pva` detector's serial number from `<prefix>SerialNumber_RBV`, for calibration. @chrisvam [#288](https://github.com/slac-lcls/lcls2/pull/288)
 
 ### Changed
 

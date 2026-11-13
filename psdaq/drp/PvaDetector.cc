@@ -50,7 +50,96 @@ namespace Drp {
 struct PvParameters : public Parameters
 {
     std::vector<std::string> pvSpecs;
+    std::string              serNoArg;  // Serial number given with -S
 };
+
+namespace {
+    // One-shot get: no monitor callback, so no monitor is started
+    class SerialNumberPv : public Pds_Epics::EpicsPVA
+    {
+    public:
+        SerialNumberPv(const std::string& provider, const std::string& pvName) :
+            EpicsPVA(provider.c_str(), pvName.c_str(), nullptr) {}
+        std::string get(unsigned tmo)
+        {
+            if (!getComplete(tmo))  return {};
+            if (!_strct)            return {};
+            std::string serNo;
+            if (auto scalar = _strct->getSubField<pvd::PVScalar>("value")) {
+                serNo = scalar->getAs<std::string>();
+            } else if (auto array = _strct->getSubField<pvd::PVScalarArray>("value")) {
+                // e.g., a char waveform record
+                pvd::shared_vector<const int8_t> chars;
+                array->getAs<int8_t>(chars);
+                for (auto ch : chars) {
+                    if (ch == 0)  break;
+                    serNo += static_cast<char>(ch);
+                }
+            } else {
+                logging::error("PV %s 'value' field has unsupported type", name().c_str());
+                return {};
+            }
+            return psalg::strip(serNo);
+        }
+    };
+
+    //  Read the detector serial number from <prefix>SerialNumber_RBV.
+    //  prefix is of the form "[<provider>/]<EPICS prefix>", provider defaults to "ca".
+    //  Returns an empty string and sets error if the PV can't be read or is empty.
+    std::string readSerialNumber(const std::string& prefix, std::string& error)
+    {
+        std::string provider = "ca";
+        std::string pvName   = prefix;
+        auto pos = pvName.find("/");
+        if (pos != std::string::npos) {
+            provider = pvName.substr(0, pos);
+            pvName   = pvName.substr(pos+1);
+        }
+        pvName += "SerialNumber_RBV";
+        const unsigned tmo = 5;   // seconds
+        std::string serNo;
+        try {
+            SerialNumberPv pv(provider, pvName);
+            serNo = pv.get(tmo);
+            if (serNo.empty()) {
+                error = "No serial number read from PV " + pvName + " (unreachable or empty)";
+            } else {
+                logging::info("Serial number '%s' read from PV %s", serNo.c_str(), pvName.c_str());
+            }
+        }
+        catch (std::exception& e) {
+            error = "Failed to read PV " + pvName + ": " + e.what();
+            serNo.clear();
+        }
+        return serNo;
+    }
+
+    //  Determine the serial number of a non-'pv' (-D) detector.
+    //  With -k prefix=<PFX>, it must be read from <PFX>SerialNumber_RBV: failing
+    //  to read it, or a mismatch with -S, is an error (no fallback to -S).
+    //  Without a prefix, -S is used.
+    //  Returns an empty string on success, else an error message.
+    std::string getSerialNumber(const PvParameters& para, std::string& serNo)
+    {
+        auto it = para.kwargs.find("prefix");
+        if (it == para.kwargs.end() || it->second.empty()) {
+            if (para.serNoArg.empty()) {
+                return "-D " + para.detType + ": serial number not available: "
+                       "specify -k prefix=<PFX> to read <PFX>SerialNumber_RBV, or -S";
+            }
+            serNo = para.serNoArg;
+            return {};
+        }
+        std::string error;
+        serNo = readSerialNumber(it->second, error);
+        if (serNo.empty())  return error;
+        if (!para.serNoArg.empty() && para.serNoArg != serNo) {
+            return "Serial number '" + serNo + "' read from EPICS differs from -S '" +
+                   para.serNoArg + "'";
+        }
+        return {};
+    }
+} // anonymous namespace
 
 };
 
@@ -710,6 +799,18 @@ unsigned PvDetector::configure(const std::string& config_alias, Xtc& xtc, const 
     if (XpmDetector::configure(config_alias, xtc, bufEnd))
         return 1;
 
+    // Re-read the serial number at each Configure so that a detector swapped
+    // since the last Configure is recorded correctly
+    if (m_para->detType != "pv") {
+        std::string serNo;
+        std::string error = getSerialNumber(*static_cast<PvParameters*>(m_para), serNo);
+        if (!error.empty()) {
+            logging::critical("%s", error.c_str());
+            return 1;
+        }
+        m_para->serNo = serNo;
+    }
+
     for (auto& pvMonitor : m_pvMonitors) {
         // Set up the names for L1Accept data
         unsigned uvsn = m_para->kwargs.find("data_vsn") != m_para->kwargs.end() ? std::stoul(m_para->kwargs["data_vsn"],NULL,0) : 0x010000;
@@ -1363,8 +1464,22 @@ void PvApp::handlePhase1(const json& msg)
             _endrun(phase1Info);        // Ignore possible error
         }
 
+        // The serial number recorded at Configure must still be valid: a
+        // detector swapped since then requires a new Configure
+        std::string errorMsg;
+        if (m_para.detType != "pv") {
+            std::string serNo;
+            errorMsg = getSerialNumber(m_para, serNo);
+            if (errorMsg.empty() && serNo != m_para.serNo) {
+                errorMsg = "Serial number changed from '" + m_para.serNo + "' at Configure to '" +
+                           serNo + "': Configure again";
+            }
+        }
+
         RunInfo runInfo;
-        std::string errorMsg = m_drp->beginrun(phase1Info, runInfo);
+        if (errorMsg.empty()) {
+            errorMsg = m_drp->beginrun(phase1Info, runInfo);
+        }
         if (!errorMsg.empty()) {
             body["err_info"] = "Phase 1 error: " + errorMsg;
             logging::error("%s", errorMsg.c_str());
@@ -1415,68 +1530,6 @@ void PvApp::handleReset(const json& msg)
 } // namespace Drp
 
 
-//  Fetch the detector serial number from <prefix>SerialNumber_RBV.
-//  Returns an empty string if the PV can't be read or holds no value.
-namespace {
-    // One-shot get: no monitor callback, so no monitor is started
-    class SerialNumberPv : public Pds_Epics::EpicsPVA
-    {
-    public:
-        SerialNumberPv(const std::string& provider, const std::string& pvName) :
-            EpicsPVA(provider.c_str(), pvName.c_str(), nullptr) {}
-        std::string get(unsigned tmo)
-        {
-            if (!getComplete(tmo))  return {};
-            if (!_strct)            return {};
-            std::string serNo;
-            if (auto scalar = _strct->getSubField<pvd::PVScalar>("value")) {
-                serNo = scalar->getAs<std::string>();
-            } else if (auto array = _strct->getSubField<pvd::PVScalarArray>("value")) {
-                // e.g., a char waveform record
-                pvd::shared_vector<const int8_t> chars;
-                array->getAs<int8_t>(chars);
-                for (auto ch : chars) {
-                    if (ch == 0)  break;
-                    serNo += static_cast<char>(ch);
-                }
-            } else {
-                logging::error("PV %s 'value' field has unsupported type", name().c_str());
-                return {};
-            }
-            return psalg::strip(serNo);
-        }
-    };
-}
-
-//  prefix is of the form "[<provider>/]<EPICS prefix>", provider defaults to "ca"
-static std::string readSerialNumber(const std::string& prefix)
-{
-    std::string provider = "ca";
-    std::string pvName   = prefix;
-    auto pos = pvName.find("/");
-    if (pos != std::string::npos) {
-        provider = pvName.substr(0, pos);
-        pvName   = pvName.substr(pos+1);
-    }
-    pvName += "SerialNumber_RBV";
-    const unsigned tmo = 5;   // seconds
-    try {
-        SerialNumberPv pv(provider, pvName);
-        std::string serNo = pv.get(tmo);
-        if (serNo.empty()) {
-            logging::warning("No serial number found in PV %s", pvName.c_str());
-        } else {
-            logging::info("Serial number '%s' read from PV %s", serNo.c_str(), pvName.c_str());
-        }
-        return serNo;
-    }
-    catch (std::exception& e) {
-        logging::error("Failed to read PV %s: %s", pvName.c_str(), e.what());
-    }
-    return {};
-}
-
-
 int main(int argc, char* argv[])
 {
     Drp::PvParameters para;
@@ -1497,8 +1550,9 @@ int main(int argc, char* argv[])
             case 'D':
                 para.detType = optarg;  // Defaults to 'pv'
                 break;
-            case 'S':                   // Fallback when <prefix>SerialNumber_RBV is empty
-                para.serNo = optarg;
+            case 'S':                   // Used when -k prefix=<PFX> isn't given
+                para.serNoArg = optarg;
+                para.serNo    = optarg;
                 break;
             case 'u':
                 para.alias = optarg;
@@ -1657,30 +1711,17 @@ int main(int argc, char* argv[])
             return 1;
         }
 
-        // For non-default detector types (-D), obtain the serial number from
-        // <prefix>SerialNumber_RBV, falling back to -S, else fail
+        // For non-default detector types (-D), check at startup that the serial
+        // number can be obtained.  It is read again at each Configure and
+        // checked at BeginRun.
         if (para.detType != "pv") {
             std::string serNo;
-            auto it = para.kwargs.find("prefix");
-            if (it != para.kwargs.end() && !it->second.empty()) {
-                serNo = readSerialNumber(it->second);
-            } else {
-                logging::warning("-k prefix=<PFX> not given: can't read serial number from EPICS");
-            }
-            if (!serNo.empty()) {
-                if (!para.serNo.empty() && para.serNo != serNo) {
-                    logging::warning("-S serial number '%s' overridden by EPICS value '%s'",
-                                     para.serNo.c_str(), serNo.c_str());
-                }
-                para.serNo = serNo;
-            } else if (!para.serNo.empty()) {
-                logging::info("Using serial number '%s' from -S", para.serNo.c_str());
-            } else {
-                logging::critical("-D %s: serial number not available from <prefix>SerialNumber_RBV "
-                                  "(-k prefix=<PFX>) and not specified with -S",
-                                  para.detType.c_str());
+            std::string error = Drp::getSerialNumber(para, serNo);
+            if (!error.empty()) {
+                logging::critical("%s", error.c_str());
                 return 1;
             }
+            para.serNo = serNo;
         }
 
         // Before any thread that pins itself is created
