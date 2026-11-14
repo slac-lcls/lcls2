@@ -186,12 +186,11 @@ class EnvStore(object):
                 )  # check if this xtc has the variable
                 if env_var_loc:
                     alg, segment_id = env_var_loc
-                    found_pos = np.searchsorted(env_man.timestamps, event_timestamp)[0]
-
-                    if (
-                        found_pos == env_man.n_items
-                    ):  # this event is the last step or the events after
-                        found_pos -= 1
+                    # Start at the last update at or before this event, even
+                    # when later updates have already been stored.
+                    found_pos = np.searchsorted(
+                        env_man.timestamps, event_timestamp, side="right"
+                    )[0] - 1
 
                     for p in range(found_pos, found_pos - PS_N_STEP_SEARCH_STEPS, -1):
                         if p < 0:
