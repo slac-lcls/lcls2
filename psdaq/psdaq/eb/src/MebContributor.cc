@@ -295,8 +295,7 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     abort();
   }
 
-  // Another MEB may get nothing more for a while; post() progressed only this link
-  for (auto lnk : _links)  lnk->progress();
+  progress();                           // Another MEB may get nothing more for a while
 
   _previousPid = pid;
   ++_eventCount;

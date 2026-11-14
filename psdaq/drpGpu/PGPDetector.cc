@@ -691,6 +691,8 @@ void TebReceiver::_recorder(cudaExecutionContext_t green_ctx)
           }
           chkError(cudaStreamSynchronize(m_stream)); // Ensure payload is on CPU before posting
           m_mon.post(dgram, result->monBufNo());
+        } else {
+          m_mon.progress();             // Unfinished writes would hold the MEB's buffers
         }
       } else {                          // Other Transition already on the CPU
         m_mon.post(dgram);

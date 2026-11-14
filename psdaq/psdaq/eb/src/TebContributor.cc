@@ -455,6 +455,8 @@ void TebContributor::_post(const CtrbBatch& batch)
     }
   }
 
+  progressNext(_links, _sweepIdx);      // Another TEB may get nothing more for a while
+
   ++_batchCount;                        // Count all batches handled
 }
 

@@ -588,9 +588,10 @@ int EbLfCltLink::drain(const char* peer, unsigned msTmo)
   if (!txOutstanding())  return 0;
 
   auto t0{fast_monotonic_clock::now()};
-  while (txOutstanding())
+  while (true)
   {
     _reapTx();
+    if (!txOutstanding())  return 0;
 
     if (fast_monotonic_clock::now() - t0 > ms_t{msTmo})
     {
@@ -601,7 +602,6 @@ int EbLfCltLink::drain(const char* peer, unsigned msTmo)
       return -FI_ETIMEDOUT;
     }
   }
-  return 0;
 }
 
 int64_t Pds::Eb::txOutstanding(std::mutex& mtx, const std::vector<EbLfCltLink*>& links, unsigned idx)

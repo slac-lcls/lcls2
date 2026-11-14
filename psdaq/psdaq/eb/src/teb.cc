@@ -105,6 +105,7 @@ namespace Pds {
     private:
       std::mutex                   _l3LinksMtx; // Guards _l3Links for the metrics
       std::vector<EbLfCltLink*>    _l3Links;
+      unsigned                     _sweepIdx{0};
       EbLfServer                   _mrqTransport;
       std::vector<EbLfSvrLink*>    _mrqLinks;
       BatchManager                 _batMan;
@@ -887,8 +888,7 @@ void Teb::_post(const EbBatch& batch)
     }
   }
 
-  // A DRP outside this batch's destinations may get nothing more for a while
-  for (auto link : _l3Links)  link->progress();
+  progressNext(_l3Links, _sweepIdx);    // Another DRP may get nothing more for a while
 
   if (!batch.end->isEvent())            // Ends in a transition: may be followed by nothing
   {

@@ -144,6 +144,9 @@ namespace Pds {
     // so the link vector may change only while holding mtx
     int64_t txOutstanding(std::mutex& mtx, const std::vector<EbLfCltLink*>& links, unsigned idx);
     int64_t txFailures   (std::mutex& mtx, const std::vector<EbLfCltLink*>& links);
+
+    // Progress one link per call, so the cost does not grow with the number of links
+    void progressNext(const std::vector<EbLfCltLink*>& links, unsigned& next);
   };
 };
 
@@ -162,6 +165,14 @@ uint64_t Pds::Eb::EbLfCltLink::progress()
   if (!txOutstanding())  return 0;
   _reapTx();
   return txOutstanding();
+}
+
+inline
+void Pds::Eb::progressNext(const std::vector<EbLfCltLink*>& links, unsigned& next)
+{
+  if (links.empty())  return;
+  if (next >= links.size())  next = 0;
+  if (auto link = links[next++])  link->progress();
 }
 
 inline
