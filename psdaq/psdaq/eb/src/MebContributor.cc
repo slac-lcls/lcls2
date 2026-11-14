@@ -295,6 +295,9 @@ int MebContributor::post(const EbDgram* ddg, uint32_t destination)
     abort();
   }
 
+  // Another MEB may get nothing more for a while; post() progressed only this link
+  for (auto lnk : _links)  lnk->progress();
+
   _previousPid = pid;
   ++_eventCount;
 
@@ -457,7 +460,7 @@ int MebContributor::post(const EbDgram* dgram)
     }
   }
 
-  for (auto link : _links)  link->drain(); // Nothing may follow a transition for a while
+  for (auto link : _links)  link->drain("MEB"); // Nothing may follow a transition for a while
 
   ++_trCount;
 

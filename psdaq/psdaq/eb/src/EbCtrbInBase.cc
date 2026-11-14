@@ -556,10 +556,8 @@ void EbCtrbInBase::_orphanDump(TebContributor& ctrb, const EbDgram* inp)
             (long)(front->pulseId() - iPid));
   }
 
-  // Our own Tx accounting, per TEB.  "CQ errors" is the number that matters: a
-  // posted-vs-completed deficit is expected, the Tx CQ being bound with
-  // FI_SELECTIVE_COMPLETION, so a successful write volunteers no completion.
-  // A nonzero error count here means the loss was outbound and ours.
+  // Our own Tx accounting, per TEB.  Every write completes, so posted - completed
+  // - errors is still in flight; a nonzero error count means the loss was ours.
   for (auto link : ctrb.links())
   {
     if (!link)  continue;

@@ -248,7 +248,7 @@ bool TebContributor::timeout()
 
   _flush();
 
-  for (auto link : _links)  link->drain(); // The Collector may block next
+  for (auto link : _links)  link->drain("TEB"); // The Collector may block next
   return true;
 }
 
@@ -328,7 +328,7 @@ void TebContributor::process(const EbDgram* dgram)
         _post(dgram);         // Post, if contributor is providing trigger input
       }
 
-      for (auto link : _links)  link->drain(); // A transition may be followed by nothing
+      for (auto link : _links)  link->drain("TEB"); // A transition may be followed by nothing
     }
   }
   else                        // Common RoG didn't trigger: bypass the TEB(s)

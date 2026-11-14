@@ -99,7 +99,6 @@ namespace Pds {
       int      _setupMetrics(const std::shared_ptr<MetricExporter>);
       void     _queueMrqBuffers();
       void     _monitor(ResultDgram* rdg);
-      void     _flushBatch();
       void     _tryPost(const EbDgram* dg, uint64_t dsts, unsigned idx);
       void     _post(const EbBatch& batch);
       uint64_t _receivers(unsigned rogs) const;
@@ -489,6 +488,8 @@ void Teb::run()
       {
         if (_trCount > 1)  _queueMrqBuffers(); // Avoid polling too early
 
+        for (auto link : _l3Links)  link->progress(); // Nothing else will while idle
+
         rc = 0;
       }
       else if (rc == -FI_ENOTCONN)
@@ -725,13 +726,6 @@ void Teb::process(EbEvent* event)
 // to flush out any in-progress batch
 void Teb::flush()
 {
-  _flushBatch();
-
-  for (auto link : _l3Links)  link->drain(); // Idle: nothing else will progress them
-}
-
-void Teb::_flushBatch()
-{
   //printf("TEB::flush: start %p, end %p\n", _batch.start, _batch.end);
 
   if (_batch.start)
@@ -748,7 +742,7 @@ void Teb::_flushBatch()
 void Teb::_tryPost(const EbDgram* dgram, uint64_t dsts, unsigned eventIdx)
 {
   // On wrapping, post the batch at the end of the region, if any
-  if (dgram == _batMan.batchRegion())  _flushBatch();
+  if (dgram == _batMan.batchRegion())  flush();
 
   // The batch start is the first dgram seen
   if (!_batch.start)  _batch = {dgram, dsts, eventIdx};
@@ -893,10 +887,13 @@ void Teb::_post(const EbBatch& batch)
     }
   }
 
+  // A DRP outside this batch's destinations may get nothing more for a while
+  for (auto link : _l3Links)  link->progress();
+
   if (!batch.end->isEvent())            // Ends in a transition: may be followed by nothing
   {
     for (uint64_t dsts = batch.dsts; dsts; dsts &= dsts - 1)
-      _l3Links[__builtin_ctzll(dsts)]->drain();
+      _l3Links[__builtin_ctzll(dsts)]->drain("DRP");
   }
 
   ++_batchCount;

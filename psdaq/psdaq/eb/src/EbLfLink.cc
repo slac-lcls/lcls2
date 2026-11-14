@@ -105,10 +105,6 @@ EbLfLink::EbLfLink(Endpoint*          ep,
   _timedOut(0ull),
   _pending (pending),
   _posting (posting),
-  _posted   (0ull),
-  _completed(0ull),
-  _txErrors (0ull),
-  _txTimedOut(0ull),
   _depth   (depth),
   _credits (0)
 {
@@ -559,7 +555,7 @@ int EbLfCltLink::post(const void* buf,
       warned = true;
       fprintf(stderr, "%s:\n  writedata() to ID %d still blocked after %lu ms, "
               "%lu writes outstanding\n", __PRETTY_FUNCTION__, _id,
-              TX_WARN_TMO.count(), _posted - _completed - _txErrors);
+              TX_WARN_TMO.count(), txOutstanding());
     }
 
     if (t1 - t0 > TX_FAIL_TMO)
@@ -586,12 +582,13 @@ int EbLfCltLink::post(const void* buf,
 
 // Wait for this link's writes to complete.  Call it where the link may go quiet:
 // on tcp, the unsent remainder of a write moves only while its Tx CQ is read.
-int EbLfCltLink::drain(unsigned msTmo)
+// A timeout loses nothing: the writes stay queued for later reaping.
+int EbLfCltLink::drain(const char* peer, unsigned msTmo)
 {
-  if (_posted == _completed + _txErrors)  return 0;
+  if (!txOutstanding())  return 0;
 
   auto t0{fast_monotonic_clock::now()};
-  while (_posted != _completed + _txErrors)
+  while (txOutstanding())
   {
     _reapTx();
 
@@ -599,8 +596,8 @@ int EbLfCltLink::drain(unsigned msTmo)
     {
       ++_timedOut;
       ++_txTimedOut;
-      fprintf(stderr, "%s:\n  Gave up on writes to ID %d after %u ms: %lu outstanding\n",
-              __PRETTY_FUNCTION__, _id, msTmo, _posted - _completed - _txErrors);
+      fprintf(stderr, "%s:\n  Writes to %s ID %d still outstanding after %u ms: %lu\n",
+              __PRETTY_FUNCTION__, peer, _id, msTmo, txOutstanding());
       return -FI_ETIMEDOUT;
     }
   }
