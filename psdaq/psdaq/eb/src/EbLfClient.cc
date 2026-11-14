@@ -84,7 +84,7 @@ int EbLfClient::connect(EbLfCltLink** link,
   uint64_t dT = 0;
   while (true)
   {
-    uint64_t txFlags = FI_TRANSMIT | FI_SELECTIVE_COMPLETION;
+    uint64_t txFlags = FI_TRANSMIT;   // Every write completes, so drain() can count them
     uint64_t rxFlags = 0;
     if (ep->connect(msTmo, txFlags, rxFlags))  break; // Success
     if (ep->error_num() == -FI_ENODATA)        break; // connect() timed out

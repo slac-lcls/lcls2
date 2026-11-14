@@ -101,8 +101,11 @@ void TebContributor::disconnect()
   // there won't be an Unconfigure transition, so unconfigure() here
   unconfigure();                        // Does no harm if already done
 
-  for (auto link : _links)  _transport.disconnect(link);
-  _links.clear();
+  {
+    std::lock_guard<std::mutex> lock(_linksMtx);
+    for (auto link : _links)  _transport.disconnect(link);
+    _links.clear();
+  }
 
   _id = -1;
 }
@@ -141,6 +144,14 @@ int TebContributor::_setupMetrics(const std::shared_ptr<MetricExporter> exporter
   exporter->add("TCtbO_Lat",   labels, MetricType::Gauge,   [&](){ return _latency;             });
   exporter->add("TCtbO_BtAge", labels, MetricType::Gauge,   [&](){ return _age;                 });
   exporter->add("TCtbO_BtEnt", labels, MetricType::Gauge,   [&](){ return _entries;             });
+  exporter->add("TCtbO_TxErCt", labels, MetricType::Counter, [&](){ return txFailures(_linksMtx, _links); });
+  for (unsigned i = 0; i < _prms.addrs.size(); ++i)
+  {
+    auto lbls{labels};
+    lbls["teb"] = std::to_string(i);
+    exporter->add("TCtbO_TxOut" + std::to_string(i), lbls, MetricType::Gauge,
+                  [&, i](){ return txOutstanding(_linksMtx, _links, i); });
+  }
 
   return 0;
 }
@@ -153,12 +164,16 @@ int TebContributor::connect(const std::shared_ptr<MetricExporter> exporter)
     if (rc)  return rc;
   }
 
-  _links    .resize(_prms.addrs.size());
-  _trBuffers.resize(_links.size());
+  _trBuffers.resize(_prms.addrs.size());
   _id       = _prms.id;
   _numEbs   = std::bitset<64>(_prms.builders).count();
 
-  int rc = linksConnect(_transport, _links, _prms.addrs, _prms.ports, _id, "TEB");
+  std::vector<EbLfCltLink*> links(_prms.addrs.size());
+  int rc = linksConnect(_transport, links, _prms.addrs, _prms.ports, _id, "TEB");
+  {
+    std::lock_guard<std::mutex> lock(_linksMtx);
+    _links = std::move(links);          // Even on failure, so disconnect() frees them
+  }
   if (rc)  return rc;
 
   return 0;
@@ -232,6 +247,8 @@ bool TebContributor::timeout()
   if (now - _batch.tStart < BATCH_TIMEOUT)  return false;
 
   _flush();
+
+  for (auto link : _links)  link->drain("TEB"); // The Collector may block next
   return true;
 }
 
@@ -310,6 +327,8 @@ void TebContributor::process(const EbDgram* dgram)
         // This dgram is also in a batch, so EOL must NOT be additionally set
         _post(dgram);         // Post, if contributor is providing trigger input
       }
+
+      for (auto link : _links)  link->drain("TEB"); // A transition may be followed by nothing
     }
   }
   else                        // Common RoG didn't trigger: bypass the TEB(s)
@@ -571,6 +590,11 @@ void TebContributor::_post(const EbDgram* dgram)
       rc = link->post(dgram, sz, offset, data); // Not a batch; Continue on error
       if (rc)
       {
+        if (rc == -FI_ETIMEDOUT)
+        {
+          logging::critical("%s:\n  TEB ID %u stopped taking transitions", __PRETTY_FUNCTION__, src);
+          abort();
+        }
         logging::error("%s:\n  Failed to post buffer number to TEB ID %u: rc %d, data %08x",
                        __PRETTY_FUNCTION__, src, rc, data);
       }

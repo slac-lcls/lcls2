@@ -545,6 +545,12 @@ void EbAppBase::post(const EbDgram* const* begin, const EbDgram** const end)
     int rc = lnk->post(imm);
     if (rc) [[unlikely]]
     {
+      if (rc == -FI_ETIMEDOUT)          // Losing the index would leak a transition buffer
+      {
+        logging::critical("%s:\n  DRP %u stopped taking transition buffer indices",
+                          __PRETTY_FUNCTION__, dst);
+        abort();
+      }
       logging::error("%s:\n  Failed to post transition buffer index %u to DRP %u: rc %d, imm %08lx",
                      __PRETTY_FUNCTION__, idx, dst, rc, imm);
     }

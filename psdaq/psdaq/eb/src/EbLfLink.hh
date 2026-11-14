@@ -2,10 +2,12 @@
 #define Pds_Eb_EbLfLink_hh
 
 #include "Endpoint.hh"
+#include "psdaq/service/SharedCounter.hh"
 
 #include <stdint.h>
 #include <cstddef>
 #include <vector>
+#include <mutex>
 
 
 namespace Pds {
@@ -40,9 +42,11 @@ namespace Pds {
       Fabrics::Endpoint* endpoint() const { return _ep;  }
       unsigned           id()       const { return _id;  }
       const uint64_t&    tmoCnt()   const { return _timedOut; }
-      const uint64_t&    postCnt()  const { return _posted; }
-      const uint64_t&    compCnt()  const { return _completed; }
-      const uint64_t&    errCnt()   const { return _txErrors; }
+      uint64_t           postCnt()  const { return _posted; }
+      uint64_t           compCnt()  const { return _completed; }
+      uint64_t           errCnt()   const { return _txErrors; }
+      uint64_t           txTmoCnt() const { return _txTimedOut; }
+      uint64_t           txOutstanding() const;
     public:
       int post(const void* buf,
                size_t      len,
@@ -59,9 +63,8 @@ namespace Pds {
       // required under FI_PROGRESS_MANUAL, where reading a CQ *is* what
       // advances the provider.
       //
-      // Called by post(), which is the only place that knows a write has been
-      // queued, so no caller has to remember to do it.  A no-op on a link with
-      // no Tx CQ, which is every server-side link.
+      // Called by post(), drain() and progress().  A no-op on a link with no
+      // Tx CQ, which is every server-side link.
       ssize_t _reapTx();
     protected:
       enum { _BegSync = 0x11111111,
@@ -77,9 +80,10 @@ namespace Pds {
       uint64_t               _timedOut;
       volatile uint64_t&     _pending; // Flag set when currently pending
       volatile uint64_t&     _posting; // Bit list of IDs currently posting
-      uint64_t               _posted;    // RMA writes queued
-      uint64_t               _completed; // Their Tx completions reaped
-      uint64_t               _txErrors;  // Of which reported an error
+      SharedCounter          _posted;    // RMA writes queued
+      SharedCounter          _completed; // Their Tx completions reaped
+      SharedCounter          _txErrors;  // Of which reported an error
+      SharedCounter          _txTimedOut; // Posts and drains timed out; _timedOut also counts empty polls
     public:
       const unsigned         _depth;
       unsigned               _credits;
@@ -129,12 +133,36 @@ namespace Pds {
                size_t      offset,
                uint64_t    immData,
                void*       ctx = nullptr);
+      int drain(const char* peer, unsigned msTmo = 5000);
+      uint64_t progress();
     private:
       int _synchronizeBegin();
       int _synchronizeEnd();
     };
+
+    // For metrics: the exporter may run while disconnect() deletes the links,
+    // so the link vector may change only while holding mtx
+    int64_t txOutstanding(std::mutex& mtx, const std::vector<EbLfCltLink*>& links, unsigned idx);
+    int64_t txFailures   (std::mutex& mtx, const std::vector<EbLfCltLink*>& links);
   };
 };
+
+inline
+uint64_t Pds::Eb::EbLfLink::txOutstanding() const
+{
+  // Read the completions first: _posted only grows, so the difference can't go negative
+  uint64_t done = _completed + _txErrors;
+  return _posted - done;
+}
+
+// Move outstanding writes along without blocking; returns how many remain
+inline
+uint64_t Pds::Eb::EbLfCltLink::progress()
+{
+  if (!txOutstanding())  return 0;
+  _reapTx();
+  return txOutstanding();
+}
 
 inline
 void* Pds::Eb::EbLfLink::lclAdx(size_t offset) const

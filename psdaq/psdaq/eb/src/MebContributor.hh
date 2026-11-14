@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <list>
+#include <mutex>
 
 
 namespace Pds {
@@ -46,6 +47,7 @@ namespace Pds {
       size_t                    _maxEvSize;
       size_t                    _maxTrSize;
       EbLfClient                _transport;
+      std::mutex                _linksMtx; // Guards _links for the metrics
       std::vector<EbLfCltLink*> _links;
       std::vector<void*>        _region;
       std::vector<size_t>       _regSize;
