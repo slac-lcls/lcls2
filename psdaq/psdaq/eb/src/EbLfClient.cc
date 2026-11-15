@@ -162,6 +162,13 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
                           const char*                     peer)
 {
   std::vector<EbLfCltLink*> tmpLinks(links.size());
+  std::vector<bool> claimed(links.size()); // IDs taken by this call; links may hold an earlier attempt's
+  // On failure, undo this call: the caller's cleanup sees only what is in links
+  auto abandon = [&]()
+  {
+    for (unsigned j = 0; j < links.size(); ++j)  if (claimed[j])  links[j] = nullptr;
+    for (auto link : tmpLinks)  transport.disconnect(link);
+  };
   for (unsigned i = 0; i < addrs.size(); ++i)
   {
     int            rc;
@@ -172,6 +179,7 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     {
       logging::error("%s:\n  Error connecting to %s at %s:%s for link[%u]",
                      __PRETTY_FUNCTION__, peer, addr, port, i);
+      abandon();
       return rc;
     }
     logFabricInfo("EbLfClient", tmpLinks[i]->endpoint()->fabric());
@@ -184,9 +192,25 @@ int Pds::Eb::linksConnect(EbLfClient&                     transport,
     {
       logging::error("%s:\n  Error exchanging IDs with %s for link[%u]",
                      __PRETTY_FUNCTION__, peer, i);
+      abandon();
       return rc;
     }
     unsigned rmtId = link->id();
+    if (rmtId >= links.size())
+    {
+      logging::error("%s:\n  %s at %s:%s has ID %u, out of range (>= %zu)",
+                     __PRETTY_FUNCTION__, peer, addrs[i].c_str(), ports[i].c_str(), rmtId, links.size());
+      abandon();
+      return EINVAL;
+    }
+    if (claimed[rmtId])
+    {
+      logging::error("%s:\n  %s at %s:%s claims ID %u, already taken by another %s",
+                     __PRETTY_FUNCTION__, peer, addrs[i].c_str(), ports[i].c_str(), rmtId, peer);
+      abandon();
+      return EINVAL;
+    }
+    claimed[rmtId] = true;
     links[rmtId]   = link;
 
     logging::info("Outbound link with %3s ID %2d at %s:%s connected", // in %4lu ms",

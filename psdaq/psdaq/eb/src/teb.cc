@@ -415,7 +415,23 @@ void Teb::_queueMrqBuffers()
                      ImmData::idx(immData), _prms.numMebEvBufs[src], src, immData, rc);
       break;
     }
-    _monBufLists[src].push(unsigned(immData));
+    auto& lst = _monBufLists[src];
+    auto  idx = ImmData::idx(immData);
+    for (unsigned i = 0; i < lst.count(); ++i)
+    {
+      if (ImmData::idx(lst.peek(i)) == idx) [[unlikely]]
+      {
+        logging::critical("MEB %u offered buffer %u again while it is still queued (immData = %08lx)",
+                          src, idx, immData);
+        abort();
+      }
+    }
+    if (lst.push(unsigned(immData))) [[unlikely]]
+    {
+      logging::critical("MEB %u buffer queue is full (%zu): dropping buffer %u (immData = %08lx)",
+                        src, lst.count(), idx, immData);
+      abort();
+    }
   }
 }
 
@@ -1473,6 +1489,7 @@ int main(int argc, char **argv)
     if (kwargs.first == "ep_fabric")    continue;
     if (kwargs.first == "ep_domain")    continue;
     if (kwargs.first == "ep_provider")  continue;
+    if (kwargs.first == "eb_slot_check") continue;
     if (kwargs.first == "script_path")  continue;
     if (kwargs.first == "mon_throttle") continue;
     if (kwargs.first == "eb_timeout")   continue; // EbAppBase

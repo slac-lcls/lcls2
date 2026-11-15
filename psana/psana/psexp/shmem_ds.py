@@ -40,7 +40,12 @@ class ShmemDataSource(DataSourceBase):
         if self.runnum_list_index == len(self.runnum_list):
             return False
 
-        self.dm = DgramManager(["shmem"], tag=self.tag, config_consumers=[self.dsparms])
+        self.dm = DgramManager(
+            ["shmem"],
+            tag=self.tag,
+            config_consumers=[self.dsparms],
+            transitions_only=self.shmem_transitions_only,
+        )
         self.runnum_list_index += 1
         return True
 

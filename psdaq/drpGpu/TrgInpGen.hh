@@ -34,6 +34,7 @@ struct TrgInpGenMetrics
 
   uint64_t  pndWtCtr        {0};
   uint64_t  pidWtCtr        {0};
+  uint64_t  nRcvrSleeps     {0};
 
   uint64_t  nEvents         {0};
   uint64_t  nDmaRet         {0};

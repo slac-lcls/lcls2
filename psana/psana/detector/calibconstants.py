@@ -45,7 +45,8 @@ from psana.pscalib.geometry.GeometryAccess import GeometryAccess  # img_from_pix
 
 from psana.detector.UtilsAreaDetector import dict_from_arr3d, arr3d_from_dict,\
         img_from_pixel_arrays, statistics_of_pixel_arrays, img_multipixel_max, img_multipixel_mean,\
-        img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes
+        img_interpolated, init_interpolation_parameters, statistics_of_holes, fill_holes,\
+        image_shape, flat_index_from_pixel_arrays, img_from_flat_index, copy_plan_from_flat_index, img_from_copy_plan
 
 from psana.detector.UtilsMask import DTYPE_MASK, DTYPE_STATUS
 
@@ -102,6 +103,7 @@ class CalibConstants:
         self._pix_xyz = None, None, None
         self._interpol_pars = None
         self._rc_tot_max = None
+        self._pix_flat_idx = None  # (rows, cols, img_shape, flat_idx, copy_plan) - see image()
 
     def calibconst(self):
         logger.debug('calibconst')
@@ -478,12 +480,31 @@ class CalibConstants:
         #if is_none(nda, 'CalibConstants.image calib returns None', logger_method=logger.warning): return None
         if is_none(nda, 'CalibConstants.image calib returns None', logger_method=logger.debug): return None
 
-        logger.debug(info_ndarr(nda, 'nda ', last=3))
         rows, cols = self._pix_rc
-        logger.debug(info_ndarr(rows, 'rows ', last=3))
-        logger.debug(info_ndarr(cols, 'cols ', last=3))
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(info_ndarr(nda, 'nda ', last=3))
+            logger.debug(info_ndarr(rows, 'rows ', last=3))
+            logger.debug(info_ndarr(cols, 'cols ', last=3))
 
-        img = img_from_pixel_arrays(rows, cols, weight=nda, vbase=vbase, rc_tot_max=self._rc_tot_max) # mapmode==1
+        if isinstance(nda, np.ndarray) and isinstance(rows, np.ndarray) and isinstance(cols, np.ndarray)\
+           and nda.size == rows.size == cols.size:
+            # fast path: flat image index evaluated once per geometry and reused for every event.
+            # Identity check on rows/cols also covers _pix_rc restored by DetectorCacheManager/SharedCalibcCache.
+            img_shape = image_shape(rows, cols, self._rc_tot_max)
+            fidx = getattr(self, '_pix_flat_idx', None)
+            if fidx is None or fidx[0] is not rows or fidx[1] is not cols or fidx[2] != img_shape:
+                flat_idx = flat_index_from_pixel_arrays(rows, cols, img_shape)
+                try:
+                    plan = copy_plan_from_flat_index(flat_idx, nda.shape, img_shape)
+                except Exception:
+                    logger.warning('copy_plan_from_flat_index failed for shape %s, falling back to scatter'
+                                    % str(nda.shape), exc_info=True)
+                    plan = None
+                fidx = self._pix_flat_idx = (rows, cols, img_shape, flat_idx, plan)
+            img = img_from_copy_plan(fidx[4], img_shape, nda, vbase=vbase) if fidx[4] is not None else\
+                  img_from_flat_index(fidx[3], img_shape, nda, vbase=vbase) # mapmode==1
+        else:
+            img = img_from_pixel_arrays(rows, cols, weight=nda, vbase=vbase, rc_tot_max=self._rc_tot_max) # mapmode==1
 
         if   mapmode==2: img_multipixel_max(img, nda, self.dmulti_pix_to_img_idx)
         elif mapmode==3: img_multipixel_mean(img, nda, self.dmulti_pix_to_img_idx, self.dmulti_imgidx_numentries)

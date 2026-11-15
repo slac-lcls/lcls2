@@ -130,6 +130,8 @@ EbCtrbInBase::EbCtrbInBase(const TebCtrbParams& prms) :
   _newestRcvd   {},
   _rcvdFrom     {},
   _orphanCount  (0),
+  _slotCheck    (prms.kwargs.find("eb_slot_check") == prms.kwargs.end() ||
+                 prms.kwargs.at("eb_slot_check") != "0"),
   _prms         (prms),
   _regSize      (0),
   _region       (nullptr)
@@ -207,7 +209,7 @@ int EbCtrbInBase::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   exporter->add("TCtbI_BatCt",  labels, MetricType::Counter, [&](){ return _batchCount;          });
   exporter->add("TCtbI_EvtCt",  labels, MetricType::Counter, [&](){ return _eventCount;          });
   exporter->add("TCtbI_MisCt",  labels, MetricType::Counter, [&](){ return _missing;             });
-  exporter->add("TCtbI_DefSz",  labels, MetricType::Counter, [&](){ return _deferred.size();     });
+  exporter->add("TCtbI_DefSz",  labels, MetricType::Gauge,   [&](){ return _deferred.size();     });
   exporter->add("TCtbI_BypCt",  labels, MetricType::Counter, [&](){ return _bypassCount;         });
   exporter->add("TCtbI_NPrgCt", labels, MetricType::Counter, [&](){ return _noProgCount;         });
   exporter->add("TCtbI_OrphCt", labels, MetricType::Counter, [&](){ return _orphanCount;         });
@@ -442,11 +444,58 @@ int EbCtrbInBase::_process(TebContributor& ctrb)
     if (print)  abort();
   }
 
+  if (_slotCheck)  _checkOverlap(bdg, end, src, data);
+
   _matchUp(ctrb, bdg);
 
   ++_batchCount;
 
   return 0;
+}
+
+// A TEB reuses a Results slot only once its Input is done with, so an arriving
+// batch must not overlap one still waiting to be delivered
+void EbCtrbInBase::_checkOverlap(const ResultDgram* bdg, const void* end, unsigned src, uint64_t data)
+{
+  if (_deferred.empty())  return;
+
+  auto last = bdg;
+  for (unsigned i = 1; (i < _prms.maxEntries) && !last->isEOL(); ++i)
+  {
+    auto next = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(last) + _maxResultSize);
+    if (next >= end)  break;
+    last = next;
+  }
+
+  // Entries below bdg are untouched by this write, so walking a deferred batch
+  // in live memory is safe up to the first entry that reaches bdg.  Only a
+  // batch starting within maxEntries below bdg can reach it.
+  auto regEnd = reinterpret_cast<const char*>(_region) + _regSize;
+  auto reach  = (_prms.maxEntries - 1) * _maxResultSize;
+  for (const auto& batch : _deferred)
+  {
+    if ((batch > last) || (reinterpret_cast<const char*>(batch) + reach < reinterpret_cast<const char*>(bdg)))
+      continue;
+    auto dg = batch;
+    for (unsigned i = 1; (dg < bdg) && !dg->isEOL() && (i < _prms.maxEntries); ++i)
+    {
+      auto next = reinterpret_cast<const ResultDgram*>(reinterpret_cast<const char*>(dg) + _maxResultSize);
+      if (reinterpret_cast<const char*>(next) >= regEnd)  break;
+      dg = next;
+    }
+    if ((dg >= bdg) && (dg <= last)) [[unlikely]]
+    {
+      unsigned bIdx = ((char*)bdg   - (char*)_region) / _maxResultSize;
+      unsigned dIdx = ((char*)dg    - (char*)_region) / _maxResultSize;
+      logging::critical("%s:\n  TEB %u wrote Results %014lx at idx %u over deferred Results at idx %u, "
+                        "now pid %014lx, data %08lx",
+                        __PRETTY_FUNCTION__, src, bdg->pulseId(), bIdx, dIdx, dg->pulseId(), data);
+      fprintf(stderr, "*** deferred %zu, inputs %014lx, batches %lu\n",
+              _deferred.size(), _inputs ? _inputs->pulseId() : 0ul, _batchCount);
+      _tbDump();
+      abort();
+    }
+  }
 }
 
 // Can the Input at iPid still be paired?  Events reach the TEB in pulse ID

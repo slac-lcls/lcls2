@@ -169,6 +169,7 @@ class DataSourceBase(abc.ABC):
         self.dir = kwargs.get("dir", None)
         self.files = kwargs.get("files", None)
         self.shmem = kwargs.get("shmem", None)
+        self.shmem_transitions_only = kwargs.get("shmem_transitions_only", False)
         self.monitor = kwargs.get("monitor", False)
         self.small_xtc = kwargs.get("small_xtc", [])
         self.timestamps = kwargs.get("timestamps", np.empty(0, dtype=np.uint64))
@@ -217,7 +218,7 @@ class DataSourceBase(abc.ABC):
 
         # Warn about unrecognized kwargs
         known_keys = {
-            "exp", "run", "dir", "files", "shmem", "drp", "batch_size",
+            "exp", "run", "dir", "files", "shmem", "shmem_transitions_only", "drp", "batch_size",
             "max_events", "detectors", "xdetectors", "det_name",
             "live", "smalldata_kwargs", "monitor", "small_xtc", "timestamps",
             "dbsuffix", "intg_det", "intg_delta_t", "smd_callback",

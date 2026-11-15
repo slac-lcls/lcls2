@@ -120,6 +120,7 @@ int main(int argc, char* argv[])
         if (kwargs.first == "ep_fabric")         continue;  // PGPDetectorApp
         if (kwargs.first == "ep_domain")         continue;  // PGPDetectorApp
         if (kwargs.first == "ep_provider")       continue;  // PGPDetectorApp
+        if (kwargs.first == "eb_slot_check")     continue;  // EbAppBase/EbCtrbInBase
         if (kwargs.first == "drp")               continue;  // PGPDetectorApp
         if (kwargs.first == "pythonScript")      continue;  // PGPDetectorApp
         if (kwargs.first == "sim_length")        continue;  // XpmDetector

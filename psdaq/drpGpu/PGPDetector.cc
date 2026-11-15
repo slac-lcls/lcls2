@@ -765,7 +765,8 @@ PGPDrp::PGPDrp(Parameters&    parameters,
   m_green_ctx  {{}, {}, {}, {}},
   m_terminate  (false),
   m_terminate_d(nullptr),
-  m_nNoTrDgrams(0)
+  m_nNoTrDgrams(0),
+  m_nColBlocks(0)
 {
   if (pool.setMaskBytes(m_para.laneMask, m_det.virtChan)) {
     logging::critical("Failed to allocate lane/vc: '%m' "
@@ -1021,6 +1022,9 @@ int PGPDrp::_setupMetrics(const std::shared_ptr<MetricExporter> exporter)
   m_nNoTrDgrams = 0;
   exporter->add("drp_num_no_tr_dgram", labels, MetricType::Gauge,
                 [&](){return m_nNoTrDgrams;});
+  m_nColBlocks = 0;
+  exporter->add("DRP_colBlocks", labels, MetricType::Counter,
+                [&](){return m_nColBlocks;});
 
   exporter->constant("drp_num_pgp_bufs", labels, pool.dmaCount());
   exporter->add("drp_num_pgp_in_user",  labels, MetricType::Gauge,
@@ -1097,9 +1101,17 @@ void PGPDrp::_collector()
   while (!m_terminate.load(std::memory_order_relaxed)) {
     drp_scoped_range loop_range{nvtx3::category{0}, nvtx3::payload{bufIndex}};
 
-    // Receive events
+    // Receive events, timing out a partial TEB batch before blocking
     unsigned nRet;
-    if (!collectorQueue.pop(nRet))  continue; // This can block
+    bool rc;
+    while (!(rc = collectorQueue.try_pop(nRet))) {
+      if (tebContributor().timeout()) {
+        ++m_nColBlocks;
+        rc = collectorQueue.popW(nRet);
+        break;
+      }
+    }
+    if (!rc)  continue;
 
     for (unsigned b = 0; b < nRet; ++b) {
       drp_scoped_range batch_range{nvtx3::category{1}, nvtx3::payload{bufIndex}};
@@ -1201,15 +1213,6 @@ void PGPDrp::_collector()
       //printf("*** P: Sending input %u (%014lx, %08x) to TEB\n", pebbleIndex, pid, dgram->env);
       tebContributor().process(pebbleIndex);
       nvtx3::mark("Sent to TEB", nvtx3::payload{pebbleIndex});
-
-      // Time out batches for the TEB
-      /// while (!m_workerQueues[worker].try_pop(batch)) { // Poll
-      ///     if (tebContributor.timeout()) {              // After batch is timed out,
-      ///         rc = m_workerQueues[worker].popW(batch); // pend
-      ///         break;
-      ///     }
-      /// }
-      /// logging::debug("Worker %d popped batch %u, size %zu\n", worker, batch.start, batch.size);
 
       bufIndex = (bufIndex + 1) & bufferMask;
     }
