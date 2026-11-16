@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "observed_utc": "2026-11-16T06:48:20.551963+00:00",
+  "sources": [
+    {
+      "name": "feature",
+      "commit": "1995752058bb9aaa3f16ccd86c22e84153257538",
+      "files": [
+        {
+          "path": "psana/psana/gpu/README.md",
+          "bytes": 6050,
+          "sha256": "23d338d9d1a573ef284c217c06e38f857407ba849f8ae4c994208606238537ec",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/jf_scaling/README.md",
+          "bytes": 5749,
+          "sha256": "6d54e8820ec1903f5c7b6eb641042559ef1f6d7330a2adcf1924a1f38eb08dc7",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/scripts/jf_scaling/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/scripts/jf_scaling/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/stage1_regression/README.md",
+          "bytes": 9943,
+          "sha256": "efec4f0d5b50941acb874d9aaea3894021f4ae2778a141966e83e6ebf5b7f9e5",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/scripts/stage1_regression/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/scripts/stage1_regression/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/stage5c/README.md",
+          "bytes": 7642,
+          "sha256": "005fde78d8ed826859d83f009fbc09e1c3cf0af9d8d72727a2201ddd27ab5c96",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/scripts/stage5c/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/scripts/stage5c/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/feespec_bulk_benchmark/README.md",
+          "bytes": 16461,
+          "sha256": "78095ff7e4a5c11765fbc58d2b9f5f232bc6d06a67838c48418fc42f704dd9a7",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/scripts/feespec_bulk_benchmark/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/scripts/feespec_bulk_benchmark/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/preview_stream_read_plan.py",
+          "bytes": 7699,
+          "sha256": "c9c5fef6d08af921f90cffb6e8eb722f80a4789bb5484cc077b54e907ca34668",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/scripts/preview_stream_read_plan.py",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/scripts/preview_stream_read_plan.py"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/complexity_inventory.py",
+          "bytes": 5125,
+          "sha256": "9114ae9c1b819c7cc2d35d3737ecb2a394fab802f7609b456d26f76c3984e773",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/scripts/complexity_inventory.py",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/scripts/complexity_inventory.py"
+        },
+        {
+          "path": "psana/psana/gpu/docs/performance/input_group_bookkeeping.md",
+          "bytes": 8017,
+          "sha256": "194882cec903f27b38cbfec5cff50d108d426336495fd6427849107c64668031",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/psana/gpu/docs/performance/input_group_bookkeeping.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/psana/gpu/docs/performance/input_group_bookkeeping.md"
+        },
+        {
+          "path": "psana/meson.build",
+          "bytes": 9012,
+          "sha256": "4cd078217825f316d8db0ef62782ac5d8a2a3d42283b839240bfc984efe9f1ae",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/psana/meson.build",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/psana/meson.build"
+        },
+        {
+          "path": "pyproject.toml",
+          "bytes": 7921,
+          "sha256": "83d3f92304642f3907b92481030f31654de3b4e98ef2403f793b378e06989dce",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/pyproject.toml",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/pyproject.toml"
+        },
+        {
+          "path": "hatch_build.py",
+          "bytes": 246,
+          "sha256": "2d02f09c0bde9f74a666de28badbded7ec8057bdef47bb9cc687f7ab763c63e4",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/feature/hatch_build.py",
+          "url": "https://github.com/slac-lcls/lcls2/blob/1995752058bb9aaa3f16ccd86c22e84153257538/hatch_build.py"
+        }
+      ]
+    },
+    {
+      "name": "pr187-pr208",
+      "commit": "66072235d3cd18c002a13c581af82e111a418758",
+      "files": [
+        {
+          "path": "psana/psana/gpu/docs/performance/README.md",
+          "bytes": 4041,
+          "sha256": "85642b8dd30faa65351ddefbbddc508ccaa2f1335db1576048e51e961bc1b156",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr187-pr208/psana/psana/gpu/docs/performance/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/66072235d3cd18c002a13c581af82e111a418758/psana/psana/gpu/docs/performance/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/docs/performance/pr187_pr208.md",
+          "bytes": 18431,
+          "sha256": "de6f55ee6b85164e60ef06338faa5bfb46c810ef0c44c54646f7fc7fc796a93a",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr187-pr208/psana/psana/gpu/docs/performance/pr187_pr208.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/66072235d3cd18c002a13c581af82e111a418758/psana/psana/gpu/docs/performance/pr187_pr208.md"
+        },
+        {
+          "path": "psana/psana/gpu/docs/performance/hardware.md",
+          "bytes": 5640,
+          "sha256": "5dde0931b9ece3cd6d8d585777edcb5548ae5946ae5b129afec85e685826400f",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr187-pr208/psana/psana/gpu/docs/performance/hardware.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/66072235d3cd18c002a13c581af82e111a418758/psana/psana/gpu/docs/performance/hardware.md"
+        },
+        {
+          "path": "psana/psana/gpu/docs/performance/history.md",
+          "bytes": 2538,
+          "sha256": "e272c27b87ab8bedbcae3da2ae4d23af186c55b3fe4e8b603b92144f2411f0d8",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr187-pr208/psana/psana/gpu/docs/performance/history.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/66072235d3cd18c002a13c581af82e111a418758/psana/psana/gpu/docs/performance/history.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/pr187_pr208/README.md",
+          "bytes": 5497,
+          "sha256": "b23abafbefd1fb3d310fd2924931dec87a5264b172063416b2d862d3e40a4f2c",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr187-pr208/psana/psana/gpu/scripts/pr187_pr208/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/66072235d3cd18c002a13c581af82e111a418758/psana/psana/gpu/scripts/pr187_pr208/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/pr187_pr208/manifest.json",
+          "bytes": 21092,
+          "sha256": "bc58b3df9087589f5dc2c3d86be83bb92852fa7304ecb5073218a3211ebb1cb5",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr187-pr208/psana/psana/gpu/scripts/pr187_pr208/manifest.json",
+          "url": "https://github.com/slac-lcls/lcls2/blob/66072235d3cd18c002a13c581af82e111a418758/psana/psana/gpu/scripts/pr187_pr208/manifest.json"
+        }
+      ]
+    },
+    {
+      "name": "pr299",
+      "commit": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a",
+      "files": [
+        {
+          "path": "psana/psana/gpu/notes/pr299_perlmutter_20261115.md",
+          "bytes": 10036,
+          "sha256": "77bb16d0bc8653bb11f57d44cdc737f2e1bec89de2222d5a8a8860d90c44da77",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr299/psana/psana/gpu/notes/pr299_perlmutter_20261115.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/pr299_perlmutter/README.md",
+          "bytes": 6713,
+          "sha256": "75340cd721f8fd08bacc4a1aed009fbeb55271dcd532aaf4265b357cef06e5e6",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr299/psana/psana/gpu/scripts/pr299_perlmutter/README.md",
+          "url": "https://github.com/slac-lcls/lcls2/blob/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/scripts/pr299_perlmutter/README.md"
+        },
+        {
+          "path": "psana/psana/gpu/scripts/pr299_perlmutter/verify_archive.py",
+          "bytes": 14487,
+          "sha256": "02c85288db44fdb21856618e5c8676bf85ad39adae7baa1f4118888edceaf43e",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr299/psana/psana/gpu/scripts/pr299_perlmutter/verify_archive.py",
+          "url": "https://github.com/slac-lcls/lcls2/blob/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/scripts/pr299_perlmutter/verify_archive.py"
+        },
+        {
+          "path": "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-summary.json",
+          "bytes": 4522,
+          "sha256": "45a36febd173a0a29d086d2698f82cc65ce621f00e55414b0c367b51c325473a",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/pr299/psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-summary.json",
+          "url": "https://github.com/slac-lcls/lcls2/blob/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/reviews/packaging-summary.json"
+        }
+      ]
+    },
+    {
+      "name": "old-results",
+      "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+      "files": [
+        {
+          "path": "benchmarks/scaling/README.md",
+          "bytes": 3838,
+          "sha256": "c021ef42bcd1838a31d5516b8fbdb8f8b47f921c3cb33cc4cd43ea3348b0fb32",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/README.md",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/README.md"
+        },
+        {
+          "path": "benchmarks/scaling/FORMAT.md",
+          "bytes": 4995,
+          "sha256": "aa0b3dd8e391e3ea2cac6b92c59d2cef793c3ed2168a157985593ba4a3412015",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/FORMAT.md",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/FORMAT.md"
+        },
+        {
+          "path": "benchmarks/scaling/catalog.json",
+          "bytes": 1268,
+          "sha256": "ec0293913ba7410d55fd5bf58b2e2bd08f7ceb8038fcb8978a97f2b79d671fe8",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/catalog.json",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/catalog.json"
+        },
+        {
+          "path": "benchmarks/scaling/tools/check_catalog.py",
+          "bytes": 10186,
+          "sha256": "84472be14e5dcf53cc2f86b4a80ff1fc9feba4f0fcab0f008b987c5720eb016d",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/tools/check_catalog.py",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/tools/check_catalog.py"
+        },
+        {
+          "path": "benchmarks/scaling/tools/replay_sdf_report.py",
+          "bytes": 4833,
+          "sha256": "050e659a26523e21ff46ec7c5f467b2e36a898d8f4f73450fc6727fe7958b942",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/tools/replay_sdf_report.py",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/tools/replay_sdf_report.py"
+        },
+        {
+          "path": "benchmarks/scaling/sources/README.md",
+          "bytes": 1410,
+          "sha256": "c406e41e69e7429b19382100e0c38e3950a6f3b2d4b9839771ff1330d0af7df4",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/sources/README.md",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/sources/README.md"
+        },
+        {
+          "path": "benchmarks/scaling/sources/IMPORTS.json",
+          "bytes": 153929,
+          "sha256": "d33214972c141439d135c5023523e69cacf3dac6dd8befc0695b640e22cb8dec",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/sources/IMPORTS.json",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/sources/IMPORTS.json"
+        },
+        {
+          "path": "benchmarks/scaling/review/FINAL.md",
+          "bytes": 1902,
+          "sha256": "904ce0ae20c7184e83ce5440fe4c15efc553f43441b42f186c75f7323f2d450f",
+          "inspection_copy": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/old-results/benchmarks/scaling/review/FINAL.md",
+          "url": "https://github.com/monarin/lcls2/blob/9674e3e803354b65c86e42d616af50b23d2c6e3a/benchmarks/scaling/review/FINAL.md"
+        }
+      ]
+    }
+  ],
+  "old_results_added_file_count": 359,
+  "old_results_diff_from_feature_file_count": 2394,
+  "old_results_branch_point": "2de8179b8d69a942d120b6c74ce46a11d4c7186a",
+  "source_selection_note": "Selected inspection files, not complete import allowlists. Source branches were fetched from GitHub; full migration dependency closure is a later acceptance gate."
+}

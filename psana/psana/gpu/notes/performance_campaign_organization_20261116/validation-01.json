@@ -1,0 +1,19 @@
+{
+  "utc": "2026-11-16T06:49:07.779699+00:00",
+  "repository": "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results",
+  "base": "1995752058bb9aaa3f16ccd86c22e84153257538",
+  "checked_head": "1995752058bb9aaa3f16ccd86c22e84153257538",
+  "proposal_sha256": "ebaf56361bcb7259a3e3768f2a0662e95cb18269a762d818069c2a58cad441f8",
+  "source_inventory_sha256": "d46b7ecc0b5a514080403e3652a2ead67ac094ede9e412a75824e28e20c6e8d8",
+  "checks": [
+    "29 inspected source files match pinned Git objects, SHA256, sizes and review excerpts",
+    "Proposal relative Markdown links resolve",
+    "Only proposal and its organization-review records differ from selected feature base; runtime, examples, tests, packaging and existing docs unchanged",
+    "Inventory distinguishes 359 added archive files from the 2394-file old-results/feature diff",
+    "Authored Markdown has no trailing whitespace; tracked diff whitespace check passes"
+  ],
+  "limitations": [
+    "Design only; no migration, archive replay, runtime tests or performance runs were performed.",
+    "Source excerpts are selected inspection files, not the complete migration dependency closure."
+  ]
+}
