@@ -1,0 +1,70 @@
+{
+  "reviewed_commit": "596f137ec555aa9aeb20c2da20c9bda0043deb0b",
+  "verdict": "pass",
+  "summary": "Round 2 closes ORG-001 through ORG-004 with nothing blocking left. ORG-001 is closed: proposal lines 183-201 require central pytest collection exclusions for notes/archives/**, scripts/pr187_pr208/** and scripts/pr299_perlmutter/** plus any other frozen directory found in the import ledger. The hook or configuration must sit outside the snapshots, with no edits or __init__ files added inside them. Lint and pre-commit rewriting hooks get matching exclusions, and hash integrity checks still cover every excluded file. The archive checks are named offline commands, and step 5 requires an explicit list of maintained tests and a broad-collection check that picks up no frozen files. ORG-002 is closed: lines 117-120 state the root used for each column and line 134 names repository-root validation/input-bookkeeping-20261110/. ORG-003 is closed: lines 99-107 make the stable ID the canonical key, catalog and manifest must agree on record_path and script_roots, and the validator checks this. ORG-004 is closed: lines 288-296 declare campaigns/**, templates/**, catalog/FORMAT, frozen scripts, campaign orchestration and archives source-only, and step 5 checks them in Meson and wheel output. This round I read the source excerpts for PR187/208, PR299 and the old catalog myself. They support the proposal's claims: the PR299 verifier requires exact repository-relative coverage under rglob, so no files may be added to its directories; PR187 has a 47-file manifest and a test_startup.py command; check_catalog.py works out its roots from fixed directory depths and hardcodes inherited root notes/sim10_striping_20261110; the 156/54 case counts appear in the code; and the README/IMPORTS evidence covers the reference/latest copies and the missing SDF inputs. No regressions found: the standard docs/examples conventions, the no-wholesale-merge rule, the separation of statistical/cache/NIC/GDS limitations from staging/application correctness, keeping thresholds out of pytest, and the achievable migration steps are all still in place. One low-severity, non-blocking issue about labels in the review records is reported as ORG-005.",
+  "checks": [
+    "Read the full proposal at the reviewed checkout. Checked the changes for ORG-001 (lines 183-201, step 5 lines 313-326), ORG-002 (lines 45-47, 117-134), ORG-003 (lines 99-107, 133) and ORG-004 (lines 279-296, step 5).",
+    "Read scope.md, response-01.md, review-01.json, sources.json, source-evidence.md, validation-02.json, validation-exact-01.json and status.json in the review-record directory.",
+    "Inspected the PR187/208 performance README, pr187_pr208/README.md and the start of manifest.json. Confirmed the 47-file/184,368-byte manifest, the from-directory hash check, `unittest discover -s perlmutter/scripts -p test_startup.py`, fixed site paths, the supporting note pr187_sample_mapping_20261030.md, and the unresolved remaining-loop equivalence. The proposal's repository-root form of the unittest command is equivalent.",
+    "Inspected the PR299 note, the script README and lines 1-85 of verify_archive.py. Repository-relative SCRIPTS/EVIDENCE/REPORT constants and rglob-based exact checksum coverage confirm that the package must stay at its paths, that nothing may be added inside it (conftest, __init__, __pycache__), and that the proposal correctly forbids initializers in snapshot trees. Also confirmed: C1 unfixed, Run77 deferred, uncontrolled cache, CPU controls not equal-work, and the trailing-whitespace/end-of-file hook caveat.",
+    "Inspected the old README, FORMAT.md, lines 1-125 of check_catalog.py, sources/README.md and the start of IMPORTS.json. Confirmed fixed-depth ROOT/REPO inference and the exact 5-part path check, the inherited REPO/notes/sim10_striping_20261110 dependency (beyond the 359 added files), 156 SDF and 54 C++ case counts, reference/latest snapshots, 8 missing SDF inputs, and receipt paths embedded under benchmarks/scaling/sources/. The proposal's relocation ledger and byte-preservation rule fit these.",
+    "Checked psana/meson.build:310-330: install_subdir('psana') excludes only 'gpu/notes' among GPU paths, so docs/ and scripts/ are installed by default. The ORG-004 source-only classification and the Meson/wheel checks are needed and sufficient as design requirements.",
+    "Checked pyproject.toml: [tool.ruff] has no exclude and there is no pytest configuration. No repository conftest.py, pytest.ini, setup.cfg or tox.ini was found, so the ORG-001 central-configuration requirement is new work and achievable.",
+    "Checked .pre-commit-config.yaml: the rewriting hooks are trailing-whitespace, end-of-file-fixer and mixed-line-ending. All of them fall under the proposal's general 'pre-commit rewriting hooks need matching path exclusions' rule.",
+    "Compared the hashes in the supplied exact verification with validation-02.json: the proposal and source-inventory SHA256 values are identical, which ties the supplied 596f137 verification to this proposal revision.",
+    "Arithmetic: 156+54+18+12 = 240, consistent with step 4."
+  ],
+  "limitations": [
+    "I ran no commands. I did not recompute any SHA256, including the excerpt and evidence hashes or the proposal hash. I relied on the coordinator's supplied exact-commit verification for hash matches and for the claim that only the proposal and records changed.",
+    "Source excerpts are partial: the first 85 of verify_archive.py's lines, the first 125 of check_catalog.py's, the first 19 of manifest.json's and the first 28 of IMPORTS.json's. replay_sdf_report.py, catalog.json, review/FINAL.md, hardware.md, history.md, pr187_pr208.md and packaging-summary.json are listed in sources.json but are not excerpted, so I did not inspect them. Per scope, external inspection_copy paths were not read.",
+    "The full dependency closure and the completeness of the 359-file ledger are future migration requirements and cannot be confirmed at design time.",
+    "No runtime, GPU or performance tests are expected for this design-only deliverable, and none were assumed."
+  ],
+  "findings": [
+    {
+      "id": "ORG-001",
+      "severity": "medium",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 183,
+      "evidence": "CLOSED. Lines 183-192 require pytest recursive-collection exclusions for notes/archives/**, scripts/pr187_pr208/**, scripts/pr299_perlmutter/** and every other frozen directory in the import ledger. The configuration or hook must live outside those directories, with no historical test edits or added package initializers (consistent with verify_archive.py's rglob exact-coverage rule). Ruff, formatter and pre-commit rewriting exclusions are required, and integrity hashes still cover excluded files. Lines 194-201 name the standalone PR299 and PR187 offline commands and forbid collecting every test_*.py. Step 5 (lines 317-321) requires an explicit maintained-test list and a broad-collection check showing that no frozen files are collected.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "ORG-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 117,
+      "evidence": "CLOSED. Line 45 limits the GPU-relative convention to the tree. Lines 117-120 say source paths are repository-root unless prefixed GPU: and destinations are GPU-relative unless marked repository-root. Line 134 names repository-root validation/input-bookkeeping-20261110/ explicitly.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "ORG-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 99,
+      "evidence": "CLOSED. Lines 99-107 make the stable campaign ID the canonical key. catalog.json maps it to repository-root-relative record_path and script_roots, and manifest.json repeats both. New scripts go in scripts/campaigns/<id>/ with safe single-component IDs, and there are explicit exceptions for historical multi-root and synthesis records. The validator checks uniqueness, agreement, existence/containment and the new-directory ID, and does not infer pairings from dates.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "ORG-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 288,
+      "evidence": "CLOSED. Lines 288-296 classify docs/performance/campaigns/**, docs/performance/templates/**, catalog/FORMAT, frozen script packages, scripts/campaigns and GPU notes archives as source-only. They keep curated current reports, design/API pages and examples installed, and require published links from any installed index. These paths are added to the Meson/wheel checks, and step 5 (lines 321-323) verifies them. meson.build:329 confirms that only gpu/notes is excluded today.",
+      "requested_change": "None. Closed."
+    },
+    {
+      "id": "ORG-005",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/performance_campaign_organization_20261116/validation-02.json",
+      "line": 5,
+      "evidence": "validation-02.json records checked_head a03bbecdb6eec96944081c8a6ac29056fee47561 with proposal_sha256 1ce16069.... validation-exact-01.json records the proposal at that same commit as ebaf5636..., so validation-02 actually describes the uncommitted round-2 worktree, not a03bbecdb. status.json also still lists implementation_commit a03bbecdb and phase 'preparing-rereview'. The supplied 596f137 verification has the same hashes, so the evidence chain holds, but the in-repo labels are misleading to a later auditor.",
+      "requested_change": "When recording the round-2 outcome, label validation-02.json as a pre-commit worktree check (or add the base plus 'worktree' qualifier), commit the supplied 596f137 exact-verification receipt as an in-repo record, and update status.json's implementation_commit and phase. Do not use this record to block this design pass."
+    }
+  ]
+}

@@ -15,5 +15,6 @@
   "limitations": [
     "Design only; no migration, archive replay, runtime tests or performance runs were performed.",
     "Source excerpts are selected inspection files, not the complete migration dependency closure."
-  ]
+  ],
+  "checked_state": "pre-commit worktree; checked_head is the parent commit, with the proposal and inventory bytes bound by the recorded SHA256 values"
 }
