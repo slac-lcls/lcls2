@@ -1,0 +1,14 @@
+{
+  "status": "pass",
+  "reviewed_commit": "87454c23efdfd5e9ef599d77334971f6583d8e29",
+  "changed_files": 113,
+  "changes_limited_to": [
+    "psana/psana/gpu/docs/performance/",
+    "psana/psana/gpu/scripts/performance/analysis/",
+    "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/",
+    "psana/psana/gpu/notes/sim10_results_recording_20261116/"
+  ],
+  "old_snapshot_unchanged": true,
+  "clean_detached_checkout": true,
+  "head_files_under_10MiB": true
+}
