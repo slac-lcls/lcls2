@@ -1,0 +1,14 @@
+{
+  "/global/u2/m/monarin/lcls2/.git": {
+    "representative": "/global/u2/m/monarin/lcls2_worktree/docs/psana-event-workflow",
+    "matching_refs": []
+  },
+  "/global/u2/m/monarin/lcls2_worktree/benchmarks/sim10-stream-length-20261109/.git": {
+    "representative": "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana-scaling-results",
+    "matching_refs": [
+      "refs/heads/results/psana-scaling 9674e3e803354b65c86e42d616af50b23d2c6e3a",
+      "refs/remotes/origin/docs/gpu-performance-pr187-pr208-20261028 66072235d3cd18c002a13c581af82e111a418758",
+      "refs/remotes/origin/docs/gpu-performance-pr299-perlmutter-20261115 e8d69a7e6604e1d459ad04c633de50a56b46ac9a"
+    ]
+  }
+}

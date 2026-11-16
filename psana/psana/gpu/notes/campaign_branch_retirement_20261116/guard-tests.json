@@ -1,0 +1,10 @@
+{
+  "status": "pass",
+  "checks": [
+    "clean worktree accepted; tracked/untracked/ignored content rejected",
+    "stale expected-SHA remote deletion rejected and new head retained",
+    "matching expected-SHA remote deletion succeeds and annotated archive tag remains",
+    "local compare-and-delete rejects unexpected SHA then succeeds with exact SHA"
+  ],
+  "scope": "disposable local bare repository only; no source branch mutations"
+}

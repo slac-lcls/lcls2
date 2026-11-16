@@ -1,0 +1,43 @@
+{
+  "canonical_worktree": "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results",
+  "canonical_branch": "results/psana2-gpu-scaling",
+  "published_results_commit": "3e927ee1b005c4a04d8c10ee11817fc2c9bc9f99",
+  "sources": [
+    {
+      "remote": "origin",
+      "repository": "slac-lcls/lcls2",
+      "branch": "docs/gpu-performance-pr187-pr208-20261028",
+      "commit": "66072235d3cd18c002a13c581af82e111a418758",
+      "tag": "archive/campaigns/pr187-pr208-20261028",
+      "closed_pr": 245
+    },
+    {
+      "remote": "origin",
+      "repository": "slac-lcls/lcls2",
+      "branch": "docs/gpu-performance-pr299-perlmutter-20261115",
+      "commit": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a",
+      "tag": "archive/campaigns/pr299-perlmutter-20261115",
+      "closed_pr": 314
+    },
+    {
+      "remote": "monarin",
+      "repository": "monarin/lcls2",
+      "branch": "results/psana-scaling",
+      "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+      "tag": "archive/campaigns/psana-scaling-20261116",
+      "closed_pr": null
+    }
+  ],
+  "local_repositories": [
+    "/global/u2/m/monarin/lcls2",
+    "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results"
+  ],
+  "remove_worktrees": [
+    {
+      "path": "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana-scaling-results",
+      "branch": "results/psana-scaling",
+      "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a"
+    }
+  ],
+  "execution_receipt": "/pscratch/sd/m/monarin/psana2-gpu/campaign-branch-retirement-20261116/execution.json"
+}

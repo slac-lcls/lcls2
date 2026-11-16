@@ -1,0 +1,16 @@
+{
+  "status": "pass",
+  "local_refs": {
+    "/global/u2/m/monarin/lcls2": {},
+    "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results": {
+      "refs/heads/results/psana-scaling": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+      "refs/remotes/origin/docs/gpu-performance-pr187-pr208-20261028": "66072235d3cd18c002a13c581af82e111a418758",
+      "refs/remotes/origin/docs/gpu-performance-pr299-perlmutter-20261115": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a"
+    }
+  },
+  "open_prs_inspected": {
+    "monarin/lcls2": 1,
+    "slac-lcls/lcls2": 18
+  },
+  "scope": "Known Perlmutter object stores and both GitHub source repositories"
+}
