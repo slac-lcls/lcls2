@@ -27,6 +27,7 @@ See [docs/CHANGELOG_GUIDE.md](docs/CHANGELOG_GUIDE.md) for how to add entries.
 
 ### Fixed
 
+- Fixed calibration constants deployed under a detector's old short name (e.g. `archon_1`, `axis_`) not being found since all names are mapped through `cdb_detnames`; the lookup now also checks the old name. @chrisvam [#315](https://github.com/slac-lcls/lcls2/pull/315)
 - Fixed missing h5 data overflow error created by move to numpy2. @chrisvam [#303](https://github.com/slac-lcls/lcls2/pull/303)
 - Fixed the 1 ms waits in the TEB batch timeout, `EbLfServer::pend()` and `SPSCQueue::pop()` ending early because they were timed on a clock that steps every ~1 ms. TEB, MEB and DRP threads blocked up to ~1000 times a second at full rate, and TEB batches were flushed early. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
 - Fixed a GPU DRP hanging on its first event when its trigger primitive has no GPU `event()`, or when it is not in `buildDets`. The first now fails Configure with a message. @rclaus2 [#300](https://github.com/slac-lcls/lcls2/pull/300)
