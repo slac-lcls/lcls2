@@ -1,0 +1,30 @@
+{
+  "migration": {
+    "exit_code": 0,
+    "log": "migration.log"
+  },
+  "catalog": {
+    "exit_code": 0,
+    "log": "catalog.log"
+  },
+  "whitespace": {
+    "exit_code": 0,
+    "log": "whitespace.log"
+  },
+  "documentation_links": {
+    "existing_targets": 38,
+    "scope": "relative links and current results-branch URLs in four edited/new documents; other historical URLs not refetched"
+  },
+  "scope": {
+    "changed_existing_paths": [
+      "psana/psana/gpu/docs/performance/README.md",
+      "psana/psana/gpu/docs/performance/history.md",
+      "psana/psana/gpu/notes/performance_campaign_organization_20261116/IMPLEMENTATION.md",
+      "psana/psana/gpu/notes/scaling_migration_20261116/relocation.json"
+    ],
+    "frozen_archives_campaign_records_runtime_scripts": "unchanged versus base"
+  },
+  "limitations": [
+    "Documentation verification only; no new performance or raw-evidence audit, no recovery, no new campaign results verdict."
+  ]
+}

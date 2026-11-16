@@ -40,7 +40,11 @@ Implementation steps from the agreed plan (steps 1–4 complete; step 5 next):
    remote tip, campaign index and review receipt. See the
    [publication receipt](../scaling_migration_20261116/publication.md).
 5. Preserve original heads with archive tags before retiring the three source
-   branches; recheck source heads and open-PR dependencies before deletion.
+   branches. Verify published archive tags resolve to the exact source heads,
+   recheck for intervening source commits, and resolve open-PR dependencies before
+   deletion. Missing historical NIC data and pending scientific reviews do not
+   automatically block retirement; the source history and imported evidence must
+   remain preserved. See the [evidence assessment](../campaign_evidence_assessment_20261116/README.md).
 6. Last: qualify a retained/retrievable dataset on Perlmutter and SDF, then
    implement and review the maintained regression template. This step must not
    delay preserving or consolidating the completed campaign evidence.
@@ -49,6 +53,17 @@ The completed local work includes both PR-study import and scaling-catalog
 migration/validation and upstream publication. Archive tagging, source-branch
 retirement and benchmark submission remain pending. Runtime and example code
 remain unchanged.
+
+## Historical evidence follow-ups
+
+The November 16 assessment adds the four completed scaling campaigns to the
+history page without changing their original results or review status. Recover
+missing SDF source inputs if readily available; preserve any recovered inputs
+as a separately recorded supplement, leaving the frozen transfer unchanged.
+A focused results review is recommended before adopting these screens as formal
+regression baselines. Neither follow-up requires rerunning the historical jobs
+or blocks preservation and branch retirement by itself. No recovery or new
+results review has been performed by this documentation update.
 
 ## Reusable regression campaign (final implementation step)
 

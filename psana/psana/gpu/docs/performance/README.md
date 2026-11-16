@@ -107,3 +107,7 @@ C++ full-file reads, psana staging, and full cube processing measure different w
 [Record format](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/FORMAT.md) · [Offline tools](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/scripts/performance/README.md) · [Migration verification](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/notes/scaling_migration_20261116/README.md).
 
 The maintained regression template and cross-site dataset qualification remain later work.
+
+See the [campaign evidence assessment](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/campaign_evidence_assessment_20261116/README.md)
+for the distinction between execution completion, archive verification and
+independent results review, and which historical gaps warrant follow-up.

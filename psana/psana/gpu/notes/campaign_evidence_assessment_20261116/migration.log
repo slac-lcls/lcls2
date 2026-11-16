@@ -1,0 +1,12 @@
+{
+  "status": "pass",
+  "paths": 1631,
+  "frozen_files": 1612,
+  "original_additions": 359,
+  "inherited_dependencies": 1272,
+  "source_git_blobs": 1631,
+  "limitations": [
+    "Literal-reference closure includes full source roots and provenance references; external runtime/data paths are not reconstructed.",
+    "Historical SDF missing-input receipt is preserved; no new cross-site availability claim."
+  ]
+}

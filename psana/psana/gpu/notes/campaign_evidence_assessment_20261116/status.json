@@ -1,0 +1,8 @@
+{
+  "phase": "implemented; validation and independent documentation review pending",
+  "branch": "results/psana2-gpu-scaling",
+  "base_commit": "e67782b83f1342e5c6248ec2ef2346f9a24d4c0f",
+  "round": 0,
+  "round_limit": 3,
+  "unresolved": []
+}
