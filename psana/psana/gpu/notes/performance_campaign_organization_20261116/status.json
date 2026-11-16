@@ -4,7 +4,7 @@
   "round_limit": 3,
   "scope": "organization design only; migration not performed",
   "base": "1995752058bb9aaa3f16ccd86c22e84153257538",
-  "branch": "results/psana2-scaling",
+  "branch": "results/psana2-gpu-scaling",
   "unresolved": [],
   "implementation_commit": "596f137ec555aa9aeb20c2da20c9bda0043deb0b",
   "reviewer": "Claude",
@@ -21,5 +21,12 @@
   "record_only_followup": {
     "ORG-005": "Addressed after pass: pre-commit receipts explicitly labelled, exact-commit receipt retained, status updated."
   },
-  "published": false
+  "published": false,
+  "reviewed_branch": "results/psana2-scaling",
+  "branch_naming_update": {
+    "date": "2026-11-16",
+    "requested_by": "user",
+    "change": "Renamed the clean local branch to results/psana2-gpu-scaling. The reviewed proposal and review receipts retain the original name as historical evidence.",
+    "current_plan": "IMPLEMENTATION.md"
+  }
 }
