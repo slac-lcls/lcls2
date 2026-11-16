@@ -55,6 +55,22 @@ class ArchiveChecks(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, 'Scaling duplicate case'):
                 catalog.check_scaling({}, None)
 
+    def test_sdf_repeated_control_repeat_rejected(self):
+        original = catalog.rows
+        def changed(path):
+            values = original(path)
+            if path.name == 'runs.csv':
+                controls = [r for r in values if r['cohort'] == '45028778' and r['phase'] == 'full'
+                            and r['media'] == 'weka' and r['gpus'] == '1']
+                self.assertGreaterEqual(len(controls), 2)
+                controls[1]['repeat'] = controls[0]['repeat']
+                # Keep distinct case IDs and values; only repeat identity is corrupt.
+                self.assertNotEqual(controls[0]['case'], controls[1]['case'])
+            return values
+        with patch.object(catalog, 'rows', side_effect=changed):
+            with self.assertRaisesRegex(ValueError, 'SDF storage/GPU duplicate repeat'):
+                catalog.check_sdf({}, None)
+
     def test_manifest_taxonomy(self):
         path = catalog.ROOT / "campaigns/perlmutter/sim10-staging/date/manifest.json"
         catalog.validate_location(dict(site="perlmutter", workload="sim10-staging"), path)

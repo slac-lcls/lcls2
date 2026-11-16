@@ -1,0 +1,30 @@
+{
+  "previous_reviewed_commit": "c817d22586052a41beb2400739e194d9a0105bf7",
+  "migration": {
+    "status": "pass",
+    "paths": 1631,
+    "frozen_files": 1612,
+    "original_additions": 359,
+    "inherited_dependencies": 1272,
+    "source_git_blobs": 1631,
+    "limitations": [
+      "Literal-reference closure includes full source roots and provenance references; external runtime/data paths are not reconstructed.",
+      "Historical SDF missing-input receipt is preserved; no new cross-site availability claim."
+    ]
+  },
+  "catalog": {
+    "status": "pass",
+    "campaigns": 9,
+    "file_hashes_checked": 2000,
+    "arithmetic_cases": 240,
+    "scope": "Archive hashes, authored links/tables, taxonomy, per-profile populations and arithmetic; no native raw-data re-audit"
+  },
+  "focused_tests": "12 passed",
+  "fix": "MIG-R1-01: reject duplicate SDF (media, gpus, repeat) keys within cohort 45028778 full rows before paired controls are built.",
+  "unchanged": "Frozen archives, report text/manifests, SDF replay code, package/discovery configuration, PR study sources, runtime and examples; their validation-01 results carry forward.",
+  "checks_exit_codes": {
+    "migration": 0,
+    "catalog": 0,
+    "tests": 0
+  }
+}

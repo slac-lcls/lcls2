@@ -1,0 +1,36 @@
+{
+  "reviewed_commit": "c817d22586052a41beb2400739e194d9a0105bf7",
+  "verdict": "pass",
+  "summary": "The integration, checker, configuration and scientific-summary changes at c817d225 meet the agreed scope. The catalog checker is now independent of where the repository sits on disk: it finds the root by source-tree markers or takes --repository. It dispatches analysis per profile, so a subset catalog validates without the original five entries, and unknown schema, kind and analysis values fail. Path-escape, symlink, hash and size checks are in place. Relocation verification checks destination and frozen hashes, executable bits, the 359 original additions, exact frozen-archive coverage and, with --source-git, closure over transitive notes-root references. Recomputing the four measured populations gives 156+54+18+12 = 240 rows, matching the logs. The campaign reports keep the required scientific limits. C++: count 1 spans five OSTs and 11.42 GiB/s is a reader rate, not a storage ceiling. SDF uses four BDs in total, while Perlmutter uses four BDs per GPU with a different core policy, and the two sites are not pooled. The SDF replay is derivative and eight inputs are missing. The cube entry is pending with zero full cases; the failed bootstrap is kept only as a diagnostic, the prepared stripe count is 2 and there is no numerical-reference correctness claim. PR187/208 remaining-loop equivalence is unresolved, and the +2.14 s / +3.34 s figures match pr187_pr208.md. PR299 keeps uncontrolled cache, C1 unfixed at acfd029 and Run77 deferred. Status labels are honest: the GPU scaling record says independent results review was not performed, and the stripe screen says it is pending. Packaging and lint exclusions cover every new source-only path. The committed logs match the supplied validation evidence. There is one low, non-blocking hardening note.",
+  "checks": [
+    "Read scaling_migration_20261116/README.md, status.json, migration-final.log and tests-final.log (11 tests OK); the log content matches the embedded validation evidence (1631 paths / 1612 frozen / 359 additions / 1272 inherited / 1631 blobs).",
+    "Reviewed check_migration.py: duplicate old/new path guard, safe-path and symlink checks, destination hash, executable-bit check, byte-exact frozen check, integrated-only alternative action, the 359-addition assertion, exact frozen archive coverage (archive README is the only extra file), and with --source-git the source addition inventory, cat-file blob identity, ls-tree root coverage and transitive notes-root closure.",
+    "Reviewed check_catalog.py: root lookup via paths.find_repository (marker-based, independent of directory depth), catalog/manifest schema 2, ID regex and duplicate rejection, manifest/report/record_path consistency, site/workload taxonomy taken from the path, KINDS and ANALYSES whitelists, script_roots equality, lifecycle axes, artifact hash/size verification, relative-link checks over authored docs, ledger-mapped frozen verification and remapping of the original IMPORTS receipt.",
+    "Recomputed the arithmetic coverage: SDF 156 rows (102 full / 48 pilot / 6 anchor) and 48 cells; C++ 54 rows in 18 cells; stripe 18 rows in 6 cells; GPU scaling 12 rows in 4 cells; total 240.",
+    "Reviewed test_archive_checks.py: dropped/duplicated summary cells, duplicate trials, taxonomy mismatch, bad table value, injected broken link, wrong cohort population and duplicate cases in replay, unknown schema/kind/analysis, duplicate ID, path escape/missing/corrupt artifacts, script_roots mismatch, a subset catalog of only the synthesis wrapper, and replay refusing to write output inside the source tree.",
+    "Reviewed replay_sdf_report.py: it validates per-cohort populations, compares summaries with the archived summary.csv and comparisons with comparisons.json, and refuses output inside the checkout or an existing directory (exist_ok=False); the scope is labelled derivative.",
+    "Read the C++, psana stripe, GPU scaling, SDF, cube, PR299 and multi-site reports and the GPU scaling manifest; the scientific limits in scope are all present and correctly labelled.",
+    "Cross-checked the PR187/208 startup wrapper's +2.14 s remaining loop / +3.34 s wall against pr187_pr208.md lines 10 and 226-228.",
+    "Grepped campaign manifests: the five original IDs are unchanged; the cube is pending with full_cases 0, analysis cube-pending-v1 and stripe_count 2; the four wrappers use documentary-v1.",
+    "Checked pyproject.toml Hatch artifacts/exclude negations and the Ruff extend-exclude, the psana/meson.build exclude_directories/exclude_files for campaigns, templates, scripts/performance, scripts/campaigns, catalog.json and FORMAT.md, and the root conftest.py collect_ignore for frozen trees.",
+    "Reviewed the check_pr_import.py --frozen-only change: it relaxes the hash check only for non-byte-preserved (navigation) entries; mode bits and the remaining checks stay strict, the default mode is unchanged, and the README documents both modes."
+  ],
+  "limitations": [
+    "Read/Glob/Grep only; no tests, checkers, Meson/Hatch fixtures or replay were executed by the reviewer. Pass/fail status relies on committed logs and supplied coordinator evidence.",
+    "Byte identity of the 1612 frozen files and 1631 source blobs was not independently recomputed; it relies on the cryptographic validation logs. Frozen sources were spot-checked only through the links in campaign reports.",
+    "Replay output artifacts are on scratch outside the repository and were not inspected.",
+    "Not every log was read: isolation-01, pr-import, pr299-verify, pr299-tests, pr187-tests, catalog-final and replay-01 were accepted from the embedded evidence, and the full dependency-closure.json and relocation.json contents were not enumerated.",
+    "Did not re-read the PR187/208 SDF wrapper README, docs/performance/README.md, FORMAT.md, templates, or the archive README in full."
+  ],
+  "findings": [
+    {
+      "id": "MIG-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/analysis/check_catalog.py",
+      "line": 106,
+      "evidence": "In check_sdf the paired-speedup controls are built as a dict keyed only by repeat: {r['repeat']: rate for r in group if r['gpus'] == '1'}. Uniqueness is enforced only on (cohort, case). So if two one-GPU rows for the same medium shared a repeat value, the dict would silently overwrite one of them, leaving the README paired-speedup check sound only on current data. The per-cell n check and the table comparison make this unlikely to hide a real error today.",
+      "requested_change": "Optional hardening: before building the dict, require that the (media, gpus, repeat) keys are unique within the 45028778 full rows, matching the duplicate guards in the other profiles."
+    }
+  ]
+}

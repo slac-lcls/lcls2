@@ -86,6 +86,9 @@ def check_sdf(record, report):
     sdf_rows = rows(sdf / "runs.csv")
     require(Counter(r["phase"] for r in sdf_rows) == {"full": 102, "pilot": 48, "anchor": 6}, "SDF case inventory")
     require(len({(r["cohort"], r["case"]) for r in sdf_rows}) == 156, "SDF duplicate case")
+    storage_rows = [r for r in sdf_rows if r['cohort'] == '45028778' and r['phase'] == 'full']
+    repeat_keys = [(r['media'], r['gpus'], r['repeat']) for r in storage_rows]
+    require(len(set(repeat_keys)) == len(repeat_keys), 'SDF storage/GPU duplicate repeat')
     fields = ("cohort", "media", "gpus", "bds", "workers", "streams", "batch", "task_mib", "bounce_mib")
     groups = defaultdict(list)
     for row in sdf_rows:
