@@ -1,0 +1,28 @@
+[
+  {
+    "query": "245 in:body,comments",
+    "kind": "issues",
+    "isError": false,
+    "urls": []
+  },
+  {
+    "query": "314 in:body,comments",
+    "kind": "issues",
+    "isError": false,
+    "urls": []
+  },
+  {
+    "query": "245 in:body,comments",
+    "kind": "prs",
+    "isError": false,
+    "urls": []
+  },
+  {
+    "query": "314 in:body,comments",
+    "kind": "prs",
+    "isError": false,
+    "urls": [
+      "https://github.com/slac-lcls/lcls2/pull/299"
+    ]
+  }
+]

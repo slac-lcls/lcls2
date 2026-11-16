@@ -1,0 +1,76 @@
+{
+  "reviewed_commit": "4c1d4405c98171a4aa81199565c7fe318558fe5f",
+  "transport": "GitHub CLI; connector update returned 403 Resource not accessible by integration before any mutation",
+  "actions": [
+    {
+      "number": 245,
+      "steps": [
+        {
+          "action": "update body",
+          "readback": "exact match"
+        },
+        {
+          "action": "relocation comment",
+          "id": 6925413897,
+          "url": "https://github.com/slac-lcls/lcls2/pull/245#issuecomment-6925413897",
+          "readback": "exact match; one notice"
+        }
+      ],
+      "before_state": "open",
+      "head_sha": "66072235d3cd18c002a13c581af82e111a418758",
+      "final_state": "closed",
+      "merged": false,
+      "closed_at": "2026-11-16T18:32:34Z",
+      "verified_at": "2026-11-16T18:32:35.648700+00:00"
+    },
+    {
+      "number": 314,
+      "steps": [
+        {
+          "action": "update body",
+          "readback": "exact match"
+        },
+        {
+          "action": "relocation comment",
+          "id": 6925417269,
+          "url": "https://github.com/slac-lcls/lcls2/pull/314#issuecomment-6925417269",
+          "readback": "exact match; one notice"
+        }
+      ],
+      "before_state": "open",
+      "head_sha": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a",
+      "final_state": "closed",
+      "merged": false,
+      "closed_at": "2026-11-16T18:32:43Z",
+      "verified_at": "2026-11-16T18:32:44.969849+00:00"
+    },
+    {
+      "number": 299,
+      "steps": [
+        {
+          "action": "update body",
+          "readback": "exact match"
+        },
+        {
+          "action": "relocation comment",
+          "id": 6925423028,
+          "url": "https://github.com/slac-lcls/lcls2/pull/299#issuecomment-6925423028",
+          "readback": "exact match; one notice"
+        }
+      ],
+      "dependency_readback": {
+        "number": 314,
+        "state": "closed",
+        "closed_at": "2026-11-16T18:32:43Z",
+        "verified_at": "2026-11-16T18:32:45.632185+00:00"
+      },
+      "before_state": "open",
+      "head_sha": "9b3cedfc0b02188090cc72e596c574ac7ea48a67",
+      "final_state": "open",
+      "merged": false,
+      "closed_at": null,
+      "verified_at": "2026-11-16T18:32:58.172233+00:00"
+    }
+  ],
+  "status": "complete"
+}

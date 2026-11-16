@@ -1,0 +1,41 @@
+{
+  "reviewed_commit": "4c1d4405c98171a4aa81199565c7fe318558fe5f",
+  "verdict": "pass",
+  "summary": "Round 2 passes and both round-1 notes are closed. F1: actions.json:51-54 now makes the PR299 action depend on a readback showing PR314 closed. README.md:30-32 sets the order PR245, PR314, PR299 and requires that readback before any PR299 body or comment update, so the comment's claim that '#314 is now closed as superseded' can only go out once it is true. F2: PR299's new sentence now reads 'The original archive PR #314 has been superseded by the consolidated results branch.' It still replaces only the old '#314 (draft)' destination clause. The CRLF part of the body, the LF part, the 'Perlmutter performance follow-up' heading, and the C1, Run77, R1/R2 and #310 qualifications are unchanged. PR314's historical proposal is left as it was under its '(historical; superseded)' heading, which round 1 allowed. I found no regressions. Only PR245 and PR314 are planned for closure, each with an expected head. PR299's state is null, so it stays open. No issue closures, review dismissals or historical comment edits are planned. All destination paths exist at this checkout. status.json still shows the round-1 state, which fits its 'round-2 review pending' phase; the coordinator should update it when recording this review.",
+  "checks": [
+    "Read review-01.json, response-01.md and validation-02.json, then compared the responses with the round-1 findings F1 and F2.",
+    "Read actions.json. The PR299 action now has requires_readback {number: 314, state: closed} (lines 51-54). PR245 and PR314 keep expected_head values 66072235d... and e8d69a7e6..., and state 'closed'. PR299's state is null.",
+    "Compared PR299's before and after bodies by inspection. The only change is 'preserved separately in https://github.com/slac-lcls/lcls2/pull/314 (draft).' becoming 'preserved on [`results/psana2-gpu-scaling`](.../pr299_perlmutter_20261115.md). The original archive PR #314 has been superseded by the consolidated results branch.' The line break before 'four evidence-package commits', the CRLF/LF segments and the heading are unchanged.",
+    "Confirmed that the PR245 and PR314 payloads are unchanged in substance from what round 1 reviewed: PR245's original body is under its historical heading, and PR314 differs only in the four branch URLs.",
+    "Read README.md: it gives the execution order 245, 314, 299, requires the PR314 closed-state readback, re-reads state before each action, and checks for duplicates on retry (lines 26-33).",
+    "Read scope.md and validation.json; the scope is unchanged and the 9 destination paths are the same as in round 1.",
+    "Used Glob to confirm that all 8 destination files exist at this checkout. The evidence directory exists because it contains plots/paired-timings.csv.",
+    "status.json reports remote_actions_executed=false."
+  ],
+  "limitations": [
+    "I had read-only file tools only and ran no git, shell, network or GitHub commands. I did not check current remote PR bodies, states, heads or the remote results branch; I rely on the coordinator's planned re-read and readback.",
+    "I checked the body deltas by reading the JSON strings, not with a programmatic byte diff. The coordinator reports that the exact-delta assertions pass (validation.json, validation-02.json).",
+    "In round 2 I did not re-read discovery.json or relevant-discussions.json, because the coordinator states they are unchanged since the round-1 review that covered them.",
+    "Raw discovery output is held outside Git and was not available to me."
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/campaign_link_cleanup_20261116/actions.json",
+      "line": 51,
+      "evidence": "Resolved. The PR299 action now carries requires_readback {number: 314, state: closed}. README.md:30-32 requires a successful closed-state readback of PR314 before any PR299 body or comment update, so the comment's '#314 is now closed as superseded' is protected.",
+      "requested_change": "None. Closed. Record the readback in the execution receipt as committed."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/campaign_link_cleanup_20261116/actions.json",
+      "line": 49,
+      "evidence": "Resolved. PR299 now says 'superseded by the consolidated results branch'. The replacement is still confined to the one destination sentence, and all other body text, including the CRLF section, is unchanged. PR314's historical wording stays under its explicit historical/superseded heading, as round 1 allowed.",
+      "requested_change": "None. Closed."
+    }
+  ]
+}

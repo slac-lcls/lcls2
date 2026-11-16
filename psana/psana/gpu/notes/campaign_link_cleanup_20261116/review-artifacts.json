@@ -1,0 +1,42 @@
+{
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-01/invocation.json": {
+    "bytes": 1730,
+    "sha256": "c773edd7f3a4e71589023fa9ae4a0bd18dd2caa9e47af21ea3206b66f0fa5546"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-01/stdout.json": {
+    "bytes": 10588,
+    "sha256": "aee460ec9bb96139a9f0b19fd8e2fc15ad825e9daacb931a1fd0011bbe2db205"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-01/stderr.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-01/review.json": {
+    "bytes": 4482,
+    "sha256": "363152586c4a0da3d3561e6b69aa7662c4c4462b711af2462c2f504123132945"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-02/invocation.json": {
+    "bytes": 1730,
+    "sha256": "2c744706ef0102e1a563551eac76ca05910aa2081416a2160a24c6ee5eaccda7"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-02/stdout.json": {
+    "bytes": 11090,
+    "sha256": "32679b94c4e4c862b813e304671a1fd54adf430a3df2a5f08e93070407824038"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-02/stderr.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/claude-02/review.json": {
+    "bytes": 4742,
+    "sha256": "3b608a44031e20c1336973e81d2da4c716f43e02b8d587d3c31590ffeb2e98a5"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-link-cleanup-20261116/discovery.json": {
+    "bytes": 582699,
+    "sha256": "6cb029696c70ea6a92fdf6f8a45150967e96f9f0598b7cfa66ec473b42e789ec"
+  },
+  "/tmp/apply_campaign_pr_cleanup.py": {
+    "bytes": 3778,
+    "sha256": "608de94f42e7d77706ae005669575146517e4cd2e1a7031e53e2c0eeb80bf9da"
+  }
+}

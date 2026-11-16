@@ -54,6 +54,20 @@ migration/validation and upstream publication. Archive tagging, source-branch
 retirement and benchmark submission remain pending. Runtime and example code
 remain unchanged.
 
+## Campaign PR and issue cleanup
+
+Completed November 16: documentary PR245 and PR314 are closed without merging
+because their campaigns moved to results/psana2-gpu-scaling. Their bodies and
+conversation notices link to the consolidated results. PR299's performance
+reference is updated; that implementation PR remains open. Searches across
+slac-lcls/lcls2 and monarin/lcls2 found no standalone obsolete-campaign issue
+requiring closure. Review findings and historical commit citations are preserved.
+
+The [cleanup record](../campaign_link_cleanup_20261116/README.md) contains scoped
+search evidence, exact reviewed payloads, Claude round-2 pass and verified
+execution receipts. Source branch tagging/deletion has not been performed;
+step 5 still requires archive tags and fresh source-head/dependency checks.
+
 ## Historical evidence follow-ups
 
 The November 16 assessment adds the four completed scaling campaigns to the
