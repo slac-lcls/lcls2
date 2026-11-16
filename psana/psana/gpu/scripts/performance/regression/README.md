@@ -72,3 +72,11 @@ part of campaign acceptance: qualified component bounds require adapter evidence
 and results review; this controller does not yet collect or automatically gate
 those counters. Do not treat `profile`'s single diagnostic pair as a statistical
 component-timing comparison.
+
+A [Perlmutter native raw adapter](NATIVE.md) is now implemented for the six run51
+cells, targeting the current PR298 API and KvikIO 26.10. It remains **unqualified**:
+site/input/runtime manifests, native smoke/cleanup tests and instrumentation
+qualification are required before execution. The shipped profile remains blocked.
+SDF is not yet supported by this adapter. Native indexed artifacts are checked
+by the controller at acceptance and summarization; requests now include the
+controller timeout so native cleanup can reserve headroom.

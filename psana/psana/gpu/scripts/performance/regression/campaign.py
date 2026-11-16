@@ -163,7 +163,7 @@ def make_request(config, plan, sample):
     contract = dict(dataset=config['dataset'], settings=config['settings'], case=sample['case'],
                     cache_policy=config['cache_policy'], warmup=config['warmup'], environment=config['environment'])
     return dict(schema=SCHEMA, profile_sha256=plan['profile_sha256'], sample_id=sample['id'],
-                phase=sample['phase'], runtime_commit=config['runtimes'][sample['runtime']]['commit'],
+                phase=sample['phase'], timeout_seconds=config['timeout_seconds'], runtime_commit=config['runtimes'][sample['runtime']]['commit'],
                 runtime=config['runtimes'][sample['runtime']], case=sample['case'],
                 contract=contract, contract_sha256=digest(contract), artifacts=config['artifacts'], site=config['site'])
 
@@ -211,6 +211,14 @@ def validate_result(config, request, row, folder):
         evidence_paths.add(path.resolve())
         require(path.is_file() and file_hash(path) == evidence['sha256'],
                 'missing/changed native evidence: ' + key)
+
+    resources = read(row['evidence']['resources']['path'])
+    for relative, sha in resources.get('native_index', {}).items():
+        path = folder / relative
+        require(not Path(relative).is_absolute() and folder.resolve() in path.resolve().parents,
+                'native index escapes sample folder')
+        require(HEX.fullmatch(sha) is not None and path.is_file() and file_hash(path) == sha,
+                'native indexed file changed: ' + relative)
 
 
 def run_command(argv, output, timeout):

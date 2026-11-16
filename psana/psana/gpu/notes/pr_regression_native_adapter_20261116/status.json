@@ -1,0 +1,9 @@
+{
+  "scope": "Perlmutter native raw adapter implementation",
+  "phase": "independent review",
+  "round": 1,
+  "round_limit": 3,
+  "base": "5a76c182f7d56a86d4dba43f5baf749400366bcf",
+  "native_qualification": "pending; default profile remains blocked",
+  "submission": "none"
+}

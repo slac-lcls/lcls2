@@ -194,3 +194,11 @@ artifacts, requests, exit codes and native receipt hashes. It rejects incomplete
 or extra sample directories. Assertions supplied by an adapter are a trust
 boundary: independent review/native checks establish their meaning; structural
 JSON validation alone does not prove numerical correctness or device placement.
+
+## Current adapter implementation
+
+The [Perlmutter raw adapter](../../../scripts/performance/regression/NATIVE.md)
+implements the six run51 cases against the current PR298 API and KvikIO 26.10,
+including separate warmup/native steps and native receipts. It has not undergone
+hardware qualification. Use its artifact schemas and qualification sequence;
+do not enable the shipped profile or infer SDF support from the implementation.
