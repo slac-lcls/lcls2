@@ -1,0 +1,23 @@
+{
+  "reviewed_commit": "9c4efbde2109ccccb56fe13edbb47ffbabc3db5d",
+  "verdict": "pass",
+  "summary": "MIG-R1-01 is fixed and closed. I found no regression. At check_catalog.py:89-91, check_sdf now selects the cohort 45028778 full rows and requires the (media, gpus, repeat) tuples to be unique. That check runs before line 108, where the per-medium control dictionary keyed by repeat is built, so a silent overwrite can no longer happen. The guard sits after the phase-inventory and (cohort, case) uniqueness checks and before any rate or summary arithmetic. It only reads data and adds no new assumptions about the data shape. The new negative test (test_archive_checks.py:58-72) patches catalog.rows only for runs.csv. It checks that at least two one-GPU Weka controls exist, copies the first control's repeat onto the second, and asserts the two case IDs still differ, so the earlier 'SDF duplicate case' guard cannot fire first. It then expects the 'SDF storage/GPU duplicate repeat' error. The test can tell fixed code from unfixed code. Without the guard, check_sdf would fail with a KeyError (multi-GPU rows whose repeat no longer has a control) or an AttributeError (report=None at report.read_text), not the expected ValueError, so assertRaisesRegex would fail. The committed evidence matches the supplied validation: tests-02.log shows 12 tests passing, including the new test; catalog-02.log shows 9 campaigns, 2000 hashes and 240 arithmetic cases passing; migration-02.log shows 1631 paths, 1612 frozen files, 359 additions, 1272 inherited dependencies and 1631 blobs. The relocation.json entries for both adapted files keep their integrated, original-addition category and their source commit. The round-1 scientific qualifications and known limitations carry forward unchanged.",
+  "checks": [
+    "Read review-01.json: MIG-R1-01 asked for (media, gpus, repeat) uniqueness within the 45028778 full rows before the paired-control dictionary is built.",
+    "Read check_catalog.py lines 1-160. The new guard at lines 89-91 runs after the inventory check (87) and the duplicate-case check (88) and before the control dictionary (108-109) and the paired-speedup computation (113). The error label matches the test regex.",
+    "Read test_archive_checks.py lines 1-80. The new test uses the same patch.object(catalog, 'rows') pattern as the existing duplicate-trial tests, changes only one row's repeat field, asserts the case IDs differ, and calls check_sdf({}, None). The guard raises before report is used, so report=None is safe.",
+    "Reasoned through the code path without the fix: the corrupted repeat makes the multi-GPU control lookup raise KeyError, or report.read_text raises AttributeError, neither a ValueError, so the test would fail. It is therefore a real regression test.",
+    "Read tests-02.log: 12 tests ran, all OK, including test_sdf_repeated_control_repeat_rejected.",
+    "Read catalog-02.log and migration-02.log; both match validation-02.json (9 campaigns / 2000 hashes / 240 cases; 1631 paths / 1612 frozen / 359 additions / 1272 inherited / 1631 blobs).",
+    "Read response-01.md: it accepts and describes the fix consistently with the diff, and lists the affected validation as catalog arithmetic, focused tests and relocation hashes.",
+    "Grepped relocation.json: the check_catalog.py and test_archive_checks.py entries are still category original-addition, action integrated, with source commit 9674e3e8. Only the destination hash and size fields are expected to change."
+  ],
+  "limitations": [
+    "I used only Read, Glob and Grep. I ran no tests, checkers, migration verification or replay; pass/fail status relies on the committed logs and the supplied validation evidence.",
+    "I did not independently recompute the destination sha256 and byte counts for the two adapted files in relocation.json, or the byte identity of the 1612 frozen files and 1631 source blobs.",
+    "I did not re-read context-01.md in full, and I did not inspect the scoped diff allowlist output. The claim that only the checker, its tests, the ledger and the review records changed relies on the coordinator's evidence and the supplied diff.",
+    "I did not open runs.csv to confirm that the real 45028778 full rows have unique repeat keys per (media, gpus). That relies on catalog-02.log passing with the new guard.",
+    "Round-1 limitations carry forward: no native build, wheel or GPU tests; the Ruff and pre-commit binaries are absent; upstream URLs are pending publication; the round-1 scientific qualifications are unchanged."
+  ],
+  "findings": []
+}

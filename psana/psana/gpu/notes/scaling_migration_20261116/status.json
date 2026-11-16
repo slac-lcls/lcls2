@@ -1,10 +1,20 @@
 {
-  "phase": "fixes-awaiting-review",
-  "round": 1,
-  "round_limit": 3,
+  "phase": "complete",
   "scope": "scaling migration and unified catalog",
-  "reviewed_commit": "c817d22586052a41beb2400739e194d9a0105bf7",
-  "unresolved": [
+  "branch": "results/psana2-gpu-scaling",
+  "round": 2,
+  "round_limit": 3,
+  "implementation_commit": "9c4efbde2109ccccb56fe13edbb47ffbabc3db5d",
+  "reviewed_commit": "9c4efbde2109ccccb56fe13edbb47ffbabc3db5d",
+  "review_verdict": "pass",
+  "resolved": [
     "MIG-R1-01"
-  ]
+  ],
+  "unresolved": [],
+  "validation": [
+    "validation-01.json",
+    "validation-02.json"
+  ],
+  "publication": "local only",
+  "next_step": "Publish verified results branch to slac-lcls/lcls2 and verify remote contents; source retirement and regression template remain separate later steps."
 }

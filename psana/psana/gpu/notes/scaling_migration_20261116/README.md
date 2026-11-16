@@ -36,3 +36,12 @@ Keep MPLCONFIGDIR and TMPDIR on writable scratch; replay refuses existing output
 and output inside the source checkout. No job launch or raw dataset access is
 part of these offline checks. Full native installation/wheel acceptance remains
 outside this migration; package selection is tested with real Meson/Hatch fixtures.
+
+## Completion
+
+Claude's [second review](review-02.json) passed `9c4efbde2109ccccb56fe13edbb47ffbabc3db5d` with no remaining
+findings. [Round-1 response](response-01.md) records the added duplicate-repeat
+guard. [Initial validation](validation-01.json), [follow-up validation](validation-02.json)
+and [completion record](response-02.md) retain the evidence and limitations.
+The subsequent evidence-only commit does not change the reviewed implementation.
+The local branch is ready for the planned publication step.

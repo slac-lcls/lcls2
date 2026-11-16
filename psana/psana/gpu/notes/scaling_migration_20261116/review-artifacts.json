@@ -1,0 +1,34 @@
+{
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-01/invocation.json": {
+    "bytes": 1726,
+    "sha256": "0838a2ba620c2f7b2e1ddf11f8a12b67bb753e2d975cce1b46a903614552f550"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-01/stdout.json": {
+    "bytes": 15418,
+    "sha256": "0f26549aeb4c208bf69cf9c25b044498acfdb1a8b4da4347f7569436739fbea2"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-01/stderr.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-01/review.json": {
+    "bytes": 6852,
+    "sha256": "456ae2b841887eea62c10b608e2c9119598da725d5a16540442dd1117d152c27"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-02/invocation.json": {
+    "bytes": 1726,
+    "sha256": "891ed4c394af2677332c2a8f3c115da65feaca215248d63c41221510273c4f0e"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-02/stdout.json": {
+    "bytes": 10992,
+    "sha256": "ce97bb73ec563f71bbc90bcea44d753430ab1e33a5faee15a458e4c1ffa05973"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-02/stderr.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/scaling-migration-20261116/claude-02/review.json": {
+    "bytes": 4584,
+    "sha256": "517a1b6001d9ab18d4ae9450011feb73d69c9ce79281f75a44a530158a28715b"
+  }
+}
