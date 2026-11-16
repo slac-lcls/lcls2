@@ -5,11 +5,15 @@ import time
 from collections import OrderedDict
 from typing import Dict
 
-from psdaq.utils import enable_epix_100a_gen2 # To find epix100_gen2
-import epix100a_gen2  # To find ePixFpga
-import ePixFpga as fpga
-from psdaq.utils import enable_lcls2_epix_hr_pcie # To find lcls2_epix_hr_pcie
-import lcls2_epix_hr_pcie
+from psdaq.utils import firmware_packages
+
+# The FEB (epix-100a-gen2) and the PCIe card (lcls2-epix-hr-pcie) packages each
+# carry their own copy of surf: import each against its own copy.
+with firmware_packages.isolated('epix-100a-gen2'):
+    import epix100a_gen2  # To find ePixFpga
+    import ePixFpga as fpga
+with firmware_packages.isolated('lcls2-epix-hr-pcie'):
+    import lcls2_epix_hr_pcie
 import pyrogue
 import rogue
 

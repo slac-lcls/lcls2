@@ -1,24 +1,6 @@
-import pyrogue as pr
-import os
-import sys
+# Importing this module makes the epix-hr-m-320k python tree importable process-wide.
+# A process that uses more than one firmware package should use
+# psdaq.utils.firmware_packages.isolated() instead.
+from psdaq.utils.firmware_packages import enable
 
-submoduledir = os.environ["SUBMODULEDIR"]
-
-top_level = submoduledir + "/epix-hr-m-320k/"
-
-sys.path.append("%s/firmware/python".format(top_level))
-
-pr.addLibraryPath(top_level+'firmware/submodules/epix-hr-leap-common/python')
-pr.addLibraryPath(top_level+'firmware/submodules/epix-hr-core/python')
-pr.addLibraryPath(top_level+'firmware/submodules/lcls-timing-core/python')
-pr.addLibraryPath(top_level+'firmware/submodules/l2si-core/python')
-pr.addLibraryPath(top_level+'firmware/submodules/surf/python')
-pr.addLibraryPath(top_level+'firmware/python')
-
-
-# Modified by psdm
-
-#pr.addLibraryPath(top_level+'firmware/python/ePixViewer/software')
-pr.addLibraryPath(top_level+'firmware/submodules/axi-pcie-core/python/')
-pr.addLibraryPath(top_level+'firmware/submodules/AsicRegMapping/python/')
-
+enable('epix-hr-m-320k')
