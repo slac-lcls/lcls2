@@ -108,6 +108,10 @@ The reviewed manifest is
 All 1,171 entries in the transferred source bundle passed checksum verification
 before packaging. The archive mapping retains original paths and hashes for
 every copied file; the package checksum list covers the relocated package.
+Paths in the preserved `FINAL_REPORT.txt` refer to the original tree: its
+review is relocated to `reviews/campaign-r1.json`, its snapshot to
+`campaign-job-61375111/`, and the PDF plot is omitted (the PNG is retained).
+These locations are relative to this note's evidence directory.
 
 The compute guards checked the intended initial psana import/native prefixes,
 hashes of loaded project libraries, rank placement, and GPU isolation.
