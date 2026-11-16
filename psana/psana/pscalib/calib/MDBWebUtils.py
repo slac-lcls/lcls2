@@ -421,6 +421,47 @@ def dbnames_collection_query(detname, exp=None, ctype='pedestals', run=None, tim
     return resp
 
 
+def _legacy_detector_name(detname, short):
+    """Returns the pre-2026-09 name under which constants for detname may have been deployed, or None.
+       Before commit b0e8386af (2026-09-03) names shorter than cc.MAX_DETNAME_SIZE (e.g. 'archon_1', 'axis_')
+       were used directly as db/collection names. Now every name is mapped through cdb_detnames
+       (e.g. 'archon_1' -> 'archon_000001'), so constants deployed under the legacy name became invisible.
+    """
+    if not isinstance(detname, str) or detname == short: return None
+    return detname if len(detname) < cc.MAX_DETNAME_SIZE else None
+
+
+def _find_docs_with_legacy_name(det, exp, ctype, run, time_sec, vers, dbsuffix='', use_det_db=False):
+    """Returns (docs, dic_dbname, query): docs found for the cdb_detnames-mapped (short) detector name
+       merged with docs found for the legacy (unmapped) name, see _legacy_detector_name.
+       dic_dbname maps doc['_id'] -> dbname, needed to get data from the right GridFS.
+    """
+    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
+    dbname = db_det if use_det_db or dbsuffix or (exp is None) else db_exp
+    docs, dic_dbname = [], {}
+
+    def add_docs(dbn, coln, q):
+        if dbn is None or coln is None: return 0
+        ldocs = find_docs(dbn, coln, q)
+        if not ldocs: return 0
+        for d in ldocs: dic_dbname[d.get('_id')] = dbn
+        docs.extend(ldocs)
+        return len(ldocs)
+
+    n = add_docs(dbname, colname, query)
+    logger.debug(f'db/collection: {dbname}/{colname} query: {query} ndocs: {n}')
+
+    legacy = _legacy_detector_name(det, colname)
+    if legacy is not None:
+        ldb_det, ldb_exp, lcolname, lquery = mu.dbnames_collection_query(legacy, exp, ctype, run, time_sec, vers, None)
+        if dbsuffix: ldb_det = detector_dbname(legacy, dbsuffix=dbsuffix)
+        ldbname = ldb_det if use_det_db or dbsuffix or (exp is None) else ldb_exp
+        n = add_docs(ldbname, lcolname, lquery)
+        logger.debug(f'legacy detector name: {legacy} (short: {colname}) db/collection: {ldbname}/{lcolname} ndocs: {n}')
+
+    return docs, dic_dbname, query
+
+
 def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, vers=None, dbsuffix='', **kwa):
     """Returns calibration constants and document with metadata for specified parameters.
        To get meaningful constants, at least a few parameters must be specified, e.g.:
@@ -431,16 +472,15 @@ def calib_constants(det, exp=None, ctype='pedestals', run=None, time_sec=None, v
        - det, exp, ctype, run, version
        etc...
     """
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
-    logger.debug('get_constants: %s %s %s %s' % (db_det, db_exp, colname, str(query)))
-    dbname = db_det if dbsuffix or (exp is None) else db_exp
-    doc = find_doc(dbname, colname, query)
+    docs, dic_dbname, query = _find_docs_with_legacy_name(det, exp, ctype, run, time_sec, vers, dbsuffix=dbsuffix)
+    logger.debug('get_constants: det: %s exp: %s query: %s ndocs: %d' % (det, exp, str(query), len(docs)))
+    doc = select_latest_doc(docs, query)
     if doc is None:
         # commented out by cpo since this happens routinely the way
         # that Mona is fetching calibration constants in psana.
         logger.debug('document is not available for query: %s' % str(query))
         return None
-    return (get_data_for_doc(dbname, doc), doc)
+    return (get_data_for_doc(dic_dbname[doc.get('_id')], doc), doc)
 
 
 def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, **kwa):
@@ -448,11 +488,9 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, **kwa)
     exp=None
     run=9999
     ctype=None
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None)
-    dbname = db_det
-    docs = find_docs(dbname, colname, query)
+    docs, dic_dbname, query = _find_docs_with_legacy_name(det, exp, ctype, run, time_sec, vers, use_det_db=True)
     #logger.debug('find_docs: number of docs found: %d' % len(docs))
-    if docs is None: return None
+    if not docs: return resp
 
     ctypes = set([d.get('ctype',None) for d in docs])
     ctypes.discard(None)
@@ -467,7 +505,7 @@ def calib_constants_of_missing_types(resp, det, time_sec=None, vers=None, **kwa)
         docs_for_type = [d for d in docs if d.get('ctype',None)==ct]
         doc = select_latest_doc(docs_for_type, query)
         if doc is None: continue
-        resp[ct] = (get_data_for_doc(dbname, doc), doc)
+        resp[ct] = (get_data_for_doc(dic_dbname[doc.get('_id')], doc), doc)
 
     return resp
 
@@ -493,18 +531,15 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
     #    logger.warning(f'WARNING calib_constants_all_types IS IGNORED for NON-epixuhr3x2 longname: {longname}')
     #    return None
 
-    db_det, db_exp, colname, query = dbnames_collection_query(det, exp, ctype, run, time_sec, vers, dtype=None, dbsuffix=dbsuffix)
-    dbname = db_det if dbsuffix or (exp is None) else db_exp
-
-    docs = find_docs(dbname, colname, query)
+    docs, dic_dbname, query = _find_docs_with_legacy_name(det, exp, ctype, run, time_sec, vers, dbsuffix=dbsuffix)
     #print('time 2: %.6f sec - find docs for query in DB %s' % (time()-t0_sec, dbname))
 
     logger.debug(f'calib_constants_all_types longname: {longname}  exp: {exp}  run: {str(run)}  time_sec: {time_sec}  vers: {vers}'\
-               +f'\n  dbname: {dbname}  db_det: {db_det}  db_exp: {db_exp}  colname: {colname}  query: {query}  dbsuffix: {dbsuffix}'\
-               +'\n  after find_docs: number of docs found: %s\n' % (str(len(docs)) if docs is not None else None))
+               +f'\n  query: {query}  dbsuffix: {dbsuffix}'\
+               +'\n  after find_docs: number of docs found: %d\n' % len(docs))
 
     resp = {}
-    if docs is not None:
+    if docs:
 
         ctypes = set([d.get('ctype', None) for d in docs])
         ctypes.discard(None)
@@ -518,7 +553,7 @@ def calib_constants_all_types(det, exp=None, run=None, time_sec=None, vers=None,
             #doc = select_latest_doc(docs_in_run_range, query)
 
             if doc is None: continue
-            resp[ct] = (get_data_for_doc(dbname, doc), doc)
+            resp[ct] = (get_data_for_doc(dic_dbname[doc.get('_id')], doc), doc)
             #print('        %.6f sec - get data for ctype: %s' % (time()-t0_sec, ct))
 
         #print('time 3: %.6f sec - get data for docs total' % (time()-t0_sec))
