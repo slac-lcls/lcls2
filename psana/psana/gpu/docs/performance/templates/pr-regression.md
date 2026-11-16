@@ -46,8 +46,8 @@ substitute for this run. Consult the public source and explicit site paths in
 profile.json. Public listing/scratch presence does not establish retention.
 
 For a separately scoped Sim10 campaign, use the [published dataset guide](../datasets.md):
-SDF `prjdatpsana` runs 3 and 4 replace the private 100k/400k source locations for
-new runs. Record the published filenames/hashes, reader, calibration selection,
+SDF `prjdatpsana` runs 3 and 4 replace the SDF project-scratch 100k/400k source
+fixtures for new runs. Record the published filenames/hashes, reader, calibration selection,
 and stream subset; verify the Perlmutter copy independently. This promotion does
 not qualify or replace the real-data run-51 candidate or its profile.
 

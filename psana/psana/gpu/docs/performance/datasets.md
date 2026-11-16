@@ -113,6 +113,12 @@ The results branch still intentionally contains old dataset and evidence paths:
 - Repository-root `validation/input-bookkeeping-20261110/ada-100k/harness/support.py`
   and runtime/provenance receipts also retain original paths and source hashes.
 
+The 400k source has no equivalent tracked archive. Under the SDF scratch root
+listed above, its generation record is `sample10_400k/generation.json` and its
+acceptance receipts are in `sample10_400k_evidence_20261111/`. Preserve the
+generation record as well as those sibling receipts before deleting its source
+directory.
+
 The `notes/` paths above are relative to `psana/psana/gpu/`. These are frozen
 execution packages, not maintained launch defaults. Preserve their bytes and
 checksums. Consult this guide and create a new qualified campaign configuration
