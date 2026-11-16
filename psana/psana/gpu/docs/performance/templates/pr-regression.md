@@ -168,7 +168,11 @@ Write a result JSON only after all ranks and GPU work drain. Required fields:
   index. Resources include host RSS, GPU used/pool peaks, pinned-memory accounting,
   allocation/step IDs, final scheduler state and explicit unavailable metrics.
 
-Result data and referenced files remain immutable. `summarize` revalidates profile,
+After validation the controller records result/evidence hashes in accepted.json.
+`summarize` rejects changes relative to those acceptance receipts. Retain the
+whole archive read-only; these hashes do not protect against someone rewriting
+all receipts together. Result data and referenced files remain immutable.
+`summarize` revalidates profile,
 artifacts, requests, exit codes and native receipt hashes. It rejects incomplete
 or extra sample directories. Assertions supplied by an adapter are a trust
 boundary: independent review/native checks establish their meaning; structural

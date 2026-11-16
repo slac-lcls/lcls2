@@ -118,7 +118,7 @@ class ControllerTests(unittest.TestCase):
         sample=c.schedule(self.config,'aa')[1]
         path=self.prepared/'aa'/sample['id']/'result.json'
         row=c.read(path);row['placement']['cpu_affinity']['2']=[999];c.write(path,row)
-        with self.assertRaisesRegex(ValueError,'placement changed'):c.summarize(self.prepared,'aa')
+        with self.assertRaisesRegex(ValueError,'accepted result changed'):c.summarize(self.prepared,'aa')
 
     def test_allocation_change_rejected(self):
         self.execute('correctness')
@@ -191,6 +191,13 @@ class ControllerTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'artifact:'+key):c.validate(bad,ready=True)
         bad=copy.deepcopy(self.config);bad['adapter_command'][0]='python'
         with self.assertRaisesRegex(ValueError,'executable must be absolute'):c.validate(bad,ready=True)
+
+    def test_accepted_timing_change_rejected(self):
+        self.execute('correctness');self.execute('aa')
+        sample=c.schedule(self.config,'aa')[0]
+        path=self.prepared/'aa'/sample['id']/'result.json'
+        row=c.read(path);row['loop_seconds']=1;c.write(path,row)
+        with self.assertRaisesRegex(ValueError,'accepted result changed'):c.summarize(self.prepared,'aa')
 
     def test_prepare_never_overwrites(self):
         with self.assertRaises(FileExistsError):c.prepare(self.source,self.prepared)

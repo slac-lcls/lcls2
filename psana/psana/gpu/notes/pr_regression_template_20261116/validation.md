@@ -43,3 +43,11 @@ The original 16 tests remain passing. Catalog checker rerun: pass (9 campaigns,
 Audit source hash matches the original executed scratch copy; no payload was
 redownloaded. A native import-only provenance readback succeeded using Python
 3.9.20 and the recorded PR299 install. No new job or performance sample was run.
+
+## Final implementation validation
+
+20/20 controller tests passed (7.145 seconds) after acceptance receipts were
+added; post-acceptance timing edits are rejected. The merged upstream catalog
+passes 10 campaigns/2082 hashes/275 arithmetic cases. integration.json records
+unchanged template and upstream archive trees at the merge. No native campaign
+was run. Diff whitespace checks pass.

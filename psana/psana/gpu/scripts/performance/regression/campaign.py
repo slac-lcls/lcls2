@@ -259,7 +259,10 @@ def execute(root, phase):
             code = run_command(argv, folder / 'process.log', config['timeout_seconds'])
             write(folder / 'exit.json', dict(returncode=code, wall_seconds=time.monotonic()-started))
             require(code == 0, 'adapter failed: ' + sample['id'])
-            validate_result(config, request, read(folder / 'result.json'), folder)
+            row = read(folder / 'result.json')
+            validate_result(config, request, row, folder)
+            write(folder / 'accepted.json', dict(result_sha256=file_hash(folder / 'result.json'),
+                                                 evidence=row['evidence']))
         write(destination / 'state.json', dict(status='complete', phase=phase, job_id=os.environ['SLURM_JOB_ID']))
         return summarize(root, phase)
     except BaseException as error:
@@ -301,6 +304,9 @@ def summarize(root, phase):
         request, row = read(folder / 'request.json'), read(folder / 'result.json')
         require(request == make_request(config, plan, sample), 'request changed')
         require(read(folder / 'exit.json')['returncode'] == 0, 'failed process')
+        accepted = read(folder / 'accepted.json')
+        require(accepted['result_sha256'] == file_hash(folder / 'result.json'), 'accepted result changed')
+        require(accepted['evidence'] == row['evidence'], 'accepted evidence changed')
         validate_result(config, request, row, folder)
         observed_node = row['placement']['node']
         require(node is None or node == observed_node, 'node changed within phase')

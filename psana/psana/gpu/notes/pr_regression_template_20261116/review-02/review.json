@@ -1,0 +1,40 @@
+{
+  "reviewed_commit": "a71922bfaf930c2c8633753672a8170274b3d5a6",
+  "verdict": "pass",
+  "summary": "Round 2 review of a71922bf. The fixes for all four round-1 findings work, and the latest code introduces no regression. PRR-01: validate_result now requires the full observed_contract object. It must equal request['contract'] key by key, and the controller computes its digest itself, so an echoed hash no longer passes. All four evidence files must be distinct absolute paths inside the sample folder; resolved symlink escapes are rejected. PRR-02: the executed source is kept as .executed.py.txt with a warning to copy it to external scratch before running it. selected-status-doc.json is committed and matches the audit: document _id, run 49 to end, uint64 (3,32,512,1024), 50331648 elements times 8 bytes = 402653184 bytes. audit-provenance.json is honestly labelled as a post-audit readback. PRR-03: every true qualification flag now adds its receipt to the required artifacts, and each missing receipt is tested. Two flags reuse ordinary input artifacts as their receipts (event_reference, calibration_manifest); the instructions say so. PRR-04: the timeout test reads the child's real PID and checks the process is gone after termination. A relative adapter_command[0] is rejected. Everything else from round 1 still holds: the freeze, identity, phase and allocation gates, the balanced AB/BA schedule, A/A with the baseline on both sides, the T95 indexing and outcome labels, the all-false default qualification flags, and the run51 Confluence distinction from mfx100852324 runs 77-79. The docs keep the pixel_status audit separate from full calibration and durable dataset qualification, and claim no native execution, hardware result or dataset permanence. On the boundary: the deliverable is still a controller plus an adapter contract, not a template that runs end to end. That matches the agreed scope and is stated plainly, but no PR can be measured until someone writes and reviews a revision-specific adapter. There is one new non-blocking low-severity finding (PRR-05).",
+  "checks": [
+    "campaign.py:171-213 validate_result: the observed contract is compared as a whole object with a list of differing keys; its digest is recomputed and must equal both the row value and request['contract_sha256']; evidence must be distinct, inside the sample folder and match its hash",
+    "campaign.py:19-22,87-94 QUALIFICATION_RECEIPTS: each true flag adds a required artifact. event_reference and calibration_identity map to existing input artifacts, which pr-regression.md:92-96 documents",
+    "campaign.py:99-108 adapter_command: argv list, absolute argv[0], standalone {request}/{result} tokens, hashed adapter path included",
+    "campaign.py:216-231 run_command: process-group SIGTERM, then SIGKILL; the exception is re-raised and execute writes a failed state",
+    "campaign.py:234-268 execute: gate order and job_id continuity unchanged; verify_prepared runs before every sample",
+    "campaign.py:277-335 paired/summarize: T95[n-2] for df=n-1, interval labels, secondary timings reported separately; no regression found",
+    "test_campaign.py: 19 tests, including new ones at lines 162-193 for PID termination, echoed digest, local and distinct evidence, each missing receipt and a relative executable. The setUp fixture supplies all receipts, so the full orchestration still runs under ready=True. Tests were not run by the reviewer; the 19/19 pass is coordinator evidence",
+    "profile.json: qualification flags all false, null commits and installs, empty artifacts and adapter_command, so the profile stays gated",
+    "selected-status-doc.json agrees with run51-status-audit.json on _id, id_data, run, version, dtype and shape; data_size 50331648 x 8 = 402653184 payload bytes",
+    "audit-provenance.json: scope labelled post-audit readback; executed source, selection-module and selected-document SHA256s recorded; runtime commit attributed to the campaign manifest",
+    "check_run51_status.executed.py.txt: writes next to its own file; README.md:40-44 warns against running it in-repo and directs copying to external scratch",
+    "README.md, validation.md, pr-regression.md, regression/README.md: wording is consistent with the boundary; no native, hardware or permanence claim",
+    "Navigation (docs/performance/README.md:109-113, templates/README.md, scripts/performance/README.md, IMPLEMENTATION.md:49-58,86-98): qualification is described as pending and no performance result is claimed",
+    "confluence-check.json row association still correct"
+  ],
+  "limitations": [
+    "Read-only review: no tests, catalog checker, git diff --check or prepare were run. The 19/19 test pass, catalog and diff results come from the coordinator's validation.md and status.json.",
+    "File hashes could not be computed: the executed-source SHA256, the selected-document SHA256 and its byte-for-byte match with the scratch copy were not verified independently.",
+    "Could not verify that the frozen PR187/208 and PR299 harnesses, runtime, examples and build config are unchanged since base 39ea002a8; no diff tool was available.",
+    "The Confluence page, calibration DB payload, the external scratch directories and the PR299 install outside the repository could not be inspected.",
+    "No native adapter exists, so native correctness, cache conditioning, timing synchronization, remote MPI cleanup and A/A noise behaviour are unevaluated by design.",
+    "status.json still shows round 1 / reviewed_commit d3f0956 with phase ready_for_review_2. It is a bookkeeping state to update at closure, not a substantive gap."
+  ],
+  "findings": [
+    {
+      "id": "PRR-05",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/regression/campaign.py",
+      "line": 260,
+      "evidence": "When a sample is accepted, execute writes exit.json (returncode, wall_seconds) but records no hash of result.json. The evidence hashes are supplied inside result.json itself. summarize (line 301-304) re-reads result.json and the evidence files and only checks that they agree with each other. So a coordinated edit after acceptance (for example changing loop_seconds in result.json) passes summarize undetected. regression/README.md:47-48 and pr-regression.md:171 say results remain immutable, but the controller does not enforce this.",
+      "requested_change": "After validate_result succeeds in execute, record the SHA256 of result.json and of each evidence file, in exit.json or a per-sample accepted.json. Have summarize require these to match. Add a test that edits loop_seconds after execute and expects summarize to reject it."
+    }
+  ]
+}

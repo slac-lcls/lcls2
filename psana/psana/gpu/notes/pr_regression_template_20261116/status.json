@@ -1,17 +1,17 @@
 {
-  "phase": "ready_for_review_2",
-  "round": 1,
+  "phase": "ready_for_review_3",
+  "round": 2,
   "round_limit": 3,
   "unresolved": [],
   "candidate": "mfx100848724/run51",
   "pixel_status_gate": "pass",
   "native_benchmark": "not run",
   "checks": {
-    "controller_tests": "19/19 pass",
-    "catalog": "9 campaigns; 2000 hashes; 240 arithmetic cases; pass",
+    "controller_tests": "20/20 pass",
+    "catalog": "10 campaigns; 2082 hashes; 275 arithmetic cases; pass",
     "draft_prepare": "pass; blocked by qualification as intended",
     "diff_check": "pass"
   },
-  "reviewed_commit": "d3f0956dc25bf2c85e706fc0b9ed51406e494224",
-  "verdict": "pass; nonblocking suggestions addressed; latest changes awaiting review"
+  "reviewed_commit": "a71922bfaf930c2c8633753672a8170274b3d5a6",
+  "verdict": "pass; PRR-05 fixed; latest code and upstream merge awaiting final review"
 }
