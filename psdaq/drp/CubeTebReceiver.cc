@@ -492,6 +492,9 @@ void CubeTebReceiver::_monitorDgram(unsigned index, const ResultDgram& result, c
                     m_mon.post(dgram, result.monBufNo());
                 }
             }
+            else {
+                m_mon.progress();       // Unfinished writes would hold the MEB's buffers
+            }
         }
         // Other Transition
         else {

@@ -8,6 +8,7 @@
 #include <memory>
 #include <vector>
 #include <list>
+#include <mutex>
 
 
 namespace Pds {
@@ -34,6 +35,7 @@ namespace Pds {
       int  post(const Pds::EbDgram* dataDatagram); // Transitions
       int  post(const Pds::EbDgram* dataDatagram,
                 uint32_t            destination);  // L1Accepts
+      void progress() { progressNext(_links, _sweepIdx); } // From the posting thread only
     private:
       int _setupMetrics(const std::shared_ptr<MetricExporter>);
       int _linksConfigure(const MebCtrbParams&       prms,
@@ -46,7 +48,9 @@ namespace Pds {
       size_t                    _maxEvSize;
       size_t                    _maxTrSize;
       EbLfClient                _transport;
+      std::mutex                _linksMtx; // Guards _links for the metrics
       std::vector<EbLfCltLink*> _links;
+      unsigned                  _sweepIdx{0};
       std::vector<void*>        _region;
       std::vector<size_t>       _regSize;
       std::vector<size_t>       _bufRegSize;
