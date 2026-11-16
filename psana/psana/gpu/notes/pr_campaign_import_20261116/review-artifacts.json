@@ -1,0 +1,34 @@
+{
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-01/invocation.json": {
+    "sha256": "86627d0b078a8fde385029c4e039e0d769f47b929da67232c122e2d3b9d7074a",
+    "bytes": 1727
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-01/stdout.json": {
+    "sha256": "8c23b1ba118855ea1daad948898f4bfa94fdb5140191cef857ad778a92b83846",
+    "bytes": 13784
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-01/stderr.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-01/review.json": {
+    "sha256": "adc7b646d1e9ba596b3ded063b27490f8ae99ea2846b5a1df5b5bb2d5933f8dc",
+    "bytes": 6094
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-02/invocation.json": {
+    "sha256": "9a6677b58ea3a416c6757bd50ce1f207277725b99ef35fa0c0c1a5b81d11b5c2",
+    "bytes": 1727
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-02/stdout.json": {
+    "sha256": "d6e24df8f6770301bcd137f9d4db223ee7aad24d78098206b39e74638289eba3",
+    "bytes": 10938
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-02/stderr.log": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/pr-campaign-import-20261116/claude-02/review.json": {
+    "sha256": "148e5f71bea04de1dd9b35e077f3065f7407692e84f1484df444f8425dabd0ae",
+    "bytes": 4560
+  }
+}

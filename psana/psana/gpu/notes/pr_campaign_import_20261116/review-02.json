@@ -1,0 +1,22 @@
+{
+  "reviewed_commit": "4d462252b80370fde35b12af9d490ecef5c28fbc",
+  "verdict": "pass",
+  "summary": "Both round-1 low findings are fixed, and I found no regression. IMP-R1-01: the policy counts stay at 698 byte-preserved and five reconciled-navigation. Every ledger entry now has matches_source_bytes; exactly three are false (GPU README.md, docs/performance/README.md and history.md), which gives 700 identical and three different. Each reconciled entry records pre_import_sha256, source_delta_base_sha256 and a reconciliation_result. For read_staging.md and user_kernels.md the pre-import hash equals the delta-base hash (2e37278f\u2026 and ccbeaba7\u2026), and the imported hash equals the source hash. The GPU README's two bases differ, so it was merged by hand. The two new pages record null bases, and the checker requires them to be absent at both revisions. The ledger contains pre_import_commit (12366915\u2026, the task base), which the checker reads. The record README and validation-02 now give the 698/5 and 700/3 counts consistently. The supplied task-base-to-commit diff shows the three existing pages received navigation-only edits, which resolves my prior limitation about the unseen pre-import pages. IMP-R1-02: the checker now lives only at notes/pr_campaign_import_20261116/check_pr_import.py. Its docstring says it is source-checkout-only. The semicolon statements are split. No stale reference to the old scripts/performance/analysis path remains, and the README invocation is updated. The notes tree is excluded by conftest collect_ignore, Ruff, Hatch (exclude and negated artifacts), Meson exclude_directories and all five pre-commit rewrite/AST hooks, so the moved checker is not installed, linted, rewritten or collected. import-check-02.log matches validation-02 and the supplied evidence: 703 paths, 703 source blobs, 47 snapshots, 109 links. The unchanged archive, test and isolation results carry forward from the original validation.json. The validation-02 diff_scope states that these files did not change; I did not compare them by commit diff.",
+  "checks": [
+    "Read review-01.json and response-01.md; both findings map to the accepted remediations.",
+    "Reviewed the relocated check_pr_import.py: matches_source_bytes is cross-checked against the hash equality; the source-identical count must be 700; policy counts must be 698/5; under --source-git each reconciled page's pre_import and delta-base hashes are checked with git show, and a null hash requires the page to be absent; no semicolon-joined statements remain.",
+    "imports.json: pre_import_commit exists (line 8470) and equals task_base; exactly three entries have matches_source_bytes false; read_staging and user_kernels pre-import hashes equal their delta-base hashes and their imported hashes equal their source hashes; the README.md bases differ and the result says manually integrated; the two new pages have null bases.",
+    "The record README gives the 61 frozen + five reconciled split (two still source-identical) and states 700 identical / three differ; the invocation path is updated.",
+    "validation-02.json matches import-check-02.log and the supplied validation exactly.",
+    "Glob/Grep: the only check_pr_import.py is under notes/pr_campaign_import_20261116; no stale references to the old location outside the historical review-01.json.",
+    "Isolation coverage of gpu/notes confirmed in conftest.py:7, pyproject.toml:128/142/153, psana/meson.build:329 and the five .pre-commit-config.yaml exclusions.",
+    "Supplied task-base diff: the read_staging.md and user_kernels.md edits are header navigation only; the GPU README edit adds three navigation rows and rewords the maintenance policy; current API links are kept."
+  ],
+  "limitations": [
+    "No commands were run. Git object identity, source-delta coverage and the reconciliation-base hashes rely on the checker code, import-check-02.log and the diff supplied by the coordinator.",
+    "Tests, the verifier, the isolation checks, Ruff and pre-commit were not run by the reviewer. Results come from the logs and validation files only.",
+    "I did not read the full 392 KB ledger or the unchanged imported archives line by line; I spot-checked the head, the reconciled entries and the tail, and counted mismatches with grep.",
+    "That the original validation.json, the five logs, the archives and the packaging configuration are unchanged since caffb52 is taken from the review context and validation-02 diff_scope; I did not observe it with git diff."
+  ],
+  "findings": []
+}

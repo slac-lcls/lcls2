@@ -10,15 +10,21 @@ Base: 1995752058bb9aaa3f16ccd86c22e84153257538
 (features/psana2-gpu, including PR298).
 
 Completed: establish the clean feature-derived local branch, retain the
-reviewed design and its evidence, and apply the user-selected branch name.
+reviewed design and its evidence, apply the user-selected branch name, and
+import both PR documentary packages. The import passed independent Claude
+review (round 2, no findings) at 4d462252b80370fde35b12af9d490ecef5c28fbc; see
+[import records](../pr_campaign_import_20261116/README.md). The packages contain
+703 selected source paths: 700 source-identical files and three adapted
+navigation pages. Frozen campaign scripts and evidence are unchanged.
 The worktree remains at
 /global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results.
 The directory name does not determine the Git branch name.
 
-Next implementation steps from the agreed plan:
+Implementation steps from the agreed plan (step 1 complete; step 2 next):
 
-1. Selectively import the PR187/208 and PR299 documentary packages, preserving
-   frozen bytes and PR299 archive paths.
+1. **Complete:** selectively import the PR187/208 and PR299 documentary packages,
+   preserving frozen bytes and PR299 archive paths; integrity, isolation and
+   independent import review passed.
 2. Migrate the old fork scaling catalog and its full dependency closure into
    the reviewed GPU layout, with a path/hash ledger.
 3. Validate archive integrity, summaries, links, test/lint isolation and
@@ -30,8 +36,9 @@ Next implementation steps from the agreed plan:
    implement and review the maintained regression template. This step must not
    delay preserving or consolidating the completed campaign evidence.
 
-The local setup step performs no campaign migration, runtime changes,
-remote publishing, tagging, branch deletion or benchmark submission.
+The completed local work includes the PR-study import. Scaling-catalog migration,
+remote publishing, tagging, branch deletion and benchmark submission have not
+been performed. Runtime and example code remain unchanged.
 
 ## Reusable regression campaign (final implementation step)
 

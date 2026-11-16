@@ -1,14 +1,22 @@
 {
-  "phase": "fixes-awaiting-review",
-  "round": 1,
+  "phase": "complete",
+  "round": 2,
   "round_limit": 3,
   "branch": "results/psana2-gpu-scaling",
   "scope": "two PR study import only",
   "base": "12366915ee2e7991176c19b03d4a24134e76c7f3",
-  "reviewed_commit": "caffb52bb862d17044da690328cebeaa0d430b3e",
-  "checks": "validation.json",
-  "unresolved": [
+  "implementation_commit": "4d462252b80370fde35b12af9d490ecef5c28fbc",
+  "reviewed_commit": "4d462252b80370fde35b12af9d490ecef5c28fbc",
+  "review_verdict": "pass",
+  "checks": [
+    "validation.json",
+    "validation-02.json"
+  ],
+  "resolved": [
     "IMP-R1-01",
     "IMP-R1-02"
-  ]
+  ],
+  "unresolved": [],
+  "publication": "local only",
+  "next_step": "Migrate old fork scaling catalog with full dependency closure and a path/hash ledger."
 }

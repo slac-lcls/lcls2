@@ -68,3 +68,15 @@ Full source/build/install trees, original event arrays and all raw monitoring
 logs are not reconstructed here. The original reports state their omissions.
 Large artifacts remain at their recorded source locations; their continued
 availability is not established by this import.
+
+## Completion and review
+
+Complete locally on results/psana2-gpu-scaling. Claude's [second review](review-02.json)
+passed implementation commit `4d462252b80370fde35b12af9d490ecef5c28fbc` with no remaining findings.
+Both [first-round suggestions](response-01.md) were addressed and re-reviewed.
+The [completion record](response-02.md) distinguishes the reviewed implementation
+from the subsequent evidence-only commit. See [validation](validation.json) and
+[follow-up validation](validation-02.json) for passed checks and limits.
+
+Next is scaling-catalog migration with source/dependency accounting. Publishing,
+source-branch retirement and the reusable regression template remain later steps.
