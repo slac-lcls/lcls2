@@ -1,8 +1,17 @@
 {
-  "phase": "implemented; validation and independent documentation review pending",
+  "phase": "implemented; validated; independent documentation review round 1 pass",
   "branch": "results/psana2-gpu-scaling",
   "base_commit": "e67782b83f1342e5c6248ec2ef2346f9a24d4c0f",
-  "round": 0,
+  "round": 1,
   "round_limit": 3,
-  "unresolved": []
+  "unresolved": [],
+  "implementation_commit": "e105d8a1c80bfd91fc0c79c64b4998c98596f034",
+  "reviewed_commit": "e105d8a1c80bfd91fc0c79c64b4998c98596f034",
+  "review_verdict": "pass",
+  "resolved": [
+    "CEA-R1-01"
+  ],
+  "validation": "validation-01.json",
+  "review": "review-01.json",
+  "publication": "Included in the next authorized non-force push; remote readback performed by the coordinating session."
 }

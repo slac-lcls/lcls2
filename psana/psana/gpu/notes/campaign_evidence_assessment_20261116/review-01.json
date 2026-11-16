@@ -1,0 +1,35 @@
+{
+  "reviewed_commit": "e105d8a1c80bfd91fc0c79c64b4998c98596f034",
+  "verdict": "pass",
+  "summary": "The documentation update is factually consistent with the four campaign records and their manifests. It keeps evidence limits explicit and makes no unintended acceptance claims. The history entries match the records: GPU scaling at 5.075/7.558/9.341/9.842 GiB/s with independent results review not performed; the psana stripe screen with count 1 at 5.443 GiB/s, NIC bytes not collected and review pending; the C++ reader with count 2 at 12.92 and count 1 at 11.42 GiB/s at 40 threads, five OSTs, independent review passed, backend cache uncontrolled; and SDF with seven allocations and 48 configurations, four BDs total fixed, inputs partially transferred, the last three cohort reviews and the synthesis review pending. The assessment separates execution, archive verification and independent results review. It keeps the required distinctions: local versus backend cache, whole-NIC versus storage traffic, reader rate versus a single-OST ceiling, and GPU count rising together with BDs and CPU. It states that it is not a new results verdict or a baseline qualification. Its SDF gap figures (8 of 17 inputs absent, 156 rows, 48 cells) agree with the archive records. The retirement prerequisites in the assessment and in step 5 of IMPLEMENTATION.md agree, and both treat missing NIC data and pending reviews as non-blocking. Validation artifacts are present and record passing results. One low-severity, non-blocking finding concerns stale wording in status.json.",
+  "checks": [
+    "Read scope.md (the review contract) and the assessment's README.md, status.json, validation-01.json, migration.log, catalog.log and whitespace.log. The whitespace log is empty, which is consistent with exit code 0.",
+    "GPU-scaling README and manifest checked against the history row and the assessment. The medians, stripe count 1, four BDs per GPU, the CPU and worker co-scaling, the cold local-cache gates, the whole-NIC counters and the 'independent_results: not performed' status all match. The 1.94x speedup supports the assessment's 'nearly twice'.",
+    "psana stripe-screen README and manifest checked: count 1 at 5.4428 GiB/s (median), one GPU with four BDs, 100k events, NIC 'not collected', independent results review pending. All match the history row and the assessment.",
+    "C++ stripe-screen README and manifest checked: count 2 at 12.916 and count 1 at 11.418 GiB/s at 40 threads, five OSTs, NIC not measured, backend cache uncontrolled, independent review passed in round 3. All match.",
+    "SDF parameter-screen README and manifest checked: seven allocations, 48 configurations, the storage/GPU cohort fixing four BDs total, NIC collected, the first four cohort reviews passed with the last three pending, and the synthesis not independently reviewed. All match the history row and the assessment.",
+    "SDF gap figures are consistent across archives/scaling-20261116/sources/README.md (nine inputs present, eight not transferred), scaling_migration_20261116/README.md and context-01.md (156 rows and 48 cells).",
+    "context-01.md line 93 scopes the migration review to 'scientific summaries'. That supports the assessment's statement that the consolidation reviews checked summaries and arithmetic. review-02.json confirms the scientific qualifications carried forward unchanged.",
+    "The performance overview README adds only the assessment link paragraph. The relocation.json entry for docs/performance/README.md remains integrated/original-addition. I did not recompute its destination hash; this relies on migration.log.",
+    "Step 5 and the 'Historical evidence follow-ups' section of IMPLEMENTATION.md agree with the assessment: retirement prerequisites, optional recovery and focused review, and no recovery or review performed.",
+    "No text upgrades an execution, implementation or migration review into results acceptance or baseline qualification. Missing observations remain labelled unavailable or pending."
+  ],
+  "limitations": [
+    "I used only Read, Glob and Grep. I ran no commands, link checks, migration or catalog verification, or diff checks. Pass status for those relies on the committed logs and the coordinator's validation evidence.",
+    "I could not inspect the diff against base e67782b83. The claims that only the allowlisted paths changed and that frozen records, manifests, scripts and runtime are unchanged rely on validation-01.json and the coordinator's statement.",
+    "I did not recompute the destination sha256 of the overview README in relocation.json.",
+    "I did not fetch the results-branch URLs. Links to the new assessment resolve only after publication; within the repository they map to the existing path.",
+    "I did not read the archived catalog-review context-01.md in full because the relevant lines were omitted as too long. The 8-of-17 figure was corroborated from sources/README.md instead."
+  ],
+  "findings": [
+    {
+      "id": "CEA-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/campaign_evidence_assessment_20261116/status.json",
+      "line": 2,
+      "evidence": "The phase reads 'implemented; validation and independent documentation review pending'. However, validation-01.json and the committed migration, catalog and whitespace logs already record passing validation (exit code 0) at this commit. Only the independent review is actually pending.",
+      "requested_change": "When closing the review, update the phase so it no longer describes validation as pending. For example: 'implemented; validated; independent documentation review round 1 pass'. No change to the reviewed prose is needed."
+    }
+  ]
+}

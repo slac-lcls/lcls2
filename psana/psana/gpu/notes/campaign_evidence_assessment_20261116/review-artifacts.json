@@ -1,0 +1,18 @@
+{
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-evidence-assessment-20261116/claude-01/invocation.json": {
+    "bytes": 1737,
+    "sha256": "ca55d116d90171caabcbff13a7243f441a4ea453a15f8f20c615871ddad8ae07"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-evidence-assessment-20261116/claude-01/stdout.json": {
+    "bytes": 13210,
+    "sha256": "4bc625995ebffdc6dbc451a18d47ee2c23efdb6332b9d1a2ea02f5f6c2c4b638"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-evidence-assessment-20261116/claude-01/stderr.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "/pscratch/sd/m/monarin/psana2-gpu/campaign-evidence-assessment-20261116/claude-01/review.json": {
+    "bytes": 5745,
+    "sha256": "7e6d944e09f13f195e614c636669abbe988d0fb7587d1cc13581d423c401740a"
+  }
+}
