@@ -25,7 +25,7 @@ The worktree remains at
 /global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results.
 The directory name does not determine the Git branch name.
 
-Implementation steps from the agreed plan (steps 1–4 complete; step 5 next):
+Implementation steps from the agreed plan (steps 1–5 complete; step 6 next):
 
 1. **Complete:** selectively import the PR187/208 and PR299 documentary packages,
    preserving frozen bytes and PR299 archive paths; integrity, isolation and
@@ -39,20 +39,21 @@ Implementation steps from the agreed plan (steps 1–4 complete; step 5 next):
 4. **Complete:** publish the verified branch to slac-lcls/lcls2 and verify the
    remote tip, campaign index and review receipt. See the
    [publication receipt](../scaling_migration_20261116/publication.md).
-5. Preserve original heads with archive tags before retiring the three source
-   branches. Verify published archive tags resolve to the exact source heads,
-   recheck for intervening source commits, and resolve open-PR dependencies before
-   deletion. Missing historical NIC data and pending scientific reviews do not
-   automatically block retirement; the source history and imported evidence must
-   remain preserved. See the [evidence assessment](../campaign_evidence_assessment_20261116/README.md).
+5. **Complete:** preserve all three exact source heads with published annotated
+   archive tags in their original repositories, verify the tag objects and peeled
+   commits, recheck source heads and PR dependencies, then retire all three remote
+   branches and obsolete local references. The clean source scaling worktree was
+   removed; the canonical results worktree remains. Claude round 1 passed the
+   retirement procedure with no blocking findings. See the
+   [retirement record](../campaign_branch_retirement_20261116/README.md).
 6. Last: qualify a retained/retrievable dataset on Perlmutter and SDF, then
    implement and review the maintained regression template. This step must not
    delay preserving or consolidating the completed campaign evidence.
 
 The completed local work includes both PR-study import and scaling-catalog
-migration/validation and upstream publication. Archive tagging, source-branch
-retirement and benchmark submission remain pending. Runtime and example code
-remain unchanged.
+migration/validation, upstream publication, archive tagging and source-branch
+retirement. Dataset qualification and the maintained regression template remain
+pending. Runtime and example code remain unchanged; no new benchmark was submitted.
 
 ## Campaign PR and issue cleanup
 
@@ -65,8 +66,9 @@ requiring closure. Review findings and historical commit citations are preserved
 
 The [cleanup record](../campaign_link_cleanup_20261116/README.md) contains scoped
 search evidence, exact reviewed payloads, Claude round-2 pass and verified
-execution receipts. Source branch tagging/deletion has not been performed;
-step 5 still requires archive tags and fresh source-head/dependency checks.
+execution receipts. Source branch tagging and deletion are now complete; the
+[retirement receipt](../campaign_branch_retirement_20261116/execution.json) records
+fresh source-head/dependency checks, archive verification and local/remote cleanup.
 
 ## Historical evidence follow-ups
 

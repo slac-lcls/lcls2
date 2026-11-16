@@ -1,0 +1,37 @@
+{
+  "reviewed_commit": "575f818f6d6f6e21470388acf4721ba2426dc519",
+  "verdict": "pass",
+  "summary": "Reviewed every file in psana/psana/gpu/notes/campaign_branch_retirement_20261116/. The procedure matches the agreed scope and the user's explicit request to tag and retire the three branches, both locally and remotely. Order of operations: (1) preflight re-runs in execute mode; (2) all three annotated tags are created and pushed with no force, and both the remote tag object and the peeled commit are checked before anything is deleted; (3) open PRs are re-checked with paginated head/base listings; (4) each remote branch is checked again at its expected head, then deleted with an exact-SHA --force-with-lease and confirmed gone; (5) the obsolete worktree is checked for tracked, untracked and ignored content, plus HEAD and branch identity, then removed without --force; (6) local refs are deleted with compare-and-delete (update-ref -d ref sha) and their branch config is removed; (7) final remote verification and the complete receipt are written. Execution is refused unless the review receipt has verdict pass with no blocking findings, the canonical checkout's HEAD equals the reviewed SHA, the checkout is clean, and no earlier execution.json exists. A failure at any step stops the run before later deletions and leaves a partial receipt; because no tags are force-pushed, a retry cannot overwrite them. The targets are consistent across plan.json, README.md, preflight.json and local-inventory.json. The canonical, preserved and removed worktrees all share the sim10 object store, so 'git worktree remove' run from the canonical repo is valid. The primary lcls2 store has no matching refs. No meaningful data-loss path was found: every source tip is kept as a published annotated tag, and any local or remote ref at an unexpected SHA aborts the run. One low, non-blocking hardening item: the script does not tie its own file location to the reviewed canonical checkout.",
+  "checks": [
+    "scope.md, plan.json, retire.py, README.md, preflight.json, guard-tests.json, local-inventory.json, indexed-pr-checks.json and status.json all read",
+    "Branch, commit and tag for each of the three sources match across plan.json and README.md",
+    "Authorization: execute mode needs an approval file with verdict 'pass' and no blocking findings, the canonical HEAD at the reviewed SHA, a clean status including untracked files, and no prior execution receipt",
+    "Preflight requires: canonical branch name; published results tip equal to 3e927ee1b; fetch/push URLs pinned to the expected GitHub repos; remote source heads at the expected SHAs; source objects present; tags absent both locally and remotely",
+    "Tags: annotated, pushed as refs/tags/X:refs/tags/X without force; the remote tag object must equal the local one and the peeled commit must equal the source SHA for all three before any deletion",
+    "PR dependencies: paginated open-PR listings for both repos, checking head and base and handling head repos that are null or deleted; closed PRs 245/314 must still be closed, unmerged and at the expected head; re-run right before deletion",
+    "Remote deletion: expected head checked again, then push --force-with-lease=ref:sha with ':ref', then confirmed absent with ls-remote",
+    "Worktree removal: path must be a directory and not a symlink; HEAD and symbolic ref must match; porcelain status empty for tracked and untracked files; ls-files --others --ignored empty; not the canonical worktree; no --force, prune or git clean",
+    "Local refs: any refs/heads or refs/remotes match at an unexpected SHA aborts; refs are deleted with compare-and-delete only after confirming they are no longer checked out in any registered worktree; branch config read errors are guarded",
+    "Final step: remote tags and peeled commits are verified, branches confirmed absent, canonical branch confirmed still checked out, then the complete receipt is written",
+    "local-inventory.json and preflight.json agree that the canonical, removed and retained worktrees share the sim10 object store, so 'worktree remove' from the canonical repo is valid",
+    "The guard-test evidence (disposable bare repo only) covers cleanliness rejection, stale-lease rejection, matching-lease deletion with the tag retained, and local compare-and-delete"
+  ],
+  "limitations": [
+    "Read-only static review; I ran nothing and did not re-run the guard tests or preflight. Pass results come from the supplied guard-tests.json and preflight.json.",
+    "Live GitHub and remote state (branch heads, tag absence, open PRs, rulesets or tag protection) and the live state of the local worktrees were not observed by me; execution re-checks them.",
+    "guard-tests.json gives check summaries, not the test harness or its raw output, so I could not inspect the test code.",
+    "No claim about checkouts on SDF, a laptop or other hosts, consistent with the declared scope.",
+    "Deleting a local branch with update-ref -d also drops that branch's reflog. This is acceptable because the tip is preserved as an annotated tag, but the reflog history is not kept."
+  ],
+  "findings": [
+    {
+      "id": "R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/campaign_branch_retirement_20261116/retire.py",
+      "line": 121,
+      "evidence": "plan.json is loaded from Path(__file__).with_name('plan.json'), but the reviewed-SHA check (line 130) and the cleanliness check (line 132) run only against plan['canonical_worktree']. If retire.py is run from a different checkout, an edited plan.json or retire.py there would pass these guards as long as the canonical worktree is clean at the reviewed SHA.",
+      "requested_change": "Optional hardening: before executing, require Path(__file__).resolve() to sit inside the canonical worktree (for example, compare git rev-parse --show-toplevel from the script directory against canonical_worktree), or run the HEAD and status checks on the script's own checkout as well. Otherwise, the coordinator should run retire.py only from the canonical worktree at the reviewed SHA."
+    }
+  ]
+}

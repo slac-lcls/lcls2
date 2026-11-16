@@ -33,5 +33,29 @@ ignored files. No broad local cleanup is performed.
 To recover a source branch later, fetch its named tag from the original repository,
 then create a new local branch at that tag's peeled commit. The old branch name
 can be restored explicitly if needed; routine reporting uses the consolidated
-results branch. Tag object IDs and verified execution outcomes are recorded at
-closure. See [status](status.json) and [scope](scope.md).
+results branch. Tag object IDs and verified execution outcomes are recorded in the
+[execution receipt](execution.json). See [status](status.json) and [scope](scope.md).
+
+## Completed November 16, 2026
+
+All three annotated tags were published and verified before deleting any source
+branch. The final readback confirmed all three remote branches absent and all
+archive tag objects and peeled commits intact. Local target branch/tracking refs
+are absent in both inventoried Perlmutter Git stores. The clean obsolete
+benchmarks/psana-scaling-results worktree was removed without force; the canonical
+results worktree remains. Pushes removed the documentary remote-tracking refs;
+the local scaling branch was deleted with its expected object ID.
+
+Claude [round 1 passed](review-01.json) commit
+575f818f6d6f6e21470388acf4721ba2426dc519 with no blocking findings. Its one optional
+hardening suggestion and the execution constraint are recorded in the
+[response](response-01.md). This closure adds evidence only.
+
+Published source snapshots:
+
+- [PR187/208 archive](https://github.com/slac-lcls/lcls2/tree/archive/campaigns/pr187-pr208-20261028)
+- [PR299 archive](https://github.com/slac-lcls/lcls2/tree/archive/campaigns/pr299-perlmutter-20261115)
+- [Fork scaling archive](https://github.com/monarin/lcls2/tree/archive/campaigns/psana-scaling-20261116)
+
+The maintained regression template and dataset qualification remain a separate
+planned step; no runtime, dataset or benchmark job changed during retirement.

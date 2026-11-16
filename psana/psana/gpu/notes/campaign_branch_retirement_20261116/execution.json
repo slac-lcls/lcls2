@@ -1,0 +1,120 @@
+{
+  "reviewed_commit": "575f818f6d6f6e21470388acf4721ba2426dc519",
+  "preflight": {
+    "status": "pass",
+    "local_refs": {
+      "/global/u2/m/monarin/lcls2": {},
+      "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results": {
+        "refs/heads/results/psana-scaling": "9674e3e803354b65c86e42d616af50b23d2c6e3a",
+        "refs/remotes/origin/docs/gpu-performance-pr187-pr208-20261028": "66072235d3cd18c002a13c581af82e111a418758",
+        "refs/remotes/origin/docs/gpu-performance-pr299-perlmutter-20261115": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a"
+      }
+    },
+    "open_prs_inspected": {
+      "monarin/lcls2": 1,
+      "slac-lcls/lcls2": 19
+    },
+    "scope": "Known Perlmutter object stores and both GitHub source repositories"
+  },
+  "steps": [
+    {
+      "step": "preflight passed",
+      "utc": "2026-11-16T18:48:21.166359+00:00"
+    },
+    {
+      "step": "local annotated tag created",
+      "utc": "2026-11-16T18:48:22.024440+00:00",
+      "tag": "archive/campaigns/pr187-pr208-20261028",
+      "commit": "66072235d3cd18c002a13c581af82e111a418758"
+    },
+    {
+      "step": "remote annotated tag verified",
+      "utc": "2026-11-16T18:48:25.216225+00:00",
+      "repository": "slac-lcls/lcls2",
+      "tag": "archive/campaigns/pr187-pr208-20261028",
+      "tag_object": "15877ea7eb2a7d21ed8346eabd2fe88184ab8b9f",
+      "commit": "66072235d3cd18c002a13c581af82e111a418758"
+    },
+    {
+      "step": "local annotated tag created",
+      "utc": "2026-11-16T18:48:25.231190+00:00",
+      "tag": "archive/campaigns/pr299-perlmutter-20261115",
+      "commit": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a"
+    },
+    {
+      "step": "remote annotated tag verified",
+      "utc": "2026-11-16T18:48:28.353903+00:00",
+      "repository": "slac-lcls/lcls2",
+      "tag": "archive/campaigns/pr299-perlmutter-20261115",
+      "tag_object": "f41fc5988499185f13002fa9fb69772f33e2b36a",
+      "commit": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a"
+    },
+    {
+      "step": "local annotated tag created",
+      "utc": "2026-11-16T18:48:28.369473+00:00",
+      "tag": "archive/campaigns/psana-scaling-20261116",
+      "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a"
+    },
+    {
+      "step": "remote annotated tag verified",
+      "utc": "2026-11-16T18:48:31.308274+00:00",
+      "repository": "monarin/lcls2",
+      "tag": "archive/campaigns/psana-scaling-20261116",
+      "tag_object": "286a972e5d08af1e34c6bed38c04c14f0adeecec",
+      "commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a"
+    },
+    {
+      "step": "all archive tags verified; deletion gate satisfied",
+      "utc": "2026-11-16T18:48:31.310453+00:00"
+    },
+    {
+      "step": "fresh PR dependencies checked",
+      "utc": "2026-11-16T18:48:34.269114+00:00",
+      "open_prs_inspected": {
+        "monarin/lcls2": 1,
+        "slac-lcls/lcls2": 19
+      }
+    },
+    {
+      "step": "remote branch deleted",
+      "utc": "2026-11-16T18:48:38.441500+00:00",
+      "repository": "slac-lcls/lcls2",
+      "branch": "docs/gpu-performance-pr187-pr208-20261028",
+      "expected_commit": "66072235d3cd18c002a13c581af82e111a418758"
+    },
+    {
+      "step": "remote branch deleted",
+      "utc": "2026-11-16T18:48:42.528118+00:00",
+      "repository": "slac-lcls/lcls2",
+      "branch": "docs/gpu-performance-pr299-perlmutter-20261115",
+      "expected_commit": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a"
+    },
+    {
+      "step": "remote branch deleted",
+      "utc": "2026-11-16T18:48:46.482764+00:00",
+      "repository": "monarin/lcls2",
+      "branch": "results/psana-scaling",
+      "expected_commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a"
+    },
+    {
+      "step": "clean obsolete worktree removed",
+      "utc": "2026-11-16T18:48:49.702337+00:00",
+      "path": "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana-scaling-results"
+    },
+    {
+      "step": "local obsolete ref deleted",
+      "utc": "2026-11-16T18:48:50.181525+00:00",
+      "repository": "/global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results",
+      "ref": "refs/heads/results/psana-scaling",
+      "expected_commit": "9674e3e803354b65c86e42d616af50b23d2c6e3a"
+    },
+    {
+      "step": "complete",
+      "utc": "2026-11-16T18:48:53.938343+00:00",
+      "remote_branches_removed": 3,
+      "obsolete_worktrees_removed": 1,
+      "archived_source_commits": 3,
+      "canonical_branch": "results/psana2-gpu-scaling"
+    }
+  ]
+}
