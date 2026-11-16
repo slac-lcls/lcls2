@@ -1,0 +1,9 @@
+{
+  "status": "pass",
+  "checks": [
+    "PR299 exact single-sentence replacement remains isolated after wording fix",
+    "Explicit PR314 closed-state readback dependency present",
+    "No other action payload changed; original destination validation still applies"
+  ],
+  "scope": "documentation/payload only; no external actions"
+}

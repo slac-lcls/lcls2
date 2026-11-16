@@ -1,0 +1,40 @@
+{
+  "reviewed_commit": "7d7dec20cc51869441e9e9357c80dd54eaed1323",
+  "verdict": "pass",
+  "summary": "The planned actions match the agreed scope. Only the documentary archive PRs #245 and #314 are planned for closure, and each carries an expected_head (66072235d... and e8d69a7e6...). Both heads match discovery.json source_heads and the import ledger (pr_campaign_import_20261116/README.md:10-11). PR299 gets a body/comment update only, with its state left as null. The PR245 after-body contains the full before-body unchanged under a historical heading. The PR314 after-body changes only the four docs/gpu-performance-pr299-perlmutter-20261115 URLs to results/psana2-gpu-scaling, and keeps its measured-SHA, C1, Run77 and resubmission qualifications. The PR299 after-body replaces one sentence and leaves the CRLF and LF sections around it unchanged. The 'Perlmutter performance follow-up' heading is also unchanged, so the anchor used by review 5915912666 still resolves. All 9 destination paths exist at this checkout. The notices say that closure does not resolve C1, remaining-loop equivalence or Run77, and does not approve #299. No issue closures, review dismissals or edits to historical comments are planned. discovery.json states its search limits. Two non-blocking ordering/wording notes are recorded.",
+  "checks": [
+    "Read scope.md, README.md, actions.json, discovery.json, relevant-discussions.json, validation.json and status.json in notes/campaign_link_cleanup_20261116/.",
+    "Compared each before body with its after body by inspection. PR245: the original body is unchanged under the historical heading. PR314: only the four branch URLs differ. PR299: one sentence differs, and the CRLF/LF segments are retained.",
+    "Used Glob to confirm that all 9 destination paths in validation.json exist at 7d7dec20c.",
+    "Grep confirmed that the source SHAs 66072235d..., e8d69a7e6... and 9674e3e80... are recorded in pr_campaign_import_20261116/README.md and scaling_migration_20261116.",
+    "Checked the PR245 and PR299 discussions: the PR299 comment addresses the #314 reference in review 5915912666 and keeps C1/R1/R2/Run77 open; PR245 reviewer points were previously addressed at 66072235d.",
+    "Checked that discovery.json limitations scope the zero-match claims to indexed search, and that the non-campaign issues/PRs are retained.",
+    "status.json reports remote_actions_executed=false."
+  ],
+  "limitations": [
+    "Read-only file tools only; I did not run any commands, git, or network/GitHub queries. Current remote PR bodies, states and heads were not verified by me; I rely on the coordinator's planned re-read before applying the actions.",
+    "The byte-exact delta assertions were checked by visual inspection of the JSON strings, not by a programmatic diff. The coordinator reports that these assertions pass.",
+    "Raw discovery output is held outside Git; only the compact summary was reviewed.",
+    "The existence of the destination files was checked at this checkout, not on the remote results/psana2-gpu-scaling branch head."
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/campaign_link_cleanup_20261116/actions.json",
+      "line": 50,
+      "evidence": "The PR299 comment says '#314 is now closed as superseded'. README.md:29-31 orders steps only within each PR (body, then notice, then close); it does not say that PR299's comment must follow the read-back of PR314's closure. Only the order of the actions array implies this.",
+      "requested_change": "Post the PR299 comment only after PR314's closed state has been read back. Record that dependency in the execution record, or reword the comment if #314 is not closed."
+    },
+    {
+      "id": "F2",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/campaign_link_cleanup_20261116/actions.json",
+      "line": 34,
+      "evidence": "In PR314's historical section, 'The new branch/base are identified above' originally referred to features/psana2-gpu at 1995752. A new relocation notice now sits above it. A similar issue is in PR299 (line 49): 'superseded by this consolidated results branch' appears in a PR whose own branch is different.",
+      "requested_change": "Optional wording fix. In PR299, use 'superseded by the consolidated results branch'. The PR314 historical text may stay as-is under the '(historical; superseded)' heading."
+    }
+  ]
+}

@@ -27,7 +27,9 @@ notice supplies the replacement destination without rewriting earlier findings.
 before snapshots. A focused independent review precedes GitHub mutations. Re-read
 bodies and states immediately before each action; stop/reconcile if a body changed.
 Check source PR head identity again through a head-filtered query before closure.
-Update body before adding the notice and closing. Read back each mutation. On any
+Process PR245, then PR314, then PR299. PR299 requires a successful readback of
+PR314 in the closed state before its body or comment update. Update body before
+adding the notice and closing. Read back each mutation. On any
 retry, inspect existing state/comments first to prevent duplicate notices.
 
 This task does not tag/delete source branches, merge a PR, close implementation
