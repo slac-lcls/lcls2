@@ -117,8 +117,11 @@ The `notes/` paths above are relative to `psana/psana/gpu/`. These are frozen
 execution packages, not maintained launch defaults. Preserve their bytes and
 checksums. Consult this guide and create a new qualified campaign configuration
 instead of globally replacing paths in archives or launching frozen scripts.
-The reusable PR regression runner is still later work on this results branch;
-the historical PR299 Run51 workload remains separate from Sim10 publication.
+The [maintained PR regression template](templates/pr-regression.md) provides
+comparison orchestration, but still requires a qualified native adapter and
+frozen site-specific inputs. Its real-data `mfx100848724` run-51 candidate and
+the historical PR299 workload remain separate from Sim10 publication. Do not
+substitute a synthetic run or enable qualification flags solely from this guide.
 
 Before deleting either old 100k/400k source directory, check active jobs and
 non-archived worktrees/configurations on SDF and Perlmutter, and update any live
