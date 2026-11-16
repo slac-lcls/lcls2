@@ -4,8 +4,12 @@ The maintained [controller](../../scripts/performance/regression/README.md),
 [candidate profile](../../scripts/performance/regression/profile.json) and
 [agent instructions](../../docs/performance/templates/pr-regression.md) prepare
 new frozen PR comparisons. Existing campaign harnesses remain unchanged.
-Implementation review and test outcomes are recorded in status.json and review
-receipts at closure. This work produces no hardware performance result.
+Claude final review **passed** at bf0f93a9dcc63ac4920f28df34679ac27722048d,
+with no blocking findings. All 20 controller tests pass; the combined catalog
+passes 10 campaigns, 2,082 hashes and 275 arithmetic cases. See the
+[final review](review-03/review.json), [closure and optional follow-up](review-03/response.md),
+[validation](validation.md) and [status](status.json). This work produces no
+hardware performance result.
 
 ## Run 51 is not affected by the all-bad status caveat
 
