@@ -1,0 +1,31 @@
+{
+  "data_mount": {
+    "filesystems": [
+      {
+        "fstype": "lustre",
+        "options": "rw,nosuid,nodev,checksum,rchecksum_force,flock,user_xattr,lruresize,lazystatfs,nouser_fid2path,verbose,encrypt,statfs_project",
+        "source": "2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch",
+        "target": "/pscratch"
+      }
+    ]
+  },
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "0,1,2,3",
+    "LOADEDMODULES": "craype-x86-milan:libfabric/2.3.1:craype-network-ofi:xpmem/2.11.5-1.3_g73ade43320bc:gcc-native/14:cray-dsmml/0.3.1:PrgEnv-gnu/8.7.0:cray-libsci/26.03.0:cray-mpich/9.1.0:craype/2.7.36:perftools-base/26.03.0:cpe/26.03:craype-accel-nvidia80:gpu/1.0:sqs/2.0:darshan/default:cudatoolkit/12.9",
+    "SLURM_JOB_GPUS": "0,1,2,3",
+    "SLURM_JOB_ID": "61375111"
+  },
+  "host": "nid003260",
+  "lustre_stats_observable": false,
+  "python": "3.9.20 | packaged by conda-forge | (main, Sep 30 2024, 17:49:10) \n[GCC 13.3.0]",
+  "task_mount": {
+    "filesystems": [
+      {
+        "fstype": "lustre",
+        "options": "rw,nosuid,nodev,checksum,rchecksum_force,flock,user_xattr,lruresize,lazystatfs,nouser_fid2path,verbose,encrypt,statfs_project",
+        "source": "2158@kfi,2091@kfi:2283@kfi,2219@kfi:/scratch",
+        "target": "/pscratch"
+      }
+    ]
+  }
+}

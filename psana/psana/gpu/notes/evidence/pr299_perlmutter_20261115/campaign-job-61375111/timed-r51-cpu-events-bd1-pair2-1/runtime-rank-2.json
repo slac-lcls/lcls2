@@ -1,0 +1,8 @@
+{
+  "gpu_initialized": false,
+  "mapped_native_libraries": [
+    "/opt/cray/pe/mpich/9.0.1/ofi/gnu/12.3/lib/libmpi_gnu_123.so.12.0.0"
+  ],
+  "mpi": "MPI VERSION    : CRAY MPICH version 9.0.1.498 (ANL base 4.1.2)\nMPI BUILD INFO : Wed Jul 16  9:39 2025 (git hash 0848216)\n",
+  "step_gpu_identity": null
+}

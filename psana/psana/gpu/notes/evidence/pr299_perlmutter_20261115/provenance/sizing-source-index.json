@@ -1,0 +1,881 @@
+{
+  "source": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/results/pilot-job-61373624",
+  "files": {
+    "allocation.json": {
+      "bytes": 19917,
+      "sha256": "73da1f360060b724aabc2b73bacca8464c4f502fbcc301688bca70828d88d96b"
+    },
+    "gpu-identity-command.json": {
+      "bytes": 1301,
+      "sha256": "b0c2998f82dc0685ab7f61777cdea3404032d3d4c3fd186aca0c5be45ef5fb3e"
+    },
+    "gpu-identity.json": {
+      "bytes": 915,
+      "sha256": "3fbcc57a42690453adcd161fcf6484d00e8ca1610195540af67827699d6646d4"
+    },
+    "host.json": {
+      "bytes": 1270,
+      "sha256": "881691e257adc3991776bee78f5e8d208b379ce9f2fca4a44726b0c24a8d1287"
+    },
+    "preflight-r51-cpu-events-bd1-0/command.json": {
+      "bytes": 2443,
+      "sha256": "483b7a619cfeeff21b6bd735801c52fd7f73000cfffd253d29d4ab52dae6ac3f"
+    },
+    "preflight-r51-cpu-events-bd1-0/gpu.csv": {
+      "bytes": 532,
+      "sha256": "1b865cd543a852729f20cd4930afff2a6beaa9294aba683b8e1a711b259af9a0"
+    },
+    "preflight-r51-cpu-events-bd1-0/process-status.json": {
+      "bytes": 109,
+      "sha256": "ee60a6ce49cc3f01e0a2daf0aaeab9ce1c6dcd33f338b87b1e81e59d8acf496f"
+    },
+    "preflight-r51-cpu-events-bd1-0/progress-rank-2.jsonl": {
+      "bytes": 125,
+      "sha256": "6a59928b2036dc2ef8bb2451562ba5b789bdefae6ab9eb5bd0c31b4e65b94aff"
+    },
+    "preflight-r51-cpu-events-bd1-0/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd1-0/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd1-0/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd1-0/sample.json": {
+      "bytes": 1605571,
+      "sha256": "db5dc29421c2a3cd87a142da6a5b4f29a192a582e6b8d3263829550956c09397"
+    },
+    "preflight-r51-cpu-events-bd1-0/storage.jsonl": {
+      "bytes": 2945527,
+      "sha256": "b48b3d377d2c698e0336837025c39f041e5dad0653b0ff0b1103bfa1272dc453"
+    },
+    "preflight-r51-cpu-events-bd1-0/worker.json": {
+      "bytes": 1605151,
+      "sha256": "baa4f3b11b3bd15c65918414c819aa8259c6fa1fd3c9594fc28665ba6f53881a"
+    },
+    "preflight-r51-cpu-events-bd1-0/worker.log": {
+      "bytes": 353,
+      "sha256": "08cfa34f16c0fb031706ed1ae036fb50dd938ee8f85a331853aa0fb4aa20f5cd"
+    },
+    "preflight-r51-cpu-events-bd1-1/command.json": {
+      "bytes": 2443,
+      "sha256": "3da637ab42f9858fe4d962c2df4755e768bb3f3842790f9515c6d36b76550f9f"
+    },
+    "preflight-r51-cpu-events-bd1-1/gpu.csv": {
+      "bytes": 532,
+      "sha256": "20681f1470fc89ad4964245804c55de5e1e1e0627c1dbec5646554791b48c575"
+    },
+    "preflight-r51-cpu-events-bd1-1/process-status.json": {
+      "bytes": 113,
+      "sha256": "c0dd17364af05c7e196573ba62e59c74b4588dafd09572e7be58c14632f065c7"
+    },
+    "preflight-r51-cpu-events-bd1-1/progress-rank-2.jsonl": {
+      "bytes": 125,
+      "sha256": "6f50eaade42ccfbb0ed6ec657e834330724c5dd0c26fbfdd50b6614be7683233"
+    },
+    "preflight-r51-cpu-events-bd1-1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd1-1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd1-1/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd1-1/sample.json": {
+      "bytes": 1605617,
+      "sha256": "181c4e271c4e8cf20a6300a054e1925148187570fe4f039a64585930f2d6b17d"
+    },
+    "preflight-r51-cpu-events-bd1-1/storage.jsonl": {
+      "bytes": 2945607,
+      "sha256": "5bb6edab9a0d84fb5b8c7474c6eb2cfa593ab5d7207e5058f199b1c751f2f426"
+    },
+    "preflight-r51-cpu-events-bd1-1/worker.json": {
+      "bytes": 1605195,
+      "sha256": "dda344cf154821854d6e7245d04d0d1bd8826f31be199722d2baf77c87bf5c88"
+    },
+    "preflight-r51-cpu-events-bd1-1/worker.log": {
+      "bytes": 353,
+      "sha256": "6680cbad5d8f8401a60e0de8dc74be5da956c0c1b71f05c847d596ee9790d062"
+    },
+    "preflight-r51-cpu-events-bd2-0/command.json": {
+      "bytes": 2443,
+      "sha256": "c9476346c8343f293189db1b78de5f64e67365171b65fce5b046a245a10272ce"
+    },
+    "preflight-r51-cpu-events-bd2-0/gpu.csv": {
+      "bytes": 456,
+      "sha256": "801e812e471354015d18c0252af3ad5ff07cdbc36ab6e03fdff8667b47fbf736"
+    },
+    "preflight-r51-cpu-events-bd2-0/process-status.json": {
+      "bytes": 112,
+      "sha256": "6f7c4aafc86db0b5bc1f89c6eb6ecf3d77634e0cb2a3c14b213fd61619be3ab0"
+    },
+    "preflight-r51-cpu-events-bd2-0/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-0/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-0/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-0/runtime-rank-3.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-0/sample.json": {
+      "bytes": 1609038,
+      "sha256": "870b1935aabec9ead3d1c9e68a9a8dbbbd349ae37d3ff26e1c4cca51e843b99e"
+    },
+    "preflight-r51-cpu-events-bd2-0/storage.jsonl": {
+      "bytes": 2209497,
+      "sha256": "1400b798c5098f93916ecc1c47dedfe1395386a0df835f0cf7a9fccd61ac13ef"
+    },
+    "preflight-r51-cpu-events-bd2-0/worker.json": {
+      "bytes": 1608617,
+      "sha256": "638a062b47d1a71ecb0fd5611e5201159f827d7046059f4ec674d9cb1f192b8f"
+    },
+    "preflight-r51-cpu-events-bd2-0/worker.log": {
+      "bytes": 353,
+      "sha256": "0271efd212b8c9aa974206b7fe1722ebfd92286c9c88e50801ab39bfae7043d8"
+    },
+    "preflight-r51-cpu-events-bd2-1/command.json": {
+      "bytes": 2443,
+      "sha256": "fa4bcf668fac23f44c5852a9d6370434ef97385c19faf00796a3b4ae0bf79287"
+    },
+    "preflight-r51-cpu-events-bd2-1/gpu.csv": {
+      "bytes": 532,
+      "sha256": "fa1c523857213d7d8932dfaa7a62a75497ffd411d1ab14e1aaff4c2eb6a310e7"
+    },
+    "preflight-r51-cpu-events-bd2-1/process-status.json": {
+      "bytes": 112,
+      "sha256": "0603c5a3e83569882f24385343a52c8b33be19440daae5f633a4abe4614ffccc"
+    },
+    "preflight-r51-cpu-events-bd2-1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-1/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-1/runtime-rank-3.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-events-bd2-1/sample.json": {
+      "bytes": 1609054,
+      "sha256": "03b5d007ce34963a16a294140170ab068b5d6cb07311476a201d39130e14eacb"
+    },
+    "preflight-r51-cpu-events-bd2-1/storage.jsonl": {
+      "bytes": 2945991,
+      "sha256": "c6174275097e0e2f8d246a1efe83be165ce0caff5c64658b932d41069631cff4"
+    },
+    "preflight-r51-cpu-events-bd2-1/worker.json": {
+      "bytes": 1608633,
+      "sha256": "1f628b51e8a834c29581b64453c18bea82e1d46b1c991de47eaa461fd5de9e52"
+    },
+    "preflight-r51-cpu-events-bd2-1/worker.log": {
+      "bytes": 353,
+      "sha256": "f7de7f9f48455d9b2910de2dd8263c36dee3e193b3091c8b316630e733e5a047"
+    },
+    "preflight-r51-cpu-steps-bd1-0/command.json": {
+      "bytes": 2441,
+      "sha256": "25c6fb194a76b7450f5f32ff539a209e86986139bbf13274b4ba9a6452e7ef1e"
+    },
+    "preflight-r51-cpu-steps-bd1-0/gpu.csv": {
+      "bytes": 532,
+      "sha256": "8002e530320f7a5ca3dde255af2d810ebe154b1675b2795f9df8b09fa8214aba"
+    },
+    "preflight-r51-cpu-steps-bd1-0/process-status.json": {
+      "bytes": 112,
+      "sha256": "29867b73a78434c663af75c2fc8252af1f1ec45a900bd5be6ec279f53612a6fc"
+    },
+    "preflight-r51-cpu-steps-bd1-0/progress-rank-2.jsonl": {
+      "bytes": 125,
+      "sha256": "c7df9683ce87f5f82a30243c8d072641a49079253909b9c14ff6d7e20f1a9411"
+    },
+    "preflight-r51-cpu-steps-bd1-0/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd1-0/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd1-0/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd1-0/sample.json": {
+      "bytes": 1605638,
+      "sha256": "e6b079ecbcee36f9f2e541681cbf0cbf8bd2ec02f740c4aec8efa1841e4eb892"
+    },
+    "preflight-r51-cpu-steps-bd1-0/storage.jsonl": {
+      "bytes": 2945675,
+      "sha256": "0d33147702cc641c3be6e0e4bcd575dd706cf55fdbc9f155fb2be0cd058f78be"
+    },
+    "preflight-r51-cpu-steps-bd1-0/worker.json": {
+      "bytes": 1605219,
+      "sha256": "b23bcb10cb04964bf6e896cf9957f5570dc6550622a9364dca2524816f9e2bf4"
+    },
+    "preflight-r51-cpu-steps-bd1-0/worker.log": {
+      "bytes": 353,
+      "sha256": "e13eea858266aa8b4c873ee50dd489b4dcee4b30d25815cbf04fe8381394e605"
+    },
+    "preflight-r51-cpu-steps-bd1-1/command.json": {
+      "bytes": 2441,
+      "sha256": "f2c115d8147cd52895f94677a91451e0c82d542d6d123a2b4ff0d769a96f4983"
+    },
+    "preflight-r51-cpu-steps-bd1-1/gpu.csv": {
+      "bytes": 532,
+      "sha256": "4c65b62ebf337782df9eb7f606d39a423eec54a588faf4f928f46a48329a1d41"
+    },
+    "preflight-r51-cpu-steps-bd1-1/process-status.json": {
+      "bytes": 112,
+      "sha256": "ba8819ef8a9560fface1d0779df15a6209b64e606cdbdc2490f8ed2bc576f7e9"
+    },
+    "preflight-r51-cpu-steps-bd1-1/progress-rank-2.jsonl": {
+      "bytes": 125,
+      "sha256": "62310f1ad466bbc206b1fe1412fe4e38deee058aa91f4ee7133e76ee4e669164"
+    },
+    "preflight-r51-cpu-steps-bd1-1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd1-1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd1-1/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd1-1/sample.json": {
+      "bytes": 1605673,
+      "sha256": "fb3a0fd0e69b99917ba06289fb15c89094dab63a6d68fe4cc9fdd33012620c24"
+    },
+    "preflight-r51-cpu-steps-bd1-1/storage.jsonl": {
+      "bytes": 2945734,
+      "sha256": "d784c9b2839a2e7d6a5a5f12d211ea633ad6dc6cd31a0961383e267ff251c45c"
+    },
+    "preflight-r51-cpu-steps-bd1-1/worker.json": {
+      "bytes": 1605254,
+      "sha256": "3d395799f7fa06687cc4fb5f2f1cd0d85651660d1da05411fa2ebc7c28d555de"
+    },
+    "preflight-r51-cpu-steps-bd1-1/worker.log": {
+      "bytes": 353,
+      "sha256": "2377893a04987812531b38df56bb56370388129bd833e342f223349d38c9c123"
+    },
+    "preflight-r51-cpu-steps-bd2-0/command.json": {
+      "bytes": 2441,
+      "sha256": "8cec2ac7136335c5d220a1c899d2a1877badac9c722c12b163ea002c71eca46a"
+    },
+    "preflight-r51-cpu-steps-bd2-0/gpu.csv": {
+      "bytes": 532,
+      "sha256": "b61d8a8de1f03d4a56fb66fdb4baadb888b2488a4d1ee822df1e8650772f500c"
+    },
+    "preflight-r51-cpu-steps-bd2-0/process-status.json": {
+      "bytes": 112,
+      "sha256": "f63ebcef1ad390485b78c92dbc143fb7f8a345564a20e9ecc156b817f90c1026"
+    },
+    "preflight-r51-cpu-steps-bd2-0/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-0/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-0/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-0/runtime-rank-3.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-0/sample.json": {
+      "bytes": 1609065,
+      "sha256": "dea7525d1c9e8ab35b2792982642d2d8ae8e783e3c90e068e8782c0a2634698b"
+    },
+    "preflight-r51-cpu-steps-bd2-0/storage.jsonl": {
+      "bytes": 2946031,
+      "sha256": "419fc2b40ac53313f001b2843e2ac9dcfaa81644ba1ef2135e9d37bc2e0d1bb7"
+    },
+    "preflight-r51-cpu-steps-bd2-0/worker.json": {
+      "bytes": 1608646,
+      "sha256": "5dec4cd5d2090d3b2e66f7c572daa308ee66aee1e4315fc10705e0c814d79250"
+    },
+    "preflight-r51-cpu-steps-bd2-0/worker.log": {
+      "bytes": 353,
+      "sha256": "8fd14eb2c0fe6ad8b142dd4e91da6b5cd13901b2edd55079cbbaabc5b8e15ef2"
+    },
+    "preflight-r51-cpu-steps-bd2-1/command.json": {
+      "bytes": 2441,
+      "sha256": "d38aa3f853590c7960798f18292933d2ec7456b96afaa7db342151d5eefd7753"
+    },
+    "preflight-r51-cpu-steps-bd2-1/gpu.csv": {
+      "bytes": 532,
+      "sha256": "1c0a4a0434aeeb7057a6616e951dc01481e466a3ca891a34063ef7f41a6397a1"
+    },
+    "preflight-r51-cpu-steps-bd2-1/process-status.json": {
+      "bytes": 113,
+      "sha256": "67157d82dd49da15a63da40e2bb68deba53d3a58ff3ff14fa66623d96e155909"
+    },
+    "preflight-r51-cpu-steps-bd2-1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-1/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-1/runtime-rank-3.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-cpu-steps-bd2-1/sample.json": {
+      "bytes": 1609075,
+      "sha256": "baeeeca0121a6200997656031c64a5863c79e5c3ad5ebeb0d23460a19f58c363"
+    },
+    "preflight-r51-cpu-steps-bd2-1/storage.jsonl": {
+      "bytes": 2946044,
+      "sha256": "83dd5b4122f596c97014cdcb45b93f54217d82cfad9eb1f322cf0d46357f1476"
+    },
+    "preflight-r51-cpu-steps-bd2-1/worker.json": {
+      "bytes": 1608655,
+      "sha256": "85977eb1c459125eb4de036c26122ccdf46dd1bea647431066ae687ca118ddef"
+    },
+    "preflight-r51-cpu-steps-bd2-1/worker.log": {
+      "bytes": 353,
+      "sha256": "e20af31cd22237551a0f3134e9972f47c0119a670eb137dde3de080264da09dc"
+    },
+    "preflight-r51-gpu-events-bd1-0/command.json": {
+      "bytes": 2443,
+      "sha256": "9b0195b670c5bda20acd4cb1df6f104be1fbd88c9fb50797c42c60db69144193"
+    },
+    "preflight-r51-gpu-events-bd1-0/gpu.csv": {
+      "bytes": 1990,
+      "sha256": "cc74de8f42108a97b463e728a007ea4c48465d409ccbe91f6409e98359d614bb"
+    },
+    "preflight-r51-gpu-events-bd1-0/io-rank-2.json": {
+      "bytes": 703,
+      "sha256": "c5a9c5f8aa78d87cbadd0b0dc56992bf2878904e8bf2e26291c4726b384833c8"
+    },
+    "preflight-r51-gpu-events-bd1-0/process-status.json": {
+      "bytes": 111,
+      "sha256": "1541777b831e71191b257b03a8f31d60c17b1218c8965a21b240274282f924cd"
+    },
+    "preflight-r51-gpu-events-bd1-0/progress-rank-2.jsonl": {
+      "bytes": 124,
+      "sha256": "2c35b11e50b0b306e538e6b7939f7082f22d5fd9e2c7b4663bd8dd7dc9d3195c"
+    },
+    "preflight-r51-gpu-events-bd1-0/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd1-0/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd1-0/runtime-rank-2.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "preflight-r51-gpu-events-bd1-0/sample.json": {
+      "bytes": 1606903,
+      "sha256": "beaafbd214b256c61af1657effcf89bbd91f6ec9f1cfaaa7297e2f666aa21107"
+    },
+    "preflight-r51-gpu-events-bd1-0/storage.jsonl": {
+      "bytes": 8833748,
+      "sha256": "5239857d4b1c5708d40f9b5df1a8a27e893937c99364f4ad23349145a1bf34a5"
+    },
+    "preflight-r51-gpu-events-bd1-0/worker.json": {
+      "bytes": 1606479,
+      "sha256": "9c77428f9fa61fc083127774f6ab94c8130e6517f783e4a3e5e11b0895939129"
+    },
+    "preflight-r51-gpu-events-bd1-0/worker.log": {
+      "bytes": 1304,
+      "sha256": "df5ccad199cd7882af0b90ea31e056dc4df5221d6d4de26c9014c739711f9aca"
+    },
+    "preflight-r51-gpu-events-bd1-1/command.json": {
+      "bytes": 2443,
+      "sha256": "47ab20b80bfe809690e6ced23f0f6ffc70fd84b9532220c1dc151a97a66c4c7a"
+    },
+    "preflight-r51-gpu-events-bd1-1/gpu.csv": {
+      "bytes": 841,
+      "sha256": "8f44590f7dfa8a6c4d6177a8e7e14eab0d525d8ac0d37c1bf725100f8c5e782a"
+    },
+    "preflight-r51-gpu-events-bd1-1/io-rank-2.json": {
+      "bytes": 703,
+      "sha256": "c5a9c5f8aa78d87cbadd0b0dc56992bf2878904e8bf2e26291c4726b384833c8"
+    },
+    "preflight-r51-gpu-events-bd1-1/process-status.json": {
+      "bytes": 114,
+      "sha256": "468e1d80569a23d1defd45d246bb44102534dc3377e902f07823f7c15609a576"
+    },
+    "preflight-r51-gpu-events-bd1-1/progress-rank-2.jsonl": {
+      "bytes": 125,
+      "sha256": "0c624efc59d45bfbe956772e1dd0b50447055999fe1832153062fa34de91c28e"
+    },
+    "preflight-r51-gpu-events-bd1-1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd1-1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd1-1/runtime-rank-2.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "preflight-r51-gpu-events-bd1-1/sample.json": {
+      "bytes": 1607161,
+      "sha256": "a64d53684ac8d0f4b3c12204050a6c9137acce076e2b43973721c81f1195c82d"
+    },
+    "preflight-r51-gpu-events-bd1-1/storage.jsonl": {
+      "bytes": 3681767,
+      "sha256": "e2ecf5ef7851829988c7dce6676df9e82cab58d549f0bbd47fb37c8fb824d40a"
+    },
+    "preflight-r51-gpu-events-bd1-1/worker.json": {
+      "bytes": 1606735,
+      "sha256": "fa530e07eb56505e2721d2cf83f9e54374425a22d40951b66105ad92277552ea"
+    },
+    "preflight-r51-gpu-events-bd1-1/worker.log": {
+      "bytes": 1304,
+      "sha256": "981eb82e2b5b23792dffab7bb83b6be94f7d2ba0be6cc13894355387915b6541"
+    },
+    "preflight-r51-gpu-events-bd2-0/command.json": {
+      "bytes": 2443,
+      "sha256": "c587f137fe8c3cc4d4e0747c36b9e26be278198f2f5ec9a9b6e59ad31ad7c417"
+    },
+    "preflight-r51-gpu-events-bd2-0/gpu.csv": {
+      "bytes": 766,
+      "sha256": "63064b3afda4cf9f662400e39f05c86901cb3980093e8bfae528ddc683e48b62"
+    },
+    "preflight-r51-gpu-events-bd2-0/io-rank-2.json": {
+      "bytes": 702,
+      "sha256": "5714abf57bb7e0795eca5583022f4e3cf455718b09b7b88e3eadf6ceb2dc6e8f"
+    },
+    "preflight-r51-gpu-events-bd2-0/io-rank-3.json": {
+      "bytes": 702,
+      "sha256": "c671a6fd43ebb7d267e1fa7c960fdd2219ca2db626e3f3551d560454097ff5b7"
+    },
+    "preflight-r51-gpu-events-bd2-0/process-status.json": {
+      "bytes": 114,
+      "sha256": "97e26598f0fb7f188d7f37558c9e02a54e2dc8bad31c8701b426f31054e02e09"
+    },
+    "preflight-r51-gpu-events-bd2-0/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd2-0/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd2-0/runtime-rank-2.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "preflight-r51-gpu-events-bd2-0/runtime-rank-3.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "preflight-r51-gpu-events-bd2-0/sample.json": {
+      "bytes": 1612234,
+      "sha256": "476c61e8a140cd430e8c26dadf3cf8d527cef152aea19d0d1ba9e81fcc7d102c"
+    },
+    "preflight-r51-gpu-events-bd2-0/storage.jsonl": {
+      "bytes": 3682307,
+      "sha256": "efe163f37b8577b693dc7e9b143d9ff585905d904a9c76326d616a7d52082e47"
+    },
+    "preflight-r51-gpu-events-bd2-0/worker.json": {
+      "bytes": 1611808,
+      "sha256": "030ce98b57f4b72fd6eac48f47ee06b7abb950807649275c847d62f60b2ae3cd"
+    },
+    "preflight-r51-gpu-events-bd2-0/worker.log": {
+      "bytes": 2258,
+      "sha256": "6cf4fd2c0f719cf2ca48d66effb7aec1317d46effbadcaf3224e93edc3f124a9"
+    },
+    "preflight-r51-gpu-events-bd2-1/command.json": {
+      "bytes": 2443,
+      "sha256": "24db61fb0f2e92d7d123c25ef373c3dd014fd37c1e84b849f6d1ebc9d8ac66f0"
+    },
+    "preflight-r51-gpu-events-bd2-1/gpu.csv": {
+      "bytes": 843,
+      "sha256": "f2a1b7cb485f92423be27ee2349a5c46959b090d37afeb06dc4beac01e88c80d"
+    },
+    "preflight-r51-gpu-events-bd2-1/io-rank-2.json": {
+      "bytes": 702,
+      "sha256": "dfed5466f52b2efa45a9e7b0569a3dba8ce6eb0b3b19ef012799b7f99f37c322"
+    },
+    "preflight-r51-gpu-events-bd2-1/io-rank-3.json": {
+      "bytes": 702,
+      "sha256": "f3a6b7ec0ee7598fc3f16ed81ce7634c4e5d3fc868094d12da080900b0ea5e0b"
+    },
+    "preflight-r51-gpu-events-bd2-1/process-status.json": {
+      "bytes": 114,
+      "sha256": "2b810f80b4f455e8862bd8cf7913c450d8ec6f5cb3161325104dee8a29b4e90a"
+    },
+    "preflight-r51-gpu-events-bd2-1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd2-1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "preflight-r51-gpu-events-bd2-1/runtime-rank-2.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "preflight-r51-gpu-events-bd2-1/runtime-rank-3.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "preflight-r51-gpu-events-bd2-1/sample.json": {
+      "bytes": 1612273,
+      "sha256": "c5cdd82008b6c1872e577c8facc43ca71631d60d3525b97ab9d23b8bd317375d"
+    },
+    "preflight-r51-gpu-events-bd2-1/storage.jsonl": {
+      "bytes": 3682393,
+      "sha256": "019f395883cf0ff5d5b02c2ab94a590983c3450c105a1621e15e35bb1fac4d61"
+    },
+    "preflight-r51-gpu-events-bd2-1/worker.json": {
+      "bytes": 1611847,
+      "sha256": "59f5025804e2326a34839bb1770036d71e61fd4d562509c6dfa6bdd9df84e04c"
+    },
+    "preflight-r51-gpu-events-bd2-1/worker.log": {
+      "bytes": 2258,
+      "sha256": "31142d0d6a90035d6e09b2676540337a9d1969606d5e0639396e73809512e963"
+    },
+    "status.json": {
+      "bytes": 191,
+      "sha256": "1a2e1490e0c27c4aab7cc0c9cb8c3bf2b8cd27f21e69d70d9c534168febc7ee2"
+    },
+    "storage-inventory.json": {
+      "bytes": 527331,
+      "sha256": "6dbbbfc00c21de0034316a0a7a801ae5f1662688ffce6d3ca56ea7f88c721a22"
+    },
+    "sustained-base-gpu-bd1/command.json": {
+      "bytes": 2437,
+      "sha256": "33446ab1a2d2d1099c05c3fd0a523a06eb852b09171cc432e967242f953dfca2"
+    },
+    "sustained-base-gpu-bd1/gpu.csv": {
+      "bytes": 12347,
+      "sha256": "3e5e1f9af3ee570e2d889f96a9931b135dd58e7e7dca68ed28aca0e635dd106a"
+    },
+    "sustained-base-gpu-bd1/io-rank-2.json": {
+      "bytes": 717,
+      "sha256": "d185b098a18df3e8bf8c80ed4ee75ee733f261fb90d83e72615100f260ebddea"
+    },
+    "sustained-base-gpu-bd1/process-status.json": {
+      "bytes": 114,
+      "sha256": "56230c00975c17b4ff42aa90049ff0398e3e64a71b46c8e008c12b0e223b54d9"
+    },
+    "sustained-base-gpu-bd1/progress-rank-2.jsonl": {
+      "bytes": 12498,
+      "sha256": "f2c96f28786b9223456bc8c5d734baa4eb3c48da03b4824d57aeaac41d74fb54"
+    },
+    "sustained-base-gpu-bd1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-gpu-bd1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-gpu-bd1/runtime-rank-2.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "sustained-base-gpu-bd1/sample.json": {
+      "bytes": 1607798,
+      "sha256": "036b87b2c215fb99eb56793769c50eeae47ab9daa79c0b83ef93dbbb8aab2d79"
+    },
+    "sustained-base-gpu-bd1/storage.jsonl": {
+      "bytes": 49361985,
+      "sha256": "c5b2eae8ef633ad42e0c491021373d736acc584a238dcb6e8ffabbeadc1243cf"
+    },
+    "sustained-base-gpu-bd1/worker.json": {
+      "bytes": 1607378,
+      "sha256": "2a93e851c6837007974cc7de39267310fae03749b3dcb2011454de3bf0e3c6a1"
+    },
+    "sustained-base-gpu-bd1/worker.log": {
+      "bytes": 6484,
+      "sha256": "b98a7f853a12318f5e6bc02057711fde72a2e734aa5db63410b5071dd3d3f912"
+    },
+    "sustained-base-r51-cpu-events-bd1/command.json": {
+      "bytes": 2448,
+      "sha256": "e6373bf918a9f50fed2ce3fe48ec6ddbf294f20705c0ac11afa810da05da3d10"
+    },
+    "sustained-base-r51-cpu-events-bd1/gpu.csv": {
+      "bytes": 16644,
+      "sha256": "ff609e45780810b12a460e307e3f6a9d4464cad81443c4e8f31181a91b83d70c"
+    },
+    "sustained-base-r51-cpu-events-bd1/process-status.json": {
+      "bytes": 113,
+      "sha256": "fa2eb1b5f83c4ffc32981b15838d06a7ce870017da3190e5004c353aab30d8b5"
+    },
+    "sustained-base-r51-cpu-events-bd1/progress-rank-2.jsonl": {
+      "bytes": 12522,
+      "sha256": "4db22451c654a2b5d560d34910ef9a0147fddbb200acd847bbdda5d20f04a166"
+    },
+    "sustained-base-r51-cpu-events-bd1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd1/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd1/sample.json": {
+      "bytes": 1606506,
+      "sha256": "c6428c8b7e93558c2a95acba5636490454cc5a778b0474924500c1c10dcdedb9"
+    },
+    "sustained-base-r51-cpu-events-bd1/storage.jsonl": {
+      "bytes": 70003626,
+      "sha256": "cd8f1590bf85e8d78367bf012c98d763bc6f7b48498c0ef5fbda3e91cfcd6e29"
+    },
+    "sustained-base-r51-cpu-events-bd1/worker.json": {
+      "bytes": 1606078,
+      "sha256": "6ebac8e2c1bdc4b880156931dab37720ded3a32283a5aa8d9e5645becbb4bb24"
+    },
+    "sustained-base-r51-cpu-events-bd1/worker.log": {
+      "bytes": 5241,
+      "sha256": "8aae268e0983850aee1a439f0094ae97e0e38204bac559704cca088d467c50cd"
+    },
+    "sustained-base-r51-cpu-events-bd2/command.json": {
+      "bytes": 2448,
+      "sha256": "7ae400ea6c35b340cb5bcf27fe28e5d50a693dfa5050f121d130df67cc86d302"
+    },
+    "sustained-base-r51-cpu-events-bd2/gpu.csv": {
+      "bytes": 14972,
+      "sha256": "628af85b8379240a6009c9dc556bc3f2f4a5869acc1de71f00750c6721eeb708"
+    },
+    "sustained-base-r51-cpu-events-bd2/process-status.json": {
+      "bytes": 114,
+      "sha256": "3769c7f155b9cdd29cb532fed0060c197ef3acd3e9d689d70d3928c28d16ec0a"
+    },
+    "sustained-base-r51-cpu-events-bd2/progress-rank-2.jsonl": {
+      "bytes": 6246,
+      "sha256": "3e561d41669802b8d71381e0d0167857810c353fdee837ff2cbfc7fd4b6125e8"
+    },
+    "sustained-base-r51-cpu-events-bd2/progress-rank-3.jsonl": {
+      "bytes": 6128,
+      "sha256": "2c7acd1b3030277dfea6e9f328baa2164031a50ca21ee90ac0d1294b78b67874"
+    },
+    "sustained-base-r51-cpu-events-bd2/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd2/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd2/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd2/runtime-rank-3.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-events-bd2/sample.json": {
+      "bytes": 1610304,
+      "sha256": "353d8ebd9ff4d2deb43a81242239b4cc51aa979a355ad0c1131c5e19f0336ef8"
+    },
+    "sustained-base-r51-cpu-events-bd2/storage.jsonl": {
+      "bytes": 62656467,
+      "sha256": "a8afffabdcd6b4b263d2b7d016ea197a1a5dbdc1e2476692bff29797915dfe05"
+    },
+    "sustained-base-r51-cpu-events-bd2/worker.json": {
+      "bytes": 1609876,
+      "sha256": "7587064bd2920642333512cd994d8cbf7a03e51ce3c9775d4431710d09ce7f18"
+    },
+    "sustained-base-r51-cpu-events-bd2/worker.log": {
+      "bytes": 7298,
+      "sha256": "0e47d8a947efe112875bb968ae339ee42072348c38ae92519c4d061ccd78f4f7"
+    },
+    "sustained-base-r51-cpu-steps-bd1/command.json": {
+      "bytes": 2446,
+      "sha256": "cf2e61bf12d1b20253ef579efbe0f6ab3349c7f29dcca2e958dc8818387122c8"
+    },
+    "sustained-base-r51-cpu-steps-bd1/gpu.csv": {
+      "bytes": 17252,
+      "sha256": "26f886f0af71b4b6af96864e95cfb3beef0609665d93cd05fa52317f9e49d0c6"
+    },
+    "sustained-base-r51-cpu-steps-bd1/process-status.json": {
+      "bytes": 114,
+      "sha256": "a475481ce7d64e0c6eff32c227c29cf5ad95f67724f92c3b3ab233ddb631d1bb"
+    },
+    "sustained-base-r51-cpu-steps-bd1/progress-rank-2.jsonl": {
+      "bytes": 12522,
+      "sha256": "b504bcc7c9a39c9779cfc0392bb041b033e3133cdf03d30c462de6ef6610f8c1"
+    },
+    "sustained-base-r51-cpu-steps-bd1/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd1/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd1/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd1/sample.json": {
+      "bytes": 1606646,
+      "sha256": "05515a8bcd310b3b533d8f77915dce0f35df67ff3b20464ce9e86c011cfff292"
+    },
+    "sustained-base-r51-cpu-steps-bd1/storage.jsonl": {
+      "bytes": 72956806,
+      "sha256": "8fd6104d43352dc2e8995ed2bc7855a15d9a47c44cc5180919caf3b41469ca41"
+    },
+    "sustained-base-r51-cpu-steps-bd1/worker.json": {
+      "bytes": 1606220,
+      "sha256": "c01a652f1680bbd4e017b22017b4419e15c057972cc624c560654dbca6c76a7f"
+    },
+    "sustained-base-r51-cpu-steps-bd1/worker.log": {
+      "bytes": 4702,
+      "sha256": "0023a0bb3d7f3baa2dbefc19e258469edb4a1f10b1ff8197a716d9a67387bab4"
+    },
+    "sustained-base-r51-cpu-steps-bd2/command.json": {
+      "bytes": 2446,
+      "sha256": "b7ab9798448e8d76c7850152158f71f29bf1d18628f6d75c53d0dc0961eaece2"
+    },
+    "sustained-base-r51-cpu-steps-bd2/gpu.csv": {
+      "bytes": 15200,
+      "sha256": "03120d000d12145c1acada0ff5659307c60e0f8cbebdf5b2d5046c897a72cd64"
+    },
+    "sustained-base-r51-cpu-steps-bd2/process-status.json": {
+      "bytes": 113,
+      "sha256": "9669c48db8cd8515b21c80c34888e2fd735d5fc2939cf4adeff78208de758b73"
+    },
+    "sustained-base-r51-cpu-steps-bd2/progress-rank-2.jsonl": {
+      "bytes": 6250,
+      "sha256": "d1b74c3525f2e52c6a453f9d5c60cb7803e8d60c0ffc74d5e099a5c7d4377203"
+    },
+    "sustained-base-r51-cpu-steps-bd2/progress-rank-3.jsonl": {
+      "bytes": 6127,
+      "sha256": "4eb7c3cb1dcc0a91d4b803555b9a2cc324640401a3e0a31bc16d760363c993f4"
+    },
+    "sustained-base-r51-cpu-steps-bd2/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd2/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd2/runtime-rank-2.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd2/runtime-rank-3.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-cpu-steps-bd2/sample.json": {
+      "bytes": 1610406,
+      "sha256": "ec56432e0f95e71ef022360e90c8ee396ea3b1f8934c5a0b53c3aa3860f8cf7d"
+    },
+    "sustained-base-r51-cpu-steps-bd2/storage.jsonl": {
+      "bytes": 64135756,
+      "sha256": "fbe3ed2f5e21cf357ee96cddaa50b653669aa61c07b03827e5ef49c7ba8171d6"
+    },
+    "sustained-base-r51-cpu-steps-bd2/worker.json": {
+      "bytes": 1609980,
+      "sha256": "64dd8e43d32e6bcf9a74144e27b4a8e551deb75ec21cc87060c0f484562a170e"
+    },
+    "sustained-base-r51-cpu-steps-bd2/worker.log": {
+      "bytes": 6578,
+      "sha256": "95861f61eff6dc76add5bee0117080cc0203dab182890fb4a83e05ac45cec7e6"
+    },
+    "sustained-base-r51-gpu-events-bd2/command.json": {
+      "bytes": 2448,
+      "sha256": "92a6fe35399d1005d060e103569a7149cbe0651337f9f2cc11c11808cd1b3277"
+    },
+    "sustained-base-r51-gpu-events-bd2/gpu.csv": {
+      "bytes": 9301,
+      "sha256": "3df19496dd97510dccc713b785c2964ff757587de3c2b6c04eea39a14bff794f"
+    },
+    "sustained-base-r51-gpu-events-bd2/io-rank-2.json": {
+      "bytes": 716,
+      "sha256": "49df104ba773237b187e812f0ae4674a12cc48e1a0c6eed59f942d44fcb8134c"
+    },
+    "sustained-base-r51-gpu-events-bd2/io-rank-3.json": {
+      "bytes": 716,
+      "sha256": "298b367224836a6b98873ee891464470a406f8b2e2b977c86da28702469f2e38"
+    },
+    "sustained-base-r51-gpu-events-bd2/process-status.json": {
+      "bytes": 114,
+      "sha256": "b8d021937a11fc2d4477e2410e7033d3bcf67fad15ceeedb7ee66a151203ef0a"
+    },
+    "sustained-base-r51-gpu-events-bd2/progress-rank-2.jsonl": {
+      "bytes": 6240,
+      "sha256": "8a5736458d72ba5fa011835087be6db7f4e0d34294d86b13f46a7cd9e33f4411"
+    },
+    "sustained-base-r51-gpu-events-bd2/progress-rank-3.jsonl": {
+      "bytes": 6233,
+      "sha256": "8de7d044907ad89520154057bd8ee5305a7659e9155f9056fd45bd44bd2ef025"
+    },
+    "sustained-base-r51-gpu-events-bd2/runtime-rank-0.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-gpu-events-bd2/runtime-rank-1.json": {
+      "bytes": 305,
+      "sha256": "0f7c4dd5a80b3e4c7848ee3095fbd1487a8e0470719667e1036ee27621bea273"
+    },
+    "sustained-base-r51-gpu-events-bd2/runtime-rank-2.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "sustained-base-r51-gpu-events-bd2/runtime-rank-3.json": {
+      "bytes": 1289,
+      "sha256": "2ac0833b58e1621bc4bbb4bcb62e546d7cc7f8cfbf1a5f535b7b34395dca4708"
+    },
+    "sustained-base-r51-gpu-events-bd2/sample.json": {
+      "bytes": 1613403,
+      "sha256": "fbc0abc2e54856768f0a78ceaec31589d61453427a909ffd0ff204bb4249c942"
+    },
+    "sustained-base-r51-gpu-events-bd2/storage.jsonl": {
+      "bytes": 36852597,
+      "sha256": "734acf8cb5c3564b8ed085d7f1f7aaf13775bf5ab2cd6c6e05601e37d9dc388b"
+    },
+    "sustained-base-r51-gpu-events-bd2/worker.json": {
+      "bytes": 1612972,
+      "sha256": "f14fd7eb2897c5cb45503890f74f525564ab80b9970ae7f3fd9e6486d2559d8e"
+    },
+    "sustained-base-r51-gpu-events-bd2/worker.log": {
+      "bytes": 2258,
+      "sha256": "d9193fba6c1fb28702b451de9b8d22e608eab1677deb7ce588188430e50a44de"
+    }
+  }
+}

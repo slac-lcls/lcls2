@@ -1,0 +1,32 @@
+{
+  "complete": true,
+  "cuda": {
+    "count": 1,
+    "ordinal": 0,
+    "pci_bus_id": "0000:03:00.0",
+    "uuid": "GPU-2b3f50c6-a0c7-3d2d-9ffb-e3b8eadb9d79"
+  },
+  "environment": {
+    "CUDA_VISIBLE_DEVICES": "0",
+    "SLURM_JOB_GPUS": "0,1,2,3",
+    "SLURM_JOB_ID": "61375111",
+    "SLURM_STEP_GPUS": "0"
+  },
+  "gpu_lines": [
+    "GPU-2b3f50c6-a0c7-3d2d-9ffb-e3b8eadb9d79, 00000000:03:00.0, NVIDIA A100-SXM4-40GB, 40960, Disabled"
+  ],
+  "gpu_uuid": "GPU-2b3f50c6-a0c7-3d2d-9ffb-e3b8eadb9d79",
+  "host": "nid003260",
+  "nvidia_smi": {
+    "command": [
+      "nvidia-smi",
+      "-i",
+      "GPU-2b3f50c6-a0c7-3d2d-9ffb-e3b8eadb9d79",
+      "--query-gpu=uuid,pci.bus_id,name,memory.total,mig.mode.current",
+      "--format=csv,noheader,nounits"
+    ],
+    "returncode": 0,
+    "stderr": "",
+    "stdout": "GPU-2b3f50c6-a0c7-3d2d-9ffb-e3b8eadb9d79, 00000000:03:00.0, NVIDIA A100-SXM4-40GB, 40960, Disabled\n"
+  }
+}
