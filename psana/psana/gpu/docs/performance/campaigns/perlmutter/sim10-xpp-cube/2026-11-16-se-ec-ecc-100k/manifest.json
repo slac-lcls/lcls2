@@ -1,0 +1,611 @@
+{
+  "schema_version": 2,
+  "id": "perlmutter-sim10-xpp-cube-20261116-100k",
+  "title": "Perlmutter Sim10 S/E/EC/ECC: repeated 100k completion",
+  "kind": "application",
+  "site": "perlmutter",
+  "workload": "sim10-xpp-cube",
+  "status": "complete",
+  "snapshot_utc": "2026-11-16",
+  "jobs": [
+    "61409171"
+  ],
+  "framework_commit": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "source_commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89",
+  "record_commit": "a2affb7f9144b92846097ffd9da4c19971c5538b",
+  "application_source": {
+    "bundle": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle",
+    "files": "vendor/sim10_compute_cube_20261115/stages.py and cube_check.py; hashes in bundle.json"
+  },
+  "analysis_source": "psana/psana/gpu/scripts/performance/analysis/sim10_cube.py",
+  "events_per_full_case": 100000,
+  "full_cases": 24,
+  "total_cases": 35,
+  "replicates": 3,
+  "metric": {
+    "name": "application_stage_processing_rate",
+    "unit": "events/s",
+    "timing": "Processing includes delivery, drain, barrier and two memory queries per callback; excludes setup/JIT/constants, cache conditioning, post-loop cube validation and teardown.",
+    "derived_payload_bandwidth": {
+      "unit": "GiB/s",
+      "bytes_per_event": 3358200,
+      "meaning": "logical requested input bytes, not expanded/calibrated/cube output or NIC traffic"
+    }
+  },
+  "topology": "One exclusive node, four allocated A100 40GB GPUs. Primary profiles: 1BD/1GPU/batch50 and 4BD/4GPU/batch200. Four KvikIO workers/BD; one SMD0 and one EB. Three 4BD/1GPU/batch200 S bridges.",
+  "configuration": {
+    "workers_per_bd": 4,
+    "streams_per_bd": 1,
+    "task_bytes": 1048576,
+    "bounce_bytes_per_worker": 16777216,
+    "bulk_target_bytes": 524288,
+    "input_budget_gib_per_bd": 6,
+    "pinned_d2h_budget_bytes": 67108864,
+    "smd_events": 1000,
+    "smd_chunk_bytes": 268435456,
+    "compat_mode": "ON",
+    "auto_direct_io_read": false,
+    "true_gds": false,
+    "cpu_affinity": "3 physical cores/helper, 7 physical cores/BD; one SMT thread/core, distinct across ranks; 13/34 cores total",
+    "numa": "interleave=all",
+    "derived_and_geometry_sharing": false
+  },
+  "storage": {
+    "media": [
+      "lustre"
+    ],
+    "stripe_count": 2,
+    "stripe_size_bytes": 1048576,
+    "cache": "two zero-residency host-page scans; at most three pre-timing attempts",
+    "nic": "unavailable; blank CSV values, never zero; remote traffic unverified"
+  },
+  "dataset": {
+    "exp": "mfx101555026",
+    "run": 10,
+    "identities": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/input-identities.json",
+    "bytes_per_event": 3358200
+  },
+  "cube_policy": {
+    "layout": "distributed per-BD GPU FP32 (100,32,512,1024)",
+    "binning": "global event ordinal modulo 99; bin99 empty",
+    "cube_exported": false,
+    "mpi_cube_reduced": false,
+    "numerical_reference_checked": false,
+    "checks": [
+      "shape/dtype/bytes",
+      "per-bin counts",
+      "all finite",
+      "nonzero populated bins",
+      "zero empty bins"
+    ]
+  },
+  "review": {
+    "automated": "all35 audited; exact event/read/resource checks; see original coordinator receipt",
+    "implementation": {
+      "verdict": "pass",
+      "commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89"
+    },
+    "independent_results": {
+      "verdict": "pass",
+      "commit": "890761707f117c515125fac60ba7f86ddfd0e940",
+      "receipt": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/reviews/comparison02-results-round01.json"
+    }
+  },
+  "lifecycle": {
+    "execution": "complete",
+    "correctness": "basic GPU shape/content/count checks passed; numerical reference not checked",
+    "results_review": "pass at 890761707f117c515125fac60ba7f86ddfd0e940; scope/limitations in archived verdict",
+    "archive_verification": "offline cube-complete-v1 checks; packaging review recorded separately"
+  },
+  "analysis": "cube-complete-v1",
+  "script_roots": [
+    "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle"
+  ],
+  "supersedes": "perlmutter-sim10-xpp-cube-20261115",
+  "raw_locations": [
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02"
+  ],
+  "archive_root": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116",
+  "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k",
+  "retention": "External scratch can expire; raw index is not a durable copy.",
+  "failed_attempts": [
+    {
+      "job": "61373306",
+      "status": "failed",
+      "note": "historical bootstrap timeout; no throughput accepted; original pending snapshot retained"
+    },
+    {
+      "job": "61391587",
+      "status": "failed",
+      "note": "7 cases completed before strict cache gate failure; no pooling with completion job; failed-run reporting review passed"
+    }
+  ],
+  "artifacts": [
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/README.md",
+      "bytes": 1485,
+      "sha256": "dd42561cc4d48aea0691eef7053140e54a4c4180191778f64339370741c91d1b"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/affinity_probe.py",
+      "bytes": 568,
+      "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/audit.py",
+      "bytes": 6565,
+      "sha256": "16417a3ffc3c4d5d8c7bec259049679c4a918ee4774288fe28001f5859cff4b8"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/bulk_accounting.py",
+      "bytes": 2834,
+      "sha256": "7be4ad8453a27c2575000e37873f57e03c9654b5289fe9cdedf216da8060f393"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/bundle.json",
+      "bytes": 6020,
+      "sha256": "2c8e5ffc3003957d9ba0b2386fb99446fee8aabf4e6c855b7fb72ef59b11da1d"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/campaign.py",
+      "bytes": 8828,
+      "sha256": "90b58da37d06d5610d4dc0e56a9c1375c937b6b2f4612cc23366b04da2420716"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/check_reuse.py",
+      "bytes": 2571,
+      "sha256": "d7a254e1e88712b925c4822e01ff571359e126c6ec392b493c5ddda4c82b7265"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/check_tests.py",
+      "bytes": 2256,
+      "sha256": "47daa0449e19653e331efa5bac7923b5489e556e49f202920e1185b1dcea8901"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/clean_exec.py",
+      "bytes": 477,
+      "sha256": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/comparison.py",
+      "bytes": 6262,
+      "sha256": "c24fe34d26ab0d6d75010070975bab9e314c5de5091e07b797859f9284c14896"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/cpu_plan.py",
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/cube_check.py",
+      "bytes": 3019,
+      "sha256": "8e2661a3a8e4c7998fcb43dd2569ad9493fae7a835a07179e718e34feab65d19"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/device_check.py",
+      "bytes": 2197,
+      "sha256": "034065fc18c2a829be9d4fefb07f0446f889496883413df97f770c7eceeb0c1b"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/expected-native.json",
+      "bytes": 4888,
+      "sha256": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/host_checks.py",
+      "bytes": 2033,
+      "sha256": "2776667ded6ca26c56283498621d2037b1fa3df225ceeb58b87e3764cf3a0e7e"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/host_memory.py",
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/import_sources.py",
+      "bytes": 1921,
+      "sha256": "9ed995fd32522c7e3a9a202141ad1eca1a6d83a71ddbe3f0f59c3b72cb2f2999"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/instrument.py",
+      "bytes": 5314,
+      "sha256": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/memory_watch.py",
+      "bytes": 3443,
+      "sha256": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/plan.py",
+      "bytes": 2673,
+      "sha256": "04ce8a5d3350e0ee07f80699ea8ab50cc87dc123dd32d6e8a0163ae3c84c4132"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/port_sources.py",
+      "bytes": 6039,
+      "sha256": "7b068ba6e61cc12187953856bd8ea2d7cee894c24ad8362fef2ee11129de1025"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/prepare.py",
+      "bytes": 2703,
+      "sha256": "484fb53ab3288eb7ae3f24202dbba4b68174457101fdfdd637453ee2140c46f6"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/qualified_support.py",
+      "bytes": 7281,
+      "sha256": "c92d46a65d2610adca284be5589aeffd2d51e2da482be9a6d4fcf83f1a51279f"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/reference_probe.py",
+      "bytes": 1812,
+      "sha256": "4b00ff774fe8bcef65cdc1d6fd4641e88f281cc5dfd7a57c8ca368d4a0629a42"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/run.sbatch",
+      "bytes": 677,
+      "sha256": "e609287766fe9f46e9f67be7cc70a564ad9523987e972d27eebb029f758b4f27"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/runner.py",
+      "bytes": 18337,
+      "sha256": "11d830f52dc3aa9ba012e6d4721888075e5a13278e9a761998a5d6dce417d2c2"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/runtime.py",
+      "bytes": 515,
+      "sha256": "1fcf367da91bbe3a84d427da91f56a50f53330decc95dfe2307305d432832a2a"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/runtime.sh",
+      "bytes": 1352,
+      "sha256": "988ae2532369f109ba6548f4faf787ba621c4d5177f862bc1301c21bd1b80aa7"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/source-origins.json",
+      "bytes": 6500,
+      "sha256": "c10368dd283b01d024c8114069ef74b310e01e69a69ee035b86f0ff2f31522c4"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/status.json",
+      "bytes": 6310,
+      "sha256": "8de88f9897fe51c6c348fb8e38557d9877e2a26dfe45b3da834b9e110d313c6f"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/storage.py",
+      "bytes": 5558,
+      "sha256": "c977cb48e0d5102837572ab88fbe58f46b202ae3dae1810b6b7df5f8351cfba8"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/support.py",
+      "bytes": 3529,
+      "sha256": "96679115bea5bf08d58fd15228d632e7ed6a2236b32e0973f6c69a20f61be188"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/task_runtime.py",
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/test_audit_port.py",
+      "bytes": 5252,
+      "sha256": "711b438d3584a824f8a174f817c310e3d280c352e00baa4112d464574ed001e6"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/test_boundaries.py",
+      "bytes": 5213,
+      "sha256": "7b60bc3b5ff4814e6560bd5d6620775b3b4096ab8c77538692a1d1739e346f32"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/test_comparison.py",
+      "bytes": 4719,
+      "sha256": "d637caf602405f1309eb1fd2c2d602c366d645c61156b9519219a9de50377f50"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/test_cube_check.py",
+      "bytes": 6787,
+      "sha256": "9f072d0459bfc5b8765e0e89555666353f6b83b9cf455b8ac9aba813abc4d3b2"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/test_port.py",
+      "bytes": 4420,
+      "sha256": "9b86aa6844a730b5991b2e0da7933eb6b5e36606b3f2b6b859e28edb7f698391"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/test_storage.py",
+      "bytes": 7609,
+      "sha256": "1dbd4697091630505ffd7568644569c464b6e3dab12db991a511f8ec2c41c404"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/mfx_expand10_stage2_20261105/adapter.py",
+      "bytes": 7420,
+      "sha256": "fe6fbc73ec3d3198955342d59af4d88a2a1811af48d882fe6a3986c7b28a993c"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/mfx_expand10_stage2_20261105/fixture.py",
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/mfx_expand10_stage2_20261105/gpu_accept.py",
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/mfx_expand10_stage2_20261105/verify.py",
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/mfx_expand10_stage3a_20261105/cube.py",
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/contracts.py",
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/mpi_cube.py",
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/reference.py",
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/stages.py",
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/test_contracts.py",
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/test_mpi_cube.py",
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/vendor/sim10_compute_cube_20261115/test_reference.py",
+      "bytes": 14154,
+      "sha256": "15a8bee8ac37183ac0188739ba4af824c7a19f5d18ce39166fe23552061d18bd"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/case-receipts.json",
+      "bytes": 19065144,
+      "sha256": "ee368d5aae31aee1a911734095f6dd49eda82e167f8f8a5014cf4acb0b7de299"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/evidence/job61409171-results.json",
+      "bytes": 68350,
+      "sha256": "d3de76dc2481043c56c9ce7f22443473b1111d6b64ee8ce8ef10d950cfdc0fe3"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/evidence/job61409171-sacct.txt",
+      "bytes": 130,
+      "sha256": "f5017b8b30c44bc73d5cec2b98768f7aca3771b18b73b144e299c16525af6b7b"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/cpu.txt",
+      "bytes": 3768,
+      "sha256": "54cd69ba8534be726196e7938fe5e3c3b3da6140989c3b97bd00d51e215223d8"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/plan.json",
+      "bytes": 8661,
+      "sha256": "09102c05713926985634bbe10d5fe2c0e0dc7afde23cefd287f84dcad57b1eac"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/presubmit.json",
+      "bytes": 780,
+      "sha256": "5c2bae4a997bed4663a13a791592fbf531f37abe3c2d8179560c4b757ec1eb7a"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/results/affinity.json",
+      "bytes": 76030,
+      "sha256": "99fc909d6a8bad86670d83431b7f9a7f342764285b2669c590e4ca8f94957644"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/results/comparison.json",
+      "bytes": 19514,
+      "sha256": "31f146d3236e76011c0dbb297f966bf517f6c4efebeb5a6045a76c86397948eb"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/results/complete.json",
+      "bytes": 20237,
+      "sha256": "f0d885ef1dbe71924b459727071b2e187bd0fcddbc1fc00ccff23f99b0becfa8"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/results/hardware.json",
+      "bytes": 9836,
+      "sha256": "a9eddba38a73af7799885a34249bd0cf3f533b34ff59a2ea3a4c0efdc9306ca3"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/results/status.json",
+      "bytes": 20237,
+      "sha256": "f0d885ef1dbe71924b459727071b2e187bd0fcddbc1fc00ccff23f99b0becfa8"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/slurm-job.txt",
+      "bytes": 2262,
+      "sha256": "2f1f32fc6b735186c3e6b7b02098c4488dddcabfc1b362e5c70df62c0f62d76b"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/execution/submission.json",
+      "bytes": 833,
+      "sha256": "e68b437674d84d6787332091f82fa5c9bc93fd0208bebe4e6b18a74384a4e5a4"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external/calibration/manifest.json",
+      "bytes": 171281,
+      "sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external/package/PACKAGE.json",
+      "bytes": 102379,
+      "sha256": "0e37dd75e1b9fc5bb53cf09811eee898d7d4e2f2ce934a9662537684efde5690"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external/pr298-striping-20261111/build-provenance.json",
+      "bytes": 113112,
+      "sha256": "abe66a4c3469b52f49c38a9a19c3ae52b33d4c248c2cdc75c3df16b3cbcc521e"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external-index.json",
+      "bytes": 2462,
+      "sha256": "1a78b1c9ec172d774088bb7d7f6d68f7a00e011cf2f1571630900bea5f7147bf"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/history/PLAN-comparison01.md",
+      "bytes": 5973,
+      "sha256": "09d3d970ae92af3622516b8e7e065aaa17ccd6bc47bcdcaccf765375be4524a7"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/history/PLAN.md",
+      "bytes": 7979,
+      "sha256": "fe8e2bf9b0950165ffc9001a2a61f47a328d2059830f5689686a7af9b3c17de1"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/history/RESULTS-61391587.md",
+      "bytes": 2076,
+      "sha256": "f896a91acb9d2279b24eda15fefb2053c77c904a4e723f3168cd2ae1424a9926"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/history/RESULTS-61409171.md",
+      "bytes": 3624,
+      "sha256": "532eee1b7f7639b11d52efec7fb9cc7954662fe2c5cf0e29810600c0c1675e79"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/history/SUBMISSION-comparison02.md",
+      "bytes": 2131,
+      "sha256": "d2d1dff0766262ff0d18bc40b7af02e1041c9f53eab2355aa71fbdecc31931a2"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/history/status.json",
+      "bytes": 3543,
+      "sha256": "cb5c06a031ef5128b0849ed86e821fa502df0a2bf85d8cd19989178ddb8b6c8d"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/input-identities.json",
+      "bytes": 7180,
+      "sha256": "5a81f54ec619963743557404c6bc7653b74ac27ce8126c3a89ec219a4514783c"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/raw-index.json",
+      "bytes": 147424,
+      "sha256": "6cbb223b23a672ca637aed5b785c9668e15f148b1dac300070632fde7a9c2598"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/reviews/cache-retry-response02.md",
+      "bytes": 1044,
+      "sha256": "a0e69cd77882e9bf160825b53fcf910ce3fb68c8cfad286b4bd911e64beb2d28"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/reviews/cache-retry-round02.json",
+      "bytes": 8223,
+      "sha256": "a98b78e6d195b86d4925b4420633b436b1e8367038a8961717698fe2b3e28270"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/reviews/comparison02-results-round01.json",
+      "bytes": 5219,
+      "sha256": "c155b242b22ed6c4ce6e99fc7f32e62a37aad701bb8476c8bda3b8e05daba925"
+    },
+    {
+      "role": "measurement",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/runs.csv",
+      "bytes": 15250,
+      "sha256": "6b858d05b8c30c8582159a3527d6ffcb7f517e4abd4f632521b7c29d3e5045b4"
+    },
+    {
+      "role": "measurement",
+      "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/summary.json",
+      "bytes": 19514,
+      "sha256": "31f146d3236e76011c0dbb297f966bf517f6c4efebeb5a6045a76c86397948eb"
+    }
+  ]
+}

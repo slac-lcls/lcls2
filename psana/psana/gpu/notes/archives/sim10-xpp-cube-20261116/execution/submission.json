@@ -1,0 +1,23 @@
+{
+  "status": "submitted",
+  "requested_utc": "2026-11-16T16:07:23.539057+00:00",
+  "command": [
+    "sbatch",
+    "--account=lcls_g",
+    "--qos=premium",
+    "--constraint=gpu",
+    "--nodes=1",
+    "--gpus-per-node=4",
+    "--exclusive",
+    "--time=05:55:00",
+    "--chdir=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02",
+    "--output=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/slurm-%j.out",
+    "--error=/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/slurm-%j.err",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/bundle/run.sbatch",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02"
+  ],
+  "returncode": 0,
+  "stdout": "Submitted batch job 61409171\n",
+  "stderr": "",
+  "job_id": "61409171"
+}

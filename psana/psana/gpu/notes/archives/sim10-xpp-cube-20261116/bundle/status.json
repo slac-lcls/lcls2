@@ -1,0 +1,154 @@
+{
+  "scope": "three_attempt_cache_conditioning",
+  "phase": "implementing_cache_retries",
+  "round": 1,
+  "round_limit": 3,
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115",
+  "previous_bootstrap": {
+    "scope": "gpu_cube_shape_content_bootstrap02r2",
+    "phase": "completed_independently_reviewed",
+    "round": 2,
+    "round_limit": 3,
+    "compute_submitted": true,
+    "submission_authorized": true,
+    "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115",
+    "previous_bootstrap": {
+      "phase": "bootstrap_failed_diagnosis_pending",
+      "scope": "bounded_perlmutter_bootstrap",
+      "round": 3,
+      "round_limit": 3,
+      "compute_submitted": true,
+      "pending": [
+        "diagnose first ECC acceptance timeout from retained evidence",
+        "independent failed-run result review",
+        "review revised bounded plan before any new submission",
+        "full same-node campaign remains unexecuted"
+      ],
+      "checks": {
+        "package": "315 files pass",
+        "native_identity": "727 installed/86 test source hashes pass",
+        "host_tests": "90 pass,64 subtests; exact clean commit 296d69985 (host-checks06)"
+      },
+      "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115",
+      "review_invoked": true,
+      "review_verdict": "pass",
+      "submission_authorized": true,
+      "prepared_attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap01",
+      "implementation_commit": "296d69985ba2cfa14e4759b035c886d0c658465f",
+      "authorization": "AUTHORIZATION.md",
+      "reviewed_commit": "af2e612eae30f4c32f7d805a0d448200aa84b8a6",
+      "unresolved_ids": [],
+      "review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/round03",
+      "coordination_job": "61372107",
+      "job_id": "61373306",
+      "scheduler_state": "FAILED",
+      "dependency": "afterany:61372107",
+      "last_checked_utc": "2026-11-16T01:57:01.076661+00:00",
+      "job_exit_code": "1:0",
+      "failed_case": "accept-bd1-ECC"
+    },
+    "unresolved_ids": [],
+    "pending": [
+      "GPU execution and independent result review",
+      "size full same-node S/E/EC/ECC campaign"
+    ],
+    "implementation_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+    "reviewed_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+    "review_verdict": "pass",
+    "review_invoked": true,
+    "prepared_attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/bootstrap02r2",
+    "checks": {
+      "host": "114 tests +64 subtests passed on clean exact af6ebc03b (gpu-check-host05)",
+      "reuse": "Fresh727 installed/86 test hashes and five count2 input checks pass",
+      "bundle": {
+        "status": "pass",
+        "source_commit": "af6ebc03b86033accc6c0af34bb6e3eb2b85f35c",
+        "files": 46,
+        "bundle_sha256": "d04326f27b9acd18576393392847bf7451451fb7fbfe1c01e455d16b243430c9",
+        "external_pins": 7,
+        "no_job_started": true,
+        "no_results": true,
+        "no_exports": true,
+        "read_only": true,
+        "review_status": "pass",
+        "submission_authorized": false,
+        "verified_utc": "2026-11-16T04:46:16.530216+00:00"
+      }
+    },
+    "review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/gpu-check-round02",
+    "deferred_ids": [
+      "GC-R2-02"
+    ],
+    "job_id": "61387931",
+    "scheduler_state": "COMPLETED",
+    "scheduler_reason": "Priority",
+    "last_checked_utc": "2026-11-16T06:00:36.155416+00:00",
+    "completed_cases": 11,
+    "current_case": "staging-r2-bd4-gpu4",
+    "job_exit_code": "0:0"
+  },
+  "submission_authorized": false,
+  "compute_submitted": false,
+  "unresolved_ids": [],
+  "pending": [
+    "Host validation",
+    "Independent implementation review"
+  ],
+  "implementation_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+  "review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison-round01",
+  "checks": {
+    "host": "130 tests +64 subtests passed on clean exact a2d988f48",
+    "bootstrap_result": "Coordinator re-audit and independent review pass",
+    "bundle": {
+      "status": "pass",
+      "checked_utc": "2026-11-16T07:02:12.692783+00:00",
+      "reviewed_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+      "files": 48,
+      "external_pins": 7,
+      "bundle_sha256": "02f03d0da897419541bfb35f28194463f743df3414237774ce023c2a0f831001",
+      "read_only": true,
+      "no_job_started": true,
+      "queue": "",
+      "balance": {
+        "Project": "lcls_g",
+        "Charged(user)": 95.68138888888889,
+        "Allocated(user)": 2206.1182222222224,
+        "Charged": 4228.006388888889,
+        "Allocated": 11030.59111111111,
+        "personal_remaining_percent": 95.66290745776494,
+        "project_remaining_percent": 61.670173916336914
+      },
+      "submission_authorized": "User explicitly authorized one submission after passing review without intervention"
+    },
+    "completed_case_reaudit": "7 cases passed, 48 bundle files and 7 external pins unchanged"
+  },
+  "reviewed_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+  "review_verdict": "pass",
+  "prepared_attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison01",
+  "deferred_ids": [
+    "FC-R1-02",
+    "GC-R2-02"
+  ],
+  "job_id": "61391587",
+  "scheduler_state": "FAILED",
+  "scheduler_reason": "None",
+  "last_checked_utc": "2026-11-16T15:43:47.921066+00:00",
+  "job_exit_code": "1:0",
+  "completed_cases": 7,
+  "failed_case": "anchor-r1-bd1-S",
+  "result_review_commit": "71cdd0384288e0532b0391683197c8f5fce6f9aa",
+  "result_review_verdict": "pass_for_reporting_only",
+  "result_review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison-results-round01",
+  "previous_comparison": {
+    "phase": "full_comparison_failed_results_reviewed",
+    "implementation_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+    "reviewed_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+    "job_id": "61391587",
+    "scheduler_state": "FAILED",
+    "job_exit_code": "1:0",
+    "completed_cases": 7,
+    "failed_case": "anchor-r1-bd1-S",
+    "result_review_commit": "71cdd0384288e0532b0391683197c8f5fce6f9aa",
+    "result_review_verdict": "pass_for_reporting_only"
+  }
+}

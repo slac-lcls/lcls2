@@ -1,0 +1,778 @@
+{
+  "status": "passed_pending_slurm_and_independent_result_review",
+  "job": "61409171",
+  "completed": [
+    {
+      "case": {
+        "name": "accept-bd1-ECC",
+        "kind": "acceptance",
+        "stage": "ECC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 201,
+        "timeout": 480,
+        "repeat": 0,
+        "cohort": "acceptance"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 201,
+        "logical_payload_bytes": 674998200
+      },
+      "result_sha256": "b6d9abb66b7755f4ab43586b74bf8ccaada22b40d1a7feefe4bb94c7ed306fb3",
+      "seconds": 0.8187738980050199,
+      "payload_gib_s": 0.7677834662493839
+    },
+    {
+      "case": {
+        "name": "accept-bd4-ECC",
+        "kind": "acceptance",
+        "stage": "ECC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 1003,
+        "timeout": 480,
+        "repeat": 0,
+        "cohort": "acceptance"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 1003,
+        "logical_payload_bytes": 3368274600
+      },
+      "result_sha256": "7de0bdd3e8937e62e4b31f49afe09f9dcfadaf14134b850665a4a230862b3683",
+      "seconds": 1.109822931990493,
+      "payload_gib_s": 2.826532126938239
+    },
+    {
+      "case": {
+        "name": "bridge-r1",
+        "kind": "full",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 1,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 1,
+        "cohort": "bridge"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "02baebe844e9ebcc1206853806ca4488315f7e4168ff671e5b131c0d019d92bc",
+      "seconds": 60.0546979859937,
+      "payload_gib_s": 5.207864788202131
+    },
+    {
+      "case": {
+        "name": "full-r1-bd1-S",
+        "kind": "full",
+        "stage": "S",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "fbe39022a3a7f3f2dce55c6a3c1b0bb5b50596274da850ac9708d3c9c167ef8e",
+      "seconds": 149.8235990970279,
+      "payload_gib_s": 2.0874998924890615
+    },
+    {
+      "case": {
+        "name": "full-r1-bd1-E",
+        "kind": "full",
+        "stage": "E",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "3dd0004174bd8ddf6a1ba80fcbc479e9716d6e9d2499966b4d3ff2f7997ea4db",
+      "seconds": 150.35961409902666,
+      "payload_gib_s": 2.0800581916989276
+    },
+    {
+      "case": {
+        "name": "full-r1-bd1-EC",
+        "kind": "full",
+        "stage": "EC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "51da93c46cda909d8d28bb5bf2a28e51a8ee6b9b00d3411cd5d41a5421d7471f",
+      "seconds": 170.03118231898407,
+      "payload_gib_s": 1.8394081764404138
+    },
+    {
+      "case": {
+        "name": "full-r1-bd1-ECC",
+        "kind": "full",
+        "stage": "ECC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "f87d9a7d1a9b22bf68eec86603965408052fd13004b86440b46711c9098a0ff2",
+      "seconds": 186.44906289997743,
+      "payload_gib_s": 1.6774380205662478
+    },
+    {
+      "case": {
+        "name": "anchor-r1-bd1-S",
+        "kind": "anchor",
+        "stage": "S",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 1,
+        "cohort": "anchor"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "c690108e8e8d454170a84f629f211db05399db982648b3349dace64b0369be5b",
+      "seconds": 152.14568996202433,
+      "payload_gib_s": 2.055639874421906
+    },
+    {
+      "case": {
+        "name": "full-r1-bd4-S",
+        "kind": "full",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "b6291157c02ab0e1b52ab995eb6720ace1fc7bb54e2d3803270f7510e536ed4f",
+      "seconds": 60.36530576599762,
+      "payload_gib_s": 5.181067883922467
+    },
+    {
+      "case": {
+        "name": "full-r1-bd4-E",
+        "kind": "full",
+        "stage": "E",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "e8184f1a94de283d55f9374bb01ab6d0714c8e1b82c51937e75166bb157fa775",
+      "seconds": 60.80824603297515,
+      "payload_gib_s": 5.143327877567263
+    },
+    {
+      "case": {
+        "name": "full-r1-bd4-EC",
+        "kind": "full",
+        "stage": "EC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "1997c8fb8a543e0d032237d4be66cd41437e9497b99ef65cebbee729d0aa1195",
+      "seconds": 62.89398661197629,
+      "payload_gib_s": 4.972760733659945
+    },
+    {
+      "case": {
+        "name": "full-r1-bd4-ECC",
+        "kind": "full",
+        "stage": "ECC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 1,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "9fdeec59bef784fbf2adedabfa8936782e994ccfc64b2e0fcc30c441ff3b82a0",
+      "seconds": 65.7070312909782,
+      "payload_gib_s": 4.759867260207701
+    },
+    {
+      "case": {
+        "name": "anchor-r1-bd4-S",
+        "kind": "anchor",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 1,
+        "cohort": "anchor"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "526c61eccb0cf5db8ac653067ae6fae73ab38f95d90466aa073f7b893090e31c",
+      "seconds": 60.960678611998446,
+      "payload_gib_s": 5.130466952279176
+    },
+    {
+      "case": {
+        "name": "bridge-r2",
+        "kind": "full",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 1,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 2,
+        "cohort": "bridge"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "2b1b57369ede6de4883d05989d7ab256d4b7cf543fb04ae2677a8cb6cf7e659b",
+      "seconds": 60.20278348296415,
+      "payload_gib_s": 5.195054595704402
+    },
+    {
+      "case": {
+        "name": "full-r2-bd4-S",
+        "kind": "full",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "36a8b7c73761306e30f74f6de5a15ab9649687358682646f0d25d6cd073124ad",
+      "seconds": 60.31984413700411,
+      "payload_gib_s": 5.184972731312226
+    },
+    {
+      "case": {
+        "name": "full-r2-bd4-EC",
+        "kind": "full",
+        "stage": "EC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "1ad0d5cc5e349c762c899b3031decf5f997ff8e201c5f9aff0d86fcdb6e6caa9",
+      "seconds": 63.11380420200294,
+      "payload_gib_s": 4.955441221802386
+    },
+    {
+      "case": {
+        "name": "full-r2-bd4-ECC",
+        "kind": "full",
+        "stage": "ECC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "f8a352538d613d20577b1f2d19e0834effb738f9457b884c785eef2c62846771",
+      "seconds": 65.43018558697077,
+      "payload_gib_s": 4.780007028891109
+    },
+    {
+      "case": {
+        "name": "full-r2-bd4-E",
+        "kind": "full",
+        "stage": "E",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "24781db7839d14e927447be741df833a7a9eb49e0cfe3be7fdc318932526d8f4",
+      "seconds": 60.286171502026264,
+      "payload_gib_s": 5.187868780104207
+    },
+    {
+      "case": {
+        "name": "anchor-r2-bd4-S",
+        "kind": "anchor",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 2,
+        "cohort": "anchor"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "8c9b684a38959f933935024ac4f102a7bcc19c7afd53f7c4d1f3d68dea873cf6",
+      "seconds": 60.346529167029075,
+      "payload_gib_s": 5.182679953998875
+    },
+    {
+      "case": {
+        "name": "full-r2-bd1-S",
+        "kind": "full",
+        "stage": "S",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "d068289124b3b6dabe5de2f63f851c1d28516c721562b1d6694d497c273f9929",
+      "seconds": 152.05399499298073,
+      "payload_gib_s": 2.056879511924746
+    },
+    {
+      "case": {
+        "name": "full-r2-bd1-EC",
+        "kind": "full",
+        "stage": "EC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "51d68d3584542b08f5f05f5049132b1210730635cb8c17e3e4cdeb6f695e9e3d",
+      "seconds": 170.9919016319909,
+      "payload_gib_s": 1.8290734474693757
+    },
+    {
+      "case": {
+        "name": "full-r2-bd1-ECC",
+        "kind": "full",
+        "stage": "ECC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "8ff97aab68985aa0ca5198d67d98580338ed359e6a6680d420d88ad38309cf68",
+      "seconds": 189.22970145696308,
+      "payload_gib_s": 1.6527888835595976
+    },
+    {
+      "case": {
+        "name": "full-r2-bd1-E",
+        "kind": "full",
+        "stage": "E",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 2,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "9772f09df4ee042b52e07c0c410026913164f167c57b9b9582a50cb3eb7263e9",
+      "seconds": 152.65918585797772,
+      "payload_gib_s": 2.0487253698466246
+    },
+    {
+      "case": {
+        "name": "anchor-r2-bd1-S",
+        "kind": "anchor",
+        "stage": "S",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 2,
+        "cohort": "anchor"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "8d8b48a1c4ef4837eb71dd6e549d12c5d688c5959672373ea56aa3b668887439",
+      "seconds": 152.36959801003104,
+      "payload_gib_s": 2.0526190991642577
+    },
+    {
+      "case": {
+        "name": "bridge-r3",
+        "kind": "full",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 1,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 3,
+        "cohort": "bridge"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "ba9264ebf872ceb8205b9e174c2eeef676d7689de10f1e050ff663544fd25a78",
+      "seconds": 59.902628551004454,
+      "payload_gib_s": 5.221085527842428
+    },
+    {
+      "case": {
+        "name": "full-r3-bd1-S",
+        "kind": "full",
+        "stage": "S",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "b8d08d40e5049c2912c4dc663185e6d02995e7b6659b62ee0d31b4dfbb29b46c",
+      "seconds": 152.56445546500618,
+      "payload_gib_s": 2.049997465360516
+    },
+    {
+      "case": {
+        "name": "full-r3-bd1-ECC",
+        "kind": "full",
+        "stage": "ECC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "d54ed58735e1fb0081b7cfa95cd7250a27271d6fb0324b82ef09f467367d0ee5",
+      "seconds": 189.47626986703835,
+      "payload_gib_s": 1.6506380837391488
+    },
+    {
+      "case": {
+        "name": "full-r3-bd1-E",
+        "kind": "full",
+        "stage": "E",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "e4f52ce905b74d0e0a9005d89f863719b236f910d3d45109f44efbc265e47a1b",
+      "seconds": 154.11962791497353,
+      "payload_gib_s": 2.0293115889165994
+    },
+    {
+      "case": {
+        "name": "full-r3-bd1-EC",
+        "kind": "full",
+        "stage": "EC",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 780,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "d5fe27c76f51a36c7a9e0f19951ee653b0b8192e47f8b8c9715f9ed2c599dacd",
+      "seconds": 170.57035595201887,
+      "payload_gib_s": 1.833593799237588
+    },
+    {
+      "case": {
+        "name": "anchor-r3-bd1-S",
+        "kind": "anchor",
+        "stage": "S",
+        "bds": 1,
+        "gpus": 1,
+        "batch": 50,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 3,
+        "cohort": "anchor"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "da6e015435ac7948d3c65e6a6c1f46160602174ad8db02f5d466121e4732af66",
+      "seconds": 153.6593413159717,
+      "payload_gib_s": 2.035390392337061
+    },
+    {
+      "case": {
+        "name": "full-r3-bd4-S",
+        "kind": "full",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "038b4b2413b67c5b8b0dc133862d41918ebb3411ab71a9f3608c018cea1270f3",
+      "seconds": 60.449052572017536,
+      "payload_gib_s": 5.173889973457553
+    },
+    {
+      "case": {
+        "name": "full-r3-bd4-ECC",
+        "kind": "full",
+        "stage": "ECC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "30b1f703496fc98681b77616b1c9c008f5a03cbeb2e45bf39e533d2e0feaf693",
+      "seconds": 65.1781534589827,
+      "payload_gib_s": 4.7984904513165
+    },
+    {
+      "case": {
+        "name": "full-r3-bd4-E",
+        "kind": "full",
+        "stage": "E",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "a9bfd996acde9202766db6116c4e95d476bc66c36fed583ef37c47ec0a2aeb20",
+      "seconds": 60.656686306989286,
+      "payload_gib_s": 5.156179245013125
+    },
+    {
+      "case": {
+        "name": "full-r3-bd4-EC",
+        "kind": "full",
+        "stage": "EC",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 540,
+        "repeat": 3,
+        "cohort": "comparison"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "e9df38edc40a82c9409b9497e0255e19807bc1e379c95eab1c0f9ca5871ddf05",
+      "seconds": 62.980281785014085,
+      "payload_gib_s": 4.965947089201326
+    },
+    {
+      "case": {
+        "name": "anchor-r3-bd4-S",
+        "kind": "anchor",
+        "stage": "S",
+        "bds": 4,
+        "gpus": 4,
+        "batch": 200,
+        "events": 100000,
+        "timeout": 420,
+        "repeat": 3,
+        "cohort": "anchor"
+      },
+      "audit": {
+        "status": "pass",
+        "events": 100000,
+        "logical_payload_bytes": 335820000000
+      },
+      "result_sha256": "c26f08e020ee9bd5d167c543a1db07c0583a01dd7e8e29553cfd59d505d4cec1",
+      "seconds": 59.89484821999213,
+      "payload_gib_s": 5.221763746000709
+    }
+  ],
+  "source_commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89",
+  "summary_sha256": "31f146d3236e76011c0dbb297f966bf517f6c4efebeb5a6045a76c86397948eb"
+}

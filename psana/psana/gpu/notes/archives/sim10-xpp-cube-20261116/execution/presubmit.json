@@ -1,0 +1,26 @@
+{
+  "status": "pass",
+  "checked_utc": "2026-11-16T16:06:55.110799+00:00",
+  "reviewed_commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89",
+  "files": 49,
+  "external_pins": 7,
+  "bundle_sha256": "2c8e5ffc3003957d9ba0b2386fb99446fee8aabf4e6c855b7fb72ef59b11da1d",
+  "read_only": true,
+  "no_job_started": true,
+  "queue": "",
+  "count2_lock": "available",
+  "balance": {
+    "Project": "lcls_g",
+    "Charged(user)": 96.2863888888889,
+    "Allocated(user)": 2206.1182222222224,
+    "Charged": 4228.6113888888885,
+    "Allocated": 11030.59111111111,
+    "personal_remaining_percent": 95.63548372344708,
+    "project_remaining_percent": 61.66468916947334
+  },
+  "submission_authorized": "User: Let's submit the job.",
+  "native_reuse": {
+    "installed": 727,
+    "tests": 86
+  }
+}

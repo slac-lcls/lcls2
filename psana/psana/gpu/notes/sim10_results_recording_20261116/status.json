@@ -1,0 +1,16 @@
+{
+  "scope": "sim10_results_recording",
+  "phase": "ready_for_independent_review",
+  "round": 1,
+  "round_limit": 3,
+  "base_commit": "39ea002a8ffc95546405139e50f2f45005514ee2",
+  "unresolved_ids": [],
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-results-recording-20261116",
+  "checks": {
+    "raw_audit": "35pass;49bundle;7external;608rawfiles;extraction/native summary match",
+    "catalog": "10campaigns;2081file hashes;275arithmetic cases",
+    "tests": "11cube corruption tests and12archive tests pass",
+    "isolation": "pytest discovery; Meson install and Hatch selection pass",
+    "limitations": "No new GPU run, XTC payload rehash or full native build; Ruff/pre-commit unavailable; configuration and whitespace checks only"
+  }
+}

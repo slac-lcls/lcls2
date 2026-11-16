@@ -7,6 +7,7 @@ make an old measurement a benchmark of the new branch head.
 
 | Date | Major change or study | Measured scope and evidence |
 | --- | --- | --- |
+| November 16, 2026 | Sim10 S/E/EC/ECC completion | [Job61409171](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md): 24 primary 100k cases plus11 controls/checks; four workers/BD, count2. Four-BD S 5.181 GiB/s, ECC 4.780 GiB/s; independent results review passed, basic cube content checks only. |
 | November 16, 2026 | Perlmutter Sim10 psana GPU scaling | [100k-event screen](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md): 5.075 / 7.558 / 9.341 / 9.842 GiB/s for 1/2/3/4 GPUs, stripe count 1 and four BDs/GPU. CPU allocation and workers increase with GPUs; local-cache gates and whole-NIC counters recorded. Separate independent results review is not recorded. |
 | November 16, 2026 | Perlmutter Sim10 psana stripe screen | [One GPU, four BDs, 100k events](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/README.md): count 1 led the tested screen at 5.443 GiB/s. Local-cache checks passed; NIC bytes were not collected; independent results review remains pending. |
 | November 15, 2026 | [PR299](https://github.com/slac-lcls/lcls2/pull/299): Run51 performance follow-up | [Perlmutter paired baseline/head screen](../../notes/pr299_perlmutter_20261115.md). Measured head `acfd029a8d27898b5f165e02facd3c3bbc9c4ad2`; 48 timed samples, uncontrolled cache, small effects inconclusive. C1 unfixed at that head; Run77 deferred. |
@@ -23,8 +24,8 @@ historical tables, configurations and uncertainties; update the overview to
 point readers to the latest relevant measurement.
 
 The November dates identify campaign records/synthesis, not new measurements of
-the current branch head. The Sim10/XPP-cube preparation remains a pending
-application snapshot and is not a completed performance result.
+the current branch head. The Sim10/XPP-cube preparation remains a historical pending snapshot; the
+separate November16 completion record above contains accepted application results.
 
 Execution completion, archive verification and independent results review are
 separate states. See the [evidence assessment](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/notes/campaign_evidence_assessment_20261116/README.md)

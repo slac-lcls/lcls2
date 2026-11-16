@@ -1,0 +1,38 @@
+{
+  "reviewed_commit": "890761707f117c515125fac60ba7f86ddfd0e940",
+  "verdict": "pass",
+  "summary": "The result reporting for job 61409171 passes. Each claim in RESULTS-61409171.md that I checked matches evidence/job61409171-results.json, the sacct file and the case ordering in plan.py. The sacct record shows COMPLETED, exit 0:0, 01:28:51 on nid001020. There are 35 records (2 acceptance, 3 bridge, 24 comparison, 6 anchors) in exactly plan.cases() order. I recomputed every median, range, paired ECC/S ratio and difference, the staging drift, the bridge median, the cube-bank totals, the cache-attempt histogram and the minimum free memory, and all match. The report keeps the needed caveats: E vs S differences are comparable to drift, timings are whole-pipeline rather than kernel-only, there is no GPU-only scaling claim, cube checks are basic content checks, cache evidence covers the host page cache only, and the cause of the retries is unknown. One low, non-blocking finding: a stale line in status.json (C2R-R1-01). Nothing blocks reporting.",
+  "checks": [
+    "Scheduler: job61409171-sacct.txt:2 shows COMPLETED, 0:0, 01:28:51, 16:07:29 to 17:36:20, nid001020. This matches the results JSON, status.json and RESULTS line 3.",
+    "Matrix order: the records follow plan.py:18-35 exactly, including the rotated stage order per repeat and the profile order (bd1 first in r1 and r3, bd4 first in r2). All 24 comparison cells are present. Every non-acceptance case has 100000 events.",
+    "1BD medians: S 152.054, E 152.659, EC 170.570, ECC 189.230. The table ranges match the samples.",
+    "4BD medians: S 60.365, E 60.657, EC 62.980, ECC 65.430. The ranges match.",
+    "Paired ECC/S, 1BD: 1.24446, 1.24449 and 1.24194, giving median +24.4457% and range 24.19-24.45%. Extra seconds are 36.625, 37.176 and 36.912, median 36.912.",
+    "Paired ECC/S, 4BD: 1.08849, 1.08472 and 1.07823, giving median +8.472% and range 7.82-8.85%. Extra seconds are 5.342, 5.110 and 4.729, median 5.110.",
+    "Drift: 1BD anchors run +0.21% to +1.55% and 4BD anchors -0.92% to +0.99%. E-S is +0.54 to +1.56 s for 1BD and -0.03 to +0.44 s for 4BD, so it is comparable to drift, as stated.",
+    "Bridge (4BD/1GPU, S only): 60.055, 60.203 and 59.903, so median 60.055 and range 59.903-60.203. plan.py:40 allows GPU sharing only for this bridge.",
+    "Cube banks: 1+4 acceptance banks and 3x1 (bd1) + 3x4 (bd4) full-run banks give 20 total, 15 of them full. Per-rank events sum to 100000 in each bd4 full run (for example 25200+24600+25000+25200) and to 1003 in accept-bd4.",
+    "Cube semantics: cube_check.py:51-58 bins by ordinal % 99, so bin 99 is always empty and populated_bins=99 is expected. cube_check.py:28-31 requires finite values and nonzero bins exactly where count>0. Host payload bytes are 0, nothing is exported and no reference check is made, as RESULTS states.",
+    "Memory: the minimum min_sampled_free_gib is 12.808837890625, in full-r1-bd4-ECC and full-r2-bd4-ECC, matching the reported 12.809 GiB.",
+    "Cache: 32 cases took one attempt and 3 took two. full-r2-bd4-E, bridge-r3 and anchor-r3-bd1-S had 1/1, 8/8 and 5/5 resident pages in the first evict/verify scans, all in s005, and 0/0 in the second pair. Conditioning took 44.540, 47.249 and 46.031 s, matching RESULTS lines 27-29.",
+    "Paired ratios come from matched same-repeat S runs. The report uses the median paired ratio rather than the ratio of medians.",
+    "status.json phase is comparison02_completed_result_review_pending, with pending listing Independent result review. completed_cases is 35."
+  ],
+  "limitations": [
+    "I ran no commands. I did not recompute hashes, bundle or pin integrity, affinity, the GPU UUID/PCI mapping, the summary_sha256 match, or the sidecar-versus-history comparison. These rest on the coordinator's re-audit.",
+    "The compact evidence has no raw 100k stamps, per-bin count vectors or per-case audit receipts. Exact per-bin counts are inferred from status=pass under cube_check.py logic.",
+    "I did not inspect the immutable attempt directory on scratch, audit.py, storage.py or runner.py in detail. No claim needed them beyond what the earlier review established.",
+    "The per-device results of 31 tests, 93 phase reports and 10 guards are coordinator summaries. The raw device reports were not in scope."
+  ],
+  "findings": [
+    {
+      "id": "C2R-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "notes/sim10_perlmutter_baseline_20261115/status.json",
+      "line": 26,
+      "evidence": "checks.live_conditioning still reads 'Not executed on GPU/Lustre; no claim of successful eviction'. Job 61409171 has now run live conditioning, and the results JSON records zero-resident verify scans for all 35 cases. Also, the top-level review_verdict 'pass' and reviewed_commit at lines 7-8 refer to the cache-retry implementation review, not the result review.",
+      "requested_change": "When recording the result-review verdict, update or annotate checks.live_conditioning so it reflects the job 61409171 evidence: host page cache only, 3 recoveries on the second attempt. Also label the implementation-review verdict separately from the result-review verdict."
+    }
+  ]
+}
