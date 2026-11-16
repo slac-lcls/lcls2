@@ -111,7 +111,7 @@ class ts_ts_0_0_1(DetectorImpl):
         # Event code i lives in bit (i & 0xf) of word (i >> 4). Unpack the
         # 18 words at once instead of one Python op per bit (~1 ms per call).
         seq = np.asarray(self._info(evt).sequenceValues, dtype=np.uint16)[:18]
-        return ((seq[:, None] >> _EVR_BITS) & 1).ravel().tolist()
+        return ((seq[:, None] >> _EVR_BITS) & 1).astype(np.int64).ravel()
 
     #def l1fid(self,evt) -> int:
     #    return self._info(evt).timeStamp&0x1ffff
