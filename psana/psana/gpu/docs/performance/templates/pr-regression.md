@@ -89,7 +89,11 @@ profile.json. Public listing/scratch presence does not establish retention.
    `{request}` and `{result}` arguments. Include dataset_manifest,
    event_reference, baseline_runtime, candidate_runtime and adapter; add
    calibration_manifest for calibrated profiles and all dependency/reference
-   artifacts. Qualification flags summarize evidence; they do not replace it.
+   artifacts. Each true qualification flag requires its hashed receipt:
+   retention_receipt, cross_site_identity_receipt, compute_access_receipt,
+   event_reference, adapter_review_receipt; calibrated profiles additionally
+   require calibration_manifest, nondegenerate_mask_receipt and numerical_reference.
+   Qualification flags summarize reviewed evidence; they do not prove its truth.
 8. Run controller tests and prepare a fresh directory. Review plan/profile,
    native adapter, tests and evidence in a detached worktree using the established
    implement-review-loop. Resolve blocking findings on the latest code commit.
@@ -124,7 +128,8 @@ The controller invokes adapter_command without a shell. A request contains the
 profile digest, sample ID, phase, selected runtime SHA/install, case, a shared
 `contract` and its digest, site, and frozen artifact paths/digests. Adapter work
 must match that contract. Recompute `observed_contract_sha256` from actual
-resolved settings; do not merely echo the requested hash. In A/A both sides use
+resolved settings and include the full `observed_contract` object; the controller
+compares that object and computes its digest. Do not merely echo requested values. In A/A both sides use
 the same baseline runtime, although their sample IDs retain left/right positions.
 
 The adapter is responsible for site launch (`srun --mpi=cray_shasta` on Perlmutter,
@@ -157,7 +162,9 @@ Write a result JSON only after all ranks and GPU work drain. Required fields:
   Exact placement must agree across repeats/variants and phases for each case.
   All phases use the same allocation; a new allocation requires a new cohort.
 - `evidence`: `runtime_provenance`, `correctness`, `cache`, `resources`, each an
-  absolute `path` and `sha256`. Preserve additional files through a hashed native
+  absolute `path` and `sha256`. Each must be a distinct file inside the sample
+  folder (alongside result.json); outside paths and symlink escapes are rejected.
+  Preserve additional files through a hashed native
   index. Resources include host RSS, GPU used/pool peaks, pinned-memory accounting,
   allocation/step IDs, final scheduler state and explicit unavailable metrics.
 

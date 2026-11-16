@@ -16,6 +16,10 @@ SCHEMA = 'psana-pr-regression-v1'
 PHASES = ('correctness', 'aa', 'ab', 'profile')
 HEX = re.compile(r'^[0-9a-f]{64}$')
 SHA = re.compile(r'^[0-9a-f]{40}$')
+QUALIFICATION_RECEIPTS = dict(retention='retention_receipt', cross_site_identity='cross_site_identity_receipt',
+    compute_access='compute_access_receipt', event_reference='event_reference',
+    native_adapter='adapter_review_receipt', calibration_identity='calibration_manifest',
+    nondegenerate_mask='nondegenerate_mask_receipt', numerical_reference='numerical_reference')
 
 
 def require(condition, message):
@@ -83,7 +87,9 @@ def validate(config, ready=False):
     required = {'dataset_manifest', 'event_reference', 'baseline_runtime', 'candidate_runtime', 'adapter'}
     if any('calib' in c['workload'] for c in config['cases']):
         required.add('calibration_manifest')
-    for key in required:
+    required.update(receipt for flag, receipt in QUALIFICATION_RECEIPTS.items()
+                    if config['qualification'].get(flag) is True)
+    for key in sorted(required):
         if key not in config['artifacts']:
             blockers.append('artifact:' + key)
     for key, item in config['artifacts'].items():
@@ -95,6 +101,7 @@ def validate(config, ready=False):
     else:
         require(isinstance(config['adapter_command'], list) and
                 all(isinstance(s, str) and s for s in config['adapter_command']), 'command must be argv array')
+        require(Path(config['adapter_command'][0]).is_absolute(), 'adapter executable must be absolute')
         require('{request}' in config['adapter_command'] and '{result}' in config['adapter_command'],
                 'adapter command needs standalone {request} and {result} arguments')
         require(config['artifacts'].get('adapter', {}).get('path') in config['adapter_command'],
@@ -161,11 +168,17 @@ def make_request(config, plan, sample):
                 contract=contract, contract_sha256=digest(contract), artifacts=config['artifacts'], site=config['site'])
 
 
-def validate_result(config, request, row):
+def validate_result(config, request, row, folder):
     for key in ('schema', 'profile_sha256', 'sample_id', 'phase', 'runtime_commit'):
         require(row.get(key) == request[key], 'result identity mismatch: ' + key)
     require(row.get('status') == 'pass', 'sample did not pass')
-    require(row.get('observed_contract_sha256') == request['contract_sha256'], 'observed settings differ')
+    observed = row.get('observed_contract')
+    require(isinstance(observed, dict), 'observed contract missing')
+    changed = sorted(k for k in set(observed) | set(request['contract'])
+                     if observed.get(k) != request['contract'].get(k))
+    require(not changed and observed == request['contract'], 'observed settings differ: ' + ', '.join(changed))
+    require(row.get('observed_contract_sha256') == digest(observed) == request['contract_sha256'],
+            'observed contract digest differs')
     require(row.get('events') == config['dataset']['events'], 'event count differs')
     require(row.get('event_sha256') == config['dataset']['event_sha256'], 'event identity differs')
     require(row.get('requested_bytes') == config['dataset']['requested_bytes'], 'byte denominator differs')
@@ -188,9 +201,15 @@ def validate_result(config, request, row):
             'placement evidence missing')
     if request['case']['workload'].startswith('gpu'):
         require(row['placement'].get('gpu_uuids'), 'GPU placement missing')
+    evidence_paths = set()
     for key in ('runtime_provenance', 'correctness', 'cache', 'resources'):
         evidence = row['evidence'][key]
-        require(Path(evidence['path']).is_file() and file_hash(evidence['path']) == evidence['sha256'],
+        path = Path(evidence['path'])
+        require(path.is_absolute() and folder.resolve() in path.resolve().parents,
+                'native evidence must be inside sample folder: ' + key)
+        require(path.resolve() not in evidence_paths, 'native evidence reused: ' + key)
+        evidence_paths.add(path.resolve())
+        require(path.is_file() and file_hash(path) == evidence['sha256'],
                 'missing/changed native evidence: ' + key)
 
 
@@ -240,7 +259,7 @@ def execute(root, phase):
             code = run_command(argv, folder / 'process.log', config['timeout_seconds'])
             write(folder / 'exit.json', dict(returncode=code, wall_seconds=time.monotonic()-started))
             require(code == 0, 'adapter failed: ' + sample['id'])
-            validate_result(config, request, read(folder / 'result.json'))
+            validate_result(config, request, read(folder / 'result.json'), folder)
         write(destination / 'state.json', dict(status='complete', phase=phase, job_id=os.environ['SLURM_JOB_ID']))
         return summarize(root, phase)
     except BaseException as error:
@@ -282,7 +301,7 @@ def summarize(root, phase):
         request, row = read(folder / 'request.json'), read(folder / 'result.json')
         require(request == make_request(config, plan, sample), 'request changed')
         require(read(folder / 'exit.json')['returncode'] == 0, 'failed process')
-        validate_result(config, request, row)
+        validate_result(config, request, row, folder)
         observed_node = row['placement']['node']
         require(node is None or node == observed_node, 'node changed within phase')
         node = observed_node

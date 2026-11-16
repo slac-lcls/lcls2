@@ -37,8 +37,15 @@ correctness, or future database selections. No constants were modified. The
 historical PR299 campaign used raw inputs and skipped calibration; its timings
 are not a calibrated regression baseline.
 
-The [audit script](check_run51_status.py) is the executed investigation source,
-not a campaign launcher. Its large downloaded status payload remains outside Git
+The [frozen audit source](check_run51_status.executed.py.txt) is the executed investigation source,
+not a campaign launcher or a reusable CLI. It is stored as text to preserve the
+exact executed bytes. It writes next to its source: never execute a copy inside
+the repository. For reproduction, first copy it to a new external scratch
+directory and activate the recorded native runtime; it downloads about 403 MB.
+The [selected document](selected-status-doc.json) is retained, and the
+[provenance receipt](audit-provenance.json) records the executed-source hash,
+installation, Python and selection-module identity. This receipt is a post-audit
+readback, not contemporaneous provenance capture. Its large status payload stays outside Git
 at /pscratch/sd/m/monarin/psana2-gpu/pr-regression-template-20261116/.
 The [reference summary](run51-reference-summary.json) records the historical
 17,872-event input and 10k selection. New native adapters must independently

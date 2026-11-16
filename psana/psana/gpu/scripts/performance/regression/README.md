@@ -44,8 +44,9 @@ never contributes to clean timing. Four/six/etc. even pair counts balance AB/BA
 order within each cell. A/A runs the baseline installation on both sides.
 
 Each native process receives request.json and writes result.json; stdout/stderr,
-argv, exit code and external wall time remain alongside it. Native evidence is
-hash-checked before acceptance. Every configured cell/pair is required. Failures,
+argv, exit code and external wall time remain alongside it. Native evidence must use distinct files inside its sample folder and is
+hash-checked before acceptance. Full observed settings must equal the frozen
+contract; qualification flags also require hashed receipt artifacts. Every configured cell/pair is required. Failures,
 missing results, settings changes, placement changes, nonfinite timing and cache
 violations reject the phase. Never filter out a slow sample after seeing timings.
 

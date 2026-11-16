@@ -28,5 +28,18 @@ python -B psana/psana/gpu/scripts/performance/regression/campaign.py prepare \
 
 Tests used TMPDIR=/pscratch/sd/m/monarin/codex-tmp and Python at
 /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio2610-20261015/attempt01/env/bin/python.
-The status audit instead used the existing PR299 Python 3.9 native installation;
-its selected source/runtime details are recorded with the audit scope.
+The status audit used the existing PR299 Python 3.9 native installation.
+A later readback records the activation/import paths, Python version, source hash
+and campaign-manifest runtime SHA in audit-provenance.json. It does not claim
+contemporaneous runtime provenance capture.
+
+## Review-fix validation
+
+19/19 controller tests passed (7.222 seconds), including observed-object versus
+echoed-digest mismatch, distinct/sample-local evidence, each required qualification
+receipt, absolute executable path, and PID-based proof of child termination.
+The original 16 tests remain passing. Catalog checker rerun: pass (9 campaigns,
+2,000 hashes, 240 arithmetic cases); diff whitespace check: pass.
+Audit source hash matches the original executed scratch copy; no payload was
+redownloaded. A native import-only provenance readback succeeded using Python
+3.9.20 and the recorded PR299 install. No new job or performance sample was run.

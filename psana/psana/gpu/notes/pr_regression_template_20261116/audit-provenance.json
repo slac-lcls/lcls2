@@ -1,0 +1,15 @@
+{
+  "checked_utc": "2026-11-16T20:29:53.325548+00:00",
+  "scope": "Post-audit provenance readback of the activation used; not contemporaneous native measurement evidence",
+  "python_executable": "/global/u2/m/monarin/.conda-envs/psana-build/bin/python",
+  "python_version": "3.9.20 | packaged by conda-forge | (main, Sep 30 2024, 17:49:10) \n[GCC 13.3.0]",
+  "psana_path": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/install-head/lib/python3.9/site-packages/psana/__init__.py",
+  "selection_module_path": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/install-head/lib/python3.9/site-packages/psana/pscalib/calib/MDBWebUtils.py",
+  "selection_module_sha256": "f21dd902e814d67b82bcb8cc071dc4a9c94882d66bef113d58069b70ad010961",
+  "install": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/install-head",
+  "runtime_commit_from_campaign_manifest": "acfd029a8d27898b5f165e02facd3c3bbc9c4ad2",
+  "campaign_manifest_sha256": "1433a2107fd8dd6ec589ce4fc8863b78df39e45d1e933e2fbca8814f6ce1eabd",
+  "executed_source_path": "/pscratch/sd/m/monarin/psana2-gpu/pr-regression-template-20261116/check_run51_status.py",
+  "executed_source_sha256": "e7067a7fa954f7ddd192f1b8c0760c3b2f9fb0de87fabc3a84ca7f060585dfb5",
+  "selected_document_sha256": "ea98635edfc5552002648b71e9422c6140f3b5b908ae4877e707316c093ee8da"
+}

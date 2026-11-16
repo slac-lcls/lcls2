@@ -22,7 +22,8 @@ class ControllerTests(unittest.TestCase):
         self.config['qualification'] = {key:True for key in self.config['qualification']}
         for i, runtime in enumerate(self.config['runtimes'].values()):
             runtime.update(commit=str(i+1)*40,install='/fixture/install/'+str(i))
-        for key in ('dataset_manifest','event_reference','baseline_runtime','candidate_runtime','adapter'):
+        for key in sorted({'dataset_manifest','event_reference','baseline_runtime','candidate_runtime','adapter'} |
+                          set(c.QUALIFICATION_RECEIPTS.values())):
             path = self.root / (key+'.json')
             path.write_text('{}')
             self.config['artifacts'][key] = dict(path=str(path),sha256=c.file_hash(path))
@@ -36,22 +37,28 @@ class ControllerTests(unittest.TestCase):
 
     def native_fixture(self,argv,log,timeout):
         request=c.read(argv[-2])
-        result=self.row(request)
+        result=self.row(request,Path(argv[-1]).parent)
         c.write(argv[-1],result)
         Path(log).write_text('OFFLINE SYNTHETIC ADAPTER; no measured performance\n')
         return 0
 
-    def row(self,request):
+    def row(self,request,folder=None):
+        folder=folder or self.root/'validation'
+        folder.mkdir(parents=True,exist_ok=True)
+        evidence={}
+        for key in ('runtime_provenance','correctness','cache','resources'):
+            path=folder/(key+'.json')
+            c.write(path,dict(synthetic=True,kind=key,sample_id=request['sample_id']))
+            evidence[key]=dict(path=str(path),sha256=c.file_hash(path))
         row={k:request[k] for k in ('schema','profile_sha256','sample_id','phase','runtime_commit')}
-        row.update(status='pass',observed_contract_sha256=request['contract_sha256'],events=self.config['dataset']['events'],
+        row.update(status='pass',observed_contract=copy.deepcopy(request['contract']),observed_contract_sha256=request['contract_sha256'],events=self.config['dataset']['events'],
                    event_sha256='f'*64,requested_bytes=1000,correctness_pass=True,
                    setup_seconds=1,first_batch_seconds=1,loop_seconds=10,process_seconds=12,
                    cache=dict(policy='client-cold',verified=True,resident_bytes_before=0,measured_bytes=1000),
                    nic=dict(rx_bytes=None,tx_bytes=None),warmup_completed=True,
                    placement=dict(node='TEST-NODE',cpu_affinity={'0':[0],'1':[1],'2':[2]},
                                   gpu_uuids=['TEST-GPU'] if request['case']['gpus'] else []),
-                   evidence={key:self.config['artifacts']['adapter'] for key in
-                             ('runtime_provenance','correctness','cache','resources')})
+                   evidence=evidence)
         return row
 
     def execute(self,phase):
@@ -140,7 +147,7 @@ class ControllerTests(unittest.TestCase):
         bad=copy.deepcopy(row);bad['cache']['resident_bytes_before']=1;variants.append(bad)
         bad=copy.deepcopy(row);bad['nic']['rx_bytes']=-1;variants.append(bad)
         for bad in variants:
-            with self.assertRaises(ValueError):c.validate_result(self.config,request,bad)
+            with self.assertRaises(ValueError):c.validate_result(self.config,request,bad,self.root/'validation')
 
     def test_calibration_requires_additional_gates(self):
         self.config['cases'][0]['workload']='cpu-calib'
@@ -154,7 +161,36 @@ class ControllerTests(unittest.TestCase):
 
     def test_timeout_kills_local_process(self):
         with self.assertRaises(c.subprocess.TimeoutExpired):
-            c.run_command([sys.executable,'-c','import time; time.sleep(60)'],self.root/'timeout.log',0.05)
+            c.run_command([sys.executable,'-c',
+                'import os, pathlib, sys, time; pathlib.Path(sys.argv[1]).write_text(str(os.getpid())); time.sleep(60)',
+                str(self.root/'child.pid')],self.root/'timeout.log',2)
+        pid=int((self.root/'child.pid').read_text())
+        with self.assertRaises(ProcessLookupError):os.kill(pid,0)
+
+    def test_observed_contract_cannot_echo_digest(self):
+        request=c.make_request(self.config,self.plan,c.schedule(self.config,'correctness')[0])
+        row=self.row(request)
+        row['observed_contract']['settings']['batch_size']=999
+        with self.assertRaisesRegex(ValueError,'observed settings differ: settings'):
+            c.validate_result(self.config,request,row,self.root/'validation')
+
+    def test_evidence_must_be_local_and_distinct(self):
+        request=c.make_request(self.config,self.plan,c.schedule(self.config,'correctness')[0])
+        row=self.row(request)
+        row['evidence']['cache']=row['evidence']['correctness']
+        with self.assertRaisesRegex(ValueError,'evidence reused'):
+            c.validate_result(self.config,request,row,self.root/'validation')
+        row=self.row(request)
+        row['evidence']['cache']=self.config['artifacts']['adapter']
+        with self.assertRaisesRegex(ValueError,'inside sample folder'):
+            c.validate_result(self.config,request,row,self.root/'validation')
+
+    def test_flags_require_receipts_and_absolute_executable(self):
+        for key in set(c.QUALIFICATION_RECEIPTS.values()):
+            bad=copy.deepcopy(self.config);del bad['artifacts'][key]
+            with self.assertRaisesRegex(ValueError,'artifact:'+key):c.validate(bad,ready=True)
+        bad=copy.deepcopy(self.config);bad['adapter_command'][0]='python'
+        with self.assertRaisesRegex(ValueError,'executable must be absolute'):c.validate(bad,ready=True)
 
     def test_prepare_never_overwrites(self):
         with self.assertRaises(FileExistsError):c.prepare(self.source,self.prepared)
