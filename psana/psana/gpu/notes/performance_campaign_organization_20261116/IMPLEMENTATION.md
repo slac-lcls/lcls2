@@ -26,16 +26,22 @@ Next implementation steps from the agreed plan:
 4. Publish the verified branch to slac-lcls/lcls2 and verify remote contents.
 5. Preserve original heads with archive tags before retiring the three source
    branches; recheck source heads and open-PR dependencies before deletion.
+6. Last: qualify a retained/retrievable dataset on Perlmutter and SDF, then
+   implement and review the maintained regression template. This step must not
+   delay preserving or consolidating the completed campaign evidence.
 
 The local setup step performs no campaign migration, runtime changes,
 remote publishing, tagging, branch deletion or benchmark submission.
 
-## Reusable regression campaign
+## Reusable regression campaign (final implementation step)
 
 User direction, November 16: the two PR studies should inform one maintained
 performance regression campaign that can compare revisions on the same
 experiment/run and parameters. This is a planned extension of the organization
-work, not an implemented runner or a newly reviewed runtime change.
+work, not an implemented runner or a newly reviewed runtime change. The user
+subsequently specified this as the last step, after campaign consolidation,
+and requested dataset qualification on both Perlmutter and SDF (sdfiana),
+including evaluation of the artificial prjdatpsana XTC fixture.
 
 Code comparison used these pinned sources:
 
@@ -64,7 +70,14 @@ Important differences to retain in the historical records:
 
 Implement a maintained scripts/performance/regression/ runner, with shared
 site/provenance/analysis helpers in the existing proposed performance tree.
-Archived harnesses stay unchanged. Campaign reports and receipts use the
+Archived PR harnesses stay byte-for-byte unchanged, including campaign-specific
+helpers: do not redirect their imports to maintained code. The maintained runner
+is a template for creating new frozen campaigns, not a replacement for the
+scripts that generated historical measurements. Every future campaign retains
+the exact runner/harness revision, any local changes as a hashed source bundle,
+the fully resolved profile, launch commands, environment and analysis version.
+Template updates never retroactively change a recorded campaign.
+Campaign reports and receipts use the
 common docs/performance/campaigns/ catalog, rather than a separate results tree.
 
 A versioned profile pins experiment/run, data identity and selected event IDs,
@@ -87,8 +100,9 @@ API assumptions forward. Clean throughput, correctness and profiling are
 separate modes. Preserve missing observations as unavailable rather than zero;
 NIC counters describe node/client traffic unless attribution is established.
 
-Initial profile candidate: Run51, 10k events, one GPU, one/two BDs, raw GPU
-input plus CPU events/steps controls. Run51's archived fixture has 17,872 events;
+Run51 is one candidate, not the selected permanent dataset. Its historical
+profile is 10k events, one GPU, one/two BDs, raw GPU input plus CPU events/steps
+controls. Run51's archived fixture has 17,872 events;
 it is not a 100k profile and its timed prefix does not validate multi-step/EndRun.
 Qualification must establish current data availability, exact input identities
 and constants before adopting this as the maintained baseline. Use one fixed
@@ -108,3 +122,44 @@ all pairs and execution order. Report primary loop performance plus startup and
 process wall time separately; permit inconclusive results. Hardware throughput
 thresholds remain outside pytest. No jobs or new runner code were produced by
 this source comparison.
+
+### Dataset qualification before adopting the template
+
+Current availability is not a guarantee of future retrieval. At the final
+implementation step, inspect the real-run candidates and the existing
+prjdatpsana XTC fixture before deciding whether to reuse or create artificial
+data. No availability or suitability claim for prjdatpsana has been made yet.
+
+For each candidate, record:
+
+- Exact experiment/run and fixture version; XTC and SMD files, event selection,
+  transitions, detector/configuration metadata, sizes and checksums.
+- Actual locations and read permissions on Perlmutter and SDF, verified from
+  compute jobs as well as the access/coordinator host. Login visibility on
+  sdfiana alone does not establish compute-node access.
+- A retention owner, durable authoritative source, permission to retain the
+  inputs, and a documented retrieval/staging procedure for both sites. Scratch
+  copies alone do not establish durable availability.
+- Calibration constants and independent numerical/event references needed by
+  the selected workload; availability must not depend on an unrecorded live
+  calibration-database response.
+- Event count, payload sizes, segmentation, step/EndRun coverage and supported
+  workloads. Artificial fixtures must be representative for the regression
+  being tested; a tiny fixture passing correctness is not a storage benchmark.
+
+Prefer an existing qualified fixture. If prjdatpsana can supply the required
+workload, preserve its identity and generator provenance. If a new synthetic
+fixture is needed, version the generator, seed, parameters, dependencies and
+output manifest; verify reproducibility or preserve authoritative generated
+bytes when byte-identical regeneration cannot be guaranteed. Validate the
+same logical dataset and references on both sites. Site paths, hardware and
+storage remain explicit configuration; cross-site absolute rates are not a
+matched runtime comparison. Baseline/candidate comparisons use identical
+settings within each site's allocation.
+
+If the real and artificial datasets cover different workloads, keep separate
+named profiles and state their limits. Never silently substitute one dataset
+for another. Each campaign checks availability and identity before execution,
+and records a retrieval failure as a blocked run rather than changing inputs.
+Dataset transfers/generation and qualification jobs belong to that later step;
+this plan update performs none of them.
