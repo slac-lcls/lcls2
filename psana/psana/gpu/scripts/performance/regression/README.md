@@ -64,3 +64,11 @@ This controller checks a contract, not the truth of arbitrary adapter assertions
 The adapter code, numerical reference, native instrumentation and receipts need
 independent review and hardware qualification. Synthetic CPU tests prove the
 controller's failure handling; they are not native psana acceptance.
+
+Read the [component performance policy](../../../docs/performance/templates/component-regression.md)
+for reuse of existing unit/device tests and native scheduling counters. The six
+raw cases stay unchanged. The controller's loop-equivalence gate is only one
+part of campaign acceptance: qualified component bounds require adapter evidence
+and results review; this controller does not yet collect or automatically gate
+those counters. Do not treat `profile`'s single diagnostic pair as a statistical
+component-timing comparison.

@@ -1,0 +1,13 @@
+{
+  "local_links_checked": 18,
+  "test_symbols_checked": 3,
+  "controller_profile_tests_unchanged": true,
+  "scope": "Source/link inspection only; no unit/device or native benchmark execution",
+  "catalog": {
+    "status": "pass",
+    "campaigns": 10,
+    "file_hashes_checked": 2082,
+    "arithmetic_cases": 275
+  },
+  "diff_check": "pass"
+}

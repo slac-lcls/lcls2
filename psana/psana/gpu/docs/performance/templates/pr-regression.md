@@ -5,6 +5,10 @@ to prepare a new comparison. Its implementation has CPU contract tests; native
 psana execution requires a campaign-specific adapter and qualification. It is
 not a new result or a portable replacement for historical execution scripts.
 
+Read the [component performance contract](component-regression.md) to separate
+existing correctness tests from native performance boundaries and scheduling
+counters. The default remains six raw cases with one stream per BD.
+
 ## What every campaign provides
 
 | Component | Required output |
@@ -14,11 +18,11 @@ not a new result or a portable replacement for historical execution scripts.
 | Comparable settings | One shared resolved profile; only declared runtime revision/install differs between the two sides |
 | Placement | Site/allocation/node, CPU/GPU model, UUID/PCI IDs, MPI roles, BDs/GPU, physical CPU affinity, environment and actual runtime/import/build provenance |
 | Workloads | Raw GPU input and CPU events/steps controls; separate calibrated CPU/GPU profiles after constants/reference qualification; application profiles remain separate |
-| Correctness | Expected event identity/count, bytes, shapes, tail handling, nonzero/finite calibrated witnesses and numerical comparison; explicit step/EndRun coverage limits |
+| Correctness prerequisite | Existing unit/device test receipts plus a campaign preflight proving revision, event/byte identity, placement and meaningful work; reuse numerical references rather than duplicate tail/lifetime/transition tests |
 | Execution | Fresh processes, separate warmup followed by cache conditioning, balanced adjacent AB/BA pairs, bounded timeouts, retained failures and terminal Slurm accounting |
-| Observations | Cache residency, requested/read bytes, physical NIC deltas, host/GPU/pinned memory, settings observed rather than merely requested |
+| Observations | Cache, read/byte accounting, NIC/memory, observed settings and per-rank normalized scheduling/retirement counters from the component contract |
 | Timings | Setup, first completed batch, drained event loop, process wall time; clean throughput separate from diagnostics/profiling |
-| Analysis | Complete matched pairs per cell, all repetitions, mean paired percent changes and interval, equivalence/regression/improvement/inconclusive outcomes |
+| Analysis | Complete paired timings with uncertainty, plus separately reported qualified component boundaries; loop equivalence alone is not complete performance acceptance |
 | Archive | Exact controller/adapter/source bundles, profile, commands, logs, raw receipt index/hashes, report, independent implementation and results reviews |
 
 ## Dataset candidate: mfx100848724, run 51
@@ -94,13 +98,18 @@ profile.json. Public listing/scratch presence does not establish retention.
    event_reference, adapter_review_receipt; calibrated profiles additionally
    require calibration_manifest, nondegenerate_mask_receipt and numerical_reference.
    Qualification flags summarize reviewed evidence; they do not prove its truth.
-8. Run controller tests and prepare a fresh directory. Review plan/profile,
+8. Freeze the component contract described in component-regression.md as an
+   additional hashed artifact, including relevant metrics, denominators, bounds
+   and required diagnostic evidence. Link existing exact-revision unit/device
+   test receipts; do not reproduce their edge-case matrix in campaign code.
+   Run controller tests and prepare a fresh directory. Review plan/profile,
    native adapter, tests and evidence in a detached worktree using the established
    implement-review-loop. Resolve blocking findings on the latest code commit.
    Preserve the reviewed source bundle and use its controller for every phase.
 9. Within task-authorized compute resources, run correctness for both revisions,
-   then A/A of the baseline in both positions. Require valid numerical/event
-   checks and the predeclared A/A loop-equivalence screen. If noise prevents it,
+   then A/A of the baseline in both positions. Here correctness is a workload
+   preflight using maintained references, not a duplicate unit/device suite.
+   Require valid work/event checks and the predeclared A/A loop-equivalence screen. If noise prevents it,
    report inconclusive and redesign prospectively; do not discard unfavorable
    pairs. Obtain any still-missing job authorization through the existing task
    workflow. Check Perlmutter allocation balance and current site requirements.
@@ -114,6 +123,8 @@ profile.json. Public listing/scratch presence does not establish retention.
     failures/timeouts, native receipt hashes and raw artifacts. Analyze all pairs
     by workload/topology/site and distinguish primary loop from startup/process
     timing. Diagnostics/Nsight runs use `profile`, never the clean sample pool.
+    Report component-bound and normalized-counter findings separately; a loop
+    equivalent label does not override a required component-bound breach.
     Review **results** independently; an implementation pass is not a results pass.
 12. Add a dated report and manifest under
     `docs/performance/campaigns/<site>/pr-regression/<date>-pr<number>/`, add its
