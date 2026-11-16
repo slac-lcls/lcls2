@@ -1,0 +1,22 @@
+{
+  "status": "pass",
+  "checks": [
+    "PR245 preserves original body under relocation notice",
+    "PR314 preserves original body except four obsolete branch URL replacements",
+    "PR299 changes exactly one performance-location sentence; all other body bytes including CRLF unchanged",
+    "Only PR245/314 planned closed; PR299 state omitted",
+    "No issue state changes, no review dismissals, no historical comment edits"
+  ],
+  "destination_paths": [
+    "psana/psana/gpu/docs/performance/README.md",
+    "psana/psana/gpu/docs/performance/campaigns/README.md",
+    "psana/psana/gpu/docs/performance/history.md",
+    "psana/psana/gpu/docs/performance/pr187_pr208.md",
+    "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115",
+    "psana/psana/gpu/notes/evidence/pr299_perlmutter_20261115/plots/paired-timings.csv",
+    "psana/psana/gpu/notes/pr299_perlmutter_20261115.md",
+    "psana/psana/gpu/scripts/pr187_pr208/README.md",
+    "psana/psana/gpu/scripts/pr299_perlmutter/README.md"
+  ],
+  "scope": "Read-only payload validation; no GitHub actions yet"
+}

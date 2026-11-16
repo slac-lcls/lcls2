@@ -1,0 +1,8 @@
+{
+  "phase": "prepared; validation and independent review pending",
+  "base_commit": "8e4cefb5728d91309d63b580955f3059620d5b1c",
+  "round": 0,
+  "round_limit": 3,
+  "remote_actions_executed": false,
+  "unresolved": []
+}

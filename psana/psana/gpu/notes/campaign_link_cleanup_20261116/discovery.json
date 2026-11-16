@@ -1,0 +1,556 @@
+{
+  "repositories": [
+    "slac-lcls/lcls2",
+    "monarin/lcls2"
+  ],
+  "search_terms": [
+    "docs/gpu-performance-pr187-pr208-20261028",
+    "docs/gpu-performance-pr299-perlmutter-20261115",
+    "results/psana-scaling",
+    "results/psana2-scaling",
+    "gpu-performance",
+    "psana-scaling",
+    "psana2-scaling",
+    "sim10",
+    "pr187_pr208",
+    "pr299_perlmutter",
+    "benchmarks/scaling",
+    "https://github.com/slac-lcls/lcls2/pull/245",
+    "https://github.com/slac-lcls/lcls2/pull/314"
+  ],
+  "search_modes": [
+    "all-state PR head and base searches for all three source refs",
+    "separate issue and PR searches in title/body/comments; max 100 per query"
+  ],
+  "search_results": [
+    {
+      "key": "search0",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/245",
+          "title": "Document PR187/208 performance and organize GPU benchmark history"
+        }
+      ]
+    },
+    {
+      "key": "search1",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/314",
+          "title": "docs(gpu): preserve PR299 Perlmutter performance evidence separately"
+        }
+      ]
+    },
+    {
+      "key": "search2",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "search3",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "search4",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "search5",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "search6",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "search7",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "search8",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/issues/291",
+          "title": "psana2-gpu: Implementation and follow-ups"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/issues/307",
+          "title": "[Feature]: psana2-gpu: support and test CUDA 13"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/issues/257",
+          "title": "psana2-gpu: Decide the long-term field-copy API"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/issues/155",
+          "title": "psana2-gpu: [P2] Discover device peers for assignment and memory budgets"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/issues/290",
+          "title": "psana2-gpu: [P2] Complete device selection and placement safeguards"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/issues/167",
+          "title": "psana2-gpu: [P2] Wait for slots in a unified controller progress loop"
+        }
+      ]
+    },
+    {
+      "key": "prsearch0",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/245",
+          "title": "Document PR187/208 performance and organize GPU benchmark history"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/314",
+          "title": "docs(gpu): preserve PR299 Perlmutter performance evidence separately"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/120",
+          "title": "psana: unify CPU/GPU event delivery and canonicalize GPU detector data"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/185",
+          "title": "docs: add psana event flow, Perlmutter guide and source safeguards"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/150",
+          "title": "Add Jungfrau GpuTask examples, acceptance tests, consolidated docs"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/138",
+          "title": "Add lazy-sync D2H pipeline, slot leases and GPU memory budget"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/147",
+          "title": "Remove built-in GPU calibration and automatic image D2H"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/140",
+          "title": "Deliver CPU and GPU events through one Event path"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/139",
+          "title": "Fix GPU slot retirement order and define result lifetime"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/269",
+          "title": "GPU DRP: ePixUHR calibration and CALIB mode, Reader/Reducer performance, and stage metrics"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/148",
+          "title": "Add GpuTask declarations, staged constants and producer dispatch"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/149",
+          "title": "Dispatch GPU tasks per subbatch and deliver published results to host"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/146",
+          "title": "Replace resident-stream bulk reads with stream-interleaved read groups"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/246",
+          "title": "Integrate finalized PR187 and PR208 before issue159 Stage 5"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/143",
+          "title": "Feed GPU detector input from the XTC parser and add hybrid_det"
+        }
+      ]
+    },
+    {
+      "key": "prsearch1",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/147",
+          "title": "Remove built-in GPU calibration and automatic image D2H"
+        },
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/149",
+          "title": "Dispatch GPU tasks per subbatch and deliver published results to host"
+        }
+      ]
+    },
+    {
+      "key": "prsearch2",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "prsearch3",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "prsearch4",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "prsearch5",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "prsearch6",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues0",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues1",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues2",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues3",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues4",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues5",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraissues6",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraprs0",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/314",
+          "title": "docs(gpu): preserve PR299 Perlmutter performance evidence separately"
+        }
+      ]
+    },
+    {
+      "key": "extraprs1",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraprs2",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/245",
+          "title": "Document PR187/208 performance and organize GPU benchmark history"
+        }
+      ]
+    },
+    {
+      "key": "extraprs3",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraprs4",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraprs5",
+      "isError": false,
+      "results": []
+    },
+    {
+      "key": "extraprs6",
+      "isError": false,
+      "results": [
+        {
+          "url": "https://github.com/slac-lcls/lcls2/pull/299",
+          "title": "Deliver transitions in order and make run.steps() work on GPU ranks"
+        }
+      ]
+    }
+  ],
+  "candidates": [
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/245",
+      "title": "Document PR187/208 performance and organize GPU benchmark history",
+      "disposition": "planned change"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/314",
+      "title": "docs(gpu): preserve PR299 Perlmutter performance evidence separately",
+      "disposition": "planned change"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/issues/291",
+      "title": "psana2-gpu: Implementation and follow-ups",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/issues/307",
+      "title": "[Feature]: psana2-gpu: support and test CUDA 13",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/issues/257",
+      "title": "psana2-gpu: Decide the long-term field-copy API",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/issues/155",
+      "title": "psana2-gpu: [P2] Discover device peers for assignment and memory budgets",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/issues/290",
+      "title": "psana2-gpu: [P2] Complete device selection and placement safeguards",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/issues/167",
+      "title": "psana2-gpu: [P2] Wait for slots in a unified controller progress loop",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/120",
+      "title": "psana: unify CPU/GPU event delivery and canonicalize GPU detector data",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/185",
+      "title": "docs: add psana event flow, Perlmutter guide and source safeguards",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/150",
+      "title": "Add Jungfrau GpuTask examples, acceptance tests, consolidated docs",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/138",
+      "title": "Add lazy-sync D2H pipeline, slot leases and GPU memory budget",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/147",
+      "title": "Remove built-in GPU calibration and automatic image D2H",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/140",
+      "title": "Deliver CPU and GPU events through one Event path",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/139",
+      "title": "Fix GPU slot retirement order and define result lifetime",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/269",
+      "title": "GPU DRP: ePixUHR calibration and CALIB mode, Reader/Reducer performance, and stage metrics",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/148",
+      "title": "Add GpuTask declarations, staged constants and producer dispatch",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/149",
+      "title": "Dispatch GPU tasks per subbatch and deliver published results to host",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/146",
+      "title": "Replace resident-stream bulk reads with stream-interleaved read groups",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/246",
+      "title": "Integrate finalized PR187 and PR208 before issue159 Stage 5",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/143",
+      "title": "Feed GPU detector input from the XTC parser and add hybrid_det",
+      "disposition": "no exact obsolete branch/campaign link found in searched body or inspected comments; retain scope/state"
+    },
+    {
+      "url": "https://github.com/slac-lcls/lcls2/pull/299",
+      "title": "Deliver transitions in order and make run.steps() work on GPU ranks",
+      "disposition": "planned change"
+    }
+  ],
+  "comments_inspected": [
+    {
+      "number": 245,
+      "kind": "pr",
+      "count": 10
+    },
+    {
+      "number": 314,
+      "kind": "pr",
+      "count": 0
+    },
+    {
+      "number": 299,
+      "kind": "pr",
+      "count": 14
+    },
+    {
+      "number": 187,
+      "kind": "pr",
+      "count": 16
+    },
+    {
+      "number": 208,
+      "kind": "pr",
+      "count": 2
+    },
+    {
+      "number": 120,
+      "kind": "pr",
+      "count": 2
+    },
+    {
+      "number": 185,
+      "kind": "pr",
+      "count": 0
+    },
+    {
+      "number": 150,
+      "kind": "pr",
+      "count": 10
+    },
+    {
+      "number": 138,
+      "kind": "pr",
+      "count": 1
+    },
+    {
+      "number": 147,
+      "kind": "pr",
+      "count": 10
+    },
+    {
+      "number": 140,
+      "kind": "pr",
+      "count": 25
+    },
+    {
+      "number": 139,
+      "kind": "pr",
+      "count": 16
+    },
+    {
+      "number": 269,
+      "kind": "pr",
+      "count": 63
+    },
+    {
+      "number": 148,
+      "kind": "pr",
+      "count": 18
+    },
+    {
+      "number": 149,
+      "kind": "pr",
+      "count": 18
+    },
+    {
+      "number": 146,
+      "kind": "pr",
+      "count": 26
+    },
+    {
+      "number": 246,
+      "kind": "pr",
+      "count": 15
+    },
+    {
+      "number": 143,
+      "kind": "pr",
+      "count": 18
+    },
+    {
+      "number": 291,
+      "kind": "issue",
+      "count": 0
+    },
+    {
+      "number": 307,
+      "kind": "issue",
+      "count": 0
+    },
+    {
+      "number": 257,
+      "kind": "issue",
+      "count": 0
+    },
+    {
+      "number": 155,
+      "kind": "issue",
+      "count": 1
+    },
+    {
+      "number": 290,
+      "kind": "issue",
+      "count": 0
+    },
+    {
+      "number": 167,
+      "kind": "issue",
+      "count": 0
+    },
+    {
+      "number": 153,
+      "kind": "issue",
+      "count": 0
+    },
+    {
+      "number": 168,
+      "kind": "issue",
+      "count": 1
+    },
+    {
+      "number": 201,
+      "kind": "issue",
+      "count": 1
+    }
+  ],
+  "source_heads": {
+    "slac-lcls/lcls2:docs/gpu-performance-pr187-pr208-20261028": "66072235d3cd18c002a13c581af82e111a418758",
+    "slac-lcls/lcls2:docs/gpu-performance-pr299-perlmutter-20261115": "e8d69a7e6604e1d459ad04c633de50a56b46ac9a",
+    "monarin/lcls2:results/psana-scaling": "9674e3e803354b65c86e42d616af50b23d2c6e3a"
+  },
+  "limitations": [
+    "GitHub indexed search plus targeted body/discussion inspection; not a census of every issue/PR in every repository.",
+    "No matching standalone obsolete-campaign issue or fork scaling PR found; does not establish absence of unindexed references.",
+    "Historical commit-specific review citations are retained."
+  ]
+}

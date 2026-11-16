@@ -1,0 +1,206 @@
+[
+  {
+    "number": 245,
+    "kind": "pr",
+    "items": [
+      {
+        "id": 5685544904,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#pullrequestreview-5685544904",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\nCode changes on this PR are by Codex; project decisions are @monarin's. Documentation-only review; this is a comment, not an approval.\n\n**Overall:** the numbers hold up. Every value I checked recomputes from the compact evidence JSON. I found two wording problems that matter, one wrong date and a few small cleanups (inline).\n\n**Verified**\n- Ada table: all 12 rows (rates and paired loop changes) match `ada.summary`. First-event localization, per-BD budgets and the B/C admission match pattern (4/4 one-BD, 3/4 four-BD) also match.\n- Perlmutter: all arm means match, as do the B-off\u2192B-on extra seconds, percentages and t\u2085 95% intervals (recomputed from the six paired samples). The refresh timers match, and the B-off private-timer correction is right. 10k rates and GB/s match.\n- Hardware: the Ampere profile table matches the CSV (20 of 42 nodes collected). Ada 016 Samsung `MZQL23T8HCLS-00A07`/`GDC5A02Q`, GPU0 on NUMA 3 and the idle Gen1 sample match. Perlmutter 4\u00d7 A100-80GB at Gen4 x16 and ~251 GiB RAM match.\n- All relative links and anchors resolve, and the JSON parses. All SDF source hashes in the evidence match. The four `/pscratch` sources can't be reached from S3DF, so I couldn't check them.\n- The closeout-note job outcomes and times match `sacct`.\n\n**Main points (details inline)**\n1. The text calls the 10k-event remaining-loop cost \"much smaller\", which holds only in percent. In seconds it is 1.67 s versus 1.97 s for the first batch, and two of six blocks supply nearly all of it.\n2. Arms B/C (`0cf2b6348`, `701f5ebb1`) aren't reachable on GitHub. Their trees are identical to merges `c1ab81fa2`/`8cf05e86a`, and A = `c1ab81fa2^1`. Saying so would make the provenance checkable.\n3. The Perlmutter job 60415698 started `2026-10-28T00:38:30` (scontrol in the evidence), so the Perlmutter results are dated October 27 but ran on October 28.\n",
+        "review": "COMMENTED",
+        "path": null
+      },
+      {
+        "id": 4402793059,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#discussion_r4402793059",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\n**The 10k remaining-loop cost is played down.** \"Much smaller\" is true only in percent. In seconds, at 10,000 events (B-on vs B-off):\n\n| | Mean extra |\n| --- | ---: |\n| First batch | 1.97 s |\n| Remaining loop | 1.67 s |\n| Whole loop | 3.75 s (vs 2.15 s at 1k) |\n\nThe per-block remaining deltas are `+7.29, +0.59, \u22121.97, \u22122.01, \u22120.42, +6.53` s, so repetitions 1 and 6 supply nearly all of the mean. Suggest giving the seconds and noting the two outlier blocks, both here and in the \"substantial fixed startup component\" sentence at line ~149 and in `README.md`'s latest findings. The intervals themselves are reported correctly.",
+        "review": null,
+        "path": "psana/psana/gpu/docs/performance/pr187_pr208.md"
+      },
+      {
+        "id": 4402793073,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#discussion_r4402793073",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\nB (`0cf2b6348`) and C (`701f5ebb1`) aren't on any branch, and `gh api .../commits/<sha>` returns 422 for both. Their trees match the merges exactly:\n\n- B tree `33e45ad0` = `c1ab81fa2^{tree}`\n- C tree `7f8ddb3d` = `8cf05e86a^{tree}`\n- A `c157b490c` = `c1ab81fa2^1`\n\nSo the merged source *is* the measured source. \"Not the later merge commits\" reads as if they differ. Suggest: \"These commits are not on GitHub; their trees are identical to merges `c1ab81fa2` (B) and `8cf05e86a` (C), and A is `c1ab81fa2^1`.\" The same applies to `history.md:10`.",
+        "review": null,
+        "path": "psana/psana/gpu/docs/performance/pr187_pr208.md"
+      },
+      {
+        "id": 4402793086,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#discussion_r4402793086",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\n**Date:** the Ada job 42114353 ran October 27. Perlmutter job 60415698 started `2026-10-28T00:38:30` (the `scontrol` output in `hardware_campaigns_202610.json`). Suggest \"October 27\u201328, 2026\" here, in `README.md:3` and in the `history.md` row.",
+        "review": null,
+        "path": "psana/psana/gpu/docs/performance/pr187_pr208.md"
+      },
+      {
+        "id": 4402793095,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#discussion_r4402793095",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\nNit: \"The user closed the investigation\" reads as agent-written in a committed doc. Suggest \"@monarin closed\u2026\" or just \"The investigation was closed October 28.\" ",
+        "review": null,
+        "path": "psana/psana/gpu/notes/pr187_pr208_performance_closeout_20261028.md"
+      },
+      {
+        "id": 4402793109,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#discussion_r4402793109",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\nNit: leftover status text from while the job was running: the `squeue --start` status commands, \"initially reported no start time\" above, \"earlier completion estimate\" (~line 46) and \"new PR integration builds and comparisons remain next\" at the end. Since the note is now a completed record, consider removing these or rewording them in the past tense.",
+        "review": null,
+        "path": "psana/psana/gpu/notes/ampere013_qualification_20261026.md"
+      },
+      {
+        "id": 4402793118,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#discussion_r4402793118",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\nNit: `sacct` shows job 42012754 was cancelled before it ever started (`CANCELLED`, no start time, ended 2026-10-27 08:31). Saying so would explain why it was never run, rather than only that it \"was not modified\".",
+        "review": null,
+        "path": "psana/psana/gpu/notes/ada008_raw_read_20261027.md"
+      },
+      {
+        "id": 6473924220,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#issuecomment-6473924220",
+        "user": "monarin",
+        "body": "> **Claude (AI reviewer)**, posted via @monarin's account.\n\nCode changes on this PR are by Codex; project decisions are @monarin's. This is a comment, not an approval; @monarin is asking another colleague to review.\n\n**Follow-up on `e83d26d57`: all six review comments are resolved, and I think this is ready to merge.**\n\n| Comment | Resolution |\n| --- | --- |\n| Remaining-loop cost played down | Report, summary and `README.md` give 1.67 s vs 1.97 s, add the per-block table, name blocks 1 and 6 as the drivers, and drop the \"fixed startup\" wording. |\n| B/C commits not on GitHub | Each arm links its published commit with the matching tree; the evidence JSON records the mapping. Links and trees confirmed with `gh api`. |\n| Perlmutter date | October 27\u201328 throughout, with the scheduler start time quoted; `hardware.md` adds per-machine observation dates. |\n| \"The user closed\u2026\" | Now \"The investigation was closed October 28.\" |\n| Ampere 013 leftover status text | Removed; the note links to the finished report. |\n| Job 42012754 | Now says it was cancelled before starting and contributed no results. |\n\n**Checks on the new commit:** docs plus the one evidence JSON only. The JSON parses, all relative links resolve and `git diff --check` is clean. GitHub reports it mergeable, and the branch contains the current `features/psana2-gpu`. There are no CI checks on this PR.\n\n**Minor, not blocking:** the new block table numbers blocks 1\u20136, which assumes the sample arrays follow the run schedule. I couldn't confirm that because the Perlmutter `/pscratch` sources aren't reachable from S3DF.\n",
+        "review": null,
+        "path": null
+      },
+      {
+        "id": 6478378885,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#issuecomment-6478378885",
+        "user": "seemamirch",
+        "body": "\r\n**The numbers are right.** I recomputed every table in `pr187_pr208.md` from the raw samples in `evidence/pr187_pr208_202610.json`, and every figure matches. The git provenance is exact, and every relative link resolves.\r\n\r\nOne framing point is worth fixing before merge, because it is the number readers will quote: the ~2 s first-batch penalty is measured against B-off, and B-off is itself ~1 s *faster* than the pre-PR base. Against the base before #187, B-on's first batch is about **+1.1 s**, not +2 s. Two smaller wording suggestions follow.\r\n\r\n## What was verified\r\n\r\n| Check | Result |\r\n| --- | --- |\r\n| Arm A = `c1ab81fa2^1` | `c157b490c\u2026`, matches |\r\n| B tree = #187 merge `c1ab81fa2` tree | `33e45ad035e6\u2026`, matches |\r\n| C tree = #208 merge `8cf05e86a` tree | `7f8ddb3d7a32\u2026`, matches |\r\n| B/C local commits not on GitHub | Confirmed (`0cf2b6348\u2026` is not fetchable) |\r\n| Ada table, all 12 rows (left/right rates, mean paired loop change) | All match the samples |\r\n| Ada first-event localization (A/B loop, first event, per-BD remainder, read-wait) | All match |\r\n| Perlmutter arm table (setup, first batch, remaining, close, loop, wall; 6 rows) | All match |\r\n| B-on vs B-off: extra seconds, % change, Student-t 95% intervals (df = 5) | All six rows match |\r\n| Per-block 10k remaining-loop deltas (+7.29, +0.59, \u22121.97, \u22122.01, \u22120.42, +6.53) | Match, assuming sample index *i* is block *i* (see below) |\r\n| 10k rates 183.70 / 185.20 / 173.34 events/s | Match |\r\n| Relative links in all changed `.md` files | All resolve |\r\n\r\n## Main comment: state the ~2 s penalty against the base as well\r\n\r\nThe three Perlmutter arms, as defined in the report:\r\n\r\n| Arm | Code | Constants |\r\n| --- | --- | --- |\r\n| **A**, the base | `c157b490c`: `features/psana2-gpu` just before #187, the first parent of merge `c1ab81fa2` | private per BD (old `RequestedConstants` path) |\r\n| **B-off** | #187 merge tree, with `PSANA_GPU_SHARE_CONSTANTS=0` | private per BD (new path, sharing switched off) |\r\n| **B-on** | #187 merge tree, sharing on (the default) | one shared copy per GPU over CUDA IPC |\r\n\r\nAll three used the same explicit 6 GiB/BD budget, so budget sizing is not a confounder here, unlike Ada A/B.\r\n\r\nThe report and README present \"about two seconds of extra first-batch time\" from sharing (B-on vs B-off). That's a correct measurement of the sharing switch. But turning off sharing in the #187 build is itself **faster** than the pre-#187 base (arm A), by about a second:\r\n\r\n| Mean difference (s) | B-off \u2212 A | B-on \u2212 A | B-on \u2212 B-off |\r\n| --- | ---: | ---: | ---: |\r\n| 1,000 events, first batch | **\u22120.97** | **+1.04** | +2.01 |\r\n| 1,000 events, loop | \u22121.01 | +1.15 | +2.15 |\r\n| 10,000 events, first batch | **\u22120.81** | **+1.15** | +1.97 |\r\n| 10,000 events, loop | \u22120.44 | +3.31 | +3.75 |\r\n\r\nA\u2192B-off first batch is \u221238.9% (95% interval \u221241.2% to \u221236.6%), so this is a large, tight effect, and the report doesn't mention it. It matters for interpretation:\r\n\r\n- **What #187 costs, as shipped (sharing on):** about **+1.1 s** of first-batch time relative to the base, not +2 s.\r\n- **Sharing on vs off within #187:** about +2 s, because the private-constants path in #187 got faster.\r\n- **Private refresh doesn't explain the gap.** The refresh timers show A's private refresh at 0.83 s vs B-off's at 0.58\u20130.61 s, which accounts for ~0.25 s of the ~0.9 s.\r\n\r\nSuggested addition after the B-on/B-off table:\r\n\r\n> Against the pre-PR187 base, B-off's first batch was about 0.8\u20131.0 s **faster** than A (\u221238.9% at 1,000 events, 95% interval \u221241.2% to \u221236.6%), so B-on's first-batch cost relative to A is about +1.0\u20131.2 s rather than +2 s. The private-refresh timers account for only ~0.25 s of the B-off/A difference; the rest is unattributed.\r\n\r\nAnd in the README's \"Latest findings\", say \"about 2 s of extra first-batch time **relative to the same build with sharing disabled** (about 1.1 s relative to the pre-PR187 base)\".\r\n\r\n## Smaller points\r\n\r\n1. **The README is firmer than the report on Ada.** The README says the +10.17% four-BD warm calibration change had \"most of the difference before first-event delivery\". The report itself says the localization \"suggests startup dominates, but is **not an additive phase decomposition**\". Match the README to the report: \"\u2026the logs suggest most of the difference precedes first-event delivery (not an additive decomposition).\"\r\n\r\n2. **The outlier blocks look like noise every arm shows.** At 10,000 events, every arm has one or more slow remaining-loop samples:\r\n   - A in block 5: 55.92 s, against a typical ~51 s;\r\n   - B-off in block 3: 55.70 s;\r\n   - B-on in blocks 1 and 6: 58.40 s and 57.31 s.\r\n\r\n   It isn't run order: B-on was slow both when it ran first (block 1) and second (block 6), and normal when it ran first in block 3. That supports the report's \"variable remaining-loop difference\" reading, and is worth one sentence next to the block table: \"Each arm has at least one slow remaining-loop sample (A in block 5, B-off in block 3); B-on's two (blocks 1 and 6) drive the positive mean. Run position does not explain them.\"\r\n\r\n3. **Block numbering, the point is left unconfirmed.** The per-block table assumes `samples[i]` belongs to repetition *i + 1*. The evidence JSON has a `schedule` list but no repetition id on each sample, so the mapping can't be checked from the evidence alone. Either add a `repetition` field alongside each sample array, or say in the report that the order is assumed from the run schedule.\r\n\r\n4. **The benchmark harness isn't committed or linked.** The PR has no code, which is fine for the product side: arms A/B/C are tree-identical to published commits. But the harness that produced the samples is not in the PR or the repo. That's the Ada A/B/C screen driver and the Perlmutter startup sweep, including the first-batch instrumentation: one CUDA sync per BD after its first 20 events, which isn't in the product code. The report gives only scratch paths for outputs:\r\n   - `/sdf/scratch/users/m/monarin/gpu-validation/pr187-pr208-performance-ada016-20261027-r2/\u2026`\r\n   - `/pscratch/sd/m/monarin/psana2-gpu/pr187-ipc-startup-perlmutter-20261027/\u2026`\r\n\r\n   The evidence JSON hashes the result files and inputs, not the harness scripts.\r\n\r\n   This matters because the report's main findings depend on how \"first batch\", \"remaining\" and \"close\" are measured, and nobody else can check or rerun that. `/pscratch` is purged after a period of inactivity, so the only copy may not last.\r\n\r\n   The earlier reports link maintained harnesses (`scripts/jf_scaling/`, `scripts/stage5c/`), and the Ampere 013 qualification note records its driver and `run.sbatch`. Suggest either:\r\n   - committing the harness under `psana/psana/gpu/scripts/` (e.g. `scripts/pr187_startup/`) and linking it from the report's Provenance section; or, at minimum,\r\n   - recording each harness script's path and SHA-256 in `pr187_pr208_202610.json` alongside the result hashes, and saying in the report that the harness is not in the repo.\r\n\r\n\r\n",
+        "review": null,
+        "path": null
+      },
+      {
+        "id": 6535833865,
+        "url": "https://github.com/slac-lcls/lcls2/pull/245#issuecomment-6535833865",
+        "user": "monarin",
+        "body": "@seemamirch, all five points in your review are addressed in the report and supporting evidence, through commit 66072235d.\n\n1. **Baseline versus sharing-toggle comparison.** The [report](https://github.com/slac-lcls/lcls2/blob/66072235d/psana/psana/gpu/docs/performance/pr187_pr208.md#comparing-pr187-with-the-pre-pr-base) and [overview](https://github.com/slac-lcls/lcls2/blob/66072235d/psana/psana/gpu/docs/performance/README.md) now distinguish the approximately 2 s first-batch increase for B-on versus B-off from the approximately 1.1 s increase versus the pre-PR187 base. The report adds the setup/first-batch/remaining-loop/whole-loop/process-wall comparison against A. At 10,000 events, B-on minus A is +1.15 s for the first batch, +2.14 s for the remaining loop and +3.34 s for process wall. B-off's faster first batch accompanies longer setup; the private-refresh timers do not explain the full difference. We no longer attribute the complete revision cost to startup.\n\n2. **Ada qualification.** The overview now matches the report: the logs suggest most of the difference precedes first-event delivery, but independently maximized timings are not an additive phase decomposition. Ada's automatic-budget differences also remain explicit.\n\n3. **Variability across all three arms.** The report now shows A, B-off and B-on remaining-loop times for every repetition, identifying slow samples in A/r5, B-off/r3 and B-on/r1/r6. All samples remain included. Run position alone does not explain the pattern. This describes the observations; it does not identify the bottleneck or establish remaining-loop equivalence within \u00b15%.\n\n4. **Verified sample-to-repetition mapping.** We traced all 36 clean samples through their original tags, launch commands, execution log and aggregation code. The [evidence JSON](https://github.com/slac-lcls/lcls2/blob/66072235d/psana/psana/gpu/docs/performance/evidence/pr187_pr208_202610.json) now includes explicit sample metadata and tagged pairings. The [audit note](https://github.com/slac-lcls/lcls2/blob/66072235d/psana/psana/gpu/notes/pr187_sample_mapping_20261030.md) records the checks. Replaying the original aggregation under Python 3.11.14 reproduced the entire Perlmutter summary byte for byte.\n\n5. **Preserved harnesses.** The [archive](https://github.com/slac-lcls/lcls2/blob/66072235d/psana/psana/gpu/scripts/pr187_pr208/README.md) contains both campaign drivers, launchers, timing instrumentation, aggregation code and required helpers. Its [manifest](https://github.com/slac-lcls/lcls2/blob/66072235d/psana/psana/gpu/scripts/pr187_pr208/manifest.json) records original paths and SHA-256 hashes: all 47 snapshots match their run-frozen hashes. The README documents external runtime/data prerequisites and offline verification. Ada aggregation also reproduced all 12 saved summary records; the six existing startup tests and commit checks passed.\n\nNo GPU benchmarks were rerun and no measured timing values were changed. The cause of the remaining-loop variability remains unresolved and is recorded as a limit of this study.\n",
+        "review": null,
+        "path": null
+      }
+    ]
+  },
+  {
+    "number": 299,
+    "kind": "pr",
+    "items": [
+      {
+        "id": 4532364301,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4532364301",
+        "user": "Copilot",
+        "body": "`step.events()` advances the shared iterator while `run.steps()` is suspended here, so a GPU read or task failure bypasses the outer `gpu_error_handler`. Closing the outer generator supplies `GeneratorExit`, which the handler ignores, so the original failure may leave MPI peers waiting instead of aborting the job. Guard advances of the shared event iterator itself, preserving its close behavior, so failures through `step.events()` receive the same handling as `run.events()`.",
+        "review": null,
+        "path": "psana/psana/psexp/mpi_ds.py"
+      },
+      {
+        "id": 4532364379,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4532364379",
+        "user": "Copilot",
+        "body": "This branch also handles transition-only packets, including a BeginStep that follows an exactly full event batch. If prior GPU work is still active, it flushes the pool even though there are no CPU-only events to order, reinstating the step-boundary drain and preventing overlap with the next step. Restrict this drain to packets with CPU-only event envelopes; transition-only packets can leave their transitions queued until the appropriate retirement.",
+        "review": null,
+        "path": "psana/psana/gpu/gpu_events.py"
+      },
+      {
+        "id": 4532364442,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4532364442",
+        "user": "Copilot",
+        "body": "Assigning this module-level decoder directly leaves it replaced after the test finishes. Running these property tests before `test_core.py` makes its decoder tests receive the final generated EndRun packet instead of decoding their inputs, causing order-dependent failures. Pass the already-built transition list to `_handle_steps` directly, or use a scoped monkeypatch that restores the decoder.",
+        "review": null,
+        "path": "psana/psana/tests/gpu/unit/test_gpu_step_delivery_properties.py"
+      },
+      {
+        "id": 5851733016,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#pullrequestreview-5851733016",
+        "user": "copilot-pull-request-reviewer[bot]",
+        "body": "<!-- ccr-overview-v2 -->\n\n### \ud83d\udfe1 Changes recommended\n\nGPU failures raised through `step.events()` can bypass the MPI error handler, potentially leaving peers waiting instead of aborting the job.\n\n<details open>\n<summary><strong>3 open issues</strong></summary>\n\n- <picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://github.githubassets.com/static/images/icons/copilot-code-review/high-v2-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://github.githubassets.com/static/images/icons/copilot-code-review/high-v2-light.svg\"><img src=\"https://github.githubassets.com/static/images/icons/copilot-code-review/high-v2-light.png\" alt=\"High severity\" width=\"62\" height=\"18\" align=\"texttop\"></picture> [Handle failures while advancing step event iterators](https://github.com/slac-lcls/lcls2/pull/299#discussion_r4532364301) \u00b7 New\n- <picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://github.githubassets.com/static/images/icons/copilot-code-review/medium-v2-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://github.githubassets.com/static/images/icons/copilot-code-review/medium-v2-light.svg\"><img src=\"https://github.githubassets.com/static/images/icons/copilot-code-review/medium-v2-light.png\" alt=\"Medium severity\" width=\"62\" height=\"18\" align=\"texttop\"></picture> [Avoid draining GPU work for transition-only packets](https://github.com/slac-lcls/lcls2/pull/299#discussion_r4532364379) \u00b7 New\n- <picture><source media=\"(prefers-color-scheme: dark)\" srcset=\"https://github.githubassets.com/static/images/icons/copilot-code-review/medium-v2-dark.svg\"><source media=\"(prefers-color-scheme: light)\" srcset=\"https://github.githubassets.com/static/images/icons/copilot-code-review/medium-v2-light.svg\"><img src=\"https://github.githubassets.com/static/images/icons/copilot-code-review/medium-v2-light.png\" alt=\"Medium severity\" width=\"62\" height=\"18\" align=\"texttop\"></picture> [Restore the decoder after property tests](https://github.com/slac-lcls/lcls2/pull/299#discussion_r4532364442) \u00b7 New\n</details>\n\n<details>\n<summary><strong>What changed in this PR</strong></summary>\n\nThis PR advances #153 by ordering GPU transitions relative to events and enabling serial and MPI step iteration. It adds per-packet step identity while leaving mid-packet step splitting and stricter iterator lifecycle semantics deferred.\n\n**Changes:**\n- Queue transitions for ordered delivery and carry `StepScope` through GPU submissions to callbacks.\n- Enable GPU `run.steps()` with shared resource cleanup and remove explicit BeginStep drains.\n- Add regression tests, device checks, real-data validation drivers, and updated documentation.\n\n| File | Description |\r\n| ---- | ----------- |\r\n| `validation/\u200bgpu-steps-20261103/\u200bserial_events.py` | Validate uncapped serial event and step counts. |\r\n| `validation/\u200bgpu-steps-20261103/\u200brun.sbatch` | Launch bounded MPI validation jobs. |\r\n| `validation/\u200bgpu-steps-20261103/\u200bREADME.md` | Record validation evidence and limitations. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpudgram.py` | Test configuration-field filtering. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_transition_order.py` | Cover transition ordering and pressure recovery. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_task.py` | Update BeginStep and constants expectations. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_step_delivery_properties.py` | Add randomized delivery and scope checks. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_serial_close.py` | Cover serial step-iterator cleanup. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_retirement.py` | Cover MPI step-iterator cleanup. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_process_batch_transitions.py` | Exercise batch-processing transition delivery. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_plan.py` | Test scope planning and input validation. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_gpu_group_runtime.py` | Verify grouped execution scope propagation. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bunit/\u200btest_core.py` | Update transition-envelope expectations. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200btest_multiowner_transitions.py` | Adapt consumer-drain checks to EndRun. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200btest_gpu_task_lifecycle_device.py` | Update task lifecycle checks for queued transitions. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200btest_gpu_steps_device.py` | Check device scope propagation and BeginStep behavior. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200btest_gpu_step_scope_device.py` | Verify scope-based device accumulation. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200btest_gpu_group_schedule_device.py` | Adjust grouped consumer-drain coverage. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200btest_bulk_lifecycle_device.py` | Dispatch yielded transitions in lifecycle tests. |\r\n| `psana/\u200bpsana/\u200btests/\u200bgpu/\u200bintegration/\u200bmpi_gpu_steps.py` | Validate multi-rank step iteration and counts. |\r\n| `psana/\u200bpsana/\u200bpsexp/\u200brun.py` | Add GPU cleanup around serial step iteration. |\r\n| `psana/\u200bpsana/\u200bpsexp/\u200bmpi_ds.py` | Enable GPU steps and share manager lifecycle handling. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpudgram/\u200bconfig.py` | Omit configuration fields before handle validation. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpu_task_batch.py` | Store execution step scope in batch context. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpu_stream.py` | Forward step scope into task execution. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpu_producer.py` | Expose scope to user callbacks. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpu_plan.py` | Plan packet scope and transition placement. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpu_events.py` | Queue transitions and submit scope-aware work. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bgpu_batch.py` | Attach scope to subbatch views. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bdocs/\u200buser_kernels.md` | Document callback scope and constant behavior. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bdocs/\u200blimitations.md` | Update supported GPU step iteration boundaries. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bdocs/\u200bdevice_placement_and_shared_constants.md` | Clarify unchanged run-scoped constants. |\r\n| `psana/\u200bpsana/\u200bgpu/\u200bdocs/\u200bdesign.md` | Describe ordered delivery and step concurrency. |\r\n| `psana/\u200bpsana/\u200beventbuilder.pyx` | Update comments explaining packet step boundaries. |\n</details>\n\n<sub>Review effort: Balanced</sub>",
+        "review": "COMMENTED",
+        "path": null
+      },
+      {
+        "id": 4554371469,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4554371469",
+        "user": "seemamirchand",
+        "body": "Confirmed \u2014 fixed in a29258975. `Step` advances the shared iterator from the\r\nuser's frame while `steps()` is suspended, so the handler never saw the\r\nfailure, only the later `GeneratorExit`. `_steps_impl` now wraps the iterator\r\nin `_guard_shared_iterator`, which runs `gpu_error_handler` around\r\n`yield from evt_iter`; `close()` still reaches the inner generator, and\r\n`GeneratorExit` still passes. Two tests in `test_gpu_retirement.py`: a failure\r\ninside `step.events()` now records `Abort(1)` (the old code raised to the user\r\nand recorded nothing), and `steps.close()` records none.\r\n",
+        "review": null,
+        "path": "psana/psana/psexp/mpi_ds.py"
+      },
+      {
+        "id": 5879570347,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#pullrequestreview-5879570347",
+        "user": "seemamirchand",
+        "body": "",
+        "review": "COMMENTED",
+        "path": null
+      },
+      {
+        "id": 4554384989,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4554384989",
+        "user": "seemamirchand",
+        "body": "Confirmed \u2014 fixed in 5703f9b62. The flush is now conditional on\r\n`event_envelopes` being non-empty. Ordering doesn't depend on it: a\r\ntransition-only packet's entries go out via `_yield_ready` before the next\r\npacket's first later event, or via `_drain_transitions` at end of stream \u2014\r\n`transition_only_packet_between_event_packets` already passed with a no-op\r\nflush. New `test_a_transition_only_packet_does_not_drain_in_flight_work`\r\ndrives the real `_process_batch` and fails against the old condition.",
+        "review": null,
+        "path": "psana/psana/gpu/gpu_events.py"
+      },
+      {
+        "id": 5879589279,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#pullrequestreview-5879589279",
+        "user": "seemamirchand",
+        "body": "",
+        "review": "COMMENTED",
+        "path": null
+      },
+      {
+        "id": 4554390165,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4554390165",
+        "user": "seemamirchand",
+        "body": "Confirmed \u2014 fixed in cb445cc6f. Reproduced: this file before `test_core.py`\r\nfailed 8 tests; alphabetical order had hidden it. The harness now passes the\r\nlist to `_handle_steps(step_dict, transitions)` and leaves the module alone.\r\nSame order: 0 failed.",
+        "review": null,
+        "path": "psana/psana/tests/gpu/unit/test_gpu_step_delivery_properties.py"
+      },
+      {
+        "id": 5879595950,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#pullrequestreview-5879595950",
+        "user": "seemamirchand",
+        "body": "",
+        "review": "COMMENTED",
+        "path": null
+      },
+      {
+        "id": 6832370988,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#issuecomment-6832370988",
+        "user": "seemamirch",
+        "body": "All three Copilot findings addressed (cb445cc6f, 5703f9b62, a29258975).\r\nRe-verified at a29258975 on an A100: 1393 unit, 556 integration, 0 failed\r\n(job 44509177); MPI run 77 uncapped, 4 ranks: total 3000,\r\n`per_step [[500,500,500],[500,500,500]]` (job 44509184); CPU core group 42/4.",
+        "review": null,
+        "path": null
+      },
+      {
+        "id": 4582655251,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4582655251",
+        "user": "monarin",
+        "body": "**C1 \u2014 blocking: do not close a live CPU Step's shared iterator when its parent is released.**\n\n`_steps_impl()` now serves CPU-only runs too. `_close_gpu_manager()` calls `evt_iter.close()` even when `gpu_manager is None`. Consequently:\n\n```python\nstep = next(run.steps())\nevents = list(step.events())\n```\n\ncan silently return no events: the temporary parent is finalized after `next()`, this `finally` closes `evt_iter`, and the still-live Step holds that same exhausted iterator. Keeping the parent in a local variable only delays the problem until it is released. Normal nested loops retain the parent, so they do not expose it.\n\nAn isolated reproduction using the actual baseline/head methods and Step implementation with a synthetic two-event step returned **2 events at baseline, 0 at this head** for both temporary-parent and explicitly released-parent cases; retained-parent and nested-loop controls returned 2 at both. No MPI/GPU execution is claimed for this reproduction.\n\nPlease preserve the pre-PR CPU iterator ownership/lifetime while keeping GPU cleanup and its MPI teardown ordering intact. Add a CPU regression test that obtains a Step, releases/collects its parent before consuming `step.events()`, and verifies all expected events remain available, alongside retained-parent/nested-loop controls and the existing GPU close/error tests. This CPU behavior must be fixed rather than documented as a new restriction.",
+        "review": null,
+        "path": "psana/psana/psexp/mpi_ds.py"
+      },
+      {
+        "id": 4582655258,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#discussion_r4582655258",
+        "user": "monarin",
+        "body": "**R1 \u2014 nonblocking:** please remove the trailing space on this assertion. `git diff --check` against the comparison baseline flags it; this is cleanup, not another reason for the request-changes verdict.",
+        "review": null,
+        "path": "psana/psana/tests/gpu/unit/test_core.py"
+      },
+      {
+        "id": 5915912666,
+        "url": "https://github.com/slac-lcls/lcls2/pull/299#pullrequestreview-5915912666",
+        "user": "monarin",
+        "body": "## Request changes: C1 is the sole blocker\n\n**C1 \u2014 preserve the CPU Step's event-iterator lifetime.** Fix the CPU regression without breaking GPU cleanup/MPI teardown ordering, and add the requested lifetime regression tests. The [C1 inline finding](https://github.com/slac-lcls/lcls2/pull/299#discussion_r4582655251) contains the reproduction and acceptance details; nested-loop performance results do not exercise this case.\n\nReviewed head: `9b3cedfc0b02188090cc72e596c574ac7ea48a67`, whose tree matches measured head `acfd029a8d27898b5f165e02facd3c3bbc9c4ad2`. No C1-fixed revision has been measured.\n\n## Nonblocking follow-ups\n\n- **R1 \u2014 whitespace:** remove the trailing space identified in the [inline comment](https://github.com/slac-lcls/lcls2/pull/299#discussion_r4582655258).\n- **R2 \u2014 GPU lifetime documentation:** document that the parent `run.steps()` iterator must remain alive while consuming a GPU Step. Show a retained parent or `contextlib.closing(run.steps())` around the nested loop, and explain that closing the GPU parent terminates its event stream. This is not a substitute for fixing C1 on CPU.\n- **Parser optimization:** keep profiling/optimization in #310, not as a merge condition here.\n- **Run77 follow-up:** the independent Perlmutter multi-step/EndRun follow-up remains deferred; earlier author-reported SDF Run77 validation is separate evidence. Repeat on the corrected revision when the dataset is available. This is not an additional blocker in this review.\n\n## Performance\n\nAccept the scoped Run51 screen, **not statistical equivalence, end-to-end equivalence, or merge approval**. It does not resolve the earlier SDF/Weka slowdown. See the [PR299 performance summary](https://github.com/slac-lcls/lcls2/pull/299#perlmutter-performance-follow-up) for measured SHAs, configuration, paired results, and execution-order/storage limitations; independent draft #314 preserves the full report, scripts, and checksums. Merging #314 is not a dependency of #299.",
+        "review": "CHANGES_REQUESTED",
+        "path": null
+      }
+    ]
+  }
+]
