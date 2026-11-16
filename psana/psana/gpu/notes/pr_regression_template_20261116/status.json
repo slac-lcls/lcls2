@@ -1,0 +1,15 @@
+{
+  "phase": "ready_for_review",
+  "round": 0,
+  "round_limit": 3,
+  "unresolved": [],
+  "candidate": "mfx100848724/run51",
+  "pixel_status_gate": "pass",
+  "native_benchmark": "not run",
+  "checks": {
+    "controller_tests": "16/16 pass",
+    "catalog": "9 campaigns; 2000 hashes; 240 arithmetic cases; pass",
+    "draft_prepare": "pass; blocked by qualification as intended",
+    "diff_check": "pass"
+  }
+}

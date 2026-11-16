@@ -25,7 +25,7 @@ The worktree remains at
 /global/u2/m/monarin/lcls2_worktree/benchmarks/psana2-scaling-results.
 The directory name does not determine the Git branch name.
 
-Implementation steps from the agreed plan (steps 1–5 complete; step 6 next):
+Implementation steps from the agreed plan (steps 1–5 complete; step 6 template implemented, qualification pending):
 
 1. **Complete:** selectively import the PR187/208 and PR299 documentary packages,
    preserving frozen bytes and PR299 archive paths; integrity, isolation and
@@ -46,14 +46,16 @@ Implementation steps from the agreed plan (steps 1–5 complete; step 6 next):
    removed; the canonical results worktree remains. Claude round 1 passed the
    retirement procedure with no blocking findings. See the
    [retirement record](../campaign_branch_retirement_20261116/README.md).
-6. Last: qualify a retained/retrievable dataset on Perlmutter and SDF, then
-   implement and review the maintained regression template. This step must not
-   delay preserving or consolidating the completed campaign evidence.
+6. **Template implemented; native qualification pending:** the maintained
+   controller/profile and agent instructions select run 51 after its pixel-status
+   audit. See the [implementation and review record](../pr_regression_template_20261116/README.md).
+   Durable retention/cross-site identity, a frozen native adapter, correctness
+   and A/A remain required before a new measured campaign.
 
 The completed local work includes both PR-study import and scaling-catalog
 migration/validation, upstream publication, archive tagging and source-branch
-retirement. Dataset qualification and the maintained regression template remain
-pending. Runtime and example code remain unchanged; no new benchmark was submitted.
+retirement. The maintained controller/template is implemented; full dataset and
+native execution qualification remain pending. Runtime and example code remain unchanged; no new benchmark was submitted.
 
 ## Campaign PR and issue cleanup
 
@@ -86,7 +88,11 @@ results review has been performed by this documentation update.
 User direction, November 16: the two PR studies should inform one maintained
 performance regression campaign that can compare revisions on the same
 experiment/run and parameters. This is a planned extension of the organization
-work, not an implemented runner or a newly reviewed runtime change. The user
+work. The design below predates the maintained controller/template; consult
+[its current instructions](../../docs/performance/templates/pr-regression.md) and
+[implementation record](../pr_regression_template_20261116/README.md) for scope,
+validation and remaining native-adapter/qualification gates. It adds no runtime
+feature change. The user
 subsequently specified this as the last step, after campaign consolidation,
 and requested dataset qualification on both Perlmutter and SDF (sdfiana),
 including evaluation of the artificial prjdatpsana XTC fixture.
@@ -148,7 +154,8 @@ API assumptions forward. Clean throughput, correctness and profiling are
 separate modes. Preserve missing observations as unavailable rather than zero;
 NIC counters describe node/client traffic unless attribution is established.
 
-Run51 is one candidate, not the selected permanent dataset. Its historical
+Run51 is now the selected candidate after the November 16 pixel-status audit,
+not a qualified permanent dataset. Its historical
 profile is 10k events, one GPU, one/two BDs, raw GPU input plus CPU events/steps
 controls. Run51's archived fixture has 17,872 events;
 it is not a 100k profile and its timed prefix does not validate multi-step/EndRun.
@@ -176,7 +183,10 @@ this source comparison.
 Current availability is not a guarantee of future retrieval. At the final
 implementation step, inspect the real-run candidates and the existing
 prjdatpsana XTC fixture before deciding whether to reuse or create artificial
-data. No availability or suitability claim for prjdatpsana has been made yet.
+data. Subsequent inventory found real run51 in the SDF public-practice area and on
+Perlmutter. Synthetic prjdatpsana run1/run2 and Sim10 have different event/step
+coverage; they remain separate correctness/application candidates. These
+inventory observations do not establish durable retention or native qualification.
 
 For each candidate, record:
 

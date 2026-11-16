@@ -1,0 +1,140 @@
+{
+  "schema": "psana-pr-regression-v1",
+  "campaign_id": "pr-number-site-date",
+  "site": "perlmutter",
+  "pairs": 6,
+  "timeout_seconds": 900,
+  "equivalence_percent": 5.0,
+  "cache_policy": "client-cold",
+  "warmup": {
+    "policy": "separate-process-before-cache-conditioning",
+    "events": 200
+  },
+  "dataset": {
+    "experiment": "mfx100848724",
+    "run": 51,
+    "detector": "jungfrau",
+    "events": 10000,
+    "available_events": 17872,
+    "event_sha256": null,
+    "requested_bytes": null,
+    "sites": {
+      "sdf": "/sdf/data/lcls/ds/prj/public01/xtc",
+      "perlmutter": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc"
+    },
+    "selected_streams": [
+      3,
+      5,
+      7,
+      8,
+      9
+    ],
+    "status": "candidate; pixel-status gate passed; full qualification pending"
+  },
+  "qualification": {
+    "retention": false,
+    "cross_site_identity": false,
+    "compute_access": false,
+    "event_reference": false,
+    "native_adapter": false,
+    "calibration_identity": false,
+    "nondegenerate_mask": false,
+    "numerical_reference": false
+  },
+  "settings": {
+    "batch_size": 20,
+    "n_gpu_streams": 1,
+    "gpu_bulk_read": true,
+    "gpu_bulk_target_bytes": 1048576,
+    "gpu_memory_budget_gb": 8,
+    "kvikio_workers": 4,
+    "kvikio_task_size": 1048576,
+    "kvikio_bounce_buffer_bytes": 16777216,
+    "kvikio_compat_mode": "ON",
+    "gds": false,
+    "d2h_policy": "none for clean raw timing",
+    "calibration": null,
+    "ps_smd_n_events": 1000,
+    "cpu_policy": "explicit physical-core affinity per rank; freeze in site adapter",
+    "metrics": [
+      "setup",
+      "first_batch",
+      "loop",
+      "process",
+      "requested_bytes",
+      "nic_rx",
+      "nic_tx",
+      "host_memory",
+      "gpu_memory",
+      "pinned_memory"
+    ]
+  },
+  "environment": {
+    "PS_FAKESTEP_FLAG": "0",
+    "PS_SRV_NODES": "0",
+    "PS_EB_NODES": "1",
+    "MPICH_GPU_SUPPORT_ENABLED": "0"
+  },
+  "cases": [
+    {
+      "id": "cpu-raw-events-bd1",
+      "workload": "cpu-raw",
+      "iterator": "events",
+      "bds": 1,
+      "ebs": 1,
+      "gpus": 0
+    },
+    {
+      "id": "gpu-raw-events-bd1",
+      "workload": "gpu-raw",
+      "iterator": "events",
+      "bds": 1,
+      "ebs": 1,
+      "gpus": 1
+    },
+    {
+      "id": "cpu-raw-events-bd2",
+      "workload": "cpu-raw",
+      "iterator": "events",
+      "bds": 2,
+      "ebs": 1,
+      "gpus": 0
+    },
+    {
+      "id": "gpu-raw-events-bd2",
+      "workload": "gpu-raw",
+      "iterator": "events",
+      "bds": 2,
+      "ebs": 1,
+      "gpus": 1
+    },
+    {
+      "id": "cpu-raw-steps-bd1",
+      "workload": "cpu-raw",
+      "iterator": "steps",
+      "bds": 1,
+      "ebs": 1,
+      "gpus": 0
+    },
+    {
+      "id": "cpu-raw-steps-bd2",
+      "workload": "cpu-raw",
+      "iterator": "steps",
+      "bds": 2,
+      "ebs": 1,
+      "gpus": 0
+    }
+  ],
+  "runtimes": {
+    "baseline": {
+      "commit": null,
+      "install": null
+    },
+    "candidate": {
+      "commit": null,
+      "install": null
+    }
+  },
+  "artifacts": {},
+  "adapter_command": []
+}

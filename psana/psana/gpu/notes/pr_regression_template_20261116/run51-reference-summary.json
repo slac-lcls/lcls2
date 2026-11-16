@@ -1,0 +1,91 @@
+{
+  "experiment": "mfx100848724",
+  "run": 51,
+  "available_events": 17872,
+  "selected_events": 10000,
+  "reference_source": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/results/reference-51.json",
+  "reference_source_sha256": "e6c5f5bd9b4881a7c3ab78299b9dcd2339aaee77ae62a91a10faa79231f7f573",
+  "source_files": [
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s000-c000.xtc2",
+      "bytes": 163254196,
+      "endruns": 0,
+      "mtime_ns": 1762295316000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s000-c000.smd.xtc2",
+      "sha256": "798bed0a1a318ac66ddf5f1a7e7fce24bdc836d248d79aac0c56a7912f926fdd"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s001-c000.xtc2",
+      "bytes": 1463074,
+      "endruns": 0,
+      "mtime_ns": 1762295372000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s001-c000.smd.xtc2",
+      "sha256": "89ad3c6761b9b5381e508f7df184cdc2ed961567df1cc65dfaba84f85cf2d23f"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s002-c000.xtc2",
+      "bytes": 22876321452,
+      "endruns": 0,
+      "mtime_ns": 1762295430000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s002-c000.smd.xtc2",
+      "sha256": "18ec63bec737a4772e3be019ce0ad91810e3eaa04b83c9f8d977e76fc8029b34"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s003-c000.xtc2",
+      "bytes": 112550929664,
+      "endruns": 0,
+      "mtime_ns": 1762295629000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s003-c000.smd.xtc2",
+      "sha256": "22d127678d26f99a8954963821dfe8ebd74b7302fd7a22e09d15a3da03dc6725"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s004-c000.xtc2",
+      "bytes": 7450128,
+      "endruns": 0,
+      "mtime_ns": 1762295372000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s004-c000.smd.xtc2",
+      "sha256": "bd722355d550a974f083d6f84dcbdd3f9323a2ca086cbe825ba32a73925ca5fc"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s005-c000.xtc2",
+      "bytes": 131999364306,
+      "endruns": 0,
+      "mtime_ns": 1762296406000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s005-c000.smd.xtc2",
+      "sha256": "58c09ac02d1b4c398d428c91f3aa3a1c23d25362816fff9ddffc8d9b28e4593e"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s006-c000.xtc2",
+      "bytes": 19327443748,
+      "endruns": 0,
+      "mtime_ns": 1762295878000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s006-c000.smd.xtc2",
+      "sha256": "b3cbffbf135cec34f5eea35879b307e87fdc7691b62dfcea1a8517907d957b7e"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s007-c000.xtc2",
+      "bytes": 131999364306,
+      "endruns": 0,
+      "mtime_ns": 1762296413000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s007-c000.smd.xtc2",
+      "sha256": "e7c84c73c9d6dee4079d877a3172d199c93520d25b596b880e4070b1562ef3e3"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s008-c000.xtc2",
+      "bytes": 93970786942,
+      "endruns": 0,
+      "mtime_ns": 1762296194000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s008-c000.smd.xtc2",
+      "sha256": "6476c3970c23e9576c83aab478d6fe099c7df6251c7fbdc31662483880598541"
+    },
+    {
+      "bigdata": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/mfx100848724-r0051-s009-c000.xtc2",
+      "bytes": 131580948372,
+      "endruns": 0,
+      "mtime_ns": 1762296409000000000,
+      "path": "/pscratch/sd/p/psdatmgr/psdm/mfx/mfx100848724/xtc/smalldata/mfx100848724-r0051-s009-c000.smd.xtc2",
+      "sha256": "94f3518955cd87fff06ac687dbe4ae034ae6f4d7ec3aff5ed076bb0b56e61ccb"
+    }
+  ],
+  "qualification": "historical PR299 reference; new campaign must independently recheck selected identities and data ranges"
+}

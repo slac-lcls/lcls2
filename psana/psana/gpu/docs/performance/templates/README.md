@@ -12,5 +12,8 @@ Follow [the common format](../FORMAT.md). Never copy historical approvals.
 
 `artifact-only-v1` is structural validation, not numerical acceptance. Add and
 test a dedicated analysis profile when the campaign requires arithmetic checks.
-Freeze the exact runner/configuration per campaign. The reusable regression
-runner and durable cross-site dataset qualification are future work.
+Freeze the exact runner/configuration per campaign. Use the
+[PR regression template and agent instructions](pr-regression.md) for maintained
+comparison orchestration. Its run-51 candidate passed the pixel-status check;
+durable cross-site dataset qualification and a reviewed native adapter remain
+required before execution.
