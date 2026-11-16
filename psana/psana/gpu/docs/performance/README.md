@@ -87,7 +87,7 @@ and datasets remain at the recorded artifact locations.
 ## Scaling and application campaigns
 
 The [campaign catalog](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/catalog.json) indexes the historical PR studies and these
-five scaling/application records. Catalog and campaign records are source-only;
+six scaling/application records. Catalog and campaign records are source-only;
 an installed copy can use the
 [results branch](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance).
 The branch was published to slac-lcls/lcls2 on November 16, 2026.
@@ -99,7 +99,9 @@ In a source checkout, open `docs/performance/campaigns/README.md` for working lo
 | Perlmutter C++ stripe screen | Count 2: 12.92 GiB/s at 40 threads; count 1: 11.42 GiB/s | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/cpp-read/2026-11-11-stripe-screen/README.md) |
 | Perlmutter psana stripe screen | Count 1 led: 5.443 GiB/s with one GPU/four BDs, 100k events | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-stripe-screen/README.md) |
 | Perlmutter psana GPU scaling, count 1 | 5.075 / 7.558 / 9.341 / 9.842 GiB/s for 1/2/3/4 GPUs | [Report](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-staging/2026-11-16-gpu-scaling/README.md) |
-| Sim10/XPP-cube application baseline | Full S/E/EC/ECC results pending; prepared scripts preserved | [Task snapshot](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md) |
+| Sim10/XPP-cube preparation snapshot | Historical pending state; preserved unchanged | [Task snapshot](https://github.com/slac-lcls/lcls2/tree/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-15-baseline/README.md) |
+
+Completed Sim10 application campaign: [100k S/E/EC/ECC report](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md). All35 cases passed; independent results review passed. Four-BD S/E/EC/ECC input rates: 5.181 / 5.156 / 4.966 / 4.780 GiB/s. No cube export or numerical CPU-reference comparison.
 
 C++ full-file reads, psana staging, and full cube processing measure different work. SDF fixes four BDs total in its GPU comparison; Perlmutter scales four BDs per GPU. The newer Perlmutter scaling policy uses fewer CPU cores per BD than the earlier stripe screen. Compare paired cases within a campaign, and do not treat reader bandwidth as a single-OST ceiling.
 

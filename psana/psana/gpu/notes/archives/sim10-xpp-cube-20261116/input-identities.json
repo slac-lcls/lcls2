@@ -1,0 +1,97 @@
+{
+  "exp": "mfx101555026",
+  "run": 10,
+  "directory": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02",
+  "files": [
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s005-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s006-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s007-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s008-c000.xtc2",
+    "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s009-c000.xtc2"
+  ],
+  "payload_records": [
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s005-c000.xtc2",
+      "view": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/mfx101555026-r0010-s005-c000.xtc2",
+      "bytes": 52472554830,
+      "sha256": "2f87b5cf470d6ea4153e4c1d27ef8a477078ac965578f636bfe4d9152f86eb17",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846692753629788115,
+        "st_size": 52472554830,
+        "st_mtime_ns": 1794353678000000000,
+        "st_uid": 73802
+      },
+      "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s005-c000.xtc2\nlmm_stripe_count:  2\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 251\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   251\t      15928627\t     0xf30d33\t  0x4b4000040f\n\t   252\t      16222451\t     0xf788f3\t  0x4b8000040d\n\n",
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/smalldata/mfx101555026-r0010-s005-c000.smd.xtc2",
+      "smd_sha256": "6bee21541fafd0d126bce2823e46c9823f08cbaef0f41a99c2f4275cbf692c77"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s006-c000.xtc2",
+      "view": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/mfx101555026-r0010-s006-c000.xtc2",
+      "bytes": 62966580132,
+      "sha256": "6b4d3893e325708ca97908c37f82c382b5fbae6714ad11f41f20a0b7a6c0815d",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846692753629788111,
+        "st_size": 62966580132,
+        "st_mtime_ns": 1794353712000000000,
+        "st_uid": 73802
+      },
+      "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s006-c000.xtc2\nlmm_stripe_count:  2\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 243\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   243\t      15832159\t     0xf1945f\t  0x4940000416\n\t   244\t      16123700\t     0xf60734\t  0x498000040f\n\n",
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/smalldata/mfx101555026-r0010-s006-c000.smd.xtc2",
+      "smd_sha256": "021c1ed3fee3474bec86d30887e29c9f8743b1f1c884a5a9a4831ff91679ab06"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s007-c000.xtc2",
+      "view": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/mfx101555026-r0010-s007-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "0d1963d8fedeb182b127dc1e8f48ce3a6074bd8a542070ac9ac9c63d57d57d34",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846692753629788113,
+        "st_size": 73460605434,
+        "st_mtime_ns": 1794353740000000000,
+        "st_uid": 73802
+      },
+      "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s007-c000.xtc2\nlmm_stripe_count:  2\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 247\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   247\t      16039650\t     0xf4bee2\t  0x4a4000041e\n\t   248\t      16058068\t     0xf506d4\t  0x4a80000403\n\n",
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/smalldata/mfx101555026-r0010-s007-c000.smd.xtc2",
+      "smd_sha256": "046dd91aeab5cd84bc2b7adf61fbdbd8ed5986bc4191751a5b3d3db820ff30b8"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s008-c000.xtc2",
+      "view": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/mfx101555026-r0010-s008-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "6dd653a2b10c553dde2c2616375f539cd3f480c7554d93f1562332a394773784",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846692753629788114,
+        "st_size": 73460605434,
+        "st_mtime_ns": 1794353743000000000,
+        "st_uid": 73802
+      },
+      "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s008-c000.xtc2\nlmm_stripe_count:  2\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 249\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   249\t      15734036\t     0xf01514\t  0x4ac0000400\n\t   250\t      16119444\t     0xf5f694\t  0x4b00000411\n\n",
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/smalldata/mfx101555026-r0010-s008-c000.smd.xtc2",
+      "smd_sha256": "1836b10d0141d482f8e5cb97bbfbf492144081d86bb18e53345808a98ae8d926"
+    },
+    {
+      "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s009-c000.xtc2",
+      "view": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/mfx101555026-r0010-s009-c000.xtc2",
+      "bytes": 73460605434,
+      "sha256": "21642feadd5048aaf9d8a9782b9bb31647311a6016534aeaf0114b0a78a89e3c",
+      "identity": {
+        "st_dev": 3592384858,
+        "st_ino": 846692753629788112,
+        "st_size": 73460605434,
+        "st_mtime_ns": 1794353741000000000,
+        "st_uid": 73802
+      },
+      "layout_raw": "/pscratch/sd/m/monarin/psana2-gpu/sim10-striping-20261110/attempt01/datasets/count-02/mfx101555026-r0010-s009-c000.xtc2\nlmm_stripe_count:  2\nlmm_stripe_size:   1048576\nlmm_pattern:       raid0\nlmm_layout_gen:    0\nlmm_stripe_offset: 245\nlmm_pool:          original\n\tobdidx\t\t objid\t\t objid\t\t group\n\t   245\t      15584116\t     0xedcb74\t  0x49c0000426\n\t   246\t      16286899\t     0xf884b3\t  0x4a00000408\n\n",
+      "smd": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/views/count-02/smalldata/mfx101555026-r0010-s009-c000.smd.xtc2",
+      "smd_sha256": "07e110454adfd0e452bf88188a27d34ffae14efdb8c2c117f3f21a4b24af2480"
+    }
+  ],
+  "media": "lustre",
+  "stripe_count": 2,
+  "stripe_size_bytes": 1048576
+}

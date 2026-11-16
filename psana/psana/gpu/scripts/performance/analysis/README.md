@@ -9,7 +9,7 @@ The results branch preserves reviewed experiment scripts under frozen archive ro
 | C++ stripe screen | [Reader and harness](../../../notes/archives/scaling-20261116/legacy-root/notes/sim10_striping_20261110/reader) | Build, prepare, Slurm launch, raw audit and plotting |
 | psana stripe screen | [Harness](../../../notes/archives/scaling-20261116/legacy-root/notes/psana_striping_pr298_20261111/screen-20261115) | Six stripe counts, three blocks, cache and memory checks |
 | psana GPU scaling | [Harness](../../../notes/archives/scaling-20261116/legacy-root/notes/psana_gpu_scaling_20261116) | Qualification, 100k screen, NIC/memory gates, audit and paired report |
-| Sim10/XPP-cube | [Committed snapshot](../../../notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115) | Prepared S/E/EC/ECC runner, pixel/bin validation and bounded bootstrap; full results pending |
+| Sim10/XPP-cube | [Committed snapshot](../../../notes/archives/scaling-20261116/legacy-root/notes/sim10_perlmutter_baseline_20261115) | Prepared S/E/EC/ECC runner, pixel/bin validation and bounded bootstrap; historical pending snapshot preserved |
 
 The original scripts retain environment and scratch paths for their sites. Several preparation scripts pin repository prefixes. They are historical execution sources, not generic portable launchers. Native libraries, data and calibration inputs remain external and are recorded in their provenance files. Historical approvals in imported records do not authorize new submissions.
 
@@ -57,3 +57,11 @@ PYTHONDONTWRITEBYTECODE=1 /pscratch/sd/m/monarin/psana2-gpu/perlmutter-kvikio261
 ```
 
 This verifies native receipts and regenerates the attempt's `scaling-summary.json`. It requires the original external evidence and writes to the scratch attempt; it does not submit a job. C++ and stripe-screen reports link their own raw-audit entry points and provenance.
+
+## Completed Sim10 application baseline
+
+[Job61409171 report](https://github.com/slac-lcls/lcls2/blob/results/psana2-gpu-scaling/psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md) retains the new exact execution bundle and compact receipts.
+The catalog dispatches `cube-complete-v1` to `sim10_cube.py`: all35 cases, eight
+stage/profile summaries, paired ratios, anchors, cache attempts and cube counts
+are checked offline. Run `python3 -B psana/psana/gpu/scripts/performance/analysis/test_sim10_cube.py -v`
+for deliberate-corruption tests. This does not re-execute the frozen harness.

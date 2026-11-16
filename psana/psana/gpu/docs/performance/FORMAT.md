@@ -27,7 +27,8 @@ Record terminal job/step accounting, correctness and resource gates, raw-evidenc
 
 Describe median versus mean, sample count, observed range and paired speedup formula explicitly. Keep nodes/allocations and workload stages separate; do not pool cohorts or divide unmatched absolute rates to claim an optimization. Three repeats support descriptive spread, not a storage ceiling or an isolated bottleneck claim.
 
-For full Sim10/XPP-cube, record S/E/EC/ECC separately, expansion shape and dtype, calibration definition, dense-bank bins/dtype, nonempty/empty-bin counts, the exact validation policy, GPU/host/pinned peaks and end-to-end total. Record numerical-reference checks and export/reduction only when performed; the current prepared bootstrap deliberately performs neither, retaining distributed GPU cubes with shape/content/bin-count checks. Current staging batch and sharing choices are not established application optima.
+For full Sim10/XPP-cube, record S/E/EC/ECC separately, expansion shape and dtype, calibration definition, dense-bank bins/dtype, nonempty/empty-bin counts, the exact validation policy, GPU/host/pinned peaks and end-to-end total. Record numerical-reference checks and export/reduction only when performed; the current prepared bootstrap deliberately performs neither, retaining distributed GPU cubes with shape/content/bin-count checks. The completed November16 application record retains this no-export policy.
+Current staging batch and sharing choices are not established application optima.
 
 ## Updating this branch
 

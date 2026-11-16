@@ -1,0 +1,11 @@
+{
+  "status": "pass",
+  "cases": 35,
+  "bundle_files": 49,
+  "external_pins": 7,
+  "raw_files": 608,
+  "compact_extraction": "matches raw",
+  "native_case_audit": "all pass",
+  "native_summary": "matches",
+  "scope": "Read-only current raw correspondence and original native case/resource audits; no GPU kernel re-execution or XTC payload rehash"
+}

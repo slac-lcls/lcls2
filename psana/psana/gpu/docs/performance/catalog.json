@@ -89,6 +89,16 @@
       "script_roots": [
         "psana/psana/gpu/scripts/pr299_perlmutter"
       ]
+    },
+    {
+      "id": "perlmutter-sim10-xpp-cube-20261116-100k",
+      "kind": "application",
+      "record_path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k",
+      "manifest": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/manifest.json",
+      "report": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/README.md",
+      "script_roots": [
+        "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle"
+      ]
     }
   ]
 }

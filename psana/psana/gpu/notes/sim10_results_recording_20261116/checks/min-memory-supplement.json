@@ -1,0 +1,218 @@
+{
+  "status": "pass",
+  "reviewed_code": "87454c23efdfd5e9ef599d77334971f6583d8e29",
+  "cases": [
+    {
+      "case": "accept-bd1-ECC",
+      "recorded_gib": 27.39678955078125,
+      "from_rank_extrema_gib": 27.39678955078125,
+      "match": true
+    },
+    {
+      "case": "accept-bd4-ECC",
+      "recorded_gib": 12.80889892578125,
+      "from_rank_extrema_gib": 12.80889892578125,
+      "match": true
+    },
+    {
+      "case": "bridge-r1",
+      "recorded_gib": 35.01959228515625,
+      "from_rank_extrema_gib": 35.01959228515625,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd1-S",
+      "recorded_gib": 38.89678955078125,
+      "from_rank_extrema_gib": 38.89678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd1-E",
+      "recorded_gib": 37.33428955078125,
+      "from_rank_extrema_gib": 37.33428955078125,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd1-EC",
+      "recorded_gib": 33.64678955078125,
+      "from_rank_extrema_gib": 33.64678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd1-ECC",
+      "recorded_gib": 27.39678955078125,
+      "from_rank_extrema_gib": 27.39678955078125,
+      "match": true
+    },
+    {
+      "case": "anchor-r1-bd1-S",
+      "recorded_gib": 38.89678955078125,
+      "from_rank_extrema_gib": 38.89678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd4-S",
+      "recorded_gib": 38.37139892578125,
+      "from_rank_extrema_gib": 38.37139892578125,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd4-E",
+      "recorded_gib": 32.121337890625,
+      "from_rank_extrema_gib": 32.121337890625,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd4-EC",
+      "recorded_gib": 19.05889892578125,
+      "from_rank_extrema_gib": 19.05889892578125,
+      "match": true
+    },
+    {
+      "case": "full-r1-bd4-ECC",
+      "recorded_gib": 12.808837890625,
+      "from_rank_extrema_gib": 12.808837890625,
+      "match": true
+    },
+    {
+      "case": "anchor-r1-bd4-S",
+      "recorded_gib": 38.37139892578125,
+      "from_rank_extrema_gib": 38.37139892578125,
+      "match": true
+    },
+    {
+      "case": "bridge-r2",
+      "recorded_gib": 35.01959228515625,
+      "from_rank_extrema_gib": 35.01959228515625,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd4-S",
+      "recorded_gib": 38.37139892578125,
+      "from_rank_extrema_gib": 38.37139892578125,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd4-EC",
+      "recorded_gib": 19.058837890625,
+      "from_rank_extrema_gib": 19.058837890625,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd4-ECC",
+      "recorded_gib": 12.808837890625,
+      "from_rank_extrema_gib": 12.808837890625,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd4-E",
+      "recorded_gib": 32.12139892578125,
+      "from_rank_extrema_gib": 32.12139892578125,
+      "match": true
+    },
+    {
+      "case": "anchor-r2-bd4-S",
+      "recorded_gib": 38.37139892578125,
+      "from_rank_extrema_gib": 38.37139892578125,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd1-S",
+      "recorded_gib": 38.89678955078125,
+      "from_rank_extrema_gib": 38.89678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd1-EC",
+      "recorded_gib": 33.64678955078125,
+      "from_rank_extrema_gib": 33.64678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd1-ECC",
+      "recorded_gib": 27.39678955078125,
+      "from_rank_extrema_gib": 27.39678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r2-bd1-E",
+      "recorded_gib": 37.33428955078125,
+      "from_rank_extrema_gib": 37.33428955078125,
+      "match": true
+    },
+    {
+      "case": "anchor-r2-bd1-S",
+      "recorded_gib": 38.89678955078125,
+      "from_rank_extrema_gib": 38.89678955078125,
+      "match": true
+    },
+    {
+      "case": "bridge-r3",
+      "recorded_gib": 35.01959228515625,
+      "from_rank_extrema_gib": 35.01959228515625,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd1-S",
+      "recorded_gib": 38.89678955078125,
+      "from_rank_extrema_gib": 38.89678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd1-ECC",
+      "recorded_gib": 27.39678955078125,
+      "from_rank_extrema_gib": 27.39678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd1-E",
+      "recorded_gib": 37.33428955078125,
+      "from_rank_extrema_gib": 37.33428955078125,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd1-EC",
+      "recorded_gib": 33.64678955078125,
+      "from_rank_extrema_gib": 33.64678955078125,
+      "match": true
+    },
+    {
+      "case": "anchor-r3-bd1-S",
+      "recorded_gib": 38.89678955078125,
+      "from_rank_extrema_gib": 38.89678955078125,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd4-S",
+      "recorded_gib": 38.37139892578125,
+      "from_rank_extrema_gib": 38.37139892578125,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd4-ECC",
+      "recorded_gib": 12.80889892578125,
+      "from_rank_extrema_gib": 12.80889892578125,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd4-E",
+      "recorded_gib": 32.121337890625,
+      "from_rank_extrema_gib": 32.121337890625,
+      "match": true
+    },
+    {
+      "case": "full-r3-bd4-EC",
+      "recorded_gib": 19.05889892578125,
+      "from_rank_extrema_gib": 19.05889892578125,
+      "match": true
+    },
+    {
+      "case": "anchor-r3-bd4-S",
+      "recorded_gib": 38.37139892578125,
+      "from_rank_extrema_gib": 38.37139892578125,
+      "match": true
+    }
+  ],
+  "overall_min_gib": 12.808837890625,
+  "scope": "Coordinator supplemental verification for optional SR-R2-01; persistent validator enhancement deferred."
+}

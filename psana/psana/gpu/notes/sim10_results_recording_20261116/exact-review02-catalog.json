@@ -1,0 +1,7 @@
+{
+  "status": "pass",
+  "campaigns": 10,
+  "file_hashes_checked": 2082,
+  "arithmetic_cases": 275,
+  "scope": "Archive hashes, authored links/tables, taxonomy, per-profile populations and arithmetic; no native raw-data re-audit"
+}

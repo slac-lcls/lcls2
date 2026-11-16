@@ -1,0 +1,1588 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-11-15T23:06:59.326351+00:00",
+  "purpose": "Perlmutter baseline bootstrap; port and review before execution",
+  "sdf_manifest_sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+  "pr_sha": "67c327a148a08b2aaf972e67e1e02e367c2b298f",
+  "coordinator_head": "004b30e01668ad1269db41f5455a27159e32d36a",
+  "sdf_frozen_files": 77,
+  "files": {
+    "sdf-attempt03/source/notes/jf_cold_ffb_20261109/run.py": {
+      "bytes": 7301,
+      "sha256": "a946811519d497629684169d8ca081abcae4e6ca136ec9fff06ab35c7a34fd36",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_cold_ffb_20261109/run.py"
+    },
+    "reference/notes/jf_cold_ffb_20261109/run.py": {
+      "bytes": 7301,
+      "sha256": "a946811519d497629684169d8ca081abcae4e6ca136ec9fff06ab35c7a34fd36",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_cold_ffb_20261109/run.py"
+    },
+    "sdf-attempt03/source/notes/jf_raw_cache_20261109/common.py": {
+      "bytes": 9225,
+      "sha256": "d4ffdde96c09c6895e350bbd6deb6860543bcbaffa927f3a3be03bb3d41f5c63",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_raw_cache_20261109/common.py"
+    },
+    "reference/notes/jf_raw_cache_20261109/common.py": {
+      "bytes": 9225,
+      "sha256": "d4ffdde96c09c6895e350bbd6deb6860543bcbaffa927f3a3be03bb3d41f5c63",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_raw_cache_20261109/common.py"
+    },
+    "sdf-attempt03/source/notes/jf_raw_cache_20261109/reference.json": {
+      "bytes": 2991,
+      "sha256": "94625e5b7efb92ba38e3a60050d688a86f912c946a219f61315b15f890f0d9ce",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_raw_cache_20261109/reference.json"
+    },
+    "reference/notes/jf_raw_cache_20261109/reference.json": {
+      "bytes": 2991,
+      "sha256": "94625e5b7efb92ba38e3a60050d688a86f912c946a219f61315b15f890f0d9ce",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_raw_cache_20261109/reference.json"
+    },
+    "sdf-attempt03/source/notes/jf_raw_cache_20261109/runtime.sh": {
+      "bytes": 759,
+      "sha256": "4fe181ef41dfb56565956aae8ec0718658c331292c1fc0340f770b2e56cfe524",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_raw_cache_20261109/runtime.sh"
+    },
+    "reference/notes/jf_raw_cache_20261109/runtime.sh": {
+      "bytes": 759,
+      "sha256": "4fe181ef41dfb56565956aae8ec0718658c331292c1fc0340f770b2e56cfe524",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/jf_raw_cache_20261109/runtime.sh"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_100k_20261109/acceptance.json": {
+      "bytes": 886,
+      "sha256": "f6eab1f242f60216e525d721609b8f2118481be16ea1c81f1a5416fbd3ef27a0",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_100k_20261109/acceptance.json"
+    },
+    "reference/notes/mfx_expand10_100k_20261109/acceptance.json": {
+      "bytes": 886,
+      "sha256": "f6eab1f242f60216e525d721609b8f2118481be16ea1c81f1a5416fbd3ef27a0",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_100k_20261109/acceptance.json"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_100k_20261109/files.json": {
+      "bytes": 6035,
+      "sha256": "24feccea1604877cb2da1f70c181b1715ce7d2c4b56a4b473615c648007c91dc",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_100k_20261109/files.json"
+    },
+    "reference/notes/mfx_expand10_100k_20261109/files.json": {
+      "bytes": 6035,
+      "sha256": "24feccea1604877cb2da1f70c181b1715ce7d2c4b56a4b473615c648007c91dc",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_100k_20261109/files.json"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_100k_20261109/verification.json": {
+      "bytes": 7841,
+      "sha256": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_100k_20261109/verification.json"
+    },
+    "reference/notes/mfx_expand10_100k_20261109/verification.json": {
+      "bytes": 7841,
+      "sha256": "97b6b62b27fb402a9d640f39e9c27ee9943e3d9330df556c4dee3f3a7ea5f5cc",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_100k_20261109/verification.json"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_performance_20261106/fixture_check.py": {
+      "bytes": 2195,
+      "sha256": "626be609a09207e37559b81f7147b37799290b0a936a2e9ed1e951482441d3ce",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_performance_20261106/fixture_check.py"
+    },
+    "reference/notes/mfx_expand10_performance_20261106/fixture_check.py": {
+      "bytes": 2195,
+      "sha256": "626be609a09207e37559b81f7147b37799290b0a936a2e9ed1e951482441d3ce",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_performance_20261106/fixture_check.py"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_stage2_20261105/adapter.py": {
+      "bytes": 7199,
+      "sha256": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/adapter.py"
+    },
+    "reference/notes/mfx_expand10_stage2_20261105/adapter.py": {
+      "bytes": 7199,
+      "sha256": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/adapter.py"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_stage2_20261105/fixture.py": {
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/fixture.py"
+    },
+    "reference/notes/mfx_expand10_stage2_20261105/fixture.py": {
+      "bytes": 11076,
+      "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/fixture.py"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_stage2_20261105/gpu_accept.py": {
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/gpu_accept.py"
+    },
+    "reference/notes/mfx_expand10_stage2_20261105/gpu_accept.py": {
+      "bytes": 11509,
+      "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/gpu_accept.py"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_stage2_20261105/test_fixture.py": {
+      "bytes": 5106,
+      "sha256": "c039591c4ee62362f3f84a83cb22c600160036b519d8c5c94c0f8b3b0f632167",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/test_fixture.py"
+    },
+    "reference/notes/mfx_expand10_stage2_20261105/test_fixture.py": {
+      "bytes": 5106,
+      "sha256": "c039591c4ee62362f3f84a83cb22c600160036b519d8c5c94c0f8b3b0f632167",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/test_fixture.py"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_stage2_20261105/verify.py": {
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/verify.py"
+    },
+    "reference/notes/mfx_expand10_stage2_20261105/verify.py": {
+      "bytes": 15269,
+      "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage2_20261105/verify.py"
+    },
+    "sdf-attempt03/source/notes/mfx_expand10_stage3a_20261105/cube.py": {
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage3a_20261105/cube.py"
+    },
+    "reference/notes/mfx_expand10_stage3a_20261105/cube.py": {
+      "bytes": 7966,
+      "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_expand10_stage3a_20261105/cube.py"
+    },
+    "sdf-attempt03/source/notes/mfx_kvikio_read_20261108/network_watch.py": {
+      "bytes": 5008,
+      "sha256": "61abd903d9b89a7caf1891dbda3eb2fd690a7f498a8d3b7325a0d06538bcfc79",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_kvikio_read_20261108/network_watch.py"
+    },
+    "reference/notes/mfx_kvikio_read_20261108/network_watch.py": {
+      "bytes": 5008,
+      "sha256": "61abd903d9b89a7caf1891dbda3eb2fd690a7f498a8d3b7325a0d06538bcfc79",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_kvikio_read_20261108/network_watch.py"
+    },
+    "sdf-attempt03/source/notes/mfx_kvikio_read_20261108/plan_reads.py": {
+      "bytes": 3737,
+      "sha256": "88055e287d050d9e99a9f9f2434ec239e463d1293e0bcdca603a5dad5e7e663a",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_kvikio_read_20261108/plan_reads.py"
+    },
+    "reference/notes/mfx_kvikio_read_20261108/plan_reads.py": {
+      "bytes": 3737,
+      "sha256": "88055e287d050d9e99a9f9f2434ec239e463d1293e0bcdca603a5dad5e7e663a",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/mfx_kvikio_read_20261108/plan_reads.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/ALLOWLIST.md": {
+      "bytes": 3689,
+      "sha256": "b3165a75132f6749c4afcb41c0fd9eccea69ca65b6767d6d0d2cdd3575037a55",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/ALLOWLIST.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/ALLOWLIST.md": {
+      "bytes": 3689,
+      "sha256": "b3165a75132f6749c4afcb41c0fd9eccea69ca65b6767d6d0d2cdd3575037a55",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/ALLOWLIST.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/README.md": {
+      "bytes": 6175,
+      "sha256": "4dfa075b93ab5ebe2df12dd3b26362030d8870d07599914d8927810f9a09badf",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/README.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/README.md": {
+      "bytes": 6175,
+      "sha256": "4dfa075b93ab5ebe2df12dd3b26362030d8870d07599914d8927810f9a09badf",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/README.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/REVIEW.md": {
+      "bytes": 3729,
+      "sha256": "58b8e9d22d0e7fc80e08dec98dc38e281fdfd72288b2a7a08a1fa9fc3307e2f9",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/REVIEW.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/REVIEW.md": {
+      "bytes": 3729,
+      "sha256": "58b8e9d22d0e7fc80e08dec98dc38e281fdfd72288b2a7a08a1fa9fc3307e2f9",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/REVIEW.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/availability-latest.json": {
+      "bytes": 485,
+      "sha256": "11416eb95f9330141f465f32708f898704b09db77ffa56ad393382c94607c4ff",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/availability-latest.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/availability-latest.json": {
+      "bytes": 485,
+      "sha256": "11416eb95f9330141f465f32708f898704b09db77ffa56ad393382c94607c4ff",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/availability-latest.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/availability.json": {
+      "bytes": 800,
+      "sha256": "353b113f139e1cb6b5ff73c6ca7d82a946414fb81142842c38d62c4e237aa9ae",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/availability.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/availability.json": {
+      "bytes": 800,
+      "sha256": "353b113f139e1cb6b5ff73c6ca7d82a946414fb81142842c38d62c4e237aa9ae",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/availability.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/budget.json": {
+      "bytes": 1086,
+      "sha256": "237836f03bda5027b72fced152e2cf64384882f635e9d781b939cc34011ee739",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/budget.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/budget.json": {
+      "bytes": 1086,
+      "sha256": "237836f03bda5027b72fced152e2cf64384882f635e9d781b939cc34011ee739",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/budget.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/checks-01.json": {
+      "bytes": 720,
+      "sha256": "790f2efa926c24dd5dc5277c011bba535bba30ea562f407b16134de34e3204c1",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/checks-01.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/checks-01.json": {
+      "bytes": 720,
+      "sha256": "790f2efa926c24dd5dc5277c011bba535bba30ea562f407b16134de34e3204c1",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/checks-01.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/checks-02.json": {
+      "bytes": 1104,
+      "sha256": "aa1e0ac9d4a5112d86056a8d2b0b15f3bf5d336bda8333b231418b1fac44fc43",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/checks-02.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/checks-02.json": {
+      "bytes": 1104,
+      "sha256": "aa1e0ac9d4a5112d86056a8d2b0b15f3bf5d336bda8333b231418b1fac44fc43",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/checks-02.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/checks-allowlist-01.json": {
+      "bytes": 2130,
+      "sha256": "e1a1b4cb3169e3bb104392960693717392658fe30d7646bf3b76a89edec9e3f6",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/checks-allowlist-01.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/checks-allowlist-01.json": {
+      "bytes": 2130,
+      "sha256": "e1a1b4cb3169e3bb104392960693717392658fe30d7646bf3b76a89edec9e3f6",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/checks-allowlist-01.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/context-01.md": {
+      "bytes": 5168,
+      "sha256": "ca6cc6817c204da5b66e5643ae969e32d24ce99ed7f100750695de069b736ceb",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/context-01.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/context-01.md": {
+      "bytes": 5168,
+      "sha256": "ca6cc6817c204da5b66e5643ae969e32d24ce99ed7f100750695de069b736ceb",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/context-01.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/context-02.md": {
+      "bytes": 6527,
+      "sha256": "bd8baea8280c3c60598ade195dc4c7d7d6ab28fa6446162529afc45d99fd0039",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/context-02.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/context-02.md": {
+      "bytes": 6527,
+      "sha256": "bd8baea8280c3c60598ade195dc4c7d7d6ab28fa6446162529afc45d99fd0039",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/context-02.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/context-allowlist-01.md": {
+      "bytes": 3386,
+      "sha256": "07e684351ec7c7ae8fdd3adeb6fb32ef3ad3a2d5cb30e3312047770b407bd36f",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/context-allowlist-01.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/context-allowlist-01.md": {
+      "bytes": 3386,
+      "sha256": "07e684351ec7c7ae8fdd3adeb6fb32ef3ad3a2d5cb30e3312047770b407bd36f",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/context-allowlist-01.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/contracts.py": {
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/contracts.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/contracts.py": {
+      "bytes": 1523,
+      "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/contracts.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/gpu_guards.py": {
+      "bytes": 848,
+      "sha256": "c0c2ed8c58be566326340d379adb9b13b09e67a3e57583bdd85bf84988750247",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/gpu_guards.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/gpu_guards.py": {
+      "bytes": 848,
+      "sha256": "c0c2ed8c58be566326340d379adb9b13b09e67a3e57583bdd85bf84988750247",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/gpu_guards.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/host-native-check-02.json": {
+      "bytes": 1618,
+      "sha256": "337b8e1a49c9311c54f03f7edd22515b6eb73f36bc2aecce512d758c0b4b8794",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/host-native-check-02.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/host-native-check-02.json": {
+      "bytes": 1618,
+      "sha256": "337b8e1a49c9311c54f03f7edd22515b6eb73f36bc2aecce512d758c0b4b8794",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/host-native-check-02.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/host-native-check.json": {
+      "bytes": 1531,
+      "sha256": "f08e6214de507f0e2d758ef9e0f09cbfd463b46fc95f1b78197aa92cd1c63286",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/host-native-check.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/host-native-check.json": {
+      "bytes": 1531,
+      "sha256": "f08e6214de507f0e2d758ef9e0f09cbfd463b46fc95f1b78197aa92cd1c63286",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/host-native-check.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/host_native_check.py": {
+      "bytes": 6642,
+      "sha256": "7fe2449d25cf01298a46ce9159d4154913720c716d3a0c8a4604992d8bc27372",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/host_native_check.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/host_native_check.py": {
+      "bytes": 6642,
+      "sha256": "7fe2449d25cf01298a46ce9159d4154913720c716d3a0c8a4604992d8bc27372",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/host_native_check.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/launch.py": {
+      "bytes": 25473,
+      "sha256": "41ad2fc184af81527bc60d741b9c4a68e236615ad526555bb07d8ae7f6b5d17f",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/launch.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/launch.py": {
+      "bytes": 25473,
+      "sha256": "41ad2fc184af81527bc60d741b9c4a68e236615ad526555bb07d8ae7f6b5d17f",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/launch.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/manifest-01.json": {
+      "bytes": 340097,
+      "sha256": "4e3f8732e035e2e0e149facda8f5764f855671f55dc3df6dde3058029f001bde",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/manifest-01.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/manifest-01.json": {
+      "bytes": 340097,
+      "sha256": "4e3f8732e035e2e0e149facda8f5764f855671f55dc3df6dde3058029f001bde",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/manifest-01.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/manifest-02.json": {
+      "bytes": 341252,
+      "sha256": "93d5fdcb2b814db9f938aae75b6bf2b47975550e391d38ce740f25db0f3d6c9c",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/manifest-02.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/manifest-02.json": {
+      "bytes": 341252,
+      "sha256": "93d5fdcb2b814db9f938aae75b6bf2b47975550e391d38ce740f25db0f3d6c9c",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/manifest-02.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/mpi_cube.py": {
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/mpi_cube.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/mpi_cube.py": {
+      "bytes": 23687,
+      "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/mpi_cube.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/native-reference-parity.json": {
+      "bytes": 2815,
+      "sha256": "463f33f6e9aab86aa3b57c499fb525991e54a11af436947c7f0838ba56e25f0d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/native-reference-parity.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/native-reference-parity.json": {
+      "bytes": 2815,
+      "sha256": "463f33f6e9aab86aa3b57c499fb525991e54a11af436947c7f0838ba56e25f0d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/native-reference-parity.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/node-allowlist.json": {
+      "bytes": 87139,
+      "sha256": "4d54b86c0e9739c3666586c4d33309e3fbfed25c962075a14a802e74114f735c",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/node-allowlist.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/node-allowlist.json": {
+      "bytes": 87139,
+      "sha256": "4d54b86c0e9739c3666586c4d33309e3fbfed25c962075a14a802e74114f735c",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/node-allowlist.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/node_selection.py": {
+      "bytes": 9164,
+      "sha256": "f085ab548e2e66ef3f96f2ebe566a5f869ccfa63fc653b2ee5c3fc9cdc6cbc4b",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/node_selection.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/node_selection.py": {
+      "bytes": 9164,
+      "sha256": "f085ab548e2e66ef3f96f2ebe566a5f869ccfa63fc653b2ee5c3fc9cdc6cbc4b",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/node_selection.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/partition.json": {
+      "bytes": 341,
+      "sha256": "7db504dcee7478a177d574a6882409d366319d4a4c0b32002777fac98d4c6cfd",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/partition.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/partition.json": {
+      "bytes": 341,
+      "sha256": "7db504dcee7478a177d574a6882409d366319d4a4c0b32002777fac98d4c6cfd",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/partition.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/plan.py": {
+      "bytes": 14857,
+      "sha256": "d279e2d9c4ee980df3061dfa715ed34efae891ab7d34534820b1338f1346013f",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/plan.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/plan.py": {
+      "bytes": 14857,
+      "sha256": "d279e2d9c4ee980df3061dfa715ed34efae891ab7d34534820b1338f1346013f",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/plan.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/prepare.py": {
+      "bytes": 15197,
+      "sha256": "daab06c966617ba788b18aadf4788d9f9fffd3b229d322f4023e7aa75deec0ac",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/prepare.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/prepare.py": {
+      "bytes": 15197,
+      "sha256": "daab06c966617ba788b18aadf4788d9f9fffd3b229d322f4023e7aa75deec0ac",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/prepare.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/reference.py": {
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/reference.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/reference.py": {
+      "bytes": 16864,
+      "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/reference.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/response-01.md": {
+      "bytes": 2744,
+      "sha256": "8acdf6ebaa41bb56c55b1506533b161299b206b0f9c012a326d85afc2cf249c6",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/response-01.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/response-01.md": {
+      "bytes": 2744,
+      "sha256": "8acdf6ebaa41bb56c55b1506533b161299b206b0f9c012a326d85afc2cf249c6",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/response-01.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/review-01.json": {
+      "bytes": 15390,
+      "sha256": "b5a4d0d950955699a5bec48b130a33f2f69370d23786fe8ca7ee24afd1b58e9d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/review-01.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/review-01.json": {
+      "bytes": 15390,
+      "sha256": "b5a4d0d950955699a5bec48b130a33f2f69370d23786fe8ca7ee24afd1b58e9d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/review-01.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/review-02.json": {
+      "bytes": 13915,
+      "sha256": "6b71ce0cfffc531784eb7714db076a2aa28cda21d55dc469b1650af9674716b9",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/review-02.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/review-02.json": {
+      "bytes": 13915,
+      "sha256": "6b71ce0cfffc531784eb7714db076a2aa28cda21d55dc469b1650af9674716b9",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/review-02.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/run.sbatch": {
+      "bytes": 1170,
+      "sha256": "dea87e0368058f2a8c90a667239471f6123b7710cbbcd9ecbbaeb4b732331d86",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/run.sbatch"
+    },
+    "reference/notes/sim10_compute_cube_20261115/run.sbatch": {
+      "bytes": 1170,
+      "sha256": "dea87e0368058f2a8c90a667239471f6123b7710cbbcd9ecbbaeb4b732331d86",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/run.sbatch"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/runner.py": {
+      "bytes": 18011,
+      "sha256": "d1437f3a29f68b0219ba6d38a1dbebe35acbc022d925ae174d17355fc3b5ad67",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/runner.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/runner.py": {
+      "bytes": 18011,
+      "sha256": "d1437f3a29f68b0219ba6d38a1dbebe35acbc022d925ae174d17355fc3b5ad67",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/runner.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/scope.md": {
+      "bytes": 1955,
+      "sha256": "c9e99bda8085771545d2e0cbecfa76bff437cba0f4d7d12684c10f51efe0ea89",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/scope.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/scope.md": {
+      "bytes": 1955,
+      "sha256": "c9e99bda8085771545d2e0cbecfa76bff437cba0f4d7d12684c10f51efe0ea89",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/scope.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/stages.py": {
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/stages.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/stages.py": {
+      "bytes": 9394,
+      "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/stages.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/status-single-node.json": {
+      "bytes": 1441,
+      "sha256": "ca073c056eace78fd623052a3535e9dc4e9ae162e5106f07b2add5b215154b37",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/status-single-node.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/status-single-node.json": {
+      "bytes": 1441,
+      "sha256": "ca073c056eace78fd623052a3535e9dc4e9ae162e5106f07b2add5b215154b37",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/status-single-node.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/status.json": {
+      "bytes": 607,
+      "sha256": "f14d6a728d690a7dd23a44055b7893c8326a2a1c04b7b3919b51ecb550a19a72",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/status.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/status.json": {
+      "bytes": 607,
+      "sha256": "f14d6a728d690a7dd23a44055b7893c8326a2a1c04b7b3919b51ecb550a19a72",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/status.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/submission-review.json": {
+      "bytes": 934,
+      "sha256": "d9133fe1b91b80b5e6fe8f90cda25f412c0d04f94b74954ce07e4bd772b0c34b",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/submission-review.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/submission-review.json": {
+      "bytes": 934,
+      "sha256": "d9133fe1b91b80b5e6fe8f90cda25f412c0d04f94b74954ce07e4bd772b0c34b",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/submission-review.json"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/test_campaign.py": {
+      "bytes": 14328,
+      "sha256": "60fbe0407dc8289c329737fc372343fc778d430d0dabeadf58b81d0b0372691d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_campaign.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/test_campaign.py": {
+      "bytes": 14328,
+      "sha256": "60fbe0407dc8289c329737fc372343fc778d430d0dabeadf58b81d0b0372691d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_campaign.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/test_contracts.py": {
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_contracts.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/test_contracts.py": {
+      "bytes": 3714,
+      "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_contracts.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/test_mpi_cube.py": {
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_mpi_cube.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/test_mpi_cube.py": {
+      "bytes": 32496,
+      "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_mpi_cube.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/test_node_selection.py": {
+      "bytes": 15226,
+      "sha256": "b03e7d4fabbd6df6b761ceca8612f22ac27cebf0663af41e3214a54c98581e23",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_node_selection.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/test_node_selection.py": {
+      "bytes": 15226,
+      "sha256": "b03e7d4fabbd6df6b761ceca8612f22ac27cebf0663af41e3214a54c98581e23",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_node_selection.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_20261115/test_reference.py": {
+      "bytes": 13832,
+      "sha256": "16f4525300fcab6a22a8a210d08e548f1f0c7cd51561953de672f5ff862bfa97",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_reference.py"
+    },
+    "reference/notes/sim10_compute_cube_20261115/test_reference.py": {
+      "bytes": 13832,
+      "sha256": "16f4525300fcab6a22a8a210d08e548f1f0c7cd51561953de672f5ff862bfa97",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_20261115/test_reference.py"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_plan_20261115/PLAN.md": {
+      "bytes": 18200,
+      "sha256": "7b85554673c2fd3fb8938693c087c13d0909d2ceafea04ff65910a1688b34a50",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_plan_20261115/PLAN.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/PLAN.md": {
+      "bytes": 18200,
+      "sha256": "7b85554673c2fd3fb8938693c087c13d0909d2ceafea04ff65910a1688b34a50",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_plan_20261115/PLAN.md"
+    },
+    "sdf-attempt03/source/notes/sim10_compute_cube_plan_20261115/response-02.md": {
+      "bytes": 2429,
+      "sha256": "e45cc50b21e5560b4886c2c7bd16e8a65d96149b1f17e38696b5cdcb10d6d5e4",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_plan_20261115/response-02.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/response-02.md": {
+      "bytes": 2429,
+      "sha256": "e45cc50b21e5560b4886c2c7bd16e8a65d96149b1f17e38696b5cdcb10d6d5e4",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_compute_cube_plan_20261115/response-02.md"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/bulk_accounting.py": {
+      "bytes": 2339,
+      "sha256": "160afc1dbbb4b7a85130e13585346b13cb020733f162b82a36458228802bc46e",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/bulk_accounting.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/bulk_accounting.py": {
+      "bytes": 2339,
+      "sha256": "160afc1dbbb4b7a85130e13585346b13cb020733f162b82a36458228802bc46e",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/bulk_accounting.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/cpu_plan.py": {
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/cpu_plan.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/cpu_plan.py": {
+      "bytes": 3838,
+      "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/cpu_plan.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/gpu_tests.py": {
+      "bytes": 1444,
+      "sha256": "23157c6b56899908124ead406c4313922fbe8344ebfb9fb0735f2414cd833d1a",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/gpu_tests.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/gpu_tests.py": {
+      "bytes": 1444,
+      "sha256": "23157c6b56899908124ead406c4313922fbe8344ebfb9fb0735f2414cd833d1a",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/gpu_tests.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/hardware.py": {
+      "bytes": 3354,
+      "sha256": "ddbf8acf9ddd7ee6f512d6d38b4b53fc9f456a52c1ba8f225b1ee5bd9d099856",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/hardware.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/hardware.py": {
+      "bytes": 3354,
+      "sha256": "ddbf8acf9ddd7ee6f512d6d38b4b53fc9f456a52c1ba8f225b1ee5bd9d099856",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/hardware.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/host_memory.py": {
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/host_memory.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/host_memory.py": {
+      "bytes": 2281,
+      "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/host_memory.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json": {
+      "bytes": 2124,
+      "sha256": "bf880e7ccb3ac9ec299e93946bcd70737f01549cb534b48aa134b8a9ac2f4876",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json": {
+      "bytes": 2124,
+      "sha256": "bf880e7ccb3ac9ec299e93946bcd70737f01549cb534b48aa134b8a9ac2f4876",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/prepare_runtime.py": {
+      "bytes": 2644,
+      "sha256": "980744cef65fb16827f458b60cd35b996027ec2a5d5df9a465f9650951e24089",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/prepare_runtime.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/prepare_runtime.py": {
+      "bytes": 2644,
+      "sha256": "980744cef65fb16827f458b60cd35b996027ec2a5d5df9a465f9650951e24089",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/prepare_runtime.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/runtime.py": {
+      "bytes": 1993,
+      "sha256": "f1ceb2a2cdd5f3868fdd86880d0dfbc925ef51cfdb47f764ee4d05607ef56af2",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/runtime.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/runtime.py": {
+      "bytes": 1993,
+      "sha256": "f1ceb2a2cdd5f3868fdd86880d0dfbc925ef51cfdb47f764ee4d05607ef56af2",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/runtime.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/support.py": {
+      "bytes": 3313,
+      "sha256": "57a3ae78564f5d4133ac2482e4951058b346a62af076a3d93de8ee7d84866a8b",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/support.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/support.py": {
+      "bytes": 3313,
+      "sha256": "57a3ae78564f5d4133ac2482e4951058b346a62af076a3d93de8ee7d84866a8b",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/support.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/task_evidence.py": {
+      "bytes": 3340,
+      "sha256": "d9c8108156791ed7c4a084a6d8c243507761ec71db8cc3db2b0088a34f762099",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/task_evidence.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/task_evidence.py": {
+      "bytes": 3340,
+      "sha256": "d9c8108156791ed7c4a084a6d8c243507761ec71db8cc3db2b0088a34f762099",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/task_evidence.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/task_runtime.py": {
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/task_runtime.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/task_runtime.py": {
+      "bytes": 797,
+      "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/task_runtime.py"
+    },
+    "sdf-attempt03/source/notes/sim10_kvikio_bounce_20261113/trace_runner.py": {
+      "bytes": 1112,
+      "sha256": "cc51a461f857b0effeedd694d0d2503c1931d20e325270e19b5dad2d2f72dfae",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/trace_runner.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/trace_runner.py": {
+      "bytes": 1112,
+      "sha256": "cc51a461f857b0effeedd694d0d2503c1931d20e325270e19b5dad2d2f72dfae",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_kvikio_bounce_20261113/trace_runner.py"
+    },
+    "sdf-attempt03/source/notes/sim10_storage_gpu_20261114/lifecycle.py": {
+      "bytes": 2540,
+      "sha256": "09eeb16db83e3577ab7efcd71a3f7392cd7d2e57176840bc8e81e9e3bb6c3e2d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_storage_gpu_20261114/lifecycle.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/lifecycle.py": {
+      "bytes": 2540,
+      "sha256": "09eeb16db83e3577ab7efcd71a3f7392cd7d2e57176840bc8e81e9e3bb6c3e2d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_storage_gpu_20261114/lifecycle.py"
+    },
+    "sdf-attempt03/source/notes/sim10_storage_gpu_20261114/storage.py": {
+      "bytes": 8319,
+      "sha256": "79a38ff6b9fff9dda7844cc70a6360939f50b937d74b3ad8714a0bb062344c77",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_storage_gpu_20261114/storage.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/storage.py": {
+      "bytes": 8319,
+      "sha256": "79a38ff6b9fff9dda7844cc70a6360939f50b937d74b3ad8714a0bb062344c77",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/sim10_storage_gpu_20261114/storage.py"
+    },
+    "sdf-attempt03/source/notes/synthetic_mfx_stage3_20261104/xtc_fixture.py": {
+      "bytes": 11259,
+      "sha256": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/synthetic_mfx_stage3_20261104/xtc_fixture.py"
+    },
+    "reference/notes/synthetic_mfx_stage3_20261104/xtc_fixture.py": {
+      "bytes": 11259,
+      "sha256": "2cc9b2e976a53ccd2e880312013f2d32cc1d8909c1ce94ca1e6c94004395d148",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/notes/synthetic_mfx_stage3_20261104/xtc_fixture.py"
+    },
+    "sdf-attempt03/source/psana/psana/gpu/examples/jungfrau_calibration.py": {
+      "bytes": 11199,
+      "sha256": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/psana/psana/gpu/examples/jungfrau_calibration.py"
+    },
+    "reference/psana/psana/gpu/examples/jungfrau_calibration.py": {
+      "bytes": 11199,
+      "sha256": "5a2590f1b0efa0ff79cf3c6b8f9e8544a226b50f9616635f816783a31cb24993",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/source/psana/psana/gpu/examples/jungfrau_calibration.py"
+    },
+    "sdf-attempt03/manifest.json": {
+      "bytes": 433444,
+      "sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/manifest.json"
+    },
+    "sdf-attempt03/preparation.json": {
+      "bytes": 695,
+      "sha256": "167b93586c99a4a030256094968bb07a5673974d031264fcb7511ba6d1d42680",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-compute-cube-20261115/attempt03/preparation.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/ALLOWLIST.md": {
+      "bytes": 4235,
+      "sha256": "193a0a59d9c9a838caa7f96403ec2ccbeb479051b0855ec4eef3ef4ef0891678",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/ALLOWLIST.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/README.md": {
+      "bytes": 6175,
+      "sha256": "4dfa075b93ab5ebe2df12dd3b26362030d8870d07599914d8927810f9a09badf",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/README.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/REVIEW.md": {
+      "bytes": 5441,
+      "sha256": "d0455e70f77be16ac8d3653dd574ef24935fe246169382c10236fa2ce18c0d8c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/REVIEW.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/allowlist-preservation-check.json": {
+      "bytes": 1415,
+      "sha256": "eb41bd0bd9f02453df8ba5d984a1af3c27dce2e1f22d424690b2cc3e06afa9cb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/allowlist-preservation-check.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/availability-latest.json": {
+      "bytes": 485,
+      "sha256": "11416eb95f9330141f465f32708f898704b09db77ffa56ad393382c94607c4ff",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/availability-latest.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/availability.json": {
+      "bytes": 800,
+      "sha256": "353b113f139e1cb6b5ff73c6ca7d82a946414fb81142842c38d62c4e237aa9ae",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/availability.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/budget.json": {
+      "bytes": 1086,
+      "sha256": "237836f03bda5027b72fced152e2cf64384882f635e9d781b939cc34011ee739",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/budget.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/checks-01.json": {
+      "bytes": 720,
+      "sha256": "790f2efa926c24dd5dc5277c011bba535bba30ea562f407b16134de34e3204c1",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/checks-01.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/checks-02.json": {
+      "bytes": 1104,
+      "sha256": "aa1e0ac9d4a5112d86056a8d2b0b15f3bf5d336bda8333b231418b1fac44fc43",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/checks-02.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/checks-allowlist-01.json": {
+      "bytes": 2130,
+      "sha256": "e1a1b4cb3169e3bb104392960693717392658fe30d7646bf3b76a89edec9e3f6",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/checks-allowlist-01.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/command-allowlist-check.json": {
+      "bytes": 2164,
+      "sha256": "ef6bfbe7ef1ba36281cebfc496e79913d172b628db56cdfbb2437ec5d0baac6a",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/command-allowlist-check.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/context-01.md": {
+      "bytes": 5168,
+      "sha256": "ca6cc6817c204da5b66e5643ae969e32d24ce99ed7f100750695de069b736ceb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/context-01.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/context-02.md": {
+      "bytes": 6527,
+      "sha256": "bd8baea8280c3c60598ade195dc4c7d7d6ab28fa6446162529afc45d99fd0039",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/context-02.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/context-allowlist-01.md": {
+      "bytes": 3386,
+      "sha256": "07e684351ec7c7ae8fdd3adeb6fb32ef3ad3a2d5cb30e3312047770b407bd36f",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/context-allowlist-01.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/host-native-check-02.json": {
+      "bytes": 1618,
+      "sha256": "337b8e1a49c9311c54f03f7edd22515b6eb73f36bc2aecce512d758c0b4b8794",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/host-native-check-02.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/host-native-check.json": {
+      "bytes": 1531,
+      "sha256": "f08e6214de507f0e2d758ef9e0f09cbfd463b46fc95f1b78197aa92cd1c63286",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/host-native-check.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/manifest-01.json": {
+      "bytes": 340097,
+      "sha256": "4e3f8732e035e2e0e149facda8f5764f855671f55dc3df6dde3058029f001bde",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/manifest-01.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/manifest-02.json": {
+      "bytes": 341252,
+      "sha256": "93d5fdcb2b814db9f938aae75b6bf2b47975550e391d38ce740f25db0f3d6c9c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/manifest-02.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/manifest-03.json": {
+      "bytes": 433444,
+      "sha256": "03bcd8121c9919cea0623761c0006add3c57c6658e5aa1b9fff71951a3ab4d0d",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/manifest-03.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/native-reference-parity.json": {
+      "bytes": 2815,
+      "sha256": "463f33f6e9aab86aa3b57c499fb525991e54a11af436947c7f0838ba56e25f0d",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/native-reference-parity.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/node-allowlist.json": {
+      "bytes": 87139,
+      "sha256": "4d54b86c0e9739c3666586c4d33309e3fbfed25c962075a14a802e74114f735c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/node-allowlist.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/partition.json": {
+      "bytes": 341,
+      "sha256": "7db504dcee7478a177d574a6882409d366319d4a4c0b32002777fac98d4c6cfd",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/partition.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/response-01.md": {
+      "bytes": 2744,
+      "sha256": "8acdf6ebaa41bb56c55b1506533b161299b206b0f9c012a326d85afc2cf249c6",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/response-01.md"
+    },
+    "reference/notes/sim10_compute_cube_20261115/response-allowlist-01.md": {
+      "bytes": 1892,
+      "sha256": "e2abe1ce1799de6c7e2935e70504d910d1d4eb0caa36078cf38e562111c9c95d",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/response-allowlist-01.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/review-01.json": {
+      "bytes": 15390,
+      "sha256": "b5a4d0d950955699a5bec48b130a33f2f69370d23786fe8ca7ee24afd1b58e9d",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/review-01.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/review-02.json": {
+      "bytes": 13915,
+      "sha256": "6b71ce0cfffc531784eb7714db076a2aa28cda21d55dc469b1650af9674716b9",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/review-02.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/review-allowlist-01.json": {
+      "bytes": 14934,
+      "sha256": "404a71f4824c701381ceab97894593b9e59f1094a89b89f50b75929d08f8f5f4",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/review-allowlist-01.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/scope.md": {
+      "bytes": 1955,
+      "sha256": "c9e99bda8085771545d2e0cbecfa76bff437cba0f4d7d12684c10f51efe0ea89",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/scope.md"
+    },
+    "latest/notes/sim10_compute_cube_20261115/status-single-node.json": {
+      "bytes": 1441,
+      "sha256": "ca073c056eace78fd623052a3535e9dc4e9ae162e5106f07b2add5b215154b37",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/status-single-node.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/status.json": {
+      "bytes": 2290,
+      "sha256": "915e07c71da47e38bbcc45a852090d8de583345b1bbd474facfb3e24d3f54bfb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/status.json"
+    },
+    "reference/notes/sim10_compute_cube_20261115/submission-command-single-node.txt": {
+      "bytes": 735,
+      "sha256": "23a984c0f83fad18f9a6ef76a128b48ebdb078c5479f54252da98ab09278f882",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/submission-command-single-node.txt"
+    },
+    "reference/notes/sim10_compute_cube_20261115/submission-command.txt": {
+      "bytes": 1160,
+      "sha256": "ccc0e890b678bfbbac54c8d3bd2b17322ae5e240d3054d930c39f89696d10d81",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/submission-command.txt"
+    },
+    "reference/notes/sim10_compute_cube_20261115/submission-review-single-node.json": {
+      "bytes": 934,
+      "sha256": "d9133fe1b91b80b5e6fe8f90cda25f412c0d04f94b74954ce07e4bd772b0c34b",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/submission-review-single-node.json"
+    },
+    "latest/notes/sim10_compute_cube_20261115/submission-review.json": {
+      "bytes": 1032,
+      "sha256": "3dc2d6b350ee9c5b7d309da4210b5867322750295bd04ef9b24e4953ae2cf508",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_20261115/submission-review.json"
+    },
+    "latest/notes/sim10_compute_cube_plan_20261115/PLAN.md": {
+      "bytes": 18200,
+      "sha256": "7b85554673c2fd3fb8938693c087c13d0909d2ceafea04ff65910a1688b34a50",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/PLAN.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/REVIEW.md": {
+      "bytes": 2154,
+      "sha256": "48fb76b94a701a1d443ae415ff2987b7747639d57a32b5e74e95da732c17d0bd",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/REVIEW.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/check_plan.py": {
+      "bytes": 2605,
+      "sha256": "454adb3431ebece5365cb926bc5d36f0ab4f2c01ccda0c4034ba51e715083a8b",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/check_plan.py"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/checks.json": {
+      "bytes": 1603,
+      "sha256": "b4730d2dbb61d8a15e412fe13a94d1c1ad48fe909c7a72adb91bdbfa5d7a8b7b",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/checks.json"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/context-01.md": {
+      "bytes": 3095,
+      "sha256": "29457e872d5fecd07fb9ab437a38d5db9881be3341c4e3d2efe0f51ba0280892",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/context-01.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/context-02.md": {
+      "bytes": 3111,
+      "sha256": "8febc3c029d6eee535ea38ec1d8a3787cf94221189becf6ea485aed0ccfd4d67",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/context-02.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/manifest-01.json": {
+      "bytes": 2801,
+      "sha256": "b8dd3c561f2a3cc33deacd46f004fdd664848a7ca29f53223d06c4692080edfd",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/manifest-01.json"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/manifest-02.json": {
+      "bytes": 3302,
+      "sha256": "c7e434de713ad13b7be14fd3e264a300a01ddfa0456dc777f2bf3c811b5d7231",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/manifest-02.json"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/response-01.md": {
+      "bytes": 1478,
+      "sha256": "a31605dea8017b37fc02552c2496bb756f6e90ba480f83221d8061b860f6f341",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/response-01.md"
+    },
+    "latest/notes/sim10_compute_cube_plan_20261115/response-02.md": {
+      "bytes": 2429,
+      "sha256": "e45cc50b21e5560b4886c2c7bd16e8a65d96149b1f17e38696b5cdcb10d6d5e4",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/response-02.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/review-01.json": {
+      "bytes": 10185,
+      "sha256": "99366596a0b5bb7182729d9c7b460356ff3839cc8ae1e8ae1aa5b6106325f038",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/review-01.json"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/review-02.json": {
+      "bytes": 10995,
+      "sha256": "60206513d92b67fef8cfa710d223a9ab09153bee8cf7f098606d7bff07d3839b",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/review-02.json"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/runtime-check.json": {
+      "bytes": 999,
+      "sha256": "f3e3bdd5a761bbc27613a7b824307373e2e369d331ca5ff7e0988fa7403ed7e1",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/runtime-check.json"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/scope.md": {
+      "bytes": 2345,
+      "sha256": "1a68f2ead98e6745ee138259d4275016cea4ab1738aea1fdfd198a250623aacf",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/scope.md"
+    },
+    "reference/notes/sim10_compute_cube_plan_20261115/status.json": {
+      "bytes": 975,
+      "sha256": "1e5916c73c2d3f84622265ee1ae49cee62ecbdca66bac682261723e18359a19c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_compute_cube_plan_20261115/status.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/README.md": {
+      "bytes": 6561,
+      "sha256": "00828d453fc0afc1c168ac4c84f1bc543524b7c83e6c67b245143a0b1a0defd8",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/README.md"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/RESULTS.md": {
+      "bytes": 6318,
+      "sha256": "6ebb687e9297aaec7b72582d0958d159c3f974e36bc0e6a254251400ffbbad9f",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/RESULTS.md"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/audit.py": {
+      "bytes": 8778,
+      "sha256": "ea518a520134e0ce15a15f581a962d15dce51882df39b31f4404471839c1d4ed",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/audit.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/campaign.py": {
+      "bytes": 6621,
+      "sha256": "b733925b83b131ce65bd6cb4e27303e072d81eec8f6bc88c665c79b5eee40abf",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/campaign.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/evidence/job-readback.txt": {
+      "bytes": 2335,
+      "sha256": "ecfb129027a4e7e3db8eadd34aaf7f0b0269cde62a7ea685bfcf656efdc34b59",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/evidence/job-readback.txt"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/evidence/native-compatibility.json": {
+      "bytes": 143948,
+      "sha256": "7b39133dcec657409256ae44a71d3fad162d90d3cee4f1c8f2de8cfd2f146cca",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/evidence/native-compatibility.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/evidence/scheduler-preflight.json": {
+      "bytes": 1057,
+      "sha256": "04216e5a80b0b46f4f35d0e41a6a4e7a4ad70c4d2e11196d013ab236fff5d767",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/evidence/scheduler-preflight.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/evidence/submission-started.json": {
+      "bytes": 971,
+      "sha256": "0e46bb81eb628ba2d3fb8d76d6065a7e5542da8d9cf60501744a0d8a63152572",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/evidence/submission-started.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/evidence/submission.json": {
+      "bytes": 1460,
+      "sha256": "a06cec4f6d6bc4154a913a17051d444d2f982a1eb4f7c42cd4e40fcc5f715774",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/evidence/submission.json"
+    },
+    "latest/notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json": {
+      "bytes": 2124,
+      "sha256": "bf880e7ccb3ac9ec299e93946bcd70737f01549cb534b48aa134b8a9ac2f4876",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/kvikio-source-contract.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/audit.json": {
+      "bytes": 98350,
+      "sha256": "94657db98cde39154ccd2c795d55c7fcf5c00f988c3b77f792671f914e04dce4",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/audit.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/cleanup.json": {
+      "bytes": 106,
+      "sha256": "e5d304588af9516e2b28562944eeac884be3761abf666363bad63cdd7d0760d9",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/cleanup.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/comparisons.json": {
+      "bytes": 436,
+      "sha256": "f26aab167bdfa02f6cdb08b925fa5d863e63297f64f55932a60411b249893475",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/comparisons.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/complete.json": {
+      "bytes": 14639,
+      "sha256": "9ba41d4600707176ff8389c9f4524735b786f9891a63db2865d7d47c9fc73e65",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/complete.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/gpu-tests.json": {
+      "bytes": 319,
+      "sha256": "f9a28e259508bd1330598595e630bd52074843e1bf5a81b2a3bf74b1fe29910a",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/gpu-tests.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/hardware.json": {
+      "bytes": 182322,
+      "sha256": "757e3c8c91cddac65d24353262f9f57026d99bf610a2fffaa71a8ff98d312158",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/hardware.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/host-memory.csv": {
+      "bytes": 19849,
+      "sha256": "cdca94df9a0fa6c6da5335baeb7c7825a2253cbfa8aad7e240e3438c09d44311",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/host-memory.csv"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/preflight-bd1-workers8-batch50-bounce16-io-evidence.json": {
+      "bytes": 869,
+      "sha256": "38b803de95c9f2b3b76ec7a2d1390c473153267123a95e7b0bdd7bc7b4093be3",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/preflight-bd1-workers8-batch50-bounce16-io-evidence.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/preflight-bd1-workers8-batch50-bounce64-io-evidence.json": {
+      "bytes": 869,
+      "sha256": "72a1417ff31e6e23035dd1f213ca590c8a71a17d2a84adfddb9b6bbb1ab33c7d",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/preflight-bd1-workers8-batch50-bounce64-io-evidence.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/preflight-bd4-workers4-batch200-bounce16-io-evidence.json": {
+      "bytes": 2176,
+      "sha256": "60e2f33cc4dcd371a1aa5d09ea42265b83c9603f7db43b01645bf5305a9d6e1f",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/preflight-bd4-workers4-batch200-bounce16-io-evidence.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/preflight-bd4-workers4-batch200-bounce64-io-evidence.json": {
+      "bytes": 2176,
+      "sha256": "75b3c29732c7bdabba52e2a15e7e036908f11491da4590536596fe6af95df22c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/preflight-bd4-workers4-batch200-bounce64-io-evidence.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/provenance.json": {
+      "bytes": 168116,
+      "sha256": "6e8deadd6cba86cca24c9184da8862b70c50614c187f1eaceb0a7865512f1323",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/provenance.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/runs.csv": {
+      "bytes": 4666,
+      "sha256": "0dcdaebb5bf31501a63b5e265a0ef6acab532830d2318e3f0bc11b8c03571582",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/runs.csv"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/source-manifest.json": {
+      "bytes": 12441,
+      "sha256": "55e97cef4080293e384a4fbd809715c808555d6eb6dad06d65032ed489c4b700",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/source-manifest.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/summary.csv": {
+      "bytes": 502,
+      "sha256": "b043ee49933bcd80d990c4a4f705396ff78d0162527fde3157daf7151aaabe29",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/summary.csv"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/results/validation.json": {
+      "bytes": 912,
+      "sha256": "8880c3e9086e3f738dc3f2ec476e15f4813f2f32f86419a6f8cd3206fc0b6eeb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/results/validation.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/review/round-01-context.md": {
+      "bytes": 3518,
+      "sha256": "e17f15f06b499f6eae4cf602e16400eb89b79fbb7c07554cf096077b1ef5f172",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/review/round-01-context.md"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/review/round-01-responses.md": {
+      "bytes": 240,
+      "sha256": "4989976b9ec831dcc7dede8657aed902906ef653b0ea75610bf9ec8fee538f69",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/review/round-01-responses.md"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/review/round-01.json": {
+      "bytes": 3508,
+      "sha256": "9ac7aa4302c9242493fe7a1a03d42bd0f4d36f5645d367f2c67f6b4762bd65eb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/review/round-01.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/run.sbatch": {
+      "bytes": 1034,
+      "sha256": "211459437ac06fdb6bc96607e7ac6b9124ff4aa94838b30a91dc4c15ef316d5a",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/run.sbatch"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/runner.py": {
+      "bytes": 12191,
+      "sha256": "5898a03a27299323acb117e4b3c981df2662dcafc25c002d7730caaf83b41748",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/runner.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/scope.md": {
+      "bytes": 562,
+      "sha256": "969f93adfae18dcfd226344bf7c7a5c620c857d1ab47362fe2a4a577838687da",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/scope.md"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/status.json": {
+      "bytes": 1294,
+      "sha256": "b13efae1cdaf9ed5527dfb56842a6fb08e2019f438d31199cf4ed5a7b447fed3",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/status.json"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/submit.py": {
+      "bytes": 1971,
+      "sha256": "e282b47bda2cb15438ebb142fbbf93e3cfe443cc25cb8c99b9fd2e1bcb59d44e",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/submit.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/test_campaign.py": {
+      "bytes": 1051,
+      "sha256": "9166802701db9df48ff766e31a30e250db5e3428b41042acca4f6918afb4604d",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/test_campaign.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/test_host_memory.py": {
+      "bytes": 1539,
+      "sha256": "d38e5f03951449c3670c5e4c0dcc690dc693ae9691b87d7a8f4933851062b718",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/test_host_memory.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/test_runtime_receipt.py": {
+      "bytes": 796,
+      "sha256": "dbc85cebdb3ce84ec6bd7c1d56a146b6018b5f23255464f72ae4ea09fd8583c2",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/test_runtime_receipt.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/test_screen.py": {
+      "bytes": 11876,
+      "sha256": "71748c5b8c77957d2b0ba2eac4863a0c975edfccbb93fa8c51c0cdc001dcca32",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/test_screen.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/test_task_evidence.py": {
+      "bytes": 2922,
+      "sha256": "d0d80ffc3e84aa8fb156bd6784ab8468a5770c306f3c6f8887619ccacf2991d6",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/test_task_evidence.py"
+    },
+    "reference/notes/sim10_kvikio_bounce_20261113/validation.md": {
+      "bytes": 737,
+      "sha256": "87ea7ffa6687593b79bfb23fa9150cf7f5c2fe8f18fb82b89d31aed53ae70534",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_kvikio_bounce_20261113/validation.md"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/README.md": {
+      "bytes": 11084,
+      "sha256": "215bbaab8bb036de38cc6cfd5a1454937788c0e77238538a668a4db5dcbd3a69",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/README.md"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/audit.py": {
+      "bytes": 12895,
+      "sha256": "1104e2957e8224616a3f01391f80876d5866fc4c34b2c27ecd41cc07a0a7e3e7",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/audit.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/availability.json": {
+      "bytes": 1115,
+      "sha256": "1cbe13ee781064b0162991ef82dde0aa4b9aeb34ac5a0d5d442af519258ead1e",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/availability.json"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/launch.py": {
+      "bytes": 13727,
+      "sha256": "387ac1fd8c6e42622df6e470717eae052a3a098fcbebfb97466ca160ff0739d4",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/launch.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/plan.py": {
+      "bytes": 3029,
+      "sha256": "f273bad12dbc7964a44ab19cb939810bc82adc3b4fc6a3990908c0748b8e51b7",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/plan.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/prepare.py": {
+      "bytes": 3244,
+      "sha256": "188709e1952aa6996fed42336f9dbf62186b5f1c697b667cfe8d883e55c95e8f",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/prepare.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/probe.py": {
+      "bytes": 3496,
+      "sha256": "bec35a2d84530a7bee54e746e05b0336e6bcda95041f147e1a3d5300027dc389",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/probe.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/run.sbatch": {
+      "bytes": 1208,
+      "sha256": "252cdd73349522ef4a29fab6bc293310dc46de498e5d6f6d6dcc07f7cf3e0dbe",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/run.sbatch"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/runner.py": {
+      "bytes": 13335,
+      "sha256": "a931cf441094bc99c597afa14a74347d05f04c49d2a3c0a23fa3f84e5b3d2cfb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/runner.py"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/status.json": {
+      "bytes": 906,
+      "sha256": "6258b6f2adb20de540af43005d456fb84ed93d818de6e803857af5efee54dc51",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/status.json"
+    },
+    "reference/notes/sim10_storage_gpu_20261114/test_diagnostic.py": {
+      "bytes": 17391,
+      "sha256": "d52eb648f104df354ac962d3b6858611dc9d902588095d581036fe9e8f99f786",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_20261114/test_diagnostic.py"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/RESULTS.md": {
+      "bytes": 11301,
+      "sha256": "ca7665e42f69e397a5ff53cb1edf88058e1494f23890c5ef9875082dc314f663",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/RESULTS.md"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/availability.md": {
+      "bytes": 566,
+      "sha256": "8809836342a2c3c0b12a13563980f84d70921ed5cc0af56c2048c852e980f678",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/availability.md"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/disposition-round02.md": {
+      "bytes": 1246,
+      "sha256": "adc0d59dd9d3b0d9ad6f617a1dd0d6b22ed4323a3be4149675d521a9c33503e5",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/disposition-round02.md"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json": {
+      "bytes": 12011,
+      "sha256": "a06e3c9571cdfebde916bf7af2b3f5d83eb36a6ba36909ba2bae79a9c1bdfc98",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/manifest-attempt02.json"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/responses-round01.md": {
+      "bytes": 2474,
+      "sha256": "3632de7ef5a0f993215baab0685b41d62d83d9f0b850a9b797c84a2fdca0accd",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/responses-round01.md"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/results/runs.csv": {
+      "bytes": 11310,
+      "sha256": "3ae085fc8dd3de6512e64b5810e915bc017b87a93f30b726ed7e7440d579c1c7",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/results/runs.csv"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/results/summary.json": {
+      "bytes": 16013,
+      "sha256": "46bbde516c09be3433aa278175ff1d68755d337bcbd2d8baa6a7880737fbbb34",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/results/summary.json"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/review-round01.json": {
+      "bytes": 15594,
+      "sha256": "2652dd551f6062c3ccba15450631579be01248493b74fc69c1603539eccd58df",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/review-round01.json"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/review-round02.json": {
+      "bytes": 12404,
+      "sha256": "7cdd7638197e3d61193f2c9a2eca79c64babe179dd679e8d0eec54e428dd031e",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/review-round02.json"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/review_snapshot.py": {
+      "bytes": 6481,
+      "sha256": "63709cf2d74fdd2b858bd10cb4e7e262ec24504f78a250d67c0331e762341ab0",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/review_snapshot.py"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/scope.md": {
+      "bytes": 4707,
+      "sha256": "f4817f2e23260f0c01e4a67384fa1d6389ff614c4032415ef25af2b32b206a16",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/scope.md"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/status.json": {
+      "bytes": 1903,
+      "sha256": "c06246e9a4f7462760436a6cbd961733fd8d67174cee7f5f94ad48c01de78c73",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/status.json"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/submission-receipt.json": {
+      "bytes": 3744,
+      "sha256": "f35d92aa971e64d628b4f1dcd5ce0973d3783c745a90f1b0d4c289347ddb7499",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/submission-receipt.json"
+    },
+    "reference/notes/sim10_storage_gpu_review_20261114/submission.md": {
+      "bytes": 2482,
+      "sha256": "38f74ad5c6792481e6c60a7b18229cd0517c7dc635ed659e413cd3d63b9055ea",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_storage_gpu_review_20261114/submission.md"
+    },
+    "reference/notes/sim10_parameter_report_20261114/REPORT.md": {
+      "bytes": 17614,
+      "sha256": "dfbd55816daf8fe4b1642bc91236ff9514c6ec449f0b3c5bc8bc58892e4a948c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/REPORT.md"
+    },
+    "reference/notes/sim10_parameter_report_20261114/SCHEMA.md": {
+      "bytes": 2985,
+      "sha256": "f24f2dffdb55128de6b1885107d9079025885b2927a3d5b1a3c6e471cd9c0b10",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/SCHEMA.md"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/comparisons.json": {
+      "bytes": 27975,
+      "sha256": "ed64e26ba04359eb39e09ade16d814a1f935afdb0add5393f483b3c764e4a80c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/comparisons.json"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/heatmaps.pdf": {
+      "bytes": 81368,
+      "sha256": "c962fd68447198683118fdc93e7ccbf458c3b2bab13c10e94058f569fb04d2b4",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/heatmaps.pdf"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/provenance.json": {
+      "bytes": 4843,
+      "sha256": "0c03cd42e0d64efe071f28c22a46981e49db13c18af8f1c51284e73c5fedb446",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/provenance.json"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/relative_change.svg": {
+      "bytes": 92401,
+      "sha256": "25e7778472099b09bb61611e6db9ef7dd5168c0a1b567768f30d5273533f3a87",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/relative_change.svg"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/repeat_spread.svg": {
+      "bytes": 93165,
+      "sha256": "2095916efc4bc1b20c8d935a64fa6f501067107984a060321a13f3130b614109",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/repeat_spread.svg"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/resources.svg": {
+      "bytes": 58377,
+      "sha256": "22cb7741177e3543601aa86957af1e8a2084d3f576d9fe90ccd1ccf076709d93",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/resources.svg"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/runs.csv": {
+      "bytes": 58950,
+      "sha256": "e19b97de3719a9c28d9264e5f9afcafa2f30c4856da9bdcff6d08b3709b9313a",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/runs.csv"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/summary.csv": {
+      "bytes": 10733,
+      "sha256": "c7e38ea04127ee3a4579749b1b6904573c8355d1f1a5bc611767904ae934a4a3",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/summary.csv"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/tables.md": {
+      "bytes": 6562,
+      "sha256": "c9794028b2d11a4b01def7cab23d9145019572b5379950a45630e0f38b96f440",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/tables.md"
+    },
+    "reference/notes/sim10_parameter_report_20261114/artifacts/throughput.svg": {
+      "bytes": 96919,
+      "sha256": "f2fbeb980a331eaf29c1be01848b70bd8b35999227eb3c8941be7f648a5bad20",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/artifacts/throughput.svg"
+    },
+    "reference/notes/sim10_parameter_report_20261114/build_report.py": {
+      "bytes": 20794,
+      "sha256": "166c39b817b01aac2492c4db509b0cfc5ea95b06bd0a1c386a33483161a00921",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/build_report.py"
+    },
+    "reference/notes/sim10_parameter_report_20261114/test_report.py": {
+      "bytes": 2133,
+      "sha256": "16ae453a13a5711257ccc0e57c2ad1731b15382782c545001dcc4412de377d0a",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/test_report.py"
+    },
+    "reference/notes/sim10_parameter_report_20261114/validation.json": {
+      "bytes": 1386,
+      "sha256": "81ecb0ba7acd23c3f53cbf5c7849fd8324125d21fa27a9b67ffbc859cdeffb5e",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_parameter_report_20261114/validation.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/SHA256SUMS": {
+      "bytes": 1152,
+      "sha256": "ae7919f7ea725d7d4a44d40c9fb34afe55e21f7c325e33efd313c3f0c9d7752c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/SHA256SUMS"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/TRANSFER_UPDATE.md": {
+      "bytes": 3726,
+      "sha256": "35a24108a7c6d25819cfdca330f11988e366a094b1d568c72a63d49da7da19c0",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/TRANSFER_UPDATE.md"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/destination-collection.json": {
+      "bytes": 3196,
+      "sha256": "94964c8c9e6c34053b6694833901dd77a03dc0577bf5657a6160d874fe5111df",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/destination-collection.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/destination-verified-list.json": {
+      "bytes": 395,
+      "sha256": "9a3648118cec3548d1b9cba6f32571dfeb29683867031f426c147dc024d65c98",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/destination-verified-list.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/files-relative.txt": {
+      "bytes": 852,
+      "sha256": "3fb49b1817096b36cbc4d0e1e2ed7423bcb8e67106bc8bdfb76c361aac7ced05",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/files-relative.txt"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/handoff-review/context.md": {
+      "bytes": 2140,
+      "sha256": "4eaed36e7e96797e76687d2676d9ffb26cd4030bb0f5a6393d9dc3cde13b8911",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/handoff-review/context.md"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/handoff-review/responses.md": {
+      "bytes": 1151,
+      "sha256": "6e968ec8a381f0bed25e734d08c117aaa2023bab455c7823a80b6dddf1b2fb44",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/handoff-review/responses.md"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/handoff-review/review.json": {
+      "bytes": 10350,
+      "sha256": "67d1405ad7fd086cc7fc171f6730b02381e4b2b924082ba7d228e2b8be8662aa",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/handoff-review/review.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/handoff-review/scope.md": {
+      "bytes": 724,
+      "sha256": "550ef829b34b59aae5e3a8d1a9d1633aafa9deb950a19a5cc88be50cae686f1b",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/handoff-review/scope.md"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/handoff-review/status.json": {
+      "bytes": 1048,
+      "sha256": "7fb1d749b08ac5d86840a19bc2e7bed0ae9c36ef9752ea7d98051c57d63208ad",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/handoff-review/status.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/quota-before.json": {
+      "bytes": 230,
+      "sha256": "7adc3faeafa96449986b6529fc8775c323a2b9b8d1eabe49b703532de223f85e",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/quota-before.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/source-collection.json": {
+      "bytes": 2919,
+      "sha256": "ed4062d8eec82f93ebcf2ca03130e50715eaa788aa8561e5a4f0016ba2b73d80",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/source-collection.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/source-resolved-list.json": {
+      "bytes": 4848,
+      "sha256": "a516ea47718e3153ae46052974c291b246de018114fc6b63da7268329654bae5",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/source-resolved-list.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/source-smd-list.json": {
+      "bytes": 4100,
+      "sha256": "3e05236ab7d7d9a946668921c5087d6a2684a52cd2973c68afba4de506355714",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/source-smd-list.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/status.json": {
+      "bytes": 814,
+      "sha256": "cbf04bacdc1a0388959b030854a51fe4a95c129d0f4bd260432dc09d2141d27c",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/status.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/submission.json": {
+      "bytes": 517,
+      "sha256": "a3794f28aebb295236f87a6b089ef7e488dbdd489f6fc10e0a59c9f0028e45a2",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/submission.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/task-events.json": {
+      "bytes": 1065,
+      "sha256": "ae691b169daca87039f782a65dc2da6744b462185b17438fbce2c2d684781699",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/task-events.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/task-status.json": {
+      "bytes": 2093,
+      "sha256": "e538d3fec1a9f2edc7714a6218eb32fe019e6febbd81792645a44dd008a994b7",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/task-status.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/transfer-manifest.json": {
+      "bytes": 8071,
+      "sha256": "78d78b269125b8f38e5e83b61651344e85b2331c127aca71595266aab7fdface",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/transfer-manifest.json"
+    },
+    "reference/notes/sim10_globus_transfer_20261109/verification.json": {
+      "bytes": 659,
+      "sha256": "12cfc900a9d30eee5cae9a81432ac8ec14c676a80db23e27e280c00177d6cfd3",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_globus_transfer_20261109/verification.json"
+    },
+    "calibration/manifest.json": {
+      "bytes": 171281,
+      "sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+      "origin": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/manifest.json"
+    },
+    "calibration/calibration/jungfrau_000009-pedestals-69befaf3890f6488e88c3610.bin": {
+      "bytes": 201326592,
+      "sha256": "da0c0e0ae7ba076be8192c6c72c635a325a422b9fc8a5dc8b50b1b9b305ead4d",
+      "origin": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/calibration/jungfrau_000009-pedestals-69befaf3890f6488e88c3610.bin"
+    },
+    "calibration/calibration/jungfrau_000009-pixel_offset-6970124d29e359d12edcbe8c.bin": {
+      "bytes": 201326592,
+      "sha256": "beb14747d1bda8078906da1aae9eac2f8cec5dd1b192efdc99f93f992195ff06",
+      "origin": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/calibration/jungfrau_000009-pixel_offset-6970124d29e359d12edcbe8c.bin"
+    },
+    "calibration/calibration/jungfrau_000009-pixel_gain-6942291d8feeb40dd3310ffa.bin": {
+      "bytes": 201326592,
+      "sha256": "be2d0facb2459f0ef3de880b384b72d90170ed3d539a95c1aa8f7a6915c70db3",
+      "origin": "/sdf/data/lcls/ds/prj/prjdatpsana/results/synthetic_mfx/r0001/stage1-20261103/calibration/jungfrau_000009-pixel_gain-6942291d8feeb40dd3310ffa.bin"
+    },
+    "sdf-native-compatibility.json": {
+      "bytes": 143948,
+      "sha256": "7b39133dcec657409256ae44a71d3fad162d90d3cee4f1c8f2de8cfd2f146cca",
+      "origin": "/sdf/scratch/users/m/monarin/gpu-validation/sim10-kvikio-bounce-20261113/attempt01/native-compatibility.json"
+    },
+    "HANDOFF.md": {
+      "bytes": 17578,
+      "sha256": "c0b693a6d3f2cbe405b6ad1ae9415659bb1ef3a8c0341ebdb37958939a00d6d6",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_perlmutter_baseline_20261115/HANDOFF.md"
+    },
+    "PROMPT.md": {
+      "bytes": 2751,
+      "sha256": "33698504ce3194c9420e9525609a8f176f364ee31fb38d21cac163d4a93e6ab7",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_perlmutter_baseline_20261115/PROMPT.md"
+    },
+    "verify_package.py": {
+      "bytes": 1666,
+      "sha256": "5e88f41073d0823a235e9cf8676b53d3a4c0709da515acaad55414db50cc05be",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_perlmutter_baseline_20261115/verify_package.py"
+    },
+    "package.py": {
+      "bytes": 5875,
+      "sha256": "46dc00e2ba59f7c5367addff1ef9d7c108436c5c22af90a1a1d896e484aa31b8",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_perlmutter_baseline_20261115/package.py"
+    },
+    "test_transfer.py": {
+      "bytes": 2061,
+      "sha256": "2e2c6db8d4bae496befc5c1965d979045f9a10962c5f57c6f7c4ded4b38a9fdb",
+      "origin": "/sdf/home/m/monarin/lcls2_worktree/psana2-gpu/notes/sim10_perlmutter_baseline_20261115/test_transfer.py"
+    }
+  },
+  "scope": "source_calibration_transfer_not_compute_acceptance",
+  "compute_submitted": false
+}

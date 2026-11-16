@@ -1,0 +1,87 @@
+{
+  "scope": "three_attempt_cache_conditioning",
+  "phase": "comparison02_completed_results_reviewed",
+  "round": 2,
+  "round_limit": 3,
+  "implementation_commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89",
+  "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115",
+  "unresolved_ids": [],
+  "closed_ids": [
+    "CR-R1-01",
+    "CR-R1-02",
+    "CR-R1-03",
+    "C2R-R1-01"
+  ],
+  "deferred_ids": [
+    "FC-R1-02",
+    "GC-R2-02"
+  ],
+  "checks": {
+    "host": "164 tests and 64 subtests passed on clean exact fd63dfb32",
+    "syntax": "All Python AST and bash syntax checks passed",
+    "runtime": "Imports use qualified PR298 native install; no rebuild",
+    "review_tree": "All49 tested source hashes match detached review checkout",
+    "live_conditioning": "Job61409171: all35 cases passed two zero-residency scans;32first attempt and3second attempt recoveries. Local host page cache only; backend cache state unverified.",
+    "presubmit": {
+      "status": "pass",
+      "checked_utc": "2026-11-16T16:06:55.110799+00:00",
+      "reviewed_commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89",
+      "files": 49,
+      "external_pins": 7,
+      "bundle_sha256": "2c8e5ffc3003957d9ba0b2386fb99446fee8aabf4e6c855b7fb72ef59b11da1d",
+      "read_only": true,
+      "no_job_started": true,
+      "queue": "",
+      "count2_lock": "available",
+      "balance": {
+        "Project": "lcls_g",
+        "Charged(user)": 96.2863888888889,
+        "Allocated(user)": 2206.1182222222224,
+        "Charged": 4228.6113888888885,
+        "Allocated": 11030.59111111111,
+        "personal_remaining_percent": 95.63548372344708,
+        "project_remaining_percent": 61.66468916947334
+      },
+      "submission_authorized": "User: Let's submit the job.",
+      "native_reuse": {
+        "installed": 727,
+        "tests": 86
+      }
+    },
+    "result_reaudit": "35cases pass; summary recomputation matches;49bundle and7external pins unchanged;20ECC bank checks pass"
+  },
+  "compute_submitted": true,
+  "submission_authorized": true,
+  "proposed_attempt": "comparison02",
+  "prepared_attempt": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02",
+  "proposed_time_limit": "05:55:00",
+  "last_checked_utc": "2026-11-16T18:34:33.248815+00:00",
+  "previous_comparison": {
+    "phase": "full_comparison_failed_results_reviewed",
+    "implementation_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+    "reviewed_commit": "a2d988f4897973633f529aede5dbbefaba44d593",
+    "job_id": "61391587",
+    "scheduler_state": "FAILED",
+    "job_exit_code": "1:0",
+    "completed_cases": 7,
+    "failed_case": "anchor-r1-bd1-S",
+    "result_review_commit": "71cdd0384288e0532b0391683197c8f5fce6f9aa",
+    "result_review_verdict": "pass_for_reporting_only"
+  },
+  "history": "evidence/cache-retry-prior-status.json",
+  "pending": [],
+  "job_id": "61409171",
+  "scheduler_state": "COMPLETED",
+  "scheduler_reason": "None",
+  "node": "nid001020",
+  "job_exit_code": "0:0",
+  "completed_cases": 35,
+  "implementation_review_commit": "fd63dfb327b154b06e3e37bf39abf698a5495f89",
+  "implementation_review_verdict": "pass",
+  "implementation_review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/cache-retry-round02",
+  "result_review_commit": "890761707f117c515125fac60ba7f86ddfd0e940",
+  "result_review_verdict": "pass",
+  "result_review_artifact": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02-results-round01",
+  "job_elapsed": "01:28:51",
+  "job_end_utc": "2026-11-16T17:36:20Z"
+}

@@ -1,0 +1,102 @@
+{
+  "vendor/sim10_compute_cube_20261115/stages.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/stages.py",
+    "sha256": "b19ec2131eeca45189af25a5e213139277527463db779ad1e7f6f6f78cad5f69"
+  },
+  "vendor/sim10_compute_cube_20261115/reference.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/reference.py",
+    "sha256": "d161a4940c179c7d8f982318323b1d035b43078dec603703a024e392beda213e"
+  },
+  "vendor/sim10_compute_cube_20261115/mpi_cube.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/mpi_cube.py",
+    "sha256": "15fe0d105a3fa16c0db2a0130789281568af8e3f0f0b171ea6229e38a2cec4c0"
+  },
+  "vendor/sim10_compute_cube_20261115/contracts.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/contracts.py",
+    "sha256": "3d1ade042cf0c0970917ab85f36174b199f66719c66e685b5b4497106e25b856"
+  },
+  "vendor/sim10_compute_cube_20261115/test_reference.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/test_reference.py",
+    "sha256": "16f4525300fcab6a22a8a210d08e548f1f0c7cd51561953de672f5ff862bfa97"
+  },
+  "vendor/sim10_compute_cube_20261115/test_mpi_cube.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/test_mpi_cube.py",
+    "sha256": "dddfef187b69f588afcff01284261b194cf380d5e5aef98e6bf2ea1961471f92"
+  },
+  "vendor/sim10_compute_cube_20261115/test_contracts.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/test_contracts.py",
+    "sha256": "c683f55a4404a1605b2b7d0349cda73eacc2d6152151f8ebf1127f7954886812"
+  },
+  "vendor/mfx_expand10_stage2_20261105/adapter.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/mfx_expand10_stage2_20261105/adapter.py",
+    "sha256": "d0a41a58a7d2533523d72d08449d7a0e5f92de89c5c178ae92cabde7e498ae7c"
+  },
+  "vendor/mfx_expand10_stage2_20261105/fixture.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/mfx_expand10_stage2_20261105/fixture.py",
+    "sha256": "7e62e50669bb6a3315bbdf7be1f1ae471d76b36973f3074e1dd86806db62a8a4"
+  },
+  "vendor/mfx_expand10_stage2_20261105/gpu_accept.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/mfx_expand10_stage2_20261105/gpu_accept.py",
+    "sha256": "7ebc741c643a0b832db03308f9d4122bb962127e6ab5c5fcfbe7f6b6f2078d4d"
+  },
+  "vendor/mfx_expand10_stage3a_20261105/cube.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/mfx_expand10_stage3a_20261105/cube.py",
+    "sha256": "3b3452da6d05edb8b9b3d7ad23efd4f18d210ac34ebd0849ebf5099cabdf4415"
+  },
+  "runner.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_compute_cube_20261115/runner.py",
+    "sha256": "d1437f3a29f68b0219ba6d38a1dbebe35acbc022d925ae174d17355fc3b5ad67"
+  },
+  "cpu_plan.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_kvikio_bounce_20261113/cpu_plan.py",
+    "sha256": "fa6a756b67c1e29371d195e89e08264d49268374d0b270ecbf3de5fbfce510be"
+  },
+  "bulk_accounting.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_kvikio_bounce_20261113/bulk_accounting.py",
+    "sha256": "160afc1dbbb4b7a85130e13585346b13cb020733f162b82a36458228802bc46e"
+  },
+  "task_runtime.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_kvikio_bounce_20261113/task_runtime.py",
+    "sha256": "0157be63682cbcefebd608e0faf01b0d9fde69a8ef3b78eb993dc06b194b3a03"
+  },
+  "host_memory.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/sim10_kvikio_bounce_20261113/host_memory.py",
+    "sha256": "e4142f35478934c917adf7c15739e840ade9764f0722b7233f1c9e51b0927c8d"
+  },
+  "instrument.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/instrument.py",
+    "sha256": "aa7d6d720bf1bd1d7a8349db3dff8601820ba6d56042bc9a3d80f3cc17f23859"
+  },
+  "memory_watch.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/memory_watch.py",
+    "sha256": "4917b0894dbd964cc07397023bab4b9b681961d6b56af752342578d24094c597"
+  },
+  "affinity_probe.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/affinity_probe.py",
+    "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
+  },
+  "clean_exec.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/clean_exec.py",
+    "sha256": "4994a609b58950d7072d4c983bda332ea65644cbf30c6e3ad6022e009340d492"
+  },
+  "runtime.sh": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/runtime.sh",
+    "sha256": "c1ae6050420c14ffd8cc1552e8e508d753cfd83519995400c01448acca686a92"
+  },
+  "qualified_support.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/support.py",
+    "sha256": "c92d46a65d2610adca284be5589aeffd2d51e2da482be9a6d4fcf83f1a51279f"
+  },
+  "check_tests.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/check_tests.py",
+    "sha256": "47daa0449e19653e331efa5bac7923b5489e556e49f202920e1185b1dcea8901"
+  },
+  "expected-native.json": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/bundle-fixed01/expected-native.json",
+    "sha256": "6bf2c4b6e5e75100c99ccba221f81426d69e039407f330bd970a7af31ff1f816"
+  },
+  "vendor/mfx_expand10_stage2_20261105/verify.py": {
+    "origin": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/reference/notes/mfx_expand10_stage2_20261105/verify.py",
+    "sha256": "b391ffd32b229963c16ee50c0eff0a7f7ec7a0bca39afeec805c0b58c6a192a3"
+  }
+}

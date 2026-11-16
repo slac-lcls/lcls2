@@ -1,0 +1,47 @@
+[
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/reuse-check.json",
+    "bytes": 2751950,
+    "sha256": "bae053afeb7ceac0d90df61dae89f0548ecfaf6e94292862d9d545ad33a88680",
+    "availability": "verified at packaging; external scratch, retention not guaranteed"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/inputs.json",
+    "bytes": 2507202,
+    "sha256": "a1d7fd093de7042a9679074a69eed8ab0ff916db2cc8558710a031b3b0a239ff",
+    "availability": "verified at packaging; external scratch, retention not guaranteed"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-20261115/comparison02/ranges.json",
+    "bytes": 9416239,
+    "sha256": "4986d93ed4bb66cce51eee84fa82b8a5c1031ea998c1bdea37502470fd13c763",
+    "availability": "verified at packaging; external scratch, retention not guaranteed"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/inputs.json",
+    "bytes": 2555552,
+    "sha256": "1cccec3c2cc42c3b4da9c03fa9fe82f6b3ecabe85d38e410f7d6e515eeb0acbc",
+    "availability": "verified at packaging; external scratch, retention not guaranteed"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/pr298-striping-20261111/build-provenance.json",
+    "bytes": 113112,
+    "sha256": "abe66a4c3469b52f49c38a9a19c3ae52b33d4c248c2cdc75c3df16b3cbcc521e",
+    "availability": "verified at packaging; external scratch, retention not guaranteed",
+    "archived_path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external/pr298-striping-20261111/build-provenance.json"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/PACKAGE.json",
+    "bytes": 102379,
+    "sha256": "0e37dd75e1b9fc5bb53cf09811eee898d7d4e2f2ce934a9662537684efde5690",
+    "availability": "verified at packaging; external scratch, retention not guaranteed",
+    "archived_path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external/package/PACKAGE.json"
+  },
+  {
+    "path": "/pscratch/sd/m/monarin/psana2-gpu/sim10-baseline-transfer-20261115/package/calibration/manifest.json",
+    "bytes": 171281,
+    "sha256": "90a27eed3679111aa24574c09b5505be6b8775429e5b8de10dc0c9de117b983d",
+    "availability": "verified at packaging; external scratch, retention not guaranteed",
+    "archived_path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/external/calibration/manifest.json"
+  }
+]
