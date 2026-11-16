@@ -1,0 +1,46 @@
+{
+  "reviewed_commit": "ba80cfe10ca51c8bc1671d4fbbbfdc9b95d19d73",
+  "verdict": "pass",
+  "summary": "Documentation-only delta of five Markdown files. All factual claims checked against the archived Sim10 stage-2 adapter/fixture, the 100k fixture record, the named archived support scripts, the 10k fixture record, current psana DataSource keyword arguments, and the supplied source-verification JSON are consistent. Historical paths/hashes are preserved as frozen evidence; rerun guidance requires explicit exp/run/dir, reader registration, published hashes, stream subset, and published-experiment calibration; the 10k-prefix caveat, full ten-stream versus PM JF-only subset distinction, sampled-acceptance limits, and non-qualification of run 51 are stated explicitly. Relative links resolve. Two low, non-blocking wording findings: no tracked 400k source acceptance record on the branch, and ambiguous use of \"private\" in the regression template. Coordinator validation JSON reports catalog, bookkeeping, and 20 controller tests passing; the logs themselves were not readable from the restricted worktree.",
+  "checks": [
+    "Five changed files read in the detached checkout and compared with the supplied diff; no other authored content inspected changed",
+    "Relative links datasets.md, ../datasets.md (campaigns, templates, pr-regression), templates/pr-regression.md all resolve to existing files",
+    "Reader claims grounded in archives/scaling-20261116/legacy-root/notes/mfx_expand10_stage2_20261105/adapter.py: class jungfrau_sim10_1_0_0 with seed(evt), process-local register_reader, WORDS=52429, kernel reads seed[pixel/10]",
+    "Generation claims grounded in mfx_expand10_stage2_20261105/fixture.py: raw[::10] seed, alg renamed sim10 v1.0.0 field seed, one native step, stem mfx101555026-r0010-sNNN-c000, JF panels in streams 5-9",
+    "100k record (mfx_expand10_100k_20261109/README.md, repeat.py) confirms 20 files, ten streams, 376,806,534,528 bytes, unique outer timestamps with repeated payloads, source identity retained, explicit dir required",
+    "10k record (mfx_expand10_10k_20261106) confirms source window is first 10,000 events of mfx101555026 run 10 with source_start_event 0",
+    "Archived support scripts verified: sim10_100k_bd_sweep_20261109/support.py and validation/input-bookkeeping-20261110/ada-100k/harness/support.py pin SDF sample10_100k; sim10_stream_length_20261109/support.py and sim10_striping_20261110/staging/stage.sbatch pin /pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf with selected_streams [5..9] and 11 transferred files",
+    "Calibration manifest SHA 90a27eed... present in archived synthetic_mfx_stage1_20261103 verification and deployment records, matching source-verification JSON for runs 3 and 4",
+    "Source-verification JSON reconciled with datasets.md: runs 3/4 events, bytes, 20 files per run, identity policy (BeginRun expt/runnum only), hardlinked staging, 13 calibration docs (8 jungfrau_000009 + 5 pv_000001), only run_end 2->4, 3 staged sample events per run and 1 published sample event per run with CPU v3 cmpars=None",
+    "DataSource keyword arguments exp, run, dir, live, max_events, use_calib_cache confirmed in psana/psexp/ds_base.py",
+    "Template additions (templates/README.md, pr-regression.md) explicitly state Sim10 publication does not qualify or replace the run-51 candidate or its profile; run-51 profile text unchanged in diff",
+    "Coordinator validation JSON reviewed: diff_check pass, relative_links pass, catalog pass (2082 hashes, 275 arithmetic cases), bookkeeping pass, 20 regression-controller tests passed, no native/GPU/DataSource rerun claimed"
+  ],
+  "limitations": [
+    "Coordinator log files under round-01/ (catalog.log, bookkeeping.log, regression-tests.log) are outside the restricted worktree and could not be read; their pass status is taken from the supplied validation JSON and hashes only",
+    "No tool access to the SDF evidence root, scratch fixture directories, published XTC directory, or Perlmutter; published hashes, hardlinks, read ACLs, and the absent PM directory rely on the supplied source-verification JSON and the coordinator's dated observation",
+    "No tests were run by this review; no DataSource, GPU, or hash execution was performed",
+    "The 400k source fixture (sample10_400k) has no generation or acceptance record on the reviewed branch; its existence and acceptance are attested only by the external source-verification JSON",
+    "Not an exhaustive live-consumer audit; only tracked paths named in the guide were inspected"
+  ],
+  "findings": [
+    {
+      "id": "DS-001",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/datasets.md",
+      "line": 52,
+      "evidence": "Line 52 states promotion copied \"the accepted sources\" for runs 3 and 4, and line 107 cites the 100k archive for source generation and acceptance receipts. Grep of psana/psana/gpu for sample10_400k matches only datasets.md; archived notes (mfx_expand10_10k_20261106/README.md:82, mfx_expand10_single_node_baseline_20261108.md:59,170, psana_striping_pr298_20261111/*) describe the 400k dataset as deferred. The only 400k acceptance attestation is the external source-verification JSON (run 4: 400,000 events, 1,507,218,362,688 bytes).",
+      "requested_change": "Add one sentence stating that the 400k source fixture's generation/acceptance record is not on the results branch and lives only under the SDF evidence root (or the sibling sample10_400k_evidence_* directory), so readers do not look for a tracked 400k archive analogous to mfx_expand10_100k_20261109."
+    },
+    {
+      "id": "DS-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/performance/templates/pr-regression.md",
+      "line": 49,
+      "evidence": "Line 49: \"SDF prjdatpsana runs 3 and 4 replace the private 100k/400k source locations for new runs.\" In datasets.md line 96-99 the word \"private\" denotes the Perlmutter JF-only subset /pscratch/sd/m/monarin/psana2-gpu/datasets/mfx101555026-r0010-sim10-100k-jf, which the guide says to retain and which is explicitly not replaced by the ten-stream published runs. The template sentence intends the SDF project-scratch sources.",
+      "requested_change": "Reword to \"replace the SDF project-scratch 100k/400k source fixtures for new runs\" (or similar) so the superseded inputs are not confused with the retained Perlmutter JF-only subset."
+    }
+  ]
+}

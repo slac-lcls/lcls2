@@ -4,6 +4,15 @@ This index brings together dated studies on the results/psana2-gpu-scaling
 branch. Each report identifies its measured revisions, workload and evidence
 limits. A report is not a measurement of the current branch head.
 
+## Dataset locations for new runs
+
+Use the [current dataset locations](datasets.md) before preparing a new campaign
+or removing old scratch fixtures. Sim10 100k and 400k are now published on SDF
+as `prjdatpsana` runs 3 and 4, with calibration validity through run 4. Archived
+scratch paths and checksums remain historical evidence, not current input
+defaults. The published full runs still require a verified Perlmutter transfer;
+this location update does not establish cross-site regression qualification.
+
 ## PR299: Perlmutter Run51, November 15, 2026
 
 The [PR299 report](https://github.com/slac-lcls/lcls2/tree/e8d69a7e6604e1d459ad04c633de50a56b46ac9a/psana/psana/gpu/notes/pr299_perlmutter_20261115.md) covers 48 timed

@@ -4,6 +4,10 @@ These source-only records are available in this checkout and on the published
 results/psana2-gpu-scaling branch in slac-lcls/lcls2. The installed performance
 overview uses remote source links.
 
+Before a rerun, consult [current dataset locations](../datasets.md). The Sim10
+source fixtures recorded in archived campaigns have published SDF successors;
+keep the historical inputs and hashes in those records unchanged.
+
 | Campaign | Kind | Record |
 | --- | --- | --- |
 | sdf-sim10-staging-20261114 | scaling | [Report](sdf/sim10-staging/2026-11-14-parameter-screen/README.md) |
