@@ -1,0 +1,52 @@
+{
+  "case_estimates": {
+    "r51-cpu-events-bd1": {
+      "loop_seconds": 211.7587528550066,
+      "measured_mpi_wall_seconds": 218.18729300395353,
+      "sample_label": "sustained-base-r51-cpu-events-bd1",
+      "timeout_seconds": 715
+    },
+    "r51-cpu-events-bd2": {
+      "loop_seconds": 189.67815831495682,
+      "measured_mpi_wall_seconds": 196.86042752099456,
+      "sample_label": "sustained-base-r51-cpu-events-bd2",
+      "timeout_seconds": 651
+    },
+    "r51-cpu-steps-bd1": {
+      "loop_seconds": 218.6582936180057,
+      "measured_mpi_wall_seconds": 227.05875735601876,
+      "sample_label": "sustained-base-r51-cpu-steps-bd1",
+      "timeout_seconds": 742
+    },
+    "r51-cpu-steps-bd2": {
+      "loop_seconds": 191.8842231350136,
+      "measured_mpi_wall_seconds": 199.56118043803144,
+      "sample_label": "sustained-base-r51-cpu-steps-bd2",
+      "timeout_seconds": 659
+    },
+    "r51-gpu-events-bd1": {
+      "loop_seconds": 144.62070186296478,
+      "measured_mpi_wall_seconds": 154.40273271303158,
+      "sample_label": "sustained-base-gpu-bd1",
+      "timeout_seconds": 524
+    },
+    "r51-gpu-events-bd2": {
+      "loop_seconds": 101.67903001897503,
+      "measured_mpi_wall_seconds": 116.50687601900427,
+      "sample_label": "sustained-base-r51-gpu-events-bd2",
+      "timeout_seconds": 410
+    }
+  },
+  "completed_events": 10000,
+  "late_events_per_second": 66.72720219567576,
+  "measured_mpi_wall_seconds": 154.40273271303158,
+  "note": "All6base cases completed10000events. Each case bound is3x measured MPIwall+60s; no head performance claim. BD1 late-rate diagnostic retained. Cache uncontrolled.",
+  "quarter_rates": [
+    70.41167124980255,
+    65.98380629757587,
+    67.48753966290215
+  ],
+  "sample_directory": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/results/pilot-job-61373624/sustained-base-gpu-bd1",
+  "stability_ratio": 0.9371146164601355,
+  "timeout_seconds": 524
+}

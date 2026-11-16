@@ -1,0 +1,32 @@
+{
+  "cumulative_io": {
+    "bulk_read": true,
+    "compat_mode": true,
+    "io_path": "CPU-fallback",
+    "positive_windows": 250,
+    "readers": 1,
+    "requested_bytes": 167785880000,
+    "reset_windows": 251,
+    "tail_windows": 1,
+    "total_bytes": 167785880000,
+    "total_requests": 25000,
+    "useful_bytes": 167785880000
+  },
+  "delivered_events": 5000,
+  "first_batch_io": {
+    "bandwidth_gbs": 0.0,
+    "bulk_read": true,
+    "compat_mode": true,
+    "io_path": "CPU-fallback",
+    "issue_to_complete_ns": 0,
+    "requested_bytes": 0,
+    "total_bytes": 0,
+    "total_ns": 0,
+    "total_requests": 0,
+    "useful_bytes": 0
+  },
+  "input_checks": 0,
+  "loop_complete": true,
+  "rank": 2,
+  "role": "bd"
+}

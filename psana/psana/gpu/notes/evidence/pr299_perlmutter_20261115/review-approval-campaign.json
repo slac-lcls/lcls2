@@ -1,0 +1,11 @@
+{
+  "approved_phase": "campaign",
+  "pilot_evidence_sha256": "b08dd6438ab7ffc5c24092555e205555119aa67afdbb3400c0a9773d3567518b",
+  "manifest_sha256": "1433a2107fd8dd6ec589ce4fc8863b78df39e45d1e933e2fbca8814f6ce1eabd",
+  "review_json": "/pscratch/sd/m/monarin/agent-work/lcls2/pr299-perlmutter-screen-20261115TKJ0du6/review/campaign-r1/review.json",
+  "approved_utc": "2026-11-16T01:01:39.541600+00:00",
+  "deferred_findings": [
+    "F-END-TIME",
+    "F-CAMPAIGN-LOOP-TEST"
+  ]
+}
