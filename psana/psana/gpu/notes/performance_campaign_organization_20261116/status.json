@@ -1,9 +1,18 @@
 {
-  "phase": "draft",
-  "round": 0,
+  "phase": "preparing-rereview",
+  "round": 2,
   "round_limit": 3,
   "scope": "organization design only",
   "base": "1995752058bb9aaa3f16ccd86c22e84153257538",
   "branch": "results/psana2-scaling",
-  "unresolved": []
+  "unresolved": [
+    "ORG-001",
+    "ORG-002",
+    "ORG-003",
+    "ORG-004"
+  ],
+  "implementation_commit": "a03bbecdb6eec96944081c8a6ac29056fee47561",
+  "reviewer": "Claude",
+  "scratch": "/pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116",
+  "changes": "All four findings addressed in proposal; independent closure pending"
 }

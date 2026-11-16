@@ -233,5 +233,88 @@
   "old_results_added_file_count": 359,
   "old_results_diff_from_feature_file_count": 2394,
   "old_results_branch_point": "2de8179b8d69a942d120b6c74ce46a11d4c7186a",
-  "source_selection_note": "Selected inspection files, not complete import allowlists. Source branches were fetched from GitHub; full migration dependency closure is a later acceptance gate."
+  "source_selection_note": "Selected inspection files, not complete import allowlists. Source branches were fetched from GitHub; full migration dependency closure is a later acceptance gate.",
+  "review_evidence": {
+    "path": "psana/psana/gpu/notes/performance_campaign_organization_20261116/source-evidence.md",
+    "sha256": "39c1b95d61a7231a35fe4045cfa18e210aa27d8623f6428eb0d2134570e4de80",
+    "excerpts": [
+      {
+        "source": "pr187-pr208",
+        "path": "psana/psana/gpu/docs/performance/README.md",
+        "first_line": 1,
+        "last_line": 65,
+        "excerpt_sha256": "85642b8dd30faa65351ddefbbddc508ccaa2f1335db1576048e51e961bc1b156"
+      },
+      {
+        "source": "pr187-pr208",
+        "path": "psana/psana/gpu/scripts/pr187_pr208/README.md",
+        "first_line": 1,
+        "last_line": 108,
+        "excerpt_sha256": "b23abafbefd1fb3d310fd2924931dec87a5264b172063416b2d862d3e40a4f2c"
+      },
+      {
+        "source": "pr187-pr208",
+        "path": "psana/psana/gpu/scripts/pr187_pr208/manifest.json",
+        "first_line": 1,
+        "last_line": 19,
+        "excerpt_sha256": "0595915f9a7bfdc5e270b4d66d4a1de4c0a44295275f81fb683122c351636b22"
+      },
+      {
+        "source": "pr299",
+        "path": "psana/psana/gpu/notes/pr299_perlmutter_20261115.md",
+        "first_line": 1,
+        "last_line": 177,
+        "excerpt_sha256": "77bb16d0bc8653bb11f57d44cdc737f2e1bec89de2222d5a8a8860d90c44da77"
+      },
+      {
+        "source": "pr299",
+        "path": "psana/psana/gpu/scripts/pr299_perlmutter/README.md",
+        "first_line": 1,
+        "last_line": 117,
+        "excerpt_sha256": "75340cd721f8fd08bacc4a1aed009fbeb55271dcd532aaf4265b357cef06e5e6"
+      },
+      {
+        "source": "pr299",
+        "path": "psana/psana/gpu/scripts/pr299_perlmutter/verify_archive.py",
+        "first_line": 1,
+        "last_line": 85,
+        "excerpt_sha256": "ac9e42aee556d5bfb768dd0fa7390f99302f0237a49d8d021805bd9eafa1f506"
+      },
+      {
+        "source": "old-results",
+        "path": "benchmarks/scaling/README.md",
+        "first_line": 1,
+        "last_line": 43,
+        "excerpt_sha256": "c021ef42bcd1838a31d5516b8fbdb8f8b47f921c3cb33cc4cd43ea3348b0fb32"
+      },
+      {
+        "source": "old-results",
+        "path": "benchmarks/scaling/FORMAT.md",
+        "first_line": 1,
+        "last_line": 41,
+        "excerpt_sha256": "aa0b3dd8e391e3ea2cac6b92c59d2cef793c3ed2168a157985593ba4a3412015"
+      },
+      {
+        "source": "old-results",
+        "path": "benchmarks/scaling/tools/check_catalog.py",
+        "first_line": 1,
+        "last_line": 125,
+        "excerpt_sha256": "a88fc10981dca4506e9ba9a1915ac05dfd7e75a54e5e774d6f5b5768a9aa7449"
+      },
+      {
+        "source": "old-results",
+        "path": "benchmarks/scaling/sources/README.md",
+        "first_line": 1,
+        "last_line": 7,
+        "excerpt_sha256": "c406e41e69e7429b19382100e0c38e3950a6f3b2d4b9839771ff1330d0af7df4"
+      },
+      {
+        "source": "old-results",
+        "path": "benchmarks/scaling/sources/IMPORTS.json",
+        "first_line": 1,
+        "last_line": 28,
+        "excerpt_sha256": "221d449c9f4862f15ac28dc30edb54d7325470525d5dff4e5fe0930c316c2545"
+      }
+    ]
+  }
 }

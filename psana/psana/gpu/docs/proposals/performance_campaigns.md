@@ -42,7 +42,7 @@ Neither becomes a generic regression pass by entering the index.
 
 ## Target layout
 
-All paths below are relative to `psana/psana/gpu/`. Existing paths are kept
+Paths in the following tree are relative to `psana/psana/gpu/`. Existing paths are kept
 unless the migration table explicitly says otherwise. New directories are
 created when their first real campaign or reusable tool needs them.
 
@@ -59,6 +59,7 @@ docs/
     pr187_pr208.md                 preserve reviewed report path
     hardware.md, history.md        preserve the report branch's pages
     FORMAT.md, catalog.json        campaign contract and searchable inventory
+    templates/                    common and kind-specific record templates
     evidence/                     existing compact evidence stays in place
     campaigns/
       <site>/<workload>/<date>-<study>/
@@ -95,6 +96,16 @@ field (`scaling`, `regression`, `application`, or `diagnostic`), not another
 directory layer. A multi-site synthesis has its own `site: multi-site` record
 and links separate site campaigns; it never pools their trials implicitly.
 
+The stable campaign ID is the canonical key. `catalog.json` maps it to both
+`record_path` and `script_roots` (repository-root-relative paths), and the
+record's `manifest.json` repeats that ID and the same script roots. New
+orchestration uses `scripts/campaigns/<id>/`; IDs are unique safe single path
+components. Existing IDs are retained. Historical scripts may have several
+explicit roots shared by several records; read-only synthesis records may have
+none. The validator checks ID uniqueness, catalog/manifest agreement, path
+existence and containment, and the new-script-directory ID. It does not infer
+the pairing from similar date strings or force old archives into the new layout.
+
 This extends standard docs/scripts/notes responsibilities. There is one
 authoritative copy of each report or evidence file. A campaign README may
 summarize and link an existing reviewed report (PR299, for example) without
@@ -102,6 +113,11 @@ copying its body or evidence. Legacy source bundles are explicitly frozen
 archives; they are not maintained code simply because they contain Python.
 
 ## Concrete migration map
+
+The source column names paths from each source branch's **repository root**,
+unless explicitly prefixed `GPU:` (meaning `psana/psana/gpu/`). Destination
+paths are GPU-relative unless marked `repository-root`. Branch names in the
+source column refer to their pinned entries in the inventory above.
 
 | Current material | Destination/action |
 | --- | --- |
@@ -115,7 +131,7 @@ archives; they are not maintained code simply because they contain Python.
 | Inherited root `notes/sim10_striping_20261110/`, `notes/psana_striping_pr298_20261111/`, `notes/psana_gpu_scaling_20261116/` and transitive source dependencies | Enumerate from the old manifests, verifier paths, bundle/import code and report links. Import the complete selected dependency closure under the same `legacy-root/` prefix. These are required beyond the 359 added files. Account for every selected path and mark historical missing inputs explicitly. |
 | PR187/208 doc branch | Select only report/index/hardware/history updates, compact evidence, supporting GPU notes and `scripts/pr187_pr208/` (47 snapshots plus archive metadata). Three-way reconcile edits to existing GPU README/current reports; never overwrite newer API docs from that branch. Add site campaign records plus one multi-site synthesis linking the existing report. |
 | PR299 doc branch | Import its added `scripts/pr299_perlmutter/`, GPU note and `notes/evidence/pr299_perlmutter_20261115/` intact. Add a `perlmutter/pr299-run51/2026-11-15-regression/` catalog wrapper pointing to them; do not relocate files covered by `SHA256SUMS`/`archive-map.json`. |
-| Existing feature-branch reports and `validation/input-bookkeeping-20261110/` | Retain existing locations and links. Index them as existing evidence; do not create a second copy beneath the new campaigns tree. |
+| Feature reports under `psana/psana/gpu/docs/performance/` and repository-root `validation/input-bookkeeping-20261110/` | Retain existing locations and links, including repository-root `validation/input-bookkeeping-20261110/`. Index them as existing evidence; do not create a second copy beneath the new campaigns tree. |
 
 Archive relocation must add an old-to-new mapping with source commit, old
 path, new path, byte size and SHA-256. Original receipts and embedded paths
@@ -163,6 +179,26 @@ Keep throughput thresholds out of pytest. CPU tests validate harness
 contracts, negative paths, pairing and archive integrity; GPU tests validate
 correctness. Regression judgments come from a separately authorized matched
 campaign and an evidence-based report, including inconclusive outcomes.
+
+Frozen snapshots must be isolated from routine collection and code rewriting.
+Before importing them, add explicit pytest recursive-collection exclusions for
+GPU `notes/archives/**`, `scripts/pr187_pr208/**`, `scripts/pr299_perlmutter/**`
+and every other frozen directory identified by the import ledger. Use central
+configuration or a collection hook outside those directories; do not edit
+historical test files or add package initializers to their snapshot trees.
+Maintained harness tests remain discoverable. Routine Ruff/formatters and
+pre-commit rewriting hooks need matching path exclusions, including whitespace
+and end-of-file normalization for frozen evidence. Integrity checks still
+cover every excluded archived file; exclusion is not permission to skip hashes.
+
+Provide explicit offline verification commands for the archived PR packages,
+separate from default pytest discovery: PR299's `verify_archive.py` and
+`python -B -m unittest discover -s psana/psana/gpu/scripts/pr299_perlmutter -p test_verify_archive.py`,
+and PR187's manifest hash check plus `python -B -m unittest discover -s psana/psana/gpu/scripts/pr187_pr208/perlmutter/scripts -p test_startup.py`.
+The PR299 verifier tests were added during packaging; they are safe offline
+checks, not instructions to run its frozen harness tests. Do not collect all
+`test_*.py` in either archive. A future refactored maintained helper gets its own
+explicit CPU-test list and normal lint coverage outside frozen paths.
 
 ## Campaign record and lifecycle
 
@@ -249,6 +285,16 @@ Meson and wheel inclusion independently, and verify maintained docs/examples
 and callable tools remain available. Never add campaign modules to public
 `psana.gpu` exports as a side effect of consolidation.
 
+Specifically, `docs/performance/campaigns/**` and
+`docs/performance/templates/**` are source-only, as are the catalog/FORMAT,
+frozen script packages, campaign orchestration and GPU notes archives. Keep
+the curated current-performance, design/API pages and public examples in the
+standard documentation set. Any installed index must use explicit published
+links for source-only records, rather than broken local links. Decide which
+shared tools are supported installed entry points in their extraction PR;
+until then, the new campaign analysis tools are source-only. Add these paths
+to the Meson/wheel checks, not just the historical script directories.
+
 ## Migration sequence and acceptance
 
 1. Establish the clean hub and review this design. No runtime edits, job
@@ -267,7 +313,14 @@ and callable tools remain available. Never add campaign modules to public
 5. Check all authored links, figures, hash coverage, source/package mappings,
    exact runtime/example equality to the selected feature base, and declared
    documentary changes. Run PR299's strict verifier plus tampering tests and
-   PR187's 47-file hash check plus existing CPU analysis tests. Replay original
+   PR187's 47-file hash check plus its explicitly named `test_startup.py` suite.
+   Record the exact maintained test-file list for the adapted catalog/replay
+   tools; do not substitute a recursive run over historical harnesses. Verify
+   broad pytest collection over `psana/psana/gpu` includes no frozen snapshot
+   files while maintained tests remain discoverable, and check matching
+   lint/pre-commit exclusions. Check installed-file manifests for exclusion of
+   source-only campaign docs/templates, frozen scripts and archives, while
+   preserving supported documentation/examples/tools. Replay original
    PR187 aggregation only if its required raw inputs are available; otherwise
    retain the prior receipt and explicitly limit new verification. Source
    snapshot tests with absolute site paths are not assumed portable.

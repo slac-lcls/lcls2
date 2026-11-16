@@ -1,0 +1,62 @@
+{
+  "reviewed_commit": "a03bbecdb6eec96944081c8a6ac29056fee47561",
+  "verdict": "changes_requested",
+  "summary": "The proposal is a solid design and mostly meets the agreed acceptance contract. It extends the existing psana/psana/gpu docs/examples/scripts/notes layout instead of keeping benchmarks/scaling. It maps the five Sim10 campaigns and both PR report branches, and keeps the PR299 package byte-exact at the paths its verifier depends on. It requires the inherited dependency closure beyond the 359 added files. It separates frozen snapshots, maintained harness families, diagnostics, shared tooling and public examples, sets hub-versus-feature ownership with no wholesale merges, and includes packaging and migration verification steps. One blocking gap remains: frozen historical Python, including non-portable legacy snapshot tests and deliberately duplicated reference/latest copies, would sit inside the psana package source tree, and the proposal gives no rule for keeping those files out of pytest collection and linting. That makes the step-5 verification ('existing CPU analysis tests') ambiguous, and duplicated test basenames are likely to break collection. Three smaller clarity and complexity issues are also reported. I could not read the external source evidence copies or validation-exact-01.json because the file tools were restricted to the worktree, so claims about the PR branches and the old results branch were not independently confirmed.",
+  "checks": [
+    "Read the proposal and the records scope.md, sources.json, validation-01.json and status.json at the reviewed worktree.",
+    "The record directory holds exactly four record files; with the proposal that matches the stated five-file scope. status.json is a draft (round 0, no unresolved items).",
+    "sources.json lists 29 files (feature 11, pr187-pr208 6, pr299 4, old-results 8) plus the 359/2394 counts and the old branch point, matching the proposal text.",
+    "validation-01.json binds proposal_sha256 and source_inventory_sha256 and was captured against the base before commit; I did not recompute these hashes.",
+    "Feature-base claims checked in the worktree: psana/meson.build:329 excludes only gpu/notes from install_subdir; docs/ and scripts/ are installed, so the proposal's packaging warning is accurate.",
+    "Feature-base claims checked: scripts/jf_scaling, stage1_regression, stage5c and feespec_bulk_benchmark exist with helper tests (test_*.py); preview_stream_read_plan.py, complexity_inventory.py and kvikio_fallback_trace.* are diagnostics, as classified.",
+    "Feature-base claims checked: docs/performance has read_staging.md, user_kernels.md, input_group_bookkeeping.md and evidence/*.json, and no README yet (it comes from the PR187 branch).",
+    "validation/input-bookkeeping-20261110/ exists at the repository root, not under psana/psana/gpu.",
+    "pyproject.toml has no pytest testpaths/norecursedirs configuration and has a repository-wide [tool.ruff] section.",
+    "Arithmetic check: 156+54+18+12 = 240 archived cases, as stated in step 4.",
+    "Acceptance items checked against the text: existing-layout extension, the five-campaign and two-PR mapping, byte preservation and relocation ledger, dependency closure, artifact classes, branch ownership, no runtime merge, packaging, migration sequence, and remaining work."
+  ],
+  "limitations": [
+    "Reads of /pscratch/sd/m/monarin/psana2-gpu/scaling-organization-20261116/sources/** were denied because the file tools were restricted to the review-01 worktree. I did not inspect the PR187/208 README and manifest, the PR299 README, verify_archive.py and note, or the old-results FORMAT.md, check_catalog.py, replay_sdf_report.py, sources/README.md, IMPORTS.json and review/FINAL.md. Claims about these (47 frozen files, PR299 verifier path and coverage behaviour, fixed-depth root inference, the reference/latest structure) rest on the coordinator's description and the validation record, not my own inspection.",
+    "The read of validation-exact-01.json was denied for the same reason. I could not confirm the exact detached-commit verification or that the committed proposal bytes match proposal_sha256 in validation-01.json.",
+    "Feature-file claims were checked against the worktree copies, which should be identical to the base for unchanged paths. Their SHA256 values were not recomputed.",
+    "I ran no commands or tests. Per scope this is a documentation-only design review, and no runtime or GPU tests were expected."
+  ],
+  "findings": [
+    {
+      "id": "ORG-001",
+      "severity": "medium",
+      "blocking": true,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 113,
+      "evidence": "Lines 113-115 and 120-126 move exact historical source packages, including reference/ and latest/ snapshots kept as non-deduplicated duplicates, plus legacy root notes containing Python, under psana/psana/gpu/notes/archives/. Lines 75 and 146 keep frozen scripts/pr187_pr208 and scripts/pr299_perlmutter. Line 273 admits the snapshot tests are not portable. The feature tree already relies on in-place helper tests (for example scripts/jf_scaling/test_contract.py, scripts/stage1_regression/test_matrix.py), and pyproject.toml has no pytest testpaths/norecursedirs plus a repo-wide [tool.ruff]. The proposal never says how frozen test_*.py and Python files are kept out of default pytest collection and lint, and those bytes cannot be edited to comply. Duplicated basenames across reference/latest without __init__.py also cause pytest import-file-mismatch collection errors, so step 5's 'existing CPU analysis tests' gate has no defined collection set.",
+      "requested_change": "Add a test and lint isolation rule for frozen paths (notes/archives/**, scripts/pr187_pr208, scripts/pr299_perlmutter, any imported snapshot directories). For example: a conftest collect_ignore/norecursedirs entry or an explicit test-path allowlist for maintained harness tests, plus ruff/pre-commit excludes, added without changing frozen bytes. In step 5, require an explicit list of maintained tests that run, and a check that a broad pytest run over psana/psana/gpu collects no frozen snapshot files."
+    },
+    {
+      "id": "ORG-002",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 118,
+      "evidence": "Line 45 says all target-layout paths are relative to psana/psana/gpu/. The migration table mixes old-branch root paths (benchmarks/scaling/..., root notes/...) with feature paths, and line 118 writes validation/input-bookkeeping-20261110/, which exists only at the repository root. Read with the stated base, it points to a non-existent path.",
+      "requested_change": "Label each migration-table source column with its root (old-branch repo root, feature repo root, or psana/psana/gpu). Write the existing bookkeeping evidence as repository-root validation/input-bookkeeping-20261110/."
+    },
+    {
+      "id": "ORG-003",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 81,
+      "evidence": "Records live at docs/performance/campaigns/<site>/<workload>/<date>-<study>/ (line 64), while new orchestration lives at scripts/campaigns/<campaign-id>/ (line 82). The proposal does not define how a campaign-id maps to the site/workload/date record path, or which manifest field links them. Two differently keyed trees for one campaign invite drift.",
+      "requested_change": "State that the stable campaign ID is the canonical key: either derived from or equal to <site>/<workload>/<date>-<study>, or recorded in catalog.json together with both the record path and the script path. Have the catalog validator check that the two match."
+    },
+    {
+      "id": "ORG-004",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/docs/proposals/performance_campaigns.md",
+      "line": 246,
+      "evidence": "The packaging section correctly notes that meson.build:329 excludes only gpu/notes. Its example list of source-only paths names only scripts directories. It does not decide whether docs/performance/campaigns/** (manifests, runs.csv, figures, review records) and docs/performance/templates are installed package data, and these are installed by default under the current install_subdir.",
+      "requested_change": "Explicitly classify docs/performance/campaigns/** and templates as installed or source-only. If source-only, include them in the Meson/wheel exclusion checks in step 5."
+    }
+  ]
+}
