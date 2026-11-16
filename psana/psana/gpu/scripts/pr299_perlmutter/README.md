@@ -54,12 +54,15 @@ sizing evidence, and campaign review approval before launching. Per-sample
 | `harness/check_runtime_provenance.py`, `harness/perlmutter_support.py` | Install/library, MPI, and runtime checks |
 | `harness/gpu_identity.py`, `harness/io_accounting.py`, `harness/storage.py` | Placement, completed-read accounting, and monitoring |
 | `analysis/summarize_campaign.py`, `analysis/analyze_storage_progress.py` | Paired and storage/progress summaries |
+| `analysis/analyze_campaign.py` | Historical driver producing campaign-summary.json and campaign-storage-progress.json from original sample.json files |
 | `analysis/campaign_validation.py`, `analysis/plot_campaign.py` | Contract checks, sustained windows, CSV, and order plot |
 | `analysis/write_final_report.py`, `analysis/preserve_evidence.py` | Historical report generation and compact snapshot preservation |
 
 The other harness helpers and tests are retained to preserve dependencies.
-`screen.py` and `job.sh` include earlier SDF machinery; the Perlmutter entry
-point for this campaign was **`campaign-job.sh`**, not those older wrappers.
+`screen.py`, `nic.py`, and `test_nic.py` are SDF-era helpers. `job.sh` is the
+earlier Perlmutter pilot/generic wrapper with a 30-minute allocation; it accepts
+a campaign argument but was not this campaign's entry point. The entry point
+was **`campaign-job.sh`**. Neither archived wrapper should be submitted as-is.
 
 ## Offline verification of this package
 
