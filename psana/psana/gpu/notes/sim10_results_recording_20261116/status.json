@@ -1,16 +1,28 @@
 {
   "scope": "sim10_results_recording",
-  "phase": "ready_for_independent_review",
-  "round": 1,
+  "phase": "round02_ready_for_review",
+  "round": 2,
   "round_limit": 3,
   "base_commit": "39ea002a8ffc95546405139e50f2f45005514ee2",
-  "unresolved_ids": [],
+  "unresolved_ids": [
+    "SR-R1-01",
+    "SR-R1-02"
+  ],
   "artifact_root": "/pscratch/sd/m/monarin/psana2-gpu/sim10-results-recording-20261116",
   "checks": {
-    "raw_audit": "35pass;49bundle;7external;608rawfiles;extraction/native summary match",
-    "catalog": "10campaigns;2081file hashes;275arithmetic cases",
-    "tests": "11cube corruption tests and12archive tests pass",
+    "raw_audit": "Round02:35cases/49bundle/7pins/608rawfiles pass, compact memory matches raw arrays",
+    "catalog": "Round02:10campaigns/2082hashes/275arithmetic cases pass",
+    "tests": "12cube tests pass; previous12archive tests unchanged and pass",
     "isolation": "pytest discovery; Meson install and Hatch selection pass",
-    "limitations": "No new GPU run, XTC payload rehash or full native build; Ruff/pre-commit unavailable; configuration and whitespace checks only"
+    "limitations": "No new GPU run, XTC payload rehash or full native build; Ruff/pre-commit unavailable; configuration and whitespace checks only",
+    "archive_size": "All added head files below10MiB; case receipts reduced from19MB to913256bytes"
+  },
+  "prior_review": {
+    "commit": "bf2ecfa62fdd220051370c78398878161dc8948d",
+    "verdict": "pass",
+    "findings": [
+      "SR-R1-01",
+      "SR-R1-02"
+    ]
   }
 }

@@ -10,9 +10,12 @@ submission authorization and prepared manifests describe the original execution;
 they are not current authorization or a portable installation. Reproduction needs
 a new reviewed bundle and the qualified PR298 runtime, data and calibration.
 
-case-receipts.json extracts scalar timing, memory, affinity, device, cache and
+case-receipts.json extracts scalar timing, memory extrema/checkpoints, affinity, device, cache and
 per-bin cube receipts from each indexed raw result. It omits event timestamp
-arrays, pixel data and verbose diagnostics. raw-index.json pins original locations,
+arrays, pixel data, per-callback memory sample sequences and verbose diagnostics.
+Per-rank sample counts/minimum free/maximum pool use are retained, together with
+host RSS checkpoints and task D2H destination-capacity ledgers. Full memory
+sequences remain in the indexed raw results. raw-index.json pins original locations,
 sizes and hashes. Hashes cannot recover deleted scratch files; no durable-storage
 transfer or retention guarantee is claimed. No cube payload was exported.
 

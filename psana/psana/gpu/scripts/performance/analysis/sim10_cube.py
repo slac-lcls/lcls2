@@ -186,6 +186,23 @@ def validate(record, report, repository):
             totals = [sum(rank['cube_verification']['counts'][i] for rank in r['ranks'][2:]) for i in range(100)]
             require(totals == [c['events']//99 + (i < c['events']%99) for i in range(99)]+[0],
                     'Global ordinal bin counts')
+    memory = read(archive/'memory-summary.json')
+    ranks = [rank for receipt in receipts for rank in receipt['ranks']]
+    host_peak = max(sample['VmHWM'] for rank in ranks for sample in rank['host_memory'].values()
+                    if 'VmHWM' in sample)
+    pinned_capacity = max(rank['task_copy']['pinned_capacity_high'] for rank in ranks if rank['task_copy'])
+    require(memory['max_recorded_per_process_rss_high_water_bytes'] == host_peak and
+            memory['max_task_d2h_destination_capacity_bytes'] == pinned_capacity, 'Memory summary')
+    require(f'**{host_peak/2**30:.3f} GiB**' in report.read_text() and
+            f'({host_peak} bytes)' in report.read_text() and f'**{pinned_capacity} bytes**' in report.read_text(),
+            'Memory report values')
+    for rank in ranks:
+        sample = rank['sampled_memory_summary']
+        require(sample['samples'] >= 0, 'Memory sample count')
+        if rank['rank'] >= 2:
+            require(sample['samples'] > 0 and sample['minimum_free_bytes'] >= 0 and
+                    sample['maximum_pool_reserved_bytes'] >= sample['maximum_pool_used_bytes'] >= 0,
+                    'Memory sample extrema')
     require(cubes == 20, 'Twenty cube banks')
     require(Counter(len(r['cache_gate']['attempts']) for r in receipts) == {1: 32, 2: 3}, 'Cache histogram')
     recomputed = summarize(receipts)

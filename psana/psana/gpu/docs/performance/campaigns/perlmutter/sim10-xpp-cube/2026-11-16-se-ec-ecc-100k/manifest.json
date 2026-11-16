@@ -123,12 +123,6 @@
   "artifacts": [
     {
       "role": "frozen_evidence",
-      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/README.md",
-      "bytes": 1485,
-      "sha256": "dd42561cc4d48aea0691eef7053140e54a4c4180191778f64339370741c91d1b"
-    },
-    {
-      "role": "frozen_evidence",
       "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/bundle/affinity_probe.py",
       "bytes": 568,
       "sha256": "dd0e35a36610cfce1d488cc7f9f56c977e6aa74dfe164dd6afad6078496e3732"
@@ -429,12 +423,6 @@
     },
     {
       "role": "frozen_evidence",
-      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/case-receipts.json",
-      "bytes": 19065144,
-      "sha256": "ee368d5aae31aee1a911734095f6dd49eda82e167f8f8a5014cf4acb0b7de299"
-    },
-    {
-      "role": "frozen_evidence",
       "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/evidence/job61409171-results.json",
       "bytes": 68350,
       "sha256": "d3de76dc2481043c56c9ce7f22443473b1111d6b64ee8ce8ef10d950cfdc0fe3"
@@ -606,6 +594,25 @@
       "path": "psana/psana/gpu/docs/performance/campaigns/perlmutter/sim10-xpp-cube/2026-11-16-se-ec-ecc-100k/summary.json",
       "bytes": 19514,
       "sha256": "31f146d3236e76011c0dbb297f966bf517f6c4efebeb5a6045a76c86397948eb"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/case-receipts.json",
+      "bytes": 913256,
+      "sha256": "a2022d04a0859c2ee5e53f2cc0eb79b3294240fc5305129fe23a81215e686cad"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/memory-summary.json",
+      "bytes": 435,
+      "sha256": "a707004a9657933e3e87b811d7c96406b5879b75c8183fd1438d8d423f27daf0"
+    },
+    {
+      "role": "frozen_evidence",
+      "path": "psana/psana/gpu/notes/archives/sim10-xpp-cube-20261116/README.md",
+      "bytes": 1745,
+      "sha256": "6b6c809a9c7dc40645ae0d2a55ea0de9894c5cbf2db40870db4234e7c50c6162"
     }
-  ]
+  ],
+  "record_commit_note": "Commit in slac-lcls/lcls2 on work/perlmutter-sim10-baseline-20261115 that recorded completed-job results and the passing independent results-review disposition. It is the source record imported here, not this results-branch commit."
 }

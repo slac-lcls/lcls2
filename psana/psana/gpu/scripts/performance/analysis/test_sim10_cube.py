@@ -90,6 +90,12 @@ class CompletedCubeChecks(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'Frozen bundle'):
             self.check()
 
+    def test_memory_summary_corruption(self):
+        self.change(self.archive/'memory-summary.json',
+                    lambda d: d.update(max_task_d2h_destination_capacity_bytes=0))
+        with self.assertRaisesRegex(ValueError, 'Memory summary'):
+            self.check()
+
     def test_wrong_configuration(self):
         self.record['configuration']['workers_per_bd'] = 8
         with self.assertRaisesRegex(ValueError, 'Worker/storage'):

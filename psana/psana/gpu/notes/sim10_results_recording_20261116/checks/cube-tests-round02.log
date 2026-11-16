@@ -1,0 +1,17 @@
+test_authored_table_drift (__main__.CompletedCubeChecks.test_authored_table_drift) ... ok
+test_bundle_modification (__main__.CompletedCubeChecks.test_bundle_modification) ... ok
+test_changed_batch (__main__.CompletedCubeChecks.test_changed_batch) ... ok
+test_changed_timing (__main__.CompletedCubeChecks.test_changed_timing) ... ok
+test_csv_wrong_byte_denominator (__main__.CompletedCubeChecks.test_csv_wrong_byte_denominator) ... ok
+test_cube_nan_flag (__main__.CompletedCubeChecks.test_cube_nan_flag) ... ok
+test_dropped_or_duplicated_case (__main__.CompletedCubeChecks.test_dropped_or_duplicated_case) ... ok
+test_memory_summary_corruption (__main__.CompletedCubeChecks.test_memory_summary_corruption) ... ok
+test_original_passes (__main__.CompletedCubeChecks.test_original_passes) ... ok
+test_warm_final_scan (__main__.CompletedCubeChecks.test_warm_final_scan) ... ok
+test_wrong_configuration (__main__.CompletedCubeChecks.test_wrong_configuration) ... ok
+test_wrong_cube_bin_counts_preserving_total (__main__.CompletedCubeChecks.test_wrong_cube_bin_counts_preserving_total) ... ok
+
+----------------------------------------------------------------------
+Ran 12 tests in 4.443s
+
+OK

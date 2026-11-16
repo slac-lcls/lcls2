@@ -62,7 +62,10 @@ node give descriptive spread, not a universal optimum or hardware ceiling.
 
 Framework/native PR298: `67c327a148a08b2aaf972e67e1e02e367c2b298f`, reusing
 job61359629 qualification. Harness: `fd63dfb327b154b06e3e37bf39abf698a5495f89`.
-The results-branch HEAD is not the measured code. Exact application sources and
+The source-record commit `a2affb7f9144b92846097ffd9da4c19971c5538b` on
+`work/perlmutter-sim10-baseline-20261115` recorded the completed results and
+passing results-review disposition imported here. The results-branch HEAD is
+not the measured code. Exact application sources and
 per-file hashes are in the 49-file execution bundle; seven external pins are
 recorded separately. CuPy 14.0.1, KvikIO 26.10.00, CUDA runtime 12.9, Cray MPICH.
 
@@ -107,8 +110,13 @@ cache state and wire traffic were unverified; NIC CSV fields are blank, not zero
 The original coordinator re-audited all 35 cases for exact event identities,
 read ranges/bytes, mapping and resource drain. Four GPUs each passed 31 native
 tests and ten descriptor guards. Minimum sampled whole-device free memory was
-12.809 GiB; sampling does not guarantee transient peaks. Host/GPU/pinned memory
-receipts are retained without treating sampled readings as complete peak bounds.
+12.809 GiB; sampling does not guarantee transient peaks. The largest recorded per-process RSS high-water mark was **2.179 GiB**
+(2339954688 bytes); this is a process maximum across rank checkpoints, not a summed
+node peak. The largest observed task D2H destination capacity was **28672 bytes**.
+That capacity excludes POSIX bounce buffers and other pinned allocations, so it
+is not a total pinned-memory peak. [Memory summary](../../../../../../notes/archives/sim10-xpp-cube-20261116/memory-summary.json)
+and per-rank host checkpoints, device-sample extrema and D2H ledgers are retained.
+Full per-callback device sample sequences remain in indexed raw files.
 The original independent reviewer checked compact receipts and arithmetic;
 raw hashes, exact event/bin ownership and hardware checks relied on coordinator
 evidence. Archive verification remains a separate lifecycle axis.

@@ -1,0 +1,5 @@
+{
+  "max_recorded_per_process_rss_high_water_bytes": 2339954688,
+  "max_task_d2h_destination_capacity_bytes": 28672,
+  "scope": "Maximum across rank receipts, not summed across processes or a simultaneous node total. VmHWM is the kernel-reported process RSS high-water mark at recorded checkpoints. D2H capacity is the harness-observed destination capacity, not total pinned memory; POSIX bounce and other allocations are separate."
+}

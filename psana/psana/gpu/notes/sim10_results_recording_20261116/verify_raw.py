@@ -32,7 +32,12 @@ for compact,done in zip(read(ARC/'case-receipts.json'),native['completed']):
  assert compact['cache_gate']==raw['observation']['cache_gate']
  assert compact['storage_evidence']==raw['observation'].get('storage_evidence')
  for cr,rr in zip(compact['ranks'],raw['rows']):
-  for key,value in cr.items():assert value==(len(rr['timestamps']) if key=='event_count' else rr[key]),key
+  for key,value in cr.items():
+   if key=='sampled_memory_summary':
+    samples=rr['sampled_memory']
+    expected=dict(samples=len(samples),minimum_free_bytes=min((s['free'] for s in samples),default=None),maximum_pool_used_bytes=max((s['used'] for s in samples),default=None),maximum_pool_reserved_bytes=max((s['reserved'] for s in samples),default=None))
+   else:expected=len(rr['timestamps']) if key=='event_count' else rr[key]
+   assert value==expected,key
  memory=read(RAW/'results'/(name+'.memory.json'))
  for entry in memory:validate_memory(entry)
  records.append(dict(case=c,seconds=raw['seconds'],audit='pass',job=raw['job'],node=raw['rows'][0]['host'],cache_attempts=len(raw['observation']['cache_gate']['attempts']),conditioning_seconds=raw['observation']['conditioning_seconds']))
