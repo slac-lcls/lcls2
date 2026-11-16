@@ -1,10 +1,14 @@
 {
-  "phase": "verified-awaiting-review",
-  "round": 0,
+  "phase": "fixes-awaiting-review",
+  "round": 1,
   "round_limit": 3,
   "branch": "results/psana2-gpu-scaling",
   "scope": "two PR study import only",
   "base": "12366915ee2e7991176c19b03d4a24134e76c7f3",
+  "reviewed_commit": "caffb52bb862d17044da690328cebeaa0d430b3e",
   "checks": "validation.json",
-  "unresolved": []
+  "unresolved": [
+    "IMP-R1-01",
+    "IMP-R1-02"
+  ]
 }

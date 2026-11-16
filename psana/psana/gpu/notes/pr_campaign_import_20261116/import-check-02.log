@@ -1,0 +1,16 @@
+{
+  "imported_paths": 703,
+  "policies": {
+    "reconciled-navigation": 5,
+    "byte-preserved": 698
+  },
+  "source_identical_files": 700,
+  "source_different_files": 3,
+  "source_git_blobs": 703,
+  "pr187_snapshots": 47,
+  "report_links": 109,
+  "limitations": [
+    "Integrity/navigation check, not a new performance result or original raw-data replay.",
+    "Historical absolute scratch links and remote URLs are not availability-checked."
+  ]
+}

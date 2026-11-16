@@ -1,4 +1,7 @@
-"""Verify the pinned PR-study import without psana, CUDA, data or a scheduler."""
+"""Source-checkout-only verification of the pinned PR-study import.
+
+No psana, CUDA, data or scheduler required; this record is not installed.
+"""
 import argparse
 import hashlib
 import json
@@ -27,6 +30,7 @@ def verify(root, source_git=False):
     paths = [entry['path'] for entry in files]
     require(len(paths) == 703 and len(set(paths)) == 703, 'Import coverage/duplicates')
     counts = {}
+    source_identical = 0
     for entry in files:
         path = root / entry['path']
         require(not Path(entry['path']).is_absolute() and path.resolve().is_relative_to(root), 'Unsafe import path')
@@ -34,6 +38,9 @@ def verify(root, source_git=False):
         require(digest(path) == entry['imported_sha256'], 'Changed import: ' + str(path))
         mode = '100755' if path.stat().st_mode & 0o111 else '100644'
         require(mode == entry['git_mode'], 'Changed Git executable bit: ' + str(path))
+        equal = entry['imported_sha256'] == entry['source_sha256']
+        require(equal == entry['matches_source_bytes'], 'Source-byte equality label')
+        source_identical += equal
         counts[entry['policy']] = counts.get(entry['policy'], 0) + 1
         if entry['policy'] == 'byte-preserved':
             require(digest(path) == entry['source_sha256'] and path.stat().st_size == entry['bytes'], 'Changed frozen bytes')
@@ -41,6 +48,7 @@ def verify(root, source_git=False):
             require(entry['policy'] == 'reconciled-navigation', 'Unknown import policy')
     require(counts == {'byte-preserved': 698, 'reconciled-navigation': 5}, 'Import policy coverage')
 
+    require(source_identical == 700, 'Source-identical file count')
     source_checks = 0
     if source_git:
         for source in ledger['sources']:
@@ -57,10 +65,25 @@ def verify(root, source_git=False):
                 end = raw.index(b'\n', pos)
                 header = raw[pos:end].split()
                 require(len(header) == 3 and header[1] == b'blob', 'Missing source blob')
-                size = int(header[2]); start = end + 1
-                payload = raw[start:start + size]; pos = start + size + 1
+                size = int(header[2])
+                start = end + 1
+                payload = raw[start:start + size]
+                pos = start + size + 1
                 require(len(payload) == entry['bytes'] and hashlib.sha256(payload).hexdigest() == entry['source_sha256'], 'Wrong source identity')
                 source_checks += 1
+            for entry in selected:
+                if entry['policy'] != 'reconciled-navigation':
+                    continue
+                for revision, field in [(ledger['pre_import_commit'], 'pre_import_sha256'),
+                                        (source['delta_base'], 'source_delta_base_sha256')]:
+                    result = subprocess.run(['git', '-C', str(root), 'show', revision + ':' + entry['path']],
+                                            capture_output=True)
+                    expected_hash = entry[field]
+                    if expected_hash is None:
+                        require(result.returncode != 0, 'Expected absent pre-import page')
+                    else:
+                        require(result.returncode == 0 and hashlib.sha256(result.stdout).hexdigest() == expected_hash,
+                                'Wrong reconciliation base identity')
 
     archived = root / 'psana/psana/gpu/scripts/pr187_pr208'
     manifest = json.loads((archived / 'manifest.json').read_text())
@@ -82,7 +105,8 @@ def verify(root, source_git=False):
             path = (doc.parent / unquote(parsed.path)).resolve()
             require(path.exists(), 'Broken relative link: ' + str(doc.relative_to(root)) + ' -> ' + target)
             links += 1
-    return dict(imported_paths=len(files), policies=counts, source_git_blobs=source_checks,
+    return dict(imported_paths=len(files), policies=counts, source_identical_files=source_identical, source_different_files=len(files) - source_identical,
+                source_git_blobs=source_checks,
                 pr187_snapshots=47, report_links=links,
                 limitations=['Integrity/navigation check, not a new performance result or original raw-data replay.',
                              'Historical absolute scratch links and remote URLs are not availability-checked.'])

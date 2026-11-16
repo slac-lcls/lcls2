@@ -1,0 +1,43 @@
+{
+  "reviewed_commit": "caffb52bb862d17044da690328cebeaa0d430b3e",
+  "verdict": "pass",
+  "summary": "The import stays within the agreed scope. All required artifacts are present: scope, README, imports.json ledger, validation.json, status.json, check_isolation.py and all five logs. The logs match the supplied validation summary: 703 paths with 698 byte-preserved and 5 reconciled, 703 source blobs, 47 PR187 snapshots and 109 links; the PR299 verifier recorded 637 files, 48 samples, 24 pairs and the acfd029 head; PR299 tests 5 OK and PR187 tests 6 OK; the isolation output lists only maintained GPU test files. The navigation pages match the source reports. PR187/208 figures checked: +10.17% B/A, about 2 s versus about 1.1 s first batch, +2.14 s remaining loop, +3.34 s total wall time, unresolved \u00b15% remaining-loop equivalence, +0.51% C/B, inconclusive one-BD result. PR299 points checked: 48 samples in six cases, uncontrolled cache, C1 unfixed at acfd029, Run77 deferred, no universal no-regression claim. No conclusion is strengthened. Isolation settings are consistent across root conftest collect_ignore, Ruff force-exclude/extend-exclude, five pre-commit rewrite/AST hooks (YAML, merge-conflict and size checks stay active), Meson exclude_directories and Hatch exclude plus negated artifacts. The fixture-based checker exercises each of these. No runtime or example files were found changed in the inspected areas. Two low, non-blocking issues are about how the ledger labels pages and where the one-off checker lives.",
+  "checks": [
+    "Read scope.md, README.md, status.json, validation.json, check_isolation.py and all five logs; log contents match the validation.json summary and the supplied coordinator evidence.",
+    "Reviewed check_pr_import.py: per-file hash, executable-bit and safe-path checks; exact source-delta and cat-file blob identity under --source-git; PR187 47-snapshot manifest hashes; relative-link resolution.",
+    "Reviewed conftest.py collect_ignore, .pre-commit-config.yaml exclusions (trailing-whitespace, end-of-file-fixer, mixed-line-ending, check-ast, debug-statements), pyproject Ruff and Hatch exclude/artifact negations, and psana/meson.build exclude_directories.",
+    "Confirmed no files under gpu/notes match test*.py, so excluding notes from collection hides no maintained tests.",
+    "No imported ledger entry is 1 MB or larger (searched for 7+ digit byte counts), so check-added-large-files (10 MB) stays satisfiable.",
+    "Compared docs/performance/README.md and history.md claims line by line with pr187_pr208.md (lines 5-15, 71-84, 146-260, 287-291) and pr299_perlmutter_20261115.md (lines 1-40, 148-158).",
+    "Reviewed GPU README navigation: current API links are retained and performance/history links were added.",
+    "Reviewed the read_staging.md and user_kernels.md headers: they only add a link to the PR187/208 report.",
+    "Checked IMPLEMENTATION.md and proposals/performance_campaigns.md line 132 (three-way reconcile policy) against the import approach."
+  ],
+  "limitations": [
+    "No commands were run, so git diff, blob identity and source-delta coverage could not be checked independently. Those rely on the coordinator's logs and the checker code.",
+    "I could not see the pre-import (base 12366915) versions of read_staging.md, user_kernels.md and the GPU README. Whether newer feature-branch content was kept for the two pages copied exactly from source is therefore inferred, not observed.",
+    "I did not read all 182k imported lines; only reports, navigation, ledger entries and logs were spot-checked.",
+    "Tests, the verifier and the isolation checks were not executed by the reviewer. The results come from the logs and validation.json only.",
+    "Hatch support for negated artifact patterns is accepted on the basis of check_isolation.py's use of the real hatchling WheelBuilder, not reproduced."
+  ],
+  "findings": [
+    {
+      "id": "IMP-R1-01",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/notes/pr_campaign_import_20261116/imports.json",
+      "line": 118,
+      "evidence": "read_staging.md (lines 118-127) and user_kernels.md (lines 129-138) are labeled policy 'reconciled-navigation', but imported_sha256 equals source_sha256 for both, so they are byte-identical to the PR187/208 source. The README's '61 exact / five reconciled' and the validation's 'byte-preserved: 698' therefore undercount exact files: only README.md, performance/README.md and history.md actually differ from source. check_pr_import.py:38-41 skips the source-hash check for reconciled entries. The ledger also records no pre-import base blob for the three 'M' pages, so nothing shows that the three-way reconcile required by proposals/performance_campaigns.md:132 kept any newer feature-branch content in those two pages.",
+      "requested_change": "Either reclassify the two pages as byte-preserved, or add a field such as base_sha256 / reconciliation_result (e.g. 'base equals delta-base; source taken unchanged') for each reconciled page and correct the 61/5 and 698/5 statements accordingly. No scientific content needs to change."
+    },
+    {
+      "id": "IMP-R1-02",
+      "severity": "low",
+      "blocking": false,
+      "file": "psana/psana/gpu/scripts/performance/analysis/check_pr_import.py",
+      "line": 10,
+      "evidence": "This one-off import checker sits in the maintained, installable scripts/performance/analysis/ tree, which Meson and Hatch do not exclude. It hard-codes the RECORD path under gpu/notes, which is excluded from installation, along with the counts 703/698/5/47. An installed copy cannot run. It is also not Ruff-excluded, and lines 60-61 use semicolon-joined statements (E702, part of Ruff's default E7 set). No Ruff CI hook was found, so the effect is minor.",
+      "requested_change": "Optionally move it beside the import record under notes/pr_campaign_import_20261116/, or state in its docstring that it is source-checkout only. Split the semicolon statements so a future Ruff run passes. Not required for this import."
+    }
+  ]
+}

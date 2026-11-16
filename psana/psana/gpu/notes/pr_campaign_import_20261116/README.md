@@ -7,13 +7,18 @@ template. Source branch heads and every selected path are in [imports.json](impo
 
 | Study | Source commit | Selected paths | Import policy |
 | --- | --- | ---: | --- |
-| PR187/208 | `66072235d3cd18c002a13c581af82e111a418758` | 66 | 61 exact files; five navigation pages reconciled with current feature docs and PR299 |
+| PR187/208 | `66072235d3cd18c002a13c581af82e111a418758` | 66 | 61 frozen files; five navigation pages reconciled (two remain source-identical) |
 | PR299 | `e8d69a7e6604e1d459ad04c633de50a56b46ac9a` | 637 | All exact files, original locations retained |
 
 The 703 selected paths comprise 700 additions and three existing pages with
 navigation edits. All campaign scripts and numerical evidence are byte-exact.
 The ledger records original Git identity, size, mode, original SHA256 and
-imported SHA256; five reconciled pages are explicitly distinguished. PR299's
+imported SHA256. The policy counts are 698 frozen files and five navigation
+pages reviewed for reconciliation. Of those five, read_staging.md and
+user_kernels.md applied cleanly and remain source-identical: **700 files are
+byte-identical to source, and three navigation pages differ**. The ledger
+records the pre-import and source delta-base hashes for existing reconciled
+pages; both bases are identical for those two clean patches. PR299's
 strict archive covers its script/evidence trees and note, so no import records,
 configuration files or bytecode are added inside those paths.
 
@@ -30,7 +35,7 @@ Run from the repository root with Python 3.11 or newer (for this import's
 packaging checks), using `-B` to avoid introducing bytecode in frozen archives:
 
 ```bash
-python -B psana/psana/gpu/scripts/performance/analysis/check_pr_import.py --source-git
+python -B psana/psana/gpu/notes/pr_campaign_import_20261116/check_pr_import.py --source-git
 python -B psana/psana/gpu/notes/pr_campaign_import_20261116/check_isolation.py .
 python -B psana/psana/gpu/scripts/pr299_perlmutter/verify_archive.py
 python -B -m unittest discover -s psana/psana/gpu/scripts/pr299_perlmutter -p test_verify_archive.py -v
