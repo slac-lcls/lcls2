@@ -80,6 +80,15 @@ checks package/source checksums, approval binding, sample contracts, paired
 timings and order, provenance, sustained progress, and storage aggregation.
 It cannot reproduce physical storage measurements or discarded event arrays.
 
+The [validation receipt](../../notes/evidence/pr299_perlmutter_20261115/packaging-validation.json)
+describes the pre-receipt 630-file payload at
+`5183e2d07cfbc77fe68438ee5396d136b7e787c3`, not subsequent review records.
+The [packaging review records](../../notes/evidence/pr299_perlmutter_20261115/reviews/packaging-summary.json)
+identify `f5b3a260938a1a9b56cdcfd87039033898cf4970` as the independently reviewed
+payload; the later commit adds review records and documentation only.
+Use the documented `python -B` commands: stray `__pycache__` or `.pyc` files
+under the package cause its strict checksum-coverage check to fail.
+
 Three source-format exceptions are intentionally retained: the original
 `plots/paired-timings.csv` uses CRLF, `logs/slurm-61375111.err` ends with a
 blank line, and `provenance/build-environment.txt` contains a space-only line.
